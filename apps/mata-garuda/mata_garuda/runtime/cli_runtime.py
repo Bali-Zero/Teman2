@@ -1,7 +1,7 @@
 """
 Mata Garuda — CLI Runtime.
 
-Subprocess wrapper per LLM CLI/local tools (claude, gemini, codex, ollama).
+Subprocess wrapper per LLM CLI/local tools (claude, agy, codex, ollama).
 Vincolo inviolabile: MAI API HTTP, MAI SDK import.
 Tutto passa via subprocess blocking.
 
@@ -10,7 +10,7 @@ Multi-account fallback for Claude CLI:
   CLAUDE_CODE_OAUTH_TOKEN_2 → account 2 (if 1 exhausted)
   CLAUDE_CODE_OAUTH_TOKEN_3 → account 3 (if 2 exhausted)
   keychain fallback          → whatever logged in via claude auth
-  gemini --prompt            → final fallback if all Claude exhausted
+  agy -p                     → final fallback if all Claude exhausted
 
 The "latch" pattern: once a token is marked exhausted in a run,
 subsequent calls skip it instantly (0s) instead of waiting for timeout.
@@ -53,6 +53,8 @@ RATE_LIMIT_PATTERNS = re.compile(
 
 # Mapping model -> CLI command + flags
 DEFAULT_OLLAMA_MODEL = os.environ.get("MATA_GARUDA_OLLAMA_MODEL", "qwen3.5:9b")
+DEFAULT_AGY_MODEL = os.environ.get("MATA_GARUDA_AGY_MODEL", "gemini-3.5-flash")
+DEFAULT_AGY_PRINT_TIMEOUT = os.environ.get("MATA_GARUDA_AGY_PRINT_TIMEOUT", "5m")
 
 CLI_CONFIGS: dict[str, dict] = {
     "claude": {
@@ -70,11 +72,12 @@ CLI_CONFIGS: dict[str, dict] = {
         "system_flag": "--system-prompt",
         "model_flag": "--model",
     },
-    "gemini": {
-        "cmd": "gemini",
-        "print_flag": "--prompt",  # gemini usa --prompt, non --print
-        "system_flag": None,  # gemini non ha --system-prompt diretto
+    "agy": {
+        "cmd": os.environ.get("MATA_GARUDA_AGY_BIN", "agy"),
+        "print_flag": "-p",
+        "system_flag": None,
         "model_flag": "--model",
+        "timeout_flag": "--print-timeout",
     },
     "codex": {
         "cmd": "codex",
@@ -153,13 +156,13 @@ class CLIRuntime:
     """
     Subprocess wrapper per LLM CLI tools.
 
-    Supporta: claude (--print), gemini (--prompt), codex (exec), ollama (local).
+    Supporta: claude (--print), agy (-p), codex (exec), ollama (local).
     Sempre blocking, mai interattivo.
 
     Claude multi-account fallback:
     - Tries each CLAUDE_CODE_OAUTH_TOKEN_N in order
     - Latches exhausted tokens (skips them instantly)
-    - Falls back to gemini if all Claude tokens exhausted
+    - Falls back to agy if all Claude tokens exhausted
     """
 
     def __init__(
@@ -169,11 +172,17 @@ class CLIRuntime:
         working_dir: Optional[str] = None,
     ):
         self.ollama_model: str | None = None
+        self.agy_model: str | None = None
         if model.startswith("ollama:"):
             self.ollama_model = model.split(":", 1)[1].strip() or DEFAULT_OLLAMA_MODEL
             model = "ollama"
         elif model == "ollama":
             self.ollama_model = DEFAULT_OLLAMA_MODEL
+        elif model.startswith("agy:"):
+            self.agy_model = model.split(":", 1)[1].strip() or DEFAULT_AGY_MODEL
+            model = "agy"
+        elif model == "agy":
+            self.agy_model = DEFAULT_AGY_MODEL
 
         if model not in CLI_CONFIGS:
             raise ValueError(
@@ -210,7 +219,20 @@ class CLIRuntime:
                 combined,
             ]
 
-        # claude: --print "prompt" / gemini: --prompt "prompt"
+        if self.model == "agy":
+            combined = prompt
+            if system_prompt:
+                combined = f"<system>\n{system_prompt}\n</system>\n\n{prompt}"
+            cmd.extend([self.config["print_flag"], combined])
+            if self.config["model_flag"] and (self.agy_model or DEFAULT_AGY_MODEL):
+                cmd.extend([self.config["model_flag"], self.agy_model or DEFAULT_AGY_MODEL])
+            if DEFAULT_AGY_PRINT_TIMEOUT:
+                cmd.extend([self.config["timeout_flag"], DEFAULT_AGY_PRINT_TIMEOUT])
+            if extra_flags:
+                cmd.extend(extra_flags)
+            return cmd
+
+        # claude: --print "prompt"
         cmd.append(self.config["print_flag"])
         cmd.append(prompt)
 
@@ -219,7 +241,7 @@ class CLIRuntime:
             cmd.append(self.config["system_flag"])
             cmd.append(system_prompt)
 
-        # For gemini: prepend system prompt to user prompt
+        # For CLIs without system prompt support: prepend it to the user prompt.
         if system_prompt and not self.config["system_flag"]:
             combined = f"<system>\n{system_prompt}\n</system>\n\n{prompt}"
             cmd[cmd.index(prompt)] = combined
@@ -228,6 +250,12 @@ class CLIRuntime:
             cmd.extend(extra_flags)
 
         return cmd
+
+    def _result_model_name(self) -> str:
+        """Return the concrete model label to record in CLIResult."""
+        if self.model == "agy":
+            return f"agy:{self.agy_model or DEFAULT_AGY_MODEL}"
+        return self.model
 
     def _run_subprocess(
         self,
@@ -324,7 +352,7 @@ class CLIRuntime:
                 stderr=result.stderr,
                 returncode=result.returncode,
                 elapsed_seconds=round(elapsed, 2),
-                model=self.model,
+                model=self._result_model_name(),
                 token_used=token_label,
                 command=cmd,
             )
@@ -335,7 +363,7 @@ class CLIRuntime:
                 stderr=f"Timeout after {self.timeout}s",
                 returncode=-1,
                 elapsed_seconds=round(elapsed, 2),
-                model=self.model,
+                model=self._result_model_name(),
                 token_used=token_label,
                 command=cmd,
             )
@@ -345,7 +373,7 @@ class CLIRuntime:
                 stderr=f"Command not found: {cmd[0]}",
                 returncode=-2,
                 elapsed_seconds=0.0,
-                model=self.model,
+                model=self._result_model_name(),
                 token_used=token_label,
                 command=cmd,
             )
@@ -360,7 +388,7 @@ class CLIRuntime:
         Invoke the CLI tool with multi-account fallback.
 
         For Claude: tries each CLAUDE_CODE_OAUTH_TOKEN_N in order,
-        latches exhausted tokens, falls back to gemini.
+        latches exhausted tokens, falls back to agy.
 
         Args:
             prompt: User message / query to send
@@ -419,28 +447,27 @@ class CLIRuntime:
             )
             return result
 
-        # All Claude tokens exhausted — fallback to Gemini
+        # All Claude tokens exhausted — fallback to agy.
         logger.warning(
-            "[CLIRuntime] All Claude tokens exhausted. Falling back to Gemini."
+            "[CLIRuntime] All Claude tokens exhausted. Falling back to agy."
         )
-        gemini_config = CLI_CONFIGS["gemini"]
-        gemini_cmd = [gemini_config["cmd"], gemini_config["print_flag"]]
-
-        # Build gemini prompt (prepend system if available)
-        if system_prompt:
-            gemini_prompt = f"<system>\n{system_prompt}\n</system>\n\n{prompt}"
-        else:
-            gemini_prompt = prompt
-        gemini_cmd.append(gemini_prompt)
-
-        result = self._invoke_single(gemini_cmd, "gemini_fallback", "")
+        fallback_model = os.environ.get(
+            "MATA_GARUDA_CLAUDE_FALLBACK_MODEL",
+            f"agy:{DEFAULT_AGY_MODEL}",
+        )
+        fallback = CLIRuntime(
+            model=fallback_model,
+            timeout=self.timeout,
+            working_dir=self.working_dir,
+        )
+        result = fallback.invoke(prompt, system_prompt, extra_flags)
+        result.token_used = "agy_fallback"
         if result.success:
             logger.info(
-                f"[CLIRuntime] Gemini fallback success in {result.elapsed_seconds}s"
+                f"[CLIRuntime] agy fallback success in {result.elapsed_seconds}s"
             )
-            result.model = "gemini"
         else:
-            logger.error("[CLIRuntime] Gemini fallback also failed")
+            logger.error("[CLIRuntime] agy fallback also failed")
 
         return result
 

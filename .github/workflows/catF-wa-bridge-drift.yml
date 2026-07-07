@@ -41,7 +41,7 @@ jobs:
   guard-chain-and-drift-notice:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: HOME-fork blind-spot NOTICE (informational, never fails)
         run: |

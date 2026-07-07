@@ -1,0 +1,55 @@
+{
+  "run_at": "2026-07-07T07:04:02+08:00",
+  "today": "2026-07-07",
+  "yesterday_seen_count": 20,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (403 Forbidden - Cloudflare)",
+    "https://muc.co.id/article (403 Forbidden)",
+    "https://ikpi.or.id/news/ (404 Not Found)",
+    "https://ortax.org/news (200 OK but 'Artikel tidak ditemukan' - no parseable article list)"
+  ],
+  "nb_query_errors": [],
+  "nb_results": {
+    "NB-INTEL-Regulation": "OK - nessuna novita",
+    "NB-INTEL-Press": "OK - nessuna novita",
+    "NB-INTEL-Immigration": "OK - nessuna novita",
+    "NB-INTEL-Tax": "OK - nessuna novita (noted PMK 37/2025 e-commerce PPh 22 collection started 1 July 2026, already tracked)"
+  },
+  "web_backup_checked_clean": [
+    "https://peraturan.go.id (latest entries late June 2026, nothing 05-07 Jul)",
+    "https://www.imigrasi.go.id (latest press releases still dated 01 Jul 2026, no new immigration regulation)",
+    "https://www.pajak.go.id/peraturan (latest KMK 28/MK/EF.2/2026, 24 Jun 2026, stale/out of 48h window)"
+  ],
+  "reviewed_out_of_scope": [
+    "DDTC infografis 'Tujuan dan Pokok-Pokok Perubahan Ketentuan Pajak dalam PP 20/2026' (2026-07-06) - explainer of already-tracked PP 20/2026, no new regulation number.",
+    "DDTC 'Tak Hanya Insentif Pajak, Ini Fasilitas Khusus di Financial Center' (2026-07-06) - concerns RUU Pusat Finansial Internasional, a DRAFT bill not yet enacted; not a citable regulation.",
+    "DDTC 'Apa Itu Bukti Potong Formulir BPNR?' (2026-07-06) - Kamus Pajak glossary entry, no new regulation number.",
+    "DDTC 'Agar Tak Dipotong PPh 22, Merchant Shopee Diimbau Upload Surat Ini' (2026-07-06) - further coverage of already-tracked PMK 37/2025 e-commerce surat pernyataan omzet mechanism, no new citation.",
+    "DDTC 'Kenali Jenis Sanksi Denda dalam Ketentuan Kepabeanan' (2026-07-06) - explainer on existing customs sanction framework, no new regulation number, not a Bali Zero service line match."
+  ],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK 37/2025",
+    "Permendagri 6/2026",
+    "KMK 29/MK/EF.2/2026"
+  ]
+}

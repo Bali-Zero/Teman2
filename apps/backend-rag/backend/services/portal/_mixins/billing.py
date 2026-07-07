@@ -138,7 +138,7 @@ class PortalBillingMixin:
                     invoice_id,
                     client_id,
                 )
-            except (asyncpg.PostgresError, ConnectionError) as db_exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, ConnectionError) as db_exc:
                 logger.warning(
                     "billing: get_invoice_pdf_url DB error for client=%s invoice=%s: %s",
                     client_id,

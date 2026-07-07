@@ -170,13 +170,15 @@ class WorkerConfig:
     max_backoff_seconds: float = DEFAULT_MAX_BACKOFF_SECONDS
     transient_backoff_seconds: float = DEFAULT_TRANSIENT_BACKOFF_SECONDS
     concurrency: int = DEFAULT_CONCURRENCY
+    source_filter: str | None = None
+    pipeline_version_filter: str | None = None
 
     @classmethod
     def from_env(cls) -> WorkerConfig:
+        source_filter = os.getenv("INTAKE_SOURCE_FILTER", "").strip() or None
+        pipeline_version_filter = os.getenv("INTAKE_PIPELINE_VERSION_FILTER", "").strip() or None
         return cls(
-            lease_ttl_seconds=int(
-                os.getenv("INTAKE_LEASE_TTL_SECONDS", DEFAULT_LEASE_TTL_SECONDS)
-            ),
+            lease_ttl_seconds=int(os.getenv("INTAKE_LEASE_TTL_SECONDS", DEFAULT_LEASE_TTL_SECONDS)),
             heartbeat_interval_seconds=float(
                 os.getenv(
                     "INTAKE_HEARTBEAT_INTERVAL_SECONDS",
@@ -198,9 +200,9 @@ class WorkerConfig:
                     DEFAULT_TRANSIENT_BACKOFF_SECONDS,
                 )
             ),
-            concurrency=max(
-                1, int(os.getenv("INTAKE_CONCURRENCY", DEFAULT_CONCURRENCY))
-            ),
+            concurrency=max(1, int(os.getenv("INTAKE_CONCURRENCY", DEFAULT_CONCURRENCY))),
+            source_filter=source_filter,
+            pipeline_version_filter=pipeline_version_filter,
         )
 
 
@@ -526,13 +528,15 @@ class IntakeWorker:
             payload = await self.stage_handler(job, stage)
             latency_ms = int((loop.time() - t0) * 1000)
             async with self.pool.acquire() as conn:
-                await self._record_metric(
-                    conn, job_id, stage, latency_ms, ok=True, payload=payload
-                )
+                await self._record_metric(conn, job_id, stage, latency_ms, ok=True, payload=payload)
             await self._advance(job_id, next_status, stage, payload)
             logger.info(
                 "job %s stage=%s ok %s->%s (%dms)",
-                job_id, stage, inbound, next_status, latency_ms,
+                job_id,
+                stage,
+                inbound,
+                next_status,
+                latency_ms,
             )
         except TransientStageError as exc:
             latency_ms = int((loop.time() - t0) * 1000)
@@ -540,12 +544,19 @@ class IntakeWorker:
                 async with self.pool.acquire() as conn:
                     await self._record_metric(conn, job_id, stage, latency_ms, ok=False)
             await self._fail(
-                job_id, stage, job["attempts"], job["max_attempts"], repr(exc),
+                job_id,
+                stage,
+                job["attempts"],
+                job["max_attempts"],
+                repr(exc),
                 transient=True,
             )
             logger.warning(
                 "job %s stage=%s TRANSIENT failure (no attempt burned), retry in %ss: %s",
-                job_id, stage, self.config.transient_backoff_seconds, exc,
+                job_id,
+                stage,
+                self.config.transient_backoff_seconds,
+                exc,
             )
         except Exception as exc:
             latency_ms = int((loop.time() - t0) * 1000)
@@ -611,6 +622,8 @@ class IntakeWorker:
                 WHERE status = ANY($1::text[])
                   AND next_visible_at <= now()
                   AND (lease_owner IS NULL OR lease_expires_at < now())
+                  AND ($4::text IS NULL OR source = $4)
+                  AND ($5::text IS NULL OR pipeline_version = $5)
                 -- Downstream stages (extract/validate/route) cost ~3ms; the
                 -- classify+OCR stage costs ~50-90s on the local VLM. Pure FIFO
                 -- lets a backlog of 'pending' jobs starve the cheap downstream
@@ -651,6 +664,8 @@ class IntakeWorker:
             list(CLAIMABLE_STATUSES),
             self.worker_id,
             ttl,
+            self.config.source_filter,
+            self.config.pipeline_version_filter,
         )
         if row is None:
             return None
@@ -710,7 +725,9 @@ class IntakeWorker:
                 db_failures += 1
                 logger.error(
                     "DB error (%d/%d): %s",
-                    db_failures, DB_FAILURE_EXIT_THRESHOLD, exc,
+                    db_failures,
+                    DB_FAILURE_EXIT_THRESHOLD,
+                    exc,
                 )
                 if db_failures >= DB_FAILURE_EXIT_THRESHOLD:
                     logger.error("DB unreachable; exiting 0 to let launchd respawn slowly")

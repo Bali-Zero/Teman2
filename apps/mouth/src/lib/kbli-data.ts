@@ -18,6 +18,7 @@ import type {
 } from "./kbli-types";
 
 import { ENGLISH_TITLES } from "./kbli-english";
+import { resolveLicenseType } from "./kbli-derive";
 import { GOLD_CODES } from "./kbli-gold-codes";
 
 // =============================================================================
@@ -392,7 +393,9 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     (entry) => ({
       scales: entry.skala_usaha,
       riskCategory: entry.kategori_risiko,
-      licenseType: entry.perizinan,
+      // Derive the license from the risk tier when `perizinan` is empty (Pasal 124(4)) —
+      // a flat "NIB" understated the 937 high-risk codes. Parity with the Swift app.
+      licenseType: resolveLicenseType(entry.perizinan, entry.kategori_risiko),
       requirements: entry.persyaratan,
       timeframe: entry.jangka_waktu,
       obligations: entry.kewajiban,
@@ -561,8 +564,52 @@ export function getSections(): KBLISection[] {
 }
 
 /**
+ * Walk a code list outward from the target's position, alternating
+ * after/before, feeding each candidate to `push` until it reports full.
+ * Deterministic for a given dataset order.
+ */
+function pickNeighbors(
+  list: KBLICode[],
+  code: string,
+  push: (item: KBLICode) => boolean,
+): void {
+  if (list.length === 0) return;
+
+  const found = list.findIndex((c) => c.code === code);
+  let lo: number;
+  let hi: number;
+  if (found >= 0) {
+    lo = found - 1;
+    hi = found + 1;
+  } else {
+    // Target absent from this list: anchor to where it would sit by code
+    // order so the window stays deterministic.
+    let insertion = list.findIndex((c) => c.code > code);
+    if (insertion === -1) insertion = list.length;
+    lo = insertion - 1;
+    hi = insertion;
+  }
+  let wantMore = true;
+  while (wantMore && (lo >= 0 || hi < list.length)) {
+    if (hi < list.length) {
+      wantMore = push(list[hi]);
+      hi += 1;
+    }
+    if (wantMore && lo >= 0) {
+      wantMore = push(list[lo]);
+      lo -= 1;
+    }
+  }
+}
+
+/**
  * Find related KBLI codes for a given code.
- * Strategy: same 3-digit prefix first, then same section, excluding self.
+ * Strategy: same 3-digit prefix first, then same section, excluding self —
+ * in both phases picking the NEIGHBORS of the target rather than the head
+ * of the list. The previous head-of-list fill gave a handful of head codes
+ * every inbound link while long-tail codes got none; a crawl-starved
+ * cluster needs inbound links distributed across all 1,559 pages
+ * (GSC clean-window investigation 2026-07-03).
  * Returns up to `limit` results (default 6).
  */
 export function getRelatedCodes(code: string, limit: number = 6): KBLICode[] {
@@ -573,28 +620,20 @@ export function getRelatedCodes(code: string, limit: number = 6): KBLICode[] {
 
   const result: KBLICode[] = [];
   const seen = new Set<string>([code]);
+  const push = (item: KBLICode): boolean => {
+    if (result.length < limit && !seen.has(item.code)) {
+      result.push(item);
+      seen.add(item.code);
+    }
+    return result.length < limit;
+  };
 
   // Phase 1: Same 3-digit prefix (most closely related)
-  const prefix3 = code.substring(0, 3);
-  const prefixSiblings = _prefixMap!.get(prefix3) ?? [];
-  for (const sibling of prefixSiblings) {
-    if (result.length >= limit) break;
-    if (!seen.has(sibling.code)) {
-      result.push(sibling);
-      seen.add(sibling.code);
-    }
-  }
+  pickNeighbors(_prefixMap!.get(code.substring(0, 3)) ?? [], code, push);
 
   // Phase 2: Same section (broader relation)
   if (result.length < limit && target.section) {
-    const sectionCodes = _sectionMap!.get(target.section) ?? [];
-    for (const item of sectionCodes) {
-      if (result.length >= limit) break;
-      if (!seen.has(item.code)) {
-        result.push(item);
-        seen.add(item.code);
-      }
-    }
+    pickNeighbors(_sectionMap!.get(target.section) ?? [], code, push);
   }
 
   return result;

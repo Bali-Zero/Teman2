@@ -59,6 +59,38 @@ fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 
+# Import only the scoped WA Mirror delivery env needed for headless Kita upload.
+# Do NOT source ~/.wa-mirror.env wholesale: it is not shell-safe and contains
+# unrelated values (accounts, labels, DB URLs) that must not shadow the worker
+# plist. This mirrors the Qdrant allowlist below and keeps the CRM write key out
+# of logs while allowing the delivery leg to authenticate against Fly.
+WA_MIRROR_ENV_FILE="${WA_MIRROR_ENV_FILE:-${HOME}/.wa-mirror.env}"
+if [[ -f "${WA_MIRROR_ENV_FILE}" ]]; then
+    _loaded_wa_delivery_env=()
+    for _k in \
+        WA_MIRROR_CRM_WRITE_KEY \
+        INTAKE_CRM_PUSH_WRITE_KEY \
+        INTAKE_CRM_PUSH_BASE_URL \
+        INTAKE_CRM_PUSH_ENABLED \
+        INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED; do
+        _line="$(grep -E "^${_k}=" "${WA_MIRROR_ENV_FILE}" | tail -1 || true)"
+        if [[ -n "${_line}" ]]; then
+            _value="${_line#*=}"
+            if [[ "${_value}" == \"*\" && "${_value}" == *\" ]]; then
+                _value="${_value:1:${#_value}-2}"
+            elif [[ "${_value}" == \'*\' && "${_value}" == *\' ]]; then
+                _value="${_value:1:${#_value}-2}"
+            fi
+            export "${_k}=${_value}"
+            _loaded_wa_delivery_env+=("${_k}")
+        fi
+    done
+    if [[ ${#_loaded_wa_delivery_env[@]} -gt 0 ]]; then
+        echo "[intake-worker] imported scoped WA delivery env: ${_loaded_wa_delivery_env[*]}" >&2
+    fi
+    unset _k _line _value _loaded_wa_delivery_env
+fi
+
 # Inject ONLY the Qdrant credentials from backend-rag/.env. The `validate` stage
 # resolves KBLI codes against the live Qdrant store (validate_rules.py), and a
 # bare launchd env (no QDRANT_URL/KEY) made it raise

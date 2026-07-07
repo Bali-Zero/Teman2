@@ -37,15 +37,60 @@ export function queueMediaDownload(opts: {
   }
 
   setImmediate(() => {
-    downloadAndStoreMedia(opts).catch(() => {
+    void downloadWithRetry(opts);
+  });
+}
+
+// FIX (2026-06-30): the previous `.catch(() => warn("failed"))` swallowed the
+// real error (no err.message, no mediaType, no retry) — a silent ~2% media
+// loss that read as healthy (cicatrix #2 "Esiste≠Armato"). Now: one retry with
+// backoff for transient failures (network flap, reupload-request races), and a
+// structured warn carrying the actual error + mediaType so failures are
+// observable and triageable. Permanent failures (expired WhatsApp CDN media,
+// ~14-day TTL) still fail — but now visibly, with the reason.
+const MEDIA_DOWNLOAD_RETRIES = 1;
+const MEDIA_RETRY_BACKOFF_MS = 2000;
+
+async function downloadWithRetry(opts: {
+  sock: WASocket;
+  rawMessage: unknown;
+  messageContextId: number;
+  record: CapturedMessageRecord;
+  store: MessageContextStore;
+  logger: pino.Logger;
+}): Promise<void> {
+  for (let attempt = 0; attempt <= MEDIA_DOWNLOAD_RETRIES; attempt++) {
+    try {
+      await downloadAndStoreMedia(opts);
+      if (attempt > 0) {
+        opts.logger.info(
+          {
+            messageContextId: opts.messageContextId,
+            mediaType: opts.record.mediaType,
+            attempt,
+          },
+          "wa-mirror media download recovered on retry",
+        );
+      }
+      return;
+    } catch (err) {
+      const isLast = attempt === MEDIA_DOWNLOAD_RETRIES;
       opts.logger.warn(
         {
           messageContextId: opts.messageContextId,
+          mediaType: opts.record.mediaType,
+          attempt,
+          willRetry: !isLast,
+          err: (err as Error).message,
         },
         "wa-mirror media download failed",
       );
-    });
-  });
+      if (isLast) return;
+      await new Promise((r) =>
+        setTimeout(r, MEDIA_RETRY_BACKOFF_MS * (attempt + 1)),
+      );
+    }
+  }
 }
 
 async function downloadAndStoreMedia(opts: {

@@ -69,6 +69,16 @@ def test_main_module_alias_is_noop_on_normal_import() -> None:
     assert alias is None
 
 
+def test_worker_config_filters_from_env(monkeypatch):
+    monkeypatch.setenv("INTAKE_SOURCE_FILTER", "whatsapp")
+    monkeypatch.setenv("INTAKE_PIPELINE_VERSION_FILTER", "v2.2-qwen-text-autocatalog")
+
+    cfg = WorkerConfig.from_env()
+
+    assert cfg.source_filter == "whatsapp"
+    assert cfg.pipeline_version_filter == "v2.2-qwen-text-autocatalog"
+
+
 @pytest_asyncio.fixture
 async def pool():
     p = await asyncpg.create_pool(_DB_URL, min_size=2, max_size=12)
@@ -99,9 +109,7 @@ async def _cleanup(pool: asyncpg.Pool, qids: list[int]) -> None:
         return
     async with pool.acquire() as conn:
         await conn.execute("DELETE FROM intake_stage_metrics WHERE queue_id = ANY($1)", qids)
-        rows = await conn.fetch(
-            "SELECT id, instance_id FROM intake_queue WHERE id = ANY($1)", qids
-        )
+        rows = await conn.fetch("SELECT id, instance_id FROM intake_queue WHERE id = ANY($1)", qids)
         await conn.execute("DELETE FROM intake_queue WHERE id = ANY($1)", qids)
         inst_ids = list({r["instance_id"] for r in rows})
         if inst_ids:
@@ -126,6 +134,7 @@ async def _drive_to_done(workers, qids, pool, timeout=60.0):
     """Run workers cooperatively until all qids are 'done'/'dead' or timeout."""
     loop = asyncio.get_event_loop()
     deadline = loop.time() + timeout
+
     # Each worker keeps calling run_once until no work, then we re-check.
     async def drain(w):
         while loop.time() < deadline:
@@ -136,6 +145,7 @@ async def _drive_to_done(workers, qids, pool, timeout=60.0):
                 if (st.get("done", 0) + st.get("dead", 0)) == len(qids):
                     return
                 await asyncio.sleep(0.05)
+
     await asyncio.gather(*(drain(w) for w in workers))
 
 
@@ -150,8 +160,9 @@ async def test_exactly_once_two_workers_100_jobs(pool, tmp_path):
     n = 100
     qids = await _make_jobs(pool, tmp_path, n, "eo")
     try:
-        cfg = WorkerConfig(lease_ttl_seconds=30, heartbeat_interval_seconds=999,
-                           poll_interval_seconds=0.01)
+        cfg = WorkerConfig(
+            lease_ttl_seconds=30, heartbeat_interval_seconds=999, poll_interval_seconds=0.01
+        )
         w1 = IntakeWorker(pool, config=cfg, worker_id="w1")
         w2 = IntakeWorker(pool, config=cfg, worker_id="w2")
         await _drive_to_done([w1, w2], qids, pool, timeout=90.0)
@@ -163,16 +174,19 @@ async def test_exactly_once_two_workers_100_jobs(pool, tmp_path):
             # Each stage's final 'route' metric should appear exactly once/job.
             route_ok = await conn.fetchval(
                 "SELECT count(*) FROM intake_stage_metrics WHERE queue_id = ANY($1) "
-                "AND stage='route' AND ok = true", qids,
+                "AND stage='route' AND ok = true",
+                qids,
             )
             total_ok = await conn.fetchval(
-                "SELECT count(*) FROM intake_stage_metrics WHERE queue_id = ANY($1) "
-                "AND ok = true", qids,
+                "SELECT count(*) FROM intake_stage_metrics WHERE queue_id = ANY($1) AND ok = true",
+                qids,
             )
         assert route_ok == n, f"route_ok={route_ok} != {n} (double-processing!)"
         assert total_ok == n * _N_STAGES, f"total_ok={total_ok} != {n * _N_STAGES}"
-        print(f"\n[exactly-once] {n} jobs, 2 workers -> done={st.get('done')}, "
-              f"route_ok={route_ok}, total_ok={total_ok} (expect {n}/{n*_N_STAGES})")
+        print(
+            f"\n[exactly-once] {n} jobs, 2 workers -> done={st.get('done')}, "
+            f"route_ok={route_ok}, total_ok={total_ok} (expect {n}/{n * _N_STAGES})"
+        )
     finally:
         await _cleanup(pool, qids)
 
@@ -189,8 +203,9 @@ async def test_kill9_reclaim_no_job_lost(pool, tmp_path):
     qid = qids[0]
     try:
         lease_ttl = 2  # seconds
-        cfg = WorkerConfig(lease_ttl_seconds=lease_ttl, heartbeat_interval_seconds=999,
-                           poll_interval_seconds=0.05)
+        cfg = WorkerConfig(
+            lease_ttl_seconds=lease_ttl, heartbeat_interval_seconds=999, poll_interval_seconds=0.05
+        )
         dead_worker = IntakeWorker(pool, config=cfg, worker_id="dead")
 
         # Claim (takes the LEASE ONLY — v2 never touches status at claim time,
@@ -202,14 +217,20 @@ async def test_kill9_reclaim_no_job_lost(pool, tmp_path):
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT status, lease_owner, lease_expires_at > now() AS leased "
-                "FROM intake_queue WHERE id=$1", qid)
+                "FROM intake_queue WHERE id=$1",
+                qid,
+            )
         assert row["status"] == "pending"  # v2: claim is lease-only, status untouched
         assert row["lease_owner"] == "dead"
         assert row["leased"] is True
         print(f"\n[reclaim] job {qid} claimed by dead worker, lease held: {dict(row)}")
 
         # Live worker tries immediately -> must NOT be able to claim (lease valid).
-        live = IntakeWorker(pool, config=cfg, worker_id="live", )
+        live = IntakeWorker(
+            pool,
+            config=cfg,
+            worker_id="live",
+        )
         async with pool.acquire() as conn:
             stolen = await live._claim_with_inbound(conn)
         assert stolen is None, "lease not respected: live worker stole a held job"
@@ -227,6 +248,73 @@ async def test_kill9_reclaim_no_job_lost(pool, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_claim_filter_limits_worker_to_source_and_pipeline(pool, tmp_path):
+    """A filtered maintenance worker claims only the staged rollout rows."""
+    qids = await _make_jobs(pool, tmp_path, 3, "filter")
+    version = f"flt-{uuid.uuid4().hex[:12]}"
+    target, wrong_version, wrong_source = qids
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE intake_queue
+                   SET source = 'whatsapp',
+                       pipeline_version = $2,
+                       next_visible_at = now(),
+                       lease_owner = NULL,
+                       lease_expires_at = NULL
+                 WHERE id = $1
+                """,
+                target,
+                version,
+            )
+            await conn.execute(
+                """
+                UPDATE intake_queue
+                   SET source = 'whatsapp',
+                       pipeline_version = $2,
+                       next_visible_at = now(),
+                       lease_owner = NULL,
+                       lease_expires_at = NULL
+                 WHERE id = $1
+                """,
+                wrong_version,
+                f"{version}-other",
+            )
+            await conn.execute(
+                """
+                UPDATE intake_queue
+                   SET source = 'drive',
+                       pipeline_version = $2,
+                       next_visible_at = now(),
+                       lease_owner = NULL,
+                       lease_expires_at = NULL
+                 WHERE id = $1
+                """,
+                wrong_source,
+                version,
+            )
+
+        cfg = WorkerConfig(
+            lease_ttl_seconds=30,
+            heartbeat_interval_seconds=999,
+            poll_interval_seconds=0.01,
+            source_filter="whatsapp",
+            pipeline_version_filter=version,
+        )
+        worker = IntakeWorker(pool, config=cfg, worker_id="filter-w")
+        async with pool.acquire() as conn:
+            claimed = await worker._claim_with_inbound(conn)
+            second_claim = await worker._claim_with_inbound(conn)
+
+        assert claimed is not None
+        assert claimed["id"] == target
+        assert second_claim is None
+    finally:
+        await _cleanup(pool, qids)
+
+
+@pytest.mark.asyncio
 async def test_poison_pill_goes_dead_with_alert(pool, tmp_path):
     """A job whose first stage always crashes -> 'dead' after max_attempts.
 
@@ -237,21 +325,24 @@ async def test_poison_pill_goes_dead_with_alert(pool, tmp_path):
     qid = qids[0]
     try:
         # max_attempts default 5 in schema; short backoff so it's fast.
-        cfg = WorkerConfig(lease_ttl_seconds=30, heartbeat_interval_seconds=999,
-                           poll_interval_seconds=0.01, base_backoff_seconds=0.05,
-                           max_backoff_seconds=0.2)
+        cfg = WorkerConfig(
+            lease_ttl_seconds=30,
+            heartbeat_interval_seconds=999,
+            poll_interval_seconds=0.01,
+            base_backoff_seconds=0.05,
+            max_backoff_seconds=0.2,
+        )
         alerts: list[str] = []
 
         async def capture_alert(msg: str) -> None:
             alerts.append(msg)
 
-        w = IntakeWorker(pool, config=cfg, worker_id="poison-w",
-                         alert_fn=capture_alert)
+        w = IntakeWorker(pool, config=cfg, worker_id="poison-w", alert_fn=capture_alert)
+
         # Inject a stage handler that always crashes.
         async def crash(job, stage):  # noqa: ANN001
-            raise RuntimeError(
-                f"poison stage={stage} leak test@x.com KTP 1234567890123456"
-            )
+            raise RuntimeError(f"poison stage={stage} leak test@x.com KTP 1234567890123456")
+
         w.stage_handler = crash
 
         # Drive with a hard cap on iterations to prove NO infinite loop.
@@ -271,7 +362,8 @@ async def test_poison_pill_goes_dead_with_alert(pool, tmp_path):
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT status, attempts, max_attempts, last_error FROM intake_queue WHERE id=$1",
-                qid)
+                qid,
+            )
         st = await _statuses(pool, qids)
         assert st.get("dead", 0) == 1, f"poison did not go dead: {st}"
         assert row["attempts"] == row["max_attempts"], f"attempts={row['attempts']}"
@@ -281,8 +373,10 @@ async def test_poison_pill_goes_dead_with_alert(pool, tmp_path):
         assert "1234567890123456" not in row["last_error"], row["last_error"]
         assert "[EMAIL]" in row["last_error"] and "[KTP/CARD]" in row["last_error"]
         assert iters < max_iters, "ran to iter cap -> suspected infinite loop"
-        print(f"\n[poison] dead after attempts={row['attempts']}/{row['max_attempts']}, "
-              f"iters={iters}, alerts={len(alerts)}, last_error={row['last_error']!r}")
+        print(
+            f"\n[poison] dead after attempts={row['attempts']}/{row['max_attempts']}, "
+            f"iters={iters}, alerts={len(alerts)}, last_error={row['last_error']!r}"
+        )
     finally:
         await _cleanup(pool, qids)
 
@@ -404,41 +498,49 @@ async def test_remap_legacy_statuses_stage_aware(pool, tmp_path):
                     "UPDATE intake_queue SET status=$2, stage=$3, "
                     "lease_owner='ghost', lease_expires_at=now() + interval '1 hour' "
                     "WHERE id=$1",
-                    qid, v1_status, v1_stage)
+                    qid,
+                    v1_status,
+                    v1_stage,
+                )
 
         await remap_legacy_statuses(pool)
 
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT id, status, lease_owner, next_visible_at <= now() AS visible "
-                "FROM intake_queue WHERE id = ANY($1)", qids)
+                "FROM intake_queue WHERE id = ANY($1)",
+                qids,
+            )
         by_id = {r["id"]: r for r in rows}
         for qid, (v1_status, v1_stage, expected) in zip(qids, v1_shapes, strict=True):
             row = by_id[qid]
             assert row["status"] == expected, (
-                f"({v1_status},{v1_stage}) remapped to {row['status']!r}, "
-                f"expected {expected!r}")
+                f"({v1_status},{v1_stage}) remapped to {row['status']!r}, expected {expected!r}"
+            )
             assert row["lease_owner"] is None, (
-                f"ghost lease NOT released for ({v1_status},{v1_stage})")
+                f"ghost lease NOT released for ({v1_status},{v1_stage})"
+            )
             assert row["visible"] is True, (
-                f"next_visible_at not reset to now() for ({v1_status},{v1_stage})")
+                f"next_visible_at not reset to now() for ({v1_status},{v1_stage})"
+            )
 
         # 7th check: a genuine v2 row (extract done -> status='extracted',
         # stage='extract') is OUTSIDE the remap WHERE and must stay untouched.
         extra = await _make_jobs(pool, tmp_path, 1, "remap-v2")
         async with pool.acquire() as conn:
             await conn.execute(
-                "UPDATE intake_queue SET status='extracted', stage='extract' WHERE id=$1",
-                extra[0])
+                "UPDATE intake_queue SET status='extracted', stage='extract' WHERE id=$1", extra[0]
+            )
         await remap_legacy_statuses(pool)
         async with pool.acquire() as conn:
-            v2_status = await conn.fetchval(
-                "SELECT status FROM intake_queue WHERE id=$1", extra[0])
+            v2_status = await conn.fetchval("SELECT status FROM intake_queue WHERE id=$1", extra[0])
         assert v2_status == "extracted", (
-            "v2 row (status='extracted', stage='extract') was wrongly remapped "
-            f"to {v2_status!r}")
-        print(f"\n[remap] 6 v1 shapes remapped stage-aware, leases released; "
-              f"v2 row untouched ({v2_status})")
+            f"v2 row (status='extracted', stage='extract') was wrongly remapped to {v2_status!r}"
+        )
+        print(
+            f"\n[remap] 6 v1 shapes remapped stage-aware, leases released; "
+            f"v2 row untouched ({v2_status})"
+        )
     finally:
         await _cleanup(pool, qids + extra)
 
@@ -465,7 +567,10 @@ async def test_reap_expired_review_claims(pool, tmp_path):
                         'review_claimed', 'x', now() - interval '1 minute', $3, now())
                 RETURNING id
                 """,
-                qids[0], f"reap-exp-{uuid.uuid4().hex[:8]}", uuid.uuid4())
+                qids[0],
+                f"reap-exp-{uuid.uuid4().hex[:8]}",
+                uuid.uuid4(),
+            )
             p_live = await conn.fetchval(
                 """
                 INSERT INTO document_routing_proposal
@@ -476,7 +581,10 @@ async def test_reap_expired_review_claims(pool, tmp_path):
                         'review_claimed', 'y', now() + interval '10 minutes', $3, now())
                 RETURNING id
                 """,
-                qids[1], f"reap-live-{uuid.uuid4().hex[:8]}", uuid.uuid4())
+                qids[1],
+                f"reap-live-{uuid.uuid4().hex[:8]}",
+                uuid.uuid4(),
+            )
             pids += [p_expired, p_live]
 
         await reap_expired_review_claims(pool)
@@ -484,10 +592,14 @@ async def test_reap_expired_review_claims(pool, tmp_path):
         async with pool.acquire() as conn:
             exp = await conn.fetchrow(
                 "SELECT status, lease_owner, claim_token, claimed_at, lease_expires_at "
-                "FROM document_routing_proposal WHERE id=$1", p_expired)
+                "FROM document_routing_proposal WHERE id=$1",
+                p_expired,
+            )
             live = await conn.fetchrow(
                 "SELECT status, lease_owner, claim_token, claimed_at, lease_expires_at "
-                "FROM document_routing_proposal WHERE id=$1", p_live)
+                "FROM document_routing_proposal WHERE id=$1",
+                p_live,
+            )
 
         assert exp["status"] == "review_pending", f"expired claim not reaped: {dict(exp)}"
         assert exp["lease_owner"] is None
@@ -500,13 +612,14 @@ async def test_reap_expired_review_claims(pool, tmp_path):
         assert live["claim_token"] is not None
         assert live["claimed_at"] is not None
         assert live["lease_expires_at"] is not None
-        print(f"\n[reap] expired claim {p_expired} -> review_pending (lease cleared); "
-              f"live claim {p_live} intact")
+        print(
+            f"\n[reap] expired claim {p_expired} -> review_pending (lease cleared); "
+            f"live claim {p_live} intact"
+        )
     finally:
         async with pool.acquire() as conn:
             for pid in pids:
-                await conn.execute(
-                    "DELETE FROM document_routing_proposal WHERE id=$1", pid)
+                await conn.execute("DELETE FROM document_routing_proposal WHERE id=$1", pid)
         await _cleanup(pool, qids)
 
 
@@ -520,14 +633,17 @@ async def test_attempts_over_max_is_terminal_dead(pool, tmp_path):
         async with pool.acquire() as conn:
             await conn.execute(
                 "UPDATE intake_queue SET status='dead', attempts=max_attempts, "
-                "next_visible_at=now() WHERE id=$1", qid)
+                "next_visible_at=now() WHERE id=$1",
+                qid,
+            )
         cfg = WorkerConfig(lease_ttl_seconds=30, poll_interval_seconds=0.01)
         w = IntakeWorker(pool, config=cfg, worker_id="term-w")
         async with pool.acquire() as conn:
             claimed = await w._claim_with_inbound(conn)
         # claimed could be another test's row only if ids overlap; assert it's not ours.
-        assert claimed is None or claimed["id"] != qid, \
+        assert claimed is None or claimed["id"] != qid, (
             f"DEAD job was claimable (W61 violation): {claimed}"
+        )
         st = await _statuses(pool, qids)
         assert st.get("dead", 0) == 1
         print(f"\n[dead-terminal] job {qid} status=dead, never re-claimed -> {st}")

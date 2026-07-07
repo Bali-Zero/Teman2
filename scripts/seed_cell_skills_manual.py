@@ -237,7 +237,11 @@ async def main(args: argparse.Namespace) -> int:
         return 0
 
     # Connect to Redis
-    redis = redis_async.from_url(args.redis_url, decode_responses=True)
+    redis = redis_async.from_url(
+        args.redis_url,
+        decode_responses=True,
+        password=os.getenv("REDIS_PASSWORD") or None,
+    )
     try:
         # Check current stream state
         initial_len = await redis.xlen("cell:skills")

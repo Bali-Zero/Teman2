@@ -172,10 +172,49 @@ def _parse_date(value: Any) -> _dt.date | None:
     return None
 
 
+def _is_ambiguous_dmy(value: Any) -> bool:
+    """True if a printed date could be read as either DD/MM or MM/DD.
+
+    Indonesian/international documents print dates as DD/MM/YYYY, but the OCR
+    model can silently swap day<->month when BOTH the day and month are <= 12
+    (e.g. ``05/06/2026`` — 5 June or 6 May?). A day or month > 12 is
+    self-disambiguating, so only the both-<=-12 case is flagged. We parse the
+    raw printed forms (slash/dash separated D-M-Y), NOT the already-normalised
+    ISO value, because the swap risk lives in the human-readable layout.
+
+    Returns False for unparseable input, ISO-only strings, and spelled-out
+    months (``05 June 2026`` — unambiguous by construction).
+    """
+    s = str(value or "").strip()
+    if not s:
+        return False
+    # Only numeric D{sep}M{sep}Y forms carry the swap risk. A spelled-out month
+    # or a YYYY-first string is unambiguous.
+    m = re.fullmatch(r"(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})", s)
+    if not m:
+        return False
+    first, second = int(m.group(1)), int(m.group(2))
+    # Both positions plausible as either day or month -> genuinely ambiguous.
+    return 1 <= first <= 12 and 1 <= second <= 12
+
+
 def _check_expiry(
-    field_name: str, value: Any, failures: list[str], checks: list[str]
+    field_name: str,
+    value: Any,
+    failures: list[str],
+    checks: list[str],
+    ambiguous: list[str],
 ) -> None:
     checks.append(f"{field_name}_date_valid_and_not_remote_past")
+    # Soft signal (not a hard failure): a DD/MM<->MM/DD-swappable printed date
+    # needs a human eyeball against the source, but ~40% of real dates land in
+    # this zone, so blocking them all would be worse than the disease.
+    if _is_ambiguous_dmy(value):
+        checks.append(f"{field_name}_dmy_ambiguity_flagged")
+        ambiguous.append(
+            f"{field_name} printed as '{value}' is DD/MM<->MM/DD ambiguous "
+            "(both fields <=12) — verify day vs month against the document"
+        )
     parsed = _parse_date(value)
     if parsed is None:
         failures.append(f"{field_name} unparseable as date ('{value}')")
@@ -227,6 +266,7 @@ async def validate_fields(
     canonical = (doc_type or "").strip().lower()
     failures: list[str] = []
     checks: list[str] = []
+    ambiguous: list[str] = []
 
     nib = _field_value(fields, "nib_number")
     if nib is not None:
@@ -243,7 +283,7 @@ async def validate_fields(
     for date_field in ("expiry", "dob", "issue_date", "date"):
         val = _field_value(fields, date_field)
         if val is not None:
-            _check_expiry(date_field, val, failures, checks)
+            _check_expiry(date_field, val, failures, checks, ambiguous)
 
     kbli = _field_value(fields, "kbli_codes")
     if kbli is not None:
@@ -254,10 +294,15 @@ async def validate_fields(
 
     valid = len(failures) == 0
     logger.info(
-        "validate: doc_type=%s valid=%s checks=%d failures=%d",
-        canonical, valid, len(checks), len(failures),
+        "validate: doc_type=%s valid=%s checks=%d failures=%d ambiguous_dates=%d",
+        canonical, valid, len(checks), len(failures), len(ambiguous),
     )
-    return {"valid": valid, "rule_failures": failures, "checks_run": checks}
+    return {
+        "valid": valid,
+        "rule_failures": failures,
+        "checks_run": checks,
+        "ambiguous_dates": ambiguous,
+    }
 
 
 # ---------------------------------------------------------------------------

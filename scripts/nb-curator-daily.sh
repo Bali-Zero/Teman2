@@ -171,7 +171,7 @@ if [ "${NB_CURATOR_BRAIN:-agy}" = "agy" ] && [ -x "$AGY_BIN" ]; then
 fi
 if [ -z "$BRAIN_USED" ]; then
     "$HOME/scripts/claude-cascade.sh" "$MODE_PROMPT" \
-        --model claude-sonnet-4-6 \
+        --model claude-sonnet-5 \
         --agent nb-curator \
         > "$TMPOUT" 2>> "$LOG"
     EXIT=$?

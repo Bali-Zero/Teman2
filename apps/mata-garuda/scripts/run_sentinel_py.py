@@ -29,7 +29,6 @@ from mata_garuda.tools.youtube_tools import fetch_youtube_transcript
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.workers.normalizer import run_normalizer
 from mata_garuda.workers.scorer import run_scorer
-from mata_garuda.workers.nlm_feeder import run_nlm_feeder
 from mata_garuda.config import AI_RSS_FEEDS, AI_YOUTUBE_CHANNELS
 
 
@@ -121,17 +120,17 @@ def main():
     s_stats = run_scorer(kb, max_items=50)
     print(f"  Scorer: {s_stats}")
 
-    # 3. Feed to NLM (grows the brain over time)
-    print("\n[NLM FEED]")
-    nlm_stats = run_nlm_feeder(kb, max_items=30)
-    print(f"  NLM Feeder: {nlm_stats}")
+    # NLM feeding is a SEPARATE Sink stage, handled by the dedicated cron
+    # com.matagaruda.nlm-feeder-stream.hourly (reads the stream every hour).
+    # It was inline here, but run_nlm_feeder (KB-scan → `nlm` CLI / headless
+    # Chrome) HANGS under launchd (no TTY) and got SIGKILL'd (-9), which
+    # silently stalled the WHOLE harvester for days. Decoupled 2026-06-30.
     kb.close()
 
-    # 3. Digest
-    print("\n[DIGEST]")
-    # Import here to avoid circular issues
-    from scripts.run_ai_digest import main as run_digest
-    run_digest()
+    # Digest/briefing is a SEPARATE Sink, handled by the dedicated crons
+    # com.matagaruda.daily-briefing + com.matagaruda.weekly-digest. It was
+    # inline here, but run_ai_digest calls `nlm notebook query` (headless
+    # Chrome) which ALSO hangs under launchd. Decoupled 2026-06-30.
 
     print(f"\n=== Sentinel complete ({total} harvested, "
           f"{n_stats['published']} normalized, {s_stats['stored']} scored) ===")

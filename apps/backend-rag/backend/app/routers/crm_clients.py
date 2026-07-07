@@ -17,6 +17,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.deps.crm_access import get_crm_user_filter
+from backend.app.deps.crm_service_write import verify_crm_write_key
 from backend.app.services.crm.audit_logger import audit_change, audit_logger
 from backend.app.services.crm.metrics import metrics_collector, track_client_creation
 from backend.app.utils.crm_utils import (
@@ -692,6 +693,15 @@ async def list_clients(
     assigned_to: str | None = Query(None, description="Filter by assigned team member email"),
     search: str | None = Query(None, description="Search by name, email, or phone"),
     nationality: str | None = Query(None, description="Filter by nationality"),
+    unnamed: bool = Query(
+        False,
+        description=(
+            "When true, return ONLY phone-keyed leads whose full_name is still a "
+            "placeholder (`Lead +<digits>`, `wa:<digits>`, bare digits, or empty) — "
+            "the WA-mirror auto-created leads an operator must still name. "
+            "Combine with assigned_to (or rely on RBAC) to scope to one operator."
+        ),
+    ),
     passport_expiring_days: int | None = Query(
         None,
         ge=0,
@@ -807,6 +817,22 @@ async def list_clients(
                 query_parts.append(f" AND c.status = ${param_index}")
                 params.append(status)
                 param_index += 1
+
+            # Unnamed phone-keyed leads: full_name is still a placeholder the
+            # WA-mirror sweeper assigned (`Lead +628…`, `wa:+…`, bare digits) or
+            # empty. Mirrors JUNK_NAME_PATTERNS in apps/wa-dashboard-m1/server.cjs
+            # so both surfaces agree on "this contact still needs a human name".
+            # No bound params (constant predicate) → param_index unchanged.
+            if unnamed:
+                query_parts.append(
+                    " AND ("
+                    "c.full_name IS NULL"
+                    " OR btrim(c.full_name) = ''"
+                    " OR c.full_name ~* '^lead\\s*\\+?[0-9]+$'"
+                    " OR c.full_name ~* '^wa:\\s*\\+?[0-9]+$'"
+                    " OR c.full_name ~ '^\\+?[0-9]{8,}$'"
+                    ")",
+                )
 
             # Optional filter by assigned_to (admin users can filter by any team member)
             if assigned_to:
@@ -1067,26 +1093,6 @@ def _name_is_better(new: str | None, current: str | None) -> bool:
     if not new or _name_is_junk(new):
         return False
     return _name_is_junk(current)
-
-
-async def verify_crm_write_key(request: Request) -> str:
-    """Auth for POST /upsert-by-phone — a DEDICATED scoped service key
-    (`settings.wa_mirror_crm_write_key`, header `X-CRM-Write-Key`), DISTINCT from the
-    broad `wa_mirror_internal_key`. Least-privilege: this key authorizes ONLY phone-keyed
-    lead upsert, nothing else. Hard-gated by `settings.wa_mirror_crm_write_enabled`
-    (default False) — a kill-switch that 503s the endpoint when the feature is off.
-
-    Returns the service-actor label used for created_by/updated_by audit.
-    """
-    from backend.app.core.config import settings as _settings
-
-    if not getattr(_settings, "wa_mirror_crm_write_enabled", False):
-        raise HTTPException(status_code=503, detail="crm service-write disabled")
-    provided = (request.headers.get("X-CRM-Write-Key") or "").strip()
-    configured = (getattr(_settings, "wa_mirror_crm_write_key", None) or "").strip()
-    if not configured or not provided or provided != configured:
-        raise HTTPException(status_code=401, detail="invalid or missing X-CRM-Write-Key")
-    return "wa-mirror-crm-writer@balizero.com"
 
 
 class ClientUpsertByPhone(BaseModel):
@@ -1628,70 +1634,109 @@ async def get_client_summary(
 async def get_clients_stats(
     _request: Request,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get overall client statistics
 
     Returns counts by status, top assigned team members, etc.
 
+    Access Control:
+    - Admin: sees global stats across all clients
+    - Team member: sees only stats for clients assigned to them
+
     Performance: Cached for 5 minutes to reduce database load.
+
+    Cache safety: the @cached decorator hashes the call kwargs, which include
+    the authenticated user (a JSON-serializable dict) — so every user gets a
+    distinct cache entry and cannot be served another user's aggregate.
+    Mirrors get_practices_stats in crm_practices.py.
     """
     try:
+        # RBAC: admins see the whole book; non-admin team members are scoped to
+        # their own assigned clients. For scoped (non-admin) requests $1 is the
+        # user email in every query below (the only pre-existing param,
+        # STATS_DAYS_RECENT, shifts to $2 in the new_last_30_days query).
+        user_email = (
+            current_user.get("email", "").lower()
+            if isinstance(current_user, dict)
+            else ""
+        )
+        scoped = bool(user_email) and not is_crm_admin(current_user)
+
         async with db_pool.acquire() as conn:
             # Total clients by status (exclude soft-deleted)
             by_status_rows = await conn.fetch(
-                """
+                f"""
                 SELECT status, COUNT(*) as count
                 FROM clients
-                WHERE deleted_at IS NULL
+                WHERE deleted_at IS NULL{" AND assigned_to = $1" if scoped else ""}
                 GROUP BY status
                 """,
+                *([user_email] if scoped else []),
             )
 
             # Clients by assigned team member (exclude soft-deleted)
             by_team_member_rows = await conn.fetch(
-                """
+                f"""
                 SELECT assigned_to, COUNT(*) as count
                 FROM clients
-                WHERE assigned_to IS NOT NULL AND deleted_at IS NULL
+                WHERE assigned_to IS NOT NULL AND deleted_at IS NULL{
+                    " AND assigned_to = $1" if scoped else ""
+                }
                 GROUP BY assigned_to
                 ORDER BY count DESC
                 """,
+                *([user_email] if scoped else []),
             )
 
             # New clients last N days
-            new_last_30_days_row = await conn.fetchrow(
-                """
-                SELECT COUNT(*) as count
-                FROM clients
-                WHERE created_at >= NOW() - INTERVAL '1 day' * $1
-                """,
-                STATS_DAYS_RECENT,
-            )
+            if scoped:
+                new_last_30_days_row = await conn.fetchrow(
+                    """
+                    SELECT COUNT(*) as count
+                    FROM clients
+                    WHERE assigned_to = $1
+                        AND created_at >= NOW() - INTERVAL '1 day' * $2
+                    """,
+                    user_email,
+                    STATS_DAYS_RECENT,
+                )
+            else:
+                new_last_30_days_row = await conn.fetchrow(
+                    """
+                    SELECT COUNT(*) as count
+                    FROM clients
+                    WHERE created_at >= NOW() - INTERVAL '1 day' * $1
+                    """,
+                    STATS_DAYS_RECENT,
+                )
 
             # Practices by type — single GROUP BY query (avoids N+1 per-type loop)
             by_practice_type_rows = await conn.fetch(
-                """
+                f"""
                 SELECT pt.name as practice_type, COUNT(p.id) as count
                 FROM practices p
                 JOIN practice_types pt ON p.practice_type_id = pt.id
+                {"WHERE p.assigned_to = $1" if scoped else ""}
                 GROUP BY pt.name
                 ORDER BY count DESC
                 """,
+                *([user_email] if scoped else []),
             )
 
             # Passport health counts
             passport_health_row = await conn.fetchrow(
-                """
+                f"""
                 SELECT
                     COUNT(*) FILTER (WHERE passport_expiry < CURRENT_DATE) as expired,
                     COUNT(*) FILTER (WHERE passport_expiry >= CURRENT_DATE AND passport_expiry <= CURRENT_DATE + INTERVAL '90 days') as expiring_soon,
                     COUNT(*) FILTER (WHERE last_interaction_date < NOW() - INTERVAL '30 days' OR last_interaction_date IS NULL) as silent_30d
                 FROM clients
                 WHERE deleted_at IS NULL AND status != 'inactive'
-                    AND passport_expiry IS NOT NULL
+                    AND passport_expiry IS NOT NULL{" AND assigned_to = $1" if scoped else ""}
                 """,
+                *([user_email] if scoped else []),
             )
 
             by_status = {row["status"]: row["count"] for row in by_status_rows}

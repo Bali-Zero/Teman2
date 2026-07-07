@@ -182,9 +182,16 @@ class ReasoningEngine:
             tool_map: Dictionary mapping tool names to tool instances
             response_pipeline: Optional pipeline for response verification/cleaning
         """
+        # CONTEXT-QUALITY gate via the AbstainPolicy SSOT module — same value
+        # as the flat generation threshold, read through its NAMED alias so
+        # this fifth gate cannot drift anonymously. See _abstain_policy.py.
+        from backend.services.rag.agentic._abstain_policy import (
+            CONTEXT_QUALITY_MIN,
+        )
+
         self.tool_map = tool_map
         self.response_pipeline = response_pipeline
-        self._min_context_quality_score = EvidenceScoreConstants.ABSTAIN_THRESHOLD
+        self._min_context_quality_score = CONTEXT_QUALITY_MIN
         self._min_context_items = 1
 
     def _validate_context_quality(

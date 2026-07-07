@@ -7,6 +7,8 @@ Two responsibilities, local by default (Symbiosis Law 2 / UU-PDP):
   2. ``classify_document`` -- decide the document TYPE from the OCR text, with a
                             hard anti-hallucination floor: undeterminable ->
                             {"type": "unknown", "confidence": 0.0}, never a guess.
+                            A gated local text-LLM fallback may classify OCR text
+                            that keyword rules cannot, still review-band only.
 
 OCR provider contract
 ---------------------
@@ -380,7 +382,10 @@ def _ensure_min_size(png: bytes) -> bytes:
             if (new_w, new_h) != (w, h) or len(data) != len(png):
                 logger.info(
                     "intake OCR normalized page %dx%d -> %dx%d PNG (size/format safe for qwen25vl)",
-                    w, h, new_w, new_h,
+                    w,
+                    h,
+                    new_w,
+                    new_h,
                 )
             return data
     except Exception as exc:  # never let normalization break OCR
@@ -511,9 +516,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
                 "via": via,
             }
         )
-        logger.info(
-            "intake OCR page=%d via=%s model=%s chars=%d", idx, via, model_used, len(text)
-        )
+        logger.info("intake OCR page=%d via=%s model=%s chars=%d", idx, via, model_used, len(text))
 
     return results
 
@@ -530,6 +533,9 @@ DOC_TYPES: tuple[str, ...] = (
     "nib",
     "npwp",
     "kitas",
+    "itas",
+    "itap",
+    "itk",
     "sk_kemenkumham",
     "oss",
     "visa",
@@ -826,6 +832,14 @@ def _stay_permit_subtype(text: str) -> str | None:
 VISION_CLASSIFY_CONF = 0.55
 VISION_CLASSIFY_MAX_PAGES = 3
 
+# Confidence CAP for local text-LLM classification. This is deliberately below
+# HIGH_CONFIDENCE_THRESHOLD (0.70 in the audit/dashboard) so LLM-only cataloging
+# creates/reprocesses review proposals, never silent attachment.
+TEXT_LLM_CLASSIFY_CONF = 0.60
+TEXT_LLM_CLASSIFY_MIN_CHARS = int(os.getenv("INTAKE_TEXT_LLM_MIN_CHARS", "100"))
+TEXT_LLM_CLASSIFY_TIMEOUT_SECONDS = float(os.getenv("INTAKE_TEXT_LLM_TIMEOUT_SECONDS", "45"))
+_TEXT_LLM_CLASSIFY_MODEL_DEFAULT = "qwen3.5:9b"
+
 # One constrained call. qwen2.5vl:7b is used directly (NOT the qwen3-vl
 # primary): the 2026-06-04 empirical finding above shows qwen3-vl buries its
 # answer in `thinking` and returns `response` empty — useless for a
@@ -833,6 +847,24 @@ VISION_CLASSIFY_MAX_PAGES = 3
 # Both are local Ollama — 0 bytes to cloud (Law 2).
 _VISION_CLASSIFY_MODEL = _OCR_FALLBACK
 _VISION_CLASSIFY_NUM_PREDICT = 16
+
+_DOC_TYPE_ANSWER_RE = re.compile(r"[a-z_]+")
+
+
+def _resolve_text_llm_model() -> str:
+    """Resolve the local text classifier model. No cloud path."""
+    return os.getenv("INTAKE_TEXT_LLM_MODEL", _TEXT_LLM_CLASSIFY_MODEL_DEFAULT)
+
+
+def _text_llm_classify_enabled() -> bool:
+    """Feature flag for OCR-text LLM fallback; disabled unless explicitly enabled."""
+    return os.getenv("INTAKE_TEXT_LLM_CLASSIFY_ENABLED", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
 
 _VISION_CLASSIFY_PROMPT = (
     "You are classifying an Indonesian administrative document image. "
@@ -842,11 +874,8 @@ _VISION_CLASSIFY_PROMPT = (
     "One word only — no punctuation, no explanation."
 )
 
-# Exact-member acceptance: strip surrounding punctuation/whitespace, lowercase.
-_VISION_ANSWER_RE = re.compile(r"[a-z_]+")
 
-
-def _parse_vision_answer(raw: str | None) -> str | None:
+def _parse_doc_type_answer(raw: str | None) -> str | None:
     """Accept ONLY an exact DOC_TYPES member (case-insensitive); else None.
 
     The contract is a single token; we tolerate surrounding whitespace or a
@@ -856,9 +885,69 @@ def _parse_vision_answer(raw: str | None) -> str | None:
     if not raw:
         return None
     cleaned = raw.strip().strip(".,:;!\"'`").lower()
-    if not _VISION_ANSWER_RE.fullmatch(cleaned):
+    if not _DOC_TYPE_ANSWER_RE.fullmatch(cleaned):
         return None
     return cleaned if cleaned in DOC_TYPES else None
+
+
+def _parse_vision_answer(raw: str | None) -> str | None:
+    """Backward-compatible wrapper for vision tests."""
+    return _parse_doc_type_answer(raw)
+
+
+def _text_llm_classify_prompt(ocr_text: str) -> str:
+    """Build a constrained local-only prompt for OCR-text doc classification."""
+    return (
+        "Classify this Indonesian administrative document OCR text. "
+        "Answer with EXACTLY ONE token from this list: "
+        + ", ".join(DOC_TYPES)
+        + ". If uncertain, noisy, or not an administrative document, answer unknown. "
+        "Do not infer from names, phone numbers, or dates alone. "
+        "One token only -- no punctuation, no explanation.\n\nOCR:\n" + ocr_text[:6000]
+    )
+
+
+async def _ollama_text_classify(model: str, prompt: str) -> tuple[str, str | None]:
+    """Single local Ollama text classification call. Returns (response, thinking)."""
+    payload: dict[str, Any] = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "think": False,
+        "options": {"temperature": 0.0, "num_predict": 24},
+    }
+    client = _get_client()
+    r = await client.post(f"{OLLAMA_URL}/api/generate", json=payload)
+    r.raise_for_status()
+    data = r.json()
+    return (data.get("response") or "").strip(), (data.get("thinking") or "").strip()
+
+
+async def _text_llm_classify(ocr_text: str | None) -> str | None:
+    """Local text-LLM doc-type fallback for OCR-ready unknowns.
+
+    It is opt-in, exact-token only, and never raises. Raw OCR text is only sent to
+    local Ollama; logs carry model/type/status counts, not document content.
+    """
+    if not _text_llm_classify_enabled():
+        return None
+    text = (ocr_text or "").strip()
+    if len(text) < TEXT_LLM_CLASSIFY_MIN_CHARS:
+        return None
+    model = _resolve_text_llm_model()
+    try:
+        response, thinking = await asyncio.wait_for(
+            _ollama_text_classify(model, _text_llm_classify_prompt(text)),
+            timeout=TEXT_LLM_CLASSIFY_TIMEOUT_SECONDS,
+        )
+    except Exception as exc:
+        logger.warning("text LLM classify fallback failed model=%s error=%r", model, exc)
+        return None
+    answer = _parse_doc_type_answer(response) or _parse_doc_type_answer(thinking)
+    if answer and answer != "unknown":
+        logger.info("text LLM classify fallback answered type=%s model=%s", answer, model)
+        return answer
+    return None
 
 
 async def _vision_classify_page(png_bytes: bytes) -> str | None:
@@ -959,8 +1048,20 @@ async def classify_document(
             }
 
     # Anti-hallucination floor: weak keyword evidence -> NOT a guess. One local
-    # vision pass (catalog v2) may still type it -- capped in the review band.
+    # text LLM pass and then one local vision pass may still type it -- both capped
+    # in the review band.
     if best_type is None or best_score < 0.30:
+        text_llm_type = await _text_llm_classify(ocr_text)
+        if text_llm_type:
+            return {
+                "type": text_llm_type,
+                "confidence": TEXT_LLM_CLASSIFY_CONF,
+                "source_page": _attribute_source_page(text_llm_type, pages),
+                "scores": scores,
+                "via": "local_text_llm_fallback",
+                "llm_model": _resolve_text_llm_model(),
+            }
+
         candidate_pngs = vision_page_pngs or (
             [first_page_png] if first_page_png is not None else []
         )
@@ -970,9 +1071,7 @@ async def classify_document(
                 source_page = None
                 if page_offset is not None:
                     source_page = (
-                        pages[page_offset].get("page")
-                        if page_offset < len(pages)
-                        else page_offset
+                        pages[page_offset].get("page") if page_offset < len(pages) else page_offset
                     )
                 return {
                     "type": vtype,
@@ -995,9 +1094,7 @@ async def classify_document(
     }
 
 
-def _attribute_source_page(
-    dtype: str, pages: list[dict[str, Any]]
-) -> int | None:
+def _attribute_source_page(dtype: str, pages: list[dict[str, Any]]) -> int | None:
     """Return the page index whose text best matches the winning type's evidence."""
     evidence = _TYPE_EVIDENCE.get(dtype, [])
     best_page: int | None = None
@@ -1037,9 +1134,7 @@ def _attribute_source_page(
 StageHandler = Callable[[dict, str], Awaitable[dict]]
 
 
-async def _fetch_blob_meta(
-    pool: asyncpg.Pool, queue_id: int
-) -> tuple[str | None, str | None]:
+async def _fetch_blob_meta(pool: asyncpg.Pool, queue_id: int) -> tuple[str | None, str | None]:
     """Look up (blob_path, mime_type) for an intake_queue row.
 
     mime_type lives on document_instances (joined via instance_id), not on
@@ -1127,4 +1222,5 @@ async def _run_classify_stage(pool: asyncpg.Pool, job: dict) -> dict:
         "preprocess_notes": pre.notes,
         "type_scores": cls["scores"],
         "classified_via": cls.get("via", "keywords"),
+        "classify_llm_model": cls.get("llm_model"),
     }

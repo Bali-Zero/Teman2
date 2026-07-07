@@ -731,8 +731,8 @@ export default function ReviewPage() {
   }, [selectedCategory, selectedClient, selectedGroup, selectedPractice]);
 
   // Authenticated blob preview: an <iframe>/<img> request cannot carry the
-  // Bearer header, so a direct src 401s ("Connessione negata"). Fetch the
-  // blob WITH the token, then preview via a local object URL.
+  // Bearer header, so a direct src 401s (the browser shows a connection-refused
+  // error). Fetch the blob WITH the token, then preview via a local object URL.
   const [blobUrl, setBlobUrl] = useState<string>("");
   useEffect(() => {
     if (!detail) {

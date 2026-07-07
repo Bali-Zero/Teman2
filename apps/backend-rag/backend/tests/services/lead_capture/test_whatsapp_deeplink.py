@@ -120,6 +120,22 @@ class TestContentFunnelSources:
         assert "• Article: Indonesia UMKM tax reforms" in body
 
 
+class TestPricingModalSource:
+    """PRICING_MODAL — ServicePricing.tsx modal CTA (2026-06-29)."""
+
+    def test_pricing_modal_has_no_reference_line(self):
+        url = build_whatsapp_url(
+            source=LeadSource.PRICING_MODAL,
+            context_lines=[("Package", "Single Entry Visa")],
+            result_hash=None,
+            lead_intent_id="li_price1",
+        )
+        body = _body_from(url)
+        assert "the pricing page" in body
+        assert "Reference:" not in body
+        assert "• Package: Single Entry Visa" in body
+
+
 class TestSourceEnum:
     def test_all_sources_have_names(self):
         for s in LeadSource:

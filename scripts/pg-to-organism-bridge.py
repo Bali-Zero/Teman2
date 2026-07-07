@@ -199,15 +199,26 @@ def _emit_event(event: dict) -> None:
         return
 
     try:
-        subprocess.run(
+        # Local Redis has requirepass since 2026-06-29 — redis-cli honours
+        # REDISCLI_AUTH. Password comes from _load_secrets() (REDIS_PASSWORD).
+        env = os.environ.copy()
+        if env.get("REDIS_PASSWORD"):
+            env.setdefault("REDISCLI_AUTH", env["REDIS_PASSWORD"])
+        proc = subprocess.run(
             [
                 "redis-cli", "XADD", ORGANISM_STREAM_KEY, "*",
                 "data", json.dumps(event, separators=(",", ":"), default=str),
             ],
-            capture_output=True, timeout=2, check=False,
+            capture_output=True, timeout=2, check=False, env=env,
         )
+        reply = (proc.stdout or b"").decode("utf-8", "replace").strip()
+        if proc.returncode != 0 or reply.startswith(("NOAUTH", "WRONGPASS", "ERR", "(error)")):
+            logger.warning(
+                "redis XADD failed (non-fatal, stream degraded): rc=%s reply=%s",
+                proc.returncode, reply[:200],
+            )
     except Exception as exc:
-        logger.debug("redis XADD failed (non-fatal): %s", exc)
+        logger.warning("redis XADD failed (non-fatal): %s", exc)
 
 
 # ─────────────────────────────────────────────────────────────────────────

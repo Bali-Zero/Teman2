@@ -254,26 +254,21 @@ def sweep_recovered_corpses(queue: list) -> tuple[list, list]:
 
 
 # ── Telegram ──────────────────────────────────────────────────────────────────
+# Migrated to the notification gateway (2026-07-06). Tier semantics:
+#   p0     — 🔴 escalations / 🛑 TERMINAL (operator must act)
+#   digest — ✅ auto-fixes, 🧹 corpse-sweeps (informative, grouped 2×/day)
+# The gateway owns token resolution, dedup and the daily P0 budget.
 
-def send_telegram(message: str) -> None:
-    import urllib.parse
-    import urllib.request
-    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "1125336968")
-    if not token:
-        return
+def send_telegram(message: str, tier: str = "digest", dedup_key: str = "") -> None:
+    gateway = Path(__file__).resolve().parent / "tg_notify.py"
+    if not gateway.exists():  # HOME-fork copy: fall back to the repo checkout (#1)
+        gateway = NUZANTARA_ROOT / "scripts" / "tg_notify.py"
+    cmd = [sys.executable, str(gateway), "--tier", tier, "--source", "dlq-autopilot"]
+    if dedup_key:
+        cmd += ["--dedup-key", dedup_key]
+    cmd += ["--", f"🤖 DLQAutopilot | {message}"]
     try:
-        data = urllib.parse.urlencode({
-            "chat_id": chat_id,
-            "text": f"🤖 DLQAutopilot | {message}",
-        }).encode()
-        urllib.request.urlopen(
-            urllib.request.Request(
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                data=data,
-            ),
-            timeout=10,
-        )
+        subprocess.run(cmd, capture_output=True, timeout=30)
     except Exception:
         pass
 
@@ -563,7 +558,9 @@ def escalate_to_claude_code(
     send_telegram(
         f"🔴 Escalated to Claude Code: `{job}`\n"
         f"Error: {entry.get('error_summary', '(empty)')[:80]}\n"
-        f"Task file: {task_file.name}"
+        f"Task file: {task_file.name}",
+        tier="p0",
+        dedup_key=f"dlq-escalation:{job}",
     )
 
     # S3: record the escalation so subsequent ticks within 4h are suppressed.
@@ -634,7 +631,9 @@ def process_entry(entry: dict, registry: dict) -> str:
         send_telegram(
             f"🛑 TERMINAL: `{job}` reached {max_attempts} autopilot attempts with no fix.\n"
             f"Error: {error[:80]}\n"
-            f"Manual intervention required. Run: `dlq clear {job}` after resolving."
+            f"Manual intervention required. Run: `dlq clear {job}` after resolving.",
+            tier="p0",
+            dedup_key=f"dlq-terminal:{job}",
         )
         return "terminal"
 
@@ -846,6 +845,30 @@ def run_autopilot() -> None:
             "ts": time.time(),  # W54: float epoch seconds (was strftime ISO-8601)
             "_writer": "dlq_autopilot",  # D1.5: audit trail
         }))
+
+        # UNCONDITIONAL organism heartbeat sidecar (2026-06-28): this script READ
+        # ~/.organism/last_seen/ for recovery signals but never WROTE its own, so
+        # pro.dlq_autopilot.json froze for 28 days while the cron ran green. The
+        # bridge used to refresh it and stopped; now the organ breathes for itself.
+        try:
+            ORGANISM_DIR.mkdir(parents=True, exist_ok=True)
+            organ_path = ORGANISM_DIR / "pro.dlq_autopilot.json"
+            organ_tmp = organ_path.with_suffix(f".json.tmp.{os.getpid()}")
+            organ_tmp.write_text(json.dumps({
+                "ts": time.time(),
+                "status": "ok",
+                "organ_id": "pro.dlq_autopilot",
+                "metadata": {
+                    "queue_size": len(queue),
+                    "fixed": fixed,
+                    "escalated": escalated,
+                    "skipped": skipped,
+                    "duration_s": round(duration, 1),
+                },
+            }))
+            organ_tmp.replace(organ_path)
+        except Exception as exc:  # noqa: BLE001 — heartbeat must never break the run
+            logger.warning(f"organ heartbeat emit failed: {exc}")
 
     finally:
         release_lock(fd)

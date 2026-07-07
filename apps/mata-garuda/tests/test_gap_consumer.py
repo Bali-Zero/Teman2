@@ -294,7 +294,7 @@ def test_default_dispatch_forces_non_frontier_model(monkeypatch):
     result = _default_dispatch_agent("Regulation Watcher", {"_gap_type": "gap.stale_official"})
 
     assert result["case_resolved"] is True
-    assert captured["agent"].model == "ollama:qwen3.5:9b"
+    assert captured["agent"].model == "agy:gemini-3.5-flash"
     assert registry_agent.model == "claude"
 
 
