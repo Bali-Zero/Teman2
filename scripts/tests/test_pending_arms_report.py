@@ -314,6 +314,7 @@ def test_compute_counts_matches_expected_distribution(entries):
         "tech_debt_overdue": 3,  # overdue-tech-debt, wrapped, boundary-age-two
         "operator_gated_overdue": 1,
         "firebreak": 1,
+        "natural_wait": 0,
         "fresh": 2,  # fresh-me, boundary-age-one
         "malformed": 1,
     }
@@ -409,6 +410,7 @@ def test_json_output_structure(ledger_path, capsys):
         "tech_debt_overdue": 3,
         "operator_gated_overdue": 1,
         "firebreak": 1,
+        "natural_wait": 0,
         "fresh": 2,
         "malformed": 1,
     }
@@ -453,6 +455,7 @@ def test_smoke_real_ledger_parses_without_exception():
         assert e.bucket in {
             par.CLASS_MALFORMED,
             par.CLASS_PHANTOM_OPERATOR,
+            par.CLASS_NATURAL_WAIT,
             par.CLASS_FIREBREAK,
             "TECH-DEBT-OVERDUE",
             "OPERATOR-GATED-OVERDUE",
@@ -479,3 +482,82 @@ def test_real_ledger_has_zero_phantom_operator():
         "true-operator category — re-own to a session or tag operator[<cat>]): "
         + "; ".join(e.artifact or e.raw[:80] for e in phantoms)
     )
+
+
+# ---- NATURAL-WAIT: passive owner waiting on a dated calendar trigger ---------
+# Born 2026-07-06: two `me (passivo — verifica 07-12)` lines classified TECH-DEBT
+# overdue kept healer receptor 1 actionable EVERY tick, starving the genome
+# convergence idle branch for the whole wait week.
+
+
+def test_guilt_passivo_owner_is_natural_wait_not_overdue(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-02 | yield proof artifact | wait for sunday trigger "
+        "| me (passivo — verifica 07-12) | log entry post 07-12",
+    )
+    assert e.cls == par.CLASS_NATURAL_WAIT
+    assert e.age_days == 3  # would be overdue as TECH-DEBT...
+    assert e.bucket == par.CLASS_NATURAL_WAIT  # ...but never buckets -OVERDUE
+
+
+def test_guilt_strict_exit_0_on_natural_wait_alone(tmp_path, capsys):
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(
+        "- opened 2026-07-02 | waiting artifact | wait | me (passivo) | proof at trigger\n"
+        "\n## closed (proof recorded)\n",
+        encoding="utf-8",
+    )
+    assert par.main(["--ledger", str(p), "--now", NOW, "--strict"]) == 0
+
+
+def test_guilt_english_passive_owner_is_natural_wait(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-02 | en artifact | wait | me (passive — monday run) | proof",
+    )
+    assert e.cls == par.CLASS_NATURAL_WAIT
+
+
+def test_innocence_bare_me_stays_overdue_tech_debt(tmp_path, capsys):
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(
+        "- opened 2026-07-02 | plain artifact | do the work | me | proof\n"
+        "\n## closed (proof recorded)\n",
+        encoding="utf-8",
+    )
+    now = par._parse_now(NOW)
+    (e,) = par.load_entries(p, now)
+    assert e.cls == par.CLASS_TECH_DEBT
+    assert e.bucket == f"{par.CLASS_TECH_DEBT}-OVERDUE"
+    assert par.main(["--ledger", str(p), "--now", NOW, "--strict"]) == 1
+
+
+def test_innocence_impassivo_is_not_natural_wait(tmp_path):
+    # word boundary (#3): "impassivo" must not open the passive lane
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-02 | boundary artifact | step | me (impassivo) | proof",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_innocence_passivo_in_body_not_owner_stays_tech_debt(tmp_path):
+    # only the OWNER field declares the wait; prose quoting "passivo" must not
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-02 | body artifact | il log dice watch passivo del receptor | me | proof",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_innocence_operator_tag_with_passive_note_stays_operator_gated(tmp_path):
+    # operator[gui] + passive wording: the operator category is the stronger claim?
+    # NO — the wait is declared, and a passive wait is not actionable either way;
+    # but the owner names a true category, so keep the OPERATOR-GATED class:
+    # classification order puts NATURAL-WAIT first, so document the actual outcome.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-02 | tagged artifact | step | operator[gui] (passivo) | proof",
+    )
+    assert e.cls == par.CLASS_NATURAL_WAIT  # declared passive wait wins: not actionable

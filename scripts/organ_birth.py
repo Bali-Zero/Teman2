@@ -57,7 +57,10 @@ PAIRS_PATH = REPO / "infra/home-fork/declared-pairs.json"
 WRAPPER_DIR = REPO / "infra/launchagents/wrappers"
 PLIST_DIR = REPO / "infra/launchagents"
 
-NODE_HOSTNAMES = {"mini": "Mini-Pro2", "pro": "Nuzantara"}
+# Lowercase canon: `hostname -s` case differs by macOS name source (Mini
+# reports "mini-pro2" while its ComputerName is "Mini-Pro2") — the guard
+# lowercases both sides before comparing, so the map must be lowercase too.
+NODE_HOSTNAMES = {"mini": "mini-pro2", "pro": "nuzantara"}
 # M5 is EXCLUDED by design: interactive laptop, no daemon fleet (CLAUDE.md §1).
 
 
@@ -97,7 +100,7 @@ heartbeat() {{ # $1 status, $2 note
 }}
 
 # G4_node_guard — wrong node exits VISIBLY (heartbeat), never silently (#10)
-if [ "$(hostname -s)" != "{hostname}" ]; then
+if [ "$(hostname -s | tr '[:upper:]' '[:lower:]')" != "{hostname}" ]; then
     log "node guard: $(hostname -s) != {hostname} — not my node, exiting"
     heartbeat "disabled" "wrong-node $(hostname -s)"
     exit 0

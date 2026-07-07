@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GET, POST } from './route';
 
@@ -9,10 +9,11 @@ const DOOR_MARKER = 'Da mihi signum';
 
 const URL_ = 'https://balizero.com/codex';
 
-function postRequest(pin: string): Request {
+function postRequest(pin: string, headers: Record<string, string> = {}): Request {
   return new Request(URL_, {
     method: 'POST',
     body: new URLSearchParams({ pin }),
+    headers,
   });
 }
 
@@ -65,3 +66,58 @@ describe('/codex PIN gate', () => {
     expect(body).not.toContain(CONTENT_MARKER);
   });
 });
+
+describe('/codex door alert (guilt + innocence)', () => {
+  const fetchMock = vi.fn(async () => new Response('{"messages":[{"id":"x"}]}', { status: 200 }));
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubEnv('CODEX_WA_TOKEN', 'test-token');
+    vi.stubEnv('CODEX_WA_PHONE_ID', '12345');
+    fetchMock.mockClear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it('guilt: correct pin from Italy sends the ENTERED WhatsApp', async () => {
+    const res = await POST(postRequest('666', { 'x-vercel-ip-country': 'IT', 'x-vercel-ip-city': 'Roma' }));
+    expect(res.status).toBe(303);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('graph.facebook.com');
+    const body = JSON.parse(String(init.body));
+    expect(body.text.body).toContain('ENTRATO');
+    expect(body.text.body).toContain('IT (Roma)');
+  });
+
+  it('guilt: wrong pin from Italy sends the door WhatsApp', async () => {
+    const res = await POST(postRequest('123', { 'x-vercel-ip-country': 'IT' }));
+    expect(res.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(String((fetchMock.mock.calls[0] as [string, RequestInit])[1].body));
+    expect(body.text.body).toContain('sbagliato');
+  });
+
+  it('innocence: correct pin from a skip-listed country stays silent', async () => {
+    const res = await POST(postRequest('666', { 'x-vercel-ip-country': 'US' }));
+    expect(res.status).toBe(303);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('innocence: alert not configured — door still works, nothing sent', async () => {
+    vi.stubEnv('CODEX_WA_TOKEN', '');
+    const res = await POST(postRequest('666', { 'x-vercel-ip-country': 'IT' }));
+    expect(res.status).toBe(303);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('innocence: WhatsApp API failure never blocks the reader', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('network down'));
+    const res = await POST(postRequest('666', { 'x-vercel-ip-country': 'IT' }));
+    expect(res.status).toBe(303);
+  });
+});
+

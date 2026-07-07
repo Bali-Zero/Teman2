@@ -755,6 +755,71 @@ def test_release_force_overrides_unmerged(fake_repo):
     assert not wt.exists()
 
 
+def test_release_reaps_squash_merged_branch(fake_repo):
+    """W88 guilt: --release must recognize a squash-merged branch as merged via
+    the blob-per-file content fallback — the ancestor proxy lies post-squash.
+    Live case 2026-07-06: three squash-merged lanes (#2044/#2045/#2047) needed
+    --force because cmd_release only asked rev-list."""
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "rel-squash")
+
+    (wt / "squash.txt").write_text("squash content\n")
+    subprocess.run(["git", "add", "squash.txt"], cwd=wt, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "wip"],
+        cwd=wt,
+        check=True,
+    )
+
+    # Simulate squash merge: same exact content lands on main as a NEW commit
+    # (branch SHA never becomes an ancestor), then push to origin.
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True)
+    (repo / "squash.txt").write_text("squash content\n")
+    subprocess.run(["git", "add", "squash.txt"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "squash merge"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    rc = mod.cmd_release("rel-squash")  # no --force needed anymore
+    assert rc == 0
+    assert not wt.exists()
+
+
+def test_release_refuses_branch_with_unmerged_content(fake_repo):
+    """W88 innocence: a branch whose blob content differs from origin/main must
+    still be refused by --release without --force (fail-safe preserved)."""
+    mod, repo = fake_repo
+    wt = mod.cmd_create("wr2", "rel-unmg")
+
+    (wt / "f.txt").write_text("branch content\n")
+    subprocess.run(["git", "add", "f.txt"], cwd=wt, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "wip"],
+        cwd=wt,
+        check=True,
+    )
+
+    subprocess.run(["git", "checkout", "main"], cwd=repo, check=True)
+    (repo / "f.txt").write_text("different on main\n")
+    subprocess.run(["git", "add", "f.txt"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=T", "commit", "-m", "other"],
+        cwd=repo,
+        check=True,
+    )
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=wt, check=True)
+
+    with pytest.raises(SystemExit) as exc:
+        mod.cmd_release("rel-unmg")
+    assert "not merged" in str(exc.value).lower()
+    assert wt.exists()  # untouched
+
+
 def test_release_unknown_task_errors(fake_repo):
     mod, _ = fake_repo
     with pytest.raises(SystemExit) as exc:
