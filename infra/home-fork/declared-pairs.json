@@ -98,6 +98,22 @@
       ]
     },
     {
+      "live": "~/Library/Application Support/Nuzantara/local-livekit/scripts/run_local_livekit_server.sh",
+      "repo": "apps/backend-rag/scripts/run_local_livekit_server.sh",
+      "_note": "Was UNDECLARED (part of the 2026-07-05 13-payload finding). Confirmed byte-identical 2026-07-07 (healer tick).",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/Library/Application Support/Nuzantara/local-livekit/scripts/run_local_livekit_worker.sh",
+      "repo": "apps/backend-rag/scripts/run_local_livekit_worker.sh",
+      "_note": "Was UNDECLARED (part of the 2026-07-05 13-payload finding). Confirmed byte-identical 2026-07-07 (healer tick).",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
       "live": "~/scripts/healer-run.sh",
       "repo": "infra/healer/healer-run.sh",
       "machines": [
@@ -142,6 +158,7 @@
   ],
   "allow": [
     "~/Library/Application Support/Google/GoogleUpdater/*",
-    "~/Library/Google/GoogleSoftwareUpdate/*"
+    "~/Library/Google/GoogleSoftwareUpdate/*",
+    "~/scripts/mini-git-pull-bridge.sh"
   ]
 }
