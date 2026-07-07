@@ -80,7 +80,7 @@ function RegisterContent() {
         setIsComplete(true);
         // Redirect to login after 3 seconds
         setTimeout(() => {
-          router.push("/login");
+          router.push("/portal/login-upgraded");
         }, 3000);
       } else {
         setError(result.message || "Registration failed. Please try again.");
