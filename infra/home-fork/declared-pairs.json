@@ -154,11 +154,61 @@
       "machines": [
         "pro"
       ]
+    },
+    {
+      "live": "~/bin/wa-mirror-runner.sh",
+      "repo": "infra/launchagents/wrappers/wa-mirror-runner.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding. Promoted to canon 2026-07-07 (healer tick), byte-identical.",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/bin/wr2-warroom-sync.sh",
+      "repo": "infra/launchagents/wrappers/wr2-warroom-sync.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding. Promoted to canon 2026-07-07 (healer tick), byte-identical.",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/ollama-warm-pin.sh",
+      "repo": "infra/launchagents/wrappers/ollama-warm-pin.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding. Promoted to canon 2026-07-07 (healer tick), byte-identical.",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/openclaw-cron/drive-poll.sh",
+      "repo": "infra/launchagents/wrappers/openclaw-cron/drive-poll.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding (openclaw-cron x3, crontab-executed not plist). Promoted to canon 2026-07-07 (healer tick), byte-identical.",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/openclaw-cron/crm-kg-build-mediated.sh",
+      "repo": "infra/launchagents/wrappers/openclaw-cron/crm-kg-build-mediated.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding (openclaw-cron x3, crontab-executed not plist). Promoted to canon 2026-07-07 (healer tick), byte-identical.",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/openclaw-cron/crm-kg-garbage-collect.sh",
+      "repo": "infra/launchagents/wrappers/openclaw-cron/crm-kg-garbage-collect.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding (openclaw-cron x3, crontab-executed not plist). Promoted to canon 2026-07-07 (healer tick), byte-identical.",
+      "machines": [
+        "mini"
+      ]
     }
   ],
   "allow": [
     "~/Library/Application Support/Google/GoogleUpdater/*",
     "~/Library/Google/GoogleSoftwareUpdate/*",
-    "~/scripts/mini-git-pull-bridge.sh"
+    "~/scripts/mini-git-pull-bridge.sh",
+    "~/Applications/WR2 Control.app/*",
+    "~/.local/bin/zero-design/*"
   ]
 }
