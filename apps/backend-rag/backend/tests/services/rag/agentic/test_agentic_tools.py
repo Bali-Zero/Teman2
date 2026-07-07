@@ -91,6 +91,7 @@ async def test_vector_search_uses_selected_collection_and_deduplicates_results()
             "score": 0.92,
             "collection": "legal_unified",
             "doc_id": "doc-1",
+            "snippet": "PT PMA requires shareholder identity documents.",
         },
     ]
     assert "Source: legal_unified" in result["content"]
