@@ -324,6 +324,19 @@ gates:
       innocence (no false block on code-residue) AND guilt (genuine writes to main
       still blocked). Green = the over-match family stays dead.
 
+  - id: scar_homefork_live_vs_tracked
+    kind: scar_test
+    w_number: "#1-HOMEFORK"
+    target: infra/scar-gates/test_W_homefork_live_vs_tracked.py
+    note: >
+      Superscar #1 (HOME-fork drift) core detector. infra/scar-gates/MANIFEST.json
+      already declared this gate `prose_only:false` — but MANIFEST.json is only
+      consumed by the MANUAL runner `scripts/run_scar_gates.py`, never by the CI-wired
+      `.github/workflows/verify-the-verifiers.yml` (which reads THIS file). The gate
+      was theater: it looked armed on paper while no workflow ever ran it (found during
+      a 2026-07-07 healer tick ledger review). This entry closes the gap — the existing
+      CI job now executes it on every PR that touches verify_the_verifiers.py/gates.yaml.
+
   - id: scar_premise_gate_L1
     kind: scar_test
     w_number: premise-gate-L1
