@@ -121,6 +121,10 @@ def main() -> int:
         from kbli_enrich_validate import validate_risk_consistency  # type: ignore
     except Exception:
         validate_risk_consistency = None
+    try:
+        from kbli_enrich_validate import validate_pma_consistency  # type: ignore
+    except Exception:
+        validate_pma_consistency = None
 
     for rec in data:
         code = rec["kode_kbli_2025"]
@@ -142,6 +146,12 @@ def main() -> int:
                     ctx = text[max(0, idx - 24) : idx + 36].lower()
                     # tolerate money/quantity contexts
                     if any(w in ctx for w in ("rp", "idr", "usd", "$", "m2", "sqm", "meter")):
+                        continue
+                    # tolerate technical-standard numbers: "ISO 9001, 14001, 45001",
+                    # "ISO/IEC 17025", "SNI 6729:2025" — 5-digit but NOT KBLI codes
+                    # (innocence guard: scar family #3 — this lint over-matched them)
+                    std_ctx = text[max(0, idx - 70) : idx].lower()
+                    if re.search(r"\b(iso(/iec)?|iec|sni|din|en)\b[^.]{0,60}$", std_ctx):
                         continue
                     # a dead code is a LEGITIMATE reference when explicitly labeled as KBLI 2020
                     labeled_2020 = any(
@@ -173,6 +183,17 @@ def main() -> int:
             if isinstance(intel, dict) and intel:
                 for err in validate_risk_consistency(intel, rec):
                     add("L6", code, "intel_2026", err[:120])
+
+        if enabled("L9") and validate_pma_consistency is not None:
+            # Documented profession-law overrides: the catalogue says TERBUKA but a
+            # sector law closes the PROFESSION to foreigners, and the prose says so
+            # explicitly and correctly. These are features, not contradictions.
+            #   69101 Advocates — UU 18/2003 (PERADI membership, WNI-only)
+            L9_PROFESSION_OVERRIDE = {"69101"}
+            intel = rec.get("intel_2026") or {}
+            if isinstance(intel, dict) and intel and code not in L9_PROFESSION_OVERRIDE:
+                for err in validate_pma_consistency(intel, rec):
+                    add("L9", code, "intel_2026", err[:120])
 
         if enabled("L7") and not rec.get("per_skala"):
             add("L7", code, "per_skala", "no scale rows (special regime?)")
