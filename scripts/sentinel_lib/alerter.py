@@ -1,11 +1,17 @@
-"""Telegram alerter with md5 dedup (same pattern as fly-health-check.sh)."""
+"""Telegram alerter with md5 dedup — routes through the notification gateway.
+
+Since 2026-07-07 (cohort-2, PR #2067 follow-up) the network send is delegated
+to scripts/tg_notify.py: CRITICAL/DEADMAN → tier p0 (immediate, daily budget),
+WARNING/INFO → tier digest (grouped 2×/day). The gateway owns token resolution
+(env → secrets file → ssh relay) and its own 6h dedup; the local md5 dedup here
+stays as a 1h fast-path so callers keep the sent/deduped return contract.
+"""
 import hashlib
 import json
 import os
+import subprocess
+import sys
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
 
 DEDUP_FILE = os.path.expanduser("~/.agent/decisions/alert_dedup.json")
 DEDUP_WINDOW_S = 3600  # 1 hour
@@ -70,70 +76,62 @@ def mark_escalation_sent(job_id: str) -> None:
     _save_escalation_state(data)
 
 
+def _gateway_script() -> str:
+    """Locate scripts/tg_notify.py relative to this file, NUZANTARA_ROOT fallback."""
+    here = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tg_notify.py")
+    if os.path.isfile(here):
+        return here
+    root = os.environ.get("NUZANTARA_ROOT", os.path.expanduser("~/Desktop/nuzantara"))
+    return os.path.join(root, "scripts", "tg_notify.py")
+
+
 def send_alert(message: str, level: str = "INFO") -> bool:
     """
-    Send Telegram message with dedup. Returns True if sent, False if deduped or failed.
-    level: INFO | WARNING | CRITICAL | DEADMAN
+    Send Telegram alert via the notification gateway (tg_notify.py), with dedup.
+    Returns True if the gateway accepted it (sent / spooled for the digest),
+    False if deduped or failed. level: INFO | WARNING | CRITICAL | DEADMAN.
+
+    Tier mapping: CRITICAL/DEADMAN → p0 (immediate, daily budget);
+    WARNING/INFO → digest (ONE grouped message 2×/day).
     """
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID", os.getenv("TELEGRAM_CHAT_ID", "1125336968"))
-
-    if not bot_token:
-        print(f"[ALERT-NO-TOKEN] {level}: {message[:100]}")
-        return False
-
-    # Dedup key = md5 of message content (not timestamp)
+    # Dedup key = md5 of message content (not timestamp). Local 1h fast-path
+    # keeps the historical return contract; the gateway adds its own 6h window.
     dedup_key = hashlib.md5(message.encode()).hexdigest()
     if _is_duplicate(dedup_key):
         return False
 
     prefix = {"INFO": "🔧", "WARNING": "🟡", "CRITICAL": "🔴", "DEADMAN": "⚫"}.get(level, "ℹ️")
-    # Strip Markdown formatting — use plain text to avoid 400 errors from underscores/special chars
+    # Strip Markdown formatting — gateway sends plain text
     clean_message = message.replace("*", "").replace("`", "").replace("_", "-")
     full_message = f"{prefix} Sentinel | {clean_message}"
+    tier = "p0" if level in ("CRITICAL", "DEADMAN") else "digest"
 
-    # W55 (2026-05-23): retry-with-backoff for transient network errors.
-    # Pre-W55 empirical: 149 lifetime [ALERT-FAILED] entries in sentinel.log,
-    # 100% transient network (DNS NXDOMAIN, SSL handshake timeout, connection
-    # reset, network unreachable) — NordVPN/WiFi flap during cron. Single
-    # 10s attempt was insufficient; alerts silently dropped meant operator
-    # never saw escalations during network blips.
-    # Mirror W49 (lease watchdog connect-retry): 3 attempts, progressive
-    # backoff 1s/3s. Total max wall-time ~14s (3×10s timeout + 4s backoff).
-    # Acceptable in cron context where deadline is multi-minute.
-    data = urllib.parse.urlencode({"chat_id": chat_id, "text": full_message}).encode()
-    req = urllib.request.Request(
-        f"https://api.telegram.org/bot{bot_token}/sendMessage",
-        data=data,
-    )
-    last_err: Exception | None = None
-    for attempt in range(1, 4):
-        try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                if resp.status == 200:
-                    _mark_sent(dedup_key)
-                    return True
-                # Non-200 HTTP (400 = bad request, 401 = auth, 429 = rate-limit).
-                # Don't retry on these — payload/auth issue, not transient.
-                print(f"[ALERT-FAILED] HTTP {resp.status} (non-retryable)")
-                return False
-        except urllib.error.HTTPError as e:
-            # 4xx/5xx surfaced as exception. 5xx might be transient.
-            last_err = e
-            if 500 <= e.code < 600:
-                print(f"[ALERT-RETRY {attempt}/3] HTTP {e.code} (retrying)")
-            else:
-                # 4xx — payload/auth/rate. Don't retry.
-                print(f"[ALERT-FAILED] HTTP {e.code} (non-retryable): {e}")
-                return False
-        except Exception as e:
-            # URLError, socket.timeout, ssl.SSLError etc. — all transient.
-            last_err = e
-            print(f"[ALERT-RETRY {attempt}/3] {type(e).__name__}: {e}")
-        if attempt < 3:
-            time.sleep(1 if attempt == 1 else 3)
-    print(f"[ALERT-FAILED] exhausted 3 retries (last error: {last_err})")
-    return False
+    # W55 retry lives inside the gateway now (spool-on-failure is strictly
+    # better than 3 urllib attempts: a lost send resurfaces in the next digest).
+    try:
+        proc = subprocess.run(
+            [sys.executable, _gateway_script(),
+             "--tier", tier, "--source", "sentinel",
+             "--dedup-key", f"sentinel:{dedup_key}", "--", full_message],
+            capture_output=True, text=True, timeout=90,
+        )
+        # tg_notify prints "tg_notify: <outcome>" on STDERR (stdout stays clean
+        # for callers) — scan both streams, last line wins.
+        raw = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()
+        outcome = ""
+        for line in raw.splitlines():
+            if line.startswith("tg_notify:"):
+                outcome = line.split(":", 1)[1].strip().split(" ")[0]
+        if outcome in ("sent", "spooled", "logged", "p0_overflow_spooled", "p0_unsent_spooled"):
+            _mark_sent(dedup_key)
+            return True
+        if outcome == "deduped":
+            return False
+        print(f"[ALERT-FAILED] gateway outcome={outcome or 'empty'} rc={proc.returncode} err={(proc.stderr or '')[:200]}")
+        return False
+    except Exception as e:
+        print(f"[ALERT-FAILED] gateway unreachable: {type(e).__name__}: {e}")
+        return False
 
 
 def send_daily_report(fleet_status: dict) -> None:
