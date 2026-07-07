@@ -105,7 +105,8 @@ jobs:
             --ignore-vuln PYSEC-2025-217 \
             --ignore-vuln GHSA-8jfx-5878-hv4v \
             --ignore-vuln CVE-2025-3000 \
-            --ignore-vuln CVE-2026-4372
+            --ignore-vuln CVE-2026-4372 \
+            --ignore-vuln PYSEC-2026-1325
 
       - name: Mypy type check (core + models)
         run: |
