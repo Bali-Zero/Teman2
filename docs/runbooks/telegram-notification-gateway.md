@@ -31,8 +31,11 @@ dedup — and a CI lint guarantees the direct-sender family only shrinks.
   `infra/launchagents/wrappers/pro-tg-digest-flush.sh` — organ `pro.tg_digest_flush`
   born via `organ_birth.py` (10 genes: registry, heartbeat sidecar, node guard,
   kill switch `PRO_TG_DIGEST_FLUSH_ENABLED=false`, single-instance, …).
-  `StartInterval` 43200s (2×/day), no KeepAlive (superscar #7). Armed on **Pro**;
-  Mini gets its own organ birth at arming (M5 holds no token, by design).
+  `StartInterval` 43200s (2×/day), no KeepAlive (superscar #7). Armed on **Pro**
+  (PROVEN live 2026-07-07). Mini twin: `mini.tg_digest_flush`
+  (`com.nuzantara.mini.tg-digest-flush` + `mini-tg-digest-flush.sh`, born
+  cohort-2) — the digest is per-node: each node flushes its OWN spool.
+  M5 holds no token by design (P0s relay via `TG_RELAY_SSH=pro`).
 
 ## Adoption (migrating a sender)
 
@@ -49,6 +52,15 @@ Then remove the file from `infra/tg-gateway/grandfathered.json` (or run
 Migrated in the gateway-birth PR (pilot cohort):
 - `scripts/cron-wrapper.sh` — cron failures → p0, dedup per job (flapping collapses)
 - `scripts/dlq_autopilot.py` — escalations/TERMINAL → p0 · auto-fixes/sweeps → digest
+
+Migrated in cohort-2 (2026-07-07):
+- `scripts/sentinel_lib/alerter.py` — the shared sentinel library: one migration
+  routes the whole family (nuzantara-sentinel, intake sentinel, system_doctor,
+  daily fleet report). CRITICAL/DEADMAN → p0, WARNING/INFO → digest. Local 1h
+  md5 dedup kept as fast-path for the sent/deduped return contract.
+- `scripts/wa-mirror-attention-telegram.py` — realtime critical reasons → p0
+  (dedup per phone+reason), daily summary → digest tier (merges into the ONE
+  gateway digest). HTML stripped: the gateway sends plain text.
 
 ## Spool anatomy (`~/.organism/tg_spool/`)
 
