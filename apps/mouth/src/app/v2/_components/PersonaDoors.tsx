@@ -6,6 +6,7 @@ import {
   trackPersonaDoor,
   type PersonaDoor,
 } from "@/lib/analytics";
+import { KineticHeading } from "./KineticHeading";
 
 /**
  * PersonaDoors — MYTHOS B2R2 (IA-1, iteration 2): four task-framed doors
@@ -38,6 +39,12 @@ import {
  * Measurement: persona_door_click (payload: door = visa|company|tax|property)
  * + per-tool <funnel>_cta_click — FUNNEL_EVENTS + backend ALLOWED_EVENTS,
  * parity-tested.
+ *
+ * Wave 3 "The Dispatch": grid became an asymmetric bento — visa/moving is
+ * Bali Zero's primary intent (highest funnel traffic), so its door renders
+ * large (spans 2 cols on desktop) while the other three sit as a lighter
+ * weighted row beneath. Anchors, hrefs, and both tracking calls are
+ * unchanged from the uniform-grid version — only layout/size differ.
  */
 
 const PAPER = "#f7f6f2";
@@ -55,12 +62,16 @@ interface Door {
   /** Tool identity (ex-FunnelChips): label · sub, href byte-identical. */
   tool: { label: string; sub: string; href: string };
   href: string;
+  /** Bento weight — "lg" spans 2 cols on desktop (Wave 3). Primary
+   *  funnel (visa/moving) is the only "lg" door. */
+  size: "lg" | "sm";
 }
 
 const DOORS: Door[] = [
   {
     door: "visa",
     funnel: "visa",
+    size: "lg",
     title: "I'm moving to Bali",
     body: "Visas, KITAS, family permits. Find the permit that matches your plan — before you book the flight.",
     fact: (
@@ -79,6 +90,7 @@ const DOORS: Door[] = [
   {
     door: "company",
     funnel: "kbli",
+    size: "sm",
     title: "I'm starting a business",
     body: "PT PMA setup, KBLI codes, licensing. From idea to a legal Indonesian company — without the nominee traps.",
     fact: (
@@ -96,6 +108,7 @@ const DOORS: Door[] = [
   {
     door: "tax",
     funnel: "tax",
+    size: "sm",
     title: "I'm already here — taxes confuse me",
     body: "NPWP, monthly SPT, Coretax — Indonesian tax has its own alphabet. One calendar of what you owe and when, instead of guesswork.",
     fact: (
@@ -113,6 +126,7 @@ const DOORS: Door[] = [
   {
     door: "property",
     funnel: "property",
+    size: "sm",
     title: "I'm buying property",
     body: "Leasehold vs freehold, zoning, due diligence. Know what you can legally own before you wire a deposit.",
     fact: (
@@ -142,7 +156,8 @@ export function PersonaDoors() {
     >
       {/* P3 — 8pt rhythm: 64px band padding, 24px gutters/gaps */}
       <div className="max-w-[1120px] mx-auto px-6 py-12 md:py-16">
-        <h2
+        <KineticHeading
+          as="h2"
           className="mb-8"
           style={{
             fontFamily: "var(--font-serif)",
@@ -153,17 +168,22 @@ export function PersonaDoors() {
           }}
         >
           Start where you are.
-        </h2>
-        {/* B2R2: 4 doors — stacked on mobile, 2×2 on tablet, 4-up on
-            desktop (cards slimmed: p-6, 24px headings). */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {DOORS.map(({ door, funnel, title, body, fact, tool, href }) => {
+        </KineticHeading>
+        {/* Wave 3 bento: stacked on mobile; on desktop (md+) a 2-col grid
+            where the "lg" door (visa/moving — primary funnel) spans both
+            rows on the left, the three "sm" doors stack in the right
+            column — same DOM order, so tab order/anchors are unchanged. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:auto-rows-[minmax(0,1fr)]">
+          {DOORS.map(({ door, funnel, title, body, fact, tool, href, size }) => {
             const toolExternal = tool.href.startsWith("http");
+            const isLg = size === "lg";
             return (
               <article
                 key={door}
                 id={funnel}
-                className="scroll-mt-24 flex flex-col gap-4 rounded-xl p-6 transition-colors"
+                className={`scroll-mt-24 flex flex-col gap-4 rounded-xl transition-colors ${
+                  isLg ? "md:row-span-3 p-8 justify-center" : "p-6"
+                }`}
                 style={{
                   background: "#ffffff",
                   border: `1px solid ${HAIRLINE}`,
@@ -173,7 +193,7 @@ export function PersonaDoors() {
                   style={{
                     fontFamily: "var(--font-serif)",
                     fontWeight: 600,
-                    fontSize: 24,
+                    fontSize: isLg ? 32 : 24,
                     lineHeight: 1.15,
                     color: NAVY,
                   }}
@@ -183,7 +203,7 @@ export function PersonaDoors() {
                 <p
                   className="flex-1"
                   style={{
-                    fontSize: 15,
+                    fontSize: isLg ? 17 : 15,
                     lineHeight: 1.55,
                     color: INK_SOFT,
                   }}
@@ -199,7 +219,7 @@ export function PersonaDoors() {
                   rel={toolExternal ? "noopener noreferrer" : undefined}
                   className="font-bold hover:underline underline-offset-4"
                   style={{
-                    fontSize: 15,
+                    fontSize: isLg ? 17 : 15,
                     color: NAVY,
                     borderTop: `1px solid ${HAIRLINE}`,
                     paddingTop: 16,
@@ -214,7 +234,7 @@ export function PersonaDoors() {
                 </a>
                 <div
                   style={{
-                    fontSize: 13,
+                    fontSize: isLg ? 14 : 13,
                     color: INK_SOFT,
                   }}
                 >
@@ -227,7 +247,7 @@ export function PersonaDoors() {
                   data-door={door}
                   className="mt-1 font-semibold hover:underline underline-offset-4"
                   style={{
-                    fontSize: 15,
+                    fontSize: isLg ? 17 : 15,
                     color: NAVY,
                     textDecoration: "none",
                   }}

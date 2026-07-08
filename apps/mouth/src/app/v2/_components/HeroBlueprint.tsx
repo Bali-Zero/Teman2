@@ -59,13 +59,8 @@ export function HeroBlueprint() {
         <div className="absolute inset-0 flex items-end md:items-center pb-8 md:pb-0">
           <div className="w-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16">
             <div className="max-w-[640px]">
-              {/* Dateline */}
-              <div
-                className="text-[10px] font-semibold uppercase tracking-[0.28em] mb-2"
-                style={{ color: "rgba(255,255,255,0.5)" }}
-              >
-                Bali Zero · Dispatch · April 2026 · Kerobokan
-              </div>
+              {/* Dateline now lives in the sticky <DatelineBar> under the
+                  nav (Wave 3 "The Dispatch") — no longer duplicated here. */}
               {/* Tagline */}
               <div
                 className="font-semibold italic mb-4 md:mb-8"

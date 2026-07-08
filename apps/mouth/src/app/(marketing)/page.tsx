@@ -3,10 +3,12 @@ import { NavShell } from "@balizero/core/components/NavShell";
 import { BZLogo } from "@balizero/core/components/BZLogo";
 import { SessionInit } from "@/components/funnel/SessionInit";
 import { MobileNav } from "../v2/_components/MobileNav";
+import { DatelineBar } from "../v2/_components/DatelineBar";
 import { HeroBlueprint } from "../v2/_components/HeroBlueprint";
 import { PersonaDoors } from "../v2/_components/PersonaDoors";
 import { NavWhatsAppCTA } from "../v2/_components/NavWhatsAppCTA";
 import { SocialProof } from "../v2/_components/SocialProof";
+import { RegulatoryDispatch } from "../v2/_components/RegulatoryDispatch";
 import { TopicPills } from "../v2/_components/TopicPills";
 import { NewsHero } from "../v2/_components/NewsHero";
 import { LatestNews } from "../v2/_components/LatestNews";
@@ -109,6 +111,7 @@ export default async function HomePage() {
           </>
         }
       />
+      <DatelineBar />
       <main id="main-content" style={RUMAH_VARS}>
         <HeroBlueprint />
         {/* MYTHOS B2R2: four persona doors (IA-1) are the navigation layer;
@@ -116,6 +119,9 @@ export default async function HomePage() {
             removed per Antonello 2026-06-11). */}
         <PersonaDoors />
         <SocialProof />
+        {/* Wave 3 "The Dispatch": the one dark island on an otherwise light
+            page — WR2 antracite system spent editorially, not on IG. */}
+        <RegulatoryDispatch />
         <NewsHero articles={heroArticles} />
         <TopicPills />
         <LatestNews articles={latest} />
