@@ -9,7 +9,7 @@
 
 :root {
   /* Colors — derived from tokens.json color.* */
-  --color-bg-antracite: #2C2F38;
+  --color-bg-antracite: #373D42;
   --color-bg-black: #000000;
   --color-text-white: #FFFFFF;
   --color-text-muted: #9CA3AF;
@@ -117,7 +117,7 @@ body {
  *
  * REVISED 2026-05-13: bg red → yellow, text white → black. Reason: WCAG audit
  * (research/wr2-design-sota/2026-05-13-best-bg-color-editorial-publisher.md)
- * found red #C8102E vs antracite #2C2F38 = 2.27:1 (FAIL). Yellow #F4C430 vs
+ * found red #C8102E vs antracite #373D42 = 2.27:1 (FAIL). Yellow #F4C430 vs
  * antracite = 8.14:1 (AAA). Black text on yellow = 12.79:1 (AAA inside).
  * Yellow now unifies regulation badge with Article 6.9 anchor highlights as
  * the family color for "verifiable facts" (numbers, codes, regulations).
