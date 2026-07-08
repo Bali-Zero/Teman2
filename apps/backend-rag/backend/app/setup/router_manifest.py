@@ -402,6 +402,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         tags=("module",),
     ),
     RouterEntry(
+        name="notifications_admin",
+        process_groups=_API,
+        import_path="backend.app.modules.notifications.admin_router",
+        tags=("module",),
+    ),
+    RouterEntry(
         name="cron_notifiers",
         process_groups=_API,
         import_path="backend.app.routers.cron_notifiers",
