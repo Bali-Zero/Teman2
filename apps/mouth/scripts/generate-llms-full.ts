@@ -32,6 +32,7 @@ async function generate() {
 
   let enArticles: any[] = [];
   let idArticles: any[] = [];
+  const skippedFrontmatterFiles: string[] = [];
 
   for (const category of categories) {
     const categoryPath = path.join(ARTICLES_PATH, category);
@@ -44,13 +45,15 @@ async function generate() {
     for (const file of files) {
       const filePath = path.join(categoryPath, file);
       const fileContents = fs.readFileSync(filePath, "utf8");
-      let parsed: matter.GrayMatterFile<string>;
+      let parsed: ReturnType<typeof matter>;
       try {
         parsed = matter(fileContents);
       } catch (error) {
         const message =
           error instanceof Error ? error.message.split("\n")[0] : String(error);
-        console.warn(`Skipping ${filePath}: ${message}`);
+        const relativePath = path.relative(process.cwd(), filePath);
+        skippedFrontmatterFiles.push(`${relativePath}: ${message}`);
+        console.warn(`Skipping ${relativePath}: ${message}`);
         continue;
       }
       const { data: frontmatter, content } = parsed;
@@ -72,6 +75,16 @@ async function generate() {
         enArticles.push(articleData);
       }
     }
+  }
+
+  if (skippedFrontmatterFiles.length > 0) {
+    throw new Error(
+      [
+        `Refusing to generate AI exports with ${skippedFrontmatterFiles.length} malformed MDX frontmatter file(s).`,
+        "Fix the source article frontmatter before publishing:",
+        ...skippedFrontmatterFiles.map((file) => `- ${file}`),
+      ].join("\n"),
+    );
   }
 
   enArticles.sort(

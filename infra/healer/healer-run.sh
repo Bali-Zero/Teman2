@@ -34,7 +34,15 @@ SIDECAR="$SIDECAR_DIR/mini.healer.json"
 PIDFILE="/tmp/nuzantara-healer.pid"
 MANDATE="$HOME/scripts/HEALER-MANDATE.md"
 MAX_WALL_S="${HEALER_MAX_WALL_S:-3300}"   # 55 min hard cap for the LLM session
-CLAUDE_BIN="${HEALER_CLAUDE_BIN:-/opt/homebrew/bin/claude}"
+# claude binary is NOT at the same path fleet-wide (Mini: /opt/homebrew symlink;
+# Pro: ~/.local/bin only). Env override wins; otherwise probe, then PATH.
+CLAUDE_BIN="${HEALER_CLAUDE_BIN:-}"
+if [ -z "$CLAUDE_BIN" ]; then
+    for _c in /opt/homebrew/bin/claude "$HOME/.local/bin/claude" /usr/local/bin/claude; do
+        if [ -x "$_c" ]; then CLAUDE_BIN="$_c"; break; fi
+    done
+fi
+[ -n "$CLAUDE_BIN" ] || CLAUDE_BIN="$(command -v claude 2>/dev/null || true)"
 MODEL="${HEALER_MODEL:-claude-sonnet-5}"
 
 ts() { date '+%Y-%m-%d %H:%M:%S'; }
@@ -132,10 +140,91 @@ if [ -n "$ESC_OUT" ]; then
     ACTIONABLE=1; REASONS="${REASONS}escalations-board "
 fi
 
+# Receptor 4: registry-driven dead-organ scan (DNA/GENOME 2026-07-06 — zero
+# hardcoded organ lists: coverage auto-extends when a new organ merges with
+# its genes. never-armed / disabled / stale organs do NOT trigger; a BROKEN
+# receptor (exit 2) DOES — silent coverage loss is #2 Esiste≠Armato).
+REG_OUT=$(python3 scripts/healer_receptor_registry.py --node mini --json 2>/dev/null)
+REG_EXIT=$?
+if [ "$REG_EXIT" -eq 1 ]; then
+    REG_DEAD=$(printf '%s' "$REG_OUT" | python3 -c "
+import json,sys
+try:
+    print(len(json.load(sys.stdin).get('dead',[])))
+except Exception:
+    print(1)
+" 2>/dev/null)
+    ACTIONABLE=1; REASONS="${REASONS}registry:${REG_DEAD:-?}-dead-organs "
+elif [ "$REG_EXIT" -eq 2 ]; then
+    ACTIONABLE=1; REASONS="${REASONS}registry-receptor-broken "
+fi
+
+# Receptor 5: arsenal seats (scripts/arsenal_probe.py) — the quota-cascade can
+# silently thin to 2-deep (codex 401, agy keychain, glm 401/529, deepseek 402).
+# Live-probe at most ~daily (self-throttled by report age — keeps the "healthy
+# tick costs ~zero LLM" promise); every tick reads transitions. A NEW persistent
+# seat-death (AUTH/BALANCE/MODEL/UNKNOWN) → ACTIONABLE + direct Telegram (the
+# cure is almost always operator-gated: relogin/top-up).
+ARSENAL_REPORT="$HOME/.organism/arsenal/last.json"
+ARSENAL_AGE_H=999
+if [ -f "$ARSENAL_REPORT" ]; then
+    ARSENAL_AGE_H=$(( ( $(date +%s) - $(stat -f %m "$ARSENAL_REPORT" 2>/dev/null || echo 0) ) / 3600 ))
+fi
+if [ "$ARSENAL_AGE_H" -ge 20 ] && [ -f "scripts/arsenal_probe.py" ]; then
+    log "arsenal probe: report ${ARSENAL_AGE_H}h old — refreshing (live seat probes)"
+    python3 scripts/arsenal_probe.py --quiet >> "$LOG" 2>&1 || true
+fi
+if [ -f "$ARSENAL_REPORT" ]; then
+    NEW_DEAD=$(python3 - <<'PY' 2>/dev/null
+import json, os
+try:
+    d = json.load(open(os.path.expanduser("~/.organism/arsenal/last.json")))
+    strict = {"AUTH_DEAD", "BALANCE_DEAD", "MODEL_ERR", "UNKNOWN_ERR"}
+    print(",".join(f"{t['seat']}:{t['to']}" for t in d.get("transitions", [])
+                   if t.get("to") in strict))
+except Exception:
+    pass
+PY
+)
+    if [ -n "$NEW_DEAD" ]; then
+        ACTIONABLE=1; REASONS="${REASONS}arsenal:${NEW_DEAD} "
+        telegram "🔌 ARSENALE (Mini): seat morto rilevato — ${NEW_DEAD}. Dettaglio: ~/.organism/arsenal/last.json (docs/runbooks/arsenal-probe.md)"
+    fi
+fi
+
 if [ "$ACTIONABLE" -eq 0 ]; then
-    log "pre-check clean (0 diverged, ledger ok, board quiet) — no LLM spawn"
-    heartbeat "ok" "idle: pre-check clean"
-    exit 0
+    # ---- CONVERGENCE mission (DNA/GENOME §CONVERGENCE v2, panel-hardened) ----
+    # Receptors all quiet: instead of sleeping, bring ONE grandfathered organ
+    # into the genome. Deterministic pre-gates keep idle ticks zero-LLM when
+    # there is nothing eligible: picker exit 3 = no candidate; an open
+    # genome-retrofit PR = lease held (Codex 9); cooldown file = last attempt
+    # failed <8h ago. Kill switch: HEALER_CONVERGENCE_ENABLED=false.
+    COOLDOWN="$HOME/.organism/healer-convergence.cooldown"
+    if [ "${HEALER_CONVERGENCE_ENABLED:-true}" = "false" ]; then
+        log "idle; convergence disabled by kill switch"
+        heartbeat "ok" "idle: pre-check clean (convergence off)"
+        exit 0
+    fi
+    if [ -f "$COOLDOWN" ] && [ $(( $(date +%s) - $(stat -f %m "$COOLDOWN" 2>/dev/null || echo 0) )) -lt 28800 ]; then
+        log "idle; convergence in cooldown"
+        heartbeat "ok" "idle: convergence cooldown"
+        exit 0
+    fi
+    if ! python3 scripts/genome_convergence.py --pick >/dev/null 2>&1; then
+        log "idle; no eligible convergence candidate (picker exit != 0)"
+        heartbeat "ok" "idle: pre-check clean, no convergence candidate"
+        exit 0
+    fi
+    OPEN_RETRO=$(gh pr list --state open --search "genome-retrofit in:title" --json number --jq 'length' 2>/dev/null || echo 1)
+    if [ "${OPEN_RETRO:-1}" != "0" ]; then
+        log "idle; convergence lease held (open retrofit PR or gh unavailable)"
+        heartbeat "ok" "idle: convergence lease held"
+        exit 0
+    fi
+    log "idle + eligible candidate — spawning CONVERGENCE session"
+    heartbeat "running" "convergence mission"
+    REASONS="genome-convergence "
+    MANDATE_OVERRIDE="$REPO/infra/healer/CONVERGENCE-MANDATE.md"
 fi
 
 log "ACTIONABLE: ${REASONS}— spawning healer session (model $MODEL, cap ${MAX_WALL_S}s)"
@@ -143,6 +232,9 @@ heartbeat "running" "spawned: ${REASONS}"
 
 # ---- spawn the headless healer session --------------------------------------
 [ -f "$MANDATE" ] || MANDATE="$REPO/infra/healer/HEALER-MANDATE.md"
+# convergence mission reads its own mandate from repo canon (Mini pulls main
+# every 5min; no HOME pair needed for a file only read post-trampoline)
+[ -n "${MANDATE_OVERRIDE:-}" ] && MANDATE="$MANDATE_OVERRIDE"
 if [ ! -f "$MANDATE" ]; then
     log "FATAL: mandate file missing"
     heartbeat "error" "mandate missing"
@@ -164,6 +256,11 @@ export HEALER_RUN=1
 # is a synchronous-init hang risk in -p mode).
 if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then
     export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
+fi
+if [ -z "$CLAUDE_BIN" ] || [ ! -x "$CLAUDE_BIN" ]; then
+    log "FATAL: no claude binary (env HEALER_CLAUDE_BIN, /opt/homebrew, ~/.local, /usr/local, PATH all empty)"
+    heartbeat "error" "no claude binary"
+    exit 1
 fi
 "$CLAUDE_BIN" -p "$(cat "$MANDATE")
 

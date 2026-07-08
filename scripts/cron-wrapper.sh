@@ -104,21 +104,22 @@ echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
 # ── Telegram helper ──────────────────────────────────────────────────────────
+# Migrated to the notification gateway (2026-07-06): tier p0 with a per-job
+# dedup key, so a flapping cron collapses to one alert per window instead of
+# one per firing. Token resolution, budget and spool live in the gateway;
+# with no credentials the alert lands in the digest spool instead of vanishing.
 send_telegram() {
     local msg="$1"
-    local token="${TELEGRAM_BOT_TOKEN:-}"
-    local chat_id="${TELEGRAM_ADMIN_CHAT_ID:-${TELEGRAM_OWNER_CHAT_ID:-}}"
-
-    if [ -z "$token" ] || [ -z "$chat_id" ]; then
-        echo "$START_ISO [$JOB_NAME] WARN: no Telegram credentials — alert skipped" >> "$LOG_FILE"
-        return 0
-    fi
-
-    curl -s -X POST "https://api.telegram.org/bot${token}/sendMessage" \
-        -d chat_id="$chat_id" \
-        -d parse_mode="HTML" \
-        -d text="$msg" \
-        > /dev/null 2>&1 || true
+    # Sibling first; HOME-fork copies of this wrapper fall back to the repo
+    # checkout so the alert never dies with the fork (superscar #1).
+    local gateway
+    gateway="$(dirname "$0")/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    python3 "$gateway" \
+        --tier p0 \
+        --source "cron:${JOB_NAME}" \
+        --dedup-key "cron-fail:${JOB_NAME}" \
+        -- "$msg" >> "$LOG_FILE" 2>&1 || true
 }
 
 # ── Execute with retry ───────────────────────────────────────────────────────
@@ -222,12 +223,12 @@ printf '{"job":"%s","ts":%d,"status":"%s","host":"%s","source":"cron-wrapper","d
 
 # ── Alert on failure ─────────────────────────────────────────────────────────
 if [ $EXIT_CODE -ne 0 ]; then
-    LAST_LINES=$(echo "$OUTPUT" | tail -5 | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-    MSG="<b>CRON FAIL</b> $HOSTNAME_SHORT
-<b>Job:</b> $JOB_NAME
-<b>Exit:</b> $EXIT_CODE (after $ATTEMPT attempts)
-<b>Duration:</b> ${DURATION}s
-<pre>$LAST_LINES</pre>"
+    LAST_LINES=$(echo "$OUTPUT" | tail -5)
+    MSG="CRON FAIL $HOSTNAME_SHORT
+Job: $JOB_NAME
+Exit: $EXIT_CODE (after $ATTEMPT attempts)
+Duration: ${DURATION}s
+$LAST_LINES"
     send_telegram "$MSG"
 fi
 

@@ -1,8 +1,8 @@
 """Document-intake OCR + classification stage (FASE 3a).
 
-Two responsibilities, both 100% local (Symbiosis Law 2 / UU-PDP):
+Two responsibilities, local by default (Symbiosis Law 2 / UU-PDP):
 
-  1. ``ocr_pages``        -- run a LOCAL vision model over preprocessed pages,
+  1. ``ocr_pages``        -- run a vision model over preprocessed pages,
                             returning per-page transcribed text + confidence.
   2. ``classify_document`` -- decide the document TYPE from the OCR text, with a
                             hard anti-hallucination floor: undeterminable ->
@@ -10,13 +10,14 @@ Two responsibilities, both 100% local (Symbiosis Law 2 / UU-PDP):
                             A gated local text-LLM fallback may classify OCR text
                             that keyword rules cannot, still review-band only.
 
-STRICT-LOCAL / 0-byte-to-cloud
-------------------------------
-Forked from ``backend.app.routers.crm_enhanced`` Attempt-1 (Ollama vision) but
-the cloud-LLM fallback (Attempt-2) is DROPPED entirely. There is no cloud path,
-no external-CLI subprocess, no external API. The intake spec verifies the
-absence of any cloud token over this file. PII (passport, KTP, akta) is read
-from local images and sent ONLY to localhost:11434 (Ollama on the Pro).
+OCR provider contract
+---------------------
+Default runtime is strict local: ``INTAKE_OCR_PROVIDER`` unset -> Ollama
+``qwen2.5vl:7b`` on localhost. Gemini OCR is opt-in only:
+``INTAKE_OCR_PROVIDER=gemini`` AND ``OCR_ALLOW_CLOUD_VISION=true``. If either
+condition is absent, the document image is not sent to cloud OCR. If Gemini is
+enabled but returns no usable text or errors, the path falls back to the local
+Ollama cascade below.
 
 Model choice (FASE 0 registry role ``ocr_vision``)
 --------------------------------------------------
@@ -56,6 +57,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import logging
 import os
 import re
@@ -65,6 +67,7 @@ from typing import Any
 import asyncpg
 import httpx
 
+from backend.llm.config import ModelName
 from backend.services.intake.model_roles import resolve_model_role
 
 logger = logging.getLogger("zantara.intake.classify")
@@ -86,6 +89,18 @@ _OCR_PRIMARY_DEFAULT = "qwen2.5vl:7b"  # ocr_vision role
 _OCR_FALLBACK = "qwen2.5vl:7b"
 
 OLLAMA_URL = os.getenv("INTAKE_OLLAMA_URL", os.getenv("OLLAMA_URL", "http://localhost:11434"))
+_GEMINI_OCR_MODEL = os.getenv("INTAKE_GEMINI_OCR_MODEL", ModelName.FALLBACK)
+_GEMINI_OCR_AUTH_FAILED = False
+_GEMINI_OCR_AUTH_ERROR_MARKERS = (
+    "401",
+    "403",
+    "api key",
+    "api_key",
+    "forbidden",
+    "permission_denied",
+    "reported as leaked",
+    "unauthorized",
+)
 
 # Per-page hard cap. CLAUDE.md OCR rule: 120s for >3 pages -- but we OCR one page
 # per request, so this is the single-page ceiling (reasoning VLM is slow).
@@ -94,6 +109,7 @@ OCR_PAGE_TIMEOUT_SECONDS = 120.0
 # Token budget for transcription. Generous because qwen3-vl spends most of it on
 # (discarded) thinking before -- sometimes -- emitting text.
 OCR_NUM_PREDICT = 2048
+OCR_MAX_IMAGE_DIM = 0  # disabled by default; set INTAKE_OCR_MAX_IMAGE_DIM to bound latency
 
 _OCR_PROMPT = (
     "Transcribe ALL legible text from this document image verbatim. "
@@ -106,6 +122,58 @@ _OCR_PROMPT = (
 def _resolve_ocr_model() -> str:
     """Prefer the FASE-0 registry ``ocr_vision`` role; else the hardcoded default."""
     return resolve_model_role("ocr_vision", _OCR_PRIMARY_DEFAULT)
+
+
+def _positive_env_int(name: str, default: int) -> int:
+    """Read a positive integer env override; return default on unset/invalid."""
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("invalid %s=%r; using %d", name, raw, default)
+        return default
+    if value <= 0:
+        logger.warning("invalid %s=%r; using %d", name, raw, default)
+        return default
+    return value
+
+
+def _ocr_num_predict() -> int:
+    """Runtime OCR token budget, configurable for benchmark/worker tuning."""
+    return _positive_env_int("INTAKE_OCR_NUM_PREDICT", OCR_NUM_PREDICT)
+
+
+def _ocr_max_image_dim() -> int:
+    """Runtime max page dimension; 0 means no downscale."""
+    return _positive_env_int("INTAKE_OCR_MAX_IMAGE_DIM", OCR_MAX_IMAGE_DIM)
+
+
+def _ocr_provider() -> str:
+    """Return the configured OCR primary provider; fail closed to local Ollama."""
+    provider = os.getenv("INTAKE_OCR_PROVIDER", "ollama").strip().lower()
+    return "gemini" if provider in {"gemini", "gemini_first", "gemini-first"} else "ollama"
+
+
+def _is_gemini_auth_error(exc: Exception) -> bool:
+    """Return True for Gemini failures that should stop repeat cloud attempts."""
+    text = f"{type(exc).__name__}: {exc!r}".casefold()
+    return any(marker in text for marker in _GEMINI_OCR_AUTH_ERROR_MARKERS)
+
+
+def _cloud_vision_allowed() -> bool:
+    """Lazy wrapper for tests and fail-closed cloud OCR gating."""
+    from backend.services.multimodal.cloud_vision_gate import cloud_vision_allowed
+
+    return cloud_vision_allowed()
+
+
+def _note_cloud_ocr_blocked(context: str) -> None:
+    """Lazy wrapper so intake uses the shared cloud OCR audit signal."""
+    from backend.services.multimodal.cloud_vision_gate import note_cloud_ocr_blocked
+
+    note_cloud_ocr_blocked(context)
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +214,18 @@ _THINK_PREAMBLE = re.compile(
     r"(transcrib\w+|read|look at).*?[:.]\s*",
     re.IGNORECASE | re.DOTALL,
 )
+_FENCED_BLOCK = re.compile(r"^```(?:[a-zA-Z0-9_-]+)?\s*\n(?P<body>.*?)\n?```$", re.DOTALL)
+
+
+def _ocr_line_from_item(item: Any) -> str:
+    """Extract visible OCR text from a JSON list item."""
+    if isinstance(item, dict):
+        for key in ("text", "line", "value"):
+            value = item.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return ""
+    return str(item).strip()
 
 
 def _salvage_thinking(thinking: str) -> str:
@@ -163,19 +243,52 @@ def _salvage_thinking(thinking: str) -> str:
     return stripped if len(stripped) >= 20 else ""
 
 
+def _clean_ocr_response(text: str) -> str:
+    """Normalize common VLM wrapper formats while preserving visible text."""
+    raw = text.strip()
+    if not raw:
+        return ""
+    fenced = _FENCED_BLOCK.fullmatch(raw)
+    if fenced:
+        raw = fenced.group("body").strip()
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return raw
+
+    if isinstance(parsed, list):
+        lines = [line for item in parsed if (line := _ocr_line_from_item(item))]
+        return "\n".join(lines) if lines else raw
+
+    if isinstance(parsed, dict):
+        for key in ("text", "transcription", "ocr_text"):
+            value = parsed.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        for key in ("lines", "ocr_lines", "pages"):
+            value = parsed.get(key)
+            if isinstance(value, list):
+                lines = [line for item in value if (line := _ocr_line_from_item(item))]
+                return "\n".join(lines) if lines else raw
+
+    return raw
+
+
 async def _ollama_vision(
     model: str,
     png_b64: str,
     prompt: str = _OCR_PROMPT,
-    num_predict: int = OCR_NUM_PREDICT,
+    num_predict: int | None = None,
 ) -> tuple[str, str | None]:
     """Single /api/generate vision call. Returns (response_text, thinking_text)."""
+    resolved_num_predict = num_predict if num_predict is not None else _ocr_num_predict()
     payload: dict[str, Any] = {
         "model": model,
         "prompt": prompt,
         "images": [png_b64],
         "stream": False,
-        "options": {"temperature": 0.0, "num_predict": num_predict},
+        "options": {"temperature": 0.0, "num_predict": resolved_num_predict},
         # CLAUDE.md S9: qwen 3.x family needs think:false. qwen3-vl ignores it
         # for vision (empirically still reasons) but qwen2.5vl honours it.
         "think": False,
@@ -184,7 +297,36 @@ async def _ollama_vision(
     r = await client.post(f"{OLLAMA_URL}/api/generate", json=payload)
     r.raise_for_status()
     data = r.json()
-    return (data.get("response") or "").strip(), (data.get("thinking") or "").strip()
+    return (
+        _clean_ocr_response(data.get("response") or ""),
+        _clean_ocr_response(data.get("thinking") or ""),
+    )
+
+
+async def _gemini_vision(
+    png_b64: str,
+    prompt: str = _OCR_PROMPT,
+    num_predict: int | None = None,
+) -> str:
+    """Single gated Gemini Vision OCR call through the shared GenAI client."""
+    from backend.llm.genai_client import get_genai_client
+
+    client = get_genai_client()
+    if not getattr(client, "is_available", False):
+        return ""
+
+    result = await client.generate_content(
+        contents=[
+            {"text": prompt},
+            {"inline_data": {"mime_type": "image/png", "data": png_b64}},
+        ],
+        model=_GEMINI_OCR_MODEL,
+        max_output_tokens=num_predict if num_predict is not None else _ocr_num_predict(),
+        temperature=0.0,
+        timeout_ms=int(OCR_PAGE_TIMEOUT_SECONDS * 1000),
+        endpoint="intake_ocr",
+    )
+    return _clean_ocr_response((result or {}).get("text") or "")
 
 
 def _heuristic_confidence(text: str) -> float:
@@ -227,6 +369,13 @@ def _ensure_min_size(png: bytes) -> bytes:
                 canvas = Image.new("RGB", (new_w, new_h), (255, 255, 255))
                 canvas.paste(im, (0, 0))
                 im = canvas
+            max_image_dim = _ocr_max_image_dim()
+            if max_image_dim >= MIN_OCR_DIM and max(new_w, new_h) > max_image_dim:
+                scale = max_image_dim / max(new_w, new_h)
+                target_w = max(MIN_OCR_DIM, round(new_w * scale))
+                target_h = max(MIN_OCR_DIM, round(new_h * scale))
+                im = im.resize((target_w, target_h), Image.LANCZOS)
+                new_w, new_h = target_w, target_h
             out = io.BytesIO()
             im.save(out, format="PNG")
             data = out.getvalue()
@@ -259,6 +408,8 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
     confidence 0.0 -- never invented content. The persistent client is reused
     across pages (Golden Rule #10).
     """
+    global _GEMINI_OCR_AUTH_FAILED
+
     primary = _resolve_ocr_model()
     results: list[dict[str, Any]] = []
 
@@ -295,22 +446,47 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
         via = "empty"
         model_used = primary
 
+        # Optional cloud OCR primary. This is disabled by default and requires
+        # both INTAKE_OCR_PROVIDER=gemini and the shared cloud vision gate.
+        if _ocr_provider() == "gemini" and not _GEMINI_OCR_AUTH_FAILED:
+            if _cloud_vision_allowed():
+                try:
+                    resp = await asyncio.wait_for(
+                        _gemini_vision(b64),
+                        timeout=OCR_PAGE_TIMEOUT_SECONDS,
+                    )
+                    resp = _clean_ocr_response(resp)
+                    if resp:
+                        text, via, model_used = resp, "gemini", _GEMINI_OCR_MODEL
+                except Exception as exc:
+                    logger.warning("OCR Gemini primary failed on page %d: %r", idx, exc)
+                    if _is_gemini_auth_error(exc):
+                        _GEMINI_OCR_AUTH_FAILED = True
+                        logger.error(
+                            "OCR Gemini primary disabled for this worker after auth failure"
+                        )
+            else:
+                _note_cloud_ocr_blocked("intake.classify.ocr_pages")
+
         # (a) resolved primary: prefer response, salvage thinking (no-op for
         # non-reasoning VLMs like qwen2.5vl).
-        try:
-            resp, thinking = await asyncio.wait_for(
-                _ollama_vision(primary, b64), timeout=OCR_PAGE_TIMEOUT_SECONDS
-            )
-            if resp:
-                text, via = resp, "response"
-            else:
-                salvaged = _salvage_thinking(thinking or "")
-                if salvaged:
-                    text, via = salvaged, "thinking"
-        except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:
-            # %r, not %s: a bare ReadTimeout/HTTPError can str() to "" and the
-            # log line carried zero diagnostic signal (W70 blind-log class).
-            logger.warning("OCR primary %s failed on page %d: %r", primary, idx, exc)
+        if not text:
+            try:
+                resp, thinking = await asyncio.wait_for(
+                    _ollama_vision(primary, b64), timeout=OCR_PAGE_TIMEOUT_SECONDS
+                )
+                resp = _clean_ocr_response(resp)
+                thinking = _clean_ocr_response(thinking or "")
+                if resp:
+                    text, via = resp, "response"
+                else:
+                    salvaged = _salvage_thinking(thinking or "")
+                    if salvaged:
+                        text, via = salvaged, "thinking"
+            except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:
+                # %r, not %s: a bare ReadTimeout/HTTPError can str() to "" and the
+                # log line carried zero diagnostic signal (W70 blind-log class).
+                logger.warning("OCR primary %s failed on page %d: %r", primary, idx, exc)
 
         # (b) cascade to _OCR_FALLBACK when primary yielded nothing usable.
         # With today's topology primary == fallback, so this is a same-model
@@ -325,6 +501,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
                     _ollama_vision(_OCR_FALLBACK, b64),
                     timeout=OCR_PAGE_TIMEOUT_SECONDS,
                 )
+                resp = _clean_ocr_response(resp)
                 if resp:
                     text, via, model_used = resp, "fallback", _OCR_FALLBACK
             except (httpx.HTTPError, asyncio.TimeoutError, Exception) as exc:
@@ -465,9 +642,11 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("bukti pembayaran", 0.6),
         ("payment receipt", 0.6),
         ("bukti transfer", 0.55),
+        ("bukti transaksi", 0.55),
         ("transfer berhasil", 0.5),
         ("kwitansi", 0.5),
         ("tanda terima", 0.5),
+        ("nomor referensi", 0.35),
         ("transaction id", 0.35),
         ("transaction date", 0.3),
         ("jumlah pembayaran", 0.35),
@@ -480,10 +659,13 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("boarding pass", 0.6),
         ("flight itinerary", 0.55),
         ("e-ticket", 0.55),
+        ("tiket elektronik", 0.55),
         ("eticket", 0.5),
         ("ticket number", 0.45),
         ("booking reference", 0.4),
         ("booking code", 0.35),
+        ("kode booking", 0.35),
+        ("nomor penerbangan", 0.25),
         ("passenger", 0.25),
         ("departure", 0.2),
         ("arrival", 0.2),
@@ -506,11 +688,13 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
         ("medical insurance", 0.6),
         ("health insurance", 0.5),
         ("insurance policy", 0.5),
+        ("polis asuransi", 0.55),
+        ("asuransi kesehatan", 0.5),
         ("policy number", 0.35),
         ("nomor polis", 0.35),
         ("insured person", 0.3),
         ("sum insured", 0.3),
-        ("asuransi", 0.35),
+        ("asuransi", 0.25),
         ("insurance", 0.25),
     ],
     "akta_pendirian": [
@@ -551,6 +735,13 @@ _TYPE_EVIDENCE: dict[str, list[tuple[str, float]]] = {
 }
 
 
+def _evidence_phrase_matches(text: str, phrase: str) -> bool:
+    """Return true when an evidence phrase is present in normalized OCR text."""
+    if phrase == "nik":
+        return re.search(r"(?<![a-z0-9])nik(?![a-z0-9])", text) is not None
+    return phrase in text
+
+
 def _score_types(text: str) -> dict[str, float]:
     """Sum keyword-evidence weights per type over the OCR text (lowercased)."""
     low = text.lower()
@@ -558,7 +749,7 @@ def _score_types(text: str) -> dict[str, float]:
     for dtype, evidence in _TYPE_EVIDENCE.items():
         s = 0.0
         for phrase, weight in evidence:
-            if phrase in low:
+            if _evidence_phrase_matches(low, phrase):
                 s += weight
         if s > 0:
             scores[dtype] = round(min(s, 1.0), 3)

@@ -194,6 +194,111 @@ def test_canon_diverged_home_target_still_a_fork(world):
     assert "DIVERGED from canon" in r["home_fork_target"][0]["detail"]
 
 
+def test_canon_paired_home_target_found_nested_under_scripts(world):
+    """Real 2026-07-07 miss: canon one level deeper than scripts/<name> (e.g.
+    scripts/mini-migration/wrapper.sh) must still be found — a flat basename
+    match at the top of scripts/ is not enough."""
+    canon = world["repo"] / "scripts" / "mini-migration" / "wrapper.sh"
+    canon.parent.mkdir(parents=True, exist_ok=True)
+    canon.write_text("#!/bin/sh\necho same\n")
+    live = world["home"] / ".nuzantara-cron" / "wrapper.sh"
+    live.parent.mkdir(parents=True)
+    live.write_text("#!/bin/sh\necho same\n")
+    write_plist(
+        world["agents"] / "com.balizero.nested.plist",
+        "com.balizero.nested",
+        program_args=[str(live)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["home_fork_target"] == []
+    assert [c["label"] for c in r["canon_paired"]] == ["com.balizero.nested"]
+    assert r["canon_paired"][0]["canon"] == "scripts/mini-migration/wrapper.sh"
+
+
+def test_canon_paired_home_target_found_nested_under_infra(world):
+    """Same miss, infra/ side (e.g. infra/healer/wrapper.sh)."""
+    canon = world["repo"] / "infra" / "healer" / "wrapper.sh"
+    canon.parent.mkdir(parents=True, exist_ok=True)
+    canon.write_text("#!/bin/sh\necho same\n")
+    live = world["home"] / ".nuzantara-cron" / "wrapper.sh"
+    live.parent.mkdir(parents=True)
+    live.write_text("#!/bin/sh\necho same\n")
+    write_plist(
+        world["agents"] / "com.balizero.infranested.plist",
+        "com.balizero.infranested",
+        program_args=[str(live)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["home_fork_target"] == []
+    assert [c["label"] for c in r["canon_paired"]] == ["com.balizero.infranested"]
+    assert r["canon_paired"][0]["canon"] == "infra/healer/wrapper.sh"
+
+
+def test_canon_paired_home_target_found_under_apps_scripts(world):
+    """Per-app scripts/ dirs (apps/backend-rag/scripts/) are indexed too —
+    the real miss for run_local_livekit_server.sh — without walking all of
+    apps/ (which holds ~36k unrelated source files)."""
+    canon = world["repo"] / "apps" / "backend-rag" / "scripts" / "wrapper.sh"
+    canon.parent.mkdir(parents=True, exist_ok=True)
+    canon.write_text("#!/bin/sh\necho same\n")
+    live = world["home"] / ".nuzantara-cron" / "wrapper.sh"
+    live.parent.mkdir(parents=True)
+    live.write_text("#!/bin/sh\necho same\n")
+    write_plist(
+        world["agents"] / "com.balizero.appsnested.plist",
+        "com.balizero.appsnested",
+        program_args=[str(live)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["home_fork_target"] == []
+    assert [c["label"] for c in r["canon_paired"]] == ["com.balizero.appsnested"]
+    assert r["canon_paired"][0]["canon"] == "apps/backend-rag/scripts/wrapper.sh"
+
+
+def test_canon_index_ignores_excluded_dirnames(world):
+    """Innocence: a matching basename sitting only inside an excluded dir
+    (node_modules) must NOT count as canon — the target stays a real fork,
+    not a false-cured one."""
+    decoy = world["repo"] / "scripts" / "node_modules" / "wrapper.sh"
+    decoy.parent.mkdir(parents=True, exist_ok=True)
+    decoy.write_text("#!/bin/sh\necho same\n")
+    live = world["home"] / ".nuzantara-cron" / "wrapper.sh"
+    live.parent.mkdir(parents=True)
+    live.write_text("#!/bin/sh\necho same\n")
+    write_plist(
+        world["agents"] / "com.balizero.decoyed.plist",
+        "com.balizero.decoyed",
+        program_args=[str(live)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["canon_paired"] == []
+    assert [h["label"] for h in r["home_fork_target"]] == ["com.balizero.decoyed"]
+    assert "no repo canon" in r["home_fork_target"][0]["detail"]
+
+
+def test_repo_canon_prefers_byte_identical_among_multiple_candidates(world):
+    """Two same-basename candidates in different dirs, only one identical —
+    must pick the identical one (canon_paired), not whichever sorts first."""
+    diverged = world["repo"] / "infra" / "aaa-first-alphabetically" / "wrapper.sh"
+    diverged.parent.mkdir(parents=True, exist_ok=True)
+    diverged.write_text("#!/bin/sh\necho old-version\n")
+    identical = world["repo"] / "scripts" / "zzz-last-alphabetically" / "wrapper.sh"
+    identical.parent.mkdir(parents=True, exist_ok=True)
+    identical.write_text("#!/bin/sh\necho same\n")
+    live = world["home"] / ".nuzantara-cron" / "wrapper.sh"
+    live.parent.mkdir(parents=True)
+    live.write_text("#!/bin/sh\necho same\n")
+    write_plist(
+        world["agents"] / "com.balizero.multi.plist",
+        "com.balizero.multi",
+        program_args=[str(live)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["home_fork_target"] == []
+    assert [c["label"] for c in r["canon_paired"]] == ["com.balizero.multi"]
+    assert r["canon_paired"][0]["canon"] == "scripts/zzz-last-alphabetically/wrapper.sh"
+
+
 def test_symlink_into_repo_not_a_fork(world):
     """A $HOME payload that is a symlink into the repo is the CURE for #1,
     not an instance of it."""

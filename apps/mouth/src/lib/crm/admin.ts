@@ -12,14 +12,22 @@
  * from a real admin.
  */
 
-const CRM_ADMIN_EMAILS: ReadonlySet<string> = new Set([
+import { GLOBAL_ADMIN_EMAILS } from "@/lib/auth/owner";
+
+// CRM-specific additions on top of GLOBAL_ADMIN_EMAILS — mirrors backend
+// CRM_EXTRA_ADMIN_EMAILS (admin@balizero.com / admin@zantara.io / asya are
+// CRM-domain roles that are not necessarily global admins; damar is
+// frontend-only, kept for parity with the pre-existing allowlist).
+const CRM_EXTRA_ADMIN_EMAILS: ReadonlySet<string> = new Set([
   "admin@balizero.com",
   "admin@zantara.io",
   "asya@balizero.com",
   "damar@balizero.com",
-  // global admins
-  "zero@balizero.com",
-  "antonellosiano@gmail.com",
+]);
+
+const CRM_ADMIN_EMAILS: ReadonlySet<string> = new Set([
+  ...GLOBAL_ADMIN_EMAILS,
+  ...CRM_EXTRA_ADMIN_EMAILS,
 ]);
 
 export function isCRMAdmin(
