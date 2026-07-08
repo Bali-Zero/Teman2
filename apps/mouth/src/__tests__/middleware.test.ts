@@ -6,11 +6,12 @@ import { proxy } from "../proxy";
  * Helper to create NextRequest with proper host header
  * NextRequest in test environment doesn't automatically set host header from URL
  */
-function createRequest(url: string): NextRequest {
+function createRequest(url: string, extraHeaders?: Record<string, string>): NextRequest {
   const urlObj = new URL(url);
   return new NextRequest(url, {
     headers: {
       host: urlObj.host,
+      ...extraHeaders,
     },
   });
 }
@@ -444,6 +445,116 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).not.toBe(307);
       expect(response.headers.get("x-pathname")).toBe("/chat/conversation/123");
+    });
+  });
+
+  // =======================================================================
+  // SSO subdomain classification: mail/calendar/drive/knowledge.balizero.com
+  // are standalone apps (their own Vercel deploys) that mouth never actually
+  // serves — but if a request for one of them ever does reach this
+  // middleware, it must be classified as app-domain (noindex, no public-nav
+  // treatment), never as public marketing content.
+  // =======================================================================
+  describe("SSO subdomain classification (isAppDomain, not isPublicDomain)", () => {
+    const ssoHosts = [
+      "mail.balizero.com",
+      "calendar.balizero.com",
+      "drive.balizero.com",
+      "knowledge.balizero.com",
+    ];
+
+    for (const host of ssoHosts) {
+      it(`sets X-Robots-Tag noindex on ${host} (app-domain treatment, not public)`, () => {
+        // Use a non-root path: "/" hits the root->login redirect, which
+        // returns before X-Robots-Tag is set on that particular response.
+        const request = createRequest(`https://${host}/inbox`);
+        const response = proxy(request);
+
+        expect(response.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+      });
+    }
+
+    it("[innocence] a lookalike public path (balizero.com/mail) stays public, uncontaminated", () => {
+      const request = createRequest("https://balizero.com/mail");
+      const response = proxy(request);
+
+      expect(response.headers.get("X-Robots-Tag")).not.toBe(
+        "noindex, nofollow",
+      );
+    });
+  });
+
+  // =======================================================================
+  // Ghost internal routes (/email, /calendar, /knowledge, /documents) →
+  // real standalone-app subdomains. These paths have no route on kita and
+  // used to fall through to the (blog)/[category] catch-all.
+  // =======================================================================
+  describe("Ghost internal routes redirect to standalone app subdomains", () => {
+    const cases: Array<[string, string]> = [
+      ["/email", "https://mail.balizero.com/"],
+      ["/calendar", "https://calendar.balizero.com/"],
+      ["/knowledge", "https://knowledge.balizero.com/"],
+      ["/documents", "https://drive.balizero.com/"],
+    ];
+
+    for (const [from, to] of cases) {
+      it(`redirects 302 kita.balizero.com${from} → ${to}`, () => {
+        const request = createRequest(`https://kita.balizero.com${from}`);
+        const response = proxy(request);
+
+        expect(response.status).toBe(302);
+        expect(response.headers.get("location")).toBe(to);
+      });
+    }
+
+    it("preserves deep path and query when redirecting /calendar/event/123", () => {
+      const request = createRequest(
+        "https://kita.balizero.com/calendar/event/123?tab=details",
+      );
+      const response = proxy(request);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe(
+        "https://calendar.balizero.com/event/123?tab=details",
+      );
+    });
+
+    it("does not redirect unrelated app-domain routes (e.g. /dashboard)", () => {
+      const request = createRequest("https://kita.balizero.com/dashboard");
+      const response = proxy(request);
+
+      expect(response.status).not.toBe(302);
+      expect(response.headers.get("x-pathname")).toBe("/dashboard");
+    });
+  });
+
+  // =======================================================================
+  // RSC/prefetch detection (CORS console-error fix): the `_rsc` query param
+  // and `RSC`/`Next-Router-Prefetch` headers are stripped by Next.js before
+  // middleware runs in production, so `Accept: text/x-component` is the only
+  // signal that survives — this pair proves the fix is neither too broad nor
+  // too narrow.
+  // =======================================================================
+  describe("RSC/prefetch detection via Accept header", () => {
+    it("[guilt] returns 204 (not 301) for a real RSC fetch on a cross-origin redirect", () => {
+      const request = createRequest("https://kita.balizero.com/contact", {
+        accept: "text/x-component",
+      });
+      const response = proxy(request);
+
+      expect(response.status).toBe(204);
+    });
+
+    it("[innocence] still returns 301 for a real browser navigation (Accept: text/html)", () => {
+      const request = createRequest("https://kita.balizero.com/contact", {
+        accept: "text/html,application/xhtml+xml",
+      });
+      const response = proxy(request);
+
+      expect(response.status).toBe(301);
+      expect(response.headers.get("location")).toBe(
+        "https://balizero.com/contact",
+      );
     });
   });
 

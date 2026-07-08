@@ -15,9 +15,6 @@ const INTERNAL_ROUTES = [
   "/dashboard",
   "/clients",
   "/process",
-  "/documents",
-  "/email",
-  "/knowledge",
   "/settings",
   "/team-management", // workspace team management (not /team which is public)
   "/whatsapp",
@@ -26,9 +23,18 @@ const INTERNAL_ROUTES = [
   "/portal",
   "/analytics",
   "/intelligence",
-  "/calendar",
   "/notifications",
 ];
+
+// /email, /calendar, /knowledge, /documents are NOT routes on kita — they map
+// 1:1 to standalone apps on their own subdomains (mail/calendar/knowledge/
+// drive.balizero.com). See APP_SUBDOMAIN_ROUTE_MAP in the APP DOMAIN block.
+const APP_SUBDOMAIN_ROUTE_MAP: Record<string, string> = {
+  "/email": "mail.balizero.com",
+  "/calendar": "calendar.balizero.com",
+  "/knowledge": "knowledge.balizero.com",
+  "/documents": "drive.balizero.com",
+};
 
 // Public routes for balizero.com
 const PUBLIC_CATEGORIES = [
@@ -54,7 +60,12 @@ const ZANTARA_DOMAIN = "zantara.balizero.com";
 const VISA_DOMAIN = "visa.balizero.com";
 const TAX_DOMAIN = "tax.balizero.com";
 const ASSESSMENT_DOMAIN = "subhi.balizero.com";
-// SSO subdomains: all *.balizero.com apps that share auth via cookie
+// SSO subdomains: standalone apps on *.balizero.com that share auth via cookie.
+// mouth does not serve these hostnames directly (each is its own Vercel deploy
+// that redirects unauthenticated visitors to kita.balizero.com/login?redirect=...),
+// but they must stay classified as isAppDomain (not isPublicDomain) so a request
+// that somehow reaches this middleware for one of them doesn't get treated as
+// public marketing content.
 const SSO_SUBDOMAINS = ["mail", "calendar", "drive", "knowledge"];
 
 // Scraper detection — classify requests as human, welcome bot, or suspicious
@@ -67,13 +78,20 @@ const SCRAPER_SIGNATURES =
  * Detect RSC/prefetch requests that should NOT be cross-origin redirected.
  * Next.js Link prefetches trigger RSC fetches; redirecting these cross-origin
  * causes CORS errors that flood the console and slow down the page.
+ *
+ * The `_rsc` query param and `RSC`/`Next-Router-Prefetch` headers are stripped
+ * by Next.js before requests reach middleware in production builds, so none of
+ * them ever match live. The one signal that survives is the `Accept` header:
+ * Next.js's RSC fetch client always sends `Accept: text/x-component`, while a
+ * real browser navigation sends `Accept: text/html`. Match on that.
  */
 function isRSCOrPrefetch(request: NextRequest): boolean {
   return (
     request.nextUrl.searchParams.has("_rsc") ||
     request.headers.get("RSC") === "1" ||
     request.headers.get("Next-Router-Prefetch") === "1" ||
-    request.headers.get("Purpose") === "prefetch"
+    request.headers.get("Purpose") === "prefetch" ||
+    (request.headers.get("accept") || "").includes("text/x-component")
   );
 }
 
@@ -375,27 +393,6 @@ export function proxy(request: NextRequest) {
 
   // === APP DOMAIN (kita.balizero.com) ===
   if (isAppDomain) {
-    // === SSO SUBDOMAINS (mail/calendar/drive/knowledge.balizero.com) ===
-    // These subdomains don't have their own routes — redirect to kita.balizero.com
-    // with the appropriate deep-link path. Auth is handled by kita's workspace layout
-    // which reads the httpOnly cookie shared across .balizero.com.
-    if (isSSOSubdomain) {
-      // Map subdomain → internal route on kita
-      const subdomainRouteMap: Record<string, string> = {
-        mail: "/email",
-        calendar: "/calendar",
-        drive: "/documents",
-        knowledge: "/knowledge",
-      };
-      const targetRoute = subdomainRouteMap[subdomain] || "/inbox";
-      // Preserve any path after the root (e.g. calendar.balizero.com/event/123 → /calendar/event/123)
-      const deepPath =
-        pathname === "/" ? targetRoute : `${targetRoute}${pathname}`;
-      const kitaUrl = new URL(deepPath, `https://${APP_DOMAIN}`);
-      kitaUrl.search = request.nextUrl.search;
-      return NextResponse.redirect(kitaUrl, 302);
-    }
-
     // prime.balizero.com → rewrite to /prime (keeps subdomain, no redirect)
     if (subdomain === "prime") {
       const rewritePath = pathname === "/" ? "/prime" : `/prime${pathname}`;
@@ -435,6 +432,23 @@ export function proxy(request: NextRequest) {
       );
       redirectResponse.headers.set("x-pathname", pathname);
       return redirectResponse;
+    }
+
+    // Redirect ghost internal routes (/email, /calendar, /knowledge, /documents)
+    // to their real standalone-app subdomains. These paths have no route on kita
+    // and previously fell through to the (blog)/[category] catch-all, rendering
+    // "Category not found" with public nav instead of the actual app.
+    for (const [routePrefix, targetHost] of Object.entries(
+      APP_SUBDOMAIN_ROUTE_MAP,
+    )) {
+      if (pathname === routePrefix || pathname.startsWith(`${routePrefix}/`)) {
+        const deepPath = pathname.slice(routePrefix.length) || "/";
+        const targetUrl = new URL(deepPath, `https://${targetHost}`);
+        targetUrl.search = request.nextUrl.search;
+        const redirectResponse = NextResponse.redirect(targetUrl, 302);
+        redirectResponse.headers.set("x-pathname", pathname);
+        return redirectResponse;
+      }
     }
 
     // On app domain, redirect public content to main domain
