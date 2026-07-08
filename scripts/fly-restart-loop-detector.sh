@@ -51,14 +51,16 @@ mkdir -p "$(dirname "$STATE_FILE")" "$(dirname "$LOG_FILE")"
 
 log() { echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] $*" | tee -a "$LOG_FILE"; }
 
+# cohort-3: routes through the notification gateway. Fly machine flapping
+# (W60) = prod issue → tier p0; this script keeps its own cooldown. Plain text.
 tg_alert() {
     local text="$1"
-    [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]] && return 1
-    curl -sS -m 10 -X POST \
-        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${TELEGRAM_CHAT_ID}" \
-        -d "text=${text}" \
-        -d "parse_mode=HTML" >/dev/null || log "telegram: post failed"
+    local gateway
+    gateway="$(dirname "$0")/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    python3 "$gateway" --tier p0 --source fly-restart-loop \
+        --dedup-key "fly-restart-loop" -- "$text" \
+        >/dev/null 2>&1 || log "telegram: gateway send failed"
 }
 
 cooldown_active() {
@@ -92,7 +94,7 @@ for app in "${APPS[@]}"; do
         log "$app: fly status failed — $raw"
         cli_failures=$((cli_failures + 1))
         if ! cooldown_active "${app}_unreachable"; then
-            alerts+=("🛫 <b>${app}</b>: fly status CLI failed")
+            alerts+=("🛫 ${app}: fly status CLI failed")
             cooldown_set "${app}_unreachable"
         fi
         continue
@@ -143,7 +145,7 @@ print(f'total={total}|started={started}|bad_states={\",\".join(not_started) or \
     if (( trigger_alert )); then
         if ! cooldown_active "${app}_bad"; then
             joined_reasons=$(printf '%s\n  • ' "${alert_reasons[@]}")
-            alerts+=("🛫 <b>${app}</b>:"$'\n'"  • ${joined_reasons%???}")
+            alerts+=("🛫 ${app}:"$'\n'"  • ${joined_reasons%???}")
             cooldown_set "${app}_bad"
         fi
     fi
@@ -170,7 +172,7 @@ cat > "$STATE_FILE" <<EOF
 EOF
 
 if (( ${#alerts[@]} > 0 )); then
-    msg="🚨 <b>Fly.io Health (${#alerts[@]} apps)</b>"$'\n\n'
+    msg="🚨 Fly.io Health (${#alerts[@]} apps)"$'\n\n'
     for line in "${alerts[@]}"; do
         msg+="$line"$'\n\n'
     done

@@ -5,21 +5,25 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 34 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 41 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
 | [`2026-05-20-wr2-zombie-fix.md`](2026-05-20-wr2-zombie-fix.md) | WR2 Supervisor Zombie Fix — 2026-05-20 |
 | [`2026-06-03-residual-ops-hub.md`](2026-06-03-residual-ops-hub.md) | Residual Ops Hub — 2026-06-03 (post 3-ondate armata) |
 | [`agent-worktree-broker.md`](agent-worktree-broker.md) | Runbook — Agent Worktree Broker |
+| [`arsenal-probe.md`](arsenal-probe.md) | Arsenal Probe — seat liveness runbook |
+| [`autonomous-agents-decision-sheet.md`](autonomous-agents-decision-sheet.md) | Tier-1 "Autonomous" Agents — arm-or-retire decision sheet (TAC-2 A13) |
 | [`autonomous-lab-runtime-placement.md`](autonomous-lab-runtime-placement.md) | Autonomous Lab Runtime Placement |
 | [`codex-nuzantara-profiles.md`](codex-nuzantara-profiles.md) | Runbook - Codex Nuzantara Profiles |
 | [`competitor-scrape-manual.md`](competitor-scrape-manual.md) | Runbook: Scraping Kompetitor Instagram Manual |
 | [`dropbox-intake.md`](dropbox-intake.md) | Dropbox → Google Drive Intake |
 | [`grafana-sota-setup.md`](grafana-sota-setup.md) | SOTA Social dashboard — Grafana setup |
+| [`healer-organ.md`](healer-organ.md) | Healer organ — autonomous cure loop (Mini-Pro2) |
 | [`home-bridge-sync.md`](home-bridge-sync.md) | HOME-bridge sync antibody |
 | [`intake-review-pro-reader.md`](intake-review-pro-reader.md) | Runbook — Intake-Review Pro Reader (Fix #1) |
 | [`intel-lake-perfect-prod.md`](intel-lake-perfect-prod.md) | Runbook — Intel Lake pipeline (operatore non-dev) |
+| [`jules-dispatch.md`](jules-dispatch.md) | Jules dispatch — the active arm for Google's async cloud implementer |
 | [`l5-2-phase2b-auto-trigger.md`](l5-2-phase2b-auto-trigger.md) | L5.2 Phase 2b auto-trigger runbook |
 | [`lead-intent-matcher.md`](lead-intent-matcher.md) | Lead intent matcher — runbook |
 | [`m5-local-postgres.md`](m5-local-postgres.md) | Runbook — M5 local PostgreSQL |
@@ -27,14 +31,17 @@
 | [`my-balizero-first-client-onboarding.md`](my-balizero-first-client-onboarding.md) | My Bali Zero First-Client Onboarding Runbook |
 | [`openclaw-whatsapp-eval-loop.md`](openclaw-whatsapp-eval-loop.md) | OpenClaw WhatsApp Eval Loop |
 | [`openclaw-zantara-scientific-team.md`](openclaw-zantara-scientific-team.md) | OpenClaw/Zantara WhatsApp Scientific Team |
+| [`organism-digest.md`](organism-digest.md) | Organism digest — the session-boot "what changed" receptor |
 | [`prod-crm-smoke.md`](prod-crm-smoke.md) | Production CRM Smoke Runbook |
 | [`proprioception-boundary-recon.md`](proprioception-boundary-recon.md) | Proprioception — the boundary-reconciliation organ |
+| [`qdrant-estate-reconciliation.md`](qdrant-estate-reconciliation.md) | Qdrant estate reconciliation — defined vs live (TAC-2 A6) |
 | [`redis-lease-registry.md`](redis-lease-registry.md) | Redis Lease Registry (SOTA wave 2026-05-24) |
 | [`repomap-and-branch-cleanup.md`](repomap-and-branch-cleanup.md) | Repomap auto-injection + Branch graveyard cleanup |
 | [`review-gate.md`](review-gate.md) | Runbook — Review-gate (Pro-side tri-LLM review-only) |
 | [`runtime-dev-checkout-split.md`](runtime-dev-checkout-split.md) | Runtime/Dev checkout split — runbook (P0 shipped, P1/P2 operator-gated) |
 | [`sota-loop-90gg-operations.md`](sota-loop-90gg-operations.md) | SOTA Social Loop 90gg — Operations Runbook |
 | [`synthetic-probe-cleanup.md`](synthetic-probe-cleanup.md) | Runbook — Synthetic probe cleanup emergency |
+| [`telegram-notification-gateway.md`](telegram-notification-gateway.md) | Telegram notification gateway — tg_notify / tg_digest_flush / lint |
 | [`voice-concierge-local-audio.md`](voice-concierge-local-audio.md) | Runbook — Voice concierge local audio |
 | [`wa-media-pull-worker.md`](wa-media-pull-worker.md) | Runbook — WhatsApp media PULL worker (Anello 1, sovereign-local) |
 | [`wa-mirror-account-relink.md`](wa-mirror-account-relink.md) | Runbook — wa-mirror account re-link (QR) |

@@ -15,7 +15,10 @@ DRAFT_MODEL="mlx-community/Qwen3-0.6B-4bit"
 NUM_DRAFT="2"
 HOST="127.0.0.1"
 PORT="8080"
-LOG="$HOME/mlx-server.log"
+# ~/logs is the fleet-wide log home (TAC-2 A3: the canon logged to $HOME root —
+# a decoy-log-path in the making — while the live HOME copies already used ~/logs).
+LOG="$HOME/logs/mlx-server.log"
+mkdir -p "$HOME/logs"
 
 log() { echo "[$(/bin/date '+%Y-%m-%dT%H:%M:%S')] supervisor: $*" >> "$LOG"; }
 

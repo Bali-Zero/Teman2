@@ -526,6 +526,7 @@ async def test_rollback_commit_undoes_document(pool, seed, monkeypatch):
         ("bank_statement", "other", "99_Misc"),
         ("medical_insurance", "other", "99_Misc"),
         ("npwp", "tax", "03_Tax"),
+        ("skt", "tax", "03_Tax"),
     ],
 )
 def test_company_doc_category_maps_to_company_folder(

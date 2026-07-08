@@ -77,6 +77,15 @@ OURS_RE = re.compile(r"\b(nuzantara|balizero)\b", re.IGNORECASE)
 # often is itself suspicious (the stale-interactive-run smell). 3 days default.
 STALE_GREEN_SEC = 3 * 24 * 3600
 
+# TAC-2 A2 (2026-07-05): a failure marker only counts if the log that carries it
+# was written RECENTLY. Without this gate, an err-log never appended again after
+# a TCC re-grant keeps its old "Operation not permitted" tail forever and the
+# detector holds a CURED organ hostage as DEAD-* (the "stale W84 marker" bug —
+# proprioception kept an already-cured M5 job sick for days). A job that is
+# STILL failing re-appends the marker on every attempt, so its log mtime stays
+# fresh and the gate never hides a live failure.
+MARKER_FRESH_SEC = int(os.environ.get("W84_MARKER_FRESH_SEC", str(48 * 3600)))
+
 
 def _launchctl_status(label: str) -> dict | None:
     """Return the parsed `launchctl list <label>` dict, or None if not loaded."""
@@ -166,18 +175,25 @@ def _program_path(plist: Path) -> str | None:
     return args[0] if args else None
 
 
-def _log_has_failure_marker(paths: list[Path]) -> str | None:
+def _log_has_failure_marker(paths: list[Path], now: float | None = None) -> str | None:
     """Return the matched line if any log tail proves the WORKER failed to launch.
 
     Two-tier: the high-signal launcher-failure shape (`/bin/bash: /path: reason`)
     OR a specific TCC/exec marker. Generic shell noise (`gh: command not found` from
     .zshenv) is deliberately NOT matched — that was the cry-wolf bug. We do NOT bare-
     except: an unreadable log is reported as no-marker, but the read error itself is
-    not swallowed into a misleading 'healthy' (the irony the TAC caught in v1)."""
+    not swallowed into a misleading 'healthy' (the irony the TAC caught in v1).
+
+    Freshness gate (TAC-2 A2): a log whose mtime is older than MARKER_FRESH_SEC is
+    archaeology, not evidence — its marker is ignored so a cured job stops being
+    reported dead once its failure stops re-occurring."""
+    now = time.time() if now is None else now
     for p in paths:
         if not p.exists():
             continue
         try:
+            if (now - p.stat().st_mtime) > MARKER_FRESH_SEC:
+                continue
             tail = p.read_text(errors="replace").splitlines()[-25:]
         except OSError:
             continue

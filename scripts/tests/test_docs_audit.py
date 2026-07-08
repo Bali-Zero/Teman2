@@ -537,3 +537,138 @@ def test_stat_fallback_for_untracked_files(tmp_path):
     # Untracked → stat fallback → mtime ≈ 0 → LIVE
     assert files["docs/UNTRACKED_NEW.md"]["status"] == "LIVE"
     assert files["docs/UNTRACKED_NEW.md"]["mtime_days"] < 1
+
+
+def _init_git_repo(repo: Path, backdate_days: int = 0) -> dict:
+    """git-init `repo` in place and commit its current contents. Returns env.
+
+    `backdate_days` > 0 sets the commit's authored+committed date in the
+    past, so `git log -1 --format=%ct` (which docs_audit.py trusts over
+    `os.stat()`) reports the file as genuinely old — matching how orphan
+    aging must be done in a git-mtime-aware fixture (see
+    test_git_mtime_beats_stat_mtime for the same pattern).
+    """
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_COMMITTER_EMAIL": "t@t",
+    }
+    if backdate_days:
+        iso = time.strftime(
+            "%Y-%m-%dT%H:%M:%S", time.gmtime(time.time() - backdate_days * 86400)
+        )
+        env["GIT_AUTHOR_DATE"] = iso
+        env["GIT_COMMITTER_DATE"] = iso
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True, env=env)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True, env=env)
+    commit_cmd = ["git", "commit", "-q", "-m", "initial"]
+    if backdate_days:
+        commit_cmd += ["--date", env["GIT_AUTHOR_DATE"]]
+    subprocess.run(commit_cmd, cwd=repo, check=True, env=env)
+    return env
+
+
+def test_apply_batches_single_git_mv_call(tmp_path, monkeypatch):
+    """`apply_moves` must issue exactly ONE `git mv` subprocess call for all
+    orphans, not one call per file.
+
+    Regression for the 2026-07-07 near-miss (commit e6c5526696): a per-file
+    subprocess loop left an interruption window between files, and a killed
+    mid-loop run left some `git mv` calls applied and the rest not — the
+    partial state was later staged as 37 byte-duplicate copies under
+    docs/archive/ instead of clean moves. Batching into one call means the
+    move is effectively all-or-nothing at the git-mv step.
+    """
+    import shutil
+
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    tmp_repo = tmp_path / "repo"
+    shutil.copytree(FIXTURE_REPO, tmp_repo)
+    _init_git_repo(tmp_repo, backdate_days=120)
+
+    calls: list[list[str]] = []
+    real_run = subprocess.run
+
+    def spy_run(cmd, *args, **kwargs):
+        if isinstance(cmd, list) and "mv" in cmd:
+            calls.append(cmd)
+        return real_run(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(docs_audit.subprocess, "run", spy_run)
+
+    docs = docs_audit.walk_docs(tmp_repo)
+    rows = [
+        docs_audit.classify(d, tmp_repo, 90, ["docs/WHITELIST_KEEPER.md"], [], {})
+        for d in docs
+    ]
+    moved = docs_audit.apply_moves(tmp_repo, rows, use_git=True)
+
+    git_mv_calls = [c for c in calls if c[:2] == ["git", "-C"] and "mv" in c]
+    assert len(git_mv_calls) == 1, (
+        f"Expected exactly one batched `git mv` call, got {len(git_mv_calls)}: "
+        f"{git_mv_calls}"
+    )
+    assert moved >= 1
+
+    # No duplicate: the orphan must exist ONLY at its new archive path, never
+    # at both the old canonical path and the new one simultaneously.
+    old_path = tmp_repo / "docs" / "ORPHAN_OLD.md"
+    assert not old_path.exists()
+    archived = list((tmp_repo / "docs" / "archive").rglob("ORPHAN_OLD.md"))
+    assert len(archived) == 1
+
+
+def test_regen_only_flag_never_moves_files(tmp_path):
+    """`--regen-only` must rewrite DOCS_INVENTORY.md but never touch docs/archive/."""
+    import shutil
+
+    tmp_repo = tmp_path / "repo"
+    shutil.copytree(FIXTURE_REPO, tmp_repo)
+    _init_git_repo(tmp_repo, backdate_days=120)
+
+    before = sorted(p.name for p in (tmp_repo / "docs" / "archive").rglob("*.md"))
+
+    result = _run_audit(
+        tmp_repo,
+        "--whitelist",
+        "docs/WHITELIST_KEEPER.md",
+        "--orphan-days",
+        "90",
+        "--regen-only",
+    )
+    assert result.returncode in (0, 1), result.stderr
+
+    after = sorted(p.name for p in (tmp_repo / "docs" / "archive").rglob("*.md"))
+    assert before == after, "‑‑regen-only must not move any file into docs/archive/"
+    assert (tmp_repo / "docs" / "ORPHAN_OLD.md").exists(), (
+        "orphan candidate must remain at its canonical path under --regen-only"
+    )
+    inventory = tmp_repo / "docs" / "DOCS_INVENTORY.md"
+    assert inventory.exists()
+    assert "ORPHAN_OLD.md" in inventory.read_text()
+
+
+def test_regen_only_rejects_apply(tmp_path):
+    """--regen-only + --apply is a contradiction; must exit non-zero, not silently pick one."""
+    import shutil
+
+    tmp_repo = tmp_path / "repo"
+    shutil.copytree(FIXTURE_REPO, tmp_repo)
+    result = _run_audit(tmp_repo, "--regen-only", "--apply")
+    assert result.returncode != 0
+    assert "mutually exclusive" in (result.stderr + result.stdout)
+
+
+def test_regen_only_rejects_check(tmp_path):
+    """--regen-only + --check is a contradiction (one always writes, one never does)."""
+    import shutil
+
+    tmp_repo = tmp_path / "repo"
+    shutil.copytree(FIXTURE_REPO, tmp_repo)
+    result = _run_audit(tmp_repo, "--regen-only", "--check")
+    assert result.returncode != 0
+    assert "mutually exclusive" in (result.stderr + result.stdout)

@@ -52,6 +52,7 @@ Stdlib-only, runs on macOS system python3 (3.9+).
 from __future__ import annotations
 
 import argparse
+import filecmp
 import json
 import os
 import plistlib
@@ -85,6 +86,37 @@ ENV_SPECIFIC_KEYS = (
 
 # Interpreters whose argv[1] is the real payload (best-effort, report-only).
 INTERPRETERS = ("bash", "zsh", "sh", "python", "python3", "env", "node")
+
+# Roots that plausibly host launchd wrapper/canon scripts, walked RECURSIVELY
+# (basename match). A flat top-level-only search (pre-2026-07-07) missed real
+# canons living one level deeper — infra/healer/, infra/mini-scripts/,
+# scripts/mini-migration/, apps/backend-rag/scripts/ — and mis-flagged 7 of 15
+# live findings as "no repo canon" while a byte-identical twin existed nearby.
+# apps/*/scripts (not all of apps/) mirrors the top-level scripts/ convention
+# without walking the ~36k-file app source trees.
+CANON_EXCLUDE_DIRNAMES = {
+    "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache",
+    "dist", "build", ".next", ".git", ".worktrees",
+}
+
+
+def _build_canon_index(repo_dir: Path) -> dict:
+    """basename -> sorted candidate repo paths, built once per run (not once
+    per target — the walk cost is paid a single time)."""
+    index: dict = {}
+    roots = [repo_dir / "scripts", repo_dir / "infra"]
+    if (repo_dir / "apps").is_dir():
+        roots.extend(sorted((repo_dir / "apps").glob("*/scripts")))
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in CANON_EXCLUDE_DIRNAMES]
+            for fn in filenames:
+                index.setdefault(fn, []).append(Path(dirpath) / fn)
+    for paths in index.values():
+        paths.sort(key=str)
+    return index
 
 # Path fragments that mark a RUNTIME (venv interpreter, pyenv shim…), not a
 # payload: a `~/venvs/x/bin/python` under $HOME is infrastructure, not a
@@ -262,6 +294,22 @@ def reconcile(
     repo_root = repo_dir.resolve()
     deploy_root = (home / "Desktop" / "nuzantara-deploy").resolve()
 
+    # Canon index for wrapper scripts (basename match, built once). A HOME
+    # target whose repo canon is byte-identical is NOT a fork — it is the
+    # W84-safe placement (launchd payloads deliberately live OUTSIDE ~/Desktop
+    # because launchd can lose its TCC grant there). The disease is DRIFT,
+    # not location.
+    canon_index = _build_canon_index(repo_dir)
+
+    def _repo_canon_for(target: Path) -> Optional[Path]:
+        candidates = canon_index.get(target.name)
+        if not candidates:
+            return None
+        for cand in candidates:
+            if filecmp.cmp(str(cand), str(target), shallow=False):
+                return cand
+        return candidates[0]
+
     live: dict = {}      # label -> {file, plist}
     junk: list = []
     archive_dirs: list = []
@@ -304,6 +352,7 @@ def reconcile(
 
     broken_target = []
     home_fork_target = []
+    canon_paired = []
     repo_divergent = []
     repo_symlinked = []
 
@@ -328,7 +377,17 @@ def reconcile(
                 continue
             if _is_under(rp, agents_dir.resolve()):
                 continue
-            home_fork_target.append({"label": label, "file": f.name, "target": t})
+            canon = _repo_canon_for(rp)
+            if canon is not None and filecmp.cmp(str(canon), str(rp), shallow=False):
+                canon_paired.append({"label": label, "file": f.name, "target": t,
+                                     "canon": str(canon.relative_to(repo_root))})
+            else:
+                detail = (
+                    f"DIVERGED from canon {canon.relative_to(repo_root)}" if canon is not None
+                    else "no repo canon (basename not found under scripts/, infra/, or apps/*/scripts/)"
+                )
+                home_fork_target.append({"label": label, "file": f.name, "target": t,
+                                         "detail": detail})
             break
 
         twin = repo_infra / f.name
@@ -358,6 +417,7 @@ def reconcile(
         "present_not_loaded": present_not_loaded,
         "broken_target": broken_target,
         "home_fork_target": home_fork_target,
+        "canon_paired": canon_paired,
         "repo_divergent": repo_divergent,
         "repo_symlinked": repo_symlinked,
     }
@@ -433,7 +493,12 @@ def render_markdown(report: dict, verdicts) -> str:
     )
     section(
         "HOME-fork target (superscar #1)", report["home_fork_target"],
-        lambda h: f"- `{h['label']}` → `{h['target']}` (under $HOME, outside repo/deploy, not a repo symlink)",
+        lambda h: f"- `{h['label']}` → `{h['target']}` ({h.get('detail', 'under $HOME, outside repo/deploy, not a repo symlink')})",
+    )
+    section(
+        "Canon-paired HOME target (byte-identical to repo canon — W84-safe placement, not a fork)",
+        report.get("canon_paired", []),
+        lambda h: f"- `{h['label']}` → `{h['target']}` == `{h['canon']}`",
     )
     section(
         "Repo-divergent (env-specific keys excluded)", report["repo_divergent"],
@@ -539,6 +604,7 @@ def main(argv=None) -> int:
             f"{len(report['present_not_loaded'])} not-loaded, "
             f"{len(report['broken_target'])} broken-target, "
             f"{len(report['home_fork_target'])} home-fork, "
+            f"{len(report.get('canon_paired', []))} canon-paired, "
             f"{len(report['repo_divergent'])} repo-divergent. "
             f"Report: {out}"
             + (f" — APPLIED: deleted {len(deleted)}" if args.apply else "")

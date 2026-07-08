@@ -289,11 +289,6 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
         daemon=False,
     ),
     BridgedLaunchAgent(
-        label="com.balizero.wr2.canva-token-watchdog",
-        organ_id="wr2.canva_token_watchdog_launchd",
-        daemon=False,
-    ),
-    BridgedLaunchAgent(
         label="com.balizero.wr2.daily-metrics",
         organ_id="wr2.daily_metrics",
         daemon=False,

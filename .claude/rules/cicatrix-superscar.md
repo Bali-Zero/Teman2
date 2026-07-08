@@ -35,6 +35,10 @@ invece che dal repo; path assoluti con username specifico (`/Users/nuzantara/`, 
 **ANTIDOTO:** lint CI che fallisce se un file eseguito-live diverge (`cmp -s`) dalla versione tracciata
 su git, o se una config live punta a un path-HOME invece che al repo. Divieto di cold-copy di ambienti
 tra macchine.
+**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, #1970):** `scripts/lint_home_fork.py` — `--check` sha256 su
+coppie dichiarate (`infra/home-fork/declared-pairs.json`, 11 coppie, merge runtime con proprioception),
+`--discover` payload HOME-eseguiti non dichiarati da plist+crontab (classificatore payload-vs-dato,
+`.worktrees/*`=finding W81), exit 1|2|4 fail-visible; primo run live: 18 payload non dichiarati + 1 fork viva (mlx).
 
 **MEMBRI:** W50/W51/W52 (madre — wrapper/plist/script fork) · W68/W72/W73 (bridge `~/.openclaw/bin/`) ·
 W70 (path-drift `Projects/nuzantara` Air) · W76 (repomap cron su checkout stale) · M5-dev-env (venv+marketplace
@@ -62,6 +66,9 @@ ci sono prove-di-vita. _(Regola madre: «green ≠ working — leggi l'OUTPUT, n
 esiste ma non è merged/installed/propagated/armed/committed è **sospeso, non vivo**. Antidoto della famiglia
 "Armamento Sospeso": un _reconciliation-report_ (segnalatore, non auto-attuatore) che allarma su
 "costruito-ma-non-attivato >48h", distinguendo il firebreak legittimo (publish/Legge-5/business) dal debito tecnico.
+**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, #1972):** `scripts/pending_arms_report.py` — parsa il ledger
+`PENDING-ARMS.md`, allarma su righe aperte >48h classificate TECH-DEBT vs OPERATOR-GATED vs FIREBREAK;
+segnalatore puro (mai scrive), `--strict` exit 1 solo su debito overdue.
 
 **MEMBRI:** W74 (reflexion cron-theater F21 + evoskill 0-pressure F18) · W69 (decadimento entropico
 inosservabile / required-checks disarmati) · W64/W34 (asyncpg silent-death, manca `InterfaceError`) ·
@@ -93,14 +100,19 @@ limitrofo) **E** di colpevolezza. Match su **entità/intento**, mai bare-substri
 (`_contains_any_word`) o intento compositivo [over]; **fact-key strutturato** (codice KBLI / sigla visto /
 numero-norma, language-invariant) con anchor tolleranti a contesto-tabella [under]. Escape negative-gating
 (default passthrough). Nessuna superficie esclusa "per dopo" senza un secondo guardiano che la copra.
+**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, #1973 merged 07-06):** `infra/guard-conformance/`
+(registry.json + check_guard_conformance.py + CI `guard-conformance.yml`): guardia censita senza test di
+colpevolezza E innocenza = FAIL; anti-phantom W65 sui riferimenti; armed-check W81 (il workflow esegue
+direttamente W83/W84, prima non eseguiti da nessun workflow); W85 pinned da `infra/claude-hooks/test_w85_stash_readonly.py`.
 
 **MEMBRI:** W68 (villa-leasehold zoning) · W72 (B211/KITAS deflesso) · W73 (5 over-match in un colpo +
 asse linguistico) · W77 (wa-mirror, stessa classe) · W68b (`_guard_property_zoning` "lease") ·
 **W82 (UNDER-match — content-freshness-sentinel: substring + cieco alle traduzioni → fatto stale resta verde)** ·
 **W83 (OVER-match su guard di COMANDO — worktree-isolation hook: `ssh host git pull` / `cd <wt> && git` / git-verb-in-quote falsi-block; fix = `_strip_noise` pre-scan + dispatcher segment-anchored)** ·
 **W84 (OVER-match — lo `_strip_noise` di W83 usava `[^q]*` che matcha i newline → quota orfana cross-line (apostrofo IT / `ssh '...'`) fonde i comandi → phantom write-target; fix = char-class senza `\n` + classifier scarta `\`/`|`. Un fix che partorisce il bug gemello)** ·
-**W85 (OVER-match — `BLOCKED_SUBCMD_RE` ha `stash` nudo → `git stash list`/`show` read-only bloccati come `stash push`/`pop`; fix = enumerare i mutanti `stash (push|pop|apply|drop|...)` o allow-list `stash (list|show)`. TERZO over-match consecutivo della STESSA guardia in 2 giorni — la #3 sul worktree-isolation non si chiude con un fix puntuale)**.
-**→ dettaglio:** cicatrix-scars.md (W68/W72/W73/**W82**/**W83**/**W84**/**W85**) · `scar query "guard over-match"`
+**W85 (OVER-match — `BLOCKED_SUBCMD_RE` ha `stash` nudo → `git stash list`/`show` read-only bloccati come `stash push`/`pop`; fix = enumerare i mutanti `stash (push|pop|apply|drop|...)` o allow-list `stash (list|show)`. TERZO over-match consecutivo della STESSA guardia in 2 giorni — la #3 sul worktree-isolation non si chiude con un fix puntuale)** ·
+**W91 (OVER-match — l'ECCEZIONE ff-only-pull di #2022 usava `"--ff-only" in cmd_scan`: un flag citato in un COMMENTO shell apre l'eccezione per un pull NUDO — `_strip_noise` non copre i commenti; fix = `FFONLY_PULL_SEGMENT_RE` ancorata al segmento pull, stop a `|;&#\n`. QUARTO over-match della stessa guardia: anche un'eccezione è una guardia a segno invertito, vuole guilt+innocence propri)**.
+**→ dettaglio:** cicatrix-scars.md (W68/W72/W73/**W82**/**W83**/**W84**/**W85**/**W91**) · `scar query "guard over-match"`
 
 ---
 
@@ -116,6 +128,9 @@ stesso stdin che `bash -s` consuma come script (W75).
 **ANTIDOTO:** enforcing `chmod 0600` su tutta la famiglia di dotfiles (live + `.bak*`); MAI `cat` di un
 file-secret in diagnosi (leggi via codice/log/DB); minimizza la persistenza del secret sul FS locale;
 rotazione se un valore è stato world-readable storicamente.
+**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, #1971):** `scripts/secrets_permissions_audit.py` — match per
+NOME/percorso (mai apre contenuti), `.bak*` eredita la sensibilità della base, `--fix` chmod 0600 con
+re-verify, blind-scan guard exit 2 (0 file attraversati ≠ pulito, W84); primo sweep Mini: 14 file stretti.
 
 **MEMBRI:** P0 2026-06-03 (`apps/cell/.env` readable by `cat`) · W65 (skills-bridge `.bak` 64-hex key) ·
 W75 (nuz_db_refresh fly-ssh secret leak su pipe) · P0 2026-05-21 (postgres pw in 32 file) ·
@@ -177,6 +192,10 @@ contatore `runs` che CRESCE su una finestra; un figlio sano killato da SIGTERM-d
 **ANTIDOTO:** sostituire lo pseudo-demone con un **loop bloccante reale** nel wrapper (`while true; do …;
 sleep N; done`) così launchd non cicla mai; oppure, se è davvero un cron, `StartInterval` + niente
 KeepAlive. Grep `exec ` in tutto ciò che gira `KeepAlive=true`.
+**→ ESEGUIBILE (IMMUNE FORGE 2026-07-05, #1975):** `scripts/lint_plist_keepalive.py` — lint statico
+repo-side: plist tracked con KeepAlive truthy → wrapper risolto e classificato (`nohup &`=FAIL W67;
+`exec`=WARN, legittimo se il target è un server long-running — `--strict` lo eleva); exit 4 su plist
+malformati (day-1: trovato e corretto XML illegale in branch-cleanup.weekly).
 
 **MEMBRI:** W67/W67b (wa-mirror reconnect storm ~22s + retry-stop/keepalive) · W60 (Fly api machine
 flapping) · 2026-04-29 (53 LaunchAgents, solo 13% KeepAlive corretti).

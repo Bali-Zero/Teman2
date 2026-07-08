@@ -263,6 +263,31 @@ async def _current_status(conn: asyncpg.Connection, draft_id: str) -> str | None
         )
 
 
+async def _ack_outbox_if_present(payload: dict[str, Any], conn: asyncpg.Connection) -> bool:
+    """Ack durable wr2_status_change rows carried by live NOTIFY payloads."""
+    raw_outbox_id = payload.get("_outbox_id")
+    if raw_outbox_id is None:
+        return False
+    try:
+        outbox_id = int(raw_outbox_id)
+    except (TypeError, ValueError):
+        logger.warning("invalid _outbox_id in wr2 payload: %r", raw_outbox_id)
+        return False
+
+    async with _get_conn_lock():
+        result = await conn.execute(
+            """
+            UPDATE events_outbox
+               SET consumed_at = NOW()
+             WHERE id = $1
+               AND channel = 'wr2_status_change'
+               AND consumed_at IS NULL
+            """,
+            outbox_id,
+        )
+    return result == "UPDATE 1"
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # Notification handler
 # ─────────────────────────────────────────────────────────────────────────
@@ -335,6 +360,14 @@ async def _handle_payload(payload: dict[str, Any], conn: asyncpg.Connection) -> 
         await loop.run_in_executor(None, _kickstart, target)
 
 
+async def _handle_payload_and_ack(payload: dict[str, Any], conn: asyncpg.Connection) -> None:
+    """Handle a live notification, then ack its outbox row on success."""
+    await _handle_payload(payload, conn)
+    acked = await _ack_outbox_if_present(payload, conn)
+    if acked:
+        logger.debug("acked wr2_status_change outbox id=%s", payload.get("_outbox_id"))
+
+
 def _trim_dedup() -> None:
     """Bound the dedup set size to avoid unbounded growth."""
     if len(_recently_dispatched) > _RECENTLY_DISPATCHED_MAX:
@@ -361,7 +394,7 @@ def _on_notification(connection, pid, channel, payload_str):  # noqa: ARG001 —
     except json.JSONDecodeError as e:
         logger.warning("non-JSON notification on %s: %r (%s)", channel, payload_str, e)
         return
-    task = asyncio.create_task(_handle_payload(payload, connection))
+    task = asyncio.create_task(_handle_payload_and_ack(payload, connection))
     _handler_tasks.add(task)
     task.add_done_callback(_handler_tasks.discard)
     task.add_done_callback(_log_task_exception)

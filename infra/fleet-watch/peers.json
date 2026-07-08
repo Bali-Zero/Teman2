@@ -1,0 +1,10 @@
+{
+  "_doc": "fleet_watch peer map: watcher `hostname -s` (lowercase) -> peers it guards. A node absent here exits 0 (safe to install fleet-wide). Genesis 2026-07-07: the Pro went dark 5h with zero alarms because every watchdog lived on the Pro itself; the H24 Mini is the natural watcher.",
+  "mini-pro2": [
+    {
+      "name": "pro",
+      "tailscale_host": "nuzantara",
+      "ssh_alias": "pro"
+    }
+  ]
+}
