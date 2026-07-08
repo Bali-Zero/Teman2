@@ -9,6 +9,7 @@ No launchctl, no Telegram, no real LaunchAgents dir — everything injected.
 from __future__ import annotations
 
 import importlib.util
+import json
 import plistlib
 import sys
 from datetime import datetime, timedelta, timezone
@@ -137,6 +138,110 @@ def test_home_fork_target_flagged(world):
     )
     r = run_reconcile(world, loaded=None)
     assert [h["label"] for h in r["home_fork_target"]] == ["com.balizero.fork"]
+
+
+def test_home_fork_target_allow_listed_not_a_fork(world):
+    """A target matching infra/home-fork/declared-pairs.json's 'allow' patterns
+    is a known-benign non-fork (e.g. a TCC bridge with no repo canon by
+    design, live 2026-07-08: ~/scripts/mini-git-pull-bridge.sh) — must NOT
+    re-appear in home_fork_target. Superscar #3 lesson: a guard that ignores
+    the ground-truth allow-list cries wolf on a case another tool resolved."""
+    payload = world["home"] / "scripts" / "mini-git-pull-bridge.sh"
+    payload.parent.mkdir(parents=True)
+    payload.write_text("#!/bin/sh\n")
+    hf_dir = world["repo"] / "infra" / "home-fork"
+    hf_dir.mkdir(parents=True)
+    (hf_dir / "declared-pairs.json").write_text(
+        json.dumps({"pairs": [], "allow": ["~/scripts/mini-git-pull-bridge.sh"]})
+    )
+    write_plist(
+        world["agents"] / "com.nuzantara.bridge.plist",
+        "com.nuzantara.bridge",
+        program_args=[str(payload)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["home_fork_target"] == []
+    assert r["canon_paired"] == []
+
+
+def test_home_fork_target_declared_pair_live_not_a_fork(world):
+    """A target whose ~-path exactly matches a declared pair's 'live' field
+    is tracked by lint_home_fork.py's --check sha256 flow already — not a
+    second fork finding here."""
+    payload = world["home"] / "scripts" / "mini-git-pull.sh"
+    payload.parent.mkdir(parents=True)
+    payload.write_text("#!/bin/sh\n")
+    hf_dir = world["repo"] / "infra" / "home-fork"
+    hf_dir.mkdir(parents=True)
+    (hf_dir / "declared-pairs.json").write_text(json.dumps({
+        "pairs": [{
+            "live": "~/scripts/mini-git-pull.sh",
+            "repo": "scripts/mini/mini-git-pull.sh",
+            "machines": ["mini"],
+        }],
+        "allow": [],
+    }))
+    write_plist(
+        world["agents"] / "com.nuzantara.gitpull.plist",
+        "com.nuzantara.gitpull",
+        program_args=[str(payload)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["home_fork_target"] == []
+
+
+def test_declared_pair_with_matching_canon_still_reaches_canon_paired(world):
+    """Regression guard: a live path declared in 'pairs' that ALSO has a
+    byte-identical repo canon (the common case — most declared pairs are
+    exactly this) must land in canon_paired, not be silently dropped before
+    the canon check ever runs. A first draft of this fix suppressed on
+    declared_lives membership alone and ate 12 of 13 real canon_paired
+    findings on the live Mini report — this is that bug, pinned."""
+    canon = world["repo"] / "infra" / "launchagents" / "wrappers" / "mlx-server-run.sh"
+    canon.parent.mkdir(parents=True, exist_ok=True)
+    canon.write_text("#!/bin/sh\necho same\n")
+    live = world["home"] / "scripts" / "mlx-server-run.sh"
+    live.parent.mkdir(parents=True, exist_ok=True)
+    live.write_text("#!/bin/sh\necho same\n")
+    hf_dir = world["repo"] / "infra" / "home-fork"
+    hf_dir.mkdir(parents=True)
+    (hf_dir / "declared-pairs.json").write_text(json.dumps({
+        "pairs": [{
+            "live": "~/scripts/mlx-server-run.sh",
+            "repo": "infra/launchagents/wrappers/mlx-server-run.sh",
+            "machines": ["all"],
+        }],
+        "allow": [],
+    }))
+    write_plist(
+        world["agents"] / "com.balizero.mlx-server.plist",
+        "com.balizero.mlx-server",
+        program_args=[str(live)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert r["home_fork_target"] == []
+    assert [c["label"] for c in r["canon_paired"]] == ["com.balizero.mlx-server"]
+
+
+def test_home_fork_target_not_allow_listed_still_flagged(world):
+    """Guilt case: an allow-list existing elsewhere in the repo must not
+    blanket-suppress everything — only entries that actually match stay
+    unflagged; a genuinely undeclared payload is still caught."""
+    payload = world["home"] / "scripts" / "genuinely-undeclared.sh"
+    payload.parent.mkdir(parents=True)
+    payload.write_text("#!/bin/sh\n")
+    hf_dir = world["repo"] / "infra" / "home-fork"
+    hf_dir.mkdir(parents=True)
+    (hf_dir / "declared-pairs.json").write_text(
+        json.dumps({"pairs": [], "allow": ["~/scripts/mini-git-pull-bridge.sh"]})
+    )
+    write_plist(
+        world["agents"] / "com.nuzantara.undeclared.plist",
+        "com.nuzantara.undeclared",
+        program_args=[str(payload)],
+    )
+    r = run_reconcile(world, loaded=None)
+    assert [h["label"] for h in r["home_fork_target"]] == ["com.nuzantara.undeclared"]
 
 
 def test_interpreter_payload_under_home_flagged(world):
