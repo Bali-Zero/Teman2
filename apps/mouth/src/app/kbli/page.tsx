@@ -183,11 +183,16 @@ export default async function KBLIHomePage({
           {[
             { num: "1,559", label: "KBLI Codes" },
             { num: "22", label: "Industry Sectors" },
-            { num: "~30%", label: "Blocked in Bali" },
+            {
+              num: "~30%",
+              label: "Blocked in Bali",
+              hint: "Bali blocks low and medium-low-risk activities for foreign-owned companies (PT PMA) under the 13 May 2026 provincial moratorium — every code page shows its Bali verdict.",
+            },
             { num: "AI", label: "Powered by Zantara" },
           ].map((t) => (
             <div
               key={t.label}
+              title={"hint" in t ? t.hint : undefined}
               className="text-center px-6 py-4 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:bg-white/[0.05] hover:border-white/[0.1] hover:shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]"
             >
               <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">

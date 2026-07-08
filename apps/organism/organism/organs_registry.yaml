@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: c5b05f7d4295a2da20c0a9c8071612cdda33d38c343184821a36bc9a467eaa31
+checksum: 104a14e54a1201b379d174e288e00ae9488977def439652ec81c1043ef810d11
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1800,5 +1800,26 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.wr2_daily_carousel.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.fleet_watch
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: infra/launchagents/wrappers/mini-fleet-watch.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.fleet-watch
+  severity_on_silence: warning
+  notes: 'Cross-node liveness sentinel: the H24 Mini watches the Pro (tailscale+ssh
+    2-signal verdict) and raises p0 via tg gateway when a peer goes dark >30min. Genesis
+    2026-07-07: Pro dark 5h, zero alarms (its watchdogs died with it). (born via organ_birth.py,
+    genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.fleet_watch.json
     timestamp_field: ts
     status_field: status

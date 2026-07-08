@@ -70,6 +70,21 @@ Migrated in cohort-3 (2026-07-07):
 - `scripts/fly-restart-loop-detector.sh` — W60 prod flapping → p0
 - `scripts/fly-qdrant-backup.sh` — failure → p0 · success green ping → digest
 
+Migrated in cohort-4 (2026-07-07) — first TypeScript adopter:
+- `apps/wa-mirror/bridge/telegram.ts` — the live Baileys bridge daemon on Pro.
+  `sendTelegramAlert(text, logger, {tier, dedupKey})` shells out to
+  `python3 tg_notify.py` (execFile, 90s cap, best-effort). Tiers: LOGGED OUT
+  (needs QR re-link) and DB write errors >5 → p0; connected / disconnected /
+  reconnect-backoff → digest with per-account dedup, so a W67 reconnect storm
+  collapses into one digest line instead of a message flood. Gateway path
+  resolution: `WA_MIRROR_TG_GATEWAY` env override → `NUZANTARA_ROOT` →
+  ancestor walk from the module (works from both `bridge/` source and
+  `dist/bridge/` compiled) → `~/Desktop/nuzantara` fallback.
+  **Deploy leg (W81 — merged ≠ live)**: the daemon runs compiled `dist/` on
+  Pro; after merge run `git pull && npm run build` in
+  `~/Desktop/nuzantara/apps/wa-mirror` and restart the wa-mirror LaunchAgent,
+  or the old direct-sender code keeps running.
+
 Each migrated script keeps its own cooldown/state machinery; the gateway adds
 the token chain and its 6h dedup on top. **HOME-pair caveat (family #1)**: on
 Pro several of these execute from `~/scripts/` copies — after merging a cohort,
