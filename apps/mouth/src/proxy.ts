@@ -445,9 +445,10 @@ export function proxy(request: NextRequest) {
         const deepPath = pathname.slice(routePrefix.length) || "/";
         const targetUrl = new URL(deepPath, `https://${targetHost}`);
         targetUrl.search = request.nextUrl.search;
-        const redirectResponse = NextResponse.redirect(targetUrl, 302);
-        redirectResponse.headers.set("x-pathname", pathname);
-        return redirectResponse;
+        // Cross-origin (kita → mail/calendar/drive/knowledge): route through
+        // crossOriginRedirect so an RSC prefetch of <Link href="/email"> gets
+        // 204 instead of a cross-origin 302 that trips a console CORS error.
+        return crossOriginRedirect(request, targetUrl, 302);
       }
     }
 
