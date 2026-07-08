@@ -52,6 +52,7 @@ MODULE_ROUTER_NAMES: frozenset[str] = frozenset(
         "identity",
         "knowledge",
         "notifications",
+        "notifications_admin",
     }
 )
 

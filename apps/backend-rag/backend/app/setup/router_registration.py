@@ -250,6 +250,13 @@ def include_routers(api: FastAPI) -> None:
 
     api.include_router(notifications_router)
 
+    # Notifications admin router (prefix="/api/admin/notifications"). Mounted at
+    # the top level, NOT nested under notifications_router — nesting double-
+    # prefixed it to /api/notifications/api/admin/notifications/* (404).
+    from backend.app.modules.notifications.admin_router import router as notifications_admin_router
+
+    api.include_router(notifications_admin_router)
+
     # Cron notifiers (visa expiry, unpaid invoices, stale practices)
     from backend.app.routers.cron_notifiers import router as cron_notifiers_router
 
@@ -672,6 +679,12 @@ def include_light_routers(api: FastAPI) -> None:
     from backend.app.modules.notifications.router import router as notifications_router
 
     api.include_router(notifications_router)
+
+    # Notifications admin router — top-level mount (see include_routers note):
+    # nesting it double-prefixed /api/admin/notifications/* to a 404.
+    from backend.app.modules.notifications.admin_router import router as notifications_admin_router
+
+    api.include_router(notifications_admin_router)
 
     # Cron notifiers (visa expiry, unpaid invoices, stale practices)
     from backend.app.routers.cron_notifiers import router as cron_notifiers_router
