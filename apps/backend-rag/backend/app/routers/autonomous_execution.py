@@ -134,7 +134,7 @@ async def execute_plan(plan_id: str) -> PlanStatusResponse:
 async def get_plan_status(plan_id: str) -> PlanStatusResponse:
     """Get current execution status of a plan."""
     executor = get_executor()
-    plan = executor.get_plan_status(plan_id)
+    plan = await executor.get_plan_status(plan_id)
 
     if not plan:
         raise HTTPException(status_code=404, detail=f"Plan {plan_id} not found")
@@ -146,7 +146,7 @@ async def get_plan_status(plan_id: str) -> PlanStatusResponse:
 async def list_plans(user_email: str | None = None) -> PlanListResponse:
     """List all execution plans, optionally filtered by user email."""
     executor = get_executor()
-    plans = executor.list_plans(user_email=user_email)
+    plans = await executor.list_plans(user_email=user_email)
 
     return PlanListResponse(plans=plans, total=len(plans))
 
@@ -163,7 +163,7 @@ async def approve_step(
     Called from Telegram webhook callback or admin dashboard.
     """
     executor = get_executor()
-    plan = executor.get_plan_status(plan_id)
+    plan = await executor.get_plan_status(plan_id)
 
     if not plan:
         raise HTTPException(status_code=404, detail=f"Plan {plan_id} not found")
@@ -176,7 +176,7 @@ async def approve_step(
             detail=f"Step {step_id} not found in plan {plan_id}",
         )
 
-    executor.record_approval(plan_id, step_id, request.approved)
+    await executor.record_approval(plan_id, step_id, request.approved)
     action = "approved" if request.approved else "rejected"
     logger.info("Step %s in plan %s %s", step_id, plan_id, action)
 
