@@ -20,6 +20,7 @@ from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.modules.notifications.checker import ExpiryChecker
 from backend.app.modules.notifications.models import ClientInfo
 from backend.app.modules.notifications.service import NotificationService
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.internal_api_auth import verify_internal_api_key
 
 logger = logging.getLogger(__name__)
@@ -261,8 +262,10 @@ async def send_pending_alerts(
     Send all pending alerts.
     Admin only endpoint.
     """
-    # Check admin role
-    if not current_user.get("is_admin"):
+    # Check admin role (canonical is_crm_admin — same gate as the rest of the
+    # CRM; the old `.get("is_admin")` gated on a flag the auth layer never
+    # populates, 403'ing genuine admins. Bug #6 class-fix, W89).
+    if not is_crm_admin(current_user):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     try:

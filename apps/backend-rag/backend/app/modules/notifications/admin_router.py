@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.crm_utils import is_crm_admin
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +77,16 @@ class RetryResponse(BaseModel):
 
 
 def require_admin(current_user: dict) -> None:
-    """Verify user is admin."""
-    if not current_user.get("is_admin"):
+    """Verify user is a CRM admin.
+
+    Uses the canonical `is_crm_admin` check (email in admin allowlist OR role
+    in {admin, board member, ceo, founder}) — the SAME gate the rest of the
+    CRM uses. The previous `current_user.get("is_admin")` gated on a boolean
+    the auth layer never populates (`get_current_user` emits only
+    {email, user_id, role, permissions}), so it 403'd every caller including
+    genuine Founders. Bug #6, found via live prod E2E 2026-07-08.
+    """
+    if not is_crm_admin(current_user):
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
