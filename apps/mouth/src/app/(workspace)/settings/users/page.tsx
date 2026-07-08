@@ -51,7 +51,7 @@ export default function UserManagementPage() {
       return;
     }
     if (!api.isAdmin()) {
-      router.push('/dashboard');
+      router.push('/chat');
       return;
     }
     setIsAuthorized(true);

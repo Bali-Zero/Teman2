@@ -57,7 +57,7 @@ export default function SystemDashboardPage() {
       return;
     }
     if (!api.isAdmin()) {
-      router.push('/dashboard');
+      router.push('/chat');
       return;
     }
     setIsAuthorized(true);
