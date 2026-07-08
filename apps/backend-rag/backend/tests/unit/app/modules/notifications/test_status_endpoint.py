@@ -63,10 +63,11 @@ class _Pool:
 def _make_client(router, pool: _Pool, *, is_admin: bool = False) -> TestClient:
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[get_current_user] = lambda: {
-        "email": "tester@balizero.com",
-        "is_admin": is_admin,
-    }
+    # require_admin gates via the canonical is_crm_admin (role-based / email
+    # allowlist), NOT a bare `is_admin` flag the auth layer never sets (Bug #6,
+    # merged). Give the admin case a role is_crm_admin recognizes.
+    user = {"email": "tester@balizero.com", "role": "founder" if is_admin else "user"}
+    app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[get_database_pool] = lambda: pool
     return TestClient(app)
 
