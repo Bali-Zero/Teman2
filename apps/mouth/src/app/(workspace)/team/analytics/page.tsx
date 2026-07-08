@@ -3,12 +3,17 @@
 /**
  * Team Analytics Dashboard
  *
- * Comprehensive team performance analytics:
- * - Individual performance metrics
- * - Team comparisons and rankings
- * - Workload distribution
- * - Response time analytics
- * - Client satisfaction scores
+ * Individual + comparative team performance, sourced from the live CRM
+ * analytics endpoint. Every metric shown maps to a field the backend
+ * actually returns (GET /api/crm/analytics/team/performance):
+ *   member_email, total_clients, active_clients, completed_cases,
+ *   conversion_rate, revenue_generated.
+ *
+ * There is deliberately NO satisfaction / response-time / activity-feed
+ * widget here: no backend endpoint produces that data today. Adding a
+ * placeholder would surface fabricated numbers to a business-decision
+ * surface (WAVE 1.5 data-integrity). When such an endpoint ships, wire
+ * it here — do not synthesize.
  *
  * @ai_onboarding - Strict TypeScript, mobile-first design
  */
@@ -20,18 +25,11 @@ import {
   TrendingUp,
   ArrowLeft,
   Award,
-  Clock,
   Target,
   Activity,
   Loader2,
-  Download,
-  Calendar,
-  Star,
-  Zap,
   BarChart3,
-  PieChart,
-  UserCheck,
-  Mail,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -43,13 +41,7 @@ import { formatIDRCompact } from "@balizero/core/utils";
 // TYPES
 // ================================================
 
-interface TeamMember {
-  email: string;
-  full_name: string;
-  role: string;
-  avatar?: string;
-}
-
+// Mirrors backend crm_analytics.py get_team_performance() response exactly.
 interface PerformanceMetrics {
   member_email: string;
   total_clients: number;
@@ -57,20 +49,9 @@ interface PerformanceMetrics {
   completed_cases: number;
   conversion_rate: number;
   revenue_generated: number;
-  avg_response_time_hours: number;
-  satisfaction_score: number;
-  tasks_completed: number;
-  emails_sent: number;
-  meetings_held: number;
 }
 
-interface ActivityMetrics {
-  date: string;
-  emails: number;
-  calls: number;
-  meetings: number;
-  tasks: number;
-}
+type LeaderboardMetric = "revenue" | "clients" | "conversion" | "completed";
 
 // ================================================
 // COMPONENTS
@@ -80,7 +61,6 @@ const StatCard = ({
   title,
   value,
   subtitle,
-  trend,
   icon: Icon,
   color,
   loading,
@@ -88,7 +68,6 @@ const StatCard = ({
   title: string;
   value: string | number;
   subtitle?: string;
-  trend?: number;
   icon: React.ElementType;
   color: string;
   loading?: boolean;
@@ -106,13 +85,6 @@ const StatCard = ({
             <p className="text-xl sm:text-2xl font-bold mt-1">{value}</p>
             {subtitle && (
               <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-            )}
-            {trend !== undefined && (
-              <span
-                className={`text-xs font-medium ${trend >= 0 ? "text-green-500" : "text-red-500"}`}
-              >
-                {trend >= 0 ? "↑" : "↓"} {Math.abs(trend).toFixed(1)}%
-              </span>
             )}
           </>
         )}
@@ -133,7 +105,7 @@ const LeaderboardRow = ({
   rank: number;
   member: PerformanceMetrics;
   score: number;
-  metric: string;
+  metric: LeaderboardMetric;
 }) => {
   const medals = ["🥇", "🥈", "🥉"];
 
@@ -155,7 +127,9 @@ const LeaderboardRow = ({
         <p className="font-bold">
           {metric === "revenue"
             ? formatIDRCompact(score)
-            : Math.round(score).toLocaleString("en-US")}
+            : metric === "conversion"
+              ? `${score.toFixed(1)}%`
+              : Math.round(score).toLocaleString("en-US")}
         </p>
         <p className="text-xs text-muted-foreground capitalize">{metric}</p>
       </div>
@@ -223,52 +197,40 @@ export default function TeamAnalyticsPage() {
   const router = useRouter();
   const { error: showError } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<
-    "week" | "month" | "quarter" | "year"
-  >("month");
-  const [selectedMetric, setSelectedMetric] = useState<
-    "revenue" | "clients" | "conversion" | "satisfaction"
-  >("revenue");
+  const [selectedMetric, setSelectedMetric] =
+    useState<LeaderboardMetric>("revenue");
 
   const [performance, setPerformance] = useState<PerformanceMetrics[]>([]);
-  const [activity, setActivity] = useState<ActivityMetrics[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-
-      const [perfRes, activityRes] = await Promise.all([
-        api.get<PerformanceMetrics[]>("/api/crm/analytics/team/performance"),
-        api.get<ActivityMetrics[]>(
-          `/api/crm/analytics/team/activity?range=${timeRange}`,
-        ),
-      ]);
-
+      const perfRes = await api.get<PerformanceMetrics[]>(
+        "/api/crm/analytics/team/performance",
+      );
       setPerformance(perfRes);
-      setActivity(activityRes);
     } catch (err) {
       logger.error("Failed to load team analytics", {}, err as Error);
       showError("Failed to load team analytics", "Please try again later");
     } finally {
       setIsLoading(false);
     }
-  }, [timeRange, showError]);
+  }, [showError]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Calculate stats
+  // Aggregate stats — all from real fields
   const totalRevenue = performance.reduce((a, b) => a + b.revenue_generated, 0);
   const totalClients = performance.reduce((a, b) => a + b.total_clients, 0);
+  const totalCompleted = performance.reduce(
+    (a, b) => a + b.completed_cases,
+    0,
+  );
   const avgConversion =
     performance.length > 0
       ? performance.reduce((a, b) => a + b.conversion_rate, 0) /
-        performance.length
-      : 0;
-  const avgSatisfaction =
-    performance.length > 0
-      ? performance.reduce((a, b) => a + (b.satisfaction_score || 0), 0) /
         performance.length
       : 0;
 
@@ -282,13 +244,26 @@ export default function TeamAnalyticsPage() {
           return b.total_clients - a.total_clients;
         case "conversion":
           return b.conversion_rate - a.conversion_rate;
-        case "satisfaction":
-          return (b.satisfaction_score || 0) - (a.satisfaction_score || 0);
+        case "completed":
+          return b.completed_cases - a.completed_cases;
         default:
           return 0;
       }
     });
   }, [performance, selectedMetric]);
+
+  const scoreFor = (member: PerformanceMetrics): number => {
+    switch (selectedMetric) {
+      case "revenue":
+        return member.revenue_generated;
+      case "clients":
+        return member.total_clients;
+      case "conversion":
+        return member.conversion_rate;
+      case "completed":
+        return member.completed_cases;
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -308,16 +283,6 @@ export default function TeamAnalyticsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as typeof timeRange)}
-            className="px-3 py-2 rounded-lg border bg-background text-sm"
-          >
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="quarter">This Quarter</option>
-            <option value="year">This Year</option>
-          </select>
           <Button
             variant="outline"
             size="sm"
@@ -334,15 +299,13 @@ export default function TeamAnalyticsPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Total Revenue"
-            aria-label="Total Revenue"
             value={isLoading ? "-" : formatIDRCompact(totalRevenue)}
             icon={TrendingUp}
             color="green"
             loading={isLoading}
           />
           <StatCard
-            title="Active Clients"
-            aria-label="Active Clients"
+            title="Total Clients"
             value={isLoading ? "-" : totalClients}
             icon={Users}
             color="blue"
@@ -350,17 +313,15 @@ export default function TeamAnalyticsPage() {
           />
           <StatCard
             title="Avg Conversion"
-            aria-label="Avg Conversion"
             value={isLoading ? "-" : `${avgConversion.toFixed(1)}%`}
             icon={Target}
             color="purple"
             loading={isLoading}
           />
           <StatCard
-            title="Satisfaction"
-            aria-label="Satisfaction"
-            value={isLoading ? "-" : `${avgSatisfaction.toFixed(1)}/5.0`}
-            icon={Star}
+            title="Completed Cases"
+            value={isLoading ? "-" : totalCompleted}
+            icon={CheckCircle2}
             color="amber"
             loading={isLoading}
           />
@@ -378,7 +339,7 @@ export default function TeamAnalyticsPage() {
             </h2>
             <div className="flex gap-1">
               {(
-                ["revenue", "clients", "conversion", "satisfaction"] as const
+                ["revenue", "clients", "conversion", "completed"] as const
               ).map((m) => (
                 <button
                   key={m}
@@ -399,6 +360,10 @@ export default function TeamAnalyticsPage() {
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin" />
             </div>
+          ) : performance.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              No team performance data available yet.
+            </div>
           ) : (
             <div className="space-y-2">
               {sortedByMetric.slice(0, 10).map((member, idx) => (
@@ -406,15 +371,7 @@ export default function TeamAnalyticsPage() {
                   key={member.member_email}
                   rank={idx}
                   member={member}
-                  score={
-                    selectedMetric === "revenue"
-                      ? member.revenue_generated
-                      : selectedMetric === "clients"
-                        ? member.total_clients
-                        : selectedMetric === "conversion"
-                          ? member.conversion_rate
-                          : member.satisfaction_score || 0
-                  }
+                  score={scoreFor(member)}
                   metric={selectedMetric}
                 />
               ))}
@@ -438,46 +395,12 @@ export default function TeamAnalyticsPage() {
                 size={80}
               />
               <ProgressRing
-                value={
-                  performance.filter((p) => p.satisfaction_score > 4).length
-                }
+                value={performance.filter((p) => p.active_clients > 0).length}
                 max={performance.length || 1}
-                label="Top Rated"
+                label="Active Owners"
                 size={80}
               />
             </div>
-          </section>
-
-          {/* Activity Summary */}
-          <section className="bg-card rounded-xl border p-6">
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Zap className="w-5 h-5" />
-              Activity Summary
-            </h2>
-            {isLoading ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm">
-                    {activity.reduce((a, b) => a + b.emails, 0)} emails
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-4 h-4 text-green-500" />
-                  <span className="text-sm">
-                    {activity.reduce((a, b) => a + b.meetings, 0)} meetings
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <UserCheck className="w-4 h-4 text-purple-500" />
-                  <span className="text-sm">
-                    {activity.reduce((a, b) => a + b.tasks, 0)} tasks
-                  </span>
-                </div>
-              </div>
-            )}
           </section>
         </div>
       </div>
