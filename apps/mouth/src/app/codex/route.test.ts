@@ -86,7 +86,10 @@ describe('/codex door alert (guilt + innocence)', () => {
     const res = await POST(postRequest('666', { 'x-vercel-ip-country': 'IT', 'x-vercel-ip-city': 'Roma' }));
     expect(res.status).toBe(303);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
     expect(url).toContain('graph.facebook.com');
     const body = JSON.parse(String(init.body));
     expect(body.text.body).toContain('ENTRATO');
@@ -97,7 +100,11 @@ describe('/codex door alert (guilt + innocence)', () => {
     const res = await POST(postRequest('123', { 'x-vercel-ip-country': 'IT' }));
     expect(res.status).toBe(401);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const body = JSON.parse(String((fetchMock.mock.calls[0] as [string, RequestInit])[1].body));
+    const [, init] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    const body = JSON.parse(String(init.body));
     expect(body.text.body).toContain('sbagliato');
   });
 
@@ -120,4 +127,3 @@ describe('/codex door alert (guilt + innocence)', () => {
     expect(res.status).toBe(303);
   });
 });
-
