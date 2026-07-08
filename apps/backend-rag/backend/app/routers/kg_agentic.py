@@ -232,7 +232,7 @@ async def list_golden_routes(
     List all available golden routes.
     """
     try:
-        routes = orchestrator.kg_retrieval._load_golden_routes()
+        routes = orchestrator.kg_retrieval.GOLDEN_ROUTES
 
         return [
             GoldenRouteInfo(
@@ -309,7 +309,7 @@ async def kg_stats(
             edge_types = {r["relationship_type"]: r["count"] for r in edge_types_rows}
 
             # Count golden routes
-            routes = orchestrator.kg_retrieval._load_golden_routes()
+            routes = orchestrator.kg_retrieval.GOLDEN_ROUTES
 
         stats_data = {
             "total_nodes": counts["total_nodes"] or 0,
