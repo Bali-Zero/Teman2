@@ -28,6 +28,8 @@ const DISALLOW = [
   "/omnichannel",
   "/admin",
   "/login",
+  "/portal/login",
+  "/portal/login-upgraded",
   "/api/",
   "/_next/",
 ];
