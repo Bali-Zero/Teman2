@@ -22,6 +22,10 @@ Categories (multi-tag — one file can appear in several):
                       env-specific keys (EnvironmentVariables, *Path, WorkingDirectory).
   home-fork-target    live plist whose payload lives under $HOME outside the repo /
                       deploy clone and is not a symlink into them (superscar #1).
+                      Targets declared or allow-listed in
+                      infra/home-fork/declared-pairs.json are excluded — that file
+                      is the SSOT for "known, not a fork" (lint_home_fork.py already
+                      enforces it; this tool must not re-report what it resolved).
 
 What this tool does NOT do:
   - runtime health (exit codes × log content) → scripts/launchd_liveness_detector.py (W84)
@@ -53,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import filecmp
+import fnmatch
 import json
 import os
 import plistlib
@@ -131,6 +136,54 @@ def _is_runtime(path: Path) -> bool:
     return path.parent.name == "bin" and any(
         path.name.startswith(i) for i in (*INTERPRETERS, "uvicorn", "gunicorn")
     )
+
+
+def _load_home_fork_config(repo_dir: Path) -> tuple[set[str], list[str]]:
+    """Best-effort load of infra/home-fork/declared-pairs.json's declared live
+    paths + allow patterns. Read-only import; any failure degrades to empty —
+    that JSON stays the SSOT enforced by lint_home_fork.py, this is only a
+    courtesy de-dupe so this tool does not re-flag what that tool already
+    resolved (superscar #3 lesson: a guard that ignores ground-truth cries
+    wolf on known-benign targets)."""
+    config_path = repo_dir / "infra" / "home-fork" / "declared-pairs.json"
+    try:
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return set(), []
+    declared_lives = {p["live"] for p in data.get("pairs", []) if "live" in p}
+    allow = [str(a) for a in data.get("allow", [])]
+    return declared_lives, allow
+
+
+def _normalize_home_path(path: Path, home: Path) -> Optional[str]:
+    try:
+        return "~/" + str(path.relative_to(home))
+    except ValueError:
+        return None
+
+
+def _expand_home_token(token: str, home: Path) -> Path:
+    if token == "~":
+        return home
+    if token.startswith("~/"):
+        return home / token[2:]
+    return Path(token)
+
+
+def _is_declared_or_allowed(
+    path: Path, home: Path, declared_lives: set[str], allow: list[str]
+) -> bool:
+    norm = _normalize_home_path(path, home)
+    if norm is None:
+        return False
+    if norm in declared_lives:
+        return True
+    expanded = str(path)
+    for pattern in allow:
+        pat_expanded = str(_expand_home_token(pattern, home))
+        if fnmatch.fnmatch(norm, pattern) or fnmatch.fnmatch(expanded, pat_expanded):
+            return True
+    return False
 
 _NAME_STAMP_RE = re.compile(r"(20\d{6})")
 
@@ -300,6 +353,7 @@ def reconcile(
     # because launchd can lose its TCC grant there). The disease is DRIFT,
     # not location.
     canon_index = _build_canon_index(repo_dir)
+    declared_lives, home_fork_allow = _load_home_fork_config(repo_dir)
 
     def _repo_canon_for(target: Path) -> Optional[Path]:
         candidates = canon_index.get(target.name)
@@ -381,6 +435,15 @@ def reconcile(
             if canon is not None and filecmp.cmp(str(canon), str(rp), shallow=False):
                 canon_paired.append({"label": label, "file": f.name, "target": t,
                                      "canon": str(canon.relative_to(repo_root))})
+            elif canon is None and _is_declared_or_allowed(
+                rp, home, declared_lives, home_fork_allow
+            ):
+                # No repo canon AND declared/allow-listed in declared-pairs.json:
+                # a known-benign HOME-only target (TCC bridge, vendor binary,
+                # separate-repo tool) — not a fork to (re-)report. A DIVERGED
+                # canon (drift) is never suppressed by this branch — that is
+                # the disease this whole tool exists to catch (superscar #1).
+                pass
             else:
                 detail = (
                     f"DIVERGED from canon {canon.relative_to(repo_root)}" if canon is not None
