@@ -568,7 +568,9 @@ if os.getenv("ENVIRONMENT", "development").lower() != "production":
 
     router.include_router(test_router)
 
-# Include admin router
-from backend.app.modules.notifications.admin_router import router as admin_router
-
-router.include_router(admin_router)
+# NOTE: admin_router (prefix="/api/admin/notifications") is intentionally NOT
+# nested here. Nesting it under this router (prefix="/api/notifications") gave
+# the double-prefixed path /api/notifications/api/admin/notifications/* — a 404
+# for the frontend, which correctly calls /api/admin/notifications/*. It is
+# mounted at the top level in router_registration.py (its own manifest entry)
+# so its absolute prefix is honored as-is.
