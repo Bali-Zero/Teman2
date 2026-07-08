@@ -76,7 +76,7 @@ def test_null_clock_out_does_not_500() -> None:
         "hours_worked": None,
     }
     svc = _service([row])
-    out = asyncio.get_event_loop().run_until_complete(svc.get_daily_hours(datetime(2026, 7, 8)))
+    out = asyncio.run(svc.get_daily_hours(datetime(2026, 7, 8)))
     assert out[0]["clock_out"] is None
     assert out[0]["clock_in"] == "09:00"
     assert out[0]["hours_worked"] == 0.0
@@ -94,7 +94,7 @@ def test_fully_populated_row_formats_correctly() -> None:
         "hours_worked": 8.75,
     }
     svc = _service([row])
-    out = asyncio.get_event_loop().run_until_complete(svc.get_daily_hours(datetime(2026, 7, 8)))
+    out = asyncio.run(svc.get_daily_hours(datetime(2026, 7, 8)))
     assert out[0]["clock_in"] == "08:30"
     assert out[0]["clock_out"] == "17:15"
     assert out[0]["hours_worked"] == pytest.approx(8.75)
