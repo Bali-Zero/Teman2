@@ -30,7 +30,10 @@ Conditions closed here (WR2 wiring v4):
 Kill switch: system_settings.wr2_html_renderer_enabled (missing/!=true => no-op).
 Env: DATABASE_URL (required), WR2_HTML_SHADOW (1=dry-run), WR2_VISION_REQUIRED (1=enforce
 vision fail-closed), WR2_HTML_MAX_ATTEMPTS (circuit breaker, default 3),
-WR2_NOTIFY_RECIPIENTS (comma phones; default the two below), WR2_HTML_HEARTBEAT_SECS (60).
+WR2_NOTIFY_RECIPIENTS (comma phones; default the two below), WR2_HTML_HEARTBEAT_SECS (60),
+WR2_RUNTIME_SHA_GATE (C2 deploy-fork content-gate: off|warn|strict, default warn —
+warn logs provenance problems and proceeds; strict refuses impure boots and aborts
+pre-Drive when HEAD moves mid-run, releasing the lease without burning an attempt).
 """
 
 from __future__ import annotations
@@ -56,6 +59,33 @@ import asyncpg  # noqa: E402
 from backend.services.canva_renderer_v2 import _pg  # noqa: E402
 from wr2_html_renderer.claude_vision import VisionTransient  # noqa: E402
 
+# ── C2 runtime provenance (deploy-fork content-gate) — fail-open on any error ──
+# scripts/lib is not a package: importlib load, same pattern as wr2_reflexion_synthesis.
+try:
+    import importlib.util as _ilu  # noqa: E402
+
+    _rs_spec = _ilu.spec_from_file_location(
+        "wr2_runtime_stamp", str(_REPO / "scripts" / "lib" / "wr2_runtime_stamp.py")
+    )
+    runtime_stamp = _ilu.module_from_spec(_rs_spec)
+    _rs_spec.loader.exec_module(runtime_stamp)
+except Exception:  # noqa: BLE001 — provenance must never break the worker
+    runtime_stamp = None
+
+# Load-bearing modules whose LIVE content is compared blob-per-file vs HEAD (W88).
+_WATCHED_MODULES = (
+    Path(__file__),
+    _REPO / "apps" / "backend-rag" / "backend" / "services" / "canva_renderer_v2" / "_pg.py",
+    _REPO / "scripts" / "wr2_html_renderer" / "designer_loop.py",
+)
+# Populated once per run() by the boot stamp; read by the pre-Drive gate.
+_BOOT_STAMP: dict = {}
+
+
+class RuntimeStale(Exception):
+    """Strict runtime-sha gate tripped: NOT a draft defect — released without
+    burning an attempt (same no-burn contract as VisionTransient)."""
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 # Silence httpx/httpcore INFO logs that would otherwise leak the Telegram bot token in the request URL
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -68,7 +98,34 @@ TELEGRAM_OWNER_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
 
 
 # ── ops alert (NOT the carousel link — operational signal only, C6/L3) ──────────
-async def _ops_alert(text: str) -> None:
+def _tg_notify(tier: str, dedup_key: str, text: str) -> bool:
+    """Route a notification through the tg_notify gateway (tier router + digest +
+    anti-noise, PR #2067). Spool-based and fast; returns True when the gateway
+    accepted the message. NEVER raises — visibility must not break the render."""
+    try:
+        import subprocess
+
+        script = _REPO / "scripts" / "tg_notify.py"
+        if not script.is_file():
+            return False
+        cmd = [
+            sys.executable, str(script),
+            "--tier", tier, "--source", "wr2-html-apply",
+            "--dedup-key", dedup_key, text,
+        ]
+        res = subprocess.run(cmd, capture_output=True, timeout=30)
+        return res.returncode == 0
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("tg_notify failed (%s): %s", dedup_key, exc)
+        return False
+
+
+async def _ops_alert(text: str, *, tier: str = "p0", dedup_key: str = "wr2-html-ops") -> None:
+    """Operational alert. Primary path = tg_notify gateway (R8 cure: raw sendMessage
+    to the owner chat is one of 206 unread senders — the gateway tiers/dedups/digests).
+    Legacy direct Telegram kept ONLY as fallback when the gateway is absent."""
+    if _tg_notify(tier, dedup_key, text):
+        return
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not token:
         logger.warning("OPS-ALERT (no telegram token): %s", text)
@@ -83,6 +140,203 @@ async def _ops_alert(text: str) -> None:
             )
     except Exception as exc:  # never let alerting crash the worker
         logger.warning("ops alert failed: %s", text, exc_info=exc)
+
+
+# ── visibility chain (R1-R3 cure, 2026-07-07) ───────────────────────────────────
+# "rendered" must mean "on Zero's screen": durable local PNGs + review-queue entry
+# + tg_notify P0. Every rendered draft used to live ONLY in a tempdir + Drive, with
+# a WhatsApp notify that failed 24h_window_closed since 06-17 — production was
+# invisible to the human (spec docs/specs/wr2-definitiva-v1.md §0).
+
+def _slugify(topic: str, max_len: int = 60) -> str:
+    """Filesystem/queue-safe slug from a topic string."""
+    import re as _re
+
+    slug = _re.sub(r"[^a-z0-9]+", "-", topic.lower()).strip("-")
+    return slug[:max_len].rstrip("-") or "carousel"
+
+
+def _default_output_root() -> Path:
+    """The output tree the queue-server, warroom-sync and WR2 Control app read.
+    Lives in the MAIN checkout on Pro (runtime-state convention), NOT the deploy
+    clone this worker runs from — override with WR2_OUTPUT_ROOT."""
+    return Path(
+        os.environ.get(
+            "WR2_OUTPUT_ROOT",
+            str(Path.home() / "Desktop" / "nuzantara" / "apps" / "war-room" / "output"),
+        )
+    )
+
+
+def _persist_local_artifacts(
+    *,
+    draft_id: str,
+    topic: str,
+    png_paths: list[Path],
+    drive_url: str,
+    weak_count: int,
+    fact_check_status: str | None,
+    out_root: Path | None = None,
+    rendered_at: str | None = None,
+) -> Path:
+    """Copy the rendered PNGs to a durable carousel dir + write meta.json.
+    Returns the carousel dir. Raises on IO failure (caller decides severity)."""
+    import json as _json
+    import shutil
+    from datetime import datetime, timezone
+
+    root = out_root if out_root is not None else _default_output_root()
+    ts = rendered_at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    day = ts[:10]
+    slug = _slugify(topic)
+    car_dir = root / "carousel" / f"{day}-{slug}-{str(draft_id)[:8]}"
+    slides_dir = car_dir / "slides"
+    slides_dir.mkdir(parents=True, exist_ok=True)
+    # re-render of the same draft/day: clear stale PNGs so a shorter carousel
+    # does not keep ghost slides in the app preview (red-team LOW)
+    for stale in slides_dir.glob("*.png"):
+        stale.unlink()
+    for p in png_paths:
+        shutil.copy2(p, slides_dir / p.name)
+    meta = {
+        "draft_id": str(draft_id),
+        "topic": topic,
+        "slug": slug,
+        "drive_url": drive_url,
+        "slide_count": len(png_paths),
+        "weak_slides": weak_count,
+        "fact_check_status": fact_check_status,
+        "rendered_at": ts,
+        "producer": "wr2-html-apply",
+    }
+    (car_dir / "meta.json").write_text(_json.dumps(meta, indent=2), encoding="utf-8")
+    return car_dir
+
+
+def _make_queue_entry(
+    *,
+    draft_id: str,
+    topic: str,
+    carousel_dir: Path,
+    drive_url: str,
+    slide_count: int,
+    weak_count: int,
+    fact_check_status: str | None,
+    drafted_at: str,
+) -> dict:
+    """Review-queue entry per skills/bali-zero-brand/_review-queue-schema.md."""
+    slug = _slugify(topic)
+    verdict = "pass" if weak_count == 0 else "soft_fail"
+    return {
+        "id": f"carousel_{drafted_at}_{slug}",
+        "draft_id": str(draft_id),
+        "topic_slug": slug,
+        "topic": topic,
+        "drafted_at": drafted_at,
+        "carousel_path": str(carousel_dir),
+        # the queue-server preview endpoint reads slides_dir verbatim
+        # (_damar-queue-server.py:476) — omit it and the app shows no slides
+        "slides_dir": str(carousel_dir / "slides"),
+        "drive_url": drive_url,
+        "media_type": "carousel",
+        "slide_count": slide_count,
+        "critic_overall_verdict": verdict,
+        "critic_summary": (
+            f"{weak_count} weak slide(s) placed as composition debt (N-1)"
+            if weak_count else "all slides converged"
+        ),
+        "fact_check_status": fact_check_status,
+        "state": "drafted",
+        "state_history": [
+            {"state": "drafted", "at": drafted_at, "by": "wr2-html-apply"}
+        ],
+        "instagram_post_url": None,
+        "instagram_published_at": None,
+        "engagement_metrics": None,
+    }
+
+
+def _append_review_queue(entry: dict, *, queue_path: Path | None = None) -> bool:
+    """Append `entry` to human-review-queue.json atomically (fcntl lock, tmp+rename).
+    Dedup by id AND by draft_id (a re-render must not double-queue). Returns True
+    when the entry landed (False on dedup-skip). Raises on IO/corrupt-JSON so the
+    caller can alert — a corrupt queue must be VISIBLE, never silently rebuilt."""
+    import fcntl
+    import json as _json
+
+    qp = queue_path if queue_path is not None else (_default_output_root() / "queue" / "human-review-queue.json")
+    qp.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = qp.with_suffix(".lock")
+    with open(lock_path, "w", encoding="utf-8") as lock_fh:
+        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        try:
+            if qp.exists():
+                queue = _json.loads(qp.read_text(encoding="utf-8"))
+                if not isinstance(queue, list):
+                    raise ValueError(f"review queue is not a JSON array: {qp}")
+            else:
+                queue = []
+            for item in queue:
+                if not isinstance(item, dict):
+                    continue
+                if item.get("id") == entry["id"] or (
+                    entry.get("draft_id") and item.get("draft_id") == entry.get("draft_id")
+                ):
+                    return False
+            queue.append(entry)
+            tmp = qp.with_suffix(f".tmp.{os.getpid()}")
+            tmp.write_text(_json.dumps(queue, indent=2, ensure_ascii=False), encoding="utf-8")
+            os.replace(tmp, qp)
+            return True
+        finally:
+            fcntl.flock(lock_fh, fcntl.LOCK_UN)
+
+
+async def _publish_visibility(
+    *,
+    draft_id: str,
+    topic: str,
+    png_paths: list[Path],
+    drive_url: str,
+    weak_count: int,
+    fact_check_status: str | None,
+) -> None:
+    """Best-effort visibility: durable PNGs -> queue entry -> tg P0. A failure here
+    NEVER fails the render (the DB row + Drive upload are already terminal) but is
+    ALWAYS alerted — invisible production is the disease this cures."""
+    from datetime import datetime, timezone
+
+    drafted_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        car_dir = _persist_local_artifacts(
+            draft_id=draft_id, topic=topic, png_paths=png_paths,
+            drive_url=drive_url, weak_count=weak_count,
+            fact_check_status=fact_check_status, rendered_at=drafted_at,
+        )
+        entry = _make_queue_entry(
+            draft_id=draft_id, topic=topic, carousel_dir=car_dir,
+            drive_url=drive_url, slide_count=len(png_paths),
+            weak_count=weak_count, fact_check_status=fact_check_status,
+            drafted_at=drafted_at,
+        )
+        appended = _append_review_queue(entry)
+        logger.info(
+            "visibility: artifacts=%s queue_appended=%s", car_dir, appended
+        )
+        _tg_notify(
+            "p0",
+            f"wr2-carousel-{draft_id}",
+            f"🎠 Carousel pronto: {topic}\nDrive: {drive_url}\n"
+            f"Slides: {len(png_paths)} (weak={weak_count}, fact-check={fact_check_status or 'n/a'})\n"
+            f"Review: {car_dir}",
+        )
+    except Exception as exc:  # noqa: BLE001 — alert, never break the render
+        logger.warning("visibility chain failed for draft %s: %s", draft_id, exc, exc_info=exc)
+        await _ops_alert(
+            f"WR2 visibility chain FAILED for draft {draft_id} ({topic}): {exc} — "
+            f"carousel IS rendered on Drive ({drive_url}) but not queued/visible.",
+            tier="p0", dedup_key=f"wr2-visibility-fail-{draft_id}",
+        )
 
 
 # ── hero normalizer (#13): serve local hero files over localhost, rewrite image_url ──
@@ -567,6 +821,19 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             if stop.is_set():
                 raise RuntimeError("lease_lost_before_drive")
 
+            # C2 gate — BEFORE Drive, not just before persist (a blocked persist
+            # after an upload still leaves orphan Drive artifacts). Default mode
+            # is 'warn': log-only, zero pipeline effects; 'strict' is armed
+            # separately (PENDING-ARMS ledger).
+            gate_mode = os.environ.get("WR2_RUNTIME_SHA_GATE", "warn").strip().lower()
+            if runtime_stamp is not None and _BOOT_STAMP and gate_mode != "off":
+                disk_head = runtime_stamp.current_head(_REPO)
+                verdict, reason = runtime_stamp.gate_verdict(gate_mode, _BOOT_STAMP, disk_head)
+                if verdict == "warn":
+                    logger.warning("runtime-sha gate: %s (mode=warn, proceeding)", reason)
+                elif verdict == "block":
+                    raise RuntimeStale(reason)
+
             # the render just took ~15 min — main_conn may have been closed idle
             # by the pg-proxy; reconnect before the terminal write so a converged
             # carousel actually reaches status='rendered' (2026-06-12 SCAR).
@@ -595,6 +862,17 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                 recipients=recipients, message_body=msg, customer_window_hours=24,
             )
             await _log_ledger_best_effort(main_conn, draft_id)
+            # R1-R3 visibility chain: durable PNGs + review-queue entry + tg P0.
+            # WA above stays best-effort (24h-window may be closed for months);
+            # THIS is the delivery leg the human actually sees.
+            fc_status = await main_conn.fetchval(
+                "SELECT fact_check_status FROM war_room_drafts WHERE id=$1", draft_id
+            )
+            await _publish_visibility(
+                draft_id=str(draft_id), topic=str(dict(row).get("topic") or ""),
+                png_paths=png_paths, drive_url=web,
+                weak_count=len(weak_slides), fact_check_status=fc_status,
+            )
             if weak_slides:
                 # N-1: the carousel rendered + was delivered, but ≤max_weak slides
                 # carry editorial debt. Flag them for human review (the draft is in
@@ -615,6 +893,27 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                     f"Re-open by having them text +62 821-3465-159, then re-enqueue."
                 )
             return f"rendered report={report}"
+        except RuntimeStale as exc:
+            # Deploy landed mid-run / impure provenance in strict mode: the
+            # draft is healthy — release WITHOUT burning an attempt and let the
+            # next (fresh-code) invocation render it.
+            main_conn = await _ensure_live(main_conn, pool_conn_dsn)
+            await main_conn.execute(
+                """
+                UPDATE war_room_drafts
+                   SET status='drafts_imaged_checked', lease_owner=NULL,
+                       lease_acquired_at=NULL, lease_heartbeat_at=NULL, updated_at=NOW()
+                 WHERE id=$1 AND lease_owner=$2 AND status='rendering'
+                """,
+                draft_id, owner,
+            )
+            await _ops_alert(
+                f"WR2 HTML draft={draft_id} aborted by runtime-sha gate (strict): {exc} "
+                f"— draft requeued, no attempt burned. Restart/kickstart the worker "
+                f"so the next run imports the deployed code."
+            )
+            logger.warning("draft %s runtime-stale abort (no attempt burned): %s", draft_id, exc)
+            return f"runtime_stale:{exc}"
         except VisionTransient as exc:
             # transient vision-infra failure (HTTP 429 quota window OR endpoint
             # timeout) — NOT a draft defect. Release the lease WITHOUT touching
@@ -664,7 +963,12 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                     """,
                     draft_id, owner,
                 )
-                await _ops_alert(f"WR2 HTML draft={draft_id} -> render_failed after {attempts} attempts: {exc}")
+                # digest tier: the daily reconciler owns the P0 "no carousel today"
+                # escalation — per-attempt failures are informative, not actionable-now.
+                await _ops_alert(
+                    f"WR2 HTML draft={draft_id} -> render_failed after {attempts} attempts: {exc}",
+                    tier="digest", dedup_key=f"wr2-render-failed-{draft_id}",
+                )
                 return f"render_failed:{exc}"
             # record attempt + release for retry (ownership-gated so a stolen lease doesn't count)
             await main_conn.execute(
@@ -742,7 +1046,36 @@ async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
         logger.error("DATABASE_URL not set")
         return 2
 
-    owner = f"html-apply-{os.getpid()}-{uuid.uuid4().hex[:8]}"
+    # C2 boot stamp: provenance of the code THIS run imports. One-shot worker →
+    # import-time == run-time; the stamp is per-run truth. Fail-open.
+    gate_mode = os.environ.get("WR2_RUNTIME_SHA_GATE", "warn").strip().lower()
+    if runtime_stamp is not None:
+        _BOOT_STAMP.clear()
+        _BOOT_STAMP.update(runtime_stamp.compute_runtime_stamp(_REPO, _WATCHED_MODULES))
+        runtime_stamp.write_runtime_stamp("wr2.html_apply", _BOOT_STAMP)
+        impure = bool(
+            _BOOT_STAMP.get("dirty")
+            or _BOOT_STAMP.get("stale_modules")
+            or _BOOT_STAMP.get("head_sha") is None
+        )
+        if impure and gate_mode == "strict":
+            detail = (
+                f"dirty={_BOOT_STAMP.get('dirty')} stale={_BOOT_STAMP.get('stale_modules')} "
+                f"head={_BOOT_STAMP.get('head_sha')}"
+            )
+            logger.error("runtime provenance impure, strict gate → refusing to render: %s", detail)
+            await _ops_alert(f"WR2 HTML worker refused to render (strict runtime-sha gate): {detail}")
+            return 3
+        if impure:
+            logger.warning(
+                "runtime provenance impure (gate=%s): dirty=%s stale=%s",
+                gate_mode, _BOOT_STAMP.get("dirty"), _BOOT_STAMP.get("stale_modules"),
+            )
+
+    # The runtime SHA rides in the lease owner (visible in DB per rendering row).
+    # Built ONCE and passed everywhere — the CAS requires exact-string equality.
+    head12 = (_BOOT_STAMP.get("head_sha") or "nohead")[:12]
+    owner = f"html-apply-{os.getpid()}-{uuid.uuid4().hex[:8]}@{head12}"
     # R4.2 drain-loop (P-1): keep fetching batches until the queue is empty so a
     # supervisor kickstart swallowed while we are busy still gets its draft
     # processed this run (restores wr2_supervisor.py:20-22 drain assumption).

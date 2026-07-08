@@ -17,6 +17,8 @@ Coverage:
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import pytest
 
 from backend.services.agents.team_agent_config import (
@@ -29,6 +31,7 @@ from backend.services.agents.tool_authorizer import (
     AuthResult,
     ToolAuthorizer,
 )
+from backend.services.rag.agentic import tool_executor
 from backend.services.rag.agentic.tool_executor import execute_tool
 from backend.services.tools.definitions import BaseTool
 
@@ -66,6 +69,17 @@ class _NoopTool(BaseTool):
 @pytest.fixture
 def authorizer() -> ToolAuthorizer:
     return ToolAuthorizer()
+
+
+@pytest.fixture(autouse=True)
+def _isolate_tool_executor_state() -> Iterator[None]:
+    """Keep execute_tool integration assertions independent of prior test modules."""
+    original_authorizer = tool_executor._authorizer
+    original_confirmation_service = tool_executor._confirmation_service
+    tool_executor.configure_tool_executor(ToolAuthorizer(), confirmation_service=None)
+    yield
+    tool_executor._authorizer = original_authorizer
+    tool_executor._confirmation_service = original_confirmation_service
 
 
 # ─────────────────────────────────────────────────────────────────────────

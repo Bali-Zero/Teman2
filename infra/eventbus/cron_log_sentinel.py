@@ -12,7 +12,6 @@ import sys
 import json
 import logging
 import re
-import subprocess
 import time
 import threading
 from datetime import datetime, timezone
@@ -31,6 +30,11 @@ logging.basicConfig(
     handlers=[logging.FileHandler(LOG_PATH), logging.StreamHandler()],
 )
 log = logging.getLogger("cron-log-sentinel")
+
+LogRule = tuple[Path, str, Callable[[str], None]]
+STARTED_AT = time.time()
+POLL_INTERVAL_SECONDS = int(os.getenv("CRON_LOG_SENTINEL_POLL_SECONDS", "10"))
+MAX_DYNAMIC_LOGS = int(os.getenv("CRON_LOG_SENTINEL_MAX_DYNAMIC_LOGS", "3"))
 
 
 def _emit_intel_collected_for_intel_scraper(line: str) -> None:
@@ -103,10 +107,10 @@ def _emit_publish_completed_for_canva(line: str) -> None:
 
 
 # (log_file_path, completion_regex, emit_callback)
-CRON_LOG_RULES: list[tuple[Path, str, Callable[[str], None]]] = [
+CRON_LOG_RULES: list[LogRule] = [
     # intel-scraper: log line "Intel exit=0" indicates success
     (
-        Path.home() / ".openclaw/workspace/logs",  # daily rotated dir, glob-handled below
+        Path.home() / ".openclaw/workspace/logs/intel_nightly_*.log",
         r"Intel exit=0",
         _emit_intel_collected_for_intel_scraper,
     ),
@@ -131,64 +135,120 @@ CRON_LOG_RULES: list[tuple[Path, str, Callable[[str], None]]] = [
 ]
 
 
-def _resolve_log_paths(rule: tuple[Path, str, Callable]) -> list[Path]:
-    """Expand the path: if it's a directory, glob *.log; else single file."""
+def _has_glob(path: Path) -> bool:
+    """Return True when a path name includes shell glob metacharacters."""
+    return any(char in path.name for char in "*?[")
+
+
+def _resolve_log_paths(rule: LogRule) -> list[Path]:
+    """Resolve concrete log files for one rule, newest first with a sane cap."""
     path, _, _ = rule
     if path.is_dir():
-        return sorted(path.glob("*.log"))
-    return [path]
+        paths = list(path.glob("*.log"))
+    elif _has_glob(path):
+        paths = list(path.parent.glob(path.name))
+    else:
+        return [path]
+
+    files = [candidate for candidate in paths if candidate.is_file()]
+    files.sort(key=lambda candidate: candidate.stat().st_mtime, reverse=True)
+    return sorted(files[:MAX_DYNAMIC_LOGS])
+
+
+def _initial_position(path: Path) -> int:
+    """Avoid replaying old logs while still catching files created after start."""
+    stat = path.stat()
+    if stat.st_mtime >= STARTED_AT - 5:
+        return 0
+    return stat.st_size
+
+
+def _read_new_lines(path: Path, position: int) -> tuple[int, list[str]]:
+    """Read appended log lines and return the updated file offset."""
+    try:
+        stat = path.stat()
+    except FileNotFoundError:
+        return 0, []
+
+    if stat.st_size < position:
+        position = 0
+
+    if stat.st_size == position:
+        return position, []
+
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        handle.seek(position)
+        lines = handle.readlines()
+        return handle.tell(), lines
+
+
+def _watch_rule(rule: LogRule) -> None:
+    """Poll one log rule without spawning a child tail process per file."""
+    path_spec, regex, callback = rule
+    pattern = re.compile(regex)
+    positions: dict[Path, int] = {}
+    last_emit_at: dict[Path, float] = {}
+
+    log.info("watching %s for /%s/", path_spec, regex)
+    while True:
+        paths = _resolve_log_paths(rule)
+        active_paths = set(paths)
+        for stale_path in set(positions) - active_paths:
+            positions.pop(stale_path, None)
+            last_emit_at.pop(stale_path, None)
+
+        if not paths and not path_spec.exists():
+            log.debug("log %s not yet present", path_spec)
+
+        for path in paths:
+            try:
+                if path not in positions:
+                    positions[path] = _initial_position(path)
+                    log.info("started log watcher for %s", path)
+
+                new_position, lines = _read_new_lines(path, positions[path])
+                positions[path] = new_position
+            except OSError as e:
+                log.warning("log read failed on %s: %s", path, e)
+                continue
+
+            for line in lines:
+                if not pattern.search(line):
+                    continue
+
+                now = time.time()
+                if now - last_emit_at.get(path, 0.0) < 30:
+                    continue
+
+                last_emit_at[path] = now
+                try:
+                    callback(line)
+                except Exception as e:
+                    log.exception("callback failed on %s: %s", path, e)
+
+        time.sleep(POLL_INTERVAL_SECONDS)
 
 
 def _tail_file(path: Path, regex: str, callback: Callable[[str], None]) -> None:
-    """tail -F equivalent, calling callback on each matching line.
-
-    Uses subprocess `tail -F -n 0` so we only get NEW lines (avoid replay
-    historical hits on every restart)."""
-    pattern = re.compile(regex)
-    cmd = ["tail", "-F", "-n", "0", str(path)]
-    log.info("watching %s for /%s/", path, regex)
-    last_emit_at = 0.0
-    while True:
-        try:
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                 bufsize=1, text=True)
-            for line in iter(p.stdout.readline, ""):
-                if not line:
-                    continue
-                if pattern.search(line):
-                    # Throttle: don't emit more than 1 event per 30s for same log
-                    now = time.time()
-                    if now - last_emit_at < 30:
-                        continue
-                    last_emit_at = now
-                    try:
-                        callback(line)
-                    except Exception as e:
-                        log.exception("callback failed on %s: %s", path, e)
-        except FileNotFoundError:
-            log.info("log %s not yet present, retrying in 60s", path)
-            time.sleep(60)
-        except Exception as e:
-            log.warning("tail failed on %s: %s — restart in 30s", path, e)
-            time.sleep(30)
+    """Compatibility wrapper for older imports; prefer _watch_rule."""
+    _watch_rule((path, regex, callback))
 
 
 def main() -> int:
     log.info("Cron Log Sentinel starting. %d log rules configured.", len(CRON_LOG_RULES))
     start_background_beater("cron-log-sentinel", interval=30)
 
-    threads = []
+    threads: list[threading.Thread] = []
     for rule in CRON_LOG_RULES:
-        for path in _resolve_log_paths(rule):
-            t = threading.Thread(
-                target=_tail_file,
-                args=(path, rule[1], rule[2]),
-                daemon=True,
-                name=f"tail-{path.name}",
-            )
-            t.start()
-            threads.append(t)
-            log.info("started tail thread for %s", path)
+        t = threading.Thread(
+            target=_watch_rule,
+            args=(rule,),
+            daemon=True,
+            name=f"watch-{rule[0].name}",
+        )
+        t.start()
+        threads.append(t)
+        log.info("started watcher thread for %s", rule[0])
 
     if not threads:
         log.warning("no log files matched any rule — sentinel will idle")

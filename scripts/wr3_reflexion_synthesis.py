@@ -35,7 +35,7 @@ THE DELTA GATE (Mythos meta-pattern counter-measure, 2026-06-14):
   mistaking green telemetry for learning. status in {SYNTHESIZED, THIN_SIGNAL,
   NO_INPUT, LLM_FAILED}.
 
-Multi-LLM cascade per CLAUDE.md: Tier 1 Sonnet 4.6 (claude -p), Tier 2 Gemini 3.x
+Multi-LLM cascade per CLAUDE.md: Tier 1 Sonnet 5 (claude -p), Tier 2 Gemini 3.x
 (agy) on quota-exhaust. Cost ceiling $0.15/run (contract).
 
 Exit codes: 0 = ran (incl. honest NO_INPUT), 1 = LLM cascade fully failed with
@@ -263,7 +263,7 @@ def _run_tier(tier: str, prompt: str) -> str | None:
     env = os.environ.copy()
     env.pop("ANTHROPIC_API_KEY", None)  # defense-in-depth: never pay-per-token (CLAUDE.md)
     if tier == "claude":
-        cmd = ["claude", "-p", "--model", "claude-sonnet-4-6"]
+        cmd = ["claude", "-p", "--model", "claude-sonnet-5"]
     else:
         cmd = ["agy", "-p", "--print-timeout", "5m"]
     try:

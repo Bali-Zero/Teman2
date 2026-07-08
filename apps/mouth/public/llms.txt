@@ -4,11 +4,11 @@
 
 ## Recently Published & Updated (Freshness Signal)
 
-- [What Happens After a 99-Year Lease on Your Bali Villa Expires?](https://balizero.com/business/what-happens-after-a-99-year-lease-on-your-bali-villa-expires) (2026-03-15)
-- [OJK Indonesia Issues Rules for Representative Offices of Foreign FIs - Regulation Asia](https://balizero.com/business_regulations/ojk-indonesia-issues-rules-for-representative-offices-of-foreign-fis-regulation-asia) (2026-03-15)
-- [Rupiah pressure seen keeping Indonesia’s key rate at 4.75% on March 17 – The Milli Chronicle](https://balizero.com/business_regulations/rupiah-pressure-seen-keeping-indonesias-key-rate-at-475-on-march-17-the-milli-chronicle) (2026-03-15)
-- [The price isn't right: Oil spike fuels risks in South-east Asia's tech scene - The Business Times](https://balizero.com/business_regulations/the-price-isnt-right-oil-spike-fuels-risks-in-south-east-asias-tech-scene-the-business-times) (2026-03-15)
-- [Microsoft to Invest $1.7 Billion in Indonesia for AI, Cloud](https://balizero.com/emerging_trends/microsoft-to-invest-17-billion-in-indonesia-for-ai-cloud) (2026-03-15)
+- [Thailand vs Bali: The Hidden Cost of Picking the Wrong Jurisdiction](https://balizero.com/business/thailand-vs-bali-the-hidden-cost-of-picking-the-wrong-jurisdiction) (2026-06-29)
+- [Bali Market Entry 2026: The Regulatory Maze Foreign Investors Must Navigate](https://balizero.com/business_regulations/bali-market-entry-2026-the-regulatory-maze-foreign-investors-must-navigate) (2026-06-29)
+- [Indonesia Makes NIB Mandatory for Content Creators](https://balizero.com/tax-legal/indonesia-makes-nib-mandatory-for-content-creators) (2026-06-29)
+- [Indonesia's Free Meals Program May Be Costing the Treasury Billions](https://balizero.com/tax-legal/indonesias-free-meals-program-may-be-costing-the-treasury-billions) (2026-06-26)
+- [Phuket vs Bali: The Property Investment Battle Foreigners Get Wrong](https://balizero.com/business/phuket-vs-bali-the-property-investment-battle-foreigners-get-wrong.it) (2026-06-25)
 
 ## Quick Facts
 
@@ -42,7 +42,7 @@
 
 - **Bali Criminalizes Rice Field Conversions (Perda 4/2026)**: A new provincial regulation targets the conversion of sustainable agricultural land (LP2B) into commercial properties (villas). Criminal penalties now apply, and a moratorium on conversion permits is in effect in Tabanan and Gianyar. Nominee structures in "Green Zones" are under intense audit.
 - **New Corporate Reporting Mandate (Permenkumham 49/2025)**: Effective late 2025, all PT PMA companies must submit a notarized Annual Report to the Ministry of Law. Stricter Ultimate Beneficial Owner (UBO) verification is now required for all corporate amendments. Non-compliance results in system blocks.
-- **KBLI 2025 Migration Deadline**: Companies have until June 18, 2026, to update their licensing data to the new classification system. Bali Zero provides full migration audits.
+- **KBLI 2025 Migration Deadline**: The June 2026 KBLI transition window has closed; companies still relying on KBLI 2020 mappings should treat the update as overdue and verify OSS/NIB status before new filings. Bali Zero provides full remediation audits.
 
 ## Core Services & Pricing (2026)
 
@@ -113,8 +113,8 @@
 
 Indonesia adopted KBLI 2025 (BPS Regulation 7/2025), replacing KBLI 2020.
 
-- **Migration deadline**: June 18, 2026
-- **OSS**: Not yet integrated with KBLI 2025 (as of March 2026)
+- **Transition status**: June 2026 window closed; unresolved KBLI 2020 mappings are overdue
+- **OSS**: Verify live KBLI 2025 handling before filing; do not rely on old March 2026 portal behavior
 - **100% foreign ownership (TERBUKA)**: consulting (70201–70209), IT consulting (62201, 62204, 62209), real estate (14 codes)
 - Full navigator: https://balizero.com/kbli (1,563 codes with AI analysis)
 - AI explorer: https://balizero.com/kbli-explorer

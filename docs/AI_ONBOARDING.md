@@ -1,10 +1,10 @@
 # AI ONBOARDING GUIDE - Nuzantara Project
 
-**Last Updated:** 2026-04-10
+**Last Updated:** 2026-07-02
 **Purpose:** Technical reference for AI assistants. For behavioral rules, see `CLAUDE.md`. For the founding principles of the organism, see `SYMBIOSIS.md` (monorepo root).
 
 <!-- DOCSYNC:QUICK_NUMBERS_START -->
-`329 routers · 635 services · 1104 tests · 12 Qdrant collections · 104,154 vectors · 108,068 KG nodes`
+`329 routers · 636 services · 1104 tests · 12 Qdrant collections · 104,154 vectors · 108,068 KG nodes`
 <!-- DOCSYNC:QUICK_NUMBERS_END -->
 
 > **Role split:** `CLAUDE.md` = how to act (rules, delegation, language, deploy QA). This file = how to build (architecture, code patterns, debugging, workflows).
@@ -16,13 +16,14 @@
 **1. Identify machine + verify setup:**
 
 ```bash
-echo "Machine: $(whoami)@$(hostname)" && \
-OTHER=$(if [ "$(whoami)" = "nuzantara" ]; then echo "air"; else echo "pro"; fi) && \
-ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE"
+echo "Machine: $(whoami)@$(hostname)"
 ```
 
-- `nuzantara@Nuzantara` → **Pro** (48GB, dev) | `antonellosiano@Nuzantara-9` → **Air** (16GB, server H24)
-- Always prefix first response with **[Pro]** or **[Air]**
+- `nuzantara@Nuzantara` → **Pro** (M4 Pro 48GB, dev primario + workhorse H24)
+- `nuzantara@Mini-Pro2` → **Mini** (M4 Pro 24GB, server H24, Ollama dedicato, cron pesanti)
+- `balizero@Air-M5` → **Air-M5** (M5 24GB, dev workstation interattiva — home `/Users/balizero/`)
+- Always prefix first response with **[Pro]**, **[Mini]**, or **[Air]**
+- SSH peers: `ssh pro` / `ssh mini` / `ssh air` (Tailscale, key-based). The old Air M4 (`antonellosiano@Nuzantara-9`) was decommissioned 2026-05-05 — references to it are archaeology.
 
 **2. Verify backend works:**
 
@@ -114,22 +115,27 @@ Agentic RAG (`/api/agentic-rag/query`) requires JWT.
 apps/backend-rag/
 ├── backend/
 │   ├── app/                # ⚠️ FastAPI app (routers, services, setup)
-│   │   ├── routers/        # 88 router files
+│   │   ├── routers/        # router modules (count: see DOCSYNC line at top)
 │   │   ├── services/       # App-level services (CRM, auth)
 │   │   ├── setup/          # app_factory, router_registration, service_initializer
 │   │   ├── dependencies.py # ⚠️ Imported by ALL routers — test before deploy
 │   │   └── main_cloud.py   # Fly.io entrypoint
-│   ├── services/           # Core business logic (244 total)
+│   ├── services/           # Core business logic (count: see DOCSYNC line)
 │   │   ├── rag/agentic/    # Orchestrator, ReAct, LLM Gateway
 │   │   └── knowledge_graph/ # KG extraction + query
-│   ├── channels/           # 7: whatsapp, telegram, instagram, twitter, web, gchat, slack
+│   ├── channels/           # 4 live: whatsapp, telegram, instagram, web (twitter/gchat/slack quarantined .disabled-2026-04-30)
 │   ├── prompts/            # ⭐ zantara_core.py = Single Source of Truth
 │   ├── llm/                # Gemini, Ollama, OpenRouter clients
 │   ├── middleware/          # Auth, rate-limit, tracing
 │   └── migrations/         # Alembic (up to 060)
-├── tests/                  # 385 test files
+├── tests/                  # test files (count: see DOCSYNC line)
 └── .venv/                  # Python virtualenv (ALWAYS .venv)
 ```
+
+> Counts live ONLY in the machine-verified DOCSYNC line at the top of this file
+> (`python scripts/docs_sync.py`). This block stopped carrying its own numbers on
+> 2026-07-05: the hardcoded ones had drifted 2-2.6× wrong (88→158 router files,
+> 244→635 services, 385→1104 tests, 7→4 live channels) because nothing gated them.
 
 **Key detail:** Routers are in `backend/app/routers/`, NOT `backend/routers/`. Services span both `backend/services/` (core) and `backend/app/services/` (app-level). Router registration is in `backend/app/setup/router_registration.py`, NOT `main_cloud.py`.
 
@@ -137,7 +143,7 @@ apps/backend-rag/
 
 ## QDRANT COLLECTIONS
 
-10 live on Fly.io (93,283 docs). Config: `backend/services/ingestion/collection_manager.py`.
+Live count: see the DOCSYNC line at top — and note it refreshes only when `QDRANT_URL`/`QDRANT_API_KEY` are exported (else cached). Config: `backend/services/ingestion/collection_manager.py` — **its 20 definitions describe the pre-hybrid estate: only 6 exist live** (probe 2026-07-05: 14 live collections, 113,818 docs). Full defined-vs-live table: `docs/runbooks/qdrant-estate-reconciliation.md`. The per-collection doc counts in the table below are historical annotations, not live truth.
 
 **Search Pipeline (ENABLED 2026-03-24):** Hybrid search (BM25 sparse + Dense vector + RRF fusion) → CrossEncoder reranking (ms-marco-MiniLM-L-6-v2, top-20→top-5). Flags: `ENABLE_HYBRID_SEARCH=true`, `ENABLE_RERANKER=true`, `ENABLE_BM25=true`, `ENABLE_QUERY_EXPANSION=true`.
 
@@ -286,15 +292,15 @@ Pages: `src/app/`, Components: `src/components/`, API: `src/lib/api/`
 | Document                  | Path                                                     | When to Read                                                 |
 | ------------------------- | -------------------------------------------------------- | ------------------------------------------------------------ |
 | **CLAUDE.md**             | Root                                                     | Behavioral rules, golden rules, deploy QA, language protocol |
-| **Cicatrix Scars**        | `.claude/rules/cicatrix-scars.md`                        | 20 known bugs/gotchas — before modifying referenced files    |
-| **KG Architecture**       | `docs/KG_LANGGRAPH_ARCHITECTURE.md`                      | Knowledge Graph deep dive                                    |
-| **System Map 4D**         | `docs/SYSTEM_MAP_4D.md`                                  | Full architecture overview                                   |
-| **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference                                          |
+| **Cicatrix Scars**        | `.claude/rules/cicatrix-superscar.md` (+ `cicatrix-scars.md`) | Known bugs/gotchas by family — before modifying referenced files |
+| **KG Architecture**       | `docs/architecture/KG_LANGGRAPH_FIX_SUMMARY.md` + `docs/KG_LANGGRAPH_TEST_REPORT.md` | Knowledge Graph deep dive                                    |
+| **Living Architecture**   | `docs/LIVING_ARCHITECTURE.md`                            | Full architecture overview (canonical system map)           |
+| **Database Architecture** | `docs/DATABASE_V2_GUIDE.md`                              | DB schema reference                                          |
 | **Deploy Checklist**      | `scripts/preflight.sh` (automated) or `CLAUDE.md §11` (Deploy Lifecycle)    | Before deploying — run `./scripts/preflight.sh full`         |
 | **Monitoring**            | `scripts/system_doctor.py`                               | 47 checks: infra, frontend, SSL, LLM, security, quality      |
 | **RAG Quality**           | `scripts/rag_canary.py`                                  | Embedding drift + golden query regression (monthly/weekly)   |
 | **Intel Pipeline**        | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper                                                 |
-| **Archive**               | `docs/archive/MANIFEST.md`                               | Old docs & reports                                           |
+| **Archive**               | `docs/archive/`                                          | Old docs & reports (browse; inventory in `docs/DOCS_INVENTORY.md`) |
 
 ---
 
@@ -302,7 +308,7 @@ Pages: `src/app/`, Components: `src/components/`, API: `src/lib/api/`
 
 1. Embedding model + KBLI flat payload = most common source of real bugs
 2. Before deploy run `./scripts/preflight.sh full` (automated import chain + tests + post-deploy health)
-3. `--no-verify` is OK for non-JS commits (prettier pre-commit hook limitation)
+3. Never commit with `--no-verify` (CLAUDE.md §8 rule 12 — hooks are the safety layer, not a formality)
 4. Router registration is in `router_registration.py`, NOT `main_cloud.py`
 5. Lazy loading — health returns 200 during startup, don't panic
 6. bali-intel-scraper runs ONLY on Pro locally, NOT on Fly.io

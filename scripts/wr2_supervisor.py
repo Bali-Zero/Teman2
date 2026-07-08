@@ -263,6 +263,31 @@ async def _current_status(conn: asyncpg.Connection, draft_id: str) -> str | None
         )
 
 
+async def _ack_outbox_if_present(payload: dict[str, Any], conn: asyncpg.Connection) -> bool:
+    """Ack durable wr2_status_change rows carried by live NOTIFY payloads."""
+    raw_outbox_id = payload.get("_outbox_id")
+    if raw_outbox_id is None:
+        return False
+    try:
+        outbox_id = int(raw_outbox_id)
+    except (TypeError, ValueError):
+        logger.warning("invalid _outbox_id in wr2 payload: %r", raw_outbox_id)
+        return False
+
+    async with _get_conn_lock():
+        result = await conn.execute(
+            """
+            UPDATE events_outbox
+               SET consumed_at = NOW()
+             WHERE id = $1
+               AND channel = 'wr2_status_change'
+               AND consumed_at IS NULL
+            """,
+            outbox_id,
+        )
+    return result == "UPDATE 1"
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # Notification handler
 # ─────────────────────────────────────────────────────────────────────────
@@ -335,6 +360,14 @@ async def _handle_payload(payload: dict[str, Any], conn: asyncpg.Connection) -> 
         await loop.run_in_executor(None, _kickstart, target)
 
 
+async def _handle_payload_and_ack(payload: dict[str, Any], conn: asyncpg.Connection) -> None:
+    """Handle a live notification, then ack its outbox row on success."""
+    await _handle_payload(payload, conn)
+    acked = await _ack_outbox_if_present(payload, conn)
+    if acked:
+        logger.debug("acked wr2_status_change outbox id=%s", payload.get("_outbox_id"))
+
+
 def _trim_dedup() -> None:
     """Bound the dedup set size to avoid unbounded growth."""
     if len(_recently_dispatched) > _RECENTLY_DISPATCHED_MAX:
@@ -361,7 +394,7 @@ def _on_notification(connection, pid, channel, payload_str):  # noqa: ARG001 —
     except json.JSONDecodeError as e:
         logger.warning("non-JSON notification on %s: %r (%s)", channel, payload_str, e)
         return
-    task = asyncio.create_task(_handle_payload(payload, connection))
+    task = asyncio.create_task(_handle_payload_and_ack(payload, connection))
     _handler_tasks.add(task)
     task.add_done_callback(_handler_tasks.discard)
     task.add_done_callback(_log_task_exception)
@@ -748,9 +781,39 @@ async def _amain() -> None:
     logger.info("wr2_supervisor stopped cleanly")
 
 
+def _write_runtime_stamp_best_effort() -> None:
+    """C2 provenance stamp at daemon startup (deploy-fork content-gate).
+
+    A long-running daemon keeps executing the code it imported at boot; after
+    a deploy-pull the on-disk HEAD moves but the process does not. The stamp
+    records the BOOT provenance so the watchdog can compare it against the
+    checkout's current HEAD and alert RUNTIME_STALE (restart needed). Fail-open:
+    a broken git/lib must never stop the supervisor.
+    """
+    try:
+        import importlib.util
+        from pathlib import Path
+
+        repo = Path(__file__).resolve().parents[1]
+        spec = importlib.util.spec_from_file_location(
+            "wr2_runtime_stamp", str(repo / "scripts" / "lib" / "wr2_runtime_stamp.py")
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        stamp = mod.compute_runtime_stamp(repo, [Path(__file__)])
+        mod.write_runtime_stamp("wr2.supervisor", stamp)
+        logger.info(
+            "runtime stamp written (head=%s dirty=%s stale=%s)",
+            (stamp.get("head_sha") or "?")[:12], stamp.get("dirty"), stamp.get("stale_modules"),
+        )
+    except Exception:  # noqa: BLE001 — provenance must never break the daemon
+        logger.exception("runtime stamp failed (non-fatal)")
+
+
 def main() -> int:
     _configure_logging()
     logger.info("wr2_supervisor starting (pid=%d)", os.getpid())
+    _write_runtime_stamp_best_effort()
     try:
         asyncio.run(_amain())
     except KeyboardInterrupt:

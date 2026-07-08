@@ -1,0 +1,48 @@
+name: Doc Freshness Report
+
+# On-demand only (workflow_dispatch) — report-only signaler, NO schedule by
+# design: W84 proved cron/daemon proliferation fragile; the weekly
+# docs-guardian cron on Pro and manual runs are the cadence. Also triggers
+# on changes to itself/the script/its tests so regressions surface in PR CI.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/doc_freshness_report.py"
+      - "scripts/tests/test_doc_freshness_report.py"
+      - ".github/workflows/doc-freshness.yml"
+
+concurrency:
+  group: doc-freshness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # git-history ages (same requirement as docs-guardian)
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Run unit tests
+        run: |
+          python -m pip install --quiet pytest
+          python -m pytest scripts/tests/test_doc_freshness_report.py -q
+
+      - name: Generate report
+        run: |
+          python scripts/doc_freshness_report.py --write doc-freshness-report.md
+          cat doc-freshness-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-freshness-report
+          path: doc-freshness-report.md
+          retention-days: 30
