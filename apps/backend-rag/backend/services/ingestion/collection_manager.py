@@ -8,6 +8,7 @@ Extracted from SearchService to follow Single Responsibility Principle.
 import asyncio
 import logging
 import time
+from inspect import isawaitable
 from typing import Any
 
 from backend.app.core.config import settings
@@ -165,6 +166,22 @@ class CollectionManager:
             collection_name,
             asyncio.Semaphore(self._max_concurrent_searches),
         )
+
+    async def close(self) -> None:
+        """Close cached Qdrant clients and clear the lazy collection cache."""
+        for name, client in list(self._collections_cache.items()):
+            close_fn = getattr(client, "close", None)
+            if close_fn is None:
+                continue
+            try:
+                close_result = close_fn()
+                if isawaitable(close_result):
+                    await close_result
+                logger.debug("✅ Closed collection client: %s", name)
+            except Exception as e:
+                logger.warning("⚠️ Error closing collection client '%s': %s", name, e)
+
+        self._collections_cache.clear()
 
     def get_collection(self, name: str) -> QdrantClient | None:
         """

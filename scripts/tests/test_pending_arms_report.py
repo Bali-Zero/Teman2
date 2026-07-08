@@ -45,12 +45,13 @@ NOW = "2026-07-05"
 LEDGER_TEMPLATE = """\
 # modus — PENDING-ARMS (the W81 ledger: built != armed)
 
-> Format: `opened YYYY-MM-DD | artifact | missing arming step | owner (me|operator) | proof-of-armed`
+> Format: `opened YYYY-MM-DD | artifact | missing arming step | owner (me|operator[<category>]) | proof-of-armed`
 
 - opened 2026-06-25 | overdue tech debt artifact | wire the hook into settings.json | me | a live session shows the block
 - opened 2026-07-05 | fresh me artifact | needs a restart to pick up | me | next restart log shows it
-- opened 2026-06-20 | overdue operator artifact | waiting on operator GO | operator | operator GO recorded
-- opened 2026-06-01 | firebreak artifact | DELIBERATE FIREBREAK, not tech debt: waiting for signal quality before flip | operator | operator GO + probe
+- opened 2026-06-20 | overdue operator artifact | waiting on operator GO | operator[business] | operator GO recorded
+- opened 2026-06-01 | firebreak artifact | DELIBERATE FIREBREAK, not tech debt: waiting for signal quality before flip | operator[business] | operator GO + probe
+- opened 2026-07-04 | phantom operator artifact | repo work parked behind a human lane that does not exist | operator | never
 
 - opened 2026-07-01 | wrapped artifact spanning lines
   and continuing artifact description | missing step first part
@@ -92,7 +93,7 @@ def _by_artifact(entries, needle: str):
 
 
 def test_total_entry_count_excludes_closed_section(entries):
-    assert len(entries) == 8
+    assert len(entries) == 9
 
 
 def test_closed_section_never_parsed(entries):
@@ -129,6 +130,7 @@ def test_fresh_me_classification(entries):
 def test_overdue_operator_classification(entries):
     e = _by_artifact(entries, "overdue operator artifact")
     assert e.cls == par.CLASS_OPERATOR_GATED
+    assert e.owner == "operator[business]"
     assert e.overdue is True
     assert e.bucket == "OPERATOR-GATED-OVERDUE"
 
@@ -136,7 +138,7 @@ def test_overdue_operator_classification(entries):
 def test_overdue_firebreak_classification(entries):
     e = _by_artifact(entries, "firebreak artifact")
     assert e.cls == par.CLASS_FIREBREAK
-    assert e.owner == "operator"
+    assert e.owner == "operator[business]"
     assert e.overdue is True  # still objectively overdue by age...
     assert e.bucket == par.CLASS_FIREBREAK  # ...but bucketed as informational, not an alarm
 
@@ -162,6 +164,122 @@ def test_malformed_line_reported_not_crashed(entries):
     assert any("pipe-segment" in r for r in e.malformed_reasons)
     # opened-date still parses fine for this one; only the pipe count is the defect.
     assert e.opened_date is not None
+
+
+# ---------------------------------------------------------------------------
+# PHANTOM-OPERATOR — "io sono te, non c'è nessun operatore" (Zero, 2026-07-06)
+# Guilt: untagged/unknown/Italian operator owners must be flagged.
+# Innocence: every true-operator category and 'me' owners must NOT be flagged.
+# ---------------------------------------------------------------------------
+
+
+def _single_entry(tmp_path: Path, line: str):
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(line + "\n\n## closed (proof recorded)\n", encoding="utf-8")
+    now = par._parse_now(NOW)
+    entries = par.load_entries(p, now)
+    assert len(entries) == 1
+    return entries[0]
+
+
+def test_guilt_untagged_operator_is_phantom(entries):
+    e = _by_artifact(entries, "phantom operator artifact")
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+    # never FRESH even at age 1: a phantom is wrong the moment it is written.
+    assert e.age_days == 1
+    assert e.bucket == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_guilt_unknown_category_is_phantom(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | unknown tag artifact | some step | operator[vibes] | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_guilt_italian_operatore_is_phantom(tmp_path):
+    # W82 under-match guard: Italian prose must not slip through as TECH-DEBT.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | italian artifact | qualche passo | operatore o sessione Pro | prova",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_guilt_mixed_valid_and_unknown_tags_is_phantom(tmp_path):
+    # ALL declared tags must be true-operator categories; one bad tag poisons the claim.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | mixed tags artifact | step | operator[gui] + operator[vibes] | proof",
+    )
+    assert e.cls == par.CLASS_PHANTOM_OPERATOR
+
+
+def test_innocence_every_true_category_is_operator_gated(tmp_path):
+    for cat in sorted(par.TRUE_OPERATOR_CATEGORIES):
+        e = _single_entry(
+            tmp_path,
+            f"- opened 2026-07-05 | {cat} artifact | step | operator[{cat}] | proof",
+        )
+        assert e.cls == par.CLASS_OPERATOR_GATED, f"category {cat!r} wrongly flagged"
+
+
+def test_innocence_mixed_owner_with_tag_is_operator_gated(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | mixed owner artifact | step | operator[secret] (env review) + me (prune patch) | proof",
+    )
+    assert e.cls == par.CLASS_OPERATOR_GATED
+
+
+def test_innocence_me_owner_is_never_phantom(entries):
+    e = _by_artifact(entries, "fresh me artifact")
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_innocence_operator_word_only_in_proof_not_flagged(tmp_path):
+    # The owner field decides — 'operator' appearing in proof text must not trip the flag.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | proof mention artifact | step | me | operator GO recorded in log",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_firebreak_precedence_over_phantom_documented(tmp_path):
+    # Pre-existing precedence: an explicit 'firebreak' in the raw text wins the
+    # classification even with an untagged operator owner. Documented, not accidental.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | firebreak precedence artifact | DELIBERATE FIREBREAK by design | operator | n/a",
+    )
+    assert e.cls == par.CLASS_FIREBREAK
+
+
+def test_strict_exits_1_on_fresh_phantom_alone(tmp_path, capsys):
+    ledger = "- opened 2026-07-05 | lone phantom artifact | step | operator | proof\n\n## closed\n"
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(ledger, encoding="utf-8")
+    code = par.main(["--ledger", str(p), "--now", NOW, "--strict"])
+    assert code == 1  # regardless of age (entry is fresh, age 0)
+
+
+def test_strict_phantom_exits_1_on_phantom_only(tmp_path, capsys):
+    ledger = "- opened 2026-07-05 | lone phantom artifact | step | operator | proof\n\n## closed\n"
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(ledger, encoding="utf-8")
+    code = par.main(["--ledger", str(p), "--now", NOW, "--strict-phantom"])
+    assert code == 1
+
+
+def test_strict_phantom_ignores_overdue_tech_debt(tmp_path, capsys):
+    # The narrow CI gate: pre-existing overdue debt never blocks an innocent PR.
+    ledger = "- opened 2026-06-01 | old debt artifact | step | me | proof\n\n## closed\n"
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(ledger, encoding="utf-8")
+    assert par.main(["--ledger", str(p), "--now", NOW, "--strict-phantom"]) == 0
+    assert par.main(["--ledger", str(p), "--now", NOW, "--strict"]) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -191,10 +309,12 @@ def test_overdue_boundary_age_two_is_overdue(entries):
 def test_compute_counts_matches_expected_distribution(entries):
     counts = par.compute_counts(entries)
     assert counts == {
-        "total": 8,
+        "total": 9,
+        "phantom_operator": 1,
         "tech_debt_overdue": 3,  # overdue-tech-debt, wrapped, boundary-age-two
         "operator_gated_overdue": 1,
         "firebreak": 1,
+        "natural_wait": 0,
         "fresh": 2,  # fresh-me, boundary-age-one
         "malformed": 1,
     }
@@ -212,8 +332,8 @@ def test_strict_exits_1_when_overdue_tech_debt_present(ledger_path, capsys):
 
 def test_strict_exits_0_without_overdue_tech_debt(tmp_path, capsys):
     only_firebreak_and_operator = """\
-- opened 2026-06-01 | firebreak only artifact | DELIBERATE FIREBREAK not tech debt | operator | operator GO
-- opened 2026-06-10 | operator only artifact | waiting on operator | operator | operator GO recorded
+- opened 2026-06-01 | firebreak only artifact | DELIBERATE FIREBREAK not tech debt | operator[business] | operator GO
+- opened 2026-06-10 | operator only artifact | waiting on operator | operator[gui] | operator GO recorded
 
 ## closed (proof recorded)
 """
@@ -237,13 +357,17 @@ def test_report_sections_present_and_populated(ledger_path, capsys):
     code = par.main(["--ledger", str(ledger_path), "--now", NOW])
     assert code == 0
     out = capsys.readouterr().out
+    assert "## PHANTOM-OPERATOR" in out
     assert "## TECH-DEBT overdue (>48h)" in out
     assert "## OPERATOR-GATED overdue" in out
     assert "## FIREBREAK (legitimate, informational)" in out
     assert "## Fresh (<48h)" in out
     assert "## MALFORMED" in out
     assert "overdue tech debt artifact" in out
+    assert "phantom operator artifact" in out
     assert "ancient closed artifact" not in out
+    # PHANTOM-OPERATOR is the loudest bucket: its section comes first.
+    assert out.index("## PHANTOM-OPERATOR") < out.index("## TECH-DEBT overdue")
 
 
 def test_report_empty_section_says_none(tmp_path, capsys):
@@ -259,6 +383,7 @@ def test_report_empty_section_says_none(tmp_path, capsys):
     out = capsys.readouterr().out
     # every non-Fresh section should say "none"
     for heading in (
+        "## PHANTOM-OPERATOR",
         "## TECH-DEBT overdue (>48h)",
         "## OPERATOR-GATED overdue",
         "## FIREBREAK (legitimate, informational)",
@@ -280,14 +405,16 @@ def test_json_output_structure(ledger_path, capsys):
     payload = json.loads(out)
     assert payload["now"] == NOW
     assert payload["counts"] == {
-        "total": 8,
+        "total": 9,
+        "phantom_operator": 1,
         "tech_debt_overdue": 3,
         "operator_gated_overdue": 1,
         "firebreak": 1,
+        "natural_wait": 0,
         "fresh": 2,
         "malformed": 1,
     }
-    assert len(payload["entries"]) == 8
+    assert len(payload["entries"]) == 9
     fields = {"opened", "age_days", "artifact", "owner", "class", "overdue", "raw_head"}
     for entry in payload["entries"]:
         assert fields.issubset(entry.keys())
@@ -327,8 +454,110 @@ def test_smoke_real_ledger_parses_without_exception():
     for e in entries:
         assert e.bucket in {
             par.CLASS_MALFORMED,
+            par.CLASS_PHANTOM_OPERATOR,
+            par.CLASS_NATURAL_WAIT,
             par.CLASS_FIREBREAK,
             "TECH-DEBT-OVERDUE",
             "OPERATOR-GATED-OVERDUE",
             "FRESH",
         }
+
+
+@pytest.mark.skipif(
+    not REAL_LEDGER_PATH.exists(),
+    reason=f"real ledger not found at {REAL_LEDGER_PATH} (CI checkout may not have it)",
+)
+def test_real_ledger_has_zero_phantom_operator():
+    """The living enforcement of 'non c'è nessun operatore' (Zero, 2026-07-06).
+
+    Every open entry whose owner claims an operator lane must declare a
+    true-operator category as operator[<cat>]. This test turns any new phantom
+    line in the REAL ledger into a red CI check the moment it is written.
+    """
+    now = par._parse_now(NOW)
+    entries = par.load_entries(REAL_LEDGER_PATH, now)
+    phantoms = [e for e in entries if e.cls == par.CLASS_PHANTOM_OPERATOR]
+    assert not phantoms, (
+        "PHANTOM-OPERATOR entries in the real ledger (owner says 'operator' with no "
+        "true-operator category — re-own to a session or tag operator[<cat>]): "
+        + "; ".join(e.artifact or e.raw[:80] for e in phantoms)
+    )
+
+
+# ---- NATURAL-WAIT: passive owner waiting on a dated calendar trigger ---------
+# Born 2026-07-06: two `me (passivo — verifica 07-12)` lines classified TECH-DEBT
+# overdue kept healer receptor 1 actionable EVERY tick, starving the genome
+# convergence idle branch for the whole wait week.
+
+
+def test_guilt_passivo_owner_is_natural_wait_not_overdue(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-02 | yield proof artifact | wait for sunday trigger "
+        "| me (passivo — verifica 07-12) | log entry post 07-12",
+    )
+    assert e.cls == par.CLASS_NATURAL_WAIT
+    assert e.age_days == 3  # would be overdue as TECH-DEBT...
+    assert e.bucket == par.CLASS_NATURAL_WAIT  # ...but never buckets -OVERDUE
+
+
+def test_guilt_strict_exit_0_on_natural_wait_alone(tmp_path, capsys):
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(
+        "- opened 2026-07-02 | waiting artifact | wait | me (passivo) | proof at trigger\n"
+        "\n## closed (proof recorded)\n",
+        encoding="utf-8",
+    )
+    assert par.main(["--ledger", str(p), "--now", NOW, "--strict"]) == 0
+
+
+def test_guilt_english_passive_owner_is_natural_wait(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-02 | en artifact | wait | me (passive — monday run) | proof",
+    )
+    assert e.cls == par.CLASS_NATURAL_WAIT
+
+
+def test_innocence_bare_me_stays_overdue_tech_debt(tmp_path, capsys):
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(
+        "- opened 2026-07-02 | plain artifact | do the work | me | proof\n"
+        "\n## closed (proof recorded)\n",
+        encoding="utf-8",
+    )
+    now = par._parse_now(NOW)
+    (e,) = par.load_entries(p, now)
+    assert e.cls == par.CLASS_TECH_DEBT
+    assert e.bucket == f"{par.CLASS_TECH_DEBT}-OVERDUE"
+    assert par.main(["--ledger", str(p), "--now", NOW, "--strict"]) == 1
+
+
+def test_innocence_impassivo_is_not_natural_wait(tmp_path):
+    # word boundary (#3): "impassivo" must not open the passive lane
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-02 | boundary artifact | step | me (impassivo) | proof",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_innocence_passivo_in_body_not_owner_stays_tech_debt(tmp_path):
+    # only the OWNER field declares the wait; prose quoting "passivo" must not
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-02 | body artifact | il log dice watch passivo del receptor | me | proof",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+def test_innocence_operator_tag_with_passive_note_stays_operator_gated(tmp_path):
+    # operator[gui] + passive wording: the operator category is the stronger claim?
+    # NO — the wait is declared, and a passive wait is not actionable either way;
+    # but the owner names a true category, so keep the OPERATOR-GATED class:
+    # classification order puts NATURAL-WAIT first, so document the actual outcome.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-02 | tagged artifact | step | operator[gui] (passivo) | proof",
+    )
+    assert e.cls == par.CLASS_NATURAL_WAIT  # declared passive wait wins: not actionable

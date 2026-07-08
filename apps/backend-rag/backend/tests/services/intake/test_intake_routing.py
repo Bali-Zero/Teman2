@@ -223,6 +223,19 @@ async def test_link_candidate_fuzzy_single(pool, seeded):
 
 
 @pytest.mark.asyncio
+async def test_bank_statement_account_holder_routes_as_subject_name(pool, seeded):
+    q = await _seed_queue(
+        pool,
+        "bank_statement",
+        {"account_holder": f"{TAG} Wolfgang Amadeus Zinneman"},
+    )
+    r = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
+    assert r["decision"] == "LINK_CANDIDATE"
+    assert r["requires_human"] is True
+    assert _j((await _proposal(pool, q))["routing"])["client_id"] == seeded["c_link"]
+
+
+@pytest.mark.asyncio
 async def test_no_match(pool, seeded):
     q = await _seed_queue(pool, "passport", {"passport_no": "QQ0000001", "name": f"{TAG} Nonexistent Person XYZ"})
     r = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
