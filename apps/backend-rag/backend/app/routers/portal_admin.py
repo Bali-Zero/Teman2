@@ -50,8 +50,9 @@ async def search_clients(
                 """
                 SELECT id, email, full_name
                 FROM clients
-                WHERE LOWER(full_name) LIKE '%' || LOWER($1) || '%'
-                   OR LOWER(email) LIKE '%' || LOWER($1) || '%'
+                WHERE deleted_at IS NULL
+                  AND (LOWER(full_name) LIKE '%' || LOWER($1) || '%'
+                       OR LOWER(email) LIKE '%' || LOWER($1) || '%')
                 ORDER BY
                     CASE WHEN LOWER(full_name) LIKE LOWER($1) || '%' THEN 0 ELSE 1 END,
                     full_name
@@ -65,7 +66,8 @@ async def search_clients(
                 """
                 SELECT id, email, full_name
                 FROM clients
-                WHERE full_name IS NOT NULL
+                WHERE deleted_at IS NULL
+                  AND full_name IS NOT NULL
                 ORDER BY updated_at DESC NULLS LAST
                 LIMIT $1
                 """,
