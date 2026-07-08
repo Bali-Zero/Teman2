@@ -309,7 +309,8 @@ def _make_outcome_conn(stale_rows=(), age_rows=(), rendered_rows=(), renderer_en
         if "lease_heartbeat_at" in q and "'rendering'" in q:
             return list(stale_rows)
         if "GROUP BY status" in q:
-            return list(age_rows)
+            excluded = set(args[0])
+            return [row for row in age_rows if row["status"] not in excluded]
         if "drive_url IS NOT NULL" in q:
             return list(rendered_rows)
         raise AssertionError(f"unmocked fetch: {q[:120]}")
@@ -373,6 +374,14 @@ def test_state_age_unknown_state_always_flagged(wd):
     ])
     sent = _run_outcome(wd, conn)
     assert any("UNKNOWN states" in m for m in sent)
+
+
+def test_state_age_missed_is_terminal_not_unknown(wd):
+    """Missed drafts are intentionally skipped pipeline runs, not state drift."""
+    conn = _make_outcome_conn(age_rows=[
+        {"status": "missed", "n": 17, "oldest_hours": 300.0},
+    ])
+    assert _run_outcome(wd, conn) == []
 
 
 def test_state_age_checked_backlog_expected_when_renderer_off(wd):
