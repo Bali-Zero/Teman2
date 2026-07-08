@@ -617,8 +617,9 @@ class PostgreSQLDebugger:
                     pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) as table_size,
                     pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename) -
                                    pg_relation_size(schemaname||'.'||tablename)) as indexes_size,
-                    (SELECT COUNT(*) FROM information_schema.statistics
-                     WHERE table_schema = schemaname AND table_name = tablename) as index_count
+                    (SELECT COUNT(*) FROM pg_indexes
+                     WHERE pg_indexes.schemaname = pg_tables.schemaname
+                     AND pg_indexes.tablename = pg_tables.tablename) as index_count
                 FROM pg_tables
                 WHERE tablename = $1 AND schemaname = 'public'
             """
@@ -632,8 +633,9 @@ class PostgreSQLDebugger:
                     pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) as table_size,
                     pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename) -
                                    pg_relation_size(schemaname||'.'||tablename)) as indexes_size,
-                    (SELECT COUNT(*) FROM information_schema.statistics
-                     WHERE table_schema = schemaname AND table_name = tablename) as index_count
+                    (SELECT COUNT(*) FROM pg_indexes
+                     WHERE pg_indexes.schemaname = pg_tables.schemaname
+                     AND pg_indexes.tablename = pg_tables.tablename) as index_count
                 FROM pg_tables
                 WHERE schemaname = 'public'
                 ORDER BY tablename
