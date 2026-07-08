@@ -72,13 +72,6 @@ interface ActivityMetrics {
   tasks: number;
 }
 
-interface ComparisonData {
-  metric: string;
-  current: number;
-  previous: number;
-  change: number;
-}
-
 // ================================================
 // COMPONENTS
 // ================================================
@@ -239,7 +232,6 @@ export default function TeamAnalyticsPage() {
 
   const [performance, setPerformance] = useState<PerformanceMetrics[]>([]);
   const [activity, setActivity] = useState<ActivityMetrics[]>([]);
-  const [comparison, setComparison] = useState<ComparisonData[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -254,38 +246,6 @@ export default function TeamAnalyticsPage() {
 
       setPerformance(perfRes);
       setActivity(activityRes);
-
-      // Generate comparison data
-      const compData: ComparisonData[] = [
-        {
-          metric: "Total Clients",
-          current: perfRes.reduce((a, b) => a + b.total_clients, 0),
-          previous: 145,
-          change: 12.5,
-        },
-        {
-          metric: "Revenue",
-          current: perfRes.reduce((a, b) => a + b.revenue_generated, 0),
-          previous: 850000000,
-          change: 18.3,
-        },
-        {
-          metric: "Conversion Rate",
-          current:
-            perfRes.reduce((a, b) => a + b.conversion_rate, 0) / perfRes.length,
-          previous: 42,
-          change: 5.2,
-        },
-        {
-          metric: "Avg Response",
-          current:
-            perfRes.reduce((a, b) => a + b.avg_response_time_hours, 0) /
-            perfRes.length,
-          previous: 4.2,
-          change: -15.3,
-        },
-      ];
-      setComparison(compData);
     } catch (err) {
       logger.error("Failed to load team analytics", {}, err as Error);
       showError("Failed to load team analytics", "Please try again later");
@@ -376,7 +336,6 @@ export default function TeamAnalyticsPage() {
             title="Total Revenue"
             aria-label="Total Revenue"
             value={isLoading ? "-" : formatIDRCompact(totalRevenue)}
-            trend={18.3}
             icon={TrendingUp}
             color="green"
             loading={isLoading}
@@ -385,7 +344,6 @@ export default function TeamAnalyticsPage() {
             title="Active Clients"
             aria-label="Active Clients"
             value={isLoading ? "-" : totalClients}
-            trend={12.5}
             icon={Users}
             color="blue"
             loading={isLoading}
@@ -394,7 +352,6 @@ export default function TeamAnalyticsPage() {
             title="Avg Conversion"
             aria-label="Avg Conversion"
             value={isLoading ? "-" : `${avgConversion.toFixed(1)}%`}
-            trend={5.2}
             icon={Target}
             color="purple"
             loading={isLoading}
@@ -403,7 +360,6 @@ export default function TeamAnalyticsPage() {
             title="Satisfaction"
             aria-label="Satisfaction"
             value={isLoading ? "-" : `${avgSatisfaction.toFixed(1)}/5.0`}
-            trend={2.1}
             icon={Star}
             color="amber"
             loading={isLoading}
@@ -489,28 +445,6 @@ export default function TeamAnalyticsPage() {
                 label="Top Rated"
                 size={80}
               />
-            </div>
-          </section>
-
-          {/* Comparison */}
-          <section className="bg-card rounded-xl border p-6">
-            <h2 className="text-lg font-semibold mb-4">vs Last Period</h2>
-            <div className="space-y-4">
-              {comparison.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {item.metric}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-sm font-medium ${item.change >= 0 ? "text-green-500" : "text-red-500"}`}
-                    >
-                      {item.change >= 0 ? "+" : ""}
-                      {item.change.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              ))}
             </div>
           </section>
 
