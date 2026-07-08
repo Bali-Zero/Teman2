@@ -199,16 +199,24 @@ if [ -n "$LINT_FILES" ]; then
     }
 fi
 
-# Run type checking (non-blocking if next.config.ts has ignoreBuildErrors)
-echo "📝 Running type checking..."
-if grep -q "ignoreBuildErrors.*true" apps/mouth/next.config.ts 2>/dev/null; then
-    echo "⚠️  Type checking has errors but ignoreBuildErrors is enabled - continuing..."
-    npm run typecheck 2>/dev/null || echo "⚠️  Type errors found but non-blocking due to ignoreBuildErrors"
+# Run type checking — ONLY when frontend TS/TSX under apps/mouth is staged.
+# A full `tsc --noEmit` over apps/mouth takes minutes; running it on EVERY commit
+# (even a pure-Python backend change) blocked all backend commits for minutes.
+# Gate it on staged frontend files, exactly like the lint stage above does.
+TS_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '^apps/mouth/.*\.(ts|tsx)$' || true)
+if [ -n "$TS_FILES" ]; then
+    echo "📝 Running type checking (apps/mouth TS/TSX staged)..."
+    if grep -q "ignoreBuildErrors.*true" apps/mouth/next.config.ts 2>/dev/null; then
+        echo "⚠️  Type checking has errors but ignoreBuildErrors is enabled - continuing..."
+        npm run typecheck 2>/dev/null || echo "⚠️  Type errors found but non-blocking due to ignoreBuildErrors"
+    else
+        npm run typecheck 2>/dev/null || {
+            echo "❌ Type checking failed. Please fix type errors."
+            exit 1
+        }
+    fi
 else
-    npm run typecheck 2>/dev/null || {
-        echo "❌ Type checking failed. Please fix type errors."
-        exit 1
-    }
+    echo "📝 Skipping type checking (no apps/mouth TS/TSX staged)."
 fi
 
 # Run Python linting
