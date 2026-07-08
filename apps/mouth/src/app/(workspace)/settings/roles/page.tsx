@@ -5,6 +5,7 @@ import { Shield, Plus, Check, X, ArrowLeft, Users, Key, Eye, Edit, Trash2 } from
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
 
 interface Permission {
   id: string;
@@ -74,6 +75,7 @@ const allPermissions: Permission[] = [
 
 export default function RolesPermissionsPage() {
   const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [newRole, setNewRole] = useState({
@@ -183,6 +185,22 @@ export default function RolesPermissionsPage() {
     if (showCreateModal) document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [showCreateModal]);
+
+  useEffect(() => {
+    if (!api.isAuthenticated()) {
+      router.push('/login');
+      return;
+    }
+    if (!api.isAdmin()) {
+      router.push('/dashboard');
+      return;
+    }
+    setIsAuthorized(true);
+  }, [router]);
+
+  if (!isAuthorized) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
