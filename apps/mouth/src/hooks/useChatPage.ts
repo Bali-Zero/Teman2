@@ -310,7 +310,7 @@ export function useChatPage(): UseChatPageReturn {
     logger.info("Message generation stopped by user", {
       component: "useChatPage",
       action: "handleStop",
-      sessionId,
+      metadata: { sessionId },
     });
   }, [chatSend, sessionId]);
 
