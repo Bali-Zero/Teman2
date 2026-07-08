@@ -10,6 +10,10 @@ Deterministic, zero-LLM checks over apps/mouth/data/KBLI_2025_FINAL_CLEAN.json:
   L6  risk-coherence       prose risk level contradicting per_skala kategori_risiko (reuses kbli_enrich_validate)
   L7  per-skala-empty      codes with no per_skala rows (report-only; special-regime sectors expected)
   L8  reason-english       l4_bali.reason must read as English (structural fix for the FAQ injection)
+  L10 ownership-contradiction  foreign-ownership % in prose contradicting the record's own
+                           pma_max_asing (65111 class, quality-sampler find 2026-07-07).
+                           Innocence guards: "N% closed" idiom, "not N%" negation, KSO
+                           work-share percentages, documented sector-law overrides.
 
 Exit 0 = clean (L7 informational only). Exit 1 = findings. --json for machine output.
 Usage: python3 scripts/kbli_dataset_lint.py [--json] [--only L1,L3] [--repo ROOT]
@@ -57,6 +61,34 @@ PROSE_FIELDS_INTEL = (
 )
 
 L4_OK_TONES = {"OK_or_HIGHER_RISK", "APERTO_BALI_RISCHIO_ALTO"}
+
+# --- L10 ownership-contradiction machinery -----------------------------------
+L10_PCT = re.compile(r"\b(\d{1,3})\s?%")
+# a % counts as a foreign-OWNERSHIP claim only when ownership intent sits nearby
+L10_FOREIGN_CTX = re.compile(
+    r"foreign\s+(?:ownership|owner|equity|shareholding|capital|investors?|stake|life\s+insurers?)"
+    r"|own(?:ed|s)?\s+up\s+to|can\s+own|max\w*\s+foreign|capped\s+at|\basing\b",
+    re.IGNORECASE,
+)
+# innocence: "100% closed" idiom (the % modifies closed-ness, consistent with TERTUTUP)
+L10_CLOSED_IDIOM = re.compile(r"^\s*(?:closed|tertutup)", re.IGNORECASE)
+# innocence: "not 100% open" negation
+L10_NEG = re.compile(r"\bnot\s*$", re.IGNORECASE)
+# innocence: KSO construction work-share percentages ("min 50% domestic work",
+# "min 30% by national partner") are volume-of-work quotas, not equity (41019 class)
+L10_WORK_SHARE = re.compile(r"\b(?:kso|domestic work|construction work|work volume)\b", re.IGNORECASE)
+# innocence: historical reference to a superseded cap ("the old 49% cap is gone",
+# "no longer capped at 49%") — the prose is explicitly saying the % does NOT apply
+L10_HISTORICAL = re.compile(
+    r"\b(?:old|former(?:ly)?|no longer|pre-\d{4}|previous(?:ly)?|used to be)\b", re.IGNORECASE
+)
+# Documented sector-law overrides: prose legitimately states a % that diverges from
+# the OSS catalogue because a SECTOR law outside OSS caps ownership, and the prose
+# explains that divergence explicitly (same pattern as L9 69101 Advocates).
+#   65111 Life insurance — PP 14/2018 (amended PP 3/2020) caps foreign ownership at
+#   80% for non-listed insurers; catalogue records 100 at the risk-based layer.
+L10_SECTOR_LAW_OVERRIDE = {"65111"}
+# -----------------------------------------------------------------------------
 
 
 def looks_italian(text: str) -> bool:
@@ -194,6 +226,29 @@ def main() -> int:
             if isinstance(intel, dict) and intel and code not in L9_PROFESSION_OVERRIDE:
                 for err in validate_pma_consistency(intel, rec):
                     add("L9", code, "intel_2026", err[:120])
+
+        if enabled("L10") and code not in L10_SECTOR_LAW_OVERRIDE:
+            maxa = rec.get("pma_max_asing")
+            if isinstance(maxa, int):
+                for field, text in iter_prose(rec):
+                    for m in L10_PCT.finditer(text):
+                        val = int(m.group(1))
+                        if val == maxa:
+                            continue
+                        if L10_CLOSED_IDIOM.match(text[m.end() : m.end() + 12]):
+                            continue
+                        if L10_NEG.search(text[max(0, m.start() - 6) : m.start()]):
+                            continue
+                        if L10_HISTORICAL.search(text[max(0, m.start() - 40) : m.start()]):
+                            continue
+                        win = text[max(0, m.start() - 80) : m.end() + 80]
+                        if L10_WORK_SHARE.search(win):
+                            continue
+                        if L10_FOREIGN_CTX.search(win):
+                            add(
+                                "L10", code, field,
+                                f"prose says {val}% but pma_max_asing={maxa} :: …{win.strip()[:100]}…",
+                            )
 
         if enabled("L7") and not rec.get("per_skala"):
             add("L7", code, "per_skala", "no scale rows (special regime?)")

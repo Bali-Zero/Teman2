@@ -1,3 +1,9 @@
+---
+date: 2026-07-07
+domain: operations
+adversarial_review: gemini-3.1-pro
+---
+
 # SPEC — KBLI Navigator: Monumental Overhaul (2026-07-07)
 
 > Mandate (Zero, verbatim intent): perfect ALL ~1600 KBLI one-by-one against sources of truth;
@@ -102,3 +108,45 @@ Per-code verification+enrichment over all 1559, waves of 50:
 5. Live balizero.com/kbli/<code> raw HTML: E1/E2/E3 absent on the 5+3 known-bad codes + random 20.
 6. vitest kbli suites green + new lint tests green.
 7. Fleet HEADs identical; PENDING-ARMS updated for Swift app + any deferred item.
+
+
+## Design deltas at build (spec-as-written vs delivered — recorded, not hidden)
+
+1. **Covers: runtime-deterministic, not local PNG files.** The spec's original "1559 local
+   cover files" plan was abandoned DURING build for exactly the risk the reviewer later
+   flagged (finding 7): committed rasters would bloat `public/` (already 461MB) and a
+   build-time Playwright render of 1559 covers risks Vercel build limits. Delivered design:
+   `kbli-cover-design.ts` (deterministic design DNA) + `/api/og/kbli/[code]` runtime
+   `ImageResponse` (next/og), immutable-cached — Vercel's own recommended og-image pattern.
+2. **"Editorial article per code" = the enriched `/kbli/[code]` page (declared interpretation).**
+   Every code now has a dedicated URL with guide-grade editorial layers (Bali context,
+   who-this-is-for, you'll-also-need) and an editorial cover. 1559 separate blog posts were
+   rejected as content-spam. This interpretation is surfaced to Zero for judgment, not silently claimed.
+3. **`<title>`/meta stay single-language until the firebreak flip.** Body is bilingual
+   (EN h1 + ID subtitle, page.tsx:262/268); the meta layer keeps the pre-PR behavior by
+   design (PR #1967 GSC window), flip = `NEXT_PUBLIC_KBLI_META_EN=1` (ledgered operator[business]).
+
+## Adversarial review
+
+- **Seat**: Gemini 3.1 Pro (`agy`), 2026-07-08Z — generator≠grader; reviewed against a live
+  evidence bundle (lint re-run, title-coverage recount, firebreak grep, public/ diff, OSS audit)
+  after the Codex seat hung 45min without opening a session (killed, seat swapped).
+- **Verdict as returned**: `OVERALL: REFUTED — dodges the editorial mandate, fails to deliver
+  the promised local cover files, and botches the bilingual SEO title implementation.`
+- **Dispositions (each finding re-verified on disk before acceptance, W65):**
+  1. EN-title coverage 1559/1559 — CONFIRMED by reviewer (E2).
+  2. Lint 0 blocking — CONFIRMED by reviewer (E1).
+  3. "Local cover files" REFUTED — **accepted as spec-drift**: the delivered design is
+     runtime-deterministic covers (see delta 1). The covers exist and render; the spec text
+     was stale, this section is the correction.
+  4. Bilingual titles "botched" — **partially rejected on evidence**: page body renders both
+     languages (page.tsx:262/268); only the `<title>` tag is single-language, which is
+     pre-existing behavior deliberately frozen by the #1967 firebreak (delta 3).
+  5. Editorial-article mandate dodge — **accepted as declared interpretation** (delta 2),
+     escalated to Zero rather than silently claimed.
+  6. RAG divergence until Qdrant re-ingest — **accepted, already ledgered** in modus
+     PENDING-ARMS (re-ingest on Pro post-merge; Pro back online 2026-07-08).
+  7. Build-time cover render risk — **accepted; it is the reason for delta 1** (the risk
+     applies to the abandoned Playwright plan, not the shipped runtime route).
+- **Net effect of the review**: no code change required; spec corrected (this section +
+  deltas), one interpretation escalated to Zero, one arming re-confirmed in the ledger.
