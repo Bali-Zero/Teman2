@@ -146,12 +146,15 @@ async def get_client_overview(
             month_start = datetime.now(tz=timezone.utc).replace(
                 day=1, hour=0, minute=0, second=0, microsecond=0
             )
+            # Index follows the optional assigned-filter param ($1). Hardcoding
+            # $2 here 503s for admins (no filter → param is $1, not $2).
+            date_idx = len(params) + 1
             new_month_query = f"""
                 SELECT COUNT(*) FROM clients
                 {where_clause}
-                {"AND" if where_clause else "WHERE"} created_at >= $2
+                {"AND" if where_clause else "WHERE"} created_at >= ${date_idx}
             """
-            month_params = [*params, month_start] if params else [month_start]
+            month_params = [*params, month_start]
             new_this_month = await conn.fetchval(new_month_query, *month_params) or 0
 
             # New this week
@@ -162,9 +165,9 @@ async def get_client_overview(
             new_week_query = f"""
                 SELECT COUNT(*) FROM clients
                 {where_clause}
-                {"AND" if where_clause else "WHERE"} created_at >= $2
+                {"AND" if where_clause else "WHERE"} created_at >= ${date_idx}
             """
-            week_params = [*params, week_start] if params else [week_start]
+            week_params = [*params, week_start]
             new_this_week = await conn.fetchval(new_week_query, *week_params) or 0
 
             # By status
@@ -324,6 +327,14 @@ async def get_revenue_summary(
                 month_end = _next_month_start(month_start)
                 month_label = month_start.strftime("%Y-%m")
 
+                # Placeholder indices must follow the (optional) assigned-filter
+                # param, not be hardcoded to $2/$3 — otherwise an admin with no
+                # filter (params == []) makes the date params $1/$2 while the SQL
+                # still references $2/$3, and $3 is never bound → asyncpg raises
+                # IndeterminateDatatypeError ("could not determine data type of
+                # parameter $1") and the whole endpoint 503s for every admin.
+                start_idx = len(params) + 1
+                end_idx = len(params) + 2
                 month_query = f"""
                     SELECT
                         COALESCE(SUM(p.actual_price), 0) as revenue,
@@ -331,11 +342,9 @@ async def get_revenue_summary(
                     FROM practices p
                     JOIN clients c ON p.client_id = c.id
                     {where_clause}
-                    {"AND" if where_clause else "WHERE"} p.created_at >= $2 AND p.created_at < $3
+                    {"AND" if where_clause else "WHERE"} p.created_at >= ${start_idx} AND p.created_at < ${end_idx}
                 """
-                month_params = (
-                    [*params, month_start, month_end] if params else [month_start, month_end]
-                )
+                month_params = [*params, month_start, month_end]
                 month_row = await conn.fetchrow(month_query, *month_params)
 
                 months.append(
@@ -460,32 +469,31 @@ async def get_client_trend(
                 month_end = _next_month_start(month_start)
                 month_label = month_start.strftime("%b %Y")
 
+                # Placeholder indices follow the optional assigned-filter param;
+                # hardcoded $2/$3 503s for admins (no filter → date params start
+                # at $1). See revenue/summary for the same class of bug.
+                c_start = len(client_params) + 1
+                c_end = len(client_params) + 2
                 # New clients
                 new_clients_query = f"""
                     SELECT COUNT(*) FROM clients
                     {where_clause}
-                    {"AND" if where_clause else "WHERE"} created_at >= $2 AND created_at < $3
+                    {"AND" if where_clause else "WHERE"} created_at >= ${c_start} AND created_at < ${c_end}
                 """
-                new_params = (
-                    [*client_params, month_start, month_end]
-                    if client_params
-                    else [month_start, month_end]
-                )
+                new_params = [*client_params, month_start, month_end]
                 new_clients = await conn.fetchval(new_clients_query, *new_params) or 0
 
                 # Revenue
+                p_start = len(practice_params) + 1
+                p_end = len(practice_params) + 2
                 revenue_query = f"""
                     SELECT COALESCE(SUM(p.actual_price), 0)
                     FROM practices p
                     JOIN clients c ON p.client_id = c.id
                     {where_clause.replace("WHERE", "WHERE c.") if where_clause else ""}
-                    {"AND" if where_clause else "WHERE"} p.created_at >= $2 AND p.created_at < $3
+                    {"AND" if where_clause else "WHERE"} p.created_at >= ${p_start} AND p.created_at < ${p_end}
                 """
-                rev_params = (
-                    [*practice_params, month_start, month_end]
-                    if practice_params
-                    else [month_start, month_end]
-                )
+                rev_params = [*practice_params, month_start, month_end]
                 revenue = await conn.fetchval(revenue_query, *rev_params) or 0
 
                 results.append(
