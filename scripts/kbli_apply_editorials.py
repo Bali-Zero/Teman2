@@ -40,13 +40,8 @@ SYNC = ROOT / "scripts/sync_kbli_dataset.sh"
 
 sys.path.insert(0, str(ROOT / "scripts"))
 from kbli_dataset_lint import (  # noqa: E402 — one SSOT for the guards
-    L10_CLOSED_IDIOM,
-    L10_FOREIGN_CTX,
-    L10_HISTORICAL,
-    L10_NEG,
-    L10_PCT,
-    L10_SECTOR_LAW_OVERRIDE,
-    L10_WORK_SHARE,
+    l3_dead_ref,
+    l10_ownership_contradiction,
 )
 
 BANNED_SENTENCES = (
@@ -55,12 +50,6 @@ BANNED_SENTENCES = (
     "the island-wide moratorium (in force since 13 May 2026) only halts",
 )
 BAD_DATE = re.compile(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b")
-CODE_REF = re.compile(r"\b(\d{5})\b")
-NON_CODE_5DIGIT = {"10000", "50000", "20000", "25000", "30000", "40000", "60000"}
-LABELED_2020 = (
-    "kbli 2020", "2020 code", "kbli2020", "formerly",
-    "previous code", "from kbli 2020", "under kbli 2020",
-)
 
 
 def editorial_prose(ed: dict):
@@ -88,52 +77,28 @@ def gate_g2(ed: dict) -> str | None:
 
 
 def gate_g3(ed: dict, codes: set[str], own: str) -> str | None:
+    # G3 unlabeled dead-ref — delegates to the lint's ONE SSOT (l3_dead_ref) so the
+    # 2020-label vocabulary and section-block/list-continuation innocence match L3.
     for field, text in editorial_prose(ed):
-        for m in CODE_REF.finditer(text):
-            ref = m.group(1)
-            if ref == own or ref in codes or ref in NON_CODE_5DIGIT:
-                continue
-            idx = m.start()
-            ctx = text[max(0, idx - 24) : idx + 36].lower()
-            if any(w in ctx for w in ("rp", "idr", "usd", "$", "m2", "sqm", "meter")):
-                continue
-            std_ctx = text[max(0, idx - 70) : idx].lower()
-            if re.search(r"\b(iso(/iec)?|iec|sni|din|en)\b[^.]{0,60}$", std_ctx):
-                continue
-            before = text[max(0, idx - 60) : idx].lower()
-            if any(w in before for w in LABELED_2020):
-                continue
+        hit = l3_dead_ref(text, own, codes)
+        if hit:
+            ref, _ctx = hit
             return f"G3 unlabeled dead ref {ref} in {field}"
     return None
 
 
 def gate_g4(ed: dict, rec: dict, maxa_by_code: dict[str, int]) -> str | None:
+    # G4 ownership contradiction — delegates to the lint's ONE SSOT so guilt/innocence
+    # is identical to L10 (scar family #3: never two copies of the same guard).
     code = rec["kode_kbli_2025"]
-    if code in L10_SECTOR_LAW_OVERRIDE:
-        return None
     maxa = rec.get("pma_max_asing")
     if not isinstance(maxa, int):
         return None
     for field, text in editorial_prose(ed):
-        for m in L10_PCT.finditer(text):
-            val = int(m.group(1))
-            if val == maxa:
-                continue
-            if L10_CLOSED_IDIOM.match(text[m.end() : m.end() + 12]):
-                continue
-            if L10_NEG.search(text[max(0, m.start() - 6) : m.start()]):
-                continue
-            if L10_HISTORICAL.search(text[max(0, m.start() - 40) : m.start()]):
-                continue
-            win = text[max(0, m.start() - 80) : m.end() + 80]
-            if L10_WORK_SHARE.search(win):
-                continue
-            before_clause = text[max(0, m.start() - 50) : m.start()]
-            refs = re.findall(r"\b(\d{5})\b", before_clause)
-            if any(rc != code and maxa_by_code.get(rc) == val for rc in refs):
-                continue
-            if L10_FOREIGN_CTX.search(win):
-                return f"G4 ownership {val}% vs pma_max_asing={maxa} in {field}"
+        hit = l10_ownership_contradiction(text, code, maxa, maxa_by_code)
+        if hit:
+            val, _win = hit
+            return f"G4 ownership {val}% vs pma_max_asing={maxa} in {field}"
     return None
 
 
