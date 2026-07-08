@@ -55,4 +55,23 @@ describe("renderMDXBody", () => {
       expect(html).toContain("PPJB vs SHMSRS");
     },
   );
+
+  it("server-renders legacy calculator MDX without client function props", async () => {
+    const articlePath = path.join(
+      process.cwd(),
+      "src/content/articles/property/rental-income-tax.mdx",
+    );
+    const articleFile = fs.readFileSync(articlePath, "utf8");
+    const { content } = matter(articleFile);
+
+    const mdxBody = await renderMDXBody(stripImports(content));
+
+    const html = renderToString(<>{mdxBody}</>);
+
+    expect(html).toContain("Rental Income Tax Calculator");
+    expect(html).toContain("Annual Tax (10%)");
+    expect(html).toContain('data-mdx-calculator-rsc="true"');
+    expect(html).not.toContain("calculateResult");
+    expect(html).not.toContain("Functions cannot be passed");
+  });
 });
