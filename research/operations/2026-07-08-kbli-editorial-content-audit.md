@@ -7,9 +7,7 @@ sources:
   - apps/mouth/data/kbli-gold-all.json + KBLI_2025_FINAL_CLEAN.json (2 tracked copies)
   - live balizero.com/kbli/* + nuzantara-rag.fly.dev API probes (2026-07-08)
   - data/source_documents/tka_kbli_README.md (Kepmenaker 228/2019 extraction, Zero ruling 2026-07-01)
-adversarial_review: codex-gpt-5.5 (2026-07-08, sandboxed field-level re-read of both
-  dataset copies against this report's claims) — verdict REFUTED on first pass, 3
-  findings applied (see §Adversarial review below), re-verified clean on second pass.
+adversarial_review: gpt-5.5
 ---
 
 # KBLI editorial-content audit — 11 mis-assigned codes + 128 cross-tagged tkaInfo
@@ -64,7 +62,7 @@ that both judge and verifier had missed — W65 ("even the refuter hallucinates"
    editorial layer is NOT byte-identical to either, by design) + dataset-version
    sidecar bumped (sha256 guard).
 
-## §Adversarial review (Codex GPT-5.5, sandboxed, fresh context)
+## Adversarial review (§, GPT-5.5 seat, sandboxed, fresh context)
 
 Independent re-read of both dataset copies against every claim in this report.
 **First-pass verdict: REFUTED.** 3 real findings, all applied before merge:
