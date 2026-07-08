@@ -239,7 +239,7 @@ describe("proxy catch-all route — auth failure logging", () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
-  it("keeps error logging for credentialed auth failures", async () => {
+  it("logs credentialed auth failures as warnings, not runtime errors", async () => {
     const req = new MockNextRequest("http://localhost/api/auth/profile", {
       method: "GET",
       cookies: { nz_access_token: "stale-jwt" },
@@ -248,13 +248,13 @@ describe("proxy catch-all route — auth failure logging", () => {
     const response = await GET(req as never);
 
     expect(response.status).toBe(401);
-    expect(logger.error).toHaveBeenCalledWith(
-      "[Proxy] Auth error 401 for GET /api/auth/profile",
+    expect(logger.warn).toHaveBeenCalledWith(
+      "[Proxy] Auth rejected 401 for GET /api/auth/profile with credentials",
       expect.objectContaining({
-        action: "error",
+        action: "auth_rejected",
       }),
-      expect.any(Error),
     );
+    expect(logger.error).not.toHaveBeenCalled();
   });
 });
 

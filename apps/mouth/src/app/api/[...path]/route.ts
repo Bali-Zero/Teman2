@@ -251,15 +251,12 @@ async function proxy(req: NextRequest): Promise<Response> {
         };
 
         if (hasAuthCookie || hasAuthHeader) {
-          logger.error(
-            `[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`,
+          logger.warn(
+            `[Proxy] Auth rejected ${upstream.status} for ${req.method} ${url.pathname} with credentials`,
             {
               ...authLogContext,
-              action: "error",
+              action: "auth_rejected",
             },
-            toError(
-              `[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`,
-            ),
           );
         } else {
           logger.warn(
