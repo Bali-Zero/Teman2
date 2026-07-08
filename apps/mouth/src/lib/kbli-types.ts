@@ -81,7 +81,6 @@ export interface KBLIRawCode {
     zantaraOpener?: string;
     baliContext?: string;
     youllAlsoNeed?: string;
-    whoThisIsFor?: string;
     coverImage?: string | null;
     // Legacy field names (older enrichment batches)
     legacy_bridge?: string;
@@ -176,10 +175,6 @@ export interface KBLICode {
   code: string;
   titleId: string;
   titleEn: string;
-  /** true when titleEn is a real English title (curated or generated), not the Indonesian fallback */
-  titleEnIsReal?: boolean;
-  /** English title for <title>/meta — frozen to the curated-legacy map (SEO firebreak PR #1967) */
-  titleEnMeta?: string;
   description: string;
   section: string | null;
   sectionName: string | null;
@@ -204,7 +199,6 @@ export interface KBLICode {
     zantaraOpener?: string;
     baliContext?: string;
     youllAlsoNeed?: string;
-    whoThisIsFor?: string;
     coverImage?: string | null;
   };
   /** L4 — Bali sovereign-local status (moratorium 2026-05-13). National PMA openness != Bali registrability. */

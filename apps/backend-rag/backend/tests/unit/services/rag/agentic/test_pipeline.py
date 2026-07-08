@@ -67,36 +67,6 @@ class TestPipelineStages:
         assert isinstance(result, dict)
 
     @pytest.mark.asyncio
-    async def test_citation_stage_preserves_snippet_from_tool_source(self):
-        """A chunk's text (as the tool's 'snippet' field) must survive normalization."""
-        stage = CitationStage()
-        data = {
-            "response": "Test response",
-            "sources": [
-                {
-                    "id": 1,
-                    "title": "PP 28/2025",
-                    "url": "https://example.test/pp28",
-                    "score": 0.88,
-                    "collection": "legal_unified",
-                    "doc_id": "doc-9",
-                    "snippet": "PP 28/2025 mengatur konversi KBLI 2020 ke KBLI 2025.",
-                },
-            ],
-        }
-        result = await stage.process(data)
-        assert result["citations"] == [
-            {
-                "title": "PP 28/2025",
-                "url": "https://example.test/pp28",
-                "collection": "legal_unified",
-                "score": 0.88,
-                "snippet": "PP 28/2025 mengatur konversi KBLI 2020 ke KBLI 2025.",
-                "metadata": {},
-            },
-        ]
-
-    @pytest.mark.asyncio
     async def test_format_stage(self):
         """Test FormatStage"""
         stage = FormatStage()

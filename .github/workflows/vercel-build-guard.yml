@@ -24,9 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Log
-        env:
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           echo "Frontend files changed — Vercel build proceeding"
           echo "Commit: ${{ github.sha }}"
-          printf 'Message:\n%s\n' "$COMMIT_MESSAGE"
+          echo "Message: ${{ github.event.head_commit.message }}"

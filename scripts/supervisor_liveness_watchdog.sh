@@ -51,17 +51,27 @@ mkdir -p "$(dirname "$STATE_FILE")" "$(dirname "$LOG_FILE")"
 now_ts() { date +%s; }
 log() { echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] $*" >>"$LOG_FILE"; }
 
-# --- Telegram helper (cohort-3: routes through the notification gateway) ---
-# Supervisor dead = organism down → tier p0 (immediate, daily budget).
-# Gateway owns token resolution (env → secrets file → relay) + 6h dedup.
+# --- Telegram helper ---
 send_telegram() {
   local msg="$1"
-  local gateway
-  gateway="$(dirname "$0")/tg_notify.py"
-  [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
-  python3 "$gateway" --tier p0 --source supervisor-liveness \
-    --dedup-key "supervisor-liveness:$(hostname -s)" -- "$msg" \
-    >/dev/null 2>&1 || log "telegram: gateway send failed"
+  if [ -f "$HOME/.nuzantara-secrets.env" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$HOME/.nuzantara-secrets.env" 2>/dev/null || true
+    set +a
+  fi
+  local TOKEN="${TELEGRAM_BOT_TOKEN:-${CELL_TELEGRAM_BOT_TOKEN:-}}"
+  local CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-${TELEGRAM_ZERO_CHAT_ID:-1125336968}}"
+  if [ -z "$TOKEN" ] || [ -z "$CHAT_ID" ]; then
+    log "telegram: skipped (no token/chat_id available)"
+    return 0
+  fi
+  curl -fsS --max-time 5 -X POST \
+    "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+    --data-urlencode "chat_id=${CHAT_ID}" \
+    --data-urlencode "text=${msg}" \
+    --data-urlencode "parse_mode=Markdown" \
+    >/dev/null 2>&1 || log "telegram: send failed"
 }
 
 # --- Read state ---

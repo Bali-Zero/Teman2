@@ -32,7 +32,6 @@ DEFAULT_PEER_ALIAS_BY_ROLE = {
 }
 DEFAULT_PEER_REPO = "~/Desktop/nuzantara"
 PEER_AUTOSTASH_ENV = "NUZ_STATUS_ALLOW_PEER_AUTOSTASH"
-DRIVE_POLL_ENV_NAME = "NUZANTARA_" + "API" + "_KEY"
 
 
 @dataclass(frozen=True)
@@ -97,46 +96,6 @@ def default_peer_alias(role: str) -> str:
 
 def check_status(status: str, summary: str, **details: Any) -> dict[str, Any]:
     return {"status": status, "summary": summary, "details": details}
-
-
-def dotenv_value(path: Path, key: str) -> str:
-    if not path.exists() or not path.is_file():
-        return ""
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return ""
-    prefix = f"{key}="
-    export_prefix = f"export {key}="
-    for raw_line in lines:
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith(export_prefix):
-            value = line[len(export_prefix) :]
-        elif line.startswith(prefix):
-            value = line[len(prefix) :]
-        else:
-            continue
-        value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
-            value = value[1:-1]
-        return value.strip()
-    return ""
-
-
-def drive_api_key(root: Path) -> str:
-    env_value = os.getenv(DRIVE_POLL_ENV_NAME, "").strip()
-    if env_value:
-        return env_value
-    for candidate in (
-        root / "apps" / "backend-rag" / ".env",
-        root / ".env",
-    ):
-        value = dotenv_value(candidate, DRIVE_POLL_ENV_NAME)
-        if value:
-            return value
-    return ""
 
 
 def peer_autostash_allowed() -> bool:
@@ -410,34 +369,20 @@ def build_checks(
         )
 
         drive_headers: dict[str, str] = {}
-        api_key = drive_api_key(root)
-        if api_key:
-            drive_headers["X-API-Key"] = api_key
+        drive_api_key = os.getenv("NUZANTARA_API_KEY", "").strip()
+        if drive_api_key:
+            drive_headers["X-API-Key"] = drive_api_key
         drive = http_json(drive_status_url, headers=drive_headers)
         drive_body = drive.get("body") if isinstance(drive.get("body"), dict) else {}
         drive_status = drive_body.get("status", "unknown")
-        drive_result = drive_body.get("result") if isinstance(drive_body.get("result"), dict) else {}
-        last_result = (
-            drive_result.get("last_result")
-            if isinstance(drive_result.get("last_result"), dict)
-            else {}
-        )
-        last_result_status = last_result.get("status")
-        more_pages = bool(last_result.get("more_pages"))
         summary = f"worker endpoint={drive_status}"
-        if last_result_status:
-            summary += f", last_result={last_result_status}"
-        if more_pages:
-            summary += ", more_pages=True"
-        if not drive.get("ok") and drive.get("status_code") == 401 and not api_key:
+        if not drive.get("ok") and drive.get("status_code") == 401 and not drive_api_key:
             state = "warn"
-            summary = f"worker auth required: set {DRIVE_POLL_ENV_NAME}"
+            summary = "worker auth required: set NUZANTARA_API_KEY"
         elif not drive.get("ok"):
             state = "fail"
         elif drive_status == "stale":
             state = "fail"
-        elif last_result_status == "partial" or more_pages:
-            state = "warn"
         elif drive_status == "ok":
             state = "ok"
         else:

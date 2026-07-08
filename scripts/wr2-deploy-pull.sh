@@ -37,10 +37,6 @@ OUTCOME_STATUS="error:unclassified"
 OUTCOME_OLD_HEAD=""
 OUTCOME_NEW_HEAD=""
 OUTCOME_ADVANCE=0
-# set (not appended to OUTCOME_STATUS directly) if the dirty-classifier below
-# self-heals class-b entries; folded into the terminal ok:* status so the
-# heartbeat distinguishes a healed run from a routinely-clean one (§1 spec).
-SELF_HEALED=0
 
 write_outcome() {
   local rc="${1:-0}"
@@ -130,26 +126,6 @@ is_git_worktree() {
   [[ -d "$dir/.git" || -f "$dir/.git" ]]
 }
 
-# ── tg_notify gateway (#2067): prefer the one true gate over raw send_telegram
-# so alerts/heals show up in the P0/digest tiers instead of rotting behind the
-# old per-key 6h cooldown (the incident this self-heal fixes sat silent for
-# 2+ days because "dirty_worktree" was already in cooldown). Falls through to
-# send_telegram if the gateway script is missing (e.g. a bootstrap clone with
-# no scripts/ yet) or errors — never let notification wiring change exit codes.
-TG_NOTIFY_PY="${WR2_TG_NOTIFY_PY:-${SOURCE_REPO}/scripts/tg_notify.py}"
-
-tg_notify_or_fallback() {
-  local tier="$1" key="$2" fallback_key="$3" text="$4"
-  if [[ -f "$TG_NOTIFY_PY" ]]; then
-    if python3 "$TG_NOTIFY_PY" --tier "$tier" --source wr2-deploy-pull \
-        --dedup-key "$key" -- "$text" >>"$LOG" 2>&1; then
-      return 0
-    fi
-    log "WARN: tg_notify.py failed (tier=${tier} key=${key}), falling back to send_telegram"
-  fi
-  send_telegram "$fallback_key" "$text"
-}
-
 # 2026-06-27: -deploy is now a full CLONE (not a worktree) — council Q1, isolated object
 # store immune to the main's sibling-race (W63/#5). The clone is cheap: HEAD tree ~0.9GB
 # (the 45G "repo" was venv+node_modules+.worktrees, which a clone never materializes).
@@ -224,86 +200,13 @@ if [[ "$CURRENT_BRANCH" != "$EXPECTED_BRANCH" ]]; then
   exit 1
 fi
 
-# ── Dirty-worktree classification + self-heal (W81/#2, incident 2026-07-05→07) ──
-# The deploy clone is BY CONTRACT read-only runtime — any local modification is
-# drift, never valuable work. A sibling session leaving one tracked-deleted
-# plist (unstaged) froze code propagation for 2+ days because the OLD single
-# DIRTY-block treated every porcelain line the same (alert once, cooldown-
-# suppress, exit 1 forever). Classify instead of blanket-blocking:
-#   (a) untracked (`?? `)              -> NOT blocking, just log+continue
-#       (runtime junk: venvs/output dirs legitimately live in the clone)
-#   (b) unstaged tracked mod/del       -> SELF-HEAL: git checkout -- <path>
-#       (worktree col M/D, index col space or M — never touches staged/index)
-#   (c) anything else (staged, renamed,
-#       conflicts) or failed self-heal -> block as before (now via tg_notify P0)
-DIRTY_RAW="$(git status --porcelain 2>/dev/null)"
-if [[ -n "$DIRTY_RAW" ]]; then
-  UNTRACKED_PATHS=()
-  HEALABLE_PATHS=()
-  BLOCKING_LINES=()
-  while IFS= read -r line; do
-    [[ -z "$line" ]] && continue
-    idx_col="${line:0:1}"
-    wt_col="${line:1:1}"
-    path="${line:3}"
-    if [[ "$idx_col" == "?" && "$wt_col" == "?" ]]; then
-      UNTRACKED_PATHS+=("$path")
-    elif [[ ( "$idx_col" == " " || "$idx_col" == "M" ) && ( "$wt_col" == "M" || "$wt_col" == "D" ) ]]; then
-      HEALABLE_PATHS+=("$path")
-    else
-      BLOCKING_LINES+=("$line")
-    fi
-  done <<< "$DIRTY_RAW"
-
-  if (( ${#UNTRACKED_PATHS[@]} > 0 )); then
-    preview="$(printf '%s, ' "${UNTRACKED_PATHS[@]:0:3}")"
-    preview="${preview%, }"
-    log "untracked entries present (${#UNTRACKED_PATHS[@]}) - not blocking: ${preview}$( (( ${#UNTRACKED_PATHS[@]} > 3 )) && echo " ...")"
-  fi
-
-  if (( ${#BLOCKING_LINES[@]} > 0 )); then
-    first_blocking="${BLOCKING_LINES[0]}"
-    log "ERROR: deploy worktree has non-healable local changes - first blocking entry: ${first_blocking}"
-    tg_notify_or_fallback p0 "wr2-deploy-pull-dirty" "dirty_worktree" \
-      "WR2 deploy worktree DIRTY (non-healable). First blocking entry: \`${first_blocking}\`. Inspect: \`cd ${DEPLOY_DIR} && git status\`."
-    OUTCOME_STATUS="error:dirty"
-    exit 1
-  fi
-
-  if (( ${#HEALABLE_PATHS[@]} > 0 )); then
-    if [[ "${WR2_DEPLOY_PULL_SELFHEAL:-1}" == "1" ]]; then
-      if git checkout -- "${HEALABLE_PATHS[@]}" 2>>"$LOG"; then
-        STILL_DIRTY="$(git status --porcelain -- "${HEALABLE_PATHS[@]}" 2>/dev/null)"
-        if [[ -z "$STILL_DIRTY" ]]; then
-          healed_preview="$(printf '%s, ' "${HEALABLE_PATHS[@]:0:3}")"
-          healed_preview="${healed_preview%, }"
-          log "self-healed dirty: ${healed_preview}$( (( ${#HEALABLE_PATHS[@]} > 3 )) && echo " ...")"
-          tg_notify_or_fallback digest "wr2-deploy-pull-selfheal" "selfheal_worktree" \
-            "WR2 deploy worktree self-healed ${#HEALABLE_PATHS[@]} dirty tracked path(s): \`${healed_preview}\`."
-          SELF_HEALED=1
-        else
-          log "ERROR: self-heal ran but worktree still dirty for healable paths: ${STILL_DIRTY}"
-          tg_notify_or_fallback p0 "wr2-deploy-pull-dirty" "dirty_worktree" \
-            "WR2 deploy worktree self-heal FAILED to converge. Remaining: \`${STILL_DIRTY}\`. Inspect: \`cd ${DEPLOY_DIR} && git status\`."
-          OUTCOME_STATUS="error:dirty"
-          exit 1
-        fi
-      else
-        log "ERROR: git checkout -- self-heal failed"
-        tg_notify_or_fallback p0 "wr2-deploy-pull-dirty" "dirty_worktree" \
-          "WR2 deploy worktree self-heal FAILED (git checkout error). Inspect: \`cd ${DEPLOY_DIR} && git status\`."
-        OUTCOME_STATUS="error:dirty"
-        exit 1
-      fi
-    else
-      first_healable="${HEALABLE_PATHS[0]}"
-      log "ERROR: deploy worktree has local changes - first dirty entry:  M ${first_healable} (self-heal disabled: WR2_DEPLOY_PULL_SELFHEAL=0)"
-      tg_notify_or_fallback p0 "wr2-deploy-pull-dirty" "dirty_worktree" \
-        "WR2 deploy worktree DIRTY. First dirty entry: \` M ${first_healable}\`. Self-heal disabled. Inspect: \`cd ${DEPLOY_DIR} && git status\`."
-      OUTCOME_STATUS="error:dirty"
-      exit 1
-    fi
-  fi
+DIRTY="$(git status --porcelain 2>/dev/null | head -1)"
+if [[ -n "$DIRTY" ]]; then
+  log "ERROR: deploy worktree has local changes - first dirty entry: ${DIRTY}"
+  send_telegram "dirty_worktree" \
+    "WR2 deploy worktree DIRTY. First dirty entry: \`${DIRTY}\`. Inspect: \`cd ${DEPLOY_DIR} && git status\`."
+  OUTCOME_STATUS="error:dirty"
+  exit 1
 fi
 
 if ! git fetch --quiet origin "$EXPECTED_BRANCH" 2>>"$LOG"; then
@@ -338,7 +241,6 @@ if [[ "$LOCAL_HEAD" == "$REMOTE_HEAD" ]]; then
   state_set "last_run_ts" "$(now_epoch)"
   state_set "last_head" "$LOCAL_HEAD"
   OUTCOME_STATUS="ok:up-to-date"
-  (( SELF_HEALED == 1 )) && OUTCOME_STATUS="ok:self-healed"
   OUTCOME_NEW_HEAD="$LOCAL_HEAD"
   exit 0
 fi
@@ -376,7 +278,6 @@ state_set "last_run_ts" "$(now_epoch)"
 state_set "last_head" "$NEW_HEAD"
 state_set "last_advance_count" "$COMMIT_COUNT"
 OUTCOME_STATUS="ok:advanced"
-(( SELF_HEALED == 1 )) && OUTCOME_STATUS="ok:self-healed"
 OUTCOME_NEW_HEAD="$NEW_HEAD"
 [[ "$COMMIT_COUNT" =~ ^[0-9]+$ ]] && OUTCOME_ADVANCE="$COMMIT_COUNT"
 

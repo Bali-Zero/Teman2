@@ -53,28 +53,16 @@ if ! declare -F organism_heartbeat >/dev/null 2>&1; then
     organism_heartbeat() { :; }
 fi
 
-# Machine-aware organ id (TAC-2 A2, 2026-07-05): this cron runs on all three
-# machines but hardcoded "pro." — an M5/Mini run forged a Pro-resident heartbeat
-# (boundary repo<->machine; proprioception flagged the wrong-prefix sidecar).
-# Env override exists for the test harness ONLY.
-case "$(hostname -s | tr '[:upper:]' '[:lower:]')" in
-    nuzantara)  _ORGAN_MACHINE="pro" ;;
-    mini-pro2)  _ORGAN_MACHINE="mini" ;;
-    air-m5)     _ORGAN_MACHINE="m5" ;;
-    *)          _ORGAN_MACHINE="$(hostname -s | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '_')" ;;
-esac
-ORGAN_ID="${AGENT_WORKTREE_CLEANUP_ORGAN_ID:-${_ORGAN_MACHINE}.agent_worktree_cleanup}"
-
 if [ ! -f "$BROKER" ]; then
     log "ERROR: broker not found at $BROKER"
-    organism_heartbeat "$ORGAN_ID" "fail" "broker missing"
+    organism_heartbeat "pro.agent_worktree_cleanup" "fail" "broker missing"
     exit 2
 fi
 
 PYTHON="$(command -v python3 || true)"
 if [ -z "$PYTHON" ]; then
     log "ERROR: python3 not on PATH ($PATH)"
-    organism_heartbeat "$ORGAN_ID" "fail" "python3 missing"
+    organism_heartbeat "pro.agent_worktree_cleanup" "fail" "python3 missing"
     exit 2
 fi
 
@@ -92,18 +80,18 @@ echo "$OUTPUT" | tee -a "$LOG"
 # signal carried by heartbeat=warn + WARN log lines (ledger #2, 2026-06-13).
 case "$RC" in
     0)
-        organism_heartbeat "$ORGAN_ID" "ok" "clean" || true
+        organism_heartbeat "pro.agent_worktree_cleanup" "ok" "clean" || true
         EXIT_RC=0
         ;;
     1)
         WIP_COUNT="$(printf '%s\n' "$OUTPUT" | grep -c 'WARN: skip' || true)"
-        organism_heartbeat "$ORGAN_ID" "warn" \
+        organism_heartbeat "pro.agent_worktree_cleanup" "warn" \
             "WIP worktree skipped (${WIP_COUNT}x) — commit/stash to let the reaper through" || true
         log "WARN: ${WIP_COUNT} WIP worktree(s) skipped — expected guard, not a failure"
         EXIT_RC=0
         ;;
     *)
-        organism_heartbeat "$ORGAN_ID" "fail" "exit $RC" || true
+        organism_heartbeat "pro.agent_worktree_cleanup" "fail" "exit $RC" || true
         EXIT_RC="$RC"
         ;;
 esac

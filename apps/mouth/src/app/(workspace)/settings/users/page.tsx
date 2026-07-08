@@ -33,7 +33,6 @@ interface TeamMember {
 export default function UserManagementPage() {
   const router = useRouter();
   const { success, error: toastError, warning } = useToast();
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -46,19 +45,6 @@ export default function UserManagementPage() {
   });
 
   useEffect(() => {
-    if (!api.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
-    if (!api.isAdmin()) {
-      router.push('/chat');
-      return;
-    }
-    setIsAuthorized(true);
-  }, [router]);
-
-  useEffect(() => {
-    if (!isAuthorized) return;
     const loadUsers = async () => {
       try {
         const teamStatus = await api.getTeamStatus();
@@ -98,7 +84,7 @@ export default function UserManagementPage() {
       }
     };
     loadUsers();
-  }, [isAuthorized]);
+  }, []);
 
   const filteredUsers = users.filter(
     (u) =>
@@ -130,10 +116,6 @@ export default function UserManagementPage() {
     setNewUser({ email: '', name: '', role: 'user', team: 'Team' });
     success('User added', `${newUser.name} has been added to the team.`);
   };
-
-  if (!isAuthorized) {
-    return null;
-  }
 
   return (
     <div className="space-y-6">

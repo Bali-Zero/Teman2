@@ -302,11 +302,9 @@ class FormatStage(PipelineStage):
         if "citations" not in data:
             data["citations"] = []
 
-        # Add processing metadata. ResponsePipeline owns stage tracking when
-        # present; keep standalone FormatStage calls self-describing.
+        # Add processing metadata
         data["pipeline_version"] = "1.0"
-        if "stages_completed" not in data:
-            data["stages_completed"] = [self.name]
+        data["stages_completed"] = [*data.get("stages_completed", []), self.name]
 
         logger.debug(f"[{self.name}] Final formatting complete")
 

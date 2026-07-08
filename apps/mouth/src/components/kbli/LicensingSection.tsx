@@ -184,55 +184,7 @@ function KeyFacts({
   baliBlocked?: boolean;
 }) {
   const primary = licensing[0];
-  if (!primary) {
-    // No OSS-RBA scale rows: special/sectoral licensing regime (government,
-    // finance/OJK-BI, education, health, culture). Show an honest panel instead
-    // of silently rendering nothing (101 codes fall here).
-    const specialFacts: { label: string; value: string; accent?: string }[] = [
-      { label: "Licensing Route", value: "Special / sectoral regime" },
-      { label: "OSS-RBA Rows", value: "None published" },
-      {
-        label: "Foreign Ownership",
-        value:
-          pma.status === "open"
-            ? baliBlocked
-              ? "100% nat'l · blocked in Bali"
-              : "100% Open"
-            : pma.status === "restricted"
-              ? `Max ${pma.maxForeign}%`
-              : "Closed (0%)",
-        accent:
-          pma.status === "open" && !baliBlocked
-            ? "var(--kbli-pma-open)"
-            : "var(--kbli-pma-closed)",
-      },
-      { label: "Authority", value: "Sector regulator — verify case-by-case" },
-    ];
-    return (
-      <div
-        className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--border)] sm:grid-cols-4"
-        style={{ background: "var(--kbli-border)" }}
-      >
-        {specialFacts.map((f) => (
-          <div
-            key={f.label}
-            className="flex flex-col gap-1.5 px-4 py-3.5"
-            style={{ background: "var(--kbli-bg-elevated)" }}
-          >
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--foreground-muted)]">
-              {f.label}
-            </span>
-            <span
-              className="text-sm font-semibold"
-              style={{ color: f.accent ?? "var(--foreground)" }}
-            >
-              {f.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
+  if (!primary) return null;
 
   const facts: { label: string; value: string; accent?: string }[] = [
     {

@@ -116,7 +116,6 @@ ENRICHMENT_MAP: dict[str, list[tuple[str, str, Callable[[Any], Any]]]] = {
         ("nationality", "nationality", _clean_str),
     ],
     "kitas": [
-        ("name", "full_name", _clean_str),
         ("kitas_no", "kitas_number", _clean_str),
         ("expiry", "kitas_expiry_date", _to_date),
     ],

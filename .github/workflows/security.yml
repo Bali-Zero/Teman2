@@ -92,14 +92,16 @@ jobs:
           python scripts/check_cve_exceptions.py
 
       - name: Run Snyk (Node.js, JSON for exception filtering)
-        run: |
-          npx --yes snyk@latest test \
-            --severity-threshold=high \
-            --all-projects \
-            --json-file-output=snyk-node.json \
-            --sarif-file-output=snyk.sarif || true
+        uses: snyk/actions/node@master
+        continue-on-error: true # we make the decision in the next step
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: |
+            --severity-threshold=high
+            --all-projects
+            --json-file-output=snyk-node.json
+            --sarif-file-output=snyk.sarif
 
       - name: Honour CVE exceptions (fail on un-accepted CVEs)
         run: |

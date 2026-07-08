@@ -80,7 +80,7 @@ function RegisterContent() {
         setIsComplete(true);
         // Redirect to login after 3 seconds
         setTimeout(() => {
-          router.push("/portal/login-upgraded");
+          router.push("/login");
         }, 3000);
       } else {
         setError(result.message || "Registration failed. Please try again.");
@@ -155,7 +155,7 @@ function RegisterContent() {
               "This invitation link is no longer valid. Please contact your account manager for a new invitation."}
           </p>
           <a
-            href="mailto:zantara@balizero.com"
+            href="mailto:support@balizero.com"
             className="inline-block px-6 py-3 bg-[#4FD1C5] text-[#0B0E13] rounded-lg font-medium hover:bg-[#4FD1C5]/80 transition-colors"
           >
             Contact Support

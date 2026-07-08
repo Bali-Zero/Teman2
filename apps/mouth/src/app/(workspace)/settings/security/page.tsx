@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Shield,
   Key,
@@ -15,7 +15,6 @@ import {
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
-import { api } from '@/lib/api';
 
 interface Session {
   id: string;
@@ -29,7 +28,6 @@ interface Session {
 export default function SecuritySettingsPage() {
   const router = useRouter();
   const { success, error: toastError, warning } = useToast();
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -80,22 +78,6 @@ export default function SecuritySettingsPage() {
   const revokeSession = (_sessionId: string) => {
     warning('Not yet available', 'Session revocation will be enabled in a future update.');
   };
-
-  useEffect(() => {
-    if (!api.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
-    if (!api.isAdmin()) {
-      router.push('/chat');
-      return;
-    }
-    setIsAuthorized(true);
-  }, [router]);
-
-  if (!isAuthorized) {
-    return null;
-  }
 
   return (
     <div className="space-y-6 max-w-2xl">

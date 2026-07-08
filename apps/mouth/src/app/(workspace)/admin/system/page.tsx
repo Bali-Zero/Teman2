@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 import { SystemHealthReport } from '@/lib/api/admin/admin.types';
@@ -28,12 +27,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function SystemDashboardPage() {
-  const router = useRouter();
   const [report, setReport] = useState<SystemHealthReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [error, setError] = useState<string | null>(null);
-  const [isAuthorized, setIsAuthorized] = useState(false);
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -50,36 +47,10 @@ export default function SystemDashboardPage() {
   }, []);
 
   useEffect(() => {
-    // admin-only surface: DbExplorer (Postgres browser) + VectorExplorer (Qdrant) —
-    // backend admin/system routes aren't mounted yet, so this frontend gate is the only guard today
-    if (!api.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
-    if (!api.isAdmin()) {
-      router.push('/chat');
-      return;
-    }
-    setIsAuthorized(true);
-  }, [router]);
-
-  useEffect(() => {
-    if (!isAuthorized) return;
     fetchHealth();
     const interval = setInterval(fetchHealth, 5000); // Poll every 5s
     return () => clearInterval(interval);
-  }, [isAuthorized, fetchHealth]);
-
-  if (!isAuthorized) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-black text-green-500 font-mono">
-        <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="w-12 h-12 animate-spin" />
-          <p>VERIFYING ACCESS...</p>
-        </div>
-      </div>
-    );
-  }
+  }, [fetchHealth]);
 
   if (isLoading && !report) {
     return (

@@ -4,7 +4,7 @@
 **Purpose:** Technical reference for AI assistants. For behavioral rules, see `CLAUDE.md`. For the founding principles of the organism, see `SYMBIOSIS.md` (monorepo root).
 
 <!-- DOCSYNC:QUICK_NUMBERS_START -->
-`329 routers · 636 services · 1104 tests · 12 Qdrant collections · 104,154 vectors · 108,068 KG nodes`
+`329 routers · 635 services · 1104 tests · 12 Qdrant collections · 104,154 vectors · 108,068 KG nodes`
 <!-- DOCSYNC:QUICK_NUMBERS_END -->
 
 > **Role split:** `CLAUDE.md` = how to act (rules, delegation, language, deploy QA). This file = how to build (architecture, code patterns, debugging, workflows).
@@ -115,27 +115,22 @@ Agentic RAG (`/api/agentic-rag/query`) requires JWT.
 apps/backend-rag/
 ├── backend/
 │   ├── app/                # ⚠️ FastAPI app (routers, services, setup)
-│   │   ├── routers/        # router modules (count: see DOCSYNC line at top)
+│   │   ├── routers/        # 88 router files
 │   │   ├── services/       # App-level services (CRM, auth)
 │   │   ├── setup/          # app_factory, router_registration, service_initializer
 │   │   ├── dependencies.py # ⚠️ Imported by ALL routers — test before deploy
 │   │   └── main_cloud.py   # Fly.io entrypoint
-│   ├── services/           # Core business logic (count: see DOCSYNC line)
+│   ├── services/           # Core business logic (244 total)
 │   │   ├── rag/agentic/    # Orchestrator, ReAct, LLM Gateway
 │   │   └── knowledge_graph/ # KG extraction + query
-│   ├── channels/           # 4 live: whatsapp, telegram, instagram, web (twitter/gchat/slack quarantined .disabled-2026-04-30)
+│   ├── channels/           # 7: whatsapp, telegram, instagram, twitter, web, gchat, slack
 │   ├── prompts/            # ⭐ zantara_core.py = Single Source of Truth
 │   ├── llm/                # Gemini, Ollama, OpenRouter clients
 │   ├── middleware/          # Auth, rate-limit, tracing
 │   └── migrations/         # Alembic (up to 060)
-├── tests/                  # test files (count: see DOCSYNC line)
+├── tests/                  # 385 test files
 └── .venv/                  # Python virtualenv (ALWAYS .venv)
 ```
-
-> Counts live ONLY in the machine-verified DOCSYNC line at the top of this file
-> (`python scripts/docs_sync.py`). This block stopped carrying its own numbers on
-> 2026-07-05: the hardcoded ones had drifted 2-2.6× wrong (88→158 router files,
-> 244→635 services, 385→1104 tests, 7→4 live channels) because nothing gated them.
 
 **Key detail:** Routers are in `backend/app/routers/`, NOT `backend/routers/`. Services span both `backend/services/` (core) and `backend/app/services/` (app-level). Router registration is in `backend/app/setup/router_registration.py`, NOT `main_cloud.py`.
 
@@ -143,7 +138,7 @@ apps/backend-rag/
 
 ## QDRANT COLLECTIONS
 
-Live count: see the DOCSYNC line at top — and note it refreshes only when `QDRANT_URL`/`QDRANT_API_KEY` are exported (else cached). Config: `backend/services/ingestion/collection_manager.py` — **its 20 definitions describe the pre-hybrid estate: only 6 exist live** (probe 2026-07-05: 14 live collections, 113,818 docs). Full defined-vs-live table: `docs/runbooks/qdrant-estate-reconciliation.md`. The per-collection doc counts in the table below are historical annotations, not live truth.
+10 live on Fly.io (93,283 docs). Config: `backend/services/ingestion/collection_manager.py`.
 
 **Search Pipeline (ENABLED 2026-03-24):** Hybrid search (BM25 sparse + Dense vector + RRF fusion) → CrossEncoder reranking (ms-marco-MiniLM-L-6-v2, top-20→top-5). Flags: `ENABLE_HYBRID_SEARCH=true`, `ENABLE_RERANKER=true`, `ENABLE_BM25=true`, `ENABLE_QUERY_EXPANSION=true`.
 

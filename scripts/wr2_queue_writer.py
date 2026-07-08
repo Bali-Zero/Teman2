@@ -46,14 +46,12 @@ logic is testable without touching disk.
 from __future__ import annotations
 
 import argparse
-import fcntl
 import hashlib
 import json
 import os
 import re
 import sys
 import tempfile
-from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -252,25 +250,6 @@ def write_queue_atomic(path: Path, items: list[dict[str, Any]]) -> None:
         raise
 
 
-@contextmanager
-def queue_lock(path: Path):
-    """Serialize read-modify-write against the other queue writers.
-
-    Same lock file and protocol as wr2_html_render_apply._append_review_queue
-    and _damar-queue-server (fcntl EX on human-review-queue.lock) — an atomic
-    replace alone does not prevent two writers from both loading the same
-    baseline and the second replace erasing the first one's mutation."""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    lock_path = path.with_suffix(".lock")
-    with open(lock_path, "w", encoding="utf-8") as lock_fh:
-        fcntl.flock(lock_fh, fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(lock_fh, fcntl.LOCK_UN)
-
-
 # ── Orchestration ──────────────────────────────────────────────────────────
 
 
@@ -296,35 +275,34 @@ def mark_published(
     if not validate_ig_url(ig_url):
         return PublishResult("invalid_url", False, ref, detail=f"not an IG permalink: {ig_url!r}")
 
-    with queue_lock(path):
-        items = load_queue(path)
-        idx, item = find_by_ref_code(items, ref)
-        if item is None:
-            return PublishResult("not_found", False, ref, detail="no queue item matches this ref-code")
+    items = load_queue(path)
+    idx, item = find_by_ref_code(items, ref)
+    if item is None:
+        return PublishResult("not_found", False, ref, detail="no queue item matches this ref-code")
 
-        iid = item_id_of(item)
-        state = item.get("state")
-        existing_url = (item.get("instagram_post_url") or "").strip()
-        new_url = ig_url.strip()
+    iid = item_id_of(item)
+    state = item.get("state")
+    existing_url = (item.get("instagram_post_url") or "").strip()
+    new_url = ig_url.strip()
 
-        if state in PUBLISHED_STATES:
-            if existing_url == new_url:
-                return PublishResult("already_published", True, ref, iid, "no-op: same URL already recorded")
-            return PublishResult(
-                "conflict", False, ref, iid,
-                f"already published with a different URL ({existing_url!r}); refusing to overwrite",
-            )
+    if state in PUBLISHED_STATES:
+        if existing_url == new_url:
+            return PublishResult("already_published", True, ref, iid, "no-op: same URL already recorded")
+        return PublishResult(
+            "conflict", False, ref, iid,
+            f"already published with a different URL ({existing_url!r}); refusing to overwrite",
+        )
 
-        if state not in PUBLISHABLE_STATES:
-            return PublishResult(
-                "wrong_state", False, ref, iid,
-                f"state {state!r} is not publishable (expected one of {PUBLISHABLE_STATES})",
-            )
+    if state not in PUBLISHABLE_STATES:
+        return PublishResult(
+            "wrong_state", False, ref, iid,
+            f"state {state!r} is not publishable (expected one of {PUBLISHABLE_STATES})",
+        )
 
-        published_iso = published_at or (now or datetime.now(timezone.utc)).isoformat()
-        items[idx] = apply_publish(item, new_url, published_iso)
-        write_queue_atomic(path, items)
-        return PublishResult("published", True, ref, iid, f"published at {published_iso}")
+    published_iso = published_at or (now or datetime.now(timezone.utc)).isoformat()
+    items[idx] = apply_publish(item, new_url, published_iso)
+    write_queue_atomic(path, items)
+    return PublishResult("published", True, ref, iid, f"published at {published_iso}")
 
 
 def ingest_external_post(
@@ -354,24 +332,23 @@ def ingest_external_post(
     if not validate_ig_url(url):
         return PublishResult("invalid_url", False, "", detail=f"not an IG permalink: {ig_url!r}")
 
-    with queue_lock(path):
-        items = load_queue(path)
-        for existing in items:
-            if (existing.get("instagram_post_url") or "").strip() == url:
-                iid = item_id_of(existing)
-                return PublishResult(
-                    "already_present", True, compute_ref_code(iid or url), iid,
-                    "no-op: this IG URL is already registered",
-                )
+    items = load_queue(path)
+    for existing in items:
+        if (existing.get("instagram_post_url") or "").strip() == url:
+            iid = item_id_of(existing)
+            return PublishResult(
+                "already_present", True, compute_ref_code(iid or url), iid,
+                "no-op: this IG URL is already registered",
+            )
 
-        published_iso = published_at or (
-            (now or datetime.now(timezone.utc)) - timedelta(hours=25)
-        ).isoformat()
-        new_item = build_external_item(url, published_iso, topic=topic)
-        items.append(new_item)
-        write_queue_atomic(path, items)
-        iid = new_item["item_id"]
-        return PublishResult("ingested", True, compute_ref_code(iid), iid, f"registered external post {iid}")
+    published_iso = published_at or (
+        (now or datetime.now(timezone.utc)) - timedelta(hours=25)
+    ).isoformat()
+    new_item = build_external_item(url, published_iso, topic=topic)
+    items.append(new_item)
+    write_queue_atomic(path, items)
+    iid = new_item["item_id"]
+    return PublishResult("ingested", True, compute_ref_code(iid), iid, f"registered external post {iid}")
 
 
 # ── CLI ────────────────────────────────────────────────────────────────────

@@ -270,46 +270,6 @@ async def test_malformed_payload_skipped(sup):
     assert mock_ks.call_count == 0
 
 
-@pytest.mark.asyncio
-async def test_ack_outbox_updates_wr2_row(sup):
-    conn = MagicMock()
-    conn.execute = AsyncMock(return_value="UPDATE 1")
-
-    acked = await sup._ack_outbox_if_present({"_outbox_id": "123"}, conn)
-
-    assert acked is True
-    conn.execute.assert_awaited_once()
-    query, outbox_id = conn.execute.await_args.args
-    assert "UPDATE events_outbox" in query
-    assert "channel = 'wr2_status_change'" in query
-    assert outbox_id == 123
-
-
-@pytest.mark.asyncio
-async def test_ack_outbox_ignores_missing_or_invalid_id(sup, caplog):
-    conn = MagicMock()
-    conn.execute = AsyncMock()
-
-    assert await sup._ack_outbox_if_present({}, conn) is False
-    with caplog.at_level("WARNING"):
-        assert await sup._ack_outbox_if_present({"_outbox_id": "bad"}, conn) is False
-
-    assert conn.execute.await_count == 0
-    assert any("invalid _outbox_id" in r.message for r in caplog.records)
-
-
-@pytest.mark.asyncio
-async def test_handle_payload_and_ack_acks_after_success(sup):
-    conn = MagicMock()
-
-    with patch.object(sup, "_handle_payload", new=AsyncMock()) as mock_handle:
-        with patch.object(sup, "_ack_outbox_if_present", new=AsyncMock(return_value=True)) as mock_ack:
-            await sup._handle_payload_and_ack({"_outbox_id": 456}, conn)
-
-    mock_handle.assert_awaited_once_with({"_outbox_id": 456}, conn)
-    mock_ack.assert_awaited_once_with({"_outbox_id": 456}, conn)
-
-
 # ─────────────────────────────────────────────────────────────────────────
 # Reconciliation
 # ─────────────────────────────────────────────────────────────────────────

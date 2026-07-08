@@ -16,13 +16,6 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "sentence-transformers"
         update-types: ["version-update:semver-major"]
-      # datasets==4.8.5 caps fsspec at <=2026.2.0; a group bump that raises
-      # fsspec past the cap makes the WHOLE minor-and-patch group unsatisfiable
-      # (uv resolver error -> one failed install cascades into 4 red required
-      # checks; see closed group PR #2062). Drop this ignore when datasets
-      # raises its fsspec ceiling - dependabot will then move the pair together.
-      - dependency-name: "fsspec"
-        versions: [">2026.2.0"]
     groups:
       # OpenAI-stack packages isolated into their own group so a breaking bump
       # (openai/langchain-openai sit near the frozen embedding path:

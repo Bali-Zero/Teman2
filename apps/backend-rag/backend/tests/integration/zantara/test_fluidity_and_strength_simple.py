@@ -268,14 +268,10 @@ class TestZantaraIntegration:
         prompt_content = prompt_file.read_text()
         assert "PROACTIVITY" in prompt_content or "proactive" in prompt_content.lower()
 
-        # Check reasoning — since the #31 close-out (2026-07-05) every
-        # threshold read in reasoning.py flows through the AbstainPolicy SSOT
-        # (named gates), never a bare EvidenceScoreConstants.ABSTAIN_THRESHOLD
-        # read. Same value, named source — see _abstain_policy.py.
+        # Check reasoning
         reasoning_file = backend_path / "services" / "rag" / "agentic" / "reasoning.py"
         reasoning_content = reasoning_file.read_text()
-        assert "build_abstain_policy" in reasoning_content
-        assert "CONTEXT_QUALITY_MIN" in reasoning_content
+        assert "EvidenceScoreConstants.ABSTAIN_THRESHOLD" in reasoning_content
 
         # Check followup service
         followup_file = backend_path / "services" / "misc" / "followup_service.py"

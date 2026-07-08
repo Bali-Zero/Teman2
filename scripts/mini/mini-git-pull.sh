@@ -2,7 +2,7 @@
 # Mini-side periodic git pull for ~/Desktop/nuzantara on main.
 #
 # Runs ON Mini via com.nuzantara.git-pull-main.5min LaunchAgent.
-# Pattern: detect-mismatch → stash → fetch pro+origin → ff to most-advanced → stash pop.
+# Pattern: detect-mismatch → stash → fetch Pro → merge --ff-only → stash pop.
 #
 # Hardened against the 2026-05-06 incident where a tracked symlink in
 # main collided with a 762 MB local directory (.venv) on Mini, causing
@@ -20,15 +20,9 @@
 #   4. Telegram alert on every non-trivial WARN/ERROR via the same
 #      bot used by login-healthcheck (TELEGRAM_BOT_TOKEN secret on Mini).
 #
-# Source-of-truth selection (2026-07-05 fix — M5 era):
-#   Fetch BOTH `pro/main` and `origin/main` (best-effort each), then ff to the
-#   MOST-ADVANCED of the two. The pre-M5 policy was Pro-first with origin only
-#   as unreachable-fallback — it silently left Mini stale whenever Pro was
-#   reachable but itself behind origin (M5 pushes straight to GitHub; on
-#   2026-07-02 Mini sat 13 commits behind origin logging "ahead of pro/main;
-#   skip pull" every 5 min).
-#   If pro/main and origin/main have DIVERGED, prefer origin/main (GitHub is
-#   authoritative) and Telegram-alert so Pro's unpushed work gets human triage.
+# Source-of-truth order:
+#   1. Pro remote (`pro/main`) — catches Pro commits even before GitHub push.
+#   2. GitHub origin (`origin/main`) — fallback when Pro is unreachable.
 #
 # Cron: StartInterval=300 on Mini.
 # Log:  ~/logs/mini-git-pull.log
@@ -174,47 +168,19 @@ if [ "$BRANCH" != "main" ]; then
   exit 0
 fi
 
-# Fetch BOTH remotes best-effort, then follow the most-advanced ref. Pro may
-# hold commits not yet pushed to GitHub, and origin may hold commits Pro has
-# not pulled (M5 pushes straight to GitHub) — either side can be ahead.
+# Fetch Pro first. GitHub origin is only fallback because Pro may have commits
+# not pushed to GitHub yet (policy: GitHub is updated by Pro only).
 PRO_SSH="ssh -o BatchMode=yes -o ConnectTimeout=10 -o IdentitiesOnly=yes -i $HOME/.ssh/id_ed25519"
-PRO_FETCHED=0
-ORIGIN_FETCHED=0
 if GIT_SSH_COMMAND="$PRO_SSH" git fetch --quiet pro main 2>>"$LOG_FILE"; then
-  PRO_FETCHED=1
-else
-  log "WARN: git fetch pro failed"
-fi
-if git fetch --quiet origin main 2>>"$LOG_FILE"; then
-  ORIGIN_FETCHED=1
-else
-  log "WARN: git fetch origin failed"
-fi
-
-if [ "$PRO_FETCHED" = "0" ] && [ "$ORIGIN_FETCHED" = "0" ]; then
-  log "git fetch failed for both pro and origin (network?), skip"
-  telegram_alert "fetch-failed" "Mini could not fetch pro/main or origin/main. Sync skipped."
-  exit 0
-elif [ "$PRO_FETCHED" = "0" ]; then
-  TARGET_REF="origin/main"
-  TARGET_REMOTE="origin"
-elif [ "$ORIGIN_FETCHED" = "0" ]; then
-  TARGET_REF="pro/main"
-  TARGET_REMOTE="pro"
-elif git merge-base --is-ancestor pro/main origin/main 2>/dev/null; then
-  # origin/main contains pro/main (equal counts as ancestor) — origin wins.
-  TARGET_REF="origin/main"
-  TARGET_REMOTE="origin"
-elif git merge-base --is-ancestor origin/main pro/main 2>/dev/null; then
-  # pro/main is strictly ahead (Pro has commits not yet on GitHub).
   TARGET_REF="pro/main"
   TARGET_REMOTE="pro"
 else
-  # Diverged: Pro has unpushed commits AND origin moved past Pro. Follow
-  # origin (GitHub authoritative); Pro's unpushed work needs human triage.
-  log "WARN: pro/main and origin/main have diverged; following origin/main"
-  telegram_alert "pro-origin-diverged" \
-    "pro/main and origin/main diverged. Mini follows origin/main; Pro has unpushed commits needing manual push/rebase."
+  log "WARN: git fetch pro failed; falling back to origin/main"
+  if ! git fetch --quiet origin main 2>>"$LOG_FILE"; then
+    log "git fetch origin failed too (network?), skip"
+    telegram_alert "fetch-failed" "Mini could not fetch pro/main or origin/main. Sync skipped."
+    exit 0
+  fi
   TARGET_REF="origin/main"
   TARGET_REMOTE="origin"
 fi

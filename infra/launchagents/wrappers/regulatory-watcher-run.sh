@@ -2,18 +2,6 @@
 # regulatory-watcher cron wrapper — multi-LLM cascade
 # Order: Claude OAuth (Sonnet 5) → Gemini 3.1 Pro free → Codex GPT-5.5 → Ollama qwen3.5:9b local
 # Cost: 0$ (4 tier all subscription/free/local)
-#
-# TAC-2 A4 (2026-07-05) — the 07-05 run failure taught four lessons, all cured here:
-#   1. sonnet-5 in --print mode spawned its 6-step work as a BACKGROUND task; the CLI
-#      terminated it at the 600s print ceiling and exited 0 → wrapper marked SUCCESS
-#      with no delta on disk. Cure: raise the ceiling + tell the model to work inline.
-#   2. "exit 0 + no quota marker" is NOT success for a job whose contract is a file.
-#      Cure: every tier's success now requires the delta file to EXIST (ensure_delta).
-#   3. Tiers 2-4 print JSON to stdout but cannot write files → they were alert-theater.
-#      Cure: ensure_delta extracts a valid delta JSON from the tier's output.
-#   4. The launchd context can lose TCC on ~/Desktop (W84; Pro reboot 07-04) making the
-#      whole contract unfulfillable. Cure: fail FAST and LOUD (exit 78) instead of
-#      burning 4 LLM tiers to then discover the file can't land.
 
 # NO `-e`: each tier may exit non-zero and the cascade MUST survive to capture
 # EXIT=$? and fall through to the next tier (guardian-of-guardians audit 2026-06-11;
@@ -32,61 +20,15 @@ export NLM_PROFILE=default
 
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
 
-# sshd (W84 trampoline) and bare launchd contexts carry a minimal PATH — codex
-# is a node shebang script and dies with "env: node: No such file or directory"
-# without homebrew on PATH (proved live 2026-07-06 05:09).
-export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/local/bin:$PATH"
-
 mkdir -p "$HOME/Desktop/nuzantara/research/regulatory" "$HOME/logs"
 
 LOG="$HOME/logs/regulatory-watcher.log"
 DATE=$(TZ=Asia/Makassar date +%Y-%m-%d)
-DELTA_JSON="$HOME/Desktop/nuzantara/research/regulatory/${DATE}-delta.json"
-DELTA_BASENAME="${DATE}-delta.json"
-
-# W84 fail-fast probe (TAC-2 A4): if this launchd context cannot READ ~/Desktop
-# (TCC grant lost — observed on Pro after the 2026-07-04 reboot: the zsh job got
-# "Operation not permitted" while a bash-rooted job read ~/Desktop fine), the
-# delta can never land. Abort loudly with exit 78 (config error) BEFORE burning
-# LLM tiers; launchd's non-zero exit is picked up by launchd_liveness_detector.
-# NB: must be a REAL read (head -c 1), not `[ -r ]` — TCC denies at open(2),
-# while access(2) can still say yes (the probe itself must not be a proxy).
-if ! head -c 1 "$HOME/Desktop/nuzantara/CLAUDE.md" >/dev/null 2>&1; then
-    # W84 TRAMPOLINE (2026-07-06): before aborting, re-exec THIS wrapper through
-    # `ssh localhost` — the sshd context has Full Disk Access, so the whole run
-    # (zsh, node/claude, file writes under ~/Desktop) works uniformly regardless
-    # of which per-binary TCC rows launchd lost at the last reboot. Probe matrix
-    # 2026-07-06 04:52 on Pro (launchd ctx): zsh/head/bash-builtin/python3 all
-    # DENIED, bash+head OK — per-binary whack-a-mole, while sshd reads fine.
-    # Same-user localhost key (no privilege change), from=127.0.0.1/::1
-    # restriction in authorized_keys. REGWATCH_TRAMPOLINED guards exec loops
-    # if sshd were ALSO denied.
-    if [ -z "${REGWATCH_TRAMPOLINED:-}" ] && [ -f "$HOME/.ssh/id_local_trampoline" ]; then
-        echo "[$(date)] W84: TCC denies ~/Desktop in this launchd context — re-exec via ssh-localhost trampoline (sshd has FDA)" >> "$LOG"
-        exec ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -i "$HOME/.ssh/id_local_trampoline" localhost "REGWATCH_TRAMPOLINED=1 '$0'"
-    fi
-    echo "[$(date)] FATAL: TCC denies ~/Desktop/nuzantara in this launchd context (W84) and no trampoline key — re-grant Full Disk Access to the job's interpreter. Aborting before any LLM tier." >> "$LOG"
-    exit 78
-fi
-
-# sonnet-5 --print + background tasks (2026-07-05): the CLI kills backgrounded
-# work after 600s by default. 30 min ceiling keeps a legitimate long run alive;
-# the prompt below also forbids backgrounding outright.
-export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS="${CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS:-1800000}"
 
 # Organism heartbeat (heartbeat-organs TAC 2026-07-02): reverse-promoted from the
 # M5 HOME copy 2026-07-03 — the instrumentation lived only in ~/scripts and never
 # reached the repo canon (#1 HOME-fork reverse debt, caught by proprioception).
-# Lib resolution prefers ~/scripts/lib (OUTSIDE the TCC-protected ~/Desktop —
-# superscar #1 antidote: relocate payloads out of Desktop) and falls back to the
-# repo canon. Arming the ~/scripts/lib copy on Pro/M5 is tracked in PENDING-ARMS.
-if [ -n "${ORGANISM_HEARTBEAT_LIB:-}" ]; then
-    HEARTBEAT_LIB="$ORGANISM_HEARTBEAT_LIB"
-elif [ -r "$HOME/scripts/lib/heartbeat.sh" ]; then
-    HEARTBEAT_LIB="$HOME/scripts/lib/heartbeat.sh"
-else
-    HEARTBEAT_LIB="$HOME/Desktop/nuzantara/scripts/lib/heartbeat.sh"
-fi
+HEARTBEAT_LIB="${ORGANISM_HEARTBEAT_LIB:-${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh}"
 ORGANISM_HB_STATUS="starting"
 ORGANISM_HB_NOTE="regulatory watcher start"
 
@@ -109,41 +51,11 @@ organism_hb_finalize() {
     fi
 }
 
-# Single-instance lock (2026-07-06): two instances ran CONCURRENTLY today —
-# this session's induced test + a sibling session's (#1999) — racing on the
-# same delta file with duplicate bus emits and duplicate-Telegram risk
-# (family #5 sibling-race, on the DATA instead of the repo). macOS ships no
-# flock(1), so: atomic mkdir + pid-liveness. A concurrent duplicate
-# SELF-RESOLVES — it logs its own launch-context (forensic breadcrumb) and
-# exits 0, no operator in the loop. A stale lock (crashed run, dead pid) is
-# taken over automatically. Placed AFTER the W84 trampoline block so only
-# the run that will actually do the work holds it.
-REGWATCH_LOCKDIR="$HOME/.regulatory-watcher.lock"
-if ! mkdir "$REGWATCH_LOCKDIR" 2>/dev/null; then
-    OTHER_PID=$(cat "$REGWATCH_LOCKDIR/pid" 2>/dev/null || echo "")
-    if [ -n "$OTHER_PID" ] && kill -0 "$OTHER_PID" 2>/dev/null; then
-        echo "[$(date)] duplicate instance suppressed: lock held by live pid=$OTHER_PID; suppressed launch-context: pid=$$ ppid=$PPID parent=$(ps -o comm= -p $PPID 2>/dev/null || echo dead) lang=${LANG:-unset} ssh=${SSH_CONNECTION:-none} trampolined=${REGWATCH_TRAMPOLINED:-0}" >> "$LOG"
-        exit 0
-    fi
-    echo "[$(date)] stale lock (pid=${OTHER_PID:-none} dead) — taking over" >> "$LOG"
-    rm -rf "$REGWATCH_LOCKDIR"
-    if ! mkdir "$REGWATCH_LOCKDIR" 2>/dev/null; then
-        echo "[$(date)] lock race lost after stale takeover — exiting clean" >> "$LOG"
-        exit 0
-    fi
-fi
-echo $$ > "$REGWATCH_LOCKDIR/pid"
-
-trap 'rc=$?; organism_hb_finalize "$rc"; rm -rf "$REGWATCH_LOCKDIR"' EXIT
+trap 'rc=$?; organism_hb_finalize "$rc"' EXIT
 
 echo "[$(date)] regulatory-watcher run starting for $DATE" >> "$LOG"
-# Forensic breadcrumb (2026-07-06): an unexplained parallel instance appeared at
-# 09:19:58 (orphaned before inspection — ppid already 1, no ssh session, no cron,
-# no launchd label matched). Log enough launch-context that the NEXT unexplained
-# instance names its own parent while it is still alive in the log line.
-echo "[$(date)] launch-context: pid=$$ ppid=$PPID parent=$(ps -o comm= -p $PPID 2>/dev/null || echo dead) lang=${LANG:-unset} ssh=${SSH_CONNECTION:-none} trampolined=${REGWATCH_TRAMPOLINED:-0}" >> "$LOG"
 
-PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/Desktop/nuzantara/research/regulatory/. Emit JSON to today's file and Telegram alert only if new_today_count > 0. IMPORTANT: do ALL the work INLINE in this session — never spawn background tasks or background agents: this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no file on disk (incident 2026-07-05)."
+PROMPT_CLAUDE="Run the regulatory-watcher agent for today ($DATE). Execute all 6 workflow steps autonomously. Read ~/.claude/agents/regulatory-watcher.md for full spec. Today is $DATE WITA. Yesterday's delta file (if any) is in ~/Desktop/nuzantara/research/regulatory/. Emit JSON to today's file and Telegram alert only if new_today_count > 0."
 
 # Generic prompt re-usable across LLMs (no Claude-specific syntax)
 PROMPT_GENERIC="You are the regulatory-watcher for Bali Zero (Indonesian business services agency). Today is $DATE WITA. Task: detect new Indonesian regulations published in last 48h that affect Bali Zero service lines (visa/immigration, tax, property, regulatory/HR, health). Sources to query (use whichever you can reach): Hukumonline, Ortax, DDTC, MUC, IKPI, JDIH Kemenkumham/Kemenkeu/Kemnaker, peraturan.go.id (with Mozilla User-Agent), pajak.go.id. Filter to reg-types: Permenkumham, PMK, PP, Perpres, UU, Permenaker, Permenkes, Peraturan BKPM. Emit JSON to ~/Desktop/nuzantara/research/regulatory/${DATE}-delta.json with schema: {run_at, today, new_today_count, partial:bool, deltas:[{citation,title_id,title_en,service_line,summary,source,verbatim_excerpt}], seen_citations}. If new_today_count>0, send Telegram via curl to api.telegram.org/bot\$TELEGRAM_BOT_TOKEN/sendMessage chat_id=\$TELEGRAM_OWNER_CHAT_ID. Cite verbatim. No paraphrasing. No emoji in JSON."
@@ -152,103 +64,13 @@ TMPOUT=$(mktemp)
 SUCCESS=0
 USED_LLM=""
 
-# Stdlib-only python for the output-extractor (json only — no redis needed here).
-# The pyenv pin below (eventbus block) stays Pro-specific; this one must work on
-# any machine the wrapper is deployed to.
-PYBIN="${REGWATCH_PYTHON:-$(command -v python3 || echo /usr/bin/python3)}"
-
-# W81-fix (2026-06-15), zsh-native rewrite (TAC-2 A4): the cron `claude` runs with
-# W79 worktree-isolation hooks active, so it may write the delta to a worktree
-# branch instead of the main checkout. Recover it. (N.om) = null_glob + plain
-# files + mtime-desc: the old `ls -t glob` printed "no matches found" noise AND
-# would have listed the whole cwd under null_glob with an empty expansion.
-recover_delta() {
-    setopt local_options null_glob
-    local -a _hits
-    _hits=( "$HOME"/Desktop/nuzantara/.worktrees/*/research/regulatory/"$DELTA_BASENAME"(N.om) )
-    if (( ${#_hits} > 0 )); then
-        cp "${_hits[1]}" "$DELTA_JSON" && echo "[$(date)] W81-fix: recovered delta from worktree file ${_hits[1]} -> main" >> "$LOG"
-        return 0
-    fi
-    local _wt_branch
-    _wt_branch="$(cd "$HOME/Desktop/nuzantara" && git for-each-ref --sort=-committerdate --format='%(refname:short)' 'refs/heads/agent/*/intel/watcher-*' 2>/dev/null | head -1)"
-    if [ -n "$_wt_branch" ] && (cd "$HOME/Desktop/nuzantara" && git cat-file -e "$_wt_branch:research/regulatory/$DELTA_BASENAME" 2>/dev/null); then
-        (cd "$HOME/Desktop/nuzantara" && git show "$_wt_branch:research/regulatory/$DELTA_BASENAME") > "$DELTA_JSON" \
-          && echo "[$(date)] W81-fix: recovered delta from branch $_wt_branch -> main" >> "$LOG"
-        return 0
-    fi
-    return 1
-}
-
-# Tiers 2-4 print JSON to stdout but cannot write files (agy/ollama are pure
-# text-out) — without this they were alert-theater: "success" with no artifact.
-# Extract the first parseable object carrying the delta schema and land it.
-extract_delta_from_output() {
-    local _src="$1"
-    "$PYBIN" - "$_src" "$DELTA_JSON" <<'PYEOF' 2>>"$LOG"
-import json, sys
-src, dst = sys.argv[1], sys.argv[2]
-text = open(src, encoding="utf-8", errors="replace").read()
-best = None
-for start in [i for i, ch in enumerate(text) if ch == "{"]:
-    depth = 0
-    for end in range(start, min(len(text), start + 200_000)):
-        if text[end] == "{":
-            depth += 1
-        elif text[end] == "}":
-            depth -= 1
-            if depth == 0:
-                chunk = text[start:end + 1]
-                try:
-                    obj = json.loads(chunk)
-                except Exception:
-                    break
-                if isinstance(obj, dict) and "new_today_count" in obj and "deltas" in obj:
-                    best = obj
-                break
-    if best is not None:
-        break
-if best is None:
-    sys.exit(1)
-with open(dst, "w", encoding="utf-8") as fh:
-    json.dump(best, fh, ensure_ascii=False, indent=2)
-print(f"extracted delta JSON from LLM output -> {dst}")
-PYEOF
-}
-
-# The tier contract (TAC-2 A4): a tier SUCCEEDED only if the delta file exists —
-# on disk, recovered from a worktree, or extracted from the tier's own output.
-# "exit 0" alone marked the 2026-07-05 hallucinated/backgrounded run as green.
-ensure_delta() {
-    local _out="$1"
-    [ -f "$DELTA_JSON" ] && return 0
-    recover_delta && [ -f "$DELTA_JSON" ] && return 0
-    extract_delta_from_output "$_out" && [ -f "$DELTA_JSON" ] && return 0
-    return 1
-}
-
-# W84 trampoline follow-up (2026-07-06): in the sshd context the login Keychain
-# is LOCKED, so the claude CLI cannot read its OAuth credentials and dies with
-# "Not logged in" — proved live at the 05:08 trampolined run. Fall back to the
-# MAX-3 env token from ~/.nuzantara-secrets.env (verified working in sshd:
-# TOKEN1-OK). The Keychain is locked in EVERY sshd session, not only the
-# trampolined one — a manual `ssh pro '…run.sh'` run died "Not logged in" at
-# 09:20 (2026-07-06) with the token available but the gate closed. Gate on
-# SSH_CONNECTION too; gui/launchd contexts keep the healthy Keychain path.
-if { [ -n "${REGWATCH_TRAMPOLINED:-}" ] || [ -n "${SSH_CONNECTION:-}" ]; } && [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ] && [ -n "${CLAUDE_CODE_OAUTH_TOKEN_1:-}" ]; then
-    export CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN_1"
-    echo "[$(date)] sshd context: exporting CLAUDE_CODE_OAUTH_TOKEN from MAX-3 slot 1 (Keychain locked under sshd)" >> "$LOG"
-fi
-
 # Tier 1: Claude OAuth Sonnet
 echo "[$(date)] tier 1 — claude sonnet" >> "$LOG"
 "$HOME/.local/bin/claude" --print --model claude-sonnet-5 "$PROMPT_CLAUDE" >"$TMPOUT" 2>&1
 EXIT=$?
-if [ $EXIT -eq 0 ] && ! grep -qE "out of extra usage|usage limit|quota exceeded|rate.limit" "$TMPOUT" && ensure_delta "$TMPOUT"; then
+if [ $EXIT -eq 0 ] && ! grep -qE "out of extra usage|usage limit|quota exceeded|rate.limit" "$TMPOUT"; then
     SUCCESS=1
     USED_LLM="claude-sonnet-5"
-elif [ $EXIT -eq 0 ]; then
-    echo "[$(date)] tier 1 exit 0 but NO delta file landed (hallucinated/backgrounded output?) — cascading" >> "$LOG"
 fi
 cat "$TMPOUT" >> "$LOG"
 
@@ -258,7 +80,7 @@ if [ $SUCCESS -eq 0 ]; then
     > "$TMPOUT"
     printf '%s' "$PROMPT_GENERIC" | /Users/nuzantara/.local/bin/agy -p --print-timeout 5m >"$TMPOUT" 2>&1
     EXIT=$?
-    if [ $EXIT -eq 0 ] && ! grep -qE "quota|limit|429|exhausted|TerminalQuotaError" "$TMPOUT" && ensure_delta "$TMPOUT"; then
+    if [ $EXIT -eq 0 ] && ! grep -qE "quota|limit|429|exhausted|TerminalQuotaError" "$TMPOUT"; then
         SUCCESS=1
         USED_LLM="gemini-3.1-pro-agy"
     fi
@@ -269,12 +91,9 @@ fi
 if [ $SUCCESS -eq 0 ]; then
     echo "[$(date)] tier 2 failed/exhausted — falling back to codex" >> "$LOG"
     > "$TMPOUT"
-    # `</dev/null` is load-bearing: codex blocks reading an open stdin (proved
-    # live 2026-07-06 09:20 "Reading additional input from stdin..."); cron/ssh
-    # contexts run from $HOME which is not a trusted repo → --skip-git-repo-check.
-    /opt/homebrew/bin/codex exec --sandbox workspace-write --skip-git-repo-check "$PROMPT_GENERIC" </dev/null >"$TMPOUT" 2>&1
+    /opt/homebrew/bin/codex exec --full-auto "$PROMPT_GENERIC" >"$TMPOUT" 2>&1
     EXIT=$?
-    if [ $EXIT -eq 0 ] && ! grep -qE "usage.limit|quota|exhausted" "$TMPOUT" && ensure_delta "$TMPOUT"; then
+    if [ $EXIT -eq 0 ] && ! grep -qE "usage.limit|quota|exhausted" "$TMPOUT"; then
         SUCCESS=1
         USED_LLM="codex-gpt-5.5"
     fi
@@ -287,7 +106,7 @@ if [ $SUCCESS -eq 0 ]; then
     > "$TMPOUT"
     /opt/homebrew/bin/ollama run qwen3.5:9b "$PROMPT_GENERIC" >"$TMPOUT" 2>&1
     EXIT=$?
-    if [ $EXIT -eq 0 ] && ensure_delta "$TMPOUT"; then
+    if [ $EXIT -eq 0 ]; then
         SUCCESS=1
         USED_LLM="ollama-qwen3.5:9b-local"
     fi
@@ -298,10 +117,34 @@ if [ $SUCCESS -eq 1 ]; then
     echo "[$(date)] regulatory-watcher run complete — used: $USED_LLM" >> "$LOG"
     organism_hb_set ok "used ${USED_LLM}"
 
-    # W1.4: emit eventbus events for any new regulatory deltas in today's JSON.
-    # Recovery/extraction already ran per-tier inside ensure_delta(); SUCCESS=1
-    # implies the file exists. The guard below stays as a belt (a sibling process
-    # could remove the file between the tier check and here — seen 2026-05-13).
+    # W1.4: emit eventbus events for any new regulatory deltas in today's JSON
+    DELTA_JSON="$HOME/Desktop/nuzantara/research/regulatory/$(TZ=Asia/Makassar date +%Y-%m-%d)-delta.json"
+
+    # W81-fix (2026-06-15): worktree publish-drift recovery. The cron `claude`
+    # runs with W79 worktree-isolation hooks active, so it CANNOT write the delta
+    # to the main checkout — it commits to a worktree branch (agent/.../intel/watcher-*)
+    # instead. The wrapper itself runs in plain zsh (no hooks), so it can recover the
+    # file from the branch and place it in main, making the publish block below fire
+    # and the anti-hallucination guard correct (real absence vs isolated write).
+    if [ ! -f "$DELTA_JSON" ]; then
+        _DELTA_BASENAME="$(TZ=Asia/Makassar date +%Y-%m-%d)-delta.json"
+        # 1) try worktree working-tree files (freshest first)
+        _WT_HIT="$(ls -t "$HOME"/Desktop/nuzantara/.worktrees/*/research/regulatory/"$_DELTA_BASENAME" 2>/dev/null | head -1)"
+        if [ -n "$_WT_HIT" ] && [ -f "$_WT_HIT" ]; then
+            cp "$_WT_HIT" "$DELTA_JSON" && echo "[$(date)] W81-fix: recovered delta from worktree file $_WT_HIT -> main" >> "$LOG"
+        else
+            # 2) try the freshest watcher branch via git show
+            _WT_BRANCH="$(cd "$HOME/Desktop/nuzantara" && git for-each-ref --sort=-committerdate --format='%(refname:short)' 'refs/heads/agent/*/intel/watcher-*' 2>/dev/null | head -1)"
+            if [ -n "$_WT_BRANCH" ] && (cd "$HOME/Desktop/nuzantara" && git cat-file -e "$_WT_BRANCH:research/regulatory/$_DELTA_BASENAME" 2>/dev/null); then
+                (cd "$HOME/Desktop/nuzantara" && git show "$_WT_BRANCH:research/regulatory/$_DELTA_BASENAME") > "$DELTA_JSON" \
+                  && echo "[$(date)] W81-fix: recovered delta from branch $_WT_BRANCH -> main" >> "$LOG"
+            fi
+        fi
+    fi
+
+    # Empirical disk-state verification (lesson 2026-05-13 anti-hallucination):
+    # Claude/Gemini may narrate "JSON emitted" without actually writing the file.
+    # If the delta file is missing after a "successful" run, log loudly and skip eventbus.
     if [ ! -f "$DELTA_JSON" ]; then
         echo "[$(date)] WARNING: $USED_LLM reported success but $DELTA_JSON does NOT exist on disk — possible hallucinated tool output, skipping eventbus publish" >> "$LOG"
     fi

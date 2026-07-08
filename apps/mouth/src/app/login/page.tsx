@@ -228,7 +228,7 @@ export default function LoginPage() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="user@balizero.com"
+                placeholder="user@zantara.id"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onFocus={() => play("focus")}

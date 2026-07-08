@@ -414,8 +414,8 @@ class IngestionLogger:
     def scraper_data_normalized(
         self,
         document_id: str,
-        source_url: str,
-        duration_ms: float,
+        _source_url: str,
+        _duration_ms: float,
         normalized_fields: dict[str, Any],
         trace_id: str | None = None,
     ) -> None:
@@ -423,12 +423,10 @@ class IngestionLogger:
         event = self._create_event(
             level=LogLevel.INFO,
             stage=IngestionStage.CLEANING,
-            message=f"Scraper data normalized: {len(normalized_fields)} fields",
+            _message=f"Scraper data normalized: {len(normalized_fields)} fields",
             document_id=document_id,
             source="scraper",
-            duration_ms=duration_ms,
             trace_id=trace_id,
-            additional_context={"source_url": source_url},
         )
 
         self._log_event(event, f"Scraper data normalized for {document_id}")

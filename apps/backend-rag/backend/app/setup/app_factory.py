@@ -456,8 +456,6 @@ async def lifespan(app: FastAPI):
     services_to_close = [
         "alert_service",
         "search_service",
-        # SearchService shares this manager but does not own its shutdown hook.
-        "collection_manager",
         "ai_client",
         "intelligent_router",
         "tool_executor",
@@ -523,17 +521,6 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Qdrant health check client closed")
     except Exception as e:
         logger.debug("Qdrant health client close: %s", e)
-
-    # Close persistent KBLI Notebook Qdrant client
-    try:
-        from backend.app.routers.kbli_notebook import close_kbli_http_client
-
-        await close_kbli_http_client()
-        logger.info("✅ KBLI Notebook Qdrant client closed")
-    except ImportError:
-        pass
-    except Exception as e:
-        logger.warning("⚠️ Error closing KBLI Notebook Qdrant client: %s", e)
 
     # Close asyncpg database pool (not in services_to_close because it uses .close() differently)
     db_pool = getattr(app.state, "db_pool", None)

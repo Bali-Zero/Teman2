@@ -44,14 +44,6 @@ from backend.services.rag.agentic.reasoning_utils import (
     get_abstain_threshold,
 )
 
-#: CONTEXT-QUALITY gate — the fifth named threshold: reasoning.py's minimum
-#: acceptable context-quality score before the ReAct loop flags the gathered
-#: context as too weak. Query-independent (set at engine construction, before
-#: any query exists), so it lives as a named module constant rather than an
-#: ``AbstainPolicy`` field. Same VALUE as the generation gate by design —
-#: named here so it cannot drift anonymously (2026-07-05 #31 close-out).
-CONTEXT_QUALITY_MIN: float = EvidenceScoreConstants.ABSTAIN_THRESHOLD
-
 
 @dataclass(frozen=True)
 class AbstainPolicy:

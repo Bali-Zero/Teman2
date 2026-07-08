@@ -16,17 +16,6 @@ from typing import Any
 logger = logging.getLogger("cell.sensors.cron")
 
 _STATE_DIR = os.path.expanduser("~/.agent/decisions/state")
-_CRON_AGENT_DIR = os.path.expanduser("~/.cron-agent")
-_CRON_AGENT_PYTHON_DIR = os.path.expanduser("~/.cron-agent-python")
-
-_JOB_STATE_ALIASES: dict[str, list[str]] = {
-    "nlm_deep_research": [
-        os.path.join(_CRON_AGENT_DIR, "nlm-deep-research.state.json"),
-    ],
-    "system_doctor": [
-        os.path.join(_CRON_AGENT_PYTHON_DIR, "system-doctor.state.json"),
-    ],
-}
 
 # Expected max period in hours for each watched job.
 # (yellow = 1.5× period, red = 3× period)
@@ -34,7 +23,7 @@ _JOB_PERIODS: dict[str, float] = {
     "fly_pg_backup":       24.0,   # daily
     "intel_scraper":       24.0,   # daily 03:00
     "nlm_deep_research":   24.0,   # daily 04:30
-    "t4_monitor":           6.0,   # every 6h; cron-wrapper writes t4_monitor.last.json
+    "t4_monitor_daily":     6.0,   # every 6h
     # "war_room" removed 2026-04-27: WR1 was decommissioned by PR #171
     # (apps/war-room/pipeline.sh deleted). The intel-nightly LaunchAgent
     # already logs "skip" for it, but the watcher kept marking it failed
@@ -56,16 +45,6 @@ _JOB_PERIODS: dict[str, float] = {
     "knowledge_graph_builder": 168.0,
     "metabolic_rollup":        24.0,   # daily 23:30
 }
-
-
-def _state_candidates(state_dir: str, job_name: str) -> list[str]:
-    """Return current and legacy heartbeat paths for a watched job."""
-    candidates = [
-        os.path.join(state_dir, f"{job_name}.last.json"),
-        os.path.join(state_dir, f"{job_name.replace('_', '-')}.last.json"),
-        *_JOB_STATE_ALIASES.get(job_name, []),
-    ]
-    return list(dict.fromkeys(candidates))
 
 
 @dataclass
@@ -109,8 +88,13 @@ class CronSensor:
         jobs: list[CronJobStatus] = []
 
         for job_name, period_hours in self._periods.items():
+            # State file may use hyphens or underscores interchangeably
+            candidates = [
+                os.path.join(self._dir, f"{job_name}.last.json"),
+                os.path.join(self._dir, f"{job_name.replace('_', '-')}.last.json"),
+            ]
             state: dict[str, Any] | None = None
-            for path in _state_candidates(self._dir, job_name):
+            for path in candidates:
                 if os.path.isfile(path):
                     try:
                         with open(path) as f:
@@ -124,8 +108,7 @@ class CronSensor:
                 continue
 
             ts = state.get("ts")
-            reported_status = str(state.get("status", "ok")).lower()
-            job_ok = reported_status == "ok"
+            job_ok = state.get("status", "ok") == "ok"
 
             if not ts:
                 jobs.append(CronJobStatus(name=job_name, status="unknown"))
@@ -149,7 +132,7 @@ class CronSensor:
                 status=cron_status,
                 age_hours=round(age_hours, 2),
                 last_run=last_run_iso,
-                last_job_status=reported_status,
+                last_job_status=state.get("status", "?"),
             ))
 
         worst = max(
@@ -158,11 +141,7 @@ class CronSensor:
             default="unknown",
         )
         stale = [j.name for j in jobs if j.status in ("yellow", "red")]
-        failed = [
-            j.name
-            for j in jobs
-            if j.last_job_status in ("failed", "error", "timeout")
-        ]
+        failed = [j.name for j in jobs if j.last_job_status == "failed"]
 
         return CronReading(
             status=worst,

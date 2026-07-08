@@ -137,38 +137,6 @@ export function hasGoldContent(code: string): boolean {
   return code in loadGoldData();
 }
 
-let _datasetLastModified: Date | null = null;
-
-const DATASET_VERSION_PATH = path.join(
-  process.cwd(),
-  "data",
-  "kbli-dataset-version.json",
-);
-
-/**
- * Last real content-change event for the KBLI dataset, read from the
- * committed sidecar data/kbli-dataset-version.json. NOT the file mtime:
- * git/Vercel checkouts stamp clone time on every file, so mtime would
- * claim "modified today" on every deploy (red-team finding 2026-07-05).
- * Single source for every surface that claims a modification date for
- * /kbli/* pages (sitemap lastmod, JSON-LD dateModified) — the two must
- * never diverge or Google stops trusting either. A vitest guard fails
- * when the dataset hash changes without a sidecar bump.
- */
-export function getKbliDatasetLastModified(): Date {
-  if (!_datasetLastModified) {
-    try {
-      const version = JSON.parse(
-        fs.readFileSync(DATASET_VERSION_PATH, "utf-8"),
-      ) as { lastModified: string };
-      _datasetLastModified = new Date(version.lastModified);
-    } catch {
-      _datasetLastModified = new Date("2026-06-19");
-    }
-  }
-  return _datasetLastModified;
-}
-
 /** Get all codes that have gold content */
 export function getGoldCodes(): string[] {
   return Object.keys(loadGoldData());

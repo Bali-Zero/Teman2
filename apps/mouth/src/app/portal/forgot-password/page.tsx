@@ -16,7 +16,7 @@ function ForgotPasswordInner() {
   const body = encodeURIComponent(
     "Hi team,\n\nI need help recovering access to my Bali Zero client portal.\n\nRegistered email: ",
   );
-  const mailto = `mailto:zantara@balizero.com?subject=${subject}&body=${body}`;
+  const mailto = `mailto:team@balizero.com?subject=${subject}&body=${body}`;
   return (
     <main className="min-h-screen bg-black text-[#f0ece4] flex items-center justify-center px-6">
       <div className="max-w-md w-full">

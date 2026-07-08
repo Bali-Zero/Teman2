@@ -15369,7 +15369,7 @@
       "selectionMethod": "ISCO-based",
       "totalInCategory": 181
     },
-    "whatChanged": "Consolidated from multiple KBLI 2020 codes (MATCH_CON_AGGREGAZIONE). Several previously separate wholesale codes for furniture, carpets, and household equipment have been merged into this single code. If you held one of the old codes, you'll need to update your NIB to 46420 as overdue post-transition remediation.",
+    "whatChanged": "Consolidated from multiple KBLI 2020 codes (MATCH_CON_AGGREGAZIONE). Several previously separate wholesale codes for furniture, carpets, and household equipment have been merged into this single code. If you held one of the old codes, you'll need to update your NIB to 46420 during the transition period before June 2026.",
     "whatItMeans": "Wholesale of furniture, carpets, and household equipment and supplies. This covers bulk sales of furniture (wood, rattan, metal), floor coverings, and household goods to retailers, interior designers, hotels, and export buyers. If you're moving container loads of furniture from workshops to showrooms or overseas markets, this is the code.",
     "whatYouNeed": "**All scales (Mikro/Kecil/Menengah/Besar): Low Risk (Rendah)**\nNIB only. No additional licenses or permits at any scale.\n\n**PMA: TERBUKA 100% — fully open to foreign ownership.**\n\nFor timber-based furniture exports, you'll need a V-Legal/SVLK (Timber Legality Verification System) document to prove the wood was legally sourced. This is mandatory for EU and many other markets.",
     "youllAlsoNeed": "- 46100 — Commission Agent (if brokering furniture deals without holding stock)\n- 31001 — Furniture Manufacturing (if vertically integrating into production)\n- 52299 — Freight Forwarding (container shipping for exports)\n- 74101 — Interior Design (if offering design services alongside furniture supply)",
@@ -15539,7 +15539,7 @@
       "selectionMethod": "ISCO-based",
       "totalInCategory": 181
     },
-    "whatChanged": "Renumbered from a previous KBLI 2020 code (CODICE_RINUMERATO). The scope remains the same — wholesale of building materials — but the code number itself has changed. Update your NIB to 46738 as overdue post-transition remediation.",
+    "whatChanged": "Renumbered from a previous KBLI 2020 code (CODICE_RINUMERATO). The scope remains the same — wholesale of building materials — but the code number itself has changed. Update your NIB to 46738 during the transition period before June 2026.",
     "whatItMeans": "Wholesale of building materials — glass, tiles, cement, stone, bricks, sand, gravel, roofing materials, plumbing supplies, and other construction inputs. Selling in bulk to contractors, construction companies, property developers, and hardware stores. If you're moving truckloads of building materials from manufacturers to construction sites or retail outlets, this is the code.",
     "whatYouNeed": "**All scales (Mikro/Kecil/Menengah/Besar): Low Risk (Rendah)**\nNIB only. No additional licenses or permits at any scale.\n\n**PMA: TERBUKA 100% — fully open to foreign ownership.**\n\nSome materials (particularly imported tiles, glass, and engineered stone) may require SNI certification. Cement distribution may involve regional distribution agreements with manufacturers.",
     "youllAlsoNeed": "- 46732 — Hardware/Plumbing Wholesale (if also selling tools, fittings, and plumbing supplies)\n- 46731 — Paint/Varnish Wholesale (if your portfolio includes finishing materials)\n- 52101 — Warehousing (bulk storage for heavy construction materials)\n- 49431 — Land Freight Transport (delivery logistics to construction sites)",
@@ -29303,7 +29303,7 @@
       "selectionMethod": "ISCO-based",
       "totalInCategory": 181
     },
-    "whatChanged": "Renumbered from a previous KBLI 2020 code (CODICE_RINUMERATO). The scope is essentially the same — specialized engineering consulting. If you held the old code, you'll need to update your NIB as overdue KBLI 2025 post-transition remediation.",
+    "whatChanged": "Renumbered from a previous KBLI 2020 code (CODICE_RINUMERATO). The scope is essentially the same — specialized engineering consulting. If you held the old code, you'll need to update your NIB during the KBLI 2025 transition period before June 2026.",
     "whatItMeans": "The catch-all for engineering and technical consulting that doesn't fit into architecture or factory design — geophysical surveys, geological consulting, seismic studies, environmental engineering, and other specialized technical services. If you're doing subsurface analysis, hydrological studies, or niche engineering consulting, this is your code.",
     "whatYouNeed": "**All scales (Mikro through Besar): Medium-High Risk**\n\nNIB + Sertifikat Standar with verification. SBU required from an accredited LSBU if the work falls under construction services. Professional staff need relevant SKK certifications.\n\nFor geophysical or geological work, additional sector-specific permits from ESDM (Ministry of Energy and Mineral Resources) may apply.\n\n**PMA: 100% foreign ownership allowed.**",
     "youllAlsoNeed": "- 71101 — Architecture (if survey work feeds into building design)\n- 71102 — Factory Engineering (if industrial site surveys are part of your offering)\n- 72201 — R&D in Engineering & Technology (if your work has a research component)\n- 74999 — Other Professional Services (for adjacent consulting)",
@@ -29816,7 +29816,7 @@
       "selectionMethod": "ISCO-based",
       "totalInCategory": 181
     },
-    "whatChanged": "Renumbered in KBLI 2025 (CODICE_RINUMERATO). The activity existed under a different code number in 2020 — the scope is the same but the code changed. Treat the NIB update as overdue if it is still unresolved.",
+    "whatChanged": "Renumbered in KBLI 2025 (CODICE_RINUMERATO). The activity existed under a different code number in 2020 — the scope is the same but the code changed. Update your NIB before the June 2026 deadline.",
     "whatItMeans": "Patent brokerage — intermediating the buying, selling, and licensing of patents and intellectual property rights. Acting as a broker or agent between patent holders and companies seeking to acquire or license patented technologies. Not the creation of IP (which is R&D) but the commercial transaction of existing IP.",
     "whatYouNeed": "**All scales (Mikro/Kecil/Menengah/Besar)**: Medium-Low risk (Menengah Rendah). NIB + Standard Certificate issued automatically.\n\n**PMA:** Fully open — 100% foreign ownership.",
     "youllAlsoNeed": "- 77400 — If you also lease/license IP (not just broker transactions)\n- 69200 — If you provide IP-related accounting/advisory services\n- 70201 — If you offer broader business consulting alongside IP brokerage\n- 62199 — If you deal specifically with software patents and tech licensing",

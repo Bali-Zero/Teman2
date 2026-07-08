@@ -197,9 +197,7 @@ $context"
     log "DRY_RUN=1 → would invoke codex"
     return 0
   fi
-  # --full-auto is deprecated (alias of --sandbox workspace-write, already set);
-  # </dev/null: codex blocks reading an open stdin (W89 class-fix 2026-07-06).
-  timeout "$AGENT_TIMEOUT_S" codex exec --sandbox workspace-write --skip-git-repo-check "$prompt" </dev/null 2>>"$LOG_FILE" | tee -a "$LOG_FILE"
+  timeout "$AGENT_TIMEOUT_S" codex exec --sandbox workspace-write --full-auto "$prompt" 2>>"$LOG_FILE" | tee -a "$LOG_FILE"
   return "${PIPESTATUS[0]}"
 }
 

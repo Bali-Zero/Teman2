@@ -14,10 +14,6 @@
 		<string>40</string>
 		<key>WR2_MAX_ARTICLE_AGE_HOURS</key>
 		<string>72</string>
-		<key>WR2_RESEARCH_STEP_ENABLED</key>
-		<string>true</string>
-		<key>WR2_GROUNDING_ORACLE_TIMEOUT_S</key>
-		<string>120</string>
 	</dict>
 	<key>Label</key>
 	<string>com.balizero.wr2.topic-selector</string>

@@ -22,8 +22,6 @@ class FakeConn:
             {"column_name": "passport_expiry"},
             {"column_name": "date_of_birth"},
             {"column_name": "nationality"},
-            {"column_name": "kitas_number"},
-            {"column_name": "kitas_expiry_date"},
         ]
 
     async def fetchrow(self, _query: str, *args: Any) -> dict[str, str | None]:
@@ -75,45 +73,3 @@ async def test_passport_name_does_not_overwrite_real_client_name() -> None:
     sql, args = conn.execute_calls[0]
     assert "full_name =" not in sql
     assert args[0] == "YC0000001"
-
-
-@pytest.mark.asyncio
-async def test_kitas_name_replaces_placeholder_client_name() -> None:
-    conn = FakeConn("Lead +6281200001111")
-
-    written = await enrich_client_from_extracted_fields(
-        conn,
-        123,
-        "kitas",
-        {
-            "name": {"value": "Maria Rossi"},
-            "kitas_no": {"value": "2C11AB98765"},
-        },
-    )
-
-    assert written["full_name"] == "Maria Rossi"
-    assert written["kitas_number"] == "2C11AB98765"
-    sql, args = conn.execute_calls[0]
-    assert "full_name =" in sql
-    assert args[:2] == ("Maria Rossi", "2C11AB98765")
-
-
-@pytest.mark.asyncio
-async def test_kitas_name_does_not_overwrite_real_client_name() -> None:
-    conn = FakeConn("Existing Client")
-
-    written = await enrich_client_from_extracted_fields(
-        conn,
-        123,
-        "kitas",
-        {
-            "name": {"value": "Different Kitas Name"},
-            "kitas_no": {"value": "2C11AB98765"},
-        },
-    )
-
-    assert "full_name" not in written
-    assert written["kitas_number"] == "2C11AB98765"
-    sql, args = conn.execute_calls[0]
-    assert "full_name =" not in sql
-    assert args[0] == "2C11AB98765"

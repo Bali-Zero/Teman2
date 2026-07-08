@@ -29,7 +29,7 @@ class ZantaraTools:
         self,
         tool_name: str,
         tool_input: dict[str, Any],
-        user_id: str = "system",
+        _user_id: str = "system",
     ) -> dict[str, Any]:
         """
         Execute a Zantara tool
@@ -44,7 +44,6 @@ class ZantaraTools:
         """
         try:
             logger.info("🔧 Executing ZantaraTool: %s", tool_name)
-            logger.debug("ZantaraTool user context: %s", user_id)
 
             if tool_name == "get_pricing":
                 return await self._get_pricing(tool_input)

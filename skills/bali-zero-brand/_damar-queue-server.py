@@ -22,13 +22,9 @@ Endpoints:
 Local-only: binds to 127.0.0.1 explicitly. No external exposure.
 """
 
-import fcntl
-import functools
 import json
-import os
 import subprocess
 import sys
-import tempfile
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -61,37 +57,8 @@ def load_queue():
 
 
 def save_queue(queue):
-    """Atomic write (tmp + os.replace) — a reader must never see a partial file."""
     QUEUE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=str(QUEUE_PATH.parent), prefix=".queue-", suffix=".json")
-    try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(queue, f, indent=2)
-        os.replace(tmp, QUEUE_PATH)
-    except Exception:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
-        raise
-
-
-def with_queue_lock(fn):
-    """Serialize read-modify-write against the other queue writers.
-
-    Same lock file and protocol as wr2_html_render_apply._append_review_queue and
-    wr2_queue_writer (fcntl EX on human-review-queue.lock) — without it, a UI
-    action racing the renderer's append loses one of the two writes (Codex
-    red-team HIGH, PENDING-ARMS 2026-07-07)."""
-    @functools.wraps(fn)
-    def wrapper(*args, **kwargs):
-        QUEUE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        lock_path = QUEUE_PATH.with_suffix(".lock")
-        with open(lock_path, "w", encoding="utf-8") as lock_fh:
-            fcntl.flock(lock_fh, fcntl.LOCK_EX)
-            try:
-                return fn(*args, **kwargs)
-            finally:
-                fcntl.flock(lock_fh, fcntl.LOCK_UN)
-    return wrapper
+    QUEUE_PATH.write_text(json.dumps(queue, indent=2))
 
 
 def find_item(queue, item_id):
@@ -101,7 +68,6 @@ def find_item(queue, item_id):
     return None
 
 
-@with_queue_lock
 def mark_published(item_id, ig_url):
     queue = load_queue()
     item = find_item(queue, item_id)
@@ -126,7 +92,6 @@ def mark_published(item_id, ig_url):
     return {"ok": True, "new_state": new_state, "item_id": item_id}, 200
 
 
-@with_queue_lock
 def mark_rejected(item_id, reason_tag, notes):
     queue = load_queue()
     item = find_item(queue, item_id)
@@ -149,7 +114,6 @@ def mark_rejected(item_id, reason_tag, notes):
     return {"ok": True, "item_id": item_id, "reason_tag": reason_tag}, 200
 
 
-@with_queue_lock
 def capture_delta(item_id):
     """Stub: full Canva-MCP-driven diff requires orchestrator runtime.
 
@@ -177,7 +141,6 @@ def capture_delta(item_id):
     return {"ok": True, "item_id": item_id, "state": "reviewed"}, 200
 
 
-@with_queue_lock
 def flag_needs_human_edit(item_id, reason, retry_count, critic_report_path):
     """Transition a drafted carousel to drafted_needs_human_edit after orchestrator
     exhausts retry budget. Used by wr2-design-architect Failure mode."""

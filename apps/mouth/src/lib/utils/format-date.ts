@@ -13,7 +13,6 @@ export function formatDate(dateStr: string | undefined | null): string {
       day: "numeric",
       month: "short",
       year: "numeric",
-      timeZone: "UTC",
     });
   } catch {
     return "—";
@@ -27,7 +26,6 @@ export function formatDateShort(dateStr: string | undefined | null): string {
     return new Date(dateStr).toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
-      timeZone: "UTC",
     });
   } catch {
     return "—";
@@ -42,7 +40,6 @@ export function formatDateLong(dateStr: string | undefined | null): string {
       day: "numeric",
       month: "long",
       year: "numeric",
-      timeZone: "UTC",
     });
   } catch {
     return "—";

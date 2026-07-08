@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
@@ -19,9 +19,9 @@ import { cn } from "@/lib/utils";
 
 export interface DecisionNode {
   id: string;
-  question?: string;
+  question: string;
   description?: string;
-  options?: DecisionOption[];
+  options: DecisionOption[];
   /** If true, this is a final result node */
   isResult?: boolean;
   /** Result details (only for result nodes) */
@@ -42,9 +42,7 @@ export interface DecisionOption {
   description?: string;
   icon?: string;
   /** ID of the next node */
-  nextNodeId?: string;
-  /** Legacy MDX field used by older articles */
-  next?: string;
+  nextNodeId: string;
 }
 
 export interface DecisionTreeProps {
@@ -56,7 +54,7 @@ export interface DecisionTreeProps {
   subtitle?: string;
   description?: string;
   /** All nodes in the tree */
-  nodes?: DecisionNode[];
+  nodes: DecisionNode[];
   /** ID of the starting node (defaults to "start" or first node) */
   startNodeId?: string;
   /** Show progress indicator */
@@ -119,14 +117,12 @@ export function DecisionTree({
   onComplete,
   className,
 }: DecisionTreeProps) {
-  const safeNodes = useMemo(() => normalizeDecisionNodes(nodes), [nodes]);
-
   // Compute defaults
   const effectiveId = id || title.toLowerCase().replace(/\s+/g, "-");
   const effectiveStartNodeId =
     startNodeId ||
-    safeNodes.find((n) => n.id === "start")?.id ||
-    safeNodes[0]?.id ||
+    nodes.find((n) => n.id === "start")?.id ||
+    nodes[0]?.id ||
     "";
   const effectiveSubtitle = subtitle || description;
 
@@ -136,13 +132,10 @@ export function DecisionTree({
 
   // Get current node
   const currentNodeId = path[path.length - 1];
-  const currentNode = safeNodes.find((n) => n.id === currentNodeId);
+  const currentNode = nodes.find((n) => n.id === currentNodeId);
 
   // Calculate progress
-  const nodesMap = useMemo(
-    () => new Map(safeNodes.map((n) => [n.id, n])),
-    [safeNodes],
-  );
+  const nodesMap = new Map(nodes.map((n) => [n.id, n]));
   const maxDepth = calculateMaxDepth(nodesMap, effectiveStartNodeId);
   const progress =
     maxDepth > 0 ? Math.min(((path.length - 1) / maxDepth) * 100, 100) : 0;
@@ -177,19 +170,6 @@ export function DecisionTree({
   const handleRestart = useCallback(() => {
     setPath([effectiveStartNodeId]);
   }, [effectiveStartNodeId]);
-
-  if (safeNodes.length === 0) {
-    return (
-      <div
-        className={cn(
-          "bg-black/40 rounded-2xl border border-white/10 p-6",
-          className,
-        )}
-      >
-        <p className="text-white/60">Decision tree unavailable</p>
-      </div>
-    );
-  }
 
   if (!currentNode) {
     return (
@@ -291,14 +271,18 @@ export function DecisionTree({
                       onClick={() => setPath(path.slice(0, index + 1))}
                       className="hover:text-white/60 transition-colors truncate max-w-[150px]"
                     >
-                      {formatNodeLabel(node)}
+                      {node.question.length > 30
+                        ? node.question.slice(0, 30) + "..."
+                        : node.question}
                     </button>
                     <ChevronRight className="w-3 h-3 flex-shrink-0" />
                   </React.Fragment>
                 );
               })}
               <span className="text-white/60 truncate max-w-[150px]">
-                {formatNodeLabel(currentNode)}
+                {currentNode.question.length > 30
+                  ? currentNode.question.slice(0, 30) + "..."
+                  : currentNode.question}
               </span>
             </div>
           </div>
@@ -319,8 +303,6 @@ function QuestionView({
   node: DecisionNode;
   onSelect: (nextNodeId: string) => void;
 }) {
-  const options = node.options || [];
-
   return (
     <div>
       {/* Question */}
@@ -329,9 +311,7 @@ function QuestionView({
           <HelpCircle className="w-5 h-5" />
         </div>
         <div>
-          <h4 className="text-lg font-medium text-white">
-            {node.question || "Choose an option"}
-          </h4>
+          <h4 className="text-lg font-medium text-white">{node.question}</h4>
           {node.description && (
             <p className="text-white/60 text-sm mt-1">{node.description}</p>
           )}
@@ -340,18 +320,13 @@ function QuestionView({
 
       {/* Options */}
       <div className="space-y-3">
-        {options.length === 0 && (
-          <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-white/60">
-            No decision options available.
-          </div>
-        )}
-        {options.map((option, index) => (
+        {node.options.map((option, index) => (
           <motion.button
-            key={option.nextNodeId || option.label}
+            key={option.nextNodeId}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            onClick={() => option.nextNodeId && onSelect(option.nextNodeId)}
+            onClick={() => onSelect(option.nextNodeId)}
             className={cn(
               "w-full p-4 rounded-xl text-left",
               "bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent-blue-editorial/50",
@@ -501,53 +476,20 @@ function ResultView({
 
 function calculateMaxDepth(
   nodesMap: Map<string, DecisionNode>,
-  nodeId: string | undefined,
+  nodeId: string,
   visited = new Set<string>(),
 ): number {
-  if (!nodeId) return 0;
   if (visited.has(nodeId)) return 0;
   visited.add(nodeId);
 
   const node = nodesMap.get(nodeId);
-  const options = node?.options || [];
-  if (!node || node.isResult || options.length === 0) return 0;
+  if (!node || node.isResult || !node.options.length) return 0;
 
   let maxChildDepth = 0;
-  for (const option of options) {
+  for (const option of node.options) {
     const childDepth = calculateMaxDepth(nodesMap, option.nextNodeId, visited);
     maxChildDepth = Math.max(maxChildDepth, childDepth);
   }
 
   return 1 + maxChildDepth;
-}
-
-function normalizeDecisionNodes(
-  nodes: DecisionNode[] | undefined,
-): DecisionNode[] {
-  if (!Array.isArray(nodes)) return [];
-
-  return nodes
-    .filter((node) => node && typeof node.id === "string")
-    .map((node) => ({
-      ...node,
-      question: node.question || node.result?.title || "",
-      isResult: Boolean(node.isResult || node.result),
-      options: Array.isArray(node.options)
-        ? node.options
-            .map((option) => ({
-              ...option,
-              nextNodeId: option.nextNodeId || option.next,
-            }))
-            .filter(
-              (option): option is DecisionOption & { nextNodeId: string } =>
-                typeof option.nextNodeId === "string" &&
-                option.nextNodeId.length > 0,
-            )
-        : [],
-    }));
-}
-
-function formatNodeLabel(node: DecisionNode): string {
-  const label = node.question || node.result?.title || node.id;
-  return label.length > 30 ? `${label.slice(0, 30)}...` : label;
 }

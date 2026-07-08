@@ -111,15 +111,12 @@ log "run start: $SRC -> $DST (bwlimit=$BWLIMIT tpslimit=$TPSLIMIT checkers=$CHEC
 # Skip Dropbox junk that clogs the queue head (alphabetically first), wastes
 # Drive quota, and pollutes the CRM intake: "(Selective Sync Conflict)" duplicate
 # folders, a stray cracked-software archive, and a Driver dump. (junk-exclude 2026-06-16)
-# --max-age 24h: day-only regime (Zero GO 2026-07-04) — the historical-archive
-# backfill was aborted after it flooded the Pro intake (81GB blobs, 175k pending,
-# disk 100%); only files modified in the last day are mirrored from now on.
 rclone copy "$SRC" "$DST" \
   --log-level INFO --log-file "$RUN_LOG" \
   --transfers "$TRANSFERS" --checkers "$CHECKERS" \
   --tpslimit "$TPSLIMIT" --tpslimit-burst 1 \
   --low-level-retries "$LOW_LEVEL_RETRIES" --retries 5 \
-  --fast-list --max-age 24h \
+  --fast-list \
   --bwlimit "$BWLIMIT" \
   --drive-stop-on-upload-limit \
   --exclude ".DS_Store" --exclude "/.dropbox.cache/**" \

@@ -171,34 +171,3 @@ class TestLifespan:
 
         # The lifespan cancels the init task if not done
         assert real_future.cancelled()
-
-    @pytest.mark.asyncio
-    async def test_lifespan_closes_kbli_notebook_client(self):
-        """Shutdown should close the KBLI notebook module-level HTTP client."""
-        from types import SimpleNamespace
-
-        from backend.app.setup.app_factory import lifespan
-
-        app_state = SimpleNamespace()
-        mock_app = MagicMock()
-        mock_app.state = app_state
-        close_kbli_http_client = AsyncMock()
-
-        with (
-            patch.dict(
-                sys.modules,
-                {
-                    "backend.app.routers.kbli_notebook": MagicMock(
-                        close_kbli_http_client=close_kbli_http_client,
-                    )
-                },
-            ),
-            patch(
-                "backend.app.setup.app_factory.asyncio.create_task",
-                side_effect=_close_created_coro,
-            ),
-        ):
-            async with lifespan(mock_app):
-                pass
-
-        close_kbli_http_client.assert_awaited_once()

@@ -40,11 +40,6 @@ export async function renderMDXBody(source: string): Promise<ReactNode> {
     source,
     components: mdxComponents,
     options: {
-      // These MDX files are local, versioned article sources. The interactive
-      // article components rely on array/object props such as nodes={[...]} and
-      // steps={[...]}; next-mdx-remote removes those by default as "remote" JS.
-      blockJS: false,
-      blockDangerousJS: true,
       mdxOptions: {
         remarkPlugins: [remarkGfm],
         development: false,

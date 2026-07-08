@@ -17,10 +17,6 @@
           {
             "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/proprioception_sessionstart.sh"
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/scripts/hooks/organism_digest_sessionstart.sh"
           }
         ]
       }

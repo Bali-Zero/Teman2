@@ -40,11 +40,6 @@ def validate_risk_consistency(generated: dict, source: dict) -> list[str]:
     errors = []
     per_skala = source.get("per_skala", [])
     content_text = " ".join(str(v) for v in generated.values()).lower()
-    # Unicode hyphens (U+2010..U+2015) defeat the (?<!medium-) lookbehind:
-    # "medium‑high risk" was flagged as bare "high risk" (false positive,
-    # found live 2026-07-07). Normalize to ASCII before matching.
-    for h in ("‐", "‑", "‒", "–", "—", "―"):
-        content_text = content_text.replace(h, "-")
 
     valid_risks = {s.get("kategori_risiko", "").lower() for s in per_skala}
     valid_risks_en = set()

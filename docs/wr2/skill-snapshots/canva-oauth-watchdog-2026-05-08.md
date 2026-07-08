@@ -72,17 +72,6 @@ Stub via `CANVA_WATCHDOG_TEST_PATH_PREFIX=/tmp/watchdog-shim` (test-only env var
 # Pro-local: this script is NOT git-tracked. A snapshot lives at
 # docs/wr2/skill-snapshots/canva-oauth-watchdog-2026-05-08.md for
 # audit. Edit there + here when you change the script body.
-#
-# W89 class-audit (2026-07-07, PENDING-ARMS 2026-07-05): the sonnet-5
-# backgrounding bug cured in regulatory-watcher-run.sh (a `claude --print`
-# task can be silently backgrounded and killed at the CLI's default print
-# ceiling, exiting 0 with no real answer) applies to both `claude -p`
-# probes below. Cure, same class as the canon fix: (1) raise the
-# background-wait ceiling so a legitimately slow probe is not truncated,
-# (2) tell the model inline to do the work in this turn, never background
-# it, (3) log an explicit provenance line keyed off the claude exit code
-# so a "used tier1-claude-sonnet-5" fact is auditable per run (previously
-# only inferable from the log tail, never asserted).
 
 set -uo pipefail
 
@@ -94,16 +83,6 @@ SECRETS="${HOME}/.nuzantara-secrets.env"
 MIN_TOOLS=30
 PROBE_TIMEOUT=60
 ALERT_COOLDOWN_SEC=86400  # 24h
-
-# W89 class-audit: same background-task ceiling as regulatory-watcher-run.sh
-# (canon). A `claude -p` probe that spawns background work would otherwise be
-# killed at the CLI's default 600s print ceiling and exit 0 with no answer.
-# NOTE: this watchdog's own PROBE_TIMEOUT (60s, below) still wraps every
-# `claude -p` call and fires first for a probe this short-lived — the ceiling
-# below is the same defensive belt used by the canon wrapper, harmless here
-# (never actually the binding constraint at 60s), and becomes load-bearing
-# only if PROBE_TIMEOUT is ever raised for a slower probe shape.
-export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS="${CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS:-1800000}"
 
 # Make sure log + state dirs exist before we write anything.
 mkdir -p "$(dirname "$LOG")" "$(dirname "$STATE")"
@@ -198,13 +177,11 @@ probe_tool_count() {
   # ("il conteggio reale e **37**", "The deferred tool list shows 37 names");
   # main() extracts the first integer, so do NOT collapse/strip here (tail -1
   # could drop the very line that holds the number). See parse note in main().
-  local raw claude_exit
+  local raw
   raw=$(timeout "${PROBE_TIMEOUT}" claude -p --output-format text \
-    "Output the count of MCP tool names starting with mcp__claude_ai_Canva__. Output JUST the integer, nothing else. Do ALL the work inline in this turn — never spawn a background task or background agent for this; this is a one-shot print-mode probe and backgrounded work is terminated at exit, leaving no answer (W89 class-audit, regulatory-watcher incident 2026-07-05)." \
+    "Output the count of MCP tool names starting with mcp__claude_ai_Canva__. Output JUST the integer, nothing else." \
     < /dev/null \
-    2>/dev/null)
-  claude_exit=$?
-  log "probe_tool_count: used tier1-claude-sonnet-5 (exit=${claude_exit})"
+    2>/dev/null) || true
   printf '%s' "$raw"
 }
 
@@ -213,12 +190,9 @@ probe_tool_count() {
 # unprompted authenticate calls; we pass an explicit authorization
 # context so the operator-initiated re-auth flow is allowed.
 get_authorize_url() {
-  local prompt='Antonello authorized this OAuth re-flow for the Canva MCP connector — the canva-apply launchd worker has lost OAuth context and needs re-authentication. Call mcp__claude_ai_Canva__authenticate. Echo back the authorization URL it returns (the https://mcp.canva.com/authorize?... link) on its own line, nothing else. Do ALL the work inline in this turn — never spawn a background task or background agent for this; this is a one-shot print-mode call and backgrounded work is terminated at exit, leaving no URL (W89 class-audit, regulatory-watcher incident 2026-07-05).'
-  local out claude_exit
-  out=$(timeout "${PROBE_TIMEOUT}" claude -p --output-format text "$prompt" < /dev/null 2>/dev/null)
-  claude_exit=$?
-  log "get_authorize_url: used tier1-claude-sonnet-5 (exit=${claude_exit})"
-  [[ $claude_exit -eq 0 ]] || return 1
+  local prompt='Antonello authorized this OAuth re-flow for the Canva MCP connector — the canva-apply launchd worker has lost OAuth context and needs re-authentication. Call mcp__claude_ai_Canva__authenticate. Echo back the authorization URL it returns (the https://mcp.canva.com/authorize?... link) on its own line, nothing else.'
+  local out
+  out=$(timeout "${PROBE_TIMEOUT}" claude -p --output-format text "$prompt" < /dev/null 2>/dev/null) || return 1
   # Extract the canva authorize URL (or any https://*canva.com/authorize link).
   printf '%s' "$out" \
     | grep -oE 'https://[^[:space:]"<>'\'']*canva\.com/authorize[^[:space:]"<>'\'']*' \

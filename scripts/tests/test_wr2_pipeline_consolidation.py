@@ -182,9 +182,6 @@ class TestHtmlApplyLedger:
             order.append("ledger")
 
         monkeypatch.setattr(html, "_log_ledger_best_effort", AsyncMock(side_effect=_ledger))
-        # visibility chain (R1-R3 cure) is filesystem/Telegram-touching — inert here;
-        # its own unit tests live in test_wr2_visibility_chain.py
-        monkeypatch.setattr(html, "_publish_visibility", AsyncMock())
 
         async def _hb(*a, **k):
             return None

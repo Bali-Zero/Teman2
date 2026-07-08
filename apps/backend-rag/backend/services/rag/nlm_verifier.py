@@ -14,19 +14,14 @@ import logging
 import re
 from typing import Any
 
-from backend.app.core.constants import EvidenceScoreConstants
-
 logger = logging.getLogger(__name__)
 
 # Critical domains that warrant NLM verification
 CRITICAL_DOMAINS: frozenset[str] = frozenset({"visa", "tax", "legal", "immigration"})
 
-# Evidence score window for verification (CAUTIOUS range) — sourced from the
-# shared zone-edge constants (same 0.15 / 0.60 values as the streaming
-# confidence zone) so this trigger window cannot drift silently if the zone
-# edges ever move. See services/rag/agentic/_abstain_policy.py.
-EVIDENCE_MIN: float = EvidenceScoreConstants.CONFIDENCE_LOW
-EVIDENCE_MAX: float = EvidenceScoreConstants.CONFIDENCE_HIGH
+# Evidence score window for verification (CAUTIOUS range)
+EVIDENCE_MIN: float = 0.15
+EVIDENCE_MAX: float = 0.60
 
 # NLM notebook IDs by domain
 DOMAIN_NOTEBOOK_MAP: dict[str, str] = {

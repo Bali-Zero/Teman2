@@ -11,18 +11,20 @@ import path from "path";
  * Generates XML sitemap for SEO with:
  * - Static pages (homepage, services, team, contact, kbli-explorer)
  * - Service pages (4 main services)
- * - News categories
+ * - News categories (8 categories)
  * - Blog articles (all published articles)
  * - KBLI 2025 codes (1,559 pages)
  * - KBLI sectors index + individual sector pages (~22)
+ * Priority scale:
+ * - 1.0: Homepage
+ * - 0.9: Main service pages
+ * - 0.8: Blog articles, KBLI explorer, KBLI codes
+ * - 0.7: Service detail pages, news categories, KBLI sectors
  *
- * Signal discipline (GSC clean-window investigation 2026-07-03):
- * - `priority` and `changeFrequency` are omitted — Google ignores both, and
- *   inaccurate hints erode sitemap trust.
- * - `lastModified` is emitted ONLY where we know the real modification event
- *   (article updatedAt/publishedAt, KBLI data-file mtime). Pages whose real
- *   lastmod we don't track carry no lastModified at all — a fabricated
- *   deploy-time date teaches Google to ignore our lastmod entirely.
+ * Change frequency:
+ * - daily: News, blog
+ * - weekly: Services, KBLI
+ * - monthly: Static pages
  */
 
 const baseUrl = "https://balizero.com";
@@ -31,28 +33,100 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const routes: MetadataRoute.Sitemap = [];
 
   // 1. Static pages
-  const staticPaths = [
-    "",
-    "/kbli",
-    "/services",
-    "/news",
-    "/team",
-    "/contact",
-    "/kbli-explorer",
-    "/llms.txt",
-    "/llms-full.txt",
-    "/llms-id.txt",
+  const staticPages = [
+    {
+      url: `${baseUrl}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/kbli`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/services`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/news`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/team`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/kbli-explorer`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/llms.txt`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/llms-full.txt`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/llms-id.txt`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    },
   ];
-  routes.push(...staticPaths.map((p) => ({ url: `${baseUrl}${p}` })));
+
+  routes.push(...staticPages);
 
   // 2. Service pages (4 main services)
-  const servicePaths = [
-    "/services/visa",
-    "/services/company",
-    "/services/tax",
-    "/services/property",
+  const servicePages = [
+    {
+      url: `${baseUrl}/services/visa`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/services/company`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/services/tax`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/services/property`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
   ];
-  routes.push(...servicePaths.map((p) => ({ url: `${baseUrl}${p}` })));
+
+  routes.push(...servicePages);
 
   // 3. Category pages (match actual routes: /{category})
   const categories = [
@@ -63,7 +137,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "living",
     "trends",
   ];
-  routes.push(...categories.map((c) => ({ url: `${baseUrl}/${c}` })));
+
+  const newsCategoryPages = categories.map((category) => ({
+    url: `${baseUrl}/${category}`,
+    lastModified: new Date(),
+    changeFrequency: "daily" as const,
+    priority: 0.7,
+  }));
+
+  routes.push(...newsCategoryPages);
 
   // 4. Blog articles (from local MDX content, excluding noIndex articles)
   try {
@@ -87,11 +169,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         return true;
       })
       .map((article) => {
+        // Priority: featured editorial (0.9) > ai-enriched (0.8) > basic (0.6)
+        const priority = article.featured
+          ? 0.9
+          : article.aiGenerated
+            ? 0.8
+            : 0.6;
         const entry: MetadataRoute.Sitemap[number] = {
           url: `${baseUrl}/${article.category}/${article.slug}`,
-          ...(article.publishedAt
-            ? { lastModified: new Date(article.publishedAt) }
-            : {}),
+          lastModified: article.publishedAt
+            ? new Date(article.publishedAt)
+            : new Date(),
+          changeFrequency: "weekly" as const,
+          priority,
         };
 
         return entry;
@@ -106,28 +196,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     );
   }
 
-  // 5. KBLI Codes (1,559 pages) — lastmod comes from the committed dataset
-  // version sidecar (data/kbli-dataset-version.json), NOT the file mtime:
-  // git/Vercel checkouts stamp clone time on every file, so mtime would
-  // claim all 1,559 pages "modified today" on every deploy — exactly the
-  // fabricated freshness signal this sitemap must not send.
+  // 5. KBLI Codes (1,559 pages)
   try {
     const codes = getAllCodes();
+    const kbliDataPath = path.join(
+      process.cwd(),
+      "data",
+      "KBLI_2025_FINAL_CLEAN.json",
+    );
     let kbliLastModified: Date;
     try {
-      const version = JSON.parse(
-        fs.readFileSync(
-          path.join(process.cwd(), "data", "kbli-dataset-version.json"),
-          "utf-8",
-        ),
-      ) as { lastModified: string };
-      kbliLastModified = new Date(version.lastModified);
+      kbliLastModified = fs.statSync(kbliDataPath).mtime;
     } catch {
       kbliLastModified = new Date("2026-06-19");
     }
     const kbliPages = codes.map((c) => ({
       url: `${baseUrl}/kbli/${c.code}`,
       lastModified: kbliLastModified,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
     }));
     routes.push(...kbliPages);
   } catch (error) {
@@ -141,12 +228,48 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 6. Visa funnel pages (balizero.com/visa — consolidated 2026-04-21,
   // was previously at visa.balizero.com; the subdomain now 302-redirects
   // to these canonical paths via middleware.ts).
-  const visaPaths = ["/visa", "/visa/match", "/visa/clock"];
-  routes.push(...visaPaths.map((p) => ({ url: `${baseUrl}${p}` })));
+  const visaPages = [
+    {
+      url: `${baseUrl}/visa`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/visa/match`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/visa/clock`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/visa/privacy`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/visa/terms`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    },
+  ];
+  routes.push(...visaPages);
 
   // 7. KBLI Sector pages (/kbli/sectors + /kbli/sectors/[id])
   try {
-    routes.push({ url: `${baseUrl}/kbli/sectors` });
+    routes.push({
+      url: `${baseUrl}/kbli/sectors`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    });
 
     const sections = getSections().filter(
       // Exclude sections with no codes AND exclude the sentinel "?" ID that

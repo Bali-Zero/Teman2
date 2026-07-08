@@ -254,21 +254,26 @@ def sweep_recovered_corpses(queue: list) -> tuple[list, list]:
 
 
 # ── Telegram ──────────────────────────────────────────────────────────────────
-# Migrated to the notification gateway (2026-07-06). Tier semantics:
-#   p0     — 🔴 escalations / 🛑 TERMINAL (operator must act)
-#   digest — ✅ auto-fixes, 🧹 corpse-sweeps (informative, grouped 2×/day)
-# The gateway owns token resolution, dedup and the daily P0 budget.
 
-def send_telegram(message: str, tier: str = "digest", dedup_key: str = "") -> None:
-    gateway = Path(__file__).resolve().parent / "tg_notify.py"
-    if not gateway.exists():  # HOME-fork copy: fall back to the repo checkout (#1)
-        gateway = NUZANTARA_ROOT / "scripts" / "tg_notify.py"
-    cmd = [sys.executable, str(gateway), "--tier", tier, "--source", "dlq-autopilot"]
-    if dedup_key:
-        cmd += ["--dedup-key", dedup_key]
-    cmd += ["--", f"🤖 DLQAutopilot | {message}"]
+def send_telegram(message: str) -> None:
+    import urllib.parse
+    import urllib.request
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "1125336968")
+    if not token:
+        return
     try:
-        subprocess.run(cmd, capture_output=True, timeout=30)
+        data = urllib.parse.urlencode({
+            "chat_id": chat_id,
+            "text": f"🤖 DLQAutopilot | {message}",
+        }).encode()
+        urllib.request.urlopen(
+            urllib.request.Request(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                data=data,
+            ),
+            timeout=10,
+        )
     except Exception:
         pass
 
@@ -558,9 +563,7 @@ def escalate_to_claude_code(
     send_telegram(
         f"🔴 Escalated to Claude Code: `{job}`\n"
         f"Error: {entry.get('error_summary', '(empty)')[:80]}\n"
-        f"Task file: {task_file.name}",
-        tier="p0",
-        dedup_key=f"dlq-escalation:{job}",
+        f"Task file: {task_file.name}"
     )
 
     # S3: record the escalation so subsequent ticks within 4h are suppressed.
@@ -631,9 +634,7 @@ def process_entry(entry: dict, registry: dict) -> str:
         send_telegram(
             f"🛑 TERMINAL: `{job}` reached {max_attempts} autopilot attempts with no fix.\n"
             f"Error: {error[:80]}\n"
-            f"Manual intervention required. Run: `dlq clear {job}` after resolving.",
-            tier="p0",
-            dedup_key=f"dlq-terminal:{job}",
+            f"Manual intervention required. Run: `dlq clear {job}` after resolving."
         )
         return "terminal"
 

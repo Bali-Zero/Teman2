@@ -8,7 +8,7 @@ import {
 } from "@/lib/api/workspace/inbox.api";
 
 const CHANNELS: Array<{ value: InboxChannel | ""; label: string }> = [
-  { value: "", label: "All channels" },
+  { value: "", label: "Tutti i canali" },
   { value: "whatsapp", label: "WhatsApp" },
   { value: "telegram", label: "Telegram" },
   { value: "instagram", label: "Instagram" },
@@ -97,7 +97,7 @@ export function InboxTimeline() {
           }}
         >
           <span style={{ color: "var(--color-text-secondary, #6b7280)" }}>
-            Channel
+            Canale
           </span>
           <select
             value={channel}
@@ -178,7 +178,7 @@ export function InboxTimeline() {
                       <span>·</span>
                       <span>{formatTime(it.created_at)}</span>
                       <span>·</span>
-                      <span>{it.client_name ?? "no client"}</span>
+                      <span>{it.client_name ?? "senza cliente"}</span>
                     </div>
                     <p style={{ margin: 0 }}>
                       <span aria-hidden style={{ marginRight: 6 }}>

@@ -508,8 +508,8 @@ class TestFormatStageComplete:
         assert len(result["citations"]) == 1
 
     @pytest.mark.asyncio
-    async def test_format_stage_preserves_pipeline_owned_stages_completed(self):
-        """Test FormatStage preserves existing pipeline-owned stage tracking"""
+    async def test_format_stage_stages_completed(self):
+        """Test FormatStage adds to stages_completed"""
         stage = FormatStage()
         data = {
             "response": "Test",
@@ -517,7 +517,8 @@ class TestFormatStageComplete:
             "stages_completed": ["VerificationStage", "PostProcessingStage"],
         }
         result = await stage.process(data)
-        assert result["stages_completed"] == ["VerificationStage", "PostProcessingStage"]
+        assert "FormatStage" in result["stages_completed"]
+        assert len(result["stages_completed"]) == 3
 
     @pytest.mark.asyncio
     async def test_format_stage_no_stages_completed(self):

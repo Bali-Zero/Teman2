@@ -120,6 +120,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // ⚡ Performance: Add cache headers for static assets
   async headers() {
     return [
       {

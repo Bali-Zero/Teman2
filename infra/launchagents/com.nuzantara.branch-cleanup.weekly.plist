@@ -37,7 +37,7 @@
         <string>/Users/nuzantara</string>
         <key>BRANCH_CLEANUP_ENABLED</key>
         <string>true</string>
-        <!-- NEVER set the apply flag here; weekly run is report-only. -->
+        <!-- NEVER set --apply here; weekly run is report-only. -->
     </dict>
 
     <key>WorkingDirectory</key>

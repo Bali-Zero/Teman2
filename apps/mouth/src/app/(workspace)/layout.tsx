@@ -366,7 +366,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             <AppSidebar
               user={user}
               unreadWhatsApp={0}
-              reviewCount={gateStatus?.sections?.documents?.count ?? 0}
               onLogout={handleLogout}
               onZantaraToggle={() => setIsZantaraOpen((prev) => !prev)}
               isZantaraOpen={isZantaraOpen}
@@ -392,7 +391,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
                 <AppSidebar
                   user={user}
                   unreadWhatsApp={0}
-                  reviewCount={gateStatus?.sections?.documents?.count ?? 0}
                   onLogout={handleLogout}
                   onZantaraToggle={() => setIsZantaraOpen((prev) => !prev)}
                   isZantaraOpen={isZantaraOpen}
