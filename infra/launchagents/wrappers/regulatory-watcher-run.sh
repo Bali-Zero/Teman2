@@ -109,7 +109,32 @@ organism_hb_finalize() {
     fi
 }
 
-trap 'rc=$?; organism_hb_finalize "$rc"' EXIT
+# Single-instance lock (2026-07-06): two instances ran CONCURRENTLY today —
+# this session's induced test + a sibling session's (#1999) — racing on the
+# same delta file with duplicate bus emits and duplicate-Telegram risk
+# (family #5 sibling-race, on the DATA instead of the repo). macOS ships no
+# flock(1), so: atomic mkdir + pid-liveness. A concurrent duplicate
+# SELF-RESOLVES — it logs its own launch-context (forensic breadcrumb) and
+# exits 0, no operator in the loop. A stale lock (crashed run, dead pid) is
+# taken over automatically. Placed AFTER the W84 trampoline block so only
+# the run that will actually do the work holds it.
+REGWATCH_LOCKDIR="$HOME/.regulatory-watcher.lock"
+if ! mkdir "$REGWATCH_LOCKDIR" 2>/dev/null; then
+    OTHER_PID=$(cat "$REGWATCH_LOCKDIR/pid" 2>/dev/null || echo "")
+    if [ -n "$OTHER_PID" ] && kill -0 "$OTHER_PID" 2>/dev/null; then
+        echo "[$(date)] duplicate instance suppressed: lock held by live pid=$OTHER_PID; suppressed launch-context: pid=$$ ppid=$PPID parent=$(ps -o comm= -p $PPID 2>/dev/null || echo dead) lang=${LANG:-unset} ssh=${SSH_CONNECTION:-none} trampolined=${REGWATCH_TRAMPOLINED:-0}" >> "$LOG"
+        exit 0
+    fi
+    echo "[$(date)] stale lock (pid=${OTHER_PID:-none} dead) — taking over" >> "$LOG"
+    rm -rf "$REGWATCH_LOCKDIR"
+    if ! mkdir "$REGWATCH_LOCKDIR" 2>/dev/null; then
+        echo "[$(date)] lock race lost after stale takeover — exiting clean" >> "$LOG"
+        exit 0
+    fi
+fi
+echo $$ > "$REGWATCH_LOCKDIR/pid"
+
+trap 'rc=$?; organism_hb_finalize "$rc"; rm -rf "$REGWATCH_LOCKDIR"' EXIT
 
 echo "[$(date)] regulatory-watcher run starting for $DATE" >> "$LOG"
 # Forensic breadcrumb (2026-07-06): an unexplained parallel instance appeared at

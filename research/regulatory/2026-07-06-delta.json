@@ -1,34 +1,36 @@
 {
-  "run_at": "2026-07-06T10:23:00+08:00",
+  "run_at": "2026-07-06T12:06:46+08:00",
   "today": "2026-07-06",
   "yesterday_seen_count": 18,
-  "new_today_count": 1,
+  "new_today_count": 0,
   "partial": true,
-  "note": "Fourth and final pass today, run inline in a foreground Claude Code session per explicit instruction (no background tasks, per 2026-07-05 backgrounded-run-terminated-at-exit incident). pass1 05:18+08:00 (PR #1989): NB auth expired, web found 2 deltas (Permendagri 6/2026, PMK 37/2025 update), Telegram sent. pass2 09:23:42+08:00 (PR #1997, prior version of this file): NB auth recovered, re-verified, zero additional citations, Telegram correctly NOT re-sent. pass3 10:03:06+08:00: all 4 NB-INTEL clean, fresh DDTC check surfaced 1 additional genuinely-new citation (KMK 29/MK/EF.2/2026), written only to an untracked '.pre-induction' scratch file, never committed. pass4 10:17-10:23+08:00 (this pass, this session, this commit): independently re-ran all 4 NB-INTEL queries fresh (all clean, 'nessuna novita'), independently re-fetched DDTC/hukumonline/ortax/muc/imigrasi.go.id, independently cross-validated KMK 29/MK/EF.2/2026 via Ortax datacenter (datacenter.ortax.org/ortax/aturan/show/27149) + CNBC Indonesia + fiskal.kemenkeu.go.id (confidence raised to high, 3 independent sources), reviewed and excluded 1 DDTC infografis ('Pembayaran Pajak yang Bisa Dilakukan Pemindahbukuan secara Jabatan') as procedural explainer of an existing KUP mechanism, not a new regulation. Sent Telegram alert for the single not-yet-alerted delta (KMK 29/MK/EF.2/2026) at 10:23+08:00; did NOT re-alert Permendagri 6/2026 or PMK 37/2025 (already alerted pass1, per dedup discipline). 2026-07-04 and 2026-07-05 delta files remain missing on disk (2026-07-05 backgrounded-run incident); dedup baseline for this whole day is last available prior file 2026-07-03-delta.json (18 seen_citations), gap window covers 07-04 to 07-06.",
+  "note": "Fifth pass today, run inline in a foreground Claude Code session (no background tasks/agents, per 2026-07-05 backgrounded-run-terminated-at-exit incident; explicit re-invocation of the same instruction ~1h45 after pass4). pass1 05:18+08:00 (PR #1989): NB auth expired, web found 2 deltas (Permendagri 6/2026, PMK 37/2025 update), Telegram sent. pass2 09:23:42+08:00 (PR #1997): NB auth recovered, re-verified, zero additional citations, Telegram correctly NOT re-sent. pass3 10:03:06+08:00: all 4 NB-INTEL clean, fresh DDTC check surfaced 1 additional genuinely-new citation (KMK 29/MK/EF.2/2026), written only to an untracked scratch file, never committed. pass4 10:17-10:23+08:00 (PR #2002): independently re-ran all 4 NB-INTEL queries fresh (all clean), independently re-fetched DDTC/hukumonline/ortax/muc/imigrasi.go.id, independently cross-validated KMK 29/MK/EF.2/2026 via Ortax datacenter + CNBC Indonesia + fiskal.kemenkeu.go.id (confidence raised to high, 3 independent sources), excluded 1 DDTC infografis as procedural explainer not a new regulation. Sent Telegram for KMK 29/MK/EF.2/2026 at 10:23+08:00; did not re-alert the other two (already alerted pass1). pass5 12:03-12:06+08:00 (this pass, this session): independently re-ran all 4 NB-INTEL queries fresh (all clean, 'nessuna novita'), independently re-fetched DDTC/hukumonline/ortax/muc/ikpi/imigrasi.go.id - no new regulatory citation found, only 2 new DDTC July-6 pieces (opinion/feature articles, not regulations, reviewed and excluded). new_today_count for this pass = 0 -> per Step 6 hard rule, NO Telegram sent (all 3 standing deltas already alerted in pass1/pass4; Antonello explicitly does not want empty/duplicate pings). File updated in-place (no new deltas, no timestamp drift on existing delta entries) to record this verification pass. 2026-07-04 and 2026-07-05 delta files remain missing on disk (2026-07-05 backgrounded-run incident); dedup baseline for this whole day is last available prior file 2026-07-03-delta.json (18 seen_citations), gap window covers 07-04 to 07-06.",
   "nb_query_errors": [],
   "unreachable_sources": [
-    "https://www.hukumonline.com/berita/ (403 Forbidden - Cloudflare, re-checked 10:18+08:00 pass4 - still down)",
-    "https://muc.co.id/article (403 Forbidden, re-checked 10:22+08:00 pass4 - still down)",
-    "https://ikpi.or.id/news/ (404 Not Found, carried over from pass3, not re-checked pass4 - no material change expected)",
-    "https://ortax.org/news (200 OK but 'Artikel tidak ditemukan' - no parseable article list, re-checked 10:18+08:00 pass4)",
-    "https://peraturan.bpk.go.id/Search?... (403 Forbidden - carried over from pass2/3, not re-checked pass4)",
-    "https://jdih.kemenkeu.go.id/peraturan (200 OK, nav/header shell only - carried over from pass2/3)"
+    "https://www.hukumonline.com/berita/ (403 Forbidden - Cloudflare, re-checked 12:04+08:00 pass5 - still down)",
+    "https://muc.co.id/article (403 Forbidden, re-checked 12:05+08:00 pass5 - still down)",
+    "https://ikpi.or.id/news/ (404 Not Found, re-checked 12:05+08:00 pass5 - still down)",
+    "https://ortax.org/news (200 OK but 'Artikel tidak ditemukan' - no parseable article list, re-checked 12:04+08:00 pass5)",
+    "https://peraturan.bpk.go.id/Search?... (403 Forbidden - carried over from pass2/3, not re-checked pass5)",
+    "https://jdih.kemenkeu.go.id/peraturan (200 OK, nav/header shell only - carried over from pass2/3, not re-checked pass5)"
   ],
   "nb_results": {
-    "NB-INTEL-Regulation": "OK - nessuna novita (re-verified pass4 10:17+08:00)",
-    "NB-INTEL-Press": "OK - nessuna novita (re-verified pass4 10:17+08:00)",
-    "NB-INTEL-Immigration": "OK - nessuna novita (re-verified pass4 10:17+08:00)",
-    "NB-INTEL-Tax": "OK - nessuna novita (re-verified pass4 10:17+08:00)"
+    "NB-INTEL-Regulation": "OK - nessuna novita (re-verified pass5 12:03+08:00)",
+    "NB-INTEL-Press": "OK - nessuna novita (re-verified pass5 12:03+08:00)",
+    "NB-INTEL-Immigration": "OK - nessuna novita (re-verified pass5 12:03+08:00)",
+    "NB-INTEL-Tax": "OK - nessuna novita (re-verified pass5 12:03+08:00)"
   },
   "web_backup_checked_clean": [
-    "https://peraturan.go.id (carried over from pass2/3: latest entry 25 Jun 2026)",
-    "https://www.imigrasi.go.id (re-checked pass4 10:18+08:00: latest press releases dated 01 Jul 2026, no new immigration regulation)",
-    "https://www.pajak.go.id/peraturan (carried over from pass2/3: latest entry 24 Jun 2026)",
-    "https://jdih.kemnaker.go.id/peraturan (carried over from pass2/3: no 07-05/06 entries, latest UU 2/2026 30 Apr)"
+    "https://peraturan.go.id (carried over from pass2/3: latest entry 25 Jun 2026, not re-checked pass5)",
+    "https://www.imigrasi.go.id (re-checked pass5 12:05+08:00: latest press releases still dated 01 Jul 2026, no new immigration regulation)",
+    "https://www.pajak.go.id/peraturan (carried over from pass2/3: latest entry 24 Jun 2026, not re-checked pass5)",
+    "https://jdih.kemnaker.go.id/peraturan (carried over from pass2/3: no 07-05/06 entries, latest UU 2/2026 30 Apr, not re-checked pass5)"
   ],
   "reviewed_out_of_scope": [
     "KMK 31/MK/BC/2026 (DDTC 2026-07-05: Kemenkeu designates 16 restricted-export coal varieties) - customs/export duty on mining sector, does not match any Bali Zero service line; excluded per Step 4 filter, not added to seen_citations.",
-    "DDTC infografis 'Pembayaran Pajak yang Bisa Dilakukan Pemindahbukuan secara Jabatan' (published ~22h before pass4 check) - explains an existing ex-officio tax-payment book-transfer mechanism under KUP, no new PMK/regulation number attached; not a delta, excluded per Step 2/4."
+    "DDTC infografis 'Pembayaran Pajak yang Bisa Dilakukan Pemindahbukuan secara Jabatan' (published ~22h before pass4 check) - explains an existing ex-officio tax-payment book-transfer mechanism under KUP, no new PMK/regulation number attached; not a delta, excluded per Step 2/4.",
+    "DDTC 'Siasat Pajak di Balik Kontrak Kompetisi Olahraga Global' (2026-07-06, RUST Conference feature) - opinion/analysis piece, no new regulation number; excluded per Step 2/4 pass5.",
+    "DDTC 'Update 2026, Menilik Profil Pajak Daerah di Bumi Gora' (2026-07-06, regional tax profile feature on NTB) - descriptive feature, no new regulation number; excluded per Step 2/4 pass5."
   ],
   "deltas": [
     {

@@ -60,6 +60,8 @@ PRUNE_DIR_NAMES = frozenset(
         "Cache",
         "Caches",
         "CachedData",
+        "tmp",
+        "jiti",
     }
 )
 

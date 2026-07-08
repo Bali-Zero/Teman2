@@ -452,36 +452,6 @@ export class PortalApi {
     return response.draft;
   }
 
-  async submitLKPMData(data: {
-    client_id: number;
-    quarter: string;
-    year: number;
-    investment: Record<string, number>;
-    employment: { tki: number; tka: number };
-    revenue_quarterly?: number;
-    revenue_annual?: number;
-    obstacles?: string;
-    plans?: string;
-  }): Promise<{
-    draft_id: number;
-    quarter: string;
-    year: number;
-    realized_total: number;
-  }> {
-    const response = await this.client.request<
-      PortalApiResponse<{
-        draft_id: number;
-        quarter: string;
-        year: number;
-        realized_total: number;
-      }>
-    >("/api/v1/lkpm/submit-data", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-    return response.data!;
-  }
-
   async approveLKPMDraft(draftId: number): Promise<{ success: boolean }> {
     const response = await this.client.request<PortalApiResponse<void>>(
       `/api/v1/lkpm/approve/${draftId}`,

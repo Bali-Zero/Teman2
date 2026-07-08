@@ -13,6 +13,14 @@ function stripImports(content: string): string {
     .trim();
 }
 
+const strataTitleArticles = [
+  "src/content/articles/property/strata-title-explained.mdx",
+  "src/content/articles/property/strata-title-explained.fr.mdx",
+  "src/content/articles/property/strata-title-explained.id.mdx",
+  "src/content/articles/property/strata-title-explained.it.mdx",
+  "src/content/articles/property/strata-title-explained.ru.mdx",
+];
+
 describe("renderMDXBody", () => {
   it("server-renders the driving license article interactive MDX body", async () => {
     const articlePath = path.join(
@@ -32,4 +40,19 @@ describe("renderMDXBody", () => {
     expect(html).not.toContain("Decision tree unavailable");
     expect(html).not.toContain("Journey map unavailable");
   });
+
+  it.each(strataTitleArticles)(
+    "server-renders the strata title article interactive MDX body: %s",
+    async (article) => {
+      const articlePath = path.join(process.cwd(), article);
+      const articleFile = fs.readFileSync(articlePath, "utf8");
+      const { content } = matter(articleFile);
+
+      const mdxBody = await renderMDXBody(stripImports(content));
+
+      const html = renderToString(<>{mdxBody}</>);
+
+      expect(html).toContain("PPJB vs SHMSRS");
+    },
+  );
 });

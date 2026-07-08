@@ -85,6 +85,33 @@ class TestSearchEndpoint:
 
         assert response.status_code == 503
 
+    @pytest.mark.integration
+    def test_search_kbli_rejects_oversized_query(self, client: TestClient) -> None:
+        response = client.get(
+            "/kbli-notebook/search",
+            params={"query": "x" * 1025, "limit": 10},
+        )
+
+        assert response.status_code == 422
+
+    @pytest.mark.integration
+    def test_search_kbli_rejects_unbounded_limit(self, client: TestClient) -> None:
+        response = client.get(
+            "/kbli-notebook/search",
+            params={"query": "restaurant", "limit": 100000},
+        )
+
+        assert response.status_code == 422
+
+    @pytest.mark.integration
+    def test_search_kbli_rejects_zero_limit(self, client: TestClient) -> None:
+        response = client.get(
+            "/kbli-notebook/search",
+            params={"query": "restaurant", "limit": 0},
+        )
+
+        assert response.status_code == 422
+
 
 class TestChatEndpoint:
     @pytest.mark.integration
@@ -166,3 +193,21 @@ class TestChatEndpoint:
             )
 
         assert response.status_code == 500
+
+    @pytest.mark.integration
+    def test_chat_kbli_rejects_oversized_query(self, client: TestClient) -> None:
+        response = client.post(
+            "/kbli-notebook/chat",
+            json={"query": "x" * 1025, "session_id": "bounds-test"},
+        )
+
+        assert response.status_code == 422
+
+    @pytest.mark.integration
+    def test_chat_kbli_rejects_oversized_session_id(self, client: TestClient) -> None:
+        response = client.post(
+            "/kbli-notebook/chat",
+            json={"query": "restaurant", "session_id": "x" * 129},
+        )
+
+        assert response.status_code == 422

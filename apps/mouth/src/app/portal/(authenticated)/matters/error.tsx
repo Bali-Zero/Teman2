@@ -2,10 +2,10 @@
 
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, RefreshCw } from 'lucide-react';
+import { FileStack, RefreshCw } from 'lucide-react';
 import { logger } from '@/lib/logger';
 
-export default function DashboardError({
+export default function MattersError({
   error,
   reset,
 }: {
@@ -13,7 +13,7 @@ export default function DashboardError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error('Portal dashboard error', {}, error);
+    logger.error('Portal matters page error', {}, error);
   }, [error]);
 
   return (
@@ -22,12 +22,12 @@ export default function DashboardError({
         className="flex h-16 w-16 items-center justify-center rounded-full"
         style={{ background: 'rgba(244,63,94,0.1)' }}
       >
-        <LayoutDashboard className="h-8 w-8" style={{ color: 'var(--neon-rose)' }} />
+        <FileStack className="h-8 w-8" style={{ color: 'var(--neon-rose)' }} />
       </div>
       <div className="space-y-2 max-w-sm">
-        <h2 className="text-xl font-semibold">Dashboard unavailable</h2>
+        <h2 className="text-xl font-semibold">Matters unavailable</h2>
         <p className="text-sm" style={{ color: 'var(--bz-text-2)' }}>
-          We couldn&apos;t load your dashboard. Please try again.
+          We couldn&apos;t load your matters. Please try again.
         </p>
       </div>
       <Button onClick={() => reset()}>

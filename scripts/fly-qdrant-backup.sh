@@ -35,14 +35,19 @@ TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-1125336968}"
 mkdir -p "$SESSION_DIR"
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
+# cohort-3: routes through the notification gateway. Backup FAILURE = guardian
+# red → tier p0 (dedup collapses repeats); success ping is digest (see below).
+_tg_gateway() {
+    local g
+    g="$(dirname "$0")/tg_notify.py"
+    [ -f "$g" ] || g="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    echo "$g"
+}
 alert() {
     log "ALERT: $*"
-    if [[ -n "$TELEGRAM_BOT_TOKEN" ]]; then
-        curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
-            -d chat_id="$TELEGRAM_CHAT_ID" \
-            -d text="⚠️ Qdrant Backup: $*" \
-            -d parse_mode="Markdown" > /dev/null 2>&1 || true
-    fi
+    python3 "$(_tg_gateway)" --tier p0 --source qdrant-backup \
+        --dedup-key "qdrant-backup-fail" -- "⚠️ Qdrant Backup: $*" \
+        > /dev/null 2>&1 || true
 }
 
 log "Starting Qdrant Cloud backup..."
@@ -183,11 +188,9 @@ if [[ $FAILED -gt 0 ]]; then
     alert "Completed with errors: $SUCCEEDED/$TOTAL_COLLECTIONS OK, $FAILED failed ($ARCHIVE_SIZE)"
 else
     log "Backup complete: $SUCCEEDED/$TOTAL_COLLECTIONS collections, $ARCHIVE_SIZE compressed"
-    # Success notification (only if Telegram configured)
-    if [[ -n "$TELEGRAM_BOT_TOKEN" ]]; then
-        curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
-            -d chat_id="$TELEGRAM_CHAT_ID" \
-            -d text="✅ Qdrant backup OK: $SUCCEEDED/$TOTAL_COLLECTIONS collections, $ARCHIVE_SIZE" \
-            > /dev/null 2>&1 || true
-    fi
+    # Success ping = informative green → digest tier (grouped, never buzzes)
+    python3 "$(_tg_gateway)" --tier digest --source qdrant-backup \
+        --dedup-key "qdrant-backup-ok:$(date +%Y%m%d)" \
+        -- "✅ Qdrant backup OK: $SUCCEEDED/$TOTAL_COLLECTIONS collections, $ARCHIVE_SIZE" \
+        > /dev/null 2>&1 || true
 fi

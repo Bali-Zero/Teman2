@@ -141,13 +141,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 6. Visa funnel pages (balizero.com/visa — consolidated 2026-04-21,
   // was previously at visa.balizero.com; the subdomain now 302-redirects
   // to these canonical paths via middleware.ts).
-  const visaPaths = [
-    "/visa",
-    "/visa/match",
-    "/visa/clock",
-    "/visa/privacy",
-    "/visa/terms",
-  ];
+  const visaPaths = ["/visa", "/visa/match", "/visa/clock"];
   routes.push(...visaPaths.map((p) => ({ url: `${baseUrl}${p}` })));
 
   // 7. KBLI Sector pages (/kbli/sectors + /kbli/sectors/[id])
@@ -159,9 +153,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // transformCode() emits when sektor_id is null — avoids /kbli/sectors/?
       (s) => s.codeCount > 0 && /^[A-Z]$/.test(s.id),
     );
-    routes.push(
-      ...sections.map((s) => ({ url: `${baseUrl}/kbli/sectors/${s.id}` })),
-    );
+    const sectorPages = sections.map((s) => ({
+      url: `${baseUrl}/kbli/sectors/${s.id}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    }));
+    routes.push(...sectorPages);
   } catch (error) {
     logger.error(
       "[SITEMAP] Failed to load KBLI sectors",

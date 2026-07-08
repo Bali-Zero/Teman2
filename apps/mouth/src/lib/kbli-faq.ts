@@ -44,7 +44,17 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   const licenseAnswer =
     code.licensing.length > 0
       ? `KBLI ${code.code} has a ${code.licensing[0].riskCategory} risk classification. Required license: ${code.licensing[0].licenseType ?? "NIB (Nomor Induk Berusaha)"}. ${code.licensing[0].timeframe ? `Processing time: ${code.licensing[0].timeframe}.` : "Processed through OSS (Online Single Submission)."}`
-      : `KBLI ${code.code} requires a NIB (Nomor Induk Berusaha) via OSS (Online Single Submission). Contact a licensed consultant for specific requirements.`;
+      : // No OSS-RBA scale rows → special/sectoral regime (government, finance/OJK,
+        // education, health, culture …). Claiming "requires a NIB via OSS" here
+        // would be wrong for most of these activities.
+        `KBLI ${code.code} sits outside the ordinary OSS-RBA risk-based licensing flow: OSS publishes no business-scale licensing rows for it. Activities in this group are typically licensed under a special or sectoral regime (e.g. government affairs, financial services under OJK/BI, education or health authorities) — verify the applicable regulator case-by-case before relying on an NIB alone.`;
+
+  // Only show an English gloss when a real English title exists — otherwise the
+  // copy degenerates to `"X" (X)` with the Indonesian title repeated twice.
+  const enGloss =
+    code.titleEnIsReal && code.titleEn !== code.titleId
+      ? ` (${code.titleEn})`
+      : "";
 
   const entries: KbliFaqEntry[] = [
     {
@@ -57,7 +67,7 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
     },
     {
       question: `What is KBLI ${code.code}?`,
-      answer: `KBLI ${code.code} is the Indonesian business classification code for "${code.titleId}" (${code.titleEn}). It falls under Section ${code.section ?? "N/A"} of KBLI 2025, the Indonesian Standard Industrial Classification updated by BPS (Regulation 7/2025). ${KBLI_2025_POST_DEADLINE_NOTE}`,
+      answer: `KBLI ${code.code} is the Indonesian business classification code for "${code.titleId}"${enGloss}. It falls under Section ${code.section ?? "N/A"} of KBLI 2025, the Indonesian Standard Industrial Classification updated by BPS (Regulation 7/2025). ${KBLI_2025_POST_DEADLINE_NOTE}`,
     },
   ];
 

@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300; // 5 minutes max for agentic RAG
 
 function normalizeBackendBaseUrl(url: string): string {
-  return url.replace(/\/+$/, "").replace(/\/api$/, "");
+  return url.trim().replace(/\/+$/, "").replace(/\/api$/, "");
 }
 
 function getBackendBaseUrl(): string {
@@ -233,28 +233,40 @@ async function proxy(req: NextRequest): Promise<Response> {
     if (upstream.status >= 400) {
       const isAuthError = upstream.status === 401 || upstream.status === 403;
 
-      // Always log auth errors (critical for debugging)
       if (isAuthError) {
-        logger.error(
-          `[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`,
-          {
-            component: "AUTO",
-            action: "error",
-            metadata: {
-              cookies: {
-                authCookie: !!cookies.get("nz_access_token"),
-                csrfCookie: !!csrfCookie,
-                hasAuthHeader: hasAuthHeader,
-              },
-              targetUrl,
-              correlationId,
-              userAgent: req.headers.get("user-agent")?.substring(0, 50),
+        const hasAuthCookie = !!cookies.get("nz_access_token");
+        const authLogContext = {
+          component: "AUTO",
+          action: "auth_rejected",
+          metadata: {
+            cookies: {
+              authCookie: hasAuthCookie,
+              csrfCookie: !!csrfCookie,
+              hasAuthHeader: hasAuthHeader,
             },
+            targetUrl,
+            correlationId,
+            userAgent: req.headers.get("user-agent")?.substring(0, 50),
           },
-          toError(
+        };
+
+        if (hasAuthCookie || hasAuthHeader) {
+          logger.error(
             `[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`,
-          ),
-        );
+            {
+              ...authLogContext,
+              action: "error",
+            },
+            toError(
+              `[Proxy] Auth error ${upstream.status} for ${req.method} ${url.pathname}`,
+            ),
+          );
+        } else {
+          logger.warn(
+            `[Proxy] Auth rejected ${upstream.status} for ${req.method} ${url.pathname} without credentials`,
+            authLogContext,
+          );
+        }
       } else if (process.env.NODE_ENV !== "production") {
         // Log other errors only in development
         logger.error(

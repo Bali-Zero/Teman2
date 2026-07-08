@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -194,3 +195,22 @@ async def test_ingest_with_lock_times_out_when_write_lock_is_held() -> None:
             await manager.ingest_with_lock("logical", documents=["doc"], embeddings=[[0.1]])
     finally:
         lock.release()
+
+
+@pytest.mark.asyncio
+async def test_close_closes_cached_collection_clients() -> None:
+    manager = CollectionManager(qdrant_url="http://qdrant.test")
+    first_client = MagicMock()
+    first_client.close = AsyncMock()
+    second_client = MagicMock()
+    second_client.close = AsyncMock()
+    manager._collections_cache = {
+        "kbli_2025_final": first_client,
+        "legal_unified": second_client,
+    }
+
+    await manager.close()
+
+    first_client.close.assert_awaited_once()
+    second_client.close.assert_awaited_once()
+    assert manager._collections_cache == {}

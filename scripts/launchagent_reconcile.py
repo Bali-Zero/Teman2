@@ -87,6 +87,37 @@ ENV_SPECIFIC_KEYS = (
 # Interpreters whose argv[1] is the real payload (best-effort, report-only).
 INTERPRETERS = ("bash", "zsh", "sh", "python", "python3", "env", "node")
 
+# Roots that plausibly host launchd wrapper/canon scripts, walked RECURSIVELY
+# (basename match). A flat top-level-only search (pre-2026-07-07) missed real
+# canons living one level deeper — infra/healer/, infra/mini-scripts/,
+# scripts/mini-migration/, apps/backend-rag/scripts/ — and mis-flagged 7 of 15
+# live findings as "no repo canon" while a byte-identical twin existed nearby.
+# apps/*/scripts (not all of apps/) mirrors the top-level scripts/ convention
+# without walking the ~36k-file app source trees.
+CANON_EXCLUDE_DIRNAMES = {
+    "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache",
+    "dist", "build", ".next", ".git", ".worktrees",
+}
+
+
+def _build_canon_index(repo_dir: Path) -> dict:
+    """basename -> sorted candidate repo paths, built once per run (not once
+    per target — the walk cost is paid a single time)."""
+    index: dict = {}
+    roots = [repo_dir / "scripts", repo_dir / "infra"]
+    if (repo_dir / "apps").is_dir():
+        roots.extend(sorted((repo_dir / "apps").glob("*/scripts")))
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in CANON_EXCLUDE_DIRNAMES]
+            for fn in filenames:
+                index.setdefault(fn, []).append(Path(dirpath) / fn)
+    for paths in index.values():
+        paths.sort(key=str)
+    return index
+
 # Path fragments that mark a RUNTIME (venv interpreter, pyenv shim…), not a
 # payload: a `~/venvs/x/bin/python` under $HOME is infrastructure, not a
 # HOME-fork of repo code — the fork signal lives in the script it runs.
@@ -263,18 +294,21 @@ def reconcile(
     repo_root = repo_dir.resolve()
     deploy_root = (home / "Desktop" / "nuzantara-deploy").resolve()
 
-    # Canon dirs for wrapper scripts (basename match). A HOME target whose repo
-    # canon is byte-identical is NOT a fork — it is the W84-safe placement
-    # (launchd payloads deliberately live OUTSIDE ~/Desktop because launchd can
-    # lose its TCC grant there). The disease is DRIFT, not location.
-    canon_dirs = (repo_infra / "wrappers", repo_dir / "scripts", repo_dir / "scripts" / "lib", repo_dir / "infra" / "scripts")
+    # Canon index for wrapper scripts (basename match, built once). A HOME
+    # target whose repo canon is byte-identical is NOT a fork — it is the
+    # W84-safe placement (launchd payloads deliberately live OUTSIDE ~/Desktop
+    # because launchd can lose its TCC grant there). The disease is DRIFT,
+    # not location.
+    canon_index = _build_canon_index(repo_dir)
 
     def _repo_canon_for(target: Path) -> Optional[Path]:
-        for d in canon_dirs:
-            cand = d / target.name
-            if cand.is_file():
+        candidates = canon_index.get(target.name)
+        if not candidates:
+            return None
+        for cand in candidates:
+            if filecmp.cmp(str(cand), str(target), shallow=False):
                 return cand
-        return None
+        return candidates[0]
 
     live: dict = {}      # label -> {file, plist}
     junk: list = []
@@ -350,7 +384,7 @@ def reconcile(
             else:
                 detail = (
                     f"DIVERGED from canon {canon.relative_to(repo_root)}" if canon is not None
-                    else "no repo canon (basename not in wrappers/ or scripts/)"
+                    else "no repo canon (basename not found under scripts/, infra/, or apps/*/scripts/)"
                 )
                 home_fork_target.append({"label": label, "file": f.name, "target": t,
                                          "detail": detail})
