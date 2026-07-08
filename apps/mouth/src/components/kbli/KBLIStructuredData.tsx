@@ -66,7 +66,8 @@ export function KBLICodeJsonLd({
     keywords: [
       `KBLI ${code.code}`,
       code.titleId,
-      code.titleEn,
+      // avoid repeating the Indonesian title when no distinct English title exists
+      code.titleEn !== code.titleId ? code.titleEn : undefined,
       "KBLI 2025",
       "Indonesian business license",
       code.pma.status === "open" ? "PT PMA" : undefined,
