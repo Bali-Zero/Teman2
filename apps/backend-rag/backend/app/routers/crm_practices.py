@@ -1776,6 +1776,165 @@ async def get_practices_stats(
         raise handle_database_error(e)
 
 
+@router.get("/stats/revenue-growth")
+@cached(ttl=CACHE_TTL_STATS_SECONDS, prefix="crm_practices_revenue_growth")
+async def get_practices_revenue_growth(
+    request: Any = None,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Month-over-month revenue growth for the practices book.
+
+    Contract consumed by the frontend (crm.api.ts::getRevenueGrowth →
+    useDashboardStats). The FE runs this inside a Promise.all with practice
+    stats + expiry alerts and has NO catch, so a 404 here previously rejected
+    the whole dashboard stats block on every workspace page. The route MUST
+    exist and return the shape below.
+
+    Response shape:
+        {
+          "current_month":  {total_revenue, paid_revenue, outstanding_revenue},
+          "previous_month": {total_revenue, paid_revenue, outstanding_revenue},
+          "growth_percentage": float,   # (curr - prev) / prev * 100, 0 if prev==0
+          "monthly_breakdown": [ {month, total_revenue}, ... ]  # last 6 months
+        }
+
+    Access Control:
+    - Admin (full view): revenue across all practices.
+    - Team member: revenue only for practices assigned to them.
+
+    Performance: cached for 5 minutes (CACHE_TTL_STATS_SECONDS).
+    """
+    try:
+        # RBAC: None for admins (full view), else the user's email.
+        user_filter = get_practices_user_filter(current_user)
+
+        # Build the optional RBAC clause; placeholder indices are DERIVED from
+        # params length (PR #2142 class) so the admin path (empty params) and
+        # the team-member path (one leading param) both bind without an
+        # IndeterminateDatatypeError.
+        params: list[Any] = []
+        rbac_where = ""
+        if user_filter:
+            params.append(user_filter)
+            rbac_where = f" AND assigned_to = ${len(params)}"
+
+        # Month boundaries (UTC), computed in Python so the SQL only binds dates.
+        now = datetime.now(timezone.utc)
+        current_start = now.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+        # First day of previous month.
+        prev_start = (current_start - timedelta(days=1)).replace(day=1)
+        next_start = (current_start + timedelta(days=32)).replace(day=1)
+        # Six-month window start (for the breakdown).
+        breakdown_start = current_start
+        for _ in range(5):
+            breakdown_start = (breakdown_start - timedelta(days=1)).replace(day=1)
+
+        revenue_select = (
+            "SUM(actual_price) AS total_revenue, "
+            "SUM(CASE WHEN payment_status = 'paid' THEN actual_price ELSE 0 END) "
+            "AS paid_revenue, "
+            "SUM(CASE WHEN payment_status IN ('unpaid', 'partial') "
+            "THEN actual_price - COALESCE(paid_amount, 0) ELSE 0 END) "
+            "AS outstanding_revenue"
+        )
+
+        async with db_pool.acquire() as conn:
+            # Current month.
+            cur_start_idx = len(params) + 1
+            cur_end_idx = len(params) + 2
+            current_row = await conn.fetchrow(
+                f"""
+                SELECT {revenue_select}
+                FROM practices
+                WHERE actual_price IS NOT NULL{rbac_where}
+                  AND created_at >= ${cur_start_idx}
+                  AND created_at < ${cur_end_idx}
+                """,
+                *params,
+                current_start,
+                next_start,
+            )
+
+            # Previous month.
+            prev_start_idx = len(params) + 1
+            prev_end_idx = len(params) + 2
+            previous_row = await conn.fetchrow(
+                f"""
+                SELECT {revenue_select}
+                FROM practices
+                WHERE actual_price IS NOT NULL{rbac_where}
+                  AND created_at >= ${prev_start_idx}
+                  AND created_at < ${prev_end_idx}
+                """,
+                *params,
+                prev_start,
+                current_start,
+            )
+
+            # Last-6-months breakdown (total revenue per month).
+            bd_start_idx = len(params) + 1
+            breakdown_rows = await conn.fetch(
+                f"""
+                SELECT
+                    date_trunc('month', created_at) AS month,
+                    SUM(actual_price) AS total_revenue
+                FROM practices
+                WHERE actual_price IS NOT NULL{rbac_where}
+                  AND created_at >= ${bd_start_idx}
+                GROUP BY date_trunc('month', created_at)
+                ORDER BY month ASC
+                """,
+                *params,
+                breakdown_start,
+            )
+
+        def _money(row: Any, key: str) -> float:
+            value = row[key] if row and row[key] is not None else 0
+            return float(value)
+
+        current_month = {
+            "total_revenue": _money(current_row, "total_revenue"),
+            "paid_revenue": _money(current_row, "paid_revenue"),
+            "outstanding_revenue": _money(current_row, "outstanding_revenue"),
+        }
+        previous_month = {
+            "total_revenue": _money(previous_row, "total_revenue"),
+            "paid_revenue": _money(previous_row, "paid_revenue"),
+            "outstanding_revenue": _money(previous_row, "outstanding_revenue"),
+        }
+
+        prev_total = previous_month["total_revenue"]
+        if prev_total > 0:
+            growth_percentage = round(
+                (current_month["total_revenue"] - prev_total) / prev_total * 100,
+                2,
+            )
+        else:
+            growth_percentage = 0.0
+
+        monthly_breakdown = [
+            {
+                "month": row["month"].date().isoformat(),
+                "total_revenue": float(row["total_revenue"] or 0),
+            }
+            for row in breakdown_rows
+        ]
+
+        return {
+            "current_month": current_month,
+            "previous_month": previous_month,
+            "growth_percentage": growth_percentage,
+            "monthly_breakdown": monthly_breakdown,
+        }
+
+    except Exception as e:
+        raise handle_database_error(e)
+
+
 @router.post("/{practice_id}/regenerate-invoice")
 async def regenerate_invoice(
     request: Request,
