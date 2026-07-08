@@ -8,6 +8,7 @@ import {
   codeFingerprint,
   fingerprintsEqual,
   sectionGradient,
+  motifShapes,
 } from "./kbli-cover-design";
 
 // All 22 KBLI sections (A-U real sectors + V catch-all "not yet classified"),
@@ -163,5 +164,38 @@ describe("no Unsplash / external image references in the new cover system", () =
     );
     expect(source).not.toContain("unsplash.com");
     expect(source).not.toMatch(/https?:\/\/images\./);
+  });
+});
+
+describe("motifShapes (Super Ultra v2)", () => {
+  const sections = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "P", "Q", "R", "S"];
+
+  it("is deterministic: same section+code → identical shapes", () => {
+    const v = getSectionVisual("A");
+    const a = motifShapes(v, codeFingerprint("01111"));
+    const b = motifShapes(v, codeFingerprint("01111"));
+    expect(a).toEqual(b);
+  });
+
+  it("perturbs per code: same section, different codes → different geometry", () => {
+    const v = getSectionVisual("C");
+    const a = motifShapes(v, codeFingerprint("10792"));
+    const b = motifShapes(v, codeFingerprint("21012"));
+    expect(JSON.stringify(a)).not.toEqual(JSON.stringify(b));
+  });
+
+  it("every section renders a non-empty layer with sane primitives", () => {
+    for (const s of sections) {
+      const v = getSectionVisual(s);
+      const shapes = motifShapes(v, codeFingerprint("55102"));
+      expect(shapes.length).toBeGreaterThan(0);
+      for (const sh of shapes) {
+        expect(["circle", "rect", "line"]).toContain(sh.kind);
+        expect(sh.opacity).toBeGreaterThan(0);
+        expect(sh.opacity).toBeLessThanOrEqual(0.25); // background layer, never loud
+        expect(sh.w).toBeGreaterThan(0);
+        expect(sh.h).toBeGreaterThan(0);
+      }
+    }
   });
 });
