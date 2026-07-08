@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
+from types import ModuleType
 
 import asyncpg
 import pytest
@@ -29,7 +30,9 @@ from backend.services.intake.enqueue import enqueue
 from backend.services.intake.worker import (
     STAGE_TRANSITIONS,
     IntakeWorker,
+    TransientStageError,
     WorkerConfig,
+    _install_canonical_main_alias,
     reap_expired_review_claims,
     remap_legacy_statuses,
 )
@@ -41,6 +44,29 @@ _DB_URL = os.environ.get(
 
 # Number of stub stages from 'pending' to 'done'.
 _N_STAGES = len(STAGE_TRANSITIONS)
+
+
+def test_main_module_alias_prevents_transient_error_class_duplication() -> None:
+    """``python -m`` must not make stages.py import a second worker module copy."""
+    main_mod = ModuleType("__main__")
+    modules = {"__main__": main_mod}
+
+    alias = _install_canonical_main_alias(
+        "__main__", "backend.services.intake", modules
+    )
+
+    assert alias == "backend.services.intake.worker"
+    assert modules["backend.services.intake.worker"] is main_mod
+
+
+def test_main_module_alias_is_noop_on_normal_import() -> None:
+    modules = {"backend.services.intake.worker": ModuleType("worker")}
+
+    alias = _install_canonical_main_alias(
+        "backend.services.intake.worker", "backend.services.intake", modules
+    )
+
+    assert alias is None
 
 
 def test_worker_config_filters_from_env(monkeypatch):
@@ -351,6 +377,93 @@ async def test_poison_pill_goes_dead_with_alert(pool, tmp_path):
             f"\n[poison] dead after attempts={row['attempts']}/{row['max_attempts']}, "
             f"iters={iters}, alerts={len(alerts)}, last_error={row['last_error']!r}"
         )
+    finally:
+        await _cleanup(pool, qids)
+
+
+@pytest.mark.asyncio
+async def test_transient_stage_error_does_not_burn_attempt(pool, tmp_path):
+    """Infra-down transient failures stay retryable and do not consume attempts."""
+    qids = await _make_jobs(pool, tmp_path, 1, "transient")
+    qid = qids[0]
+    try:
+        worker_id = "transient-worker"
+        cfg = WorkerConfig(
+            lease_ttl_seconds=30,
+            heartbeat_interval_seconds=999,
+            poll_interval_seconds=0.01,
+            transient_backoff_seconds=30,
+        )
+        alerts: list[str] = []
+
+        async def capture_alert(msg: str) -> None:
+            alerts.append(msg)
+
+        async def transient_handler(job: dict, stage: str) -> dict:
+            raise TransientStageError("local model warming up")
+
+        worker = IntakeWorker(
+            pool,
+            config=cfg,
+            worker_id=worker_id,
+            alert_fn=capture_alert,
+            stage_handler=transient_handler,
+        )
+
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT attempts, max_attempts, source, source_ref FROM intake_queue WHERE id=$1",
+                qid,
+            )
+            await conn.execute(
+                """
+                UPDATE intake_queue
+                   SET lease_owner = $2,
+                       lease_expires_at = now() + interval '30 seconds'
+                 WHERE id = $1
+                """,
+                qid,
+                worker_id,
+            )
+
+        await worker._process_one(
+            {
+                "id": qid,
+                "attempts": row["attempts"],
+                "max_attempts": row["max_attempts"],
+                "source": row["source"],
+                "source_ref": row["source_ref"],
+                "_inbound_status": "pending",
+            }
+        )
+
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT status, attempts, last_error, lease_owner, lease_expires_at,
+                       next_visible_at > now() AS delayed
+                  FROM intake_queue
+                 WHERE id = $1
+                """,
+                qid,
+            )
+            metric_count = await conn.fetchval(
+                """
+                SELECT count(*)
+                  FROM intake_stage_metrics
+                 WHERE queue_id = $1 AND stage = 'classify' AND ok = false
+                """,
+                qid,
+            )
+
+        assert row["status"] == "pending"
+        assert row["attempts"] == 0
+        assert row["lease_owner"] is None
+        assert row["lease_expires_at"] is None
+        assert row["delayed"] is True
+        assert row["last_error"].startswith("transient:")
+        assert metric_count == 1
+        assert alerts == []
     finally:
         await _cleanup(pool, qids)
 

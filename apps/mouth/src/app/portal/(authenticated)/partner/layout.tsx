@@ -34,7 +34,7 @@ export default function PartnerLayout({
       })
       .catch(() => {
         // Non-partner or unauthenticated → redirect to main portal dashboard
-        router.replace("/portal/dashboard");
+        router.replace("/portal");
       });
   }, [router]);
 

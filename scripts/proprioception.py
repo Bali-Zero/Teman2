@@ -71,6 +71,7 @@ KNOWN_BOUNDARY_CLASSES = [
     "code<->docs",              # W86
     "defined<->live",           # e.g. Qdrant collections — NO PROBE in v1 (A6)
     "process<->process",        # e.g. /health/detailed provenance — NO PROBE in v1 (A2)
+    "seat<->armed",             # AI-seat credential/quota vs live probe (arsenal, #2)
 ]
 
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
@@ -379,6 +380,7 @@ DEFAULT_REGISTRY: list[dict] = [
             {"glob": "~/.nuzantara-proprioception/last.json", "max_age_h": 48, "label": "proprioception (self)"},
             {"glob": "~/.organism/last_seen/pro.runtime_reconcile.json", "max_age_h": 26, "label": "runtime-reconcile (W81 watchdog)", "machines": ["pro"]},
             {"glob": "~/logs/verify-connectome*.log", "max_age_h": 192, "label": "verify-connectome (weekly)"},
+            {"glob": "~/.organism/arsenal/last.json", "max_age_h": 26, "label": "arsenal seats probe (healer-armed)", "machines": ["mini"]},
         ]},
         "fix_hint": "a stale guardian: run it by hand, read ITS log, then fix its scheduler",
     },
@@ -400,7 +402,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "machines": ["all"], "tags": ["launchd"], "timeout_sec": 90,
         "severity": "P2", "parse": "category_counts",
         "bad_categories": ["zombie_loaded", "broken_target", "home_fork_target", "repo_divergent"],
-        "ok_categories": ["junk", "present_not_loaded", "repo_symlinked"],
+        "ok_categories": ["junk", "present_not_loaded", "repo_symlinked", "canon_paired"],
         "fix_hint": "scripts/launchagent_reconcile.py (markdown mode) for the full categorized report",
     },
     {
@@ -420,6 +422,22 @@ DEFAULT_REGISTRY: list[dict] = [
         "machines": ["all"], "tags": ["docs"], "timeout_sec": 60,
         "severity": "P3", "parse": "exit_code",
         "fix_hint": "python3 scripts/docs_sync.py  (regen in the SAME commit as the feature)",
+    },
+    {
+        # Reader, not prober: re-emits the last arsenal_probe report (no live LLM
+        # calls here — the heavy probe is healer-armed on Mini). Transients
+        # (QUOTA/SHED/TIMEOUT) are ok_values: they belong to transition alerting,
+        # not boundary reconciliation — only persistent seat-death DIVERGEs.
+        "id": "arsenal_seats", "type": "wrap",
+        "target": ["python3", "{repo}/scripts/arsenal_probe.py", "--read-last", "--json"],
+        "class": "seat<->armed",
+        "boundary": "AI-seat credential/quota <-> last live probe (cascade depth)",
+        "machines": ["mini"], "tags": ["fast", "arsenal"], "timeout_sec": 15,
+        "severity": "P1", "parse": "findings_list", "unwrap_key": "findings",
+        "verdict_key": "status",
+        "ok_values": ["LIVE", "CRED_UNAVAILABLE", "NOT_INSTALLED", "CONTEXT_AUTH",
+                       "SHED", "QUOTA_DEAD", "TIMEOUT"],
+        "fix_hint": "scripts/arsenal_probe.py --table for detail; AUTH/BALANCE dead = operator relogin/top-up (see docs/runbooks/arsenal-probe.md)",
     },
 ]
 

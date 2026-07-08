@@ -99,7 +99,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### Apps (tutte, enumerate da disco)
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 30 · **Packages:** 6
+**Apps:** 31 · **Packages:** 6
 
 | App | Ruolo |
 | --- | ----- |
@@ -114,7 +114,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `evaluator` | Security and quality evaluation tools for the Nuzantara RAG system. |
 | `graph-engine` | Graph processing engine for Knowledge Graph operations. |
 | `kb` |  |
-| `kbli-navigator` |  |
+| `kbli-navigator` | > **PRODUCTION = `apps/mouth`** → https://balizero.com/kbli (`/kbli-navigator` 301s there). |
 | `mata-garuda` | > Intelligence Super Hub — OSINT blindato, CLI-only, Lamarckian meta-agent |
 | `mouth` | > **The face of Nuzantara** - A Next.js 16 + React 19 frontend for the Nuzantara AI ecosystem |
 | `nlm-bridge` |  |
@@ -125,6 +125,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `openclaw-hgt-coordinator` |  |
 | `organism` | See `docs/superpowers/specs/2026-04-22-autonomic-organism-design.md` for full design. |
 | `osint-nexus-ui` |  |
+| `remediator` |  |
 | `research` |  |
 | `team-agent` |  |
 | `wa-dashboard` | Local-only Next.js 16 app for the Bali Zero team WhatsApp inbox. |
@@ -155,7 +156,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### LaunchAgents — copertura documentale
 
 <!-- DOCSYNC:AUTOMATION_COVERAGE_START -->
-`118 plist tracked in infra/launchagents/ · 65 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (55% coverage)`
+`123 plist tracked in infra/launchagents/ · 64 documented in automation_catalog.json + AUTOMATIONS_REFERENCE.md (52% coverage)`
 <!-- DOCSYNC:AUTOMATION_COVERAGE_END -->
 
 Runbook operativi: indice auto-generato in [docs/runbooks/README.md](docs/runbooks/README.md).

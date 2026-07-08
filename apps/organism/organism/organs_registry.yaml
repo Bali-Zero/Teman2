@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: b036f58565ac01a47326e48228124a7d1eda0fbe4d0aa058029af23f1b8720f3
+checksum: 104a14e54a1201b379d174e288e00ae9488977def439652ec81c1043ef810d11
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1700,5 +1700,126 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.outbox_prune_daily.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.healer
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 14400
+  owner_module: infra/healer/healer-run.sh
+  dependencies: []
+  recovery_action: human_only
+  recovery_params:
+    host: mini
+    label: com.nuzantara.healer.4h
+  severity_on_silence: error
+  notes: 'The HEALER organ (born 2026-07-06, Zero GO): autonomous 4h cure loop on
+    Mini. Receptors: PENDING-ARMS ledger, proprioception, escalations board, and registry-driven
+    dead-organ scan (scripts/healer_receptor_registry.py). Writes a heartbeat EVERY
+    tick. recovery_action is human_only BY CONSTITUTION: the healer never touches
+    itself and nothing may auto-restart the restarter — healer silence is an operator
+    page, not a recovery target.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.healer.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.healer
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 21600
+  owner_module: infra/launchagents/wrappers/pro-healer.sh
+  dependencies: []
+  recovery_action: human_only
+  recovery_params:
+    host: pro
+    label: com.nuzantara.healer-pro.6h
+  severity_on_silence: error
+  notes: 'Node-scoped healer for Pro: cures Pro LOCAL runtime (kickstart dead organs,
+    HOME-pair refresh from canon), NEVER writes the repo (single-writer stays mini.healer)
+    (born via organ_birth.py, genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.healer.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.tg_digest_flush
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 43200
+  owner_module: infra/launchagents/wrappers/pro-tg-digest-flush.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.tg-digest-flush
+  severity_on_silence: warning
+  notes: 'Telegram digest flusher — ONE grouped message per slot for everything tg_notify
+    spooled (notification economy, PR #2067) (born via organ_birth.py, genes imprinted
+    2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.tg_digest_flush.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.tg_digest_flush
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 43200
+  owner_module: infra/launchagents/wrappers/mini-tg-digest-flush.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.mini.tg-digest-flush
+  severity_on_silence: warning
+  notes: 'Telegram digest flusher (Mini) — ONE grouped message per slot for everything
+    tg_notify spooled on this node (notification economy, PR #2067) (born via organ_birth.py,
+    genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.tg_digest_flush.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.wr2_daily_carousel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 64800
+  owner_module: scripts/wr2_daily_reconciler.py
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.wr2.daily-reconciler
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.wr2_daily_carousel.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.fleet_watch
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: infra/launchagents/wrappers/mini-fleet-watch.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.fleet-watch
+  severity_on_silence: warning
+  notes: 'Cross-node liveness sentinel: the H24 Mini watches the Pro (tailscale+ssh
+    2-signal verdict) and raises p0 via tg gateway when a peer goes dark >30min. Genesis
+    2026-07-07: Pro dark 5h, zero alarms (its watchdogs died with it). (born via organ_birth.py,
+    genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.fleet_watch.json
     timestamp_field: ts
     status_field: status

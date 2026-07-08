@@ -543,7 +543,7 @@ class LLMAdapter:
 
         mock_responses = [
             "# Generated test code (mock)",
-            "def test_example():\n    assert True",
+            "def test_example():\n    assert 1 + 1 == 2",
             "# Mock response for testing purposes",
         ]
 

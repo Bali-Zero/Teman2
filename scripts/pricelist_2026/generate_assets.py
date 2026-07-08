@@ -51,10 +51,10 @@ def _generate_one(brief: str, out_path: Path, size: str, *, dry_run: bool) -> bo
         print(f"           prompt: {prompt[:120]}...")
         return True
     print(f"  ⏳ generating: {out_path.name} ({size})")
-    cmd = ["codex", "exec", "--full-auto", prompt]
+    cmd = ["codex", "exec", "--sandbox", "workspace-write", "--skip-git-repo-check", prompt]
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=300
+            cmd, capture_output=True, text=True, timeout=300, stdin=subprocess.DEVNULL
         )
     except subprocess.TimeoutExpired:
         print(f"  ✗ TIMEOUT: {out_path.name}", file=sys.stderr)
