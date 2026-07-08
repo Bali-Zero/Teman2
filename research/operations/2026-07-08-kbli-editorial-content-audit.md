@@ -7,6 +7,9 @@ sources:
   - apps/mouth/data/kbli-gold-all.json + KBLI_2025_FINAL_CLEAN.json (2 tracked copies)
   - live balizero.com/kbli/* + nuzantara-rag.fly.dev API probes (2026-07-08)
   - data/source_documents/tka_kbli_README.md (Kepmenaker 228/2019 extraction, Zero ruling 2026-07-01)
+adversarial_review: codex-gpt-5.5 (2026-07-08, sandboxed field-level re-read of both
+  dataset copies against this report's claims) — verdict REFUTED on first pass, 3
+  findings applied (see §Adversarial review below), re-verified clean on second pass.
 ---
 
 # KBLI editorial-content audit — 11 mis-assigned codes + 128 cross-tagged tkaInfo
@@ -55,8 +58,49 @@ that both judge and verifier had missed — W65 ("even the refuter hallucinates"
 3. **128 tkaInfo blocks removed** from gold — categoryName provably inconsistent with
    the code's KBLI section (e.g. "Konstruksi" on legal 69101, film 59112, retail 47xxx;
    "Akomodasi" on travel-agency 79110). Includes Subhi's 70209 finding.
-4. Both tracked dataset copies updated in lockstep (byte-identical) + dataset-version
+4. Both tracked dataset copies updated in lockstep (byte-identical to each other —
+   `apps/mouth/data/KBLI_2025_FINAL_CLEAN.json` and
+   `data/source_documents/KBLI_2025_FINAL_CLEAN.json`; the separate `kbli-gold-all.json`
+   editorial layer is NOT byte-identical to either, by design) + dataset-version
    sidecar bumped (sha256 guard).
+
+## §Adversarial review (Codex GPT-5.5, sandboxed, fresh context)
+
+Independent re-read of both dataset copies against every claim in this report.
+**First-pass verdict: REFUTED.** 3 real findings, all applied before merge:
+
+1. **HIGH — 02102 rewrite contradicted its own record.** The rewritten `intel_2026`
+   text said "95% PMA cap", but the same record carries `pma_max_asing: 100` and a
+   `pma_official_basis` citing Perpres 10/2021 open-default (explicitly: PBPH/AMDAL
+   licensing is not an equity cap). Root cause: the 95% figure was copied from the
+   record's own `l4_bali.reason` field, which was itself stale — pre-dating the
+   PMA-cap resolution that produced `pma_max_asing`/`pma_official_basis`/
+   `pma_cap_verified` (the same freshness trap W90 names: an in-record field can be
+   older than its siblings). Fix: rewrote `whatYouNeed`/`baliContext`/`zantaraOpener`
+   to 100% PMA + mandatory kemitraan, and corrected `l4_bali.reason` itself so the
+   stale source can't mislead the next reader.
+2. **MEDIUM — 56304 `youllAlsoNeed` still referenced "karaoke rooms"** after the gold
+   entry was deleted (page falls back to raw `intel_2026`, which renders
+   `youllAlsoNeed` same as gold). Fixed: replaced with "56301 — Bar activities (if you
+   serve alcoholic drinks)".
+3. **MEDIUM — 46492 `youllAlsoNeed` still suggested furniture manufacturing** (31029)
+   under a sports-equipment-wholesale record, same fallback-rendering path. Fixed:
+   replaced with "47620 — Sports equipment retail (if you also sell direct to
+   consumers)".
+
+Also flagged and addressed: "byte-identical dataset copies" wording was ambiguous
+between the 2 clean-dataset copies (true) and gold-vs-clean (false) — tightened above.
+The Qdrant re-ingest claim was overreach given ingestion was still pending — reworded
+into an explicit follow-up (§Companion changes) rather than an accomplished fact.
+
+**Second-pass re-check (this session, plain grep, not LLM):** 0 residual "PMA max 95%"
+strings in either dataset copy; the 2 remaining "karaoke rooms" hits are on 93291
+(Lantai Dansa) and 93292 (Pengelolaan Fasilitas Karaoke) — both LEGITIMATE, since 93292
+*is* the actual karaoke-venue KBLI code, not contamination.
+
+**Confirmed by the reviewer:** the mechanical cleanup (8 gold deletions, 128 tkaInfo
+removals, sidecar bump) landed exactly as claimed — the defect was in 3 of the 5
+narrative rewrites, not in the deletion/removal mechanics.
 
 ## §Meta-pattern (the malattia behind the 11)
 
@@ -73,6 +117,10 @@ nothing about the children. Same generative process produced the tkaInfo cross-t
 
 - **intel_2026 of the remaining 420 gold codes** never audited in isolation (masked by
   gold precedence on the page, but embedded into Qdrant content) — follow-up lane.
+- **167 `intel_2026.tkaInfo` blocks outside gold** (raw dataset, including fallback
+  content for the 8 deleted-gold codes e.g. 56303/56304/86201) were NOT touched by the
+  128-removal pass, which only scoped `kbli-gold-all.json` — same per-KBLI-TKA-concept
+  question applies to these; folded into the business decision below, not a separate one.
 - **8 orphan gold keys** (64921, 85300, 85491, 85499, 85600, 86903, 96120, 96130) not
   in the 1559 dataset — dead keys, left in place, no page renders them.
 - **tkaInfo kept where name↔section is coherent** — but `categoryId`↔name was never
