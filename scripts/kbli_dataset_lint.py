@@ -67,7 +67,8 @@ L10_PCT = re.compile(r"\b(\d{1,3})\s?%")
 # a % counts as a foreign-OWNERSHIP claim only when ownership intent sits nearby
 L10_FOREIGN_CTX = re.compile(
     r"foreign\s+(?:ownership|owner|equity|shareholding|capital|investors?|stake|life\s+insurers?)"
-    r"|own(?:ed|s)?\s+up\s+to|can\s+own|max\w*\s+foreign|capped\s+at|\basing\b",
+    r"|own(?:ed|s)?\s+up\s+to|can\s+own|max\w*\s+foreign|capped\s+at|\basing\b"
+    r"|pma\s+cap|%\s*pma\b|pma\s+\d{1,3}\s?%",
     re.IGNORECASE,
 )
 # innocence: "100% closed" idiom (the % modifies closed-ness, consistent with TERTUTUP)
@@ -139,6 +140,12 @@ def main() -> int:
 
     data = json.loads(dataset_path.read_text(encoding="utf-8"))["data"]
     codes = {r["kode_kbli_2025"] for r in data}
+    # L10 cross-ref guard: prose may state ANOTHER code's ownership ("47192 is 100% open")
+    maxa_by_code = {
+        r["kode_kbli_2025"]: r.get("pma_max_asing")
+        for r in data
+        if isinstance(r.get("pma_max_asing"), int)
+    }
     en_titles = parse_english_titles(english_path) if english_path.exists() else set()
     if english_gen_path.exists():
         en_titles |= parse_english_titles(english_gen_path)
@@ -243,6 +250,14 @@ def main() -> int:
                             continue
                         win = text[max(0, m.start() - 80) : m.end() + 80]
                         if L10_WORK_SHARE.search(win):
+                            continue
+                        # cross-ref innocence: the % describes ANOTHER named code and
+                        # matches THAT code's own pma_max_asing ("47192 is 100% PMA open")
+                        before_clause = text[max(0, m.start() - 50) : m.start()]
+                        ref_codes = re.findall(r"\b(\d{5})\b", before_clause)
+                        if any(
+                            rc != code and maxa_by_code.get(rc) == val for rc in ref_codes
+                        ):
                             continue
                         if L10_FOREIGN_CTX.search(win):
                             add(
