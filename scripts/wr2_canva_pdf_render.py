@@ -75,7 +75,7 @@ TOKENS_PATH = Path.home() / ".claude/skills/bali-zero-brand/tokens.json"
 LOGO_PATH = Path.home() / ".claude/skills/bali-zero-brand/assets/logo.png"
 
 _TOKENS_FALLBACK = {
-    "bg_antracite": "#2C2F38",
+    "bg_antracite": "#373D42",
     "bg_black": "#000000",
     "text_white": "#FFFFFF",
     "text_muted": "#9CA3AF",
@@ -569,7 +569,7 @@ def draw_regulation_badge(c: canvas.Canvas, code: str, font_mono: str) -> None:
     """SOTA Pattern #3 (Article 14.4 revised 2026-05-13) — yellow rounded badge
     top-right with regulation code in IBM Plex Mono / Menlo fallback.
 
-    WCAG: yellow #F4C430 vs antracite #2C2F38 = 8.14:1 AAA;
+    WCAG: yellow #F4C430 vs antracite #373D42 = 6.70:1 (AA; AAA large text);
           black text on yellow = 12.79:1 AAA inside.
     """
     if not code:

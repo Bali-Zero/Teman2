@@ -38,7 +38,7 @@ Per constitution Article 12.2, every email inherits:
 - **Case**: Title Case in headlines (not UPPERCASE — UPPERCASE in email triggers spam filters and reads aggressive in inbox preview).
 
 ### Palette (subset — email rendering varies)
-- Background: `#FFFFFF` body OR `#2C2F38` antracite for "alert/regulatory" emails. NEVER pure black `#000000` (renders harshly on phone OLED).
+- Background: `#FFFFFF` body OR `#373D42` antracite for "alert/regulatory" emails. NEVER pure black `#000000` (renders harshly on phone OLED).
 - Text on white: `#1A1A1A` (slightly off-black for readability).
 - Text on antracite: `#FFFFFF`.
 - Accent yellow: `#F4C430` for key data points and CTA buttons (sparingly).

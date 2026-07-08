@@ -55,7 +55,7 @@ Bali Zero is the Indonesian-business-services agency for expat founders, investo
 
 | Role | Token | Hex |
 |---|---|---|
-| Background primary | `color.bg.antracite` | `#2C2F38` |
+| Background primary | `color.bg.antracite` | `#373D42` |
 | Background secondary | `color.bg.black` | `#000000` |
 | Body text | `color.text.white` | `#FFFFFF` |
 | Accent data | `color.accent.yellow` | `#F4C430` |
