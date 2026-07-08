@@ -242,3 +242,97 @@ class TestPostgreSQLDebuggerInit:
             mock_settings.database_url = "postgresql://from-settings"
             debugger = PostgreSQLDebugger()
             assert debugger.database_url == "postgresql://from-settings"
+
+
+class TestPostgreSQLDebuggerGetActiveLocks:
+    """
+    Regression tests for get_active_locks().
+
+    Live prod bug: /api/debug/postgres/performance/locks returned 500
+    with 'column reference "pid" is ambiguous'. The query JOINs
+    pg_locks (aliased l) with pg_stat_activity (aliased a) — both
+    tables have a `pid` column, so any bare, unqualified `pid` in the
+    SELECT list is ambiguous to Postgres. Fix: qualify with `a.pid`.
+    """
+
+    @pytest.fixture
+    def debugger(self):
+        with patch("backend.app.utils.postgres_debugger.settings") as mock_settings:
+            mock_settings.database_url = "postgresql://test"
+            return PostgreSQLDebugger()
+
+    async def _captured_query(self, debugger, mock_conn):
+        """Run get_active_locks with a mocked connection and return the SQL sent to fetch()."""
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            await debugger.get_active_locks()
+        assert mock_conn.fetch.await_args is not None
+        return mock_conn.fetch.await_args.args[0]
+
+    @pytest.mark.asyncio
+    async def test_query_qualifies_pid_with_table_alias(self, debugger):
+        """The SELECT list must not contain a bare, unqualified `pid` column."""
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=[])
+        mock_conn.close = AsyncMock()
+
+        query = await self._captured_query(debugger, mock_conn)
+
+        # Isolate the SELECT clause (before FROM) — this is where an
+        # unqualified `pid` caused Postgres to reject the query.
+        select_clause = query.split("FROM", 1)[0]
+        import re
+
+        bare_pid_matches = re.findall(r"(?<![\w.])pid(?![\w])", select_clause)
+        assert not bare_pid_matches, (
+            f"SELECT clause has {len(bare_pid_matches)} unqualified 'pid' reference(s) "
+            f"— ambiguous with a JOIN across pg_locks/pg_stat_activity: {select_clause!r}"
+        )
+        # The qualified reference must still be present so the fix
+        # doesn't silently drop the column.
+        assert "a.pid" in query or "l.pid" in query.split("JOIN")[0]
+
+    @pytest.mark.asyncio
+    async def test_join_still_matches_pid_between_both_tables(self, debugger):
+        """The JOIN condition itself (l.pid = a.pid) must be untouched."""
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=[])
+        mock_conn.close = AsyncMock()
+
+        query = await self._captured_query(debugger, mock_conn)
+        assert "l.pid = a.pid" in query
+
+    @pytest.mark.asyncio
+    async def test_response_shape_preserved(self, debugger):
+        """The fix must not change the returned dict shape (frontend-facing contract)."""
+        mock_row = {
+            "locktype": "relation",
+            "relation": "some_table",
+            "mode": "AccessShareLock",
+            "granted": True,
+            "pid": 12345,
+            "usename": "nuzantara_rag",
+            "application_name": "backend",
+            "state": "active",
+            "query_start": None,
+        }
+
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=[mock_row])
+        mock_conn.close = AsyncMock()
+
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            result = await debugger.get_active_locks()
+
+        assert result == [
+            {
+                "lock_type": "relation",
+                "relation": "some_table",
+                "mode": "AccessShareLock",
+                "granted": True,
+                "pid": 12345,
+                "username": "nuzantara_rag",
+                "application": "backend",
+                "state": "active",
+                "query_start": None,
+            }
+        ]
