@@ -95,7 +95,11 @@ describe("kbli-data", () => {
     });
     expect(getSectionMeta("unknown")).toBeNull();
 
-    expect(getHeroStyle("I").gradient).toContain("#e85d04");
+    // 2026-07-07: getHeroStyle now derives from the deterministic
+    // kbli-cover-design.ts palette (dark editorial, no neon) instead of the
+    // old SECTOR_HERO map — assert per-section distinctness + stable
+    // fallback rather than a specific hardcoded hex.
+    expect(getHeroStyle("I").gradient).not.toEqual(getHeroStyle("J").gradient);
     expect(getHeroStyle(null)).toEqual(getHeroStyle("unknown"));
   });
 });

@@ -114,7 +114,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `evaluator` | Security and quality evaluation tools for the Nuzantara RAG system. |
 | `graph-engine` | Graph processing engine for Knowledge Graph operations. |
 | `kb` |  |
-| `kbli-navigator` |  |
+| `kbli-navigator` | > **PRODUCTION = `apps/mouth`** → https://balizero.com/kbli (`/kbli-navigator` 301s there). |
 | `mata-garuda` | > Intelligence Super Hub — OSINT blindato, CLI-only, Lamarckian meta-agent |
 | `mouth` | > **The face of Nuzantara** - A Next.js 16 + React 19 frontend for the Nuzantara AI ecosystem |
 | `nlm-bridge` |  |
