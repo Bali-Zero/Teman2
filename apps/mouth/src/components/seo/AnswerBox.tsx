@@ -44,11 +44,18 @@ export function AnswerBox({ children, className = "" }: AnswerBoxProps) {
  * Use for complex topics that need structured summarization.
  */
 interface KeyTakeawayProps {
-  points: string[];
+  points?: string[];
+  children?: React.ReactNode;
   className?: string;
 }
 
-export function KeyTakeaway({ points, className = "" }: KeyTakeawayProps) {
+export function KeyTakeaway({
+  points,
+  children,
+  className = "",
+}: KeyTakeawayProps) {
+  const hasPoints = Array.isArray(points) && points.length > 0;
+
   return (
     <div
       className={`
@@ -60,14 +67,18 @@ export function KeyTakeaway({ points, className = "" }: KeyTakeawayProps) {
       <h3 className="text-sm uppercase tracking-wider text-accent-sand mb-3 font-semibold">
         Key Takeaways
       </h3>
-      <ul className="space-y-2">
-        {points.map((point, index) => (
-          <li key={index} className="flex items-start gap-3 text-silver">
-            <span className="text-accent-sand mt-1">•</span>
-            <span>{point}</span>
-          </li>
-        ))}
-      </ul>
+      {hasPoints ? (
+        <ul className="space-y-2">
+          {points.map((point, index) => (
+            <li key={index} className="flex items-start gap-3 text-silver">
+              <span className="text-accent-sand mt-1">•</span>
+              <span>{point}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="text-silver">{children}</div>
+      )}
     </div>
   );
 }
