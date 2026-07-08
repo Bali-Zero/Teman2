@@ -74,4 +74,22 @@ describe("renderMDXBody", () => {
     expect(html).not.toContain("calculateResult");
     expect(html).not.toContain("Functions cannot be passed");
   });
+
+  it("server-renders tax takeaway MDX that uses KeyTakeaway children", async () => {
+    const articlePath = path.join(
+      process.cwd(),
+      "src/content/articles/tax/ppn-12-percent-increase-2026.mdx",
+    );
+    const articleFile = fs.readFileSync(articlePath, "utf8");
+    const { content } = matter(articleFile);
+
+    const mdxBody = await renderMDXBody(stripImports(content));
+
+    const html = renderToString(<>{mdxBody}</>);
+
+    expect(html).toContain("Indonesia PPN/VAT Rate 2026");
+    expect(html).toContain("Key Takeaways");
+    expect(html).toContain("PPN raised to 12%");
+    expect(html).not.toContain("Cannot read properties of undefined");
+  });
 });
