@@ -299,12 +299,14 @@ async def drive_status(
 
     try:
         # Quick test - list 1 file (may fail if SA has no access to implicit root)
-        result = await drive.list_files(page_size=1)
+        result = await drive.list_files(user_email="system", page_size=1)
         files_accessible = len(result.get("files", [])) > 0
     except Exception as e:
         logger.warning("[TEAM_DRIVE] Generic list_files failed, trying BZ root folder: %s", e)
         try:
-            result = await drive.list_files(folder_id=BZ_ROOT_FOLDER_ID, page_size=1)
+            result = await drive.list_files(
+                user_email="system", folder_id=BZ_ROOT_FOLDER_ID, page_size=1
+            )
             files_accessible = len(result.get("files", [])) > 0
             logger.info("[TEAM_DRIVE] BZ root folder accessible: %s", files_accessible)
         except Exception as e2:
@@ -353,10 +355,11 @@ async def list_files(
         is_admin = user_role == "admin"
 
         result = await drive.list_files(
+            user_email=user_email,
             folder_id=folder_id,
             page_size=page_size,
             page_token=page_token,
-            query=q,
+            q=q,
         )
 
         files = result["files"]
@@ -366,7 +369,7 @@ async def list_files(
             context_folder = None
             if folder_id:
                 try:
-                    folder_path = await drive.get_folder_path(folder_id)
+                    folder_path = await drive.get_folder_path(user_email, folder_id)
                     if folder_path:
                         context_folder = folder_path[-1]["name"] if folder_path else None
                 except Exception as e:
@@ -411,8 +414,9 @@ async def get_file(
     """
     Get metadata for a specific file.
     """
+    user_email = current_user.get("email", "")
     try:
-        file = await drive.get_file_metadata(file_id)
+        file = await drive.get_file_metadata(user_email, file_id)
         return FileItem(**file)
 
     except Exception as e:
@@ -463,8 +467,9 @@ async def get_folder_path(
     """
     Get the breadcrumb path to a folder.
     """
+    user_email = current_user.get("email", "")
     try:
-        path = await drive.get_folder_path(folder_id)
+        path = await drive.get_folder_path(user_email, folder_id)
         return [BreadcrumbItem(**item) for item in path]
 
     except Exception as e:
@@ -529,7 +534,7 @@ async def check_write_permission(
 
     # Get folder's path and check if any matches allowed folders
     try:
-        folder_path = await drive.get_folder_path(folder_id)
+        folder_path = await drive.get_folder_path(user_email, folder_id)
         for item in folder_path:
             if folder_matches_allowed(item["name"], allowed_folders):
                 return True
@@ -860,10 +865,10 @@ async def list_permissions(
     All authenticated users can view who has access.
     Zero is hidden from other users (invisible admin).
     """
-    current_user.get("email", "")
+    user_email = current_user.get("email", "")
 
     try:
-        permissions = await drive.list_permissions(file_id)
+        permissions = await drive.list_permissions(user_email, file_id)
 
         # Filter out hidden admins unless the requester is one of them
         if not is_super_admin(current_user):
@@ -893,10 +898,9 @@ async def add_permission(
 
     try:
         permission = await drive.add_permission(
+            user_email=user_email,
             file_id=file_id,
-            email=request.email,
-            role=request.role,
-            send_notification=request.send_notification,
+            request=request,
         )
 
         logger.info(
@@ -926,9 +930,10 @@ async def update_permission(
 
     try:
         permission = await drive.update_permission(
+            user_email=user_email,
             file_id=file_id,
             permission_id=permission_id,
-            role=request.role,
+            request=request,
         )
 
         logger.info(
@@ -957,6 +962,7 @@ async def remove_permission(
 
     try:
         await drive.remove_permission(
+            user_email=user_email,
             file_id=file_id,
             permission_id=permission_id,
         )
