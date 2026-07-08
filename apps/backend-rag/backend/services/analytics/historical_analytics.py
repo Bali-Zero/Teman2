@@ -169,21 +169,23 @@ async def calculate_response_times(
                 COUNT(*) as total_practices,
 
                 -- Inquiry to Start
-                ROUND(AVG(EXTRACT(EPOCH FROM (p.start_date - p.inquiry_date)) / 86400), 2)
+                -- NOTE: EXTRACT(EPOCH ...) returns double precision; ROUND(double, int)
+                -- does not exist in Postgres, so cast the numeric arg to ::numeric.
+                ROUND((AVG(EXTRACT(EPOCH FROM (p.start_date - p.inquiry_date)) / 86400))::numeric, 2)
                     as avg_days_inquiry_to_start,
-                ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (p.start_date - p.inquiry_date)) / 86400), 2)
+                ROUND((PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (p.start_date - p.inquiry_date)) / 86400))::numeric, 2)
                     as median_days_inquiry_to_start,
 
                 -- Start to Completion
-                ROUND(AVG(EXTRACT(EPOCH FROM (p.completion_date - p.start_date)) / 86400), 2)
+                ROUND((AVG(EXTRACT(EPOCH FROM (p.completion_date - p.start_date)) / 86400))::numeric, 2)
                     as avg_days_start_to_completion,
-                ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (p.completion_date - p.start_date)) / 86400), 2)
+                ROUND((PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (p.completion_date - p.start_date)) / 86400))::numeric, 2)
                     as median_days_start_to_completion,
 
                 -- Total Cycle Time
-                ROUND(AVG(EXTRACT(EPOCH FROM (p.completion_date - p.inquiry_date)) / 86400), 2)
+                ROUND((AVG(EXTRACT(EPOCH FROM (p.completion_date - p.inquiry_date)) / 86400))::numeric, 2)
                     as avg_days_total_cycle,
-                ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (p.completion_date - p.inquiry_date)) / 86400), 2)
+                ROUND((PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (p.completion_date - p.inquiry_date)) / 86400))::numeric, 2)
                     as median_days_total_cycle
 
             FROM practices p
