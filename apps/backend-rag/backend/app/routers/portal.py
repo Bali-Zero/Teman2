@@ -339,6 +339,12 @@ async def get_visa_status(
             "success": True,
             "data": data,
         }
+    except ValueError as e:
+        # Client row is gone / soft-deleted (portal_service filters
+        # `... WHERE id = $1 AND deleted_at IS NULL`) → not-found, not a 500.
+        # Consistent with get_dashboard above (BUG C).
+        logger.warning(f"Visa client not found for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to get visa status for client {client['client_id']}: {e}")
         raise HTTPException(
@@ -371,6 +377,10 @@ async def get_companies(
             "success": True,
             "data": companies,
         }
+    except ValueError as e:
+        # Client soft-deleted / gone → not-found, not a 500 (see get_dashboard).
+        logger.warning(f"Companies client not found for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to get companies for client {client['client_id']}: {e}")
         raise HTTPException(
@@ -489,6 +499,12 @@ async def get_tax_overview(
             "success": True,
             "data": data,
         }
+    except ValueError as e:
+        # Client soft-deleted / gone (portal_service filters
+        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
+        # with get_dashboard (BUG C).
+        logger.warning(f"Client not found in get_tax_overview for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to get tax overview for client {client['client_id']}: {e}")
         raise HTTPException(
@@ -524,6 +540,12 @@ async def get_documents(
             "success": True,
             "data": documents,
         }
+    except ValueError as e:
+        # Client soft-deleted / gone (portal_service filters
+        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
+        # with get_dashboard (BUG C).
+        logger.warning(f"Client not found in get_documents for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to get documents for client {client['client_id']}: {e}")
         raise HTTPException(
@@ -591,6 +613,12 @@ async def upload_document(
             "message": "Document uploaded successfully",
             "data": document,
         }
+    except ValueError as e:
+        # Client soft-deleted / gone -> not-found, not a 500 (see get_dashboard).
+        logger.warning(
+            f"Client not found in upload_document for client {client['client_id']}: {e}"
+        )
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to upload document for client {client['client_id']}: {e}")
         raise HTTPException(
@@ -664,6 +692,12 @@ async def delete_document(
         }
     except HTTPException:
         raise
+    except ValueError as e:
+        # Client soft-deleted / gone (portal_service filters
+        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
+        # with get_dashboard (BUG C).
+        logger.warning(f"Client not found in delete_document for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(
             f"Failed to delete document {document_id} for client {client['client_id']}: {e}"
@@ -696,6 +730,12 @@ async def restore_document(
         }
     except HTTPException:
         raise
+    except ValueError as e:
+        # Client soft-deleted / gone -> not-found, not a 500 (see get_dashboard).
+        logger.warning(
+            f"Client not found in restore_document for client {client['client_id']}: {e}"
+        )
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(
             f"Failed to restore document {document_id} for client {client['client_id']}: {e}"
@@ -732,6 +772,12 @@ async def get_messages(
             "success": True,
             "data": data,
         }
+    except ValueError as e:
+        # Client soft-deleted / gone (portal_service filters
+        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
+        # with get_dashboard (BUG C).
+        logger.warning(f"Client not found in get_messages for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to get messages for client {client['client_id']}: {e}")
         raise HTTPException(
@@ -762,6 +808,12 @@ async def send_message(
             "message": "Message sent",
             "data": message,
         }
+    except ValueError as e:
+        # Client soft-deleted / gone (portal_service filters
+        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
+        # with get_dashboard (BUG C).
+        logger.warning(f"Client not found in send_message for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to send message for client {client['client_id']}: {e}")
         raise HTTPException(
@@ -789,6 +841,12 @@ async def mark_message_read(
             "success": True,
             "message": "Message marked as read",
         }
+    except ValueError as e:
+        # Client soft-deleted / gone (portal_service filters
+        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
+        # with get_dashboard (BUG C).
+        logger.warning(f"Client not found in mark_message_read for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error("Failed to mark message %s as read: %s", message_id, e)
         raise HTTPException(
@@ -819,6 +877,12 @@ async def get_preferences(
             "success": True,
             "data": preferences,
         }
+    except ValueError as e:
+        # Client soft-deleted / gone (portal_service filters
+        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
+        # with get_dashboard (BUG C).
+        logger.warning(f"Client not found in get_preferences for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to get preferences for client {client['client_id']}: {e}")
         raise HTTPException(
@@ -855,6 +919,12 @@ async def update_preferences(
             "message": "Settings updated",
             "data": preferences,
         }
+    except ValueError as e:
+        # Client soft-deleted / gone (portal_service filters
+        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
+        # with get_dashboard (BUG C).
+        logger.warning(f"Client not found in update_preferences for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to update preferences for client {client['client_id']}: {e}")
         raise HTTPException(
@@ -893,6 +963,12 @@ async def get_timeline(
             "success": True,
             "data": data,
         }
+    except ValueError as e:
+        # Client soft-deleted / gone (portal_service filters
+        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
+        # with get_dashboard (BUG C).
+        logger.warning(f"Client not found in get_timeline for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to get timeline for client {client['client_id']}: {e}")
         raise HTTPException(
@@ -1084,6 +1160,12 @@ async def update_profile(
         if fields:
             await invalidate_cache("zantara:crm_clients_stats:*")
         return {"success": True, "data": result}
+    except ValueError as e:
+        # Client soft-deleted / gone (portal_service filters
+        # `deleted_at IS NULL`) -> not-found, not a 500. Consistent
+        # with get_dashboard (BUG C).
+        logger.warning(f"Client not found in update_profile for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=404, detail="Client not found") from e
     except Exception as e:
         logger.error(f"Failed to update profile for client {client['client_id']}: {e}")
         raise HTTPException(
