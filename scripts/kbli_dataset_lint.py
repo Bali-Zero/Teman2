@@ -14,6 +14,10 @@ Deterministic, zero-LLM checks over apps/mouth/data/KBLI_2025_FINAL_CLEAN.json:
                            pma_max_asing (65111 class, quality-sampler find 2026-07-07).
                            Innocence guards: "N% closed" idiom, "not N%" negation, KSO
                            work-share percentages, documented sector-law overrides.
+  L11 editorial-boilerplate  corpus-level: a sentence ≥60 chars appearing verbatim in ≥5
+                           editorials (headline/standfirst/body) — the anti-template gate
+                           for the LOOP-2 magazine layer (census 2026-07-08 found the old
+                           intel prose had 995× / 258× / 88× stock sentences).
 
 Exit 0 = clean (L7 informational only). Exit 1 = findings. --json for machine output.
 Usage: python3 scripts/kbli_dataset_lint.py [--json] [--only L1,L3] [--repo ROOT]
@@ -110,6 +114,21 @@ def iter_prose(rec: dict):
             v = intel.get(f)
             if isinstance(v, str) and v.strip():
                 yield f"intel_2026.{f}", v
+        # LOOP-2 editorial layer — same rules apply (L1/L3/L4/L10)
+        ed = intel.get("editorial")
+        if isinstance(ed, dict):
+            for f in ("headline", "standfirst", "body", "pullQuote"):
+                v = ed.get(f)
+                if isinstance(v, str) and v.strip():
+                    yield f"intel_2026.editorial.{f}", v
+            for i, n in enumerate(ed.get("byTheNumbers") or []):
+                if isinstance(n, dict):
+                    # label+value joined so context guards (L3 labeled-2020, L10
+                    # cross-ref) can see the label the value belongs to
+                    yield (
+                        f"intel_2026.editorial.byTheNumbers[{i}]",
+                        f"{n.get('label', '')}: {n.get('value', '')}",
+                    )
     if rec.get("pma_nota"):
         yield "pma_nota", str(rec["pma_nota"])
 
@@ -267,6 +286,29 @@ def main() -> int:
 
         if enabled("L7") and not rec.get("per_skala"):
             add("L7", code, "per_skala", "no scale rows (special regime?)")
+
+    # L11 — corpus-level boilerplate across editorial fields (needs the whole
+    # corpus, so it runs after the per-record loop)
+    if enabled("L11"):
+        sent_owners: dict[str, list[str]] = {}
+        for rec in data:
+            ed = (rec.get("intel_2026") or {}).get("editorial")
+            if not isinstance(ed, dict):
+                continue
+            seen_in_rec: set[str] = set()
+            for f in ("headline", "standfirst", "body"):
+                t = ed.get(f) or ""
+                for s in re.split(r"(?<=[.!?])\s+", t):
+                    s = s.strip()
+                    if len(s) >= 60 and s not in seen_in_rec:
+                        seen_in_rec.add(s)
+                        sent_owners.setdefault(s, []).append(rec["kode_kbli_2025"])
+        for s, owners in sent_owners.items():
+            if len(owners) >= 5:
+                add(
+                    "L11", ",".join(owners[:8]) + ("…" if len(owners) > 8 else ""),
+                    "intel_2026.editorial", f"{len(owners)}× :: {s[:90]}",
+                )
 
     by_rule: dict[str, int] = {}
     for f in findings:

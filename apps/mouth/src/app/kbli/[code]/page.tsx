@@ -27,6 +27,7 @@ import {
 } from "@/components/kbli/KBLIStructuredData";
 import { LicensingSection } from "@/components/kbli/LicensingSection";
 import { KBLIBaliContext } from "@/components/kbli/KBLIBaliContext";
+import { KBLIEditorial } from "@/components/kbli/KBLIEditorial";
 import { KBLIYoullAlsoNeed } from "@/components/kbli/KBLIYoullAlsoNeed";
 import { getRelatedArticle } from "@/lib/kbli-articles";
 import { GOLD_HERO_IMAGES } from "@/lib/kbli-hero-images";
@@ -351,18 +352,27 @@ export default async function KBLICodePage({
             </div>
           </div>
 
+          {/* LOOP-2 EDITORIAL — the magazine article leads every code that has one */}
+          {kbli.intel_2026?.editorial && (
+            <section className="pb-10 pt-2">
+              <KBLIEditorial editorial={kbli.intel_2026.editorial} />
+            </section>
+          )}
+
           {/* GOLD CONTENT — editorial magazine layout */}
           {gold ? (
             <div className="space-y-0">
-              {/* THE LEAD */}
-              <section className="pb-10">
-                <p
-                  className="text-xl leading-relaxed text-[var(--foreground-secondary)] sm:text-[22px] sm:leading-[1.7]"
-                  style={{ maxWidth: "680px" }}
-                >
-                  {gold.whatItMeans}
-                </p>
-              </section>
+              {/* THE LEAD — subsumed by the editorial article when one exists */}
+              {!kbli.intel_2026?.editorial && (
+                <section className="pb-10">
+                  <p
+                    className="text-xl leading-relaxed text-[var(--foreground-secondary)] sm:text-[22px] sm:leading-[1.7]"
+                    style={{ maxWidth: "680px" }}
+                  >
+                    {gold.whatItMeans}
+                  </p>
+                </section>
+              )}
 
               {/* VISUAL DIVIDER */}
               <div className="flex items-center gap-4 py-2">
@@ -635,14 +645,17 @@ export default async function KBLICodePage({
             <div className="space-y-0">
               {kbli.intel_2026?.whatItMeans ? (
                 <>
-                  <section className="pb-10">
-                    <p
-                      className="text-lg leading-relaxed text-[var(--foreground-secondary)] sm:text-xl sm:leading-[1.7]"
-                      style={{ maxWidth: "680px" }}
-                    >
-                      {kbli.intel_2026.whatItMeans}
-                    </p>
-                  </section>
+                  {/* LEAD — subsumed by the editorial article when one exists */}
+                  {!kbli.intel_2026?.editorial && (
+                    <section className="pb-10">
+                      <p
+                        className="text-lg leading-relaxed text-[var(--foreground-secondary)] sm:text-xl sm:leading-[1.7]"
+                        style={{ maxWidth: "680px" }}
+                      >
+                        {kbli.intel_2026.whatItMeans}
+                      </p>
+                    </section>
+                  )}
 
                   {kbli.intel_2026.whatChanged && (
                     <div
