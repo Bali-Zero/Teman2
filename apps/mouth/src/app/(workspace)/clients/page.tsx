@@ -638,14 +638,17 @@ function ClientsListContent() {
             {
               label: "Active Practices",
               value: stats.activePractices.toLocaleString("en-US"),
-              color: "#60a5fa",
+              color: "var(--bz-blue)",
               bg: "rgba(59,130,246,0.08)",
               border: "rgba(59,130,246,0.15)",
             },
             {
               label: "Outstanding",
               value: formatIDRCompact(stats.revenue.outstanding),
-              color: stats.revenue.outstanding > 0 ? "#fb923c" : "#4ade80",
+              color:
+                stats.revenue.outstanding > 0
+                  ? "var(--bz-warning)"
+                  : "var(--bz-success)",
               bg:
                 stats.revenue.outstanding > 0
                   ? "rgba(249,115,22,0.08)"
@@ -658,7 +661,7 @@ function ClientsListContent() {
             {
               label: "Paid Revenue",
               value: formatIDRCompact(stats.revenue.paid),
-              color: "#4ade80",
+              color: "var(--bz-success)",
               bg: "rgba(74,222,128,0.08)",
               border: "rgba(74,222,128,0.15)",
             },
@@ -695,7 +698,7 @@ function ClientsListContent() {
                 className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
                 style={{
                   background: "rgba(239,68,68,0.15)",
-                  color: "#f87171",
+                  color: "var(--bz-error)",
                   border: "1px solid rgba(239,68,68,0.25)",
                 }}
               >
@@ -712,7 +715,7 @@ function ClientsListContent() {
                 className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
                 style={{
                   background: "rgba(245,158,11,0.15)",
-                  color: "#fbbf24",
+                  color: "var(--bz-warning)",
                   border: "1px solid rgba(245,158,11,0.25)",
                 }}
               >
@@ -726,7 +729,7 @@ function ClientsListContent() {
                 className="flex items-center gap-1 px-2.5 py-1 rounded-full transition-colors"
                 style={{
                   background: "rgba(139,92,246,0.15)",
-                  color: "#a78bfa",
+                  color: "var(--bz-neon-purple)",
                   border: "1px solid rgba(139,92,246,0.25)",
                 }}
               >
@@ -780,7 +783,7 @@ function ClientsListContent() {
                     : "rgba(35, 35, 40, 0.45)",
                 color:
                   filters.assigned_to === currentUserEmail
-                    ? "#fff"
+                    ? "var(--bz-text-pure)"
                     : "var(--bz-text-2)",
                 border: "1px solid rgba(255,255,255,0.05)",
               }}
@@ -801,7 +804,10 @@ function ClientsListContent() {
                   silentFilter === days
                     ? "rgba(239,68,68,0.2)"
                     : "rgba(35, 35, 40, 0.45)",
-                color: silentFilter === days ? "#f87171" : "var(--bz-text-2)",
+                color:
+                  silentFilter === days
+                    ? "var(--bz-error)"
+                    : "var(--bz-text-2)",
                 border: `1px solid ${silentFilter === days ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.05)"}`,
               }}
               title={`Clients not contacted in ${days}+ days`}
@@ -894,7 +900,7 @@ function ClientsListContent() {
                           : "rgba(255,255,255,0.08)",
                       color:
                         filters.assigned_to === currentUserEmail
-                          ? "#fff"
+                          ? "var(--bz-text-pure)"
                           : "var(--bz-text-2)",
                     }}
                   >
@@ -1205,9 +1211,9 @@ function ClientsListContent() {
                                           : "transparent",
                                     color:
                                       ageDays === 0
-                                        ? "#4ade80"
+                                        ? "var(--bz-success)"
                                         : ageDays > 30
-                                          ? "#f87171"
+                                          ? "var(--bz-error)"
                                           : "var(--bz-text-2)",
                                   }}
                                   title={new Date(
