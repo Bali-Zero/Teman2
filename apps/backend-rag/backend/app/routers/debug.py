@@ -62,10 +62,31 @@ def verify_debug_access(
         if settings.admin_api_key and token == settings.admin_api_key:
             return True
 
-        # Check JWT token (if implemented)
-        # For now, allow if admin_api_key matches
-        if token == settings.admin_api_key:
-            return True
+        # Check JWT token: grant debug access to an authenticated ADMIN/FOUNDER.
+        # The old code stubbed this out (only re-checked the API key), so a
+        # genuine admin's JWT was rejected despite the 401 message promising
+        # "API key or JWT token" — the debug/system-pulse tab was unreachable
+        # for the owner. We validate the JWT the same way get_current_user does
+        # and gate on the canonical admin roles (matches the per-endpoint
+        # role check elsewhere in this router: role in {admin, founder}).
+        try:
+            from jose import jwt
+
+            payload = jwt.decode(
+                token,
+                settings.jwt_secret_key,
+                algorithms=["HS256"],
+                options={"verify_exp": settings.jwt_enforce_expiry},
+            )
+            # Reject non-access tokens (refresh tokens carry type != "access").
+            token_type = payload.get("type")
+            if token_type is None or token_type == "access":
+                role = (payload.get("role") or "").lower().strip()
+                if role in ("admin", "founder", "owner", "board", "board member", "ceo"):
+                    return True
+        except Exception:
+            # Not a valid admin JWT — fall through to the 401 below.
+            logger.debug("debug access: bearer token is not a valid admin JWT")
 
     # Check X-Debug-Key header as fallback
     debug_key = request.headers.get("X-Debug-Key") if request else None
@@ -74,7 +95,7 @@ def verify_debug_access(
 
     raise HTTPException(
         status_code=401,
-        detail="Debug access requires valid API key or JWT token",
+        detail="Debug access requires valid API key or admin JWT token",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
