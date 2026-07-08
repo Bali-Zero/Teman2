@@ -399,6 +399,16 @@ async def run_manual_topic(
         "score_detail": {"score": None, "rules": {"manual_override": True}},
     }
 
+    # Same regulatory grounding as the cron path (line ~626) — manual drafts
+    # must not bypass the KB blood. Graceful-degrade: failure leaves brief_json
+    # unchanged (wr2_grounding contract).
+    try:
+        from wr2_grounding import ground_enrichment
+
+        brief_json = await ground_enrichment(brief_json, title)
+    except Exception as exc:  # noqa: BLE001 - grounding must never block the run
+        logger.warning("WR2 grounding skipped on manual draft (degrading): %s", exc)
+
     if dry_run:
         logger.info("[DRY-RUN] Would create manual draft:\n%s", json.dumps({
             "topic": title[:120],
