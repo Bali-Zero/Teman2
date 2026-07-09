@@ -13,6 +13,7 @@ Endpoints:
 import logging
 from datetime import datetime, timedelta
 
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
@@ -93,14 +94,13 @@ def require_admin(current_user: dict) -> None:
 @router.get("/dashboard", response_model=DashboardData)
 async def get_dashboard(
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> DashboardData:
     """
     Get notification dashboard data.
     Admin only.
     """
     require_admin(current_user)
-
-    pool = await get_database_pool()
 
     async with pool.acquire() as conn:
         # Get statistics
@@ -239,14 +239,13 @@ async def list_alerts(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     List alerts with filtering and pagination.
     Admin only.
     """
     require_admin(current_user)
-
-    pool = await get_database_pool()
 
     # Build query — use parameterized interval for safety
     interval = timedelta(days=days)
@@ -317,14 +316,13 @@ async def list_alerts(
 async def get_stats(
     days: int = Query(30, ge=1, le=365),
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     Get detailed statistics.
     Admin only.
     """
     require_admin(current_user)
-
-    pool = await get_database_pool()
 
     async with pool.acquire() as conn:
         # Daily breakdown
@@ -394,6 +392,7 @@ async def get_stats(
 async def retry_failed_alerts(
     request: RetryRequest,
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> RetryResponse:
     """
     Retry failed alerts.
@@ -403,7 +402,6 @@ async def retry_failed_alerts(
 
     from backend.app.modules.notifications.service import NotificationService
 
-    pool = await get_database_pool()
     service = NotificationService(pool)
 
     async with pool.acquire() as conn:
@@ -471,14 +469,13 @@ async def pause_client_notifications(
     client_id: int,
     hours: int = Query(24, ge=1, le=168),
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     Pause notifications for a client temporarily.
     Admin only.
     """
     require_admin(current_user)
-
-    pool = await get_database_pool()
 
     async with pool.acquire() as conn:
         # Suppress pending alerts for this client
