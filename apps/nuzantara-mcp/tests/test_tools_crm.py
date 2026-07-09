@@ -93,10 +93,11 @@ async def test_create_client_minimal(mock_mcp, mock_call, mock_call_safe) -> Non
         name="John", email="john@test.com", nationality="Italian"
     )
     assert result["id"] == "new-1"
+    # Backend ClientCreate requires `full_name` (not `name`); the tool maps name -> full_name.
     mock_call.assert_called_once_with(
         "/api/crm/clients/",
         method="POST",
-        json={"name": "John", "email": "john@test.com", "nationality": "Italian"},
+        json={"full_name": "John", "email": "john@test.com", "nationality": "Italian"},
     )
 
 
@@ -114,5 +115,27 @@ async def test_create_client_full(mock_mcp, mock_call, mock_call_safe) -> None:
         notes="VIP client",
     )
     call_json = mock_call.call_args[1]["json"]
+    assert call_json["full_name"] == "Jane"
+    assert "name" not in call_json  # must not send the wrong key
     assert call_json["phone"] == "+62812345678"
     assert call_json["notes"] == "VIP client"
+
+
+@pytest.mark.asyncio
+async def test_create_practice_sends_practice_type_code(
+    mock_mcp, mock_call, mock_call_safe
+) -> None:
+    """create_practice must send `practice_type_code` (not `type`) — the backend
+    PracticeCreate model rejects `type` with 'Practice type not found'."""
+    tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
+    mock_call.return_value = {"id": 682, "status": "inquiry"}
+
+    result = await tools["create_practice"](
+        client_id=12076, practice_type="company_pt_pma", notes="E2E synthetic"
+    )
+    assert result["id"] == 682
+    call_json = mock_call.call_args[1]["json"]
+    assert call_json["practice_type_code"] == "company_pt_pma"
+    assert "type" not in call_json  # the old buggy key must be gone
+    assert call_json["client_id"] == 12076
+    assert call_json["notes"] == "E2E synthetic"

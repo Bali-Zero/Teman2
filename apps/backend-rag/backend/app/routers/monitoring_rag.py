@@ -113,9 +113,9 @@ class LatencyPercentilesResponse(BaseModel):
     period_days: int
     total_queries: int
     percentiles: dict[str, float]
-    min: float
-    max: float
-    avg: float
+    min: float | None = None
+    max: float | None = None
+    avg: float | None = None
 
 
 class ErrorResponse(BaseModel):

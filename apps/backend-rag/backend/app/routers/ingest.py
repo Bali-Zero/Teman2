@@ -213,18 +213,20 @@ async def get_ingestion_stats() -> dict[str, Any]:
 
     Returns total documents, tier distribution, and collection info.
     """
+    db = QdrantClient()
     try:
-        db = QdrantClient()
-        stats = db.get_collection_stats()
+        stats = await db.get_stats()
 
         return {
             "status": "success",
-            "collection": stats["collection_name"],
-            "total_documents": stats["total_documents"],
+            "collection": stats.get("collection_name", db.collection_name),
+            "total_documents": stats.get("total_documents", 0),
             "tiers_distribution": stats.get("tiers_distribution", {}),
-            "persist_directory": stats["persist_directory"],
+            "persist_directory": db.qdrant_url,
         }
 
     except Exception as e:
         logger.error("Stats error: %s", e)
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {e!s}") from e
+    finally:
+        await db.close()

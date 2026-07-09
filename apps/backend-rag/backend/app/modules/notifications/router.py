@@ -13,6 +13,7 @@ Endpoints:
 import logging
 from datetime import datetime, timezone
 
+import asyncpg
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
@@ -164,14 +165,13 @@ async def run_expiry_check(
     request: CheckRequest,
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     Run manual expiry check for all clients or specific client.
     Requires authentication.
     """
     try:
-        pool = await get_database_pool()
-
         # Fetch clients
         clients = await get_clients_from_db(pool, request.client_id)
 
@@ -231,11 +231,10 @@ async def run_expiry_check(
 @router.get("/status", response_model=StatusResponse)
 async def get_notification_status(
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """Get notification system status."""
     try:
-        pool = await get_database_pool()
-
         async with pool.acquire() as conn:
             pending_count = await conn.fetchval(
                 "SELECT COUNT(*) FROM notification_alerts WHERE status = 'pending'",
@@ -257,6 +256,7 @@ async def get_notification_status(
 @router.post("/send-pending")
 async def send_pending_alerts(
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     Send all pending alerts.
@@ -269,7 +269,6 @@ async def send_pending_alerts(
         raise HTTPException(status_code=403, detail="Admin access required")
 
     try:
-        pool = await get_database_pool()
         service = NotificationService(pool)
 
         # Get pending alerts
