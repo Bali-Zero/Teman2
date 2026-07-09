@@ -159,13 +159,15 @@ def test_get_llm_gateway_creates_new():
         "backend.app.routers.kbli_notebook_chat._llm_gateway_instance",
         None,
     ):
+        fresh_gateway = MagicMock()
         with patch(
             "backend.services.rag.agentic.llm_gateway.LLMGateway",
-            return_value=MagicMock(),
+            return_value=fresh_gateway,
         ):
             from backend.app.routers.kbli_notebook_chat import _get_llm_gateway
 
-            _get_llm_gateway()
+            # With the cached instance cleared, a new gateway is constructed
+            assert _get_llm_gateway() is fresh_gateway
             # Restores instance after test via autouse fixture
 
 
@@ -512,7 +514,10 @@ def test_non_business_keywords_list():
 def test_min_relevance_score():
     from backend.app.routers.kbli_notebook_chat import MIN_RELEVANCE_SCORE
 
-    assert MIN_RELEVANCE_SCORE == 0.40
+    # Recalibrated 2026-07-08 against the live prod score distribution (legit
+    # keywords bottom out at 0.18; off-domain noise tops out at ~0.16). The old
+    # 0.40 sat above the entire legit band and abstained on every natural query.
+    assert MIN_RELEVANCE_SCORE == 0.18
 
 
 # ============================================================

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Search, Loader2, X, ChevronRight } from "lucide-react";
+import { Search, Loader2, X, ChevronRight, AlertTriangle } from "lucide-react";
 import { kbliApi, KBLISearchResult } from "@/lib/api/kbli.api";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -29,6 +29,7 @@ export function KBLISearch({
   const [isLoading, setIsLoading] = React.useState(false);
   const [isOpen, setIsOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(-1);
+  const [searchError, setSearchError] = React.useState<string | null>(null);
   const router = useRouter();
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -57,12 +58,14 @@ export function KBLISearch({
   React.useEffect(() => {
     if (!query.trim() || query.length < 2) {
       setResults([]);
+      setSearchError(null);
       setIsOpen(false);
       return;
     }
 
     const timer = setTimeout(async () => {
       setIsLoading(true);
+      setSearchError(null);
       try {
         const data = await kbliApi.search(query);
         setResults(data || []);
@@ -71,6 +74,29 @@ export function KBLISearch({
       } catch (err) {
         logger.error("KBLI search failed:", err as Record<string, unknown>);
         setResults([]);
+
+        // ApiClientBase throws Error(error.detail || `HTTP ${status}`).
+        // 503 from a gateway/proxy may return non-JSON → detail falls back to
+        // "Request failed" (client.ts L353). We treat both as service-down.
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const isServiceDown =
+          errMsg.includes("503") || errMsg.includes("Request failed");
+
+        setSearchError(
+          isServiceDown
+            ? "Search is temporarily unavailable. Try asking Zantara below!"
+            : "Search failed. Please try again.",
+        );
+        setIsOpen(true); // Keep dropdown open to show error banner
+
+        // Pulse ZantaraFAB to draw attention to the AI fallback
+        if (isServiceDown && typeof document !== "undefined") {
+          const fab = document.getElementById("zantara-fab");
+          if (fab) {
+            fab.classList.add("animate-pulse");
+            setTimeout(() => fab.classList.remove("animate-pulse"), 3000);
+          }
+        }
       } finally {
         setIsLoading(false);
       }
@@ -144,9 +170,16 @@ export function KBLISearch({
         )}
       </div>
 
-      {/* Results dropdown */}
-      {isOpen && results.length > 0 && (
+      {/* Results dropdown — also shown when there is a search error */}
+      {isOpen && (results.length > 0 || searchError) && (
         <div className="absolute z-50 w-full mt-2 bg-[#1c1c1f]/95 backdrop-blur-2xl border border-white/[0.08] rounded-xl shadow-[0_16px_48px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* Error banner — shown above results when search fails */}
+          {searchError && (
+            <div className="flex items-start gap-2 px-4 py-3 text-sm border-b border-amber-500/20 bg-amber-500/[0.08]">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-400" />
+              <span className="text-amber-300">{searchError}</span>
+            </div>
+          )}
           <div className="max-h-[400px] overflow-y-auto">
             {results.map((result, index) => (
               <button
