@@ -18,6 +18,7 @@ Usage:
 import logging
 from datetime import datetime, timedelta, timezone
 
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -61,6 +62,7 @@ class TestNotificationResponse(BaseModel):
 async def test_notification(
     request: TestNotificationRequest,
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     Test notification system with real client data.
@@ -78,8 +80,6 @@ async def test_notification(
             status_code=403,
             detail="Test endpoint disabled in production",
         )
-
-    pool = await get_database_pool()
 
     try:
         # Get client(s) from database
@@ -264,6 +264,7 @@ async def test_notification(
 async def list_testable_clients(
     current_user: dict = Depends(get_current_user),
     limit: int = Query(10, ge=1, le=50),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     List clients that have passport/visa data for testing.
@@ -273,8 +274,6 @@ async def list_testable_clients(
 
     if settings.environment == "production":
         raise HTTPException(status_code=403, detail="Test endpoint disabled in production")
-
-    pool = await get_database_pool()
 
     async with pool.acquire() as conn:
         rows = await conn.fetch(
