@@ -1,0 +1,27 @@
+{
+  "code": "10795",
+  "editorial": {
+    "headline": "Plant-Based Milks, Creamers, and the Quiet Industrial Core",
+    "standfirst": "KBLI 10795 covers plant-derived beverage bases, non-dairy creamers, vegetable-fat emulsions, and substitute cheese, open nationally and not blocked for PMA in Bali.",
+    "body": "KBLI 10795 sits inside food manufacturing, but its real subject is the engineered middle of the modern plant-based aisle. The record covers the making of plant extracts from multiple crops: soy milk, oat or wheat-based drinks, almond, cashew, and other nut-based preparations. It also covers plant-based creamer, vegetable-fat emulsions derived from coconut or palm oil for use in food or beverages, and the production of substitute cheese. In practical terms, this is not a cafe, a trading label, or a small blending counter by default; it is the activity code for manufacturing the plant-derived bases and fat systems that later appear in drinks, mixes, creamers, and dairy alternatives.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators, which means the same KBLI can describe a very small producer as well as a larger industrial manufacturer, provided the registered activity is still the making of the covered products. That matters because the business identity here is defined by production, not by branding language. A founder using this code should be able to point back to the manufacturing scope: plant-based extract, vegetable creamer, vegetable-fat emulsion, or substitute cheese. If the proposed business is only retailing packaged products, serving drinks, or marketing a finished brand without manufacturing, that distinction is not supplied by this record and should not be smuggled into the code.\n\nNationally, the record is clear: PMA status is TERBUKA and the maximum foreign ownership figure is 100%. That is the national ownership position given here, and it should be read plainly. A foreign-owned company can treat this activity as open at the national level, with no lower foreign-share ceiling stated in the slim record. The cited national source is Perpres 10/2021, 49/2021, and the ownership number comes directly from the record rather than from any inferred food-sector rule.\n\nThe Bali reading is also clean, but it needs precision. The record does not mark this activity as blocked in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The same record also states the moratorium rule: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. For this code, however, the supplied Bali field says the moratorium does not block it. The honest conclusion is therefore not a hidden Bali cap or a special local percentage; it is that this nationally open manufacturing code is not recorded here as blocked for PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is not a hidden Bali cap; it is that this nationally open manufacturing code is not recorded here as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

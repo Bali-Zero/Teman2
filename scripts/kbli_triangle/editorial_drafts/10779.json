@@ -1,0 +1,27 @@
+{
+  "code": "10779",
+  "editorial": {
+    "headline": "Seasoning Manufacture With a Clean National and Bali Reading",
+    "standfirst": "KBLI 10779 covers the industrial making of cooking seasonings, sauces, flavour enhancers, vinegar, and related food-seasoning products across all business scales.",
+    "body": "KBLI 10779 is the manufacturing home for cooking seasonings in the broad, practical sense of the word. The scope reaches beyond a single culinary format: it covers seasonings that are already blended or still unblended, powders and other forms, and named examples such as gulai seasoning, curry seasoning, powdered pepper, ginger, cumin, nutmeg, chilli, and cinnamon. In plain English, this is the code for businesses turning spice, flavour, and seasoning inputs into packaged ingredients for kitchens and food production.\n\nThe record also places flavour enhancers, sauces, spice preparations, salt substitutes for food seasoning, petis, and edible vinegar inside the same activity. That matters because the code is not limited to dry spice powder. It includes original and chemically synthetic cooking enhancers such as monosodium glutamate and vanilla powder, as well as products such as mayonnaise, mustard flour, processed mustard, tomato sauce, oyster sauce, and salad sauce. The common thread is manufacturing: the activity is about making these seasoning and condiment products, not merely trading them.\n\nOn scale, the record is unusually straightforward. It is open to Mikro, Kecil, Menengah, and Besar businesses, so the same KBLI can describe a small producer formalising a narrow seasoning line or a larger manufacturer operating at industrial scale. Nothing in the slim record adds a minimum capital threshold, a special timing rule, or a separate technical permit detail, so those should not be read into the code. The usable fact is narrower and stronger: all four listed business scales are open in the record.\n\nThe national-versus-Bali picture is also clear. Nationally, the PMA status is TERBUKA, with pma_max_asing recorded at 100, sourced to Perpres 10/2021, 49/2021. Rendered as ownership language, that is a 100% foreign-ownership ceiling at the national level. Bali does not add a separate percentage in this record. Its Bali status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason given is precise: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule still matters as context because the record states that Bali province blocks all Low + Medium-Low risk KBLI for PMA, island-wide and permanently. But for this activity, the record’s conclusion is not a Bali block; it is a nationally open activity whose Bali-side entry is marked as not blocked by that moratorium.",
+    "pullQuote": "For this activity, the record’s conclusion is not a Bali block; it is a nationally open activity whose Bali-side entry is marked as not blocked by that moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

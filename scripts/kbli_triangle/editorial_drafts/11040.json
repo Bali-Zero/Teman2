@@ -1,0 +1,27 @@
+{
+  "code": "11040",
+  "editorial": {
+    "headline": "Malt Production With a Clear PMA Path in Bali",
+    "standfirst": "KBLI 11040 covers the industrial making of malt from barley, rye, or other cereals, and the record treats it as nationally open to foreign ownership.",
+    "body": "KBLI 11040 is about malt as an industrial ingredient, not the finished products that may later be made from it. The record defines the activity as the making of malt from barley, rye, or other cereals. In plain English, this is the processing step that turns cereal grain into malt: a specialised upstream activity for food, beverage, and ingredient supply chains. The scope is deliberately centred on malt production itself, while the record keeps downstream alcoholic drinks and malt extract or syrup products outside this activity.\n\nFor business registration, the scale position is unusually broad. The slim record marks the activity as open to Mikro, Kecil, Menengah, and Besar operators, so the code is not framed only as a large industrial category. A small producer, a mid-sized processor, or a larger plant can all sit within the same activity description, provided the registered business is genuinely making malt from the cereals named in the scope. That matters because the code is defined by the production activity, not by a brand story, retail channel, or final consumer market.\n\nThe national investment picture is clean. The record marks the PMA status as TERBUKA and gives a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. That means the national line, on this record, is not a partial foreign cap. A foreign-owned company can read the national entry as open up to full foreign ownership, without inventing an extra percentage, minimum capital rule, or licensing condition beyond what the record actually says.\n\nThe Bali picture is also not a hidden closure. The province-level moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But this activity is marked `l4_bali_blocked: false`, with the reason stated as: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". So the honest reading is that KBLI 11040 is nationally open and not blocked for PMA registration in Bali by the moratorium record provided here. The caveat is procedural discipline: do not turn that into a made-up Bali percentage, quota, partnership rule, or licence timeline. The Bali field says not blocked; it does not create a separate Bali ownership ceiling.",
+    "pullQuote": "The honest reading is that KBLI 11040 is nationally open and not blocked for PMA registration in Bali by the moratorium record provided here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

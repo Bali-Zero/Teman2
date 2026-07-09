@@ -1,0 +1,27 @@
+{
+  "code": "12001",
+  "editorial": {
+    "headline": "Hand-Rolled Kretek Manufacturing, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 12001 covers manual kretek cigarette production, nationally open to foreign ownership and not marked as blocked for PMA registration in Bali.",
+    "body": "KBLI 12001 is a tightly defined manufacturing activity: the making of **hand-rolled kretek cigarettes**. The record describes a product built from chopped tobacco, chopped kerosok, chopped cloves, and added flavouring materials, producing the distinctive aromatic kretek mixture. Its defining feature is not only the blend, but the method: the cigarettes are rolled manually by hand, using wrapping materials such as ambri, papir, or tipping.\n\nThe scope also reaches both ordinary hand-rolled kretek cigarettes and filtered hand-rolled kretek cigarettes. That matters because the code is not framed as tobacco trading, retailing, or general cigarette activity. It is about the production process itself: preparing the kretek mixture and turning it into manually rolled cigarettes within the boundaries stated in the record. A founder using this code should therefore read it as a manufacturing classification for the specific hand-rolled kretek line described, not as a wider commercial umbrella.\n\nOn scale, the record is unusually broad. It is open to **Mikro, Kecil, Menengah, and Besar** operators. In practical classification terms, that means the activity is not reserved in the record for only one business size. A small producer and a larger industrial operator are both within the scale range, provided the registered activity is still the hand-rolled kretek manufacturing activity described here. The code’s editorial centre is therefore clear: a manual kretek manufacturing business, available across the full scale ladder listed in the slim record.\n\nThe national-vs-Bali picture is also clean. Nationally, the PMA status is **TERBUKA**, with `pma_max_asing` at **100%**, based on **Perpres 10/2021, 49/2021**. Bali does not add a separate foreign-ownership percentage in this record, and the record does **not** mark the activity as blocked for PMA registration in Bali. Its Bali status is **OK_or_HIGHER_RISK**, with the reason given as: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently; here, the recorded Bali reason places this activity outside that block.",
+    "pullQuote": "This code is nationally open to full foreign ownership, and the Bali record does not mark it as blocked for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

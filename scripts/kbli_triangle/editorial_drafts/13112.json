@@ -1,0 +1,27 @@
+{
+  "code": "13112",
+  "editorial": {
+    "headline": "Industrial Yarn Spinning With a Clear Bali Opening",
+    "standfirst": "KBLI 13112 covers the spinning and processing of non-sewing yarn, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 13112 is the industrial activity of turning fibre into yarn, with one important boundary: it excludes sewing thread. The record describes a broad textile-manufacturing scope, beginning with the spinning of fibres into yarn from many kinds of raw material, whether new or recycled. It also includes the technical finishing steps that make yarn commercially usable in different textile contexts: texturizing, twisting, folding, cabling, and the covering or dipping of synthetic and artificial yarn. Even paper yarn sits inside the same activity field.\n\nThat breadth matters because this is not framed as a narrow craft category. It is the upstream production of yarn itself: the material that later becomes fabric, components, or other textile goods. The activity is open across the full business-scale ladder recorded here: Mikro, Kecil, Menengah, and Besar. In practical classification terms, that means the code is not reserved only for one size of operator. The same KBLI can describe a small spinning operation or a larger industrial facility, provided the declared activity remains within the recorded scope of non-sewing yarn and the listed processing steps.\n\nNationally, the investment position is clean. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, which means the foreign-ownership ceiling should be read as 100%. There is no partial foreign cap in the slim record, and no extra capital threshold, licence condition, or operational timetable is stated here. The national source named for that position is Perpres 10/2021, 49/2021. For a foreign-owned company, the important conclusion is simple: at the national level, this activity is open rather than closed or capped below full foreign ownership.\n\nThe Bali picture is also unusually clear, but for a different reason. Bali’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. This code, however, is not marked as blocked in Bali. The Bali status is OK_or_HIGHER_RISK, and the reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. So the honest reading is not that Bali creates a separate percentage, quota, or partnership condition. It does not, in this record. The record says the Bali moratorium does not block this PMA registration because the relevant large-scale OSS risk sits in the medium-high or high-risk band rather than the blocked low-risk bands.",
+    "pullQuote": "The honest reading is not that Bali creates a separate percentage, quota, or partnership condition; it is that the moratorium does not block this PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

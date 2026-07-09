@@ -1,0 +1,27 @@
+{
+  "code": "10762",
+  "editorial": {
+    "headline": "Tea Processing as a Foreign-Open Manufacturing Activity",
+    "standfirst": "KBLI 10762 covers dried, blended, and extracted tea products, and the record treats it as nationally open to full foreign ownership with no Bali PMA block.",
+    "body": "KBLI 10762 is about the work that turns tea leaves into a finished dry product. The record describes processing tea leaves into dried tea, then packaging that tea in bags, pads, capsules, or other forms of packaging. It also includes derivative tea products, provided they are not ready-to-drink tea beverages. In practical terms, this is the production side of tea: the handling, transformation, blending, extraction, and packaging that create shelf-ready tea formats before they become a beverage served to the consumer.\n\nThe scope is broader than plain dried tea. The record also includes mixing tea with natural ingredients such as mate, spices, herbs, and dried flowers. That makes the activity relevant not only to conventional black, green, or other dried teas, but also to blended products where tea remains the base and natural ingredients shape the final profile. It also covers extraction from tea leaves, including liquid tea extract concentrate and powdered tea extract. The common thread is processing: this code is not framed around a cafe, a drink counter, or ready-to-drink bottled tea, but around manufacturing and packaging tea-based products from the leaf onward.\n\nThe scale picture is unusually straightforward. The record opens this activity to Mikro, Kecil, Menengah, and Besar scales. That means the classification is not reserved only for large manufacturing operations in the record; it can describe a small producer as well as a larger processing facility, so long as the actual activity remains inside the stated scope. The useful editorial distinction is not size alone, but the activity boundary: dried tea, packaged tea, natural-ingredient blends, and tea extracts sit inside this record, while ready-to-drink tea beverages are expressly outside it.\n\nNationally, the foreign-investment signal is clean. The record marks PMA status as TERBUKA and gives pma_max_asing as 100, so the foreign-ownership ceiling should be read as 100%. The source given is Perpres 10/2021, 49/2021. Bali does not add a separate ownership percentage in this record, and none should be inferred. On the Bali side, the status is OK_or_HIGHER_RISK and l4_bali_blocked is false. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this record’s Bali conclusion is that KBLI 10762 is not blocked by that moratorium.",
+    "pullQuote": "This code is not about serving tea; it is about processing tea leaves into packaged, blended, or extracted products.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

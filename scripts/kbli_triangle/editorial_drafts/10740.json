@@ -1,0 +1,27 @@
+{
+  "code": "10740",
+  "editorial": {
+    "headline": "Pasta and Noodle Manufacturing, Open Nationally and Clear for Bali",
+    "standfirst": "KBLI 10740 covers the making of pasta, noodles, couscous and analog rice, with all business scales open and no Bali moratorium block recorded.",
+    "body": "KBLI 10740 is a manufacturing code for the factory-side making of pasta and similar staple products. Its scope is broad but still quite specific: macaroni, noodles, spaghetti, bihun and sohun, whether cooked or uncooked, sit inside it. So do semolina in the form of couscous and analog rice. The center of gravity is production, not restaurant service, retail presentation, or a prepared-meal concept built around pasta.\n\nThat distinction matters because this activity is about making the base product itself. A business registered here is positioning itself as a producer of the noodle, pasta, couscous or analog-rice item, rather than as a seller of finished dishes. The slim record also draws the boundary away from processed foods based on pasta or couscous, and away from soups that contain pasta. In plain English, this is the industrial or small-scale manufacturing lane for the product before it becomes part of a more elaborate food preparation.\n\nThe scale profile is unusually clean. The record opens the activity to Mikro, Kecil, Menengah and Besar operators. That means the code is not written only for a large factory; it can also fit a smaller producer, provided the real activity remains the manufacture of the covered products. The business description should therefore follow the material reality of the operation: making macaroni, noodles, spaghetti, bihun, sohun, couscous or analog rice, not a looser food-brand narrative that drifts outside the recorded scope.\n\nThe investment picture is also straightforward. Nationally, the record marks the activity as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. In editorial terms, that is a full foreign-ownership opening at the national layer. Bali does not add a separate percentage, and this record does not mark the activity as blocked there: l4_bali_blocked is false and the Bali status is OK_or_HIGHER_RISK. The stated reason is precise: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.\" The relevant Bali moratorium rule blocks Low and Medium-Low risk KBLI for PMA island-wide, but this record says that block does not apply here. For a foreign-owned Bali setup, the honest conclusion is therefore clean: this code is nationally open up to 100%, and the Bali record does not block PMA registration under the moratorium note provided.",
+    "pullQuote": "For a foreign-owned Bali setup, the honest conclusion is therefore clean: this code is nationally open up to 100%, and the Bali record does not block PMA registration under the moratorium note provided.",
+    "byTheNumbers": [
+      {
+        "label": "KBLI code",
+        "value": "10740"
+      },
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

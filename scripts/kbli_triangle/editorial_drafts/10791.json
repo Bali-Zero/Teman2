@@ -1,0 +1,27 @@
+{
+  "code": "10791",
+  "editorial": {
+    "headline": "Baby and Special-Purpose Foods, Open Nationally and Clear in Bali",
+    "standfirst": "KBLI 10791 covers the making of baby foods, dietary foods, and medical-purpose foods, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "**KBLI 10791 is a manufacturing code for foods made for specific early-life, dietary, and medical needs.** Its scope covers the making of baby food, food for dietary purposes, and food for medical purposes. The record names infant formula, follow-up milk, other follow-up foods, baby foods and homogenised-ingredient foods, growth formula, complementary foods for breastfeeding, children’s snack foods, drinks for pregnant and breastfeeding mothers, and foods for people with certain diseases. The common thread is not a broad food category but a production activity focused on foods whose intended users are clearly defined by age, nutrition stage, pregnancy or breastfeeding, diet, or health condition.\n\nThe scale picture is unusually straightforward. The record opens the activity to **Mikro, Kecil, Menengah, and Besar** operators, so the classification is not framed as only a large-factory lane. A small producer and a larger manufacturer may both find the code relevant, provided the real activity is the making of the covered products. That scale breadth does not add extra obligations in the record; it only tells us who can register under the code. For editorial purposes, the important point is that the code follows the product and production scope, not the ambition level of the applicant.\n\nNationally, the foreign-investment position is clean. The PMA status is **TERBUKA**, and the foreign-ownership ceiling is **100%**, sourced to **Perpres 10/2021, 49/2021**. In plain terms, the national record treats this activity as open to foreign ownership up to the full stated ceiling. There is no lower percentage in the slim record, no special national threshold, and no minimum-capital figure to infer. The honest national reading is therefore direct: for this KBLI activity, the record supports full foreign ownership at the national level.\n\nThe Bali-side picture is also clear, but it has to be stated precisely. The record marks **l4_bali_blocked** as false and gives the Bali status as **OK_or_HIGHER_RISK**. Its reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That matters because the stated Bali moratorium blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. This record does not create a separate Bali ownership percentage, quota, or partnership condition. The honest reading is national openness without a Bali moratorium block, not a separate Bali ownership cap.",
+    "pullQuote": "The honest reading is national openness without a Bali moratorium block, not a separate Bali ownership cap.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

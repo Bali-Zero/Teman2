@@ -1,0 +1,27 @@
+{
+  "code": "12009",
+  "editorial": {
+    "headline": "Other Tobacco Manufacturing, Open Nationally and Clear in Bali",
+    "standfirst": "KBLI 12009 covers defined tobacco-product manufacturing, with full foreign ownership nationally and no Bali moratorium block in the record.",
+    "body": "KBLI 12009 is the manufacturing home for tobacco products that sit outside the main named categories while still being precisely defined. The Indonesian scope is not vague: it covers the making of other tobacco products, including cigars, kretek cigars, kelembak kemenyan cigarettes, kelobot cigarettes, and kawung cigarettes. It also includes prepared tobacco formats such as fine-cut tobacco, pipe tobacco, snuff, homogenised or reconstituted tobacco, molasses tobacco, chewing tobacco, and nicotine pouches. The word \"other\" therefore needs careful reading. It does not turn the code into a general tobacco business label; it points to a specific production activity around the product forms listed in the record.\n\nThe scale position is unusually broad. The activity is open to Mikro, Kecil, Menengah, and Besar registrations, so the record does not reserve it only for large industrial operators. A small maker and a larger manufacturer both sit within the scale language, as long as the registered activity remains the making of these covered tobacco products. That distinction matters editorially because the scope is about production. It is not framed here as retailing, distribution, marketing, or a broad commercial identity around tobacco; the centre of gravity is the manufacture of the listed products themselves.\n\nNationally, the foreign investment position is clean. The PMA status is TERBUKA, and the maximum foreign ownership figure supplied in the record is 100%. In plain English, the national data does not place a foreign equity cap below full ownership for this activity. The cited national source is Perpres 10/2021, 49/2021, and there is no second national number to balance against it. For a founder reading this classification, the important point is that the national foreign-ownership ceiling is complete, not partial, according to the slim record.\n\nBali does not introduce a separate percentage in this record, and it should not be described as if it does. The Bali status is OK_or_HIGHER_RISK, and the code is not marked as blocked. The reason given is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.\" The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this activity is recorded outside that block. The result is an aligned national-versus-Bali reading: open nationally up to 100% foreign ownership, and not blocked by Bali's PMA moratorium on the record supplied.",
+    "pullQuote": "Bali does not introduce a separate percentage in this record, and it should not be described as if it does.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

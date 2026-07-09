@@ -1,0 +1,27 @@
+{
+  "code": "13131",
+  "editorial": {
+    "headline": "Yarn Finishing with a Clear National and Bali Path",
+    "standfirst": "KBLI 13131 covers the finishing work that gives fibre, yarn, and sewing thread their usable colour, surface, and final treatment.",
+    "body": "KBLI 13131 is a practical industrial classification: the record defines it around bleaching, dyeing, final finishing, and other finishing activities for fibre, yarn, and sewing thread. In plain English, this is the stage where raw or semi-processed textile material is refined into something more controlled, consistent, and usable. Its centre of gravity is not garment making or retailing, but the treatment of the material itself: colour, finish, and the final condition of yarn before it moves further through the textile chain.\n\nThat makes the code broad enough to be relevant across several business sizes. The record opens it to Mikro, Kecil, Menengah, and Besar operators, so it is not reserved only for large industrial players. A small specialist workshop and a larger finishing operation may both sit inside the same activity description, provided the registered activity is truly the finishing of fibre, yarn, or sewing thread. The important editorial point is precision: the code follows the process being performed, not the branding of the business around it.\n\nNationally, the foreign-investment picture is straightforward. The record marks the PMA status as TERBUKA, with pma_max_asing at 100. That means the national field in this record is fully open to foreign ownership, rather than capped below full foreign participation. The source field given for that national position is Perpres 10/2021, 49/2021. Nothing in the slim record adds a special minimum capital rule, licence condition, tax threshold, or timeline, so none should be read into the classification from this editorial.\n\nBali is where the analysis usually needs more care, but this record is unusually clean. The Bali moratorium rule says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. For KBLI 13131, however, l4_bali_blocked is false and the listed Bali status is OK_or_HIGHER_RISK. The stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. So the honest conclusion is that this activity is nationally open and, on the Bali-side fields in this record, not blocked by the moratorium. There is no separate Bali ownership percentage here, and none should be invented.",
+    "pullQuote": "So the honest conclusion is that this activity is nationally open and, on the Bali-side fields in this record, not blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

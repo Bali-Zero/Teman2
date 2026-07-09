@@ -1,0 +1,27 @@
+{
+  "code": "10750",
+  "editorial": {
+    "headline": "Prepared Meals Manufacturing, Open Nationally and Workable in Bali",
+    "standfirst": "KBLI 10750 covers packaged, preserved cooked meals for resale, with full foreign ownership available nationally and no Bali moratorium block in the record.",
+    "body": "KBLI 10750 is the industrial code for making prepared meals: food that has been processed, seasoned, cooked, preserved, packaged, and labelled for resale. The record points to meals kept in durable form, such as canned or frozen products, rather than food made for immediate consumption at a restaurant or by a caterer. The core idea is manufacturing, not service. A product in this activity is a cooked meal product entering the market as a packaged good.\n\nThe scope is broad but not loose. It includes prepared dishes made from meat or poultry; fish-based dishes such as pepes, presto, fish jerky, fried baby fish, battered shrimp, battered fish, and fish and chips; meals containing pasta and rice; vegetable dishes; frozen pizza; and croque-monsieur. The record also sets an important boundary: to qualify as a meal, the processed food must contain at least two different main ingredients, excluding seasoning. That distinction keeps the activity focused on composite cooked meals rather than simple fresh foods or single-ingredient preparations.\n\nThe registration picture is unusually clean. The activity is open across Mikro, Kecil, Menengah, and Besar scales, so the record does not reserve it for only one size of operator. Nationally, its PMA status is TERBUKA, with pma_max_asing recorded as 100. In plain English, the national investment position allows full foreign ownership for this activity, subject only to the facts actually stated in the record. The source named for that national PMA position is Perpres 10/2021, 49/2021.\n\nBali does not change that conclusion in this slim record. The Bali status is OK_or_HIGHER_RISK, l4_bali_blocked is false, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this activity is not marked as blocked by that rule. The honest reading, therefore, is direct: a foreign investor can treat KBLI 10750 as nationally open, with no Bali PMA moratorium block shown in the record.",
+    "pullQuote": "The honest reading is direct: KBLI 10750 is nationally open, and the Bali record does not mark it as blocked.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

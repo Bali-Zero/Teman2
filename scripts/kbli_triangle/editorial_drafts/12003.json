@@ -1,0 +1,27 @@
+{
+  "code": "12003",
+  "editorial": {
+    "headline": "White-Cigarette Manufacturing Without the Bali Barrier",
+    "standfirst": "KBLI 12003 covers non-clove cigarette manufacturing, open nationally to full foreign ownership and not blocked for PMA registration in Bali under the record.",
+    "body": "**KBLI 12003 is a manufacturing category with a narrow, concrete center of gravity: the making of cigarettes or sigarettes that do not contain clove components.** The record’s Indonesian scope is brief, but it is enough to separate this activity from broader tobacco language: this is not a general trading label, not a retail label, and not a catch-all for every tobacco-related business. It is an industrial activity, concerned with producing a specific type of cigarette product, defined by the absence of clove content.\n\nThat manufacturing character matters because the record opens the activity across the full registered business-size range: Mikro, Kecil, Menengah, and Besar. In practical classification terms, this means the code is not reserved only for a large industrial operator in the way many founders might instinctively assume from the word “industry.” The record allows it to sit at every listed scale. The editorial point is not that every scale will look operationally identical, but that the slim record itself does not close the category to smaller registered scales. Anyone reading this code should therefore begin with the activity definition and the registered scale, rather than importing assumptions from the product’s commercial sensitivity.\n\nNationally, the ownership picture is unusually clean in the record. The PMA status is marked TERBUKA, and the maximum foreign ownership value is 100%. That means the national line, as stated here, is full foreign openness for this activity code. There is no lower foreign-share cap in the slim record, and no invented threshold should be added to it. The cited PMA source is Perpres 10/2021, 49/2021, but the operative editorial conclusion from the record is simpler: for KBLI 12003, the national classification does not itself impose a foreign-ownership ceiling below full ownership.\n\nBali is also clear, but for a different reason. The province’s moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently. This code, however, is not marked as blocked: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The stated reason is precise and should be kept precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest national-versus-Bali picture is not a hidden contradiction. Nationally, it is foreign-open up to 100%; in Bali, the record does not block PMA registration under the moratorium logic because the recorded large-scale OSS risk sits above the blocked Low and Medium-Low band.",
+    "pullQuote": "The honest picture is simple: nationally open to 100% foreign ownership, and not blocked in Bali under the moratorium logic recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

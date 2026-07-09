@@ -1,0 +1,27 @@
+{
+  "code": "12002",
+  "editorial": {
+    "headline": "Machine-Made Kretek Manufacturing, Open Nationally and Workable in Bali",
+    "standfirst": "This activity covers automated kretek cigarette production, including filtered variants, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "Machine-made kretek manufacturing is a precise industrial activity: the making of kretek cigarettes from chopped tobacco, chopped kerosok, chopped cloves, and additional flavouring ingredients that produce the characteristic aromatic blend. The defining feature is not just the product, but the method. The cigarettes are rolled automatically by machine, using wrapping materials named in the record as ambri, papir, or tipping. The scope also expressly includes both machine-made kretek cigarettes and machine-made filtered kretek cigarettes.\n\nThat makes this a manufacturing registration rather than a retail, trading, or hospitality category. The record points to production: ingredients are combined, the blend is formed, and the cigarette is machine-rolled into its finished format. A founder choosing this activity should be describing an operation built around making the product itself. The scale picture is unusually broad: the record opens it to Mikro, Kecil, Menengah, and Besar. In plain terms, the activity is not framed only for large factories; the registration field is available across the scale ladder named in the record.\n\nThe national investment picture is also clear. The activity is marked TERBUKA, and the foreign-ownership ceiling in the record is 100%. That means the national field, as captured here, is fully open to foreign ownership rather than capped below full foreign participation. The legal source cited for that national position is Perpres 10/2021, 49/2021. There is no basis in this record to add a special minimum capital figure, a licence timeline, a tobacco-specific filing sequence, or a separate operating threshold; those details are simply not present in the slim record and should not be inferred.\n\nFor Bali, the important point is that the record does not mark this activity as blocked. Bali’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province, but this activity is recorded with the status OK_or_HIGHER_RISK. The reason given is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest reading is not a contradiction between national openness and a Bali prohibition. It is nationally open, with a 100% foreign-ownership ceiling, and the Bali-side record says it is not blocked by the moratorium.",
+    "pullQuote": "The honest reading is simple: this activity is nationally open to full foreign ownership, and the Bali record does not block it under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

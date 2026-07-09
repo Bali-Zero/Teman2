@@ -1,0 +1,27 @@
+{
+  "code": "10797",
+  "editorial": {
+    "headline": "Herbal Infusion Manufacturing Without a Bali PMA Block",
+    "standfirst": "KBLI 10797 covers non-tea herbal brews and refreshing drinks, nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 10797 is a manufacturing classification for herbal infusions: the processing of plant-based brews such as mint, vervain, and chamomile, including herbal steeped drinks that are not tea and refreshing beverages. Its center of gravity is production, not retail presentation or wellness language. The activity is about turning specified herbal ingredients into drinkable infusions and related refreshment products.\n\nThe record opens this activity across the full business-scale ladder: Mikro, Kecil, Menengah, and Besar. That matters because the code is not framed as a narrow cottage activity or as a category reserved only for large industrial operators. A small producer and a larger manufacturing setup can both sit inside the same activity description, provided the registered activity is genuinely the processing of herbal infusions as described in the scope.\n\nNationally, the PMA picture is clean. The record marks the activity as TERBUKA and gives the foreign-ownership ceiling as 100%. In plain English, the national classification is open to foreign ownership up to the full stated ceiling. There is no additional capital number, licence condition, production threshold, or operating timeline in the slim record, so none should be read into the code. The national source attached to the record is Perpres 10/2021, 49/2021, but the operational takeaway here is simply that the activity is nationally foreign-open.\n\nBali does not change that into a hidden percentage cap. The Bali-side status in the record is OK_or_HIGHER_RISK, and the Bali block flag is false. The reason is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The provincial moratorium rule in the record blocks Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not caught by that block on the facts supplied. The honest reading is therefore straightforward: for this code, a foreign-owned registration is nationally open and, on the Bali moratorium fields provided, not blocked in Bali today.",
+    "pullQuote": "For this code, the honest reading is straightforward: nationally foreign-open, and not blocked by the Bali moratorium fields provided.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

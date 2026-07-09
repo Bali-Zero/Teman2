@@ -1,0 +1,27 @@
+{
+  "code": "10801",
+  "editorial": {
+    "headline": "Animal Feed Rations With National PMA Access and No Bali Moratorium Block",
+    "standfirst": "This activity covers the making of animal feed rations for pets and livestock, open across business scales and nationally available to foreign investment.",
+    "body": "KBLI 10801 is a manufacturing activity: the making of various animal feed rations, covering both pet animals and livestock. The record is deliberately broad, and that breadth matters. It does not narrow the activity to one species, one channel, or one production format; its defining feature is the preparation of rations used as animal feed. In plain English, this is the code for businesses whose core activity is producing formulated feed for animals, whether the market is companion animals or farm animals.\n\nThe registration picture is unusually wide on scale. The record marks the activity as open to Mikro, Kecil, Menengah, and Besar. That means the activity is not framed only as a large industrial category in the slim record; it is available across the full listed scale ladder. For founders, this is the practical starting point: the same activity description can sit behind a small feed operation or a larger manufacturing business, as long as the registered business is genuinely engaged in making animal feed rations within the scope stated here.\n\nNationally, the foreign-investment position is straightforward. The PMA status is TERBUKA, and the foreign-ownership ceiling shown in the record is 100%. The cited source is Perpres 10/2021, 49/2021. On the national reading supplied here, this is not a partially closed activity and the record does not impose a lower foreign-share cap. A foreign-owned company can therefore read the national layer as open, with the ownership ceiling expressed at the full percentage recorded.\n\nBali adds the important local test, but here it does not overturn the national opening. The province-wide moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, under the cited governor letter. This activity, however, is not marked as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The honest conclusion is therefore clean: nationally open to PMA, and not blocked by the Bali moratorium on the facts supplied in this record.",
+    "pullQuote": "The honest conclusion is therefore clean: nationally open to PMA, and not blocked by the Bali moratorium on the facts supplied in this record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

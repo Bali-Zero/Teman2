@@ -1,0 +1,27 @@
+{
+  "code": "11059",
+  "editorial": {
+    "headline": "Other Beverage Manufacturing, Without the Bali Block",
+    "standfirst": "KBLI 11059 covers small-to-large production of other drinks, nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 11059 is the catch-all space for beverage manufacturing that sits outside the more specifically named drink categories. In practical terms, the record points to the making of other drinks that are typically not packaged through factory-style production: palm sap water, sugarcane juice, coconut water, and sekoteng powder. The common thread is not a single ingredient, but a production activity: turning these drink products into a business line that needs to be registered under an industrial beverage classification.\n\nThe scale position is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar operators, so this is not written only for a large plant or only for a household-style producer. It can describe a small producer formalising a local drink operation, a growing medium enterprise, or a larger manufacturer, provided the registered activity remains within the scope of these other beverage products. That breadth matters because the code is not merely about what is sold; it is about the production activity that the business is declaring to OSS.\n\nNationally, the foreign-investment picture is clean. The PMA status is marked TERBUKA and the maximum foreign ownership is 100%. In plain English, the national record treats this activity as open to foreign ownership up to full foreign control. There is no separate capital threshold, licence condition, operating timeline, or special tax rule in the slim record, so none should be read into it. The useful conclusion is narrower and stronger: for this activity code, the national investment field says open, and the ownership ceiling field says 100%.\n\nThe Bali reading is also clear, but it needs precision. Bali province has a moratorium rule that blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently. This record, however, does not mark KBLI 11059 as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, with the reason stated as: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. So the honest national-vs-Bali picture is not a hidden Bali percentage or a local partnership condition. It is simpler: nationally open to 100% foreign ownership, and, on this record, not blocked by the Bali moratorium.",
+    "pullQuote": "The honest reading is simple: nationally open to 100% foreign ownership, and not blocked by the Bali moratorium on this record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "12004",
+  "editorial": {
+    "headline": "Tobacco Drying and Leaf Preparation, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 12004 covers the drying and cutting of tobacco leaves, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 12004 is a narrow industrial activity: the drying of tobacco leaves, whether by smoking or by another drying method, including the cutting of tobacco leaves. The record’s Indonesian scope is practical rather than decorative. It points to the post-harvest handling of the leaf itself: taking tobacco leaves and preparing them through drying and leaf cutting, before any wider commercial story begins. That makes this code about a specific production step, not a broad retail, farming, or trading category.\n\nFor founders, the useful signal is that the activity is not confined to one business size. The record marks it as open to **Mikro, Kecil, Menengah, and Besar** scales. In plain English, the classification can sit across the full registered scale range shown in the record, from micro activity through large-scale industry. That breadth matters because it means the code is not described here as a niche only for small operators or only for large factories. The registered scale still has to match the real business being declared, but the slim record itself does not exclude any of the listed scales.\n\nNationally, the PMA picture is clear. The record marks the activity as **TERBUKA**, with `pma_max_asing` at **100%**, sourced to **Perpres 10/2021, 49/2021**. That means the national foreign-ownership ceiling in this record is full foreign ownership. There is no lower foreign-share cap in the data, and there is no extra condition in the slim record that should be invented around it. For a foreign-owned company reading the classification at national level, KBLI 12004 is therefore an open activity in the record’s terms.\n\nBali is also important, because Bali can be stricter in practice through its moratorium filter. Here, however, the Bali side does not reverse the national result. The record gives `l4_bali_blocked` as **false** and marks `l4_bali_status` as **OK_or_HIGHER_RISK**. Its reason is specific: **“OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.”** The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is not blocked by that rule according to the slim record. The honest reading is therefore clean: KBLI 12004 is nationally open to PMA up to 100%, and the record does not mark it as blocked for PMA registration in Bali.",
+    "pullQuote": "The honest reading is clean: KBLI 12004 is nationally open to PMA up to 100%, and the record does not mark it as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

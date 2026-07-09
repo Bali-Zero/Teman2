@@ -1,0 +1,27 @@
+{
+  "code": "10773",
+  "editorial": {
+    "headline": "Food-Standard Industrial Salt, Open Nationally and Nuanced in Bali",
+    "standfirst": "This activity covers the processing of salt into food-standard industrial input for food and beverage manufacturing, open nationally to PMA but requiring precise Bali-side OSS verification.",
+    "body": "KBLI 10773 is a manufacturing activity with a narrow, practical purpose: it covers processing salt into food-standard industrial salt used in the production of assorted food and beverages. The record frames it as an input industry, not a retail or consumer-facing category. Its centre of gravity is the transformation of salt into a standardised industrial ingredient for downstream food and drink production.\n\nThe registration profile is broad. The record opens this activity across Mikro, Kecil, Menengah, and Besar scales, which means the classification is not reserved only for large industrial players. A smaller producer and a larger factory can both sit inside the same activity description, provided the declared business activity remains within the recorded scope. For founders, the important point is that scale affects how the activity is assessed in OSS and in Bali; it does not change what the activity is.\n\nNationally, the investment picture is clear. The record marks the activity as TERBUKA for PMA and gives the foreign-ownership ceiling as 100%, sourced to Perpres 10/2021, 49/2021. In plain English, the national record treats this as foreign-open up to full foreign ownership. The same slim record also carries a technical scope note: basic inorganic chlor and alkali chemical industry using a mercury process is prohibited for new investment, business expansion, and development. That note should be read as a scope boundary inside the record, not as a general licence condition invented outside it.\n\nBali is more delicate than the national headline. The record does not mark this activity as fully blocked in Bali, but it does flag it as BLOCCATO_DIPENDE_SCOPE and explains the reason directly: “OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity”. The underlying Bali rule is also explicit: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. So the honest reading is not that Bali has a separate foreign-ownership cap. It does not, in this record. The honest reading is that national PMA openness is real, while Bali registration depends on the exact declared scope and live OSS risk posture.",
+    "pullQuote": "National PMA openness is real here, but in Bali the decisive issue is the exact declared scope and live OSS risk posture.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}
