@@ -1,0 +1,27 @@
+{
+  "code": "01299",
+  "editorial": {
+    "headline": "Other Perennial Crops, With Bali Open Only Above the Moratorium Line",
+    "standfirst": "KBLI 01299 covers a broad field of perennial crop farming, nationally open to foreign ownership and not blocked for Bali PMA registration at higher-risk scale.",
+    "body": "KBLI 01299 is the residual but important home for **other perennial crop farming**: cultivation that does not sit neatly inside a narrower named activity, yet still has a real agricultural profile. The record points to cemara; jatropha; aren; calliandra; gamal; weaving-oriented plants such as bamboo and rattan; and short-cycle coppice energy plants such as poplar and willow. It is not just the act of planting. The scope runs across land preparation, planting, maintenance, harvesting, and post-harvest work when those steps are carried out as one connected agricultural activity.\n\nThat breadth matters. This code can cover perennial crop work inside forest areas, and it also covers planting these crops to produce seed in the form of grains. The record also frames the activity in two operational lenses: seed and nursery activity for cemara and other perennial crops, and cultivation of cemara and other perennial crops. In plain English, it is for businesses whose core activity is growing these long-lived plants, whether the output is crop material, seed, or a cultivation cycle that includes the practical field and post-harvest chain.\n\nOn the national investment reading, the code is straightforward: its PMA status is **TERBUKA**, with a foreign ownership ceiling of **100%**. The open scales are **Mikro, Kecil, Menengah, and Besar**, so the record does not confine the activity to one size of enterprise. A foreign investor reading only the national line would see a fully open activity, including for larger operations. That is the clean national position, and the foreign-ownership point should be stated without unnecessary drama: the record shows no foreign share cap below full ownership.\n\nThe Bali picture is more specific, and more useful for a founder. Bali’s moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province, but this record is marked **l4_bali_blocked: false**. The reason is precise: OSS risk at **Besar** scale is **Menengah-Tinggi/Tinggi**, so it is not blocked by the moratorium. In practice, this is not a case where the code is nationally open but unusable for a foreign-owned Bali registration today. It is nationally open, and the Bali status is **OK_or_HIGHER_RISK** because the higher-risk reading keeps it outside the moratorium block. The honest conclusion is therefore measured: KBLI 01299 is available for PMA registration in Bali when treated on the higher-risk scale described in the record, without inventing extra licence, capital, tax, or timing requirements beyond the slim record itself.",
+    "pullQuote": "This is not a case where the code is nationally open but unusable for a foreign-owned Bali registration today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

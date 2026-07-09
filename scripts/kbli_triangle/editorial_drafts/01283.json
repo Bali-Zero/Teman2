@@ -1,0 +1,27 @@
+{
+  "code": "01283",
+  "editorial": {
+    "headline": "Nutmeg Cultivation, Clearly Open Nationally and in Bali",
+    "standfirst": "This code covers nutmeg cultivation from land preparation through harvest, including integrated post-harvest work and seed production.",
+    "body": "01283 is the activity code for nutmeg agriculture. In plain English, it covers the cultivation of nutmeg as a complete agricultural activity: preparing land, sowing, nursery work, planting, maintaining the crop, harvesting it, and carrying out post-harvest work when those steps are part of one integrated operation. The record also makes room for nutmeg planting whose purpose is seed production, specifically seed in the form of nutmeg kernels. This is not a general spice-trading label or a loose plantation category; its center of gravity is the cultivation cycle itself, including nursery and seedling work where that is part of producing nutmeg plants or nutmeg seed.\n\nFor Indonesian business registration, the scale picture is broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar. That means the code is not reserved only for a large estate model; it can describe a small agricultural operator, a middle-scale farming business, or a large-scale operation, so long as the registered activity remains within the stated scope. The useful editorial test is simple: if the business is actually doing nutmeg cultivation, including the land, crop-care, harvest, integrated post-harvest, nursery, or seed-production work described here, this is the substance the code is trying to capture.\n\nThe foreign-investment picture is also unusually clean at the national level. The PMA status is TERBUKA, and the foreign ownership ceiling in the record is 100%. There is no partial cap to explain here: on the record provided, foreign ownership is not limited below full ownership. That should not be stretched into claims about permits, operating approvals, land rights, tax treatment, or practical timelines, because none of those facts appear in the record. The reliable point is narrower and stronger: nationally, this activity is open to PMA, with the listed ownership ceiling at 100%, under the cited presidential-regulation source.\n\nBali does not change that conclusion on this record. The Bali status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The stated reason is that OSS risk at the Besar scale is Menengah-Tinggi/Tinggi, so the activity is not blocked by the Bali moratorium. The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this code is not caught by that block as presented. The honest national-vs-Bali picture is therefore direct: 01283 is foreign-open nationally, has a 100% foreign-ownership ceiling in the record, and is not blocked for PMA registration in Bali by the moratorium described here.",
+    "pullQuote": "The honest national-vs-Bali picture is therefore direct: 01283 is foreign-open nationally, has a 100% foreign-ownership ceiling in the record, and is not blocked for PMA registration in Bali by the moratorium described here.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

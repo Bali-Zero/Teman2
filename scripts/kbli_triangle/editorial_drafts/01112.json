@@ -1,0 +1,27 @@
+{
+  "code": "01112",
+  "editorial": {
+    "headline": "Growing Non-Rice, Non-Maize Cereals Under KBLI 01112",
+    "standfirst": "KBLI 01112 covers integrated cultivation of cereals such as wheat, sorghum, barley, rye, and millet, with national PMA openness and no Bali moratorium block on the record.",
+    "body": "KBLI 01112 is the agricultural code for cereal farming outside rice and maize. Its scope is not a narrow commodity label; it covers the working sequence of cultivation itself: land preparation, planting, crop maintenance, harvesting, and post-harvest activity when those steps are carried out as one integrated farming activity. The record names wheat and oats, sorghum or cantel, barley, rye, millet, and similar cereals. It also includes seed production where the cereal crop is grown to produce seed in the form of grain.\n\nThat matters because this code is about an operating farm activity, not only the trading or handling of grain after someone else has grown it. A business using this code is identifying itself with the cultivation cycle: preparing the land, growing the crop, maintaining it through the season, harvesting it, and, where relevant, completing post-harvest work as part of the same agricultural chain. For founders, the practical reading is simple: the code belongs to businesses whose primary activity is growing these non-rice, non-maize cereals, including wheat seed cultivation where the same integrated field-to-post-harvest sequence applies.\n\nThe scale position is broad. The slim record opens this activity to Mikro, Kecil, Menengah, and Besar scales, so the code is not reserved only for a single business size. Nationally, the foreign-investment picture is also clear on the record: PMA status is TERBUKA, with a maximum foreign ownership figure of 100%, sourced to Perpres 10/2021, 49/2021. There is no foreign share cap below full ownership in the record, so the national reading is that foreign ownership is open up to 100% for this activity.\n\nThe Bali reading is more nuanced, but in this case it does not reverse the national position. The record states that Bali’s moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently, but this activity is marked l4_bali_blocked: false. The stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. In plain terms, the honest conclusion is not that every foreign-owned agricultural idea is automatically easy in Bali; it is that this specific code, on this record, is nationally foreign-open and is not currently marked as blocked for PMA registration in Bali by the moratorium.",
+    "pullQuote": "In plain terms, this specific code is nationally foreign-open and is not currently marked as blocked for PMA registration in Bali by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

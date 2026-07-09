@@ -1,0 +1,27 @@
+{
+  "code": "01150",
+  "editorial": {
+    "headline": "Tobacco Farming, From Fieldwork to Seed",
+    "standfirst": "KBLI 01150 covers integrated tobacco cultivation, including land preparation, planting, harvest, post-harvest handling, and seed production.",
+    "body": "KBLI 01150 is the farming code for tobacco as an agricultural crop, not for the making of tobacco products. Its centre of gravity is the plantation or farm cycle: preparing land, sowing, planting, maintaining the crop, harvesting, and carrying out post-harvest work when those steps form one continuous agricultural activity. The scope also includes cleaning and slicing tobacco when those activities cannot be separated from the farming operation itself. It is a field-based classification, concerned with cultivation and immediately connected handling, not downstream manufacturing.\n\nThat distinction matters because the record draws a clear boundary around what belongs here. Tobacco seed activity is included when the planting is done to produce seed in the form of grain, and the record also recognises tobacco nursery and seedling work. In practical registration terms, this is the code for an operator whose business is the growing of tobacco plants and the inseparable farm processes around them. It is not the code for a company whose main activity is transforming tobacco into finished tobacco products; the slim record expressly keeps that outside this classification.\n\nThe scale picture is broad. The activity is open across Mikro, Kecil, Menengah, and Besar, so the code is not framed only for smallholders or only for large plantation-style operators. A founder reading this should see the scale line as unusually straightforward: the classification can sit with micro, small, medium, or large business registrations, depending on the actual operating model. The same record also states that the national PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. In plain English, at the national investment-rule level, this activity is open to foreign ownership up to full ownership.\n\nThe Bali picture is also clear, and it should not be made more complicated than the record makes it. The Bali moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently, but this record marks KBLI 01150 as not blocked. The stated reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not caught by that moratorium. For this code, the honest national-versus-Bali reading is therefore aligned rather than contradictory: nationally it is open to PMA up to 100%, and in Bali it is not blocked by the moratorium according to the record. The registration question still has to stay inside the exact tobacco-farming scope described above, but the Bali status itself is not a hidden prohibition.",
+    "pullQuote": "For this code, the honest national-versus-Bali reading is aligned rather than contradictory.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

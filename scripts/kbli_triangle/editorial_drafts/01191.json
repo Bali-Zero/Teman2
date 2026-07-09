@@ -1,0 +1,27 @@
+{
+  "code": "01191",
+  "editorial": {
+    "headline": "Forage Crop Farming With a Bali Registration Caveat",
+    "standfirst": "KBLI 01191 covers the full field-to-post-harvest cycle for livestock feed crops, nationally open to PMA but conditional in Bali by exact OSS scope.",
+    "body": "KBLI 01191 is the classification for farming crops grown as livestock feed. Its scope is not the trading of feed or the management of livestock, but the agricultural production of green forage: feed grasses and leguminous plants such as elephant grass, king grass, odot grass, setaria, alfalfa, lamtoro, and Indigoferea zollingeriana. The record also brings seedling and seed activities for forage plants into view, alongside cover-crop cultivation, so the centre of gravity is clear: this is crop agriculture serving the feed chain.\n\nThe activity is described as an integrated farming sequence. It begins with land preparation, continues through planting and crop maintenance, then moves into harvesting and post-harvest work when those steps are carried out as one connected operation. That matters because the classification is anchored in the activity being performed, not in a marketing label. A founder using this code should be able to point to actual forage or cover-crop cultivation, and to the practical agricultural stages that make the activity real.\n\nOn the national investment picture, the record is straightforward. The PMA status is open, the foreign-ownership ceiling is 100%, and the code is open across Micro, Small, Medium, and Large scales. In plain terms, this is not a nationally closed activity for foreign-owned setup, and the record does not impose a foreign-share cap below full ownership. The source cited for that national PMA position is Perpres 10/2021, 49/2021, so the national reading is permissive within the limits of the activity as described.\n\nBali is the more careful part of the analysis. The province blocks all Low and Medium-Low risk KBLI for PMA under an island-wide, permanent moratorium, and this record marks the Bali status as scope-dependent rather than simply open or blocked. It says the activity is not blocked outright, but that OSS risk at Large scale is low for some scopes and higher for others. The practical conclusion is narrow: PMA registration in Bali is possible only if the exact declared activity lands in the higher-risk scope; the live OSS classification must be checked against the precise activity before treating Bali as available.",
+    "pullQuote": "Bali is not a simple yes or no here: the code is nationally open, but the exact declared scope decides whether PMA registration can pass locally.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

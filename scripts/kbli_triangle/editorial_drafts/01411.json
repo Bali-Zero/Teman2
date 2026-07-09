@@ -1,0 +1,27 @@
+{
+  "code": "01411",
+  "editorial": {
+    "headline": "Beef Cattle Built for Scale, Not Ambiguity",
+    "standfirst": "This activity covers beef-cattle fattening and breeding, open across all business scales and nationally available to foreign ownership, including in Bali’s current PMA reading.",
+    "body": "KBLI 01411 is about the practical upstream work behind beef supply: raising beef cattle through fattening until the animals are ready for slaughter, and breeding beef cattle to produce breeding stock, semen, and embryos. Its scope is not framed as trading, retailing, or food service. It sits at the production end of the chain, where the business activity is the cultivation and breeding of beef cattle themselves.\n\nThat makes the code useful for operators whose registered activity is centered on livestock production rather than downstream distribution. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar scales, so the category is not limited to one size of enterprise. A small holder, a growing breeding operation, or a larger cattle-fattening business can all read the scale field as part of the same activity family, provided the registered business genuinely matches the described scope.\n\nThe national foreign-investment position is also clear. The PMA status is TERBUKA, and the foreign-ownership ceiling is recorded at 100%. In plain English, the activity is nationally open to foreign ownership up to full ownership, according to the cited source in the record. There is no partial cap in this slim record, and no basis here to invent one. For a foreign-owned setup, the decisive question is therefore not whether the activity is nationally closed; on this record, it is not.\n\nBali’s local moratorium picture does not overturn that conclusion for this code. The record says Bali blocks Low and Medium-Low risk KBLI for PMA across the province, but it also says this activity is not blocked because the OSS risk at Besar scale is Menengah-Tinggi/Tinggi. The Bali status is therefore not a prohibition in this slim record: it is marked OK_or_HIGHER_RISK, with l4_bali_blocked set to false. The honest reading is that KBLI 01411 is nationally foreign-open, carries a 100% recorded foreign-ownership ceiling, and is not blocked for PMA registration in Bali under the moratorium logic supplied here.",
+    "pullQuote": "The honest reading is that KBLI 01411 is nationally foreign-open, carries a 100% recorded foreign-ownership ceiling, and is not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

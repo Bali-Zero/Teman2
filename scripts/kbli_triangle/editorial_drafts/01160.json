@@ -1,0 +1,27 @@
+{
+  "code": "01160",
+  "editorial": {
+    "headline": "Fibre-Crop Farming With a Clean National Opening",
+    "standfirst": "KBLI 01160 covers fibre-crop cultivation for textile raw materials, open nationally to every business scale and not marked as blocked for PMA registration in Bali.",
+    "body": "KBLI 01160 is a farming classification for fibre crops: cotton, jute, kenaf, flax stems, ramie, sisal, abaca, and other textile raw materials from Agave and similar fibre-producing plants. Its scope is not limited to putting plants in the ground. The record describes an integrated agricultural chain: land preparation, sowing or planting, crop maintenance, harvesting, and post-harvest activity when those steps form one continuous fibre-crop operation. It also includes nursery and seed-production activity for fibre plants, including cultivation intended to produce seed in the form of grain.\n\nThat breadth matters because this is a primary-production code, not a downstream textile-manufacturing category. The centre of gravity is the farmed biological material: kapok, cotton, rosella, ramie, jute, linen, agave, abaca, kenaf, sisal, and other textile raw-material crops. A founder using this code is describing the cultivation of fibre-bearing plants and the immediate agricultural sequence around them. The code is strongest when the business activity can be explained as one farming system, from land preparation through harvest and related post-harvest handling, rather than as a separate trading, processing, or finished-goods activity.\n\nNationally, the record gives a clean opening. The PMA status is TERBUKA, with pma_max_asing at 100, which means the foreign-ownership ceiling should be read plainly as 100%. The activity is also open across Mikro, Kecil, Menengah, and Besar scales. In practical editorial terms, the national picture is not ambiguous in this slim record: fibre-crop farming under this classification is open to the full set of listed business scales, and the foreign share is not capped below full ownership.\n\nThe Bali picture is also unusually clear, but for a different reason. The record does carry Bali's moratorium rule: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, with the stated source being the governor letter B.27.000/642/PM/DPMPTSP. Yet this specific activity is not marked as blocked in Bali. Its l4_bali_status is OK_or_HIGHER_RISK, and the stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore measured, not alarmist: nationally open, 100% foreign ownership in the record, open across all listed scales, and not marked as blocked for PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is measured: nationally open, 100% foreign ownership in the record, open across all listed scales, and not marked as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

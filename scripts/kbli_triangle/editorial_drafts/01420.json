@@ -1,0 +1,27 @@
+{
+  "code": "01420",
+  "editorial": {
+    "headline": "Horse Breeding and Equine Farming With a Clear Bali Path",
+    "standfirst": "KBLI 01420 covers the breeding and cultivation of horses and similar equines, open across business scales and not blocked for PMA registration in Bali.",
+    "body": "KBLI 01420 is a practical agricultural classification for the breeding and cultivation of horses and similar equines. Its scope is not limited to one kind of animal use: it covers horses raised for meat, milk, racing, riding, draught work, cavalry, polo, companionship, and related equines such as mules and hinnies. It also reaches the reproductive side of the activity, including breeding stock, semen, and embryos. In plain English, this is the code for producing horses and comparable equines as livestock and breeding assets, including the production of horse milk and similar milk.\n\nThe boundary matters. This code is about cultivation and breeding, not the management of sports riding or racing facilities. A founder registering under it should therefore be describing an agricultural or breeding operation, not a venue business built around stables, riding activity, or racing services. The record’s Indonesian scope points to the animal-production chain: raising, breeding, producing offspring, producing genetic material, and producing milk. That gives the code a fairly broad commercial shape, but still a disciplined one.\n\nOn business scale, the classification is unusually inclusive. It is open to Mikro, Kecil, Menengah, and Besar, so it can describe anything from a small breeding operation to a larger equine farming business. Nationally, the PMA status is TERBUKA, with a maximum foreign ownership figure of 100%. That means the record does not show a foreign shareholding cap below full ownership. For a foreign-owned setup looking at the national classification, the headline is simple: the activity is open, and the ownership ceiling in the record is 100%.\n\nBali adds a second test, and in this record the answer remains open. The province’s moratorium blocks all Low and Medium-Low risk KBLI for PMA registration across Bali, but this activity is marked OK_or_HIGHER_RISK. The stated Bali reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. That does not turn the code into a promise that every operational detail will be easy; it means that, on the fields given here, a foreigner is not barred from registering this activity in Bali by the moratorium. For this code, the honest national-vs-Bali picture is aligned: foreign-open nationally, and not blocked for PMA registration in Bali.",
+    "pullQuote": "For this code, the honest national-vs-Bali picture is aligned: foreign-open nationally, and not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

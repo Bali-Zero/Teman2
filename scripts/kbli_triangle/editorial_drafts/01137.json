@@ -1,0 +1,27 @@
+{
+  "code": "01137",
+  "editorial": {
+    "headline": "Sugar Beet and Non-Cane Sweetener Farming, Read Precisely",
+    "standfirst": "A farming classification for sugar beet, stevia, sweet sorghum, and similar non-cane sweetener crops, open nationally and not blocked for PMA registration in Bali.",
+    "body": "This activity is the agricultural classification for sugar beet and sweetener crops other than sugar cane. In practical terms, it covers the field work and crop-cycle work behind plants such as stevia and sweet sorghum: land preparation, planting, maintenance, harvesting, and post-harvest activity when those steps are carried out as one integrated farming operation. It also includes nursery and seedling work for sugar beet and other non-cane sweetener plants, so the code is not limited to harvesting mature crops. Its centre of gravity is the cultivation chain itself, not a detached trading or processing story.\n\nThe registration profile is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar scales, which means the classification can describe anything from a very small cultivation setup to a large organised farming operation, provided the actual activity remains within the stated agricultural scope. That breadth matters because it keeps the code anchored in what is being grown and how the farming cycle is organised, rather than in a narrow business size. A founder should read the scope closely: the post-harvest work belongs here only when it is part of the same sequence of activity around the crop.\n\nNationally, the foreign-investment signal is clean. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%. That means the record does not show a foreign stake cap below full ownership for this activity. The cited national basis is Perpres 10/2021, 49/2021, and nothing in the slim record adds a special capital figure, deadline, tax treatment, or separate operating permission. The honest reading is therefore straightforward: at national level, this is an open agricultural activity for a foreign-owned setup, so long as the registered activity genuinely matches sugar beet or other non-cane sweetener crop farming as described.\n\nBali does not overturn that conclusion on this record. The Bali status is OK_or_HIGHER_RISK, and the record states that the activity is not blocked by the moratorium because OSS risk at scale Besar is Menengah-Tinggi/Tinggi. That is the key distinction. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province, but this activity is recorded as outside that blocked lane. The result is not a hidden prohibition but a cautiously open Bali picture: nationally open, 100% foreign ownership on the record, and not blocked for PMA registration in Bali under the stated moratorium reason.",
+    "pullQuote": "The result is not a hidden prohibition but a cautiously open Bali picture: nationally open, 100% foreign ownership on the record, and not blocked for PMA registration in Bali under the stated moratorium reason.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

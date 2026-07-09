@@ -1,0 +1,27 @@
+{
+  "code": "01279",
+  "editorial": {
+    "headline": "KBLI 01279: Beverage-Plant Farming That Stays Open in Bali",
+    "standfirst": "A clear lane for integrated farming of other beverage-material plants, open across all business scales and not caught by Bali’s PMA moratorium.",
+    "body": "KBLI 01279 covers the farming of plants used as materials for beverages, in the category that sits outside the specifically named beverage crops. Its practical scope is agricultural rather than retail or processing as a standalone business: the activity includes preparing land, sowing, nursery and seedling work, planting, maintaining the crop, harvesting, and post-harvest work when those steps form one connected farming sequence.\n\nThat integrated character matters. This is not merely the sale of a harvested commodity, and it is not a detached seed-trading label. The slim record frames the activity around cultivation itself, including pembibitan and pembenihan for these other beverage-material plants. In English, the clean reading is: a business registering this activity is positioning itself as the operator of the farming cycle, from land preparation and propagation through maintenance, harvest, and the immediate post-harvest stage when carried out as one chain.\n\nOn scale, the record is unusually broad. The activity is open to Mikro, Kecil, Menengah, and Besar businesses, so it is not reserved only for a large plantation-style setup or only for a smallholder format. A local founder, a growing agricultural company, or a larger operator can all read the scale line directly: all four scale categories are present. Nationally, the foreign-investment treatment is also direct. The PMA status is TERBUKA, and the stated foreign-ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. There is no minority cap in the record to soften or reinterpret.\n\nThe Bali picture is where this code needs careful reading, because Bali’s provincial moratorium blocks all Low and Medium-Low risk KBLI for PMA across the island. This record, however, is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the reason given is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore clean: nationally, KBLI 01279 is foreign-open up to 100%; in Bali, it is not caught by the stated PMA moratorium on Low and Medium-Low risk activities.",
+    "pullQuote": "Nationally, KBLI 01279 is foreign-open up to 100%; in Bali, it is not caught by the stated PMA moratorium on Low and Medium-Low risk activities.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

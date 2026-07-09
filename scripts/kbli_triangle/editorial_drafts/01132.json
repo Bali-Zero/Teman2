@@ -1,0 +1,27 @@
+{
+  "code": "01132",
+  "editorial": {
+    "headline": "Seasonal Fruit Farming With Room for Full Foreign Ownership",
+    "standfirst": "KBLI 01132 covers integrated seasonal fruit cultivation, from land preparation to postharvest, and is nationally open through every business scale.",
+    "body": "KBLI 01132 is for the farming of seasonal fruit crops. In practical terms, the record names watermelon, blewah, melon, and timun suri, while also leaving room for similar horticultural fruit activities. Its scope is not a loose label for trading fruit or handling produce after someone else has grown it. The activity is agricultural: preparing the land, sowing, planting, maintaining the crop, harvesting it, and carrying out postharvest work when those steps form one continuous cultivation chain.\n\nThe code also reaches into the seed side of the same activity. Where seasonal fruit crops are planted to produce seed in the form of biji, or where the work is described as nursery and seedling activity for horticultural fruit plants, the record keeps it inside this same agricultural frame. That makes the code useful for operators whose business model is built around the crop cycle itself, not only the finished fruit. The essential test is whether the work remains tied to seasonal fruit cultivation and its directly connected stages.\n\nThe scale position is unusually broad. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, so it can describe anything from a small registered farm operation to a larger cultivation platform. Nationally, the investment position is also clean: the code is marked TERBUKA, with foreign ownership allowed up to 100%. For a foreign-owned PMA structure, that means the record does not impose a foreign-share ceiling below full ownership.\n\nThe Bali reading is equally important, because many codes that look open nationally can be stopped at provincial PMA registration if they fall under Bali's moratorium for Low and Medium-Low risk KBLI. This record does not do that. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is that the OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore straightforward: on this record, seasonal fruit farming under KBLI 01132 is nationally open to foreign ownership up to 100%, and it is not marked as blocked for PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is that KBLI 01132 is nationally open to full foreign ownership and is not marked as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
