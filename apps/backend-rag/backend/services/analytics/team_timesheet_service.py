@@ -352,14 +352,25 @@ class TeamTimesheetService:
                 date,
             )
 
+            # clock_out_bali (and, for edge-case rows, clock_in_bali / work_date
+            # / hours_worked) can be NULL — e.g. a member who is still clocked in
+            # has no clock_out yet. Calling .strftime() on None raised
+            # AttributeError -> the router's generic except -> HTTP 500 (observed
+            # live on GET /api/team/hours). Guard every nullable field.
             return [
                 {
                     "user_id": row["user_id"],
                     "email": row["email"],
-                    "date": row["work_date"].isoformat(),
-                    "clock_in": row["clock_in_bali"].strftime("%H:%M"),
-                    "clock_out": row["clock_out_bali"].strftime("%H:%M"),
-                    "hours_worked": float(row["hours_worked"]),
+                    "date": row["work_date"].isoformat() if row["work_date"] is not None else None,
+                    "clock_in": row["clock_in_bali"].strftime("%H:%M")
+                    if row["clock_in_bali"] is not None
+                    else None,
+                    "clock_out": row["clock_out_bali"].strftime("%H:%M")
+                    if row["clock_out_bali"] is not None
+                    else None,
+                    "hours_worked": float(row["hours_worked"])
+                    if row["hours_worked"] is not None
+                    else 0.0,
                 }
                 for row in rows
             ]
