@@ -176,7 +176,7 @@ export default async function KBLICodePage({
         sessionId="SSR"
         trust={{ clientCount: 5000, rating: 4.9, responseMinutes: 15 }}
       >
-        <article className="pb-16">
+        <article className="pb-28">
           {/* BREADCRUMB */}
           <KBLIBreadcrumb items={breadcrumbs} />
 
