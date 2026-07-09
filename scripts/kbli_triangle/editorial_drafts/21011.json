@@ -1,0 +1,27 @@
+{
+  "code": "21011",
+  "editorial": {
+    "headline": "KBLI 21011: Pharmaceutical Raw Materials for Human Medicine",
+    "standfirst": "A precise classification for making and processing human pharmaceutical ingredients, nationally open to PMA and not blocked by Bali’s moratorium record.",
+    "body": "KBLI 21011 covers the upstream industrial work behind human medicines: the making and processing of active drug materials and supporting pharmaceutical ingredients for human use. The scope reaches across chemical, natural, animal, plant, and biological origins, including medicinal substances, antisera and other blood fractions, vaccines, homeopathic preparations, antibiotic and vitamin actives, salicylic substances, pharmacological inputs for the medicines industry, processed blood, chemically pure sugar, pharmaceutical salts, gland processing, and gland extracts.\n\nThis is therefore not a retail, clinic, or distribution label. It is an industrial activity code for businesses whose substance is production or processing of pharmaceutical raw materials. The record opens the activity across the full scale ladder: Mikro, Kecil, Menengah, and Besar. That matters because the code is not confined to one size of operator in the slim record; the decisive question is whether the registered activity really sits inside the described manufacturing and processing scope.\n\nNationally, the PMA picture is clear. The record marks the activity as TERBUKA and gives a foreign-ownership ceiling of 100%, with Perpres 10/2021, 49/2021 as the PMA source. In plain English: on the national investment list supplied here, this code is open to foreign investment up to full foreign ownership. There is no lower cap, special minimum capital figure, or additional ownership condition in the slim record, so none should be read into it.\n\nBali does not reverse that conclusion in this record. The Bali status is OK_or_HIGHER_RISK, l4_bali_blocked is false, and the reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this code is not marked as blocked. The honest read is therefore simple: KBLI 21011 is nationally foreign-open, and the Bali moratorium data supplied here does not block PMA registration for it.",
+    "pullQuote": "The honest read is therefore simple: KBLI 21011 is nationally foreign-open, and the Bali moratorium data supplied here does not block PMA registration for it.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

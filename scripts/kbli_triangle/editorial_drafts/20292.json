@@ -1,0 +1,27 @@
+{
+  "code": "20292",
+  "editorial": {
+    "headline": "Explosives Manufacturing, Nationally Open and Bali-Clear at Higher Risk",
+    "standfirst": "KBLI 20292 covers the making of explosives and related propellant goods, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 20292 is an industrial manufacturing activity, not a trading or service classification. The record defines it through the making of explosive goods: gunpowder, dynamite, detonators, fireworks, firecrackers, mercury fulminate, and rocket propellants. That scope is broad enough to cover both recognisable consumer-facing items, such as fireworks and firecrackers, and more specialised explosive and propellant materials. The common thread is production: this code is about manufacturing the goods themselves.\n\nThe scale profile is unusually wide in the record. The activity is open to Mikro, Kecil, Menengah, and Besar scales, so the classification is not reserved only for a large-scale industrial operator. A founder reading the code should still keep the interpretation disciplined: the record says which business scales are open, but it does not add operational conditions, facility requirements, thresholds, or licensing steps. Those cannot be inferred here. What can be said is that the code is structurally available across the listed scale bands.\n\nNationally, the investment picture is clear. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%, with the source given as Perpres 10/2021, 49/2021. In plain English, the national record treats this activity as open to foreign ownership up to the full stated ceiling. There is no lower foreign-stake cap in the slim record, and none should be invented. For a foreign-owned setup, the national reading is therefore not ambiguous: this is a foreign-open activity at the recorded maximum.\n\nThe Bali reading is also important, because this is where many nationally open activities become unusable for PMA registration on the island. Here, however, the record does not mark the activity as blocked. Its Bali status is OK_or_HIGHER_RISK, and the reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. This code is therefore not blocked by that moratorium in the record. The honest conclusion is narrow but useful: nationally, KBLI 20292 is open to PMA up to 100%; in Bali, the slim record does not show a PMA moratorium block.",
+    "pullQuote": "The honest conclusion is narrow but useful: nationally, KBLI 20292 is open to PMA up to 100%; in Bali, the slim record does not show a PMA moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

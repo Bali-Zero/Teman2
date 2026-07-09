@@ -1,0 +1,27 @@
+{
+  "code": "20222",
+  "editorial": {
+    "headline": "Varnish Manufacturing Is Open Nationally and Not Blocked in Bali",
+    "standfirst": "KBLI 20222 covers the making of lacquer, varnish-related products, thinners, removers, and mastic, with national PMA openness up to full foreign ownership.",
+    "body": "KBLI 20222 is a manufacturing activity, not a retail or contracting category. The record defines it around the making of lacquer and various kinds of varnish, including organic composite solvents, thinners, paint or varnish removers, and mastic. In practical terms, this is the industrial side of surface-coating materials: the controlled production of substances used to finish, dilute, remove, or prepare coating systems. The code is therefore about production activity itself, as described in the Indonesian scope, rather than downstream trading, application, or construction work.\n\nThe registration picture is broad on scale. The record opens this activity to Mikro, Kecil, Menengah, and Besar, which means it is not framed only as a large industrial undertaking. A small producer and a larger factory both sit within the same activity description if their registered business is the making of these varnish and lacquer-related materials. That breadth matters because the code's scope is defined by what is being made, not by a single plant size or a single market position.\n\nNationally, the PMA signal is clean. The activity is marked TERBUKA, and the foreign-ownership ceiling is recorded as 100%. That is the plain national reading: for a foreign-owned company structure, the record does not show a foreign-equity cap below full ownership. The supporting PMA source is listed as Perpres 10/2021, 49/2021, and there is no separate threshold, licence condition, minimum capital figure, or operational timeline in the slim record. Those absent facts should stay absent from the analysis.\n\nBali is also not marked as blocked for PMA registration in this record. The province's moratorium rule is important because it blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. But this activity is not caught by that block here: the Bali reason states, verbatim, “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The honest national-vs-Bali picture is therefore unusually direct: this is nationally open up to 100% foreign ownership, and the Bali field does not convert that openness into a local registration block.",
+    "pullQuote": "The honest national-vs-Bali picture is unusually direct: this activity is nationally open up to 100% foreign ownership, and the Bali field does not convert that openness into a local registration block.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

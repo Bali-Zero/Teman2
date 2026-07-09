@@ -1,0 +1,27 @@
+{
+  "code": "22192",
+  "editorial": {
+    "headline": "Industrial Rubber Goods That Stay Open in Bali",
+    "standfirst": "KBLI 22192 covers rubber components for industrial use, from belts and seals to vehicle and machinery parts, with national PMA openness and no Bali moratorium block.",
+    "body": "KBLI 22192 is a manufacturing category for rubber goods made for industrial purposes. Its scope is not general retail or raw rubber trading; it is the production of functional rubber components used inside machinery, industrial systems, and vehicle-related assemblies. The record names conveyor belts, fan belts, engine mountings, rubber linings, rubber plates, sheets, cuts, bars, and profiled rubber forms that have already been treated with additives. It also includes rubber tools, rings, seals, hard-rubber pipe rods for hot steam, rubber repair materials, and rubber parts connected to drive motors, transmissions, bodies, frames, suspensions, steering, and axles.\n\nThat makes this code most natural for manufacturers whose product is a working industrial component rather than a finished consumer object. A business registering here is describing a factory activity: shaping, forming, treating, or producing rubber goods that become part of equipment, infrastructure, or mobility systems. The scale range in the record is broad. Micro, small, medium, and large enterprises are all open to this activity, so the code is not limited to one size of operator. The important point is that the registered business must match the activity described in the scope: industrial-use rubber goods, including the listed belts, mountings, linings, seals, profiles, repair materials, and rubber vehicle or machinery components.\n\nNationally, the investment signal is clean. The record marks the PMA status as TERBUKA and gives a foreign-ownership ceiling of 100%. In plain English, the national record treats this activity as open to foreign investment up to full foreign ownership. There is no smaller foreign cap in the slim record, and no separate threshold or condition is stated here. The source listed for that national position is Perpres 10/2021, 49/2021, so the editorial reading should stay disciplined: open nationally, with the stated ceiling, and no extra licensing story added beyond the record.\n\nThe Bali picture is also unusually clear, because the record does not mark this code as blocked. Its Bali status is OK_or_HIGHER_RISK, and the reason is specific: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali province blocks all low and medium-low risk KBLI for PMA, island-wide and permanently. Here, however, the record says this activity is not blocked by that moratorium. So the honest conclusion is not a warning dressed as advice: for this code, the national PMA opening and the Bali-side status point in the same direction.",
+    "pullQuote": "For this code, the national PMA opening and the Bali-side status point in the same direction.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

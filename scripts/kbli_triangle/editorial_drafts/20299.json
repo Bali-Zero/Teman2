@@ -1,0 +1,27 @@
+{
+  "code": "20299",
+  "editorial": {
+    "headline": "Specialty Chemical Manufacturing, Open Nationally and Clear in Bali",
+    "standfirst": "KBLI 20299 covers the making of miscellaneous chemical materials and industrial chemical products not classified elsewhere, open across all business scales.",
+    "body": "KBLI 20299 is a broad industrial category for chemical manufacturing that sits outside the named, narrower chemical groups. Its scope is not retail, trading, consulting, or laboratory service work; it is the making of chemical materials and chemical products. The record points to a wide field: gelatin, peptones and other protein substances, chemically modified animal, vegetable, or microbial fats and oils, non-plastic and non-rubber thermal insulation materials, polishes, lubricant additives, light-sensitive film, photographic paper, textile and leather treatment materials, brazing and welding powders or pastes, substances used for metals, formulated cement additives, formulated rubber accelerators, catalysts, anti-knock preparations, antifreeze preparations, composite diagnostic or laboratory reagents, brake fluid, and other chemical products for industrial use.\n\nThat breadth matters because this code is for manufacturers whose output is chemical in character but not captured by a more specific heading in the record. A company registering here should be able to describe a real production activity: transforming inputs into chemical substances, formulations, preparations, additives, reagents, fluids, or industrial-use chemical products. The common thread is not a single product family, but the fact that the activity is chemical manufacturing and the record expressly treats it as not classified elsewhere.\n\nOn business scale, the code is open to Mikro, Kecil, Menengah, and Besar. That makes it available across the full scale ladder shown in the record, from small domestic-style operations through larger industrial establishments. Nationally, the PMA position is also clean: the record marks the activity as TERBUKA, with pma_max_asing at 100. In plain English, the national record allows foreign ownership up to 100% for this activity, subject only to the facts stated in the record and without importing any separate licence, threshold, or capital rule that is not written here.\n\nThe Bali picture is unusually straightforward. The record does not mark this code as blocked in Bali; l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason given is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record blocks Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not blocked on the Bali-side fields supplied here. The honest reading is therefore that KBLI 20299 is foreign-open nationally and not blocked for PMA registration in Bali under the record’s moratorium logic.",
+    "pullQuote": "The honest reading is that KBLI 20299 is foreign-open nationally and not blocked for PMA registration in Bali under the record’s moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

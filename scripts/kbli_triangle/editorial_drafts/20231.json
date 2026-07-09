@@ -1,0 +1,27 @@
+{
+  "code": "20231",
+  "editorial": {
+    "headline": "Cleaning Products Manufacturing, Open Nationally but Conditional in Bali",
+    "standfirst": "This activity covers household cleaning, detergent, polishing, antiseptic, and disinfectant products, with national PMA openness but a scope-sensitive Bali registration picture.",
+    "body": "KBLI 20231 is the manufacturing activity behind a broad shelf of cleaning and care products: cream soap, dishwashing soap, detergents, other household cleaning materials, wet wipes and similar materials coated with soap or detergent, crude glycerol, surfactant preparations, laundry powder or liquid, dishwashing preparations, and fabric softeners. It also reaches into household polish and finishing products, including room fragrance and deodorising products, processed wax, leather cream, wood polish, glass and metal polish, scouring paste and powder, and household antiseptic and disinfectant products.\n\nThat breadth matters because this is not a narrow retail description; it is an industrial manufacturing classification. A founder using it is describing production, not simply the sale of finished goods. The record opens the activity across Mikro, Kecil, Menengah, and Besar scales, which means the classification is not framed only for large factories. It can also describe smaller production setups, provided the declared activity remains within the recorded manufacturing scope. The important editorial point is precision: the registered activity should match the actual product line, because the Bali position is explicitly tied to exact scope and risk.\n\nNationally, the record is straightforward. The PMA status is TERBUKA and the foreign-ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. In plain English, the national line says this activity is open to foreign investment, with no lower foreign-share ceiling shown in the record. That national openness should not be softened into doubt, but neither should it be mistaken for an automatic Bali answer. The national investment status and the Bali registration filter are two different layers in this record.\n\nFor Bali, the honest reading is conditional rather than simply open or closed. The record does not mark this activity as fully blocked today, but it gives the Bali status as BLOCCATO_DIPENDE_SCOPE and explains why: \"OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity\". It also states the moratorium rule: \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\". So the practical message for a foreign-owned Bali setup is careful and exact: the code is nationally foreign-open, but Bali registration depends on the precise declared activity and its live OSS risk treatment, not on the headline title alone.",
+    "pullQuote": "The national line is open, but the Bali answer depends on the exact activity declared in OSS, not on the title alone.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

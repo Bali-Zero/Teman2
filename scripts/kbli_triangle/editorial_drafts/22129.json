@@ -1,0 +1,27 @@
+{
+  "code": "22129",
+  "editorial": {
+    "headline": "Semi-Finished Rubber for Liquid and Concentrated Forms",
+    "standfirst": "KBLI 22129 covers natural-rubber processing into other semi-finished products, nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 22129 is a specialised industrial classification for natural rubber before it becomes a finished rubber product. The record defines it as the processing of natural rubber into other semi-finished rubber products, with examples including concentrated latex and liquid rubber, specifically depolymerised rubber. That makes the activity industrial and intermediate in character: it is not about retailing rubber goods, branding finished products, or running a broad plantation operation. Its centre of gravity is the transformation stage, where natural rubber is processed into forms that can be used further down a production chain.\n\nThe code is open across the full business-size ladder recorded for it: Mikro, Kecil, Menengah, and Besar. In practical registration terms, this means the classification is not reserved in the record for one narrow scale only. A small operator and a large industrial actor are both within the stated scale field, provided the registered activity remains this specific processing of natural rubber into semi-finished products such as concentrated latex or depolymerised liquid rubber. The important discipline is scope: the code should be read from its described activity, not stretched into adjacent rubber businesses that are not named in the record.\n\nNationally, the foreign-investment picture is unusually clean. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%. That means the national record treats this activity as open to foreign ownership up to the full recorded ceiling. There is no smaller foreign-share cap in the slim record, and there is no extra threshold, permit, local-partner condition, or minimum-capital detail stated here. The source field for that national position is Perpres 10/2021, 49/2021, but the operational conclusion for this editorial is deliberately narrower: for this code, the national PMA line is open, and the recorded ceiling is complete foreign ownership.\n\nBali does not add a hidden percentage cap in this record. Its local status is marked OK_or_HIGHER_RISK, and the Bali block flag is false. The reason given is precise: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province, but this activity is not treated here as blocked by that rule. So the honest reading is not national openness with a Bali prohibition; it is national openness with Bali also not blocking PMA registration under the recorded moratorium logic.",
+    "pullQuote": "The honest reading is not national openness with a Bali prohibition; it is national openness with Bali also not blocking PMA registration under the recorded moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

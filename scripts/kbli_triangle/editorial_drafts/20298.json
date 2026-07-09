@@ -1,0 +1,27 @@
+{
+  "code": "20298",
+  "editorial": {
+    "headline": "Electric Cigarette Liquids as a Standalone Manufacturing Activity",
+    "standfirst": "This activity covers the formulation, mixing and packaging of e-cigarette liquids, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 20298 is a manufacturing code for electric cigarette liquids. Its scope is not retail, distribution, branding, or the operation of a smoking product outlet. The record describes the making of liquids for electric cigarettes, both with nicotine and without nicotine, and both for closed systems such as disposable pods and cartridges, and for open systems that can be refilled. In practical terms, the activity sits where raw ingredients become a finished liquid product: nicotine, flavouring substances, propylene glycol, vegetable glycerine, and other additives are formulated, mixed, and packaged.\n\nThat manufacturing emphasis matters because it gives the code a clear industrial character. The centre of gravity is the controlled production process: taking inputs, creating a liquid formulation, and preparing it in packaged form for the relevant device system. The scope is broad enough to include nicotine and non-nicotine variants, and it recognises both closed and refillable product formats. But it remains bounded by the record: this is about the manufacture of the liquid itself, not a wider tobacco, retail, logistics, or consumer-service business.\n\nThe scale profile is unusually inclusive. The record opens the activity to Mikro, Kecil, Menengah, and Besar scales, so it can describe anything from a small-scale producer to a larger industrial operation, provided the registered activity is the making of electric cigarette liquid as set out in the scope. For founders, that means the code is not reserved in the record for one size of enterprise. The same activity can be registered across the full scale ladder listed in the slim record, with the substance of the classification staying anchored in formulation, mixing, and packaging.\n\nThe national-vs-Bali picture is clean here. Nationally, the PMA status is TERBUKA and the foreign-ownership ceiling is 100%, with the source recorded as Perpres 10/2021, 49/2021. On the Bali side, the record does not mark the activity as blocked for PMA registration. Its Bali status is OK_or_HIGHER_RISK, and the reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record blocks Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not blocked under that rule as recorded. The honest conclusion is therefore straightforward: this is nationally open to PMA up to 100%, and the Bali record does not add a moratorium block.",
+    "pullQuote": "The honest conclusion is therefore straightforward: this is nationally open to PMA up to 100%, and the Bali record does not add a moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

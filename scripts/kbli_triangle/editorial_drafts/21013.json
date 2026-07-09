@@ -1,0 +1,27 @@
+{
+  "code": "21013",
+  "editorial": {
+    "headline": "Veterinary Pharma Is Nationally Open, but Blocked in Bali",
+    "standfirst": "This activity covers finished pharmaceutical products for animals, open nationally to foreign ownership but blocked for PMA registration in Bali.",
+    "body": "KBLI 21013 is about the industrial making, processing, and repackaging of finished pharmaceutical preparations for animals. The record’s scope is broad: powders, tablets, capsules, ointments, solutions, suspensions, and aerosols are all within view when they are prepared as animal medicines. It also brings in animal-specific medical and pharmaceutical support products, including surgical thread, medical diagnostic tools, radioisotopes for radiopharmaceuticals, biotechnology pharmacy, medical dressings, bandages, and similar products dedicated to animals.\n\nThat breadth matters because this is not a retail or advisory activity. It is a manufacturing classification for finished animal-health products and related animal-specific medical materials. A founder reading the code should see a production activity: formulation, processing, and repackaging sit at the centre of the scope. The Indonesian title points to veterinary pharmaceutical products, and the scope confirms that the activity reaches across conventional dosage forms and specialised medical-pharmaceutical goods, as long as they are dedicated to animals.\n\nOn scale, the national record is inclusive. The activity is open to Mikro, Kecil, Menengah, and Besar operators. Nationally, the PMA position is also clean: the code is marked TERBUKA, with a maximum foreign ownership figure of 100%, under the stated presidential regulation source. In national terms, therefore, this is not a code where the record itself imposes a foreign-share cap below full ownership. A foreign-owned structure can read the national line as open, subject only to facts that are actually present in the record.\n\nBali changes the practical answer. The record marks the Bali side as blocked, with the reason stated as: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule is equally direct: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” The honest conclusion is therefore narrow but important: nationally, KBLI 21013 is foreign-open up to 100%; in Bali, a foreigner cannot register it as PMA today because the Bali record blocks it under the province-wide moratorium rule.",
+    "pullQuote": "Nationally, KBLI 21013 is foreign-open up to 100%; in Bali, a foreigner cannot register it as PMA today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

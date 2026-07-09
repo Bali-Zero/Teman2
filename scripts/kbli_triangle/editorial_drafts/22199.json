@@ -1,0 +1,27 @@
+{
+  "code": "22199",
+  "editorial": {
+    "headline": "Rubber Goods Beyond the Standard Catalogue",
+    "standfirst": "KBLI 22199 is open nationally to foreign ownership and, on this record, not blocked for PMA registration in Bali.",
+    "body": "KBLI 22199 covers a practical manufacturing category: other rubber goods not separately defined elsewhere in the record. Its scope is broad, but not vague. It points to the making of rubber articles from used tyres and assorted rubber remnants, alongside non-medical rubber gloves, hard-rubber personal items such as combs, hair clips and hair rollers, rubber-based coated or laminated textile fabrics, rubber hats and bathing garments, rubber raincoats and diving suits, and rubber sex products. The connective tissue is material and process: these are finished goods where rubber is the defining substance, not merely a decorative or incidental component.\n\nFor founders, that breadth matters because the code can sit behind very different operating models. A small workshop making accessories from hard rubber, a producer working with tyre-derived material, and a larger factory producing rubber apparel or laminated textile goods can all fall within the same stated scope if the activity remains inside the record’s description. The scale field is unusually open: Mikro, Kecil, Menengah, and Besar are all listed. That means the record does not reserve the activity for one business size; it recognises the same activity across micro, small, medium, and large registrations.\n\nThe national foreign-ownership position is clean. The record marks the activity as TERBUKA, with pma_max_asing at 100. In plain English, this is nationally open to foreign ownership up to 100%, based on the listed PMA source. There is no foreign-stake cap below full ownership in the slim record, and there is no separate operational threshold, minimum capital figure, licence timeline, or special permit detail supplied here. The safe reading is therefore narrow and useful: nationally, KBLI 22199 is open for PMA ownership at the ceiling shown in the record.\n\nThe Bali-side reading is also direct. The record does not block this activity for Bali PMA registration: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason given is specific: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the record also states the Bali moratorium rule: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. Here, however, the Bali reason says the activity is not caught by that moratorium logic at the large scale. The honest conclusion is not a hidden Bali percentage or a special local quota; it is simply that the slim record shows no Bali moratorium block for this code today.",
+    "pullQuote": "The honest conclusion is not a hidden Bali percentage or a special local quota; it is simply that the slim record shows no Bali moratorium block for this code today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

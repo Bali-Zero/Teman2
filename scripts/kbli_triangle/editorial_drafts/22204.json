@@ -1,0 +1,27 @@
+{
+  "code": "22204",
+  "editorial": {
+    "headline": "Plastic Sheet Manufacturing Without a Bali Moratorium Block",
+    "standfirst": "KBLI 22204 covers sheet-form plastics, from PE and PP sheets to PVC, imitation leather, formica, plastic glass, film, foil, and cut plastic pieces.",
+    "body": "KBLI 22204 is a manufacturing classification for plastic sheet products. The record describes a broad industrial activity: making plastic sheets of various kinds, including polyethylene (PE), polypropylene (PP), and polyvinyl chloride (PVC), as well as imitation leather, formica, and plastic glass. It also reaches plate plastic, plastic sheets, plastic blocks, film, foil, and cut plastic pieces, whether adhesive or non-adhesive. In plain English, this is the code for producing plastic material in flat or sheet-based forms rather than for a retail, trading, or installation activity.\n\nThe scale picture is unusually wide. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses, so it can describe a small production operation as well as a larger industrial plant. That range matters because the activity itself is defined by what is made, not by a single factory size. A founder reading this code should focus on whether the proposed business is genuinely manufacturing these plastic sheet, film, foil, plate, block, or cut-piece products. If the activity is only downstream use of such materials, the record here does not say that; this code is about making them.\n\nNationally, the foreign-investment position is clean. The PMA status is TERBUKA, with `pma_max_asing` set at 100, and the source given is Perpres 10/2021, 49/2021. That means the national record treats the activity as open to foreign ownership up to 100%. There is no lower foreign-share ceiling in the slim record, and there is no recorded national condition here beyond that stated PMA ceiling and source.\n\nThe Bali picture is also clear, but for a different reason. The record does not mark this activity as blocked in Bali: `l4_bali_blocked` is false, and the Bali status is `OK_or_HIGHER_RISK`. The reason is stated directly: OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the Bali moratorium. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently; this activity is not caught by that block on the record provided. The honest reading is therefore simple: nationally foreign-open, and not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "pullQuote": "The honest reading is therefore simple: nationally foreign-open, and not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

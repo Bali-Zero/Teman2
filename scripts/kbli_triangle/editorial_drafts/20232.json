@@ -1,0 +1,27 @@
+{
+  "code": "20232",
+  "editorial": {
+    "headline": "The Quiet Industrial Backbone of Beauty and Contact-Lens Care",
+    "standfirst": "This activity covers the manufacture of human cosmetics and contact-lens liquid, open across all business scales and not blocked for PMA registration in Bali under the record.",
+    "body": "This activity is not retail beauty, salon service, or brand storytelling. It is the industrial side of personal care: the making of cosmetics for human use and contact-lens liquid. The record places inside it a broad manufacturing field, from shampoo and hair curling or straightening products to nail-care goods for manicure and pedicure, skin-care creams or lotions for sun exposure, body-hygiene products, shaving products, decorative cosmetics, toothpaste and oral-hygiene goods, cosmetic teeth-whitening products, fragrances, hair dye, and liquid for contact lenses.\n\nThat breadth matters because the common thread is production. A business registering this activity is positioning itself as a maker of regulated consumer-care goods, not merely a seller of finished items. The scope reaches across daily hygiene, grooming, beauty, fragrance, oral care, and eye-care support products, which gives the code a practical industrial character: it can cover a focused manufacturer making one product family, or a larger operation producing several categories under the same personal-care umbrella. The record also makes the scale picture unusually clear. It is open to Mikro, Kecil, Menengah, and Besar, so the activity is not confined to a single size of operator.\n\nNationally, the foreign-investment signal is clean. The record marks the PMA status as TERBUKA and gives a foreign-ownership ceiling of 100%, with its PMA source stated as Perpres 10/2021, 49/2021. In plain terms, the national classification presented here is foreign-open up to full ownership. There is no lower ownership cap in the slim record, and no additional capital, licensing, tax, timeline, or threshold detail is stated here, so none should be inferred from this activity note.\n\nThe Bali side is also explicit, but it needs to be read carefully. The record does not mark this activity as blocked in Bali: l4_bali_blocked is false. Its Bali status is OK_or_HIGHER_RISK, and the reason is stated as: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali province, but this activity is not caught by that block on the facts provided. The honest reading is therefore straightforward: nationally, it is open to PMA up to 100%; in Bali, the record does not block PMA registration under the stated moratorium reason.",
+    "pullQuote": "The honest reading is therefore straightforward: nationally, it is open to PMA up to 100%; in Bali, the record does not block PMA registration under the stated moratorium reason.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

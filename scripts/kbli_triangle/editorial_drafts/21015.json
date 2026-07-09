@@ -1,0 +1,27 @@
+{
+  "code": "21015",
+  "editorial": {
+    "headline": "Medical Diagnostics and Health-Support Manufacturing, Fully Open Nationally",
+    "standfirst": "KBLI 21015 covers the manufacture of selected medical diagnostic tools, dressings, cotton products and related health-support goods, with full PMA ownership available nationally.",
+    "body": "KBLI 21015 is a manufacturing code for a very specific part of the health-products economy: the making and processing of medical diagnostic devices and related products within its stated industrial sub-group. In plain English, it covers factories producing externally used contraceptive products, medical diagnostic tools such as pregnancy tests and blood-glucose tests, medical cotton, beauty cotton, cotton buds, bandages, medical gauze, plasters, nasal wash, and personal lubricant. The record frames this as production and processing, not retailing, clinical service, distribution, or medical practice.\n\nThe scale profile is unusually broad. The activity is open to Mikro, Kecil, Menengah, and Besar businesses, so the code can fit both smaller manufacturing operations and larger industrial setups, provided the actual activity remains inside the recorded scope. That breadth matters because the products listed range from simple consumables such as cotton, bandages, gauze, and plasters to diagnostic items such as pregnancy and blood-glucose tests. The unifying point is not the sophistication of the product, but the fact that the business is making these health-support goods.\n\nNationally, the foreign-investment position is clean: the record marks the activity as TERBUKA, with pma_max_asing at 100. For a PMA reading, that means the national field is fully open to foreign ownership, according to the source stated in the record: Perpres 10/2021, 49/2021. There is no lesser foreign-share ceiling in the slim record, and there is no separate national caveat to add. The correct editorial conclusion is therefore straightforward: at the national level, KBLI 21015 is foreign-open up to 100%.\n\nThe Bali picture is also clear, but for a different reason. The record does not mark this activity as blocked in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason given is precise: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the stated Bali moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently. This activity is not caught by that block on the record provided. The honest reading is therefore not a hidden Bali restriction, not a separate Bali ownership cap, and not a local-partnership condition; it is nationally open to 100% foreign ownership and not blocked for PMA registration in Bali under the recorded moratorium analysis.",
+    "pullQuote": "The honest reading is not a hidden Bali restriction; it is nationally open to 100% foreign ownership and not blocked for PMA registration in Bali under the recorded moratorium analysis.",
+    "byTheNumbers": [
+      {
+        "label": "PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

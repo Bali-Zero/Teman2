@@ -1,0 +1,27 @@
+{
+  "code": "22112",
+  "editorial": {
+    "headline": "Retreading and Vulcanising Tyres as a Reuse Industry",
+    "standfirst": "KBLI 22112 covers the repair of used tyres into usable, near-new tyres, with national PMA openness and no Bali moratorium block in this record.",
+    "body": "KBLI 22112 is a practical industrial category: the remaking of used tyres so they can return to use in a condition described by the record as like new. Its scope is not general vehicle repair, and it is not a broad recycling label. It is specifically about tyre repair through retreading and vulcanisation, applied to tyres that have already been used and are then made usable again for motor vehicles, bicycles, other transport vehicles, and equipment that uses tyres.\n\nThat gives the activity a clear commercial character. It sits at the point where transport demand, equipment maintenance, and material reuse meet. A business registering this activity is not merely trading tyres; it is carrying out an industrial process on used tyres. The slim record opens the activity across the full scale ladder: Mikro, Kecil, Menengah, and Besar. In plain terms, the classification can fit a small operator as well as a larger industrial setup, provided the registered activity remains inside the recorded scope of reshaping used tyres into reusable tyres.\n\nNationally, the foreign-investment position is clean. The record marks the PMA status as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. That means the national foreign-ownership ceiling shown in this record is 100%. There is no basis in the record to add a special shareholding condition, minimum capital figure, tax threshold, operating licence, or timing requirement. The only national ownership number here is the 100% ceiling, and it should be read exactly as that: this activity is nationally open to foreign ownership up to the recorded limit.\n\nThe Bali picture is also direct, but it needs to be stated carefully. The record does not mark this activity as blocked in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason given is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanently, but this activity is not caught by that block according to the recorded reason. So the honest reading is neither alarmist nor casual: KBLI 22112 is nationally open to PMA up to 100%, and, on this slim record, it is not blocked by the Bali moratorium.",
+    "pullQuote": "KBLI 22112 is nationally open to PMA up to 100%, and, on this slim record, it is not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

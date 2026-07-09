@@ -1,0 +1,27 @@
+{
+  "code": "22122",
+  "editorial": {
+    "headline": "Rubber Sheet and Crepe Rubber Manufacturing, With Bali Still Open",
+    "standfirst": "KBLI 22122 covers the milling of rubber into smooth sheets and crepe rubber, open nationally to PMA and not blocked for Bali registration under the record supplied.",
+    "body": "KBLI 22122 is a manufacturing activity with a narrow industrial center of gravity: rubber is processed by milling until it becomes sheet-form rubber. The record names two examples inside that frame: smooth rubber sheet and crepe rubber, the wrinkled sheet form created through that same processing logic. This is not a trading classification or a broad plantation label; it is about the transformation step where rubber becomes a sheet product.\n\nThe scale picture is unusually broad. The slim record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so the classification can describe anything from a small rubber-processing setup to a larger industrial operation, provided the real business activity is still the milling of rubber into the sheet forms described in the scope. That matters because the KBLI should follow the actual operating activity, not the founder’s preferred label or the company’s eventual commercial ambition.\n\nNationally, the PMA position is clean: the record marks the activity as TERBUKA, with pma_max_asing at 100. In plain English, the national foreign-ownership ceiling is 100%. The source given for that national reading is Perpres 10/2021, 49/2021. There is no partial cap in the record, and no separate minimum-capital, licence, tax, or timeline detail to add here. The honest reading is that, at national level, a foreign-owned company can use this code without a foreign-shareholding reduction being stated in the supplied data.\n\nBali does not change that into a blockage on this record. The Bali status is marked OK_or_HIGHER_RISK, l4_bali_blocked is false, and the reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule still matters as background because Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this activity is not caught as blocked in the supplied record. So the practical editorial conclusion is simple: KBLI 22122 is nationally open to 100% PMA, and the Bali-side record supplied does not block PMA registration for it.",
+    "pullQuote": "KBLI 22122 is nationally open to 100% PMA, and the Bali-side record supplied does not block PMA registration for it.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

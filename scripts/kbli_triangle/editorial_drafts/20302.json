@@ -1,0 +1,27 @@
+{
+  "code": "20302",
+  "editorial": {
+    "headline": "Artificial Staple Fibre Manufacturing With a Clear Bali Path",
+    "standfirst": "KBLI 20302 covers short synthetic and artificial fibres for further processing, nationally open to PMA and not blocked by Bali’s moratorium record.",
+    "body": "KBLI 20302 is a manufacturing classification for artificial staple fibre: short-length synthetic or artificial fibres made from materials such as polyamide, polyester, rayon, acrylic, cellulose acetate, and similar inputs. The record is explicit that the output is intended for further processing, and it also draws the boundary around what this activity is not: glass fibre and optical fibre are outside this scope. In practical terms, this is not a retail or trading category. It is an upstream industrial activity concerned with making short fibres that can become inputs for later production chains.\n\nThe scale profile is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar operators, which means the classification is not reserved only for large industrial players. A founder reading this should still keep the nature of the activity in view: the scope describes manufacturing, materials, and downstream processing, so the business substance has to match the production of artificial or synthetic staple fibre rather than a looser textile-related idea. The title is concise, but the Indonesian scope gives the real editorial meaning: making short artificial staple fibres from named chemical or cellulose-based materials, for further processing.\n\nNationally, the PMA picture is clean. The record marks the code as TERBUKA, with pma_max_asing at 100 and the source listed as Perpres 10/2021, 49/2021. That means the national record treats this activity as open to foreign ownership up to a full 100% ceiling. There is no lower cap in the supplied data, and no additional national condition should be inferred from the classification alone. For a foreign investor, the important point is the simplicity of the national field: open status, 100% maximum foreign ownership, and a cited presidential-regulation source.\n\nThe Bali picture is also clear, but for a different reason. The province’s moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. KBLI 20302 is not marked as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. That does not create a separate Bali ownership percentage; it simply means this record does not place the activity inside Bali’s PMA moratorium block. The honest reading is therefore straightforward: nationally open up to 100% foreign ownership, and not blocked for PMA registration in Bali by the moratorium data supplied here.",
+    "pullQuote": "The honest reading is therefore straightforward: nationally open up to 100% foreign ownership, and not blocked for PMA registration in Bali by the moratorium data supplied here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
