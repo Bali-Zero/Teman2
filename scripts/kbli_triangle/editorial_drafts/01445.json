@@ -1,0 +1,27 @@
+{
+  "code": "01445",
+  "editorial": {
+    "headline": "Raw Wool Production Is Open Nationally, Including in Bali",
+    "standfirst": "KBLI 01445 covers the farming activity of producing raw sheep wool, open across business scales and not caught by Bali’s PMA moratorium screen.",
+    "body": "KBLI 01445 is a narrow agricultural-production code: it covers livestock farming activity that produces raw sheep wool. The record points to the upstream act itself, not a finished textile, retail product, or broader processing chain. In plain English, this is the business of raising sheep for their wool output and registering that raw-wool production activity as the formal Indonesian business classification.\n\nThe scale picture is unusually straightforward. The code is open to Mikro, Kecil, Menengah, and Besar, so the classification is not confined to one business size in the slim record. A small local farm, a growing mid-sized operation, or a larger agricultural enterprise can all sit inside the same activity description when the registered business is the production of raw wool from sheep farming. That breadth matters because the code’s meaning stays anchored in the activity, while the permitted scale range tells founders how broadly the registration can be used.\n\nNationally, the foreign-investment signal is also clear. The PMA status is TERBUKA and the stated foreign-ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. There is no partial cap in the record, so the editorial conclusion should not invent one: for the national screen, this is a foreign-open activity up to full foreign ownership. The source field gives the legal reference, but the business takeaway is simpler: the record does not mark this KBLI as nationally closed or restricted below full foreign ownership.\n\nThe Bali reading is the decisive part, because Bali’s PMA moratorium can change the practical answer even where the national screen is open. Here, however, the record says l4_bali_blocked is false. The reason is specific: the OSS risk at scale Besar is Menengah-Tinggi/Tinggi, and therefore it is not blocked by the moratorium. Bali’s rule blocks all Low and Medium-Low risk KBLI for PMA across the province on a permanent island-wide basis, but this code is recorded as OK_or_HIGHER_RISK. The honest conclusion is that a foreign-owned business can register this KBLI in Bali today under the record’s Bali screen, with no invented caveat added beyond the stated higher-risk status.",
+    "pullQuote": "The honest conclusion is that a foreign-owned business can register this KBLI in Bali today under the record’s Bali screen, with no invented caveat added beyond the stated higher-risk status.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

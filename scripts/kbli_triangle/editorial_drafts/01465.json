@@ -1,0 +1,27 @@
+{
+  "code": "01465",
+  "editorial": {
+    "headline": "Duck Farming and Breeding Is Open, Including in Bali",
+    "standfirst": "This activity covers duck cultivation and breeding for meat, eggs, hatching eggs and stock, with PMA open nationally and not blocked by Bali's moratorium record.",
+    "body": "KBLI 01465 is a production-centered activity for the cultivation and breeding of ducks. The Indonesian scope is clear: it covers budi daya itik dan bebek to produce meat ducks, laying ducks, consumption eggs and other outputs, and it also covers breeding activity that produces hatching eggs and duck stock. In plain English, this is the activity of raising ducks and running duck-breeding operations, with the economic object sitting in the birds, the eggs, and the breeding material described in the record.\n\nThe scale position is unusually broad because the record opens the activity to Mikro, Kecil, Menengah and Besar. That means the same activity can be registered across the listed business scales, so long as the registered business activity remains the cultivation and breeding described in the scope. A small operator focused on duck cultivation and a larger enterprise producing meat ducks, laying ducks, consumption eggs, hatching eggs or duck stock are both within the scale language supplied. The important editorial point is not to narrow the code artificially: the record itself names the scale range and the productive outputs.\n\nNationally, the PMA reading is direct. The activity is marked TERBUKA, and the foreign ownership ceiling in the record is 100%. There is no capped foreign stake to explain here. For a foreign investor, the practical reading is unusually clean: this activity is nationally open up to 100% foreign ownership and, in Bali, it is not blocked by the provincial PMA moratorium.\n\nBali is where the record needs to be read carefully, because the province's moratorium blocks all Low + Medium-Low risk KBLI for PMA island-wide and permanently. This activity is not on the blocked side of that rule in the supplied record. Its Bali status is OK_or_HIGHER_RISK, and the reason says the OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore simple: on the facts supplied, duck cultivation and breeding under this code is genuinely open nationally and not moratorium-blocked for PMA registration in Bali.",
+    "pullQuote": "For a foreign investor, the practical reading is unusually clean: this activity is nationally open up to 100% foreign ownership and, in Bali, it is not blocked by the provincial PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

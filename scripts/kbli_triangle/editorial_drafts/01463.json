@@ -1,0 +1,27 @@
+{
+  "code": "01463",
+  "editorial": {
+    "headline": "Local Chicken Breeding With a Clear PMA Path in Bali",
+    "standfirst": "KBLI 01463 covers the breeding of local chickens and their crosses, with national foreign ownership open up to 100% and no Bali PMA block recorded.",
+    "body": "KBLI 01463 is a tightly defined poultry-breeding activity: the breeding of local chickens and their crosses to produce breeding stock and hatching eggs for local layer chickens, local broiler chickens, and their crossbred lines. Its centre of gravity is not general poultry trading, feed supply, or downstream meat and egg retail. It is the upstream work of producing the birds and hatching eggs from which those local production lines begin.\n\nThat makes the code relevant for operators whose business model is built around controlled breeding rather than simple flock ownership. The slim record opens it across **Mikro, Kecil, Menengah, and Besar** scales, so the activity is not framed as belonging only to large industrial players. A small breeding operation, a mid-sized hatchery-oriented business, and a larger corporate breeding setup can all sit within the same activity description, provided the registered activity remains the breeding of local chickens and their crosses for breeding stock and hatching eggs.\n\nNationally, the foreign-investment position is clean. The record marks the activity as **TERBUKA**, with a foreign-ownership ceiling of **100%**. In plain terms, the national rule set does not impose a foreign-share cap below full ownership for this activity. That is an important distinction for a founder or investor reading the code: the restriction is not hidden in a partial ceiling, and the PMA source is identified in the record as **Perpres 10/2021, 49/2021**.\n\nThe Bali picture is also clear, but it needs to be read precisely. Bali’s province-wide moratorium blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, according to the recorded moratorium rule. This activity, however, is not marked as blocked in Bali: `l4_bali_blocked` is false, and the recorded status is **OK_or_HIGHER_RISK**. The reason given is that OSS risk at **Besar** scale is **Menengah-Tinggi/Tinggi**, so the Bali moratorium does not block it. The honest conclusion is therefore not that Bali is unavailable, nor that every scale is frictionless; it is that this KBLI is foreign-open nationally, can reach 100% foreign ownership, and is not recorded as blocked for PMA registration in Bali under the moratorium logic supplied here.",
+    "pullQuote": "The honest conclusion is that this KBLI is foreign-open nationally, can reach 100% foreign ownership, and is not recorded as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

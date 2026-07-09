@@ -1,0 +1,27 @@
+{
+  "code": "01461",
+  "editorial": {
+    "headline": "Broiler Chicken Cultivation With a Clear Bali Opening",
+    "standfirst": "KBLI 01461 covers the cultivation of purebred broiler chickens, open across business scales and not blocked for foreign registration in Bali under the stated moratorium rule.",
+    "body": "KBLI 01461 is a narrow agricultural activity: the cultivation of purebred chickens to produce broiler chickens. Its centre of gravity is not retail, feed trading, processing, or any downstream claim that is not written into the record. The activity is the keeping and raising of ayam ras for meat production, and that simplicity matters. For a founder reading the classification, this is a code about the production side of broiler chickens, not a broader poultry business label that can be stretched to cover every adjacent commercial activity.\n\nThe record opens this activity to every stated business scale: Mikro, Kecil, Menengah, and Besar. That means the classification is not reserved only for a large operator, nor limited only to a small local enterprise. It can be used across the full scale range listed in the record, provided the registration matches the actual activity being carried out. For editorial purposes, the clean reading is that KBLI 01461 is scale-flexible: it can describe a small broiler-cultivation setup as well as a larger one, without changing the basic identity of the activity.\n\nNationally, the foreign-investment position is equally direct. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%. In plain English, the national record treats this activity as open to foreign ownership up to full ownership, with the source stated as Perpres 10/2021, 49/2021. There is no basis in the slim record to add a smaller cap, a minimum capital figure, a special licence condition, or a timeline. The national message is simply that foreign ownership is open at the recorded ceiling.\n\nThe Bali reading is also unusually clean. The province-wide moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, but this activity is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the reason given is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest lede, therefore, is not a warning that foreigners cannot register it in Bali; it is the opposite. On the information provided, KBLI 01461 is nationally open to PMA and not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "pullQuote": "On the information provided, KBLI 01461 is nationally open to PMA and not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

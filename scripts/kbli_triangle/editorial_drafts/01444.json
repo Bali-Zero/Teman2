@@ -1,0 +1,27 @@
+{
+  "code": "01444",
+  "editorial": {
+    "headline": "Dairy Sheep Breeding That Remains Open in Bali",
+    "standfirst": "KBLI 01444 covers dairy sheep farming and breeding, with full foreign ownership nationally and no Bali moratorium block in the record.",
+    "body": "KBLI 01444 is a narrow agricultural activity: the cultivation of dairy sheep to produce milk, and the breeding work needed to produce dairy sheep stock, semen, and embryos. In plain English, this is not a general livestock category and not a catch-all for sheep trading. Its centre of gravity is dairy production from sheep, supported by breeding activity that improves or multiplies the herd itself.\n\nThat makes the code relevant for operators who are building an actual dairy-sheep production base rather than a loose rural supply chain. The record opens it across all four business scales: Mikro, Kecil, Menengah, and Besar. A small farm, a growing breeding operation, or a larger integrated dairy-sheep enterprise can all sit inside the scale field given here, provided the registered activity remains within the scope: dairy sheep cultivation, dairy sheep breeding, breeding stock, semen, and embryos.\n\nNationally, the foreign-investment signal is clean. The PMA status is TERBUKA, and the recorded foreign-ownership ceiling is 100%. That means the slim record does not show a foreign share cap below full ownership. The authority source attached to that status is Perpres 10/2021, 49/2021. For a founder reading this at national level, the key point is simple: the activity is not presented here as a restricted foreign-investment line.\n\nThe Bali picture is also unusually clear, but for a different reason. Bali’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA registration across the province. This code is not marked as blocked: its Bali status is OK_or_HIGHER_RISK, and the stated reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore not a caveat about Bali being closed; on this record, a foreign-owned setup can look at KBLI 01444 in Bali as nationally open and not moratorium-blocked, while staying tightly inside the activity’s dairy-sheep and breeding scope.",
+    "pullQuote": "On this record, KBLI 01444 is nationally foreign-open and not blocked by Bali’s PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
