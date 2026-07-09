@@ -1,0 +1,27 @@
+{
+  "code": "20114",
+  "editorial": {
+    "headline": "Radioactive Basic Chemicals, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 20114 covers the industrial making of radioactive basic chemicals, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 20114 is a narrow, high-consequence industrial classification: the manufacture of basic chemical products that are radioactive in nature. The record names uranium, radium, thorium, and radon as examples, and it also brings within the scope the enrichment of uranium and thorium ores and the making of radioisotopes from radioactive substances. In plain English, this is not general chemical production. It is the industrial handling and transformation of radioactive basic chemical materials, where the defining feature is the radioactive character of the product or input.\n\nThe activity is open across the recorded business scales: Mikro, Kecil, Menengah, and Besar. That matters because the classification is not reserved in the slim record for only one size of operator. A small registered enterprise and a large industrial company are both within the scale range shown here, although the nature of the activity itself makes the scope much more specialised than the scale list might suggest. The description also marks boundaries around the activity by excluding ammonia and named hydrogen or ammonia variants, so the editorial reading should stay with the radioactive-basic-chemical lane rather than stretching it into broader industrial chemistry.\n\nNationally, the PMA position is clean: the record marks the code as TERBUKA, with pma_max_asing at 100. Rendered as an ownership ceiling, that means 100% foreign ownership is recorded nationally. The cited national source is Perpres 10/2021, 49/2021. There is no partial cap in the record, so there is no basis for implying a required Indonesian shareholding, a staged ownership structure, or a lower foreign ceiling. The honest national reading is that this activity is foreign-open at the maximum percentage stated in the data.\n\nThe Bali picture is also specific, and it should not be overcomplicated. The record does not mark this activity as blocked in Bali: l4_bali_blocked is false and l4_bali_status is OK_or_HIGHER_RISK. The reason given is precise: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this code is not captured as blocked under that rule in the supplied data. So the national-vs-Bali conclusion is unusually straightforward: open nationally, and not blocked by the Bali moratorium record provided.",
+    "pullQuote": "The honest national-vs-Bali reading is unusually straightforward: open nationally, and not blocked by the Bali moratorium record provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

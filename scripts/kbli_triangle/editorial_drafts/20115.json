@@ -1,0 +1,27 @@
+{
+  "code": "20115",
+  "editorial": {
+    "headline": "Organic Basic Chemicals from Indonesia’s Living Resource Base",
+    "standfirst": "KBLI 20115 covers bio-based organic chemical manufacturing, nationally open to foreign investment and not blocked for PMA registration in Bali.",
+    "body": "KBLI 20115 is for the manufacture of basic organic chemical products derived from biological natural resources. In plain English, this is the industrial conversion of agricultural, fishery, plant, animal, wood, resin, biomass, and essential-oil inputs into organic chemical materials. The record includes bio-benzene, bio-toluene, and bio-xylene made through biomass pyrolysis; carboxylic acids from animal or plant sources such as fatty acid, acetic acid, and citric acid; alcohols and esters such as bioethanol from sugarcane, corn, or similar fermentation; fatty alcohol, furfural, and sorbitol; charcoal, coconut-shell charcoal, coconut-shell briquettes, and other biomass charcoal; wood-distillation and natural-resin products such as gondorukem and turpentine; and separated compounds from essential oils, including caryophyllene, eugenol, vanillin, geraniol, and citronellaldehyde.\n\nThe scope is broad, but it is not unlimited. The slim record expressly excludes liquid biofuel manufacturing and plastic polymer manufacturing. It also names a long set of activities outside this group, beginning with ethanol, acetic anhydride, phenylacetic acid and its salts, lysergic acid and its salts, isosafrole, piperonal, safrole, anthranilic acid and its salts, diethyl ether, ephedrine and its salts, and several related chemical substances. That boundary matters because this code is not a generic label for any chemical plant using biological inputs. It is a defined manufacturing lane for basic organic chemicals from biological natural resources, with certain sensitive or separately classified chemical industries kept outside its perimeter.\n\nFor company planning, the registration picture is unusually straightforward. The activity is marked **TERBUKA** nationally, with a foreign-ownership ceiling of **100%** under the cited PMA source. The record also shows the activity open across all listed business scales: **Mikro**, **Kecil**, **Menengah**, and **Besar**. That means the code is not reserved only for large industrial operators in the slim record; it can appear across the stated scale spectrum, while the exact business model should still fit the manufacturing scope rather than drift into excluded products.\n\nThe Bali reading is also clean. The record gives the Bali status as **OK_or_HIGHER_RISK** and says: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The provincial moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this activity is marked as not blocked. So the honest national-vs-Bali picture is not a contradiction: nationally it is open to PMA up to 100%, and for Bali the record does not show a PMA moratorium block. For a foreign-owned setup, the important conclusion is precise rather than dramatic: this code stands as foreign-open nationally and Bali-open on the moratorium screen provided in the record.",
+    "pullQuote": "The honest national-vs-Bali picture is not a contradiction: this code is foreign-open nationally and Bali-open on the moratorium screen provided in the record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

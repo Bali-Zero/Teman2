@@ -1,0 +1,27 @@
+{
+  "code": "20132",
+  "editorial": {
+    "headline": "Synthetic Rubber Manufacturing, Open Nationally and Not Blocked in Bali",
+    "standfirst": "KBLI 20132 covers the manufacture of synthetic rubber families, from SBR to silicone rubber, with full national PMA openness and no Bali PMA block in the record.",
+    "body": "KBLI 20132 is a manufacturing classification for synthetic rubber. The record describes an industrial activity centered on making artificial rubber materials, including styrene butadiene rubber, polychloroprene or neoprene, acrylonitrile butadiene rubber or nitrile rubber, silicone rubber or polysiloxane, and isoprene rubber. In plain English, this is not trading rubber, processing a finished rubber item, or providing a rubber-related service. It is the production of the synthetic rubber compounds themselves.\n\nThat scope matters because the classification sits at the material-manufacturing layer of the supply chain. A company using this activity code is registering the making of the rubber base materials named in the record: SBR, neoprene, nitrile rubber, silicone rubber, and isoprene rubber. The range is chemically diverse, but the common thread is clear enough: these are engineered rubber materials, produced as industrial inputs rather than described here as retail products or downstream goods. The slim record gives no separate sub-condition, permit threshold, output volume, or facility rule, so the clean reading stays with the stated production scope.\n\nOn scale, the record is unusually broad. It marks the activity as open to Mikro, Kecil, Menengah, and Besar. That means the classification is not framed, in the record, as only a large-industrial category or only a small-enterprise activity. The same KBLI code can be relevant across the listed business scales, from micro through large, so the practical registration question is not whether the code exists only for one size of operator. The record says all four scales are open.\n\nThe national-vs-Bali picture is also straightforward. Nationally, the PMA status is TERBUKA, with a maximum foreign ownership figure of 100%, sourced to the presidential-regulation reference in the record. Bali is not marked as blocked: `l4_bali_blocked` is false, and the Bali status is `OK_or_HIGHER_RISK`. The reason given is specific: `OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium`. That matters because the Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. Here, the record’s Bali-side conclusion is not a separate Bali ownership cap, quota, or partnership condition. It is simply that this activity is not blocked by that moratorium under the stated reason.",
+    "pullQuote": "The record’s Bali-side conclusion is not a separate ownership cap, but a clear finding that this activity is not blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

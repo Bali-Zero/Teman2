@@ -1,0 +1,27 @@
+{
+  "code": "19206",
+  "editorial": {
+    "headline": "Biofuel Blending Has a Clear PMA Route in Bali",
+    "standfirst": "KBLI 19206 covers the industrial blending of petroleum-refinery products with biofuel, and the record treats it as nationally open and registrable in Bali.",
+    "body": "KBLI 19206 sits in a technical but commercially important corner of energy manufacturing: the blending of products from petroleum refining with biofuel. The record describes activities such as mixing alcohol with petroleum products, including gasohol, and blending diesel with FAME to produce biodiesel. In plain English, this is not fuel retailing or general trading; it is the industrial act of combining refinery outputs with biofuel inputs into blended fuel products.\n\nThe registration picture is broad on scale. The slim record opens the activity to Kecil, Menengah, and Besar businesses, which means the classification is not reserved only for large industrial operators. A founder reading this code should understand it first as a manufacturing activity defined by the blending process itself: the business identity comes from what is being mixed, and from the fact that petroleum-refinery products and biofuel are being combined into fuel blends.\n\nNationally, the foreign-investment position is straightforward. The PMA status is TERBUKA, and the foreign-ownership ceiling shown in the record is 100%. That is the only ownership percentage in the record, and it is a national figure. The cited source is Perpres 10/2021, 49/2021. On the national reading, therefore, this is not a capped activity for foreign ownership under the data supplied here; a PT PMA can look at the national line as open up to full foreign ownership.\n\nThe Bali side does not reverse that conclusion in this record. The Bali status is APERTO_BALI_RISCHIO_ALTO, and l4_bali_blocked is false. The reason given is explicit: “Nationally TERBUKA and the Besar scale is 'Tinggi' -> survives the Bali moratorium (which blocks only Rendah/Menengah Rendah). Registrable by a PT PMA in Bali. [NB-3 28 June 2026]” The moratorium rule still matters, because Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide, but this record says KBLI 19206 survives that filter. The honest reading is therefore clean: nationally open, 100% foreign ownership shown, and registrable by a PT PMA in Bali according to the supplied Bali assessment.",
+    "pullQuote": "The honest reading is therefore clean: nationally open, 100% foreign ownership shown, and registrable by a PT PMA in Bali according to the supplied Bali assessment.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "APERTO_BALI_RISCHIO_ALTO"
+      }
+    ]
+  }
+}

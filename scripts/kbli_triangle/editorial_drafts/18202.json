@@ -1,0 +1,27 @@
+{
+  "code": "18202",
+  "editorial": {
+    "headline": "Film and Video Duplication, Without the Bali Block",
+    "standfirst": "KBLI 18202 covers the reproduction of film and video recordings from master copies, with full national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 18202 is a production-backroom activity, not a creative commissioning category. Its centre of gravity is the reproduction of recorded film and video media: making copies from master recordings, compact discs, tapes, and other carriers that contain moving images, films, or video recordings. In plain English, this is the business of duplicating recorded visual media from an existing source, rather than originating the film or video itself.\n\nThat distinction matters because the scope is operationally specific. A founder using this code is positioning the company around reproduction work: taking an existing master copy and turning it into recorded media copies. The slim record marks the scope as covering the whole activity described, and it opens the code across every listed business scale: Mikro, Kecil, Menengah, and Besar. That makes the category broad in company-size access while still narrow in what the activity actually does.\n\nNationally, the foreign-investment picture is clean. The record marks the PMA status as TERBUKA and gives a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. In practical editorial terms, the national ceiling shown here is 100% foreign ownership. There is no lesser national percentage in the record, and there is no minimum-capital figure, special timeline, tax rule, or additional obligation stated in the slim record.\n\nThe Bali reading is also clear, but for a different reason. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province, according to the listed governor-letter source. This record, however, marks l4_bali_blocked as false and gives the Bali status as OK_or_HIGHER_RISK. The stated reason is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest conclusion is not that Bali imposes a separate foreign-ownership percentage, because no such Bali percentage appears here. The conclusion is simpler: on this record, KBLI 18202 is nationally open to PMA up to 100%, and it is not blocked for PMA registration in Bali by the moratorium.",
+    "pullQuote": "On this record, the Bali story is not a hidden ownership cap, but the absence of a moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

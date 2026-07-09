@@ -1,0 +1,27 @@
+{
+  "code": "19201",
+  "editorial": {
+    "headline": "A Nationally Open Code for Petroleum-Fuel Refining",
+    "standfirst": "KBLI 19201 covers large-scale petroleum refining into fuels and LPG, nationally open to PMA ownership and not blocked by Bali’s moratorium logic.",
+    "body": "KBLI 19201 is a heavy industrial code for the refining and purification of petroleum into usable fuels. The record defines its scope through the output of that process: avigas, avtur, gasoline, kerosene, solar fuel, diesel fuel, fuel oil or petrol, solvents, and LPG produced from petroleum refining. In plain English, this is not a trading, storage, or retail fuel activity. It is the industrial conversion of crude petroleum into refined fuel products.\n\nThe registration signal is correspondingly narrow. The record opens this activity only at **Besar** scale, which fits the nature of the work described: petroleum refining is capital-intensive, infrastructure-heavy, and industrial rather than small-format commerce. A founder reading this code should therefore treat it as a large-scale industrial classification, not as a general umbrella for every fuel-related business. The scale field is doing real work here: it tells you who this code is built for in the registration system.\n\nNationally, the foreign-ownership picture is straightforward. The PMA status is **TERBUKA**, and the recorded maximum foreign ownership is **100%**. That means the national rule in this slim record treats the activity as open to foreign ownership up to the full recorded ceiling. The source attached to that national position is Perpres 10/2021, 49/2021. There is no lower cap, quota, local-shareholder condition, or special ownership threshold in the record, so none should be read into it.\n\nThe Bali picture is also clear, but for a different reason. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across Bali, permanently, according to the record. KBLI 19201 is not marked as blocked: `l4_bali_blocked` is false, and the Bali reason says, “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The honest conclusion is therefore not that Bali creates a separate percentage, partnership requirement, or local cap. It is simply that this nationally open, large-scale refining activity is recorded as **not blocked by the Bali moratorium**, because the risk level at Besar scale sits above the Low and Medium-Low band targeted by that rule.",
+    "pullQuote": "The honest Bali reading is not a hidden local cap, but a moratorium test that this large-scale refining code does not fail.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scale open to",
+        "value": "Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

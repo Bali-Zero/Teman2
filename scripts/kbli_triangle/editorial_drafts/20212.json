@@ -1,0 +1,27 @@
+{
+  "code": "20212",
+  "editorial": {
+    "headline": "Pest-Control Formulation With a Clean National and Bali Read",
+    "standfirst": "KBLI 20212 covers the formulation of ready-to-use pest-control products, open nationally to full foreign ownership and not blocked for PMA in Bali.",
+    "body": "**KBLI 20212 is about formulation, not vague chemical trading.** The activity described in the record is the processing of active ingredients into ready-to-use pest-control products. Its practical center is the finished formulation: insecticides, fungicides, rodenticides, herbicides, nematicides, molluscicides and acaricides are all named in the scope, as are disinfectants for agriculture and other uses. In plain English, this is the industrial step that turns active substances into products designed for actual pest-control use.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah and Besar businesses, so it is not framed only as a large industrial category. A small producer and a larger manufacturer may both sit within the same activity code if the real business is the formulation of those ready-to-use pest-control or disinfectant products. That breadth matters because the code is defined by the activity itself, not by a single factory size, sales channel or product brand.\n\nNationally, the foreign-investment signal is clean. The PMA status is TERBUKA, and the foreign-ownership ceiling in the record is 100%. That means the national entry in this slim record does not cap the foreign stake below full ownership. The source given for that national position is Perpres 10/2021, 49/2021. Nothing in the record adds a separate minimum capital figure, licence threshold, tax treatment or approval timeline, so none should be read into it.\n\nBali also reads as open on this record, but for a specific reason. The Bali status is marked OK_or_HIGHER_RISK, and l4_bali_blocked is false. The record explains the reason directly: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That matters because the stated Bali moratorium blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. Here, the record does not mark the activity as blocked. The honest conclusion is therefore straightforward: KBLI 20212 is nationally open to 100% foreign ownership, and this slim record does not block PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is straightforward: KBLI 20212 is nationally open to 100% foreign ownership, and this slim record does not block PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

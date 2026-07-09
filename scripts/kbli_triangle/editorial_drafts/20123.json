@@ -1,0 +1,27 @@
+{
+  "code": "20123",
+  "editorial": {
+    "headline": "Micro-Nutrient Fertiliser Looks Open Nationally, but Bali Blocks PMA",
+    "standfirst": "This activity covers the manufacture of micro-nutrient and beneficial-element fertilisers, with national PMA openness but a Bali registration block under the record’s risk-class moratorium.",
+    "body": "**KBLI 20123 is a manufacturing code for a very specific corner of the fertiliser industry: products built around trace nutrients rather than broad commodity fertiliser categories.** The record describes activity that includes making fertilisers containing micro-nutrients such as zinc, iron, copper, manganese, boron and molybdenum. It also includes single fertilisers containing beneficial nutrients such as cobalt, silicon, sodium, iodine, titanium and selenium. In plain English, this is the industrial production of specialised plant-nutrition inputs where small elements matter because the product is defined by targeted nutrient content.\n\n**On the national record, the code is open.** Its PMA status is marked TERBUKA, and the listed foreign-ownership ceiling is 100%. The same slim record shows the code open across the full scale spectrum: Mikro, Kecil, Menengah and Besar. That breadth matters editorially because the activity is not framed only as large industrial manufacturing; the record explicitly names every operating scale. A founder reading this nationally would see a code that can accommodate foreign ownership up to the listed ceiling and can be registered at multiple business sizes, provided the registration question is treated at the national level.\n\n**Bali is where the answer changes.** The record marks `l4_bali_blocked` as true and gives the reason as: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026”. It also states the moratorium rule in broader terms: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)”. That is the honest national-vs-Bali picture for this code. Nationally, the activity is open to PMA up to 100%. In Bali, the record says PMA registration is blocked because the relevant OSS risk pattern falls inside the provincial moratorium. There is no separate Bali percentage in the record, and the Bali restriction should not be translated into a shareholding cap; it is a registration block under the stated Bali rule.\n\n**For a foreign-owned setup, the practical reading is therefore precise but uncomfortable: this code is nationally open, yet not available for PMA registration in Bali today according to the slim record.** That does not change what the activity is: manufacturing fertilisers containing micro-nutrients and beneficial elements. It changes where the registration logic lands. The code can look straightforward on national openness, scale coverage and foreign-ownership percentage, but the Bali-side status is not a footnote. It is the controlling local conclusion in this record: BLOCCATO_CLASSE_RISCHIO.",
+    "pullQuote": "Nationally, the activity is open to PMA up to 100%; in Bali, the record says PMA registration is blocked.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

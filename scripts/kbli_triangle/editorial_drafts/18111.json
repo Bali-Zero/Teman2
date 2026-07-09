@@ -1,0 +1,27 @@
+{
+  "code": "18111",
+  "editorial": {
+    "headline": "General Printing, Open Nationally but Scope-Sensitive in Bali",
+    "standfirst": "KBLI 18111 covers broad commercial and editorial printing, with full national foreign ownership but a Bali registration picture that depends on the declared scope.",
+    "body": "KBLI 18111 is the broad house of general printing: the production of newspapers, magazines, periodicals, books, brochures, music manuscripts, maps, atlases, posters, advertising catalogues, prospectuses, diaries, calendars, business correspondence, stationery and other commercial printed matter. Its scope is not limited to one technique. The record includes printing by press, offset, photogravure, flexography, duplicating machines, computer printers, letterpress and fast-printing machines, as well as printing on labels or identification marks. It also reaches printing on textile, plastic, glass, metal, wood and ceramic surfaces, laser engraving on textiles, reprinting through computers or stencil machines, stand-alone document photocopying, signs, beer coasters, photos and advertising printing.\n\nThis is therefore the KBLI a business would look at when the activity is the act of printing itself: turning editorial, commercial, promotional or documentary content into physical output through printing machinery or related processes. It can sit behind a neighbourhood print shop, a specialist commercial printer, an advertising print operation, a document-copying counter, or a larger industrial facility producing printed goods at scale. The record expressly opens the activity to **Mikro**, **Kecil**, **Menengah** and **Besar** scales, so the classification is not reserved for one size of operator.\n\nNationally, the investment signal is straightforward. The record marks the activity as **TERBUKA**, with `pma_max_asing` at **100**, sourced to **Perpres 10/2021, 49/2021**. In plain English, the national record treats this as open to foreign ownership up to 100%. That does not mean every Bali registration is automatic, because the Bali-side field is deliberately more cautious: `BLOCCATO_DIPENDE_SCOPE`, with `l4_bali_blocked` set to false.\n\nThe honest Bali reading is scope-dependent, not a separate ownership cap. The record says: “OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity.” It also records the provincial moratorium rule: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” So the practical conclusion is narrow but important: KBLI 18111 is nationally foreign-open, yet in Bali the declared activity and live OSS risk treatment matter. A foreign-owned setup should not treat the national 100% ceiling as the whole answer; it should verify the exact printing scope before relying on Bali registration.",
+    "pullQuote": "KBLI 18111 is nationally foreign-open, but in Bali the exact declared printing scope is the part that decides the registration risk.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

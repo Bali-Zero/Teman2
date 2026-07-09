@@ -1,0 +1,27 @@
+{
+  "code": "20113",
+  "editorial": {
+    "headline": "Basic Dye and Pigment Chemicals, Open Nationally but Scope-Sensitive in Bali",
+    "standfirst": "KBLI 20113 covers the manufacture of basic dye and pigment chemicals, with national PMA openness and a Bali registration picture that depends on declared scope and risk.",
+    "body": "KBLI 20113 is a manufacturing code for basic chemical products in the form of dyes and pigments. The record frames it around substances such as red lead, chrome yellow, zinc yellow, barium sulfate, aluminium powder pigments, ochre, titanium-based pigments, and cyclic intermediates including phenol intermediates and derivatives. It also reaches into textile dyes and dyes used for food and medicines. In plain English, this is not a general trading label or a light formulation category; it is an industrial manufacturing classification for the chemical base materials that give colour, opacity, or pigment function to other products.\n\nThe scope also draws a boundary. It does not cover the manufacture of specially formulated dye and pigment preparations, and the record separately carves out a long set of named dye-industry activities, including reactive, disperse, acid, basic, naphthol, mordant, vat, soluble vat, sulfur, oxidation, intermediate, pigment dye, Metanil Yellow, and Rhodamin B industries. That matters because the code should be read as a precise industrial manufacturing home for the covered basic dye and pigment chemicals, not as a catch-all for every colourant-related operation. A founder using it should be able to describe the activity in terms of manufacturing the covered chemical substances, intermediates, or dyes, rather than merely handling finished colourant products.\n\nOn scale, the record is broad: Mikro, Kecil, Menengah, and Besar are all open to this activity. Nationally, the PMA status is TERBUKA, and the foreign-ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. The clean national reading is therefore straightforward: the code is foreign-open, and the record does not impose a lower national foreign-share cap. For a foreign-owned company, that is the strong part of the picture: the national investment field treats this activity as open, across all listed business scales.\n\nBali needs a more careful sentence. The record does not mark this code as fully blocked in Bali: `l4_bali_blocked` is false. But it also does not give a simple green light. The Bali status is `BLOCCATO_DIPENDE_SCOPE`, with the reason stated as: \"OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity\". That sits beside the province rule that Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest conclusion is: nationally this code is open to PMA up to 100%, but in Bali the registration result depends on the exact declared activity and its live OSS risk treatment, especially at Besar scale. There is no separate Bali percentage in the record; the Bali question is not a foreign-share cap, but whether the declared scope can pass the provincial low-risk moratorium logic.",
+    "pullQuote": "Nationally this code is open to PMA up to 100%, but in Bali the registration result depends on the exact declared activity and its live OSS risk treatment.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

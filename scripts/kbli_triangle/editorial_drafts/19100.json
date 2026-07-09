@@ -1,0 +1,27 @@
+{
+  "code": "19100",
+  "editorial": {
+    "headline": "Coke-Oven Products as a Fully Open Industrial Classification",
+    "standfirst": "KBLI 19100 covers coke-oven operations and related coal-derived products, open nationally to PMA ownership and not blocked in Bali under the record’s moratorium test.",
+    "body": "KBLI 19100 is an industrial classification for the coke-oven side of coal processing. The record places within its scope the operation of coke ovens, the production of coke and semi-coke, pitch and pitch coke, coke-oven gas, raw coal tar and lignite tar, and the agglomeration of coke. In plain English, this is not a general trading label or a light manufacturing wrapper. It is a production classification for facilities that transform coal-linked inputs into coke-oven and tar-derived industrial products.\n\nThe scale position is broad. The record says the classification is open to Mikro, Kecil, Menengah, and Besar business scales. That matters because the activity is not reserved in the slim record for only one size of operator. A founder reading this should understand the classification first as an industrial scope, then as a registration lane that the record marks open across every listed scale. The words do real work here: if the registered business is actually operating coke ovens or producing the listed coke, pitch, gas, tar, or agglomerated coke products, this is the activity described by the record.\n\nNationally, the PMA picture is unusually direct. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%. On the record alone, that means the activity is open to foreign investment nationally up to full foreign ownership, with the source stated as Perpres 10/2021, 49/2021. There is no basis in this record for adding a minimum-capital figure, a separate permit condition, a processing threshold, or a special ownership formula. The national rule presented here is simply that the activity is open, and the percentage ceiling is complete.\n\nThe Bali side is also clear, but for a different reason. The record does not mark this classification as blocked in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. Its reason is stated as: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this classification is not caught by that block on the record provided. So the honest national-versus-Bali reading is clean: KBLI 19100 is foreign-open nationally, and the Bali moratorium field does not block it for PMA registration.",
+    "pullQuote": "So the honest national-versus-Bali reading is clean: KBLI 19100 is foreign-open nationally, and the Bali moratorium field does not block it for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}
