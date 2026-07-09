@@ -15,6 +15,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
+import socket
 import smtplib
 import subprocess
 import sys
@@ -49,6 +51,10 @@ OVERDUE_DAYS = 0     # Already expired
 VERBOSE = False
 
 
+class ExpiryAlerterError(RuntimeError):
+    """Raised when the alerter cannot trust its CRM query result."""
+
+
 def log(msg: str) -> None:
     if VERBOSE:
         print(f"[alerter] {msg}", file=sys.stderr)
@@ -63,6 +69,48 @@ def _load_env() -> dict[str, str]:
                 key, _, value = line.partition("=")
                 env[key.strip()] = value.strip()
     return env
+
+
+def _is_local_fly_host() -> bool:
+    host = SSH_HOST.strip().lower()
+    local_hosts = {
+        "",
+        "local",
+        "localhost",
+        "127.0.0.1",
+        socket.gethostname().lower(),
+        socket.getfqdn().lower(),
+    }
+    return host in local_hosts or (
+        host == "pro" and socket.gethostname().lower().startswith("nuzantara")
+    )
+
+
+def _run_fly_console_python(encoded: str, timeout_s: int = 30) -> subprocess.CompletedProcess[str]:
+    python_command = f"import base64;exec(base64.b64decode(b'{encoded}'))"
+    fly_args = [
+        "fly",
+        "ssh",
+        "console",
+        "--app",
+        "nuzantara-rag",
+        "-C",
+        f"python3 -c {shlex.quote(python_command)}",
+    ]
+    if _is_local_fly_host():
+        return subprocess.run(
+            fly_args,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    remote_command = " ".join(shlex.quote(arg) for arg in fly_args)
+    return subprocess.run(
+        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", SSH_HOST, remote_command],
+        capture_output=True,
+        text=True,
+        timeout=timeout_s,
+    )
 
 
 def _query_expiries() -> list[dict]:
@@ -142,15 +190,10 @@ asyncio.run(m())
 '''
     encoded = __import__("base64").b64encode(code.encode()).decode()
 
-    result = subprocess.run(
-        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", SSH_HOST,
-         f'fly ssh console --app nuzantara-rag -C "python3 -c \\"import base64;exec(base64.b64decode(b\'{encoded}\'))\\"" 2>/dev/null'],
-        capture_output=True, text=True, timeout=30,
-    )
+    result = _run_fly_console_python(encoded, timeout_s=30)
 
     if result.returncode != 0:
-        log(f"Query failed: {result.stderr[:200]}")
-        return []
+        raise ExpiryAlerterError(f"Query failed: {result.stderr[:200]}")
 
     output = result.stdout.strip()
     # Find the JSON line (last line starting with [)
@@ -158,7 +201,7 @@ asyncio.run(m())
         line = line.strip()
         if line.startswith("["):
             return json.loads(line)
-    return []
+    raise ExpiryAlerterError("Query returned no JSON payload")
 
 
 def _classify_urgency(expiry_str: str) -> tuple[str, int, str]:
@@ -373,11 +416,7 @@ asyncio.run(m())
         print(f"[DRY RUN] Would mark renewal_required for {len(client_ids)} clients: {ids_csv}")
         return
 
-    result = subprocess.run(
-        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", SSH_HOST,
-         f'fly ssh console --app nuzantara-rag -C "python3 -c \\"import base64;exec(base64.b64decode(b\'{encoded}\'))\\"" 2>/dev/null'],
-        capture_output=True, text=True, timeout=30,
-    )
+    result = _run_fly_console_python(encoded, timeout_s=30)
     if result.returncode == 0:
         log(f"CRM write-back: marked {len(client_ids)} clients renewal_required")
     else:
@@ -415,7 +454,13 @@ def main() -> None:
     bot_token = env.get("TELEGRAM_BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
     log("Querying CRM for expiries...")
-    raw_items = _query_expiries()
+    try:
+        raw_items = _query_expiries()
+    except ExpiryAlerterError as exc:
+        log(str(exc))
+        print(f"Expiry alerter failed: {exc}", file=sys.stderr)
+        _write_heartbeat(status="failed")
+        raise SystemExit(1) from exc
 
     if not raw_items:
         log("No expiries found in next 30 days")
