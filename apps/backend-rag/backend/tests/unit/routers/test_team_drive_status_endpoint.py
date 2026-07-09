@@ -41,10 +41,17 @@ class RealSurfaceDrive:
 
     async def list_files(
         self,
+        user_email: str | None = None,
         folder_id: str | None = None,
         page_size: int = 50,
     ) -> dict[str, Any]:
-        self.list_files_calls.append({"folder_id": folder_id, "page_size": page_size})
+        # Mirrors the real TeamDriveService.list_files signature, whose first
+        # positional/keyword param is user_email (backend/services/integrations/
+        # team_drive_service.py). The status handler calls it with
+        # user_email="system"; capture it so the fake stays faithful.
+        self.list_files_calls.append(
+            {"user_email": user_email, "folder_id": folder_id, "page_size": page_size}
+        )
         return {"files": self._files}
 
 
@@ -110,7 +117,9 @@ async def test_drive_status_reports_files_inaccessible_when_list_files_fails() -
     not a 500 (existing behavior, unrelated to this bug, must survive)."""
 
     class FailingDrive(RealSurfaceDrive):
-        async def list_files(self, folder_id: str | None = None, page_size: int = 50) -> dict[str, Any]:
+        async def list_files(
+            self, user_email: str | None = None, folder_id: str | None = None, page_size: int = 50
+        ) -> dict[str, Any]:
             raise RuntimeError("no access")
 
     drive = FailingDrive()
