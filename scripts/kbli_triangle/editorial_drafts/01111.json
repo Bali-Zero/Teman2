@@ -1,0 +1,27 @@
+{
+  "code": "01111",
+  "editorial": {
+    "headline": "Corn Farming With a Bali Registration Wall",
+    "standfirst": "This activity covers ordinary corn cultivation and seed production, nationally open to foreign ownership but closed to PMA registration in Bali.",
+    "body": "For a foreign founder looking at corn farming in Bali, the practical answer comes before the agronomy: this activity cannot be registered for PMA in Bali today. The national record says the activity is open, with foreign ownership permitted up to 100, but the Bali layer changes the operational outcome. Bali marks the activity as TERTUTUP, and the stated reason is direct: reserved basic staple-crop agriculture is closed to PMA registration in the province. The moratorium is also broad, blocking all Low and Medium-Low risk KBLI for PMA across the island.\n\nSubstantively, the activity is straightforward agricultural production of corn. It includes preparing land, planting, maintaining the crop, harvesting, and post-harvest work when those steps are carried out as one integrated corn-farming operation. The scope also extends to corn seed activity, including cultivation to produce seed in grain form, as well as nursery and seed-production work connected to the corn crop. In plain English, this is not a narrow trading or processing category; it is the field-level business of growing corn, including the seed side, when the work remains part of the same cultivation chain.\n\nThe scale signal is unusually broad: Mikro, Kecil, Menengah, and Besar are all listed as open scales. That matters for domestic structuring, because the record does not reserve the activity to only one size band. But scale openness is not the same as location permission for foreign capital. Nationally, the PMA status is TERBUKA and the foreign ownership line reads 100, so the national investment table does not itself impose a lower foreign-share cap here.\n\nThe honest reading is therefore split but not ambiguous. On the national layer, this is an open corn-farming activity with full stated foreign ownership. In Bali, for PMA registration, it is blocked. A founder can use the scope to understand exactly what the activity covers, and can use the scale line to see that the activity is not confined to one enterprise size. But for a foreign-owned setup in Bali, the decisive field is the Bali status: TERTUTUP.",
+    "pullQuote": "In Bali, for PMA registration, it is blocked.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "TERTUTUP"
+      }
+    ]
+  }
+}
