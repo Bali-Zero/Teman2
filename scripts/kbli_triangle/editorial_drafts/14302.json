@@ -1,0 +1,27 @@
+{
+  "code": "14302",
+  "editorial": {
+    "headline": "Hosiery Manufacturing Without a Bali Moratorium Block",
+    "standfirst": "KBLI 14302 covers knitted and crocheted hosiery, nationally open to full foreign ownership and not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "body": "KBLI 14302 is a manufacturing code for hosiery made by knitting or crochet. In practical terms, the record describes the production of socks, tights, stockings, pantyhose, medical stockings, other medical hosiery, and knitted or crocheted footwear without soles. Its centre of gravity is not fashion retail, distribution, or medical services; it is the making of legwear and foot-covering products where the textile process is knitted or crocheted.\n\nThe scale position is broad. The slim record opens the activity to **Mikro, Kecil, Menengah, and Besar** scale operators, so the code is not framed only for industrial-scale factories or only for small workshops. A founder reading it should treat the scope as a production activity that can sit across the registered business scales named in the record, provided the actual business remains inside the described manufacturing field: hosiery, medical hosiery, and knitted or crocheted soleless footwear.\n\nNationally, the investment signal is clear. The record marks the PMA status as **TERBUKA** and gives a foreign-ownership ceiling of **100%** under **Perpres 10/2021, 49/2021**. That means the national field is open to foreign ownership up to the full percentage stated in the record. There is no smaller foreign cap in the slim record, and there is no extra capital threshold, licence condition, tax rule, or timeline stated here to add to the analysis.\n\nBali does not change that picture into a separate percentage. The Bali-side status is **OK_or_HIGHER_RISK**, with `l4_bali_blocked` marked false. The reason given is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this code is not marked as blocked. The honest reading is therefore simple: nationally it is open to PMA up to 100%, and on the Bali layer the record does not show a moratorium block for PMA registration.",
+    "pullQuote": "Nationally it is open to PMA up to 100%, and on the Bali layer the record does not show a moratorium block for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

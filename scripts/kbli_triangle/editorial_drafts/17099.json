@@ -1,0 +1,27 @@
+{
+  "code": "17099",
+  "editorial": {
+    "headline": "A Broad Home for Unprinted Paper Goods and Paperboard Products",
+    "standfirst": "KBLI 17099 covers ready-to-use paper and paperboard goods, nationally open to foreign ownership and not blocked for PMA registration in Bali under the record.",
+    "body": "KBLI 17099 is the wide residual home for paper and paperboard goods that are not captured elsewhere in the classification. In practical terms, it covers the making of ready-to-use writing paper, printing paper, computer printout paper, copy paper, adhesive paper, registers, accounting books, binders, albums, notebooks, and education or commercial stationery of a similar character. It also reaches further into paper-based containers and components: boxes, bags, wallets, absorbent pads, cellulose cigarette filters, labels, filter paper, filter paperboard, paper rolls, paperboard rolls, bobbins, egg trays, moulded pulp goods, wallpaper, vinyl- or textile-coated wall coverings, and newly created paper products.\n\nThe record also makes clear that this is not only a finishing category for familiar stationery. It includes paper and paperboard made or prepared through processes such as coating, glazing, gumming, and laminating, as well as carbon paper and stencil sheets cut into consumer-ready form. It covers EKG paper, unprinted office stationery such as envelopes and letter paper, and paper-based tableware including plates, cups, straws, and similar goods. The boundary matters: printed office stationery and cards are outside the activity, so the editorial center of gravity here remains unprinted, manufactured, ready-to-use paper and paperboard products.\n\nOn scale, the record is unusually broad. Registration is open across Mikro, Kecil, Menengah, and Besar. That means the activity can describe a small local paper-goods producer as well as a larger manufacturing operation, provided the actual business remains inside the scope above. The code is therefore not defined by one product alone, but by a manufacturing logic: paper or paperboard is converted, prepared, shaped, coated, assembled, or finished into usable commercial, office, educational, packaging, wall-covering, tableware, filtration, moulded-pulp, or novelty goods.\n\nThe national foreign-investment position is straightforward. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national foreign-ownership ceiling is 100%. The Bali side does not introduce a separate ownership percentage. It records l4_bali_blocked as false and gives the Bali status as OK_or_HIGHER_RISK, with the reason: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this record, however, does not mark the activity as blocked. The honest reading is therefore clean: nationally foreign-open, and not blocked for PMA registration in Bali under the supplied Bali record.",
+    "pullQuote": "The honest reading is therefore clean: nationally foreign-open, and not blocked for PMA registration in Bali under the supplied Bali record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

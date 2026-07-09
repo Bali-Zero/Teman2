@@ -1,0 +1,27 @@
+{
+  "code": "16213",
+  "editorial": {
+    "headline": "Laminated Wood Manufacturing, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 16213 covers laminated wood production such as barecore, blockboard, and lamin board, with a clear national opening but a Bali registration block for PMA.",
+    "body": "KBLI 16213 is the industrial activity for making laminated wood. The record defines its scope as the manufacture of laminated wood products such as barecore, blockboard, and lamin board. In plain English, this is not general timber trading or a broad furniture category; it is a manufacturing classification for engineered wood panels and related laminated wood formats. The activity sits in the productive middle of the wood-processing chain, where raw or semi-processed wood is turned into layered, bonded material for further use.\n\nThe registration picture is broad at the scale level. The record opens the activity to Kecil, Menengah, and Besar, so the code is not framed as a single-size industrial activity. Small, medium, and large businesses can all appear in the scale field for this KBLI. That matters because the business description should match the real operation: a company making laminated wood products under this classification is registering a manufacturing activity, not merely describing a downstream sales channel or a vague wood-products business.\n\nNationally, the foreign-investment signal is straightforward. The PMA status is TERBUKA, and the national foreign-ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. On the national record alone, this reads as an activity open to foreign ownership up to the full stated ceiling. There is no lower national cap in the slim record, and no additional national threshold, licence, timeline, or capital condition is provided here. The honest national summary is therefore simple: KBLI 16213 is nationally open for PMA, with the record showing a 100% maximum foreign-ownership figure.\n\nBali changes the practical answer. The record marks this activity as l4_bali_blocked: true, with the Bali status BLOCCATO_CLASSE_RISCHIO. The stated reason is: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently, with the source listed as Gubernur letter B.27.000/642/PM/DPMPTSP. So the correct investor-facing reading is not that Bali has a separate percentage cap. It is sharper than that: despite the national PMA opening, a foreigner cannot register this activity in Bali under the Bali-side block recorded here.",
+    "pullQuote": "Despite the national PMA opening, a foreigner cannot register this activity in Bali under the Bali-side block recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

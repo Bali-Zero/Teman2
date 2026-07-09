@@ -1,0 +1,27 @@
+{
+  "code": "13992",
+  "editorial": {
+    "headline": "Coated Textile Manufacturing With a Clear Bali Path",
+    "standfirst": "KBLI 13992 covers coated, laminated, or impregnated textile fabrics, nationally open to PMA ownership and not blocked for Bali registration under the record.",
+    "body": "KBLI 13992 is the manufacturing home for textile fabrics that have been given an additional technical surface or structure. The record describes woven, knitted, and nonwoven textiles that are impregnated, coated, covered, or laminated with plastic, rubber, latex, or starch-like substances. In plain English, this is where ordinary textile production becomes material engineering: tracing cloth, artist canvas, buckram, tarpaulin fabric, sailcloth, tent cloth, awning cloth, umbrella cloth, and interlining all sit inside the scope when the activity is the making of those treated fabrics.\n\nThe important word is manufacturing. This code is not about selling finished umbrellas, operating a tent-rental business, or trading rolls of fabric as inventory. Its centre of gravity is the industrial process that changes the textile itself: coating, laminating, covering, or impregnating it so the fabric performs differently from untreated cloth. That makes it relevant for producers supplying construction, marine, outdoor, garment, upholstery, packaging, and technical-textile markets, provided the registered activity matches the manufacturing scope stated in the record.\n\nThe scale picture is unusually broad. The slim record marks the activity as open to Mikro, Kecil, Menengah, and Besar operators, so it can describe anything from a small specialist producer to a larger factory line, as long as the business is genuinely carrying out the covered manufacturing activity. Nationally, the PMA status is TERBUKA, with the foreign-ownership ceiling recorded as 100%. That means the record treats this activity as open nationally for foreign investment up to the stated ceiling, under the cited Perpres source.\n\nThe Bali reading is also straightforward. The Bali status is recorded as OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason given is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” In other words, this is not one of the Bali-blocked Low or Medium-Low risk PMA activities under the moratorium rule in the record. For a foreign-owned setup, the honest conclusion from this record is clean: nationally open, 100% foreign ownership recorded, and not blocked for PMA registration in Bali by the stated moratorium logic.",
+    "pullQuote": "For a foreign-owned setup, the honest conclusion from this record is clean: nationally open, 100% foreign ownership recorded, and not blocked for PMA registration in Bali by the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "15113",
+  "editorial": {
+    "headline": "Dyeing Fur-Bearing Leather for Finished Goods",
+    "standfirst": "KBLI 15113 covers the colouring of fur-bearing leather used in finished leather goods, open across all business scales and nationally open to PMA ownership.",
+    "body": "KBLI 15113 is a narrow, production-facing activity: the colouring or dyeing of fur-bearing leather that will be used in finished leather goods. Its centre of gravity is not general leather trading, not broad garment manufacturing, and not a catch-all craft category. The record points to a specific treatment step applied to a particular material before it appears in a finished leather product. In plain English, this is the business of giving colour to leather that retains a furry or hair-on surface, where that material is destined for finished leather goods.\n\nThat specificity matters because the code is open across the full registered scale spectrum in the record: Mikro, Kecil, Menengah, and Besar. A small workshop may understand the activity as a finishing process inside a compact production chain; a larger operator may treat it as one stage in an industrial leather-goods supply operation. The record does not impose a narrower scale gate. It simply says that the activity can sit at any of those four scales, so the registration question is less about whether the code belongs only to one class of business size and more about whether the declared activity is truly the colouring of fur-bearing leather for finished leather goods.\n\nThe national PMA position is clean. The record marks the activity as TERBUKA, with pma_max_asing at 100. That means the national foreign-ownership ceiling shown here is 100%, not a partial cap. The source field is Perpres 10/2021, 49/2021, and there is no additional national threshold, licence condition, capital figure, or timeline in the slim record. A careful reading should therefore stay disciplined: nationally, the code is foreign-open according to the fields provided, and the only ownership number available is the national 100% ceiling.\n\nBali does not change that into a hidden percentage or a separate foreign-share formula. The Bali status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason given is exact and practical: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently, but this record’s own Bali-side conclusion is that KBLI 15113 is not blocked by that rule. So the honest national-versus-Bali picture is straightforward: nationally open to PMA at 100%, and not marked as blocked for PMA registration in Bali under the moratorium logic recorded here.",
+    "pullQuote": "The honest national-versus-Bali picture is straightforward: nationally open to PMA at 100%, and not marked as blocked for PMA registration in Bali under the moratorium logic recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

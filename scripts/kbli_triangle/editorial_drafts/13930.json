@@ -1,0 +1,27 @@
+{
+  "code": "13930",
+  "editorial": {
+    "headline": "Carpet and Rug Manufacturing, Read as a Real Industrial Activity",
+    "standfirst": "KBLI 13930 covers textile floor-covering production, nationally open to foreign ownership and not blocked for PMA registration in Bali under the record supplied.",
+    "body": "KBLI 13930 is not a retail label for selling carpets. It is an industrial manufacturing activity: the making of textile floor coverings such as carpets, rugs, carpet tiles, prayer rugs, and similar products made from natural fibres, synthetic fibres, or blended fibres. The record is also precise about production methods. Woven, tufted, braided, flocked, and needle-punched processes all sit inside the activity, as does the manufacture of artificial-grass carpet. In practical terms, this is the code for a factory or production operation whose core output is textile floor covering, not merely a showroom, installer, or general home-furnishing trader.\n\nThat manufacturing character matters because the record opens the activity across the full scale ladder: Mikro, Kecil, Menengah, and Besar. A small workshop making textile prayer rugs and a larger operation producing carpet tiles are both legible within the activity, provided the actual business remains inside the described manufacturing scope. The boundaries are also important. The record excludes floor coverings made from non-textile materials such as cork, rubber, plastic, vinyl, or linoleum, and it excludes products made by combining or stitching multiple textile materials when that process is the defining activity. The clean reading is therefore narrow but commercially useful: textile floor-covering production, including synthetic grass carpet, with the listed textile processes as the anchor.\n\nThe national foreign-ownership position is straightforward. The record marks PMA status as TERBUKA and gives pma_max_asing as 100, meaning the foreign-ownership ceiling is 100%. That does not create any extra permission, incentive, tax treatment, or licensing shortcut; it simply means that, on the record provided, the activity is nationally open to full foreign ownership. The source field points to Perpres 10/2021, 49/2021, and there is no separate number or condition in the record that reduces the national ceiling.\n\nThe Bali picture is equally important, and here it is not a hidden prohibition. The Bali moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But this activity is marked l4_bali_blocked false, with l4_bali_status recorded as OK_or_HIGHER_RISK. The stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest conclusion is clean: nationally, this activity is foreign-open up to 100%; in Bali, the record does not mark it as blocked for PMA registration under the moratorium. That is the useful distinction founders need: not every foreign-open activity survives the Bali filter, but this record says KBLI 13930 does.",
+    "pullQuote": "Nationally, this activity is foreign-open up to 100%; in Bali, the record does not mark it as blocked for PMA registration under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

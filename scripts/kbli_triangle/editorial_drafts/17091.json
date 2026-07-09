@@ -1,0 +1,27 @@
+{
+  "code": "17091",
+  "editorial": {
+    "headline": "Tissue Paper Manufacturing With a Clear National and Bali Path",
+    "standfirst": "KBLI 17091 covers the manufacturing base behind household tissue, sanitary paper goods, cotton paper products, and related absorbent paper articles.",
+    "body": "KBLI 17091 is a manufacturing classification for tissue paper and closely related absorbent paper products. Its scope is broad, but still clearly bounded: the making of paper for household supplies, cotton paper goods, and products made from cellulose wadding. In plain English, this is the industrial activity behind cleaning tissue, facial tissue, kitchen tissue, lens tissue, paper handkerchiefs, paper towels, paper napkins, toilet tissue, baby diapers, adult diapers, animal diapers, underpads, sanitary napkins, pantyliners, tampons, breast pads, insert pads, and napkins for cups, plates, and trays. The record also includes cotton paper and cotton paper goods, including towels or wipes, cigarette paper, plugwrap paper, and tipping paper.\n\nThe registerable business profile is not confined to one enterprise size. The slim record opens this activity to Mikro, Kecil, Menengah, and Besar scales, which means the classification can describe anything from a small paper-goods producer to a large industrial manufacturer, as long as the activity remains within the stated tissue, sanitary, cotton paper, or cellulose-wadding scope. The useful editorial point is that the code is not about retailing these goods, branding them, or distributing them; it is about making the paper and paper-based articles themselves.\n\nNationally, the foreign-investment picture is straightforward. The record marks PMA status as TERBUKA and gives pma_max_asing as 100, sourced to Perpres 10/2021, 49/2021. Rendered plainly, the national ceiling is 100% foreign ownership. There is no lower cap in the record, and there is no additional threshold or capital figure to infer. For a foreign-owned setup, the national reading is therefore clean: this activity is open, and the recorded foreign-ownership ceiling reaches 100%.\n\nBali does not introduce a separate foreign-ownership percentage in this record. The Bali-side status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason is also explicit: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the moratorium rule states that Bali province blocks ALL Low + Medium-Low risk KBLI for PMA on an island-wide, permanent basis. This record does not place KBLI 17091 inside that blocked result. The honest conclusion is that KBLI 17091 is nationally open for PMA and, on the Bali fields supplied here, not blocked by the Bali moratorium.",
+    "pullQuote": "The honest conclusion is that KBLI 17091 is nationally open for PMA and, on the Bali fields supplied here, not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

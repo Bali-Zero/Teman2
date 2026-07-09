@@ -1,0 +1,27 @@
+{
+  "code": "13991",
+  "editorial": {
+    "headline": "Narrow Fabric Manufacturing, Open Nationally and Workable in Bali",
+    "standfirst": "KBLI 13991 covers the making of narrow textile goods, with full national foreign ownership and no Bali moratorium block in the supplied record.",
+    "body": "KBLI 13991 is a manufacturing category for narrow fabric: textile goods that are generally no wider than 30 cm. Its practical world is specific and material. The record points to ribbons, lace, buldoc cloth, label fabric, touch-fastener or adhesive fastener material, textile tape, and webbing. This is not a broad textile-trading category, and it is not simply the business of taking a wider fabric and cutting it down. The record expressly excludes narrow fabric made by slitting larger cloth into smaller widths, or by rewinding it into smaller rolls.\n\nThat distinction matters because the activity described here is production, not repackaging. A founder using this code would be placing the business inside the making of narrow textile materials themselves: the woven, lace-like, fastening, labelling, taping, or webbing inputs that often sit inside clothing, packaging, accessories, uniforms, furniture, bags, or industrial textile assemblies. The code is compact, but its commercial surface is broad because narrow fabric is usually a component rather than the final object consumers notice first.\n\nThe scale position is also clean in the record. This activity is open to Mikro, Kecil, Menengah, and Besar businesses, so the slim record does not confine it to a single enterprise size. Nationally, it is marked TERBUKA, and the foreign-ownership ceiling is 100%. In plain terms, the national picture in this record is fully foreign-open for PMA ownership; there is no lower foreign stake cap stated here, and no separate threshold or minimum figure can be inferred from it.\n\nThe Bali reading is equally important, because Bali is where many otherwise open activities can become practically unavailable to PMA registration. Here, however, the record does not mark a block. The Bali status is OK_or_HIGHER_RISK, l4_bali_blocked is false, and the recorded reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. That means the honest national-vs-Bali picture is not a hidden contradiction. On the supplied facts, KBLI 13991 is nationally open to full foreign ownership and is not blocked by the Bali moratorium rule recorded for low and medium-low risk KBLI.",
+    "pullQuote": "On the supplied facts, KBLI 13991 is nationally open to full foreign ownership and is not blocked by the Bali moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

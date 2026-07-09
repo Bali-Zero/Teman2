@@ -1,0 +1,27 @@
+{
+  "code": "13921",
+  "editorial": {
+    "headline": "Household Textiles With a Clear National Opening",
+    "standfirst": "KBLI 13921 covers finished textile goods for the home, open across business scales and nationally open to full foreign ownership, with no Bali moratorium block recorded.",
+    "body": "KBLI 13921 is the manufacturing code for finished textile goods made for household use. The record describes a broad but recognisable production field: blankets, travelling rugs, bed sheets, tablecloths, pillowcases, curtains, towels, seat-cover textiles, prayer mats or floor coverings made with textiles as the main material, handwoven wall tapestries, textile laundry bags, bag and shoe covers, baby carriers, electric blankets, mosquito nets with or without insecticide, cleaning cloths, and dish towels. The common thread is not retail, decoration, or general trading; it is the making of household textile articles through joining, sewing, or otherwise combining textile-based materials into finished goods.\n\nThat makes this code relevant for operators who are actually building a textile production activity rather than merely distributing imported homeware. A small workshop producing pillowcases and towels, a mid-sized factory stitching curtains and bed linen, or a larger facility turning textile inputs into finished household articles all sit within the activity described by the record, provided the substance remains manufacturing of household textile goods. The scale field is unusually clean: the activity is open to Mikro, Kecil, Menengah, and Besar. In plain English, the slim record does not reserve the code only for large factories, nor does it exclude smaller production businesses from the activity classification.\n\nNationally, the investment picture is also straightforward. The record marks PMA status as TERBUKA and gives the maximum foreign ownership as 100%. That is the national foreign-ownership ceiling in the record, and it should be read exactly as that: this activity is open nationally to full foreign ownership. There is no separate national caveat in the slim record, and there is no basis here to invent extra thresholds, capital rules, permits, or operating timelines. The only cited national source is the Perpres reference carried in the data.\n\nThe Bali reading is more nuanced, but still favourable. The province-wide moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, yet this specific activity is not marked as blocked. The Bali status is recorded as OK_or_HIGHER_RISK, and the reason is explicit: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". So the honest conclusion is not that Bali imposes a separate ownership percentage, quota, or partnership condition. It does not, at least not in this slim record. The conclusion is narrower and more useful: for this code, Bali is not recorded as blocking PMA registration under the moratorium logic shown here.",
+    "pullQuote": "The Bali conclusion is narrow and useful: this code is not recorded as blocked for PMA registration under the moratorium logic shown here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

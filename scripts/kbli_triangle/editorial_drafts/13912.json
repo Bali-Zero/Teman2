@@ -1,0 +1,27 @@
+{
+  "code": "13912",
+  "editorial": {
+    "headline": "Crocheted Fabric With a Clear National Opening, but No Bali PMA Door",
+    "standfirst": "This activity covers manual crocheted-fabric manufacturing: nationally open to PMA at 100%, across all listed scales, but blocked for PMA registration in Bali by the record's risk-class moratorium.",
+    "body": "KBLI 13912 is about the making of crocheted fabric by hand, using a hook to create a series of loops that become either plain cloth or a defined pattern. The record is technical in a useful way: it places the activity around the method, not around a fashion category or retail use. The essential distinction is that every stitch is completed before the next one begins, instead of holding many open stitches at the same time. That makes the activity a manufacturing classification for the fabric itself: careful, manual, loop-by-loop production of crocheted textile material.\n\nThe scale picture is broad within the record. The activity is open to Mikro, Kecil, Menengah, and Besar scales, so the classification can fit operators whose registered activity is the production of this crocheted fabric at any of those listed business sizes. Nothing in the slim record adds a special product threshold, a separate permit, a licence condition, or a capital test. The registration question therefore turns on whether the actual activity is truly the making of crocheted fabric as described: manual hook-work producing a fabric surface, whether plain or patterned, under the technique set out in the scope.\n\n**Nationally, the PMA picture is open.** The record marks the national PMA status as TERBUKA and gives the foreign-ownership ceiling as 100%, with Perpres 10/2021, 49/2021 as the source. In plain terms, the national record does not impose a lower foreign-ownership cap for this activity. For a foreign-owned setup looking only at the national PMA field, this is a cleanly open classification: the maximum foreign ownership figure is 100%, and all listed scales appear in the scales-open field.\n\nBali is the decisive exception. The Bali fields do not create a separate percentage; they mark the activity as blocked. The reason given is that OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, and the Bali moratorium rule blocks ALL Low + Medium-Low risk KBLI for PMA island-wide and permanently. So the honest reading is simple: nationally this activity is open to PMA at 100%, but a foreigner cannot register it for PMA in Bali under this record. Nationally this is open; in Bali, the record closes the PMA door because the activity falls inside the province's risk-class moratorium.",
+    "pullQuote": "Nationally this is open; in Bali, the record closes the PMA door because the activity falls inside the province's risk-class moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

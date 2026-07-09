@@ -1,0 +1,27 @@
+{
+  "code": "13139",
+  "editorial": {
+    "headline": "Other Textile Finishing, Open Nationally and Not Blocked in Bali",
+    "standfirst": "KBLI 13139 covers specialist textile finishing work, from dry finishing and transfer printing to made-to-order embroidery, across all business scales.",
+    "body": "KBLI 13139 is the home for textile finishing work that happens after the base textile already exists, when the commercial value is created through surface, handle, texture, motif, or ordered decoration. The slim record describes a broad finishing lane: dry finishing as an intermediate process in the textile industry, including calendering, embossing, sueding, raising, shearing, singeing, brushing, sanding, decatising, pleating, crushing, pintuck, ecoprint, and fabric printing through motif-transfer methods such as heat transfer and sublimation. It also includes made-to-order embroidery on textiles, plus the making of headscarves or scarves without sewing when that activity is integrated with the printing process.\n\nThat scope matters because this is not framed as general garment trading or a broad fashion label. It is a production activity around the treatment and refinement of textile material itself: pressing, marking, texturing, printing, embroidering, and finishing to specification. A founder registering this code would be describing a workshop, production unit, or textile-service operation whose main work is the finishing of textiles, not the upstream making of raw textile goods and not a retail storefront. The record is especially clear that custom embroidery belongs here when it is made to order on textile material, and that scarf or kerudung production belongs here only in the described no-sewing form integrated with printing.\n\nThe scale picture is unusually straightforward. The record opens the activity to Mikro, Kecil, Menengah, and Besar, so it can describe anything from a small finishing operation to a larger industrial unit, provided the real activity stays inside this finishing scope. Nationally, the PMA status is TERBUKA, with pma_max_asing recorded at 100. In plain English: the national record treats this activity as open to foreign ownership up to 100%. The source recorded for that position is Perpres 10/2021, 49/2021.\n\nThe Bali reading is also direct, but it should not be overcomplicated. The record marks l4_bali_blocked as false and gives the Bali status as OK_or_HIGHER_RISK. Its reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule recorded here says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, under the listed governor-letter source. For this code, however, the record does not mark a Bali PMA block. The honest conclusion is therefore clean: KBLI 13139 is nationally open, has a 100% recorded foreign-ownership ceiling, is open across all listed scales, and is not blocked in Bali under the moratorium field provided in the record.",
+    "pullQuote": "The honest conclusion is clean: KBLI 13139 is nationally open, has a 100% recorded foreign-ownership ceiling, and is not blocked in Bali under the moratorium field provided in the record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

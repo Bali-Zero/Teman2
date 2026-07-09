@@ -1,0 +1,27 @@
+{
+  "code": "16230",
+  "editorial": {
+    "headline": "Wood Packaging Manufacturing Is Nationally Open, but Bali Blocks PMA Entry",
+    "standfirst": "This code covers the making of wooden packaging and load-handling products, open across all business scales nationally but blocked for PMA registration in Bali.",
+    "body": "Wood packaging manufacturing is a practical, industrial activity: the making of wooden boxes, packing cases, crates, wooden drums and similar wood-based containers. The record also brings in wooden pallets, pallet boxes and other wooden load boards, along with barrels, tubs, buckets, other wood products, and wooden cable reels. In plain English, this is the business of turning timber into containers and handling units for goods that need to be stored, shipped, stacked, rolled, or moved with some physical protection. The scope is not decorative furniture or retail display; it is the useful, logistics-facing side of wood manufacturing.\n\nThe activity is open to every scale named in the record: Mikro, Kecil, Menengah, and Besar. That matters because it makes the code structurally broad. A small workshop making crates for local distribution and a larger plant producing pallets or cable reels for industrial supply both sit within the same activity description, provided the work stays inside the recorded scope. The record also marks the national PMA position as TERBUKA, with a pma_max_asing of 100. For a foreign-owned company, the national reading is therefore clear: the foreign-ownership ceiling is 100%, based on Perpres 10/2021, 49/2021.\n\nBali changes the practical answer. The record marks l4_bali_blocked as true and gives the reason: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule in the record is broader and sharper: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” So although the code is nationally open to foreign ownership, a foreign investor cannot treat Bali as available for PMA registration today. The obstacle is not a separate Bali percentage cap; the record gives no Bali-side percentage. It is a Bali registration block tied to the risk classification and the moratorium rule.\n\nThe honest conclusion is simple but important. Nationally, this is a foreign-open manufacturing code for wooden packaging, pallets, barrels, buckets, cable reels and related wood containers, available across micro through large scale. In Bali, however, the same activity is blocked for PMA registration under the recorded provincial moratorium. A founder reading the code should separate the two layers: the national investment list says open, but the Bali operating reality says not registerable for PMA on this record.",
+    "pullQuote": "Nationally the code is foreign-open, but Bali’s recorded moratorium makes it unavailable for PMA registration there.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "17022",
+  "editorial": {
+    "headline": "Paper and Carton Packaging Manufacturing Is Open, Including in Bali",
+    "standfirst": "KBLI 17022 covers the making of paper and carton packaging, from corrugated boxes to paper sacks, and the record treats it as foreign-open nationally and not blocked in Bali.",
+    "body": "KBLI 17022 is the industrial code for making packaging and boxes from paper or carton. Its scope is broad but still specific: the activity is manufacturing, not trading, designing, or distributing packaging. The record covers all kinds of paper and paperboard packaging used for wrapping and packing goods, including boxes for cigarettes and other products, corrugated paper and paperboard boxes, folding paperboard boxes, solid-board boxes, other paper and paperboard containers, paper sacks and bags, and office file boxes or similar goods. In plain English, this is the code for a factory-side business that turns paper or carton materials into containers and packing formats.\n\nThe scale picture is unusually straightforward. The record opens the activity to Mikro, Kecil, Menengah, and Besar scales, so it is not framed as a niche reserved only for one size of operator. A small producer making paper sacks and a larger manufacturer producing carton boxes sit within the same described field, provided the activity remains the making of those paper or carton packaging products. That breadth matters because the scope is written around the product family rather than a single end market: consumer goods, office storage, cigarette boxes, folding cartons, and corrugated packaging are all named as examples inside the same manufacturing envelope.\n\nNationally, the investment signal is clean. The PMA status is TERBUKA, and the foreign-ownership ceiling in the record is 100%. That means the national record does not impose a foreign-equity cap below full ownership for this activity. The source field ties that national position to Perpres 10/2021, 49/2021, but the practical editorial point is simpler: on the national reading supplied here, KBLI 17022 is open to foreign investment at the full stated ceiling. There is no basis in this slim record to add a minimum capital figure, a special licence, a tax treatment, or an operational threshold.\n\nThe Bali reading is also explicit, and it should not be made more dramatic than the record allows. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province, but this record marks KBLI 17022 as not blocked. The Bali status is OK_or_HIGHER_RISK, and the stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The honest national-vs-Bali picture, therefore, is that this paper and carton packaging manufacturing activity is foreign-open nationally and not blocked for PMA registration in Bali by the moratorium described in the record. The decisive point is that Bali does not add a separate ownership percentage here; it simply does not block this activity under the stated moratorium logic.",
+    "pullQuote": "The decisive point is that Bali does not add a separate ownership percentage here; it simply does not block this activity under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

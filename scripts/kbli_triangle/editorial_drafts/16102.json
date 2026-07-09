@@ -1,0 +1,27 @@
+{
+  "code": "16102",
+  "editorial": {
+    "headline": "Wood Preservation Is Nationally Open, but Bali Blocks PMA",
+    "standfirst": "KBLI 16102 covers wood preservation by drying, chemical treatment, or soaking; nationally it is open to 100% foreign ownership, while Bali blocks PMA registration under its risk moratorium.",
+    "body": "KBLI 16102 is the activity of preserving wood. The Indonesian scope describes preservation through drying, chemical treatment, and soaking wood with preservatives or other materials. That definition is the center of the code. It points to a treatment activity rather than a vague label around wood. For a founder, the useful reading is narrow: if the business is built around extending the usable life of wood through the methods named in the record, this is the activity the record is describing. The scope keeps the editorial lens on process: drying, chemical treatment, and soaking are not examples added for color; they are the actual boundaries supplied by the slim record.\n\nThe scale picture is broad without being vague. The record opens 16102 to Mikro, Kecil, Menengah, and Besar undertakings, so it is not confined in the record to a narrow operator size. Those scale names are the only scale facts available here; there is no threshold, timeline, or capital figure in the record. At the national PMA layer, the record is also direct: pma_status is TERBUKA and pma_max_asing is 100. In plain English, the national record treats wood preservation under this code as open to foreign ownership up to 100%, with Perpres 10/2021, 49/2021 given as the source.\n\nThe Bali reading is the point that changes the conclusion. The national door is open, but Bali has closed the registration route for PMA. The record marks l4_bali_blocked as true and gives the reason: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, which is blocked by the Bali moratorium of May 2026. The moratorium rule supplied with the record is blunt: Bali province blocks Low and Medium-Low risk PMA registration island-wide and permanently. This is exactly the national-vs-Bali split founders miss when they stop reading after the national PMA line.\n\nThat is a Bali-side block, not a separate Bali foreign-ownership percentage, and the record gives no Bali cap to quote. A founder looking only at the national investment line would see an open PMA category with a 100% ceiling. The same founder looking at Bali must stop at the provincial layer: for PMA registration on the island, the record says blocked because of the risk-class moratorium. This distinction matters because the record does not convert a 100% national ceiling into a smaller Bali ceiling. It creates a different answer at the provincial registration layer: open nationally, blocked for PMA in Bali. In Bali, under this record, a foreign-owned company cannot register this activity as PMA.",
+    "pullQuote": "The national door is open, but Bali has closed the registration route for PMA.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "15209",
+  "editorial": {
+    "headline": "A Quietly Broad Category for Unusual Footwear Manufacturing",
+    "standfirst": "KBLI 15209 covers footwear made beyond the standard categories, with national PMA openness and no Bali moratorium block in the slim record.",
+    "body": "KBLI 15209 sits in the manufacturing world, but its centre of gravity is not ordinary footwear. The slim record defines it as the making of other footwear not already captured by the standard footwear manufacturing categories, with examples such as shoes made from banana-stem sheaths and water hyacinth. It also includes gaiters and similar goods. In practical English, this is a category for footwear production that is still industrial, still product-based, and still clearly about making wearable foot-related goods, but which does not fall into the more conventional footwear lanes.\n\nThat makes the code particularly relevant for founders working with alternative materials, craft-linked production, or niche footwear formats that need a formal industrial classification. The record is explicit that the activity is open across all business scales: Mikro, Kecil, Menengah, and Besar. That matters because it means the classification is not written only for large factories or only for small workshops. A modest producer and a larger manufacturing operation can both sit within the scale language of the record, provided the actual activity remains inside this specific scope.\n\nNationally, the PMA position is clean. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. In plain terms, the national foreign-ownership ceiling is 100%. There is no basis in the slim record to add a hidden sectoral cap, special licence, minimum capital figure, or extra ownership condition. The responsible reading is therefore narrow but clear: as a national investment classification, this activity is foreign-open up to the stated ceiling.\n\nThe Bali picture is also unusually direct. The record does not mark the activity as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent; this entry is not captured as blocked by that rule. So the honest conclusion is not that Bali adds a separate foreign-ownership percentage, quota, or partnership condition. The record simply says this code is not blocked by the Bali moratorium, while preserving the national 100% ceiling as the only ownership percentage given.",
+    "pullQuote": "The responsible reading is narrow but clear: nationally foreign-open, and not marked as blocked by Bali’s moratorium in the slim record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

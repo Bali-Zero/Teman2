@@ -1,0 +1,27 @@
+{
+  "code": "13995",
+  "editorial": {
+    "headline": "Kapok Processing, Nationally Open but Stopped in Bali",
+    "standfirst": "KBLI 13995 covers kapok processing: open across business scales nationally, yet blocked for PMA registration in Bali under the record’s moratorium rule.",
+    "body": "KBLI 13995 is a narrow industrial activity: the processing of kapok. The slim record gives no wider commodity chain, no downstream product family, and no special operating condition beyond that scope. Its useful precision is exactly there. This is not a general textile category or a catch-all agricultural code; it is the industrial handling and processing of kapok as an activity in its own right. For founders, that matters because the code should be read from the scope outward, not from assumptions about what kapok might later become.\n\nOn the national investment reading, the code is marked **TERBUKA**. The foreign-ownership ceiling given in the record is **100%**, sourced to **Perpres 10/2021, 49/2021**. The scale field is also broad: **Mikro, Kecil, Menengah, Besar** are all listed as open. Taken only at national level, the classification therefore presents as a fully foreign-open activity, available across the full scale range recorded here. Nothing in the slim record adds a special national cap below 100%, a reserved scale, or a separate sector condition.\n\nThe Bali position is different, and it is the decisive point for a PMA setup on the island. The record marks this activity as **l4_bali_blocked: true** with the status **BLOCCATO_CLASSE_RISCHIO**. Its stated reason is: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule in the record is broader still: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” That means the honest reading is not that Bali applies a lower percentage, a partnership condition, or a local quota. The record gives no Bali-side ownership percentage at all. It says the activity is blocked for PMA registration in Bali because of the risk-class moratorium.\n\nSo the practical editorial conclusion is simple but important: nationally, KBLI 13995 is open to full foreign ownership; in Bali, a foreign-owned company cannot register this activity today under the record supplied. This is exactly the kind of code where the national investment table alone would be misleading if read without the Bali layer. The activity itself is modest and specific, but the registration outcome turns on geography: Indonesia-level openness does not override the Bali moratorium recorded here.",
+    "pullQuote": "Nationally, KBLI 13995 is open to full foreign ownership; in Bali, the record says it is blocked for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

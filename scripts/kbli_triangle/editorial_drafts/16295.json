@@ -1,0 +1,27 @@
+{
+  "code": "16295",
+  "editorial": {
+    "headline": "Wood Pellets and Biomass Fuel, Nationally Open but Scope-Sensitive in Bali",
+    "standfirst": "This activity covers pressed firewood, wood pellets, and solid biomass fuels, with PMA registration nationally open but Bali requiring exact OSS scope verification.",
+    "body": "KBLI 16295 sits in the practical, material end of Indonesia’s biomass economy. The record defines it as the manufacture of firewood and wood pellets made from sawdust or pressed substitute materials, including coffee grounds or soybean seeds. It also covers the making of solid fuel from biomass and pellets from coconut husk. In plain English, this is not a broad renewable-energy licence or a trading classification; it is a production activity for compressed wood and biomass-based fuel products.\n\nThe scale picture is unusually straightforward at the national level. The record opens this activity to **Micro, Small, Medium, and Large** business scales, so it is not reserved only for industrial-scale operators. A small producer working with coconut husk pellets and a larger factory processing sawdust into wood pellets both sit within the activity described, provided the declared business activity matches the actual production scope. For founders, the key discipline is precision: the scope is about making the fuel product, not stretching the classification into unrelated energy, logistics, or sales activity.\n\nNationally, the foreign-investment position is clear. The record marks the activity as **TERBUKA**, with **pma_max_asing** at **100**, sourced to **Perpres 10/2021, 49/2021**. That means the national record does not place a foreign-ownership ceiling below full foreign ownership. On the national reading alone, this is an open PMA activity, and the headline is not a hidden cap or a partial-ownership structure.\n\nBali is the more careful reading. The record does **not** mark the activity as outright Bali-blocked, but it does mark the Bali status as **BLOCCATO_DIPENDE_SCOPE**. The reason is specific: “OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity.” That must be read alongside the moratorium rule in the record: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” So the honest conclusion is narrow: nationally this activity is foreign-open, but in Bali a PMA registration depends on the exact OSS activity and risk profile declared. A founder should not treat the national 100% foreign-ownership position as automatic Bali clearance; the decisive question is whether the exact declared scope is registrable under Bali’s moratorium filter.",
+    "pullQuote": "National openness is not the same thing as automatic Bali clearance; the exact OSS scope is the decisive point.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

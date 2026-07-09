@@ -1,0 +1,27 @@
+{
+  "code": "16103",
+  "editorial": {
+    "headline": "Rattan and Bamboo Preservation Meets Bali’s PMA Block",
+    "standfirst": "KBLI 16103 is nationally open to full foreign ownership, but the record blocks PMA registration for this activity in Bali.",
+    "body": "**KBLI 16103 covers a narrow but important industrial activity: preserving rattan, bamboo, and similar materials.** The record’s scope is deliberately concise. It does not describe furniture making, trading, harvesting, construction, or downstream craft production. It points to the preservation activity itself: treating or maintaining rattan, bamboo, and similar materials so they can remain usable within the wider material and manufacturing chain.\n\nThat clarity matters because this is not a code reserved for only one business scale. The slim record marks it open to **Mikro, Kecil, Menengah, and Besar**. In practical registry terms, the activity can be held by operators from micro businesses through large-scale enterprises, provided the registration follows the scale and structure reflected in the record. Nothing in the record adds a special threshold, licence, capital minimum, or operational condition beyond those scale categories, so none should be read into it.\n\nNationally, the investment picture is straightforward. The record marks the activity as **TERBUKA**, with a foreign-ownership ceiling of **100%**, sourced to **Perpres 10/2021, 49/2021**. On the national reading, then, a PMA structure is not capped below full foreign ownership. This is the clean national signal: for KBLI 16103, the record allows full foreign participation at the national level.\n\nBali changes the outcome. The record marks the Bali status as **BLOCCATO_CLASSE_RISCHIO** and sets **l4_bali_blocked** to true. Its recorded reason is: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule is broader and sharper: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. So the honest conclusion is not that this activity is nationally closed. It is nationally open, even to 100% foreign ownership, but a foreigner cannot register this KBLI for a PMA setup in Bali under the Bali-side block recorded here.",
+    "pullQuote": "KBLI 16103 is nationally open to full foreign ownership, but the Bali record turns that openness into a practical PMA block on the island.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

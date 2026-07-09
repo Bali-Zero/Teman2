@@ -1,0 +1,27 @@
+{
+  "code": "16292",
+  "editorial": {
+    "headline": "Woven Plant Goods With a Bali Registration Wall",
+    "standfirst": "KBLI 16292 covers woven goods made from plant materials other than rattan and bamboo, nationally open to PMA but blocked for foreign registration in Bali.",
+    "body": "KBLI 16292 is the industrial home for woven goods made from plant materials other than rattan and bamboo. The record describes a broad, tactile field: pandan, mendong, banana stem sheath, corn leaves, purun, ketak, water hyacinth, abaca fibre, other natural fibres, coconut leaves, grass, and similar materials. Its examples are everyday and craft-facing at once: mats, doormats, bags, and handicrafts. In plain English, this is not trading in finished craft goods; it is the making of woven products whose primary input is non-rattan, non-bamboo plant material.\n\nThat scope matters because it gives the activity a particular character. It can sit close to village-scale handwork, but the classification itself is not reserved only for micro producers. The slim record opens the activity to every stated business scale: Mikro, Kecil, Menengah, and Besar. A founder reading the code should therefore see a manufacturing category that can accommodate small workshops as well as larger production setups, so long as the activity remains within the stated material and product scope. The record does not add quality marks, export requirements, product thresholds, or special permits, so none should be inferred.\n\nThe national investment picture is straightforward. The PMA status is TERBUKA, and the recorded maximum foreign ownership is 100%, sourced to Perpres 10/2021, 49/2021. Nationally, then, this is a foreign-open activity with no recorded foreign-equity cap below full ownership. For a foreign-owned structure outside the Bali-specific constraint described in the record, the national line is clean: the code is open, the ceiling is 100%, and all four stated scales appear in the record.\n\nBali is the hard stop. The same record marks `l4_bali_blocked` as true and gives the Bali status as `BLOCCATO_CLASSE_RISCHIO`. Its reason is that OSS risk at scale Besar is Low or Medium-Low on every scope, which places the activity inside Bali’s moratorium. The moratorium rule in the record is categorical: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest reading is this: KBLI 16292 may be nationally open to foreign ownership, but a foreigner cannot register this PMA activity in Bali today under the Bali-side rule recorded here.",
+    "pullQuote": "KBLI 16292 may be nationally open to full foreign ownership, but Bali is the hard stop for PMA registration today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

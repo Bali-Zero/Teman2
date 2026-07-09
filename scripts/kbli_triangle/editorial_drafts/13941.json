@@ -1,0 +1,27 @@
+{
+  "code": "13941",
+  "editorial": {
+    "headline": "Rope Manufacturing, Open Across Scale and Foreign Ownership",
+    "standfirst": "KBLI 13941 covers rope manufacturing from natural, synthetic, and mixed fibres, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 13941 is a manufacturing code for rope: the making of many kinds of tali from natural fibre, synthetic fibre, or mixed fibre. The record gives practical examples rather than abstract language: hemp rope, jute rope, sisal or agave rope, raffia rope, and nylon rope all sit inside the same industrial activity. Read plainly, this is not a trading label or a broad textile category. It is the production activity itself: taking fibre inputs and turning them into rope products across those material families.\n\nThat scope matters because the record is broad in material terms but still disciplined in activity terms. The centre of gravity is manufacture. A founder using this code should be thinking about an operation whose registered business activity is the making of rope, whether the rope is based on natural fibre, synthetic fibre, or a blend. The examples in the Indonesian scope help anchor the category without expanding it beyond the record. The code stands on its own as an industrial classification for rope production, not as a shortcut for adjacent goods or services.\n\nOn scale, the record is unusually straightforward: it is open to **Mikro**, **Kecil**, **Menengah**, and **Besar**. That means the classification is not confined in the record to one size of enterprise. A small domestic manufacturing operation and a larger industrial setup are both within the listed scale bands, as long as the underlying activity remains rope manufacturing. The national investment position is also clean: `pma_status` is **TERBUKA**, and the foreign-ownership ceiling in the record is **100%**. In ordinary founder language, nationally this code is open to foreign ownership up to the full ceiling stated in the record.\n\nThe Bali picture does not reverse that conclusion. The record marks `l4_bali_blocked` as **false** and gives the Bali status as **OK_or_HIGHER_RISK**. Its stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That is the decisive point for this slim record. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently, but this record says the large-scale OSS risk position is Menengah-Tinggi/Tinggi and therefore not blocked by that moratorium. So the honest national-versus-Bali reading is not a hidden Bali prohibition. It is a nationally open PMA activity, with a 100% foreign-ownership ceiling, and the Bali record does not mark it as blocked.",
+    "pullQuote": "The honest reading is simple: nationally open, 100% foreign-owned in the record, and not marked as blocked by Bali’s moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

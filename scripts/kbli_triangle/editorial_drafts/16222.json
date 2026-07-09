@@ -1,0 +1,27 @@
+{
+  "code": "16222",
+  "editorial": {
+    "headline": "Wooden Prefabricated Buildings, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 16222 covers wood-dominant prefabricated buildings and elements, nationally open to foreign ownership but blocked for PMA registration in Bali.",
+    "body": "KBLI 16222 is a manufacturing activity, not a general construction label. Its centre of gravity is the processing of wood into prefabricated buildings and building elements whose material is dominated by wood. The record names mobile homes and caravans as examples, and it also includes wooden partitions that belong to the same manufacturing logic. In practical terms, this is the industrial making of repeatable wooden structures and components before they reach their final site.\n\nThe code is broad in scale. The record opens it to Mikro, Kecil, Menengah, and Besar operators, so it can describe a small producer of wooden prefabricated elements as well as a larger factory-scale manufacturer. That scale range matters because the activity is defined by what is being made, not by a single business size. A founder using this code should therefore read it as a production category for wood-dominant prefabrication, with room for different operating footprints inside the same activity description.\n\nNationally, the foreign-investment signal is clean: the record marks the activity as TERBUKA and gives a foreign-ownership ceiling of 100%, with Perpres 10/2021 and 49/2021 as the cited source. On the national layer alone, that means the activity is open to PMA participation up to full foreign ownership. There is no separate condition in the slim record about minimum capital, additional licensing, local partnership, tax treatment, or a phased timeline, so none should be read into the classification.\n\nBali is the hard limit. The same record marks the Bali status as BLOCCATO_CLASSE_RISCHIO and sets l4_bali_blocked to true. The stated reason is: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026. The moratorium rule is broader and blunt: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent, with Gubernur letter B.27.000/642/PM/DPMPTSP cited as the source. So the honest reading is this: KBLI 16222 may be nationally foreign-open, but a foreign-owned company cannot register it in Bali today under the Bali-side rule recorded here.",
+    "pullQuote": "KBLI 16222 may be nationally foreign-open, but a foreign-owned company cannot register it in Bali today under the Bali-side rule recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

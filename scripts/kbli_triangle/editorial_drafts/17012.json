@@ -1,0 +1,27 @@
+{
+  "code": "17012",
+  "editorial": {
+    "headline": "Printing and Writing Paper, Open Nationally and Clear in Bali",
+    "standfirst": "This activity covers the manufacture of newspaper paper and other printing or writing paper, open nationally to foreign ownership and not blocked in Bali.",
+    "body": "**KBLI 17012 is a manufacturing classification for paper made to carry words.** The slim record describes its scope as the making of newspaper paper and other printing paper or writing paper. In practical terms, this is not a retail or publishing activity; its centre of gravity is the industrial production of paper itself. The Indonesian title, *Industri Kertas Budaya*, points to paper used for communication, reading, printing, and writing, while the operative scope keeps the definition narrow: paper for newspapers, other print uses, and written use.\n\nThe registration picture is broad. The record opens the activity to **Mikro, Kecil, Menengah, and Besar** scale operators, so it is not reserved in the data for one size of enterprise. A small producer and a larger industrial setup sit under the same activity code when the underlying activity remains the manufacture of the covered paper types. That scale openness matters because it frames the code as a production category rather than a niche carve-out. The record does not add any threshold, capacity test, capital figure, licence detail, or timeline, so none should be read into it.\n\nNationally, the foreign-investment signal is clean. The PMA status is **TERBUKA**, and the foreign-ownership ceiling in the record is **100%**. That means the national classification is open to foreign ownership up to the stated ceiling, with the source given as **Perpres 10/2021, 49/2021**. The honest national reading is therefore straightforward: for this activity, the record does not show a foreign-ownership cap below full ownership. It also does not describe any special condition attached to that national openness, so the editorial conclusion has to stay with what is actually present: open PMA status, a 100% ceiling, and coverage across all listed business scales.\n\nBali does not reverse that conclusion in this record. The Bali-side status is **OK_or_HIGHER_RISK**, and `l4_bali_blocked` is false. The reason is explicit: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The province’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is not marked as blocked here. So the national-vs-Bali picture is unusually aligned: nationally open to PMA, and not blocked for PMA registration in Bali on the slim record supplied. The right caveat is not an invented Bali percentage or partnership condition; it is simply the record’s own risk-based note explaining why the moratorium does not block it.",
+    "pullQuote": "The honest reading is simple: this paper-manufacturing activity is nationally open to PMA and not blocked for Bali registration in the record supplied.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

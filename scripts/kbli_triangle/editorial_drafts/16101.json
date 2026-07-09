@@ -1,0 +1,27 @@
+{
+  "code": "16101",
+  "editorial": {
+    "headline": "Sawn Timber Is Nationally Open, but Bali Blocks PMA Registration",
+    "standfirst": "KBLI 16101 covers the primary conversion of logs into worked timber, with all business scales listed nationally, yet Bali blocks PMA registration under its risk-class moratorium.",
+    "body": "KBLI 16101 is the industrial first step between a felled log and usable timber. The record describes sawmilling, slicing, debarking, cutting, and planing logs into beams, rafters, battens, and boards. It also reaches more finished forms of prepared board, including surfaced-four-sides timber and boards with eased edges on two or four corners. The scope is still timber preparation rather than assembled furniture or a downstream installation trade: it is about turning raw logs into standardized wooden material that other industries can use.\n\nThe activity is broad enough to include several practical outputs beyond ordinary planks. The record names timber for railway sleepers, unassembled wooden flooring, and pencil-slat raw material. That matters because the code is not just a small workshop category for rough sawing. It can describe a timber-processing operation whose commercial product is already shaped, smoothed, or specified for later industrial use, provided the activity remains within the recorded conversion and preparation of logs into wood components.\n\nNationally, the picture is straightforward. The PMA status is recorded as open, with a foreign-ownership ceiling of 100%, and the source given is Perpres 10/2021, 49/2021. The scales open to the activity are Mikro, Kecil, Menengah, and Besar, so the record does not confine the code to a single size of enterprise. On the national reading alone, a foreign-owned company can treat this as an open timber-processing activity, subject only to the facts stated in the record and without any extra threshold or licensing condition invented around it.\n\nBali changes the answer. The record marks the Bali status as BLOCCATO_CLASSE_RISCHIO and says the code is blocked there for PMA registration. Its stated reason is: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule is also explicit: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. So the honest advice is not that the national 100% ceiling disappears, or that Bali applies a separate percentage. It is simpler and stricter: nationally open does not mean registrable by a foreign-owned company in Bali today.",
+    "pullQuote": "Nationally open does not mean registrable by a foreign-owned company in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
