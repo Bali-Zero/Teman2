@@ -1,0 +1,27 @@
+{
+  "code": "32502",
+  "editorial": {
+    "headline": "Medical Device Manufacturing With a Clear National and Bali Position",
+    "standfirst": "KBLI 32502 covers the factory side of medical, dental, veterinary, orthopaedic and prosthetic equipment, with national PMA access open up to full foreign ownership.",
+    "body": "KBLI 32502 is a manufacturing code, not a clinic, distributor, or professional health-service category. Its centre of gravity is the making of physical equipment used in examination, surgery, dentistry, veterinary medicine, orthopaedics and prosthetics. The record reaches from dental drills, eye-test equipment, syringes, sterilisation equipment, artificial respiration equipment and laboratory centrifuges to prosthetic body parts, orthopaedic footwear, permanent internal plates, dental-laboratory products, artificial eyes and surgical instruments such as scissors, tweezers and forceps.\n\nThat breadth matters because the activity is defined by production. A company registering here is positioning itself as a maker of medical, dental, veterinary, orthopaedic or prosthetic equipment and related instruments. The slim record also opens the scale picture widely: Mikro, Kecil, Menengah and Besar are all listed as open. In practical editorial terms, this is not framed as a narrow industrial slot reserved only for the largest factories; the record recognises the activity across the full scale range it names.\n\nNationally, the foreign-investment signal is clean. The PMA status is TERBUKA, and the recorded maximum foreign ownership is 100%. That means the national record does not impose a foreign-share cap below full ownership for this activity. The stated source is Perpres 10/2021, 49/2021, and nothing in the slim record adds a separate capital threshold, licence condition, operational timeline, or tax treatment. The safe reading is therefore simple: the national classification is open to PMA, including full foreign ownership, for the activity as scoped in the record.\n\nThe Bali picture is also clear, but it needs to be stated with precision. The record marks `l4_bali_blocked` as false and gives the reason: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says that Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is not marked as blocked here. So the honest national-vs-Bali conclusion is not a hidden warning or a manufactured caveat: KBLI 32502 is nationally open to PMA up to 100%, and the Bali-side record does not block PMA registration under the stated moratorium logic.",
+    "pullQuote": "The honest conclusion is not a hidden warning: KBLI 32502 is nationally open to PMA up to 100%, and the Bali-side record does not block it under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

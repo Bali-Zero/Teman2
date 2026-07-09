@@ -1,0 +1,27 @@
+{
+  "code": "32402",
+  "editorial": {
+    "headline": "Toy and Recreational Drone Manufacturing: Open Nationally, Blocked in Bali",
+    "standfirst": "KBLI 32402 covers a broad toy-making industry, but the Bali record turns a nationally open PMA activity into a local registration dead end.",
+    "body": "KBLI 32402 is the manufacturing code for toys, interpreted broadly. The record covers the making of dolls from wood, fabric, rubber and similar materials, together with doll clothing and accessories. It also reaches toy weapons, toy sets, character figures, action figures, toy animals, toy musical instruments, scale models, recreational models, electric toy trains, construction games, ride-on wheeled toys made for play, plastic two-wheelers and tricycles, and recreational drones. In plain English, this is not a narrow craft category. It is the industrial production of play objects, miniature worlds, character merchandise, toy vehicles, and leisure drones.\n\nThat breadth matters because the record opens the activity across every business scale listed: Mikro, Kecil, Menengah, and Besar. A small domestic maker of dolls sits in the same activity family as a larger producer of construction toys, action figures, or recreational drone products, so long as the activity remains within the manufacturing scope described. The code is therefore structurally flexible. It can accommodate modest production as well as larger factory-style operations, provided the registered activity is genuinely toy manufacturing rather than an adjacent product line outside the record.\n\nNationally, the investment signal is clear. The PMA status is TERBUKA, and the foreign-ownership ceiling in the record is 100%, sourced to Perpres 10/2021, 49/2021. On the national reading alone, a foreign-owned company can hold the full equity position for this activity. There is no lesser foreign stake, special threshold, additional licence, or capital figure in the record, so none should be inferred. The national framework says open; the recorded ownership ceiling says 100%; the eligible scales run from Mikro through Besar.\n\nBali is the decisive exception. The record marks l4_bali_blocked as true and gives the reason verbatim: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule is broader still: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest answer for a foreign investor is not that this activity is partly open in Bali, or open with a Bali percentage, or available through an implied workaround. It is nationally open to 100% foreign ownership, but a foreigner cannot register this KBLI for PMA in Bali today under the Bali-side record.",
+    "pullQuote": "It is nationally open to 100% foreign ownership, but a foreigner cannot register this KBLI for PMA in Bali today under the Bali-side record.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

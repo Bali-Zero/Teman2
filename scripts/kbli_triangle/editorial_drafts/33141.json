@@ -1,0 +1,27 @@
+{
+  "code": "33141",
+  "editorial": {
+    "headline": "Electric Power Equipment Repair: Open Nationally, Blocked in Bali",
+    "standfirst": "This activity covers the repair and maintenance backbone of electric power equipment, with national PMA openness but a Bali-side block under the record's risk-class moratorium.",
+    "body": "KBLI 33141 is a service activity for keeping electrical power equipment in working order. The Indonesian scope points to repair and maintenance, not manufacture or retail: power machinery, distribution machinery, transformers, electric motors, generators, motor-generator devices, switchgear and switchboards, relay equipment, and industrial controllers. In plain English, the code sits where electrical infrastructure becomes an ongoing technical responsibility. It is for the workshop or service operator whose registered activity is to maintain and repair the machines that move, transform, switch, relay, or control electrical power.\n\nThe scale picture is unusually broad. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar, so the classification is not reserved only for a large industrial plant or a single scale of operator. A smaller repair business and a larger maintenance operation can both be within the record's scale language, provided the actual registered activity remains the repair and maintenance scope described above. That breadth matters because the code's commercial reality can range from focused electric-motor service to heavier transformer or industrial-control maintenance, but the legal reading in this record is still anchored to one activity: repair and maintenance.\n\nNationally, the PMA signal is open. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, which means the foreign-ownership ceiling should be rendered as 100% for this national view. There is no lower percentage, special local share, capital threshold, operating condition, or licensing detail in the slim record, so none should be read into it. On the national layer alone, a foreign investor looking at this activity sees an open PMA classification supported by the cited presidential-regulation source.\n\nThe Bali reading is the decisive one. Nationally, this is an open industrial-service activity; in Bali, the same record blocks it for PMA registration. The stated Bali reason is that OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, and the record connects that result to the Bali moratorium in May 2026. The moratorium rule supplied in the record is island-wide and permanent for Low and Medium-Low risk PMA activity. So the honest conclusion is direct: a foreigner cannot register this activity in Bali today, even though the national foreign-ownership ceiling is 100%.",
+    "pullQuote": "Nationally, this is an open industrial-service activity; in Bali, the same record blocks it for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "32901",
+  "editorial": {
+    "headline": "Stationery Manufacturing Is Open Nationally, Blocked in Bali",
+    "standfirst": "KBLI 32901 covers the making of writing and drawing instruments, open at every business scale nationally but unavailable for PMA registration in Bali today.",
+    "body": "KBLI 32901 is the industrial home for the manufacture of writing and drawing tools and their accessories. Its scope is practical and product-led: black pencils, coloured pencils, pens, ballpoint pens, pen holders, screen-printing pens, compasses, drawing brushes, slates, drafting tables, rapidographs, screen-printing equipment, letraset, and crayons. In plain English, this is not a retail or design activity; it is the making of the physical tools used for writing, marking, drafting, drawing, and related graphic work.\n\nThe record opens the activity across the full scale range: Mikro, Kecil, Menengah, and Besar. That matters because the code is not reserved in the record for only a narrow class of operators. A small workshop producing drawing brushes, a medium manufacturer making pens, or a larger industrial setup producing multiple stationery lines all sit within the same stated activity, so long as the business is genuinely engaged in manufacturing the covered goods. The Indonesian scope is broad enough to include everyday stationery and more specialised drawing or drafting equipment, but it remains anchored to production.\n\nNationally, the foreign-investment position is straightforward. The PMA status is TERBUKA, and the maximum foreign ownership figure in the record is 100%, sourced to Perpres 10/2021, 49/2021. On the national reading alone, a foreign-owned company can treat this as an open manufacturing activity with no lower foreign-equity ceiling stated in the slim record. That does not create any extra licence, capital threshold, or operating condition here; it simply states the national foreign-ownership position recorded for this code.\n\nBali changes the answer completely. The Bali status is BLOCCATO_CLASSE_RISCHIO, and the record marks l4_bali_blocked as true. The reason given is that the OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, which is caught by the provincial moratorium rule: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. The practical editorial conclusion is therefore blunt: a foreigner cannot register this KBLI for PMA in Bali today, even though the same code is nationally open to 100% foreign ownership.",
+    "pullQuote": "A foreigner cannot register this KBLI for PMA in Bali today, even though the same code is nationally open to 100% foreign ownership.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

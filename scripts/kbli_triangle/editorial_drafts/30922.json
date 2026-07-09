@@ -1,0 +1,27 @@
+{
+  "code": "30922",
+  "editorial": {
+    "headline": "A Components Code That Bali Blocks for Foreign Registration",
+    "standfirst": "KBLI 30922 covers bicycle, wheelchair, baby-carriage, and becak equipment manufacturing, open nationally to all scales but blocked for PMA registration in Bali.",
+    "body": "KBLI 30922 is a manufacturing classification for the parts and accessories that make small mobility products work: bicycle frames, forks, rims, spokes, hubs, brakes, saddles, pedals, crank gears, and derailleur gears, alongside accessories for baby carriages, wheelchairs for persons with disabilities, and becak. Its practical centre is not the finished showroom object, but the component layer: the metal, mechanical, seating, braking, wheel, and valve-adjacent pieces that sit inside a wider mobility supply chain.\n\nThe record marks the activity as open to Mikro, Kecil, Menengah, and Besar scale businesses, so it is not written as a scale-exclusive field. A small workshop making saddles or pedals, a mid-sized component supplier producing rims or spokes, and a larger industrial operator manufacturing wheel or braking assemblies all sit within the same basic activity description, provided the business remains inside the stated scope. The classification is therefore broad in scale, but still specific in substance: it is about making listed components and accessories for bicycles, baby carriages, wheelchairs, and becak.\n\nNationally, the investment signal is clear. The record gives PMA status as TERBUKA and sets the foreign-ownership ceiling at 100%, with the source stated as Perpres 10/2021, 49/2021. On the national reading alone, this is a foreign-open manufacturing code. A foreign investor looking only at the national PMA field would see no percentage cap below full ownership, and no scale closure in the scale field.\n\nBali changes the answer. The record marks the Bali status as BLOCCATO_CLASSE_RISCHIO and sets l4_bali_blocked to true, with the stated reason: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, so it is blocked by the Bali moratorium in May 2026. The moratorium rule in the record is wider still: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. The honest conclusion is therefore not that KBLI 30922 is nationally closed. It is nationally open, including up to 100% foreign ownership, but a foreign-owned company cannot register this activity in Bali today under the Bali-side block recorded here.",
+    "pullQuote": "The honest answer is that KBLI 30922 is nationally foreign-open, but blocked for PMA registration in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

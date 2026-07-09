@@ -1,0 +1,27 @@
+{
+  "code": "32114",
+  "editorial": {
+    "headline": "Pearl Jewellery, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 32114 covers pearl working and jewellery made from pearls as the main material; nationally it is open to PMA, but Bali’s record blocks PMA registration today.",
+    "body": "KBLI 32114 is a narrow, material-led activity: the working of pearls and the making of jewellery from pearls, or jewellery in which pearl is the main material. The record does not treat this as general accessories, fashion retail, or a broad jewellery trade. Its centre is the pearl itself: processing it, shaping it into jewellery, and producing pieces where pearl is the defining input. That gives the code a clear industrial character, even when the final object may feel delicate, decorative, or artisanal.\n\nThe scale picture is unusually broad. The activity is open across **Mikro**, **Kecil**, **Menengah**, and **Besar** scales, so the record can accommodate anything from a very small workshop to a larger manufacturing setup. That does not add extra facts about capital, facilities, staffing, or licensing; it simply means the slim record does not confine this activity to one size of operator. A founder reading this code should therefore focus first on the substance of the activity: pearl work and pearl-based jewellery production, not the commercial romance around the finished product.\n\nNationally, the PMA signal is clean. The record marks the activity as **TERBUKA**, with a foreign-ownership ceiling of **100%**, under **Perpres 10/2021, 49/2021**. In plain English, the national field says this activity is foreign-open up to full foreign ownership. There is no lower percentage in the record, and no hidden national qualification is available to add. For a non-Indonesian investor looking only at the national PMA fields, the headline would be straightforward: pearl jewellery manufacturing under this code is open, and the foreign stake is not capped below full ownership.\n\nBali changes the practical answer. The record marks the Bali status as **BLOCCATO_CLASSE_RISCHIO**, sets **l4_bali_blocked** to true, and explains that OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, which is blocked by the Bali moratorium dated **May 13, 2026**. The moratorium rule in the record is blunt: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest reading is not “open with a Bali percentage” or “open with a local partnership condition.” No Bali percentage exists in this record. The honest reading is sharper: nationally, KBLI 32114 is open to PMA up to 100%; in Bali, a foreigner cannot register this activity as PMA today because the Bali-side record blocks it.",
+    "pullQuote": "Nationally, KBLI 32114 is open to PMA up to 100%; in Bali, a foreigner cannot register this activity as PMA today because the Bali-side record blocks it.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

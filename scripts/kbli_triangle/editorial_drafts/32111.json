@@ -1,0 +1,27 @@
+{
+  "code": "32111",
+  "editorial": {
+    "headline": "Gemstone Cutting, Polishing, and Colour Work Under KBLI 32111",
+    "standfirst": "KBLI 32111 covers the industrial craft of shaping, finishing, and altering gemstones, with full national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 32111 is the classification for **Industri Permata**: the business of taking gemstones and similar materials through the physical processes that make them usable, saleable, or more refined. The record describes cutting, grinding, and smoothing gemstone materials, including jewellery diamonds, other jewellery-grade stones, batu aji or batu akik, and synthetic diamonds. It also includes the enhancement or alteration of gemstone colour through irradiation. In plain English, this is not retail jewellery, branding, or showroom activity; it is the industrial handling and transformation of precious or semi-precious stones themselves.\n\nThe scale profile is unusually broad. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** operators, so the classification can sit behind a small workshop as well as a larger manufacturing or processing operation. What matters editorially is the nature of the activity: precision work on stone, from basic finishing to more technical colour modification. A founder registering under this code should be able to explain the actual processing activity with that same clarity: what material is being worked on, what physical process is being performed, and whether the business is cutting, polishing, smoothing, or changing colour through the method named in the record.\n\nNationally, the foreign-investment position is clean. The PMA status is **TERBUKA**, and the maximum foreign ownership figure in the record is **100%**. There is no recorded national cap below full foreign ownership for this activity, and the source cited is **Perpres 10/2021, 49/2021**. That makes the national reading straightforward: for a foreign-owned company, this activity is not closed on the face of the record, and the foreign stake is not capped below full ownership.\n\nThe Bali picture is also important, because the province applies a separate moratorium rule to PMA registrations: **Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)**. For this activity, however, the Bali status is **OK_or_HIGHER_RISK**, and the reason given is exact: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. So the honest reading is not a hidden Bali percentage, partnership quota, or local ownership condition; none is in the record. The record simply marks this code as not blocked by the Bali moratorium, because at large scale its OSS risk position sits outside the Low and Medium-Low category that the moratorium blocks.",
+    "pullQuote": "The Bali reading is not a hidden ownership cap; the record marks KBLI 32111 as not blocked by the moratorium because its large-scale OSS risk is Menengah-Tinggi/Tinggi.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

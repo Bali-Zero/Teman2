@@ -1,0 +1,27 @@
+{
+  "code": "30921",
+  "editorial": {
+    "headline": "Bicycles, Wheelchairs and Becaks Are Open Nationally, Blocked in Bali",
+    "standfirst": "KBLI 30921 covers the making and assembly of bicycles, becaks, baby carriages, wheelchairs and assisted electric bicycles, with a clear national opening but a Bali PMA block.",
+    "body": "KBLI 30921 is a manufacturing activity, not a trading label. The record places it around the making and assembly of bicycles and becaks: ordinary non-motor bicycles, electric-motor-equipped bicycles, other bicycles, delivery tricycles, tandem bicycles, and children's bicycles with either two or three wheels. It also includes baby carriages, multipurpose non-motor bicycles, disability vehicles and wheelchairs for people with disabilities, whether motorised or non-motorised, and electric-assisted bicycles, meaning bicycles that use an auxiliary motor to move.\n\nThat scope matters because it describes a practical, physical production category: workshops, factories or assembly operations that turn parts into mobility products. The activity is broad enough to cover everyday bicycles, family and child mobility products, disability-access vehicles, and becak-related production, but it remains anchored in making and assembling the items named in the record. A founder using this code would be positioning the business inside a defined industrial activity, rather than a general mobility, retail or transport concept.\n\nAt national level, the picture is straightforward. The record marks the PMA status as **TERBUKA**, with `pma_max_asing` at **100%**, sourced to **Perpres 10/2021, 49/2021**. It is also open across the listed business scales: **Mikro**, **Kecil**, **Menengah**, and **Besar**. In plain English, the national investment line says this activity is foreign-open, including full foreign ownership, and it is not confined in the record to a single scale band.\n\nBali is the hard turn. The same record marks `l4_bali_blocked` as true and gives the Bali status as **BLOCCATO_CLASSE_RISCHIO**. The reason is: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule is also explicit: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” So the honest reading is not that this activity is commercially impossible, or nationally closed, or subject to a different Bali ownership ceiling. It is nationally open for PMA up to 100%, but a foreign-owned registration in Bali is blocked by the Bali moratorium recorded here.",
+    "pullQuote": "The honest reading is that KBLI 30921 is nationally foreign-open up to 100%, but blocked for foreign-owned registration in Bali under the recorded moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

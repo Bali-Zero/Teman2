@@ -1,0 +1,27 @@
+{
+  "code": "33149",
+  "editorial": {
+    "headline": "Electrical Repair That Is Nationally Open but Blocked in Bali",
+    "standfirst": "A practical repair-and-maintenance code for other electrical equipment, open nationally to every business scale but unavailable for PMA registration in Bali today.",
+    "body": "This activity is the repair and maintenance of other electrical equipment: the kind of work that keeps lighting equipment, current-carrying and non-current-carrying wiring equipment, cable-circuit components, and similar electrical equipment in working order. The record’s Indonesian scope is broad but not vague: it points to equipment in the electrical categories referenced by the record, and it frames the activity as repair and maintenance, not manufacturing, retail, or installation. In business terms, this is a workshop or service-operation code for maintaining the electrical apparatus around lighting and wiring systems.\n\nNationally, the code is marked **TERBUKA** for foreign investment, with a foreign-ownership ceiling of **100%** under **Perpres 10/2021, 49/2021**. That national status matters because it says the activity is not closed at the Indonesian level. The scale picture is also unusually wide: the record opens it to **Mikro, Kecil, Menengah, and Besar**. A very small repair operator, a growing maintenance shop, and a large service company can all sit inside the national scale envelope described by the record. Nothing in the slim record adds a special licence, capital threshold, tax rule, or timing requirement, so none should be read into the classification itself.\n\nThe Bali reading is the controlling practical point for a foreign-owned setup on the island. Although the national table is open up to 100% foreign ownership, the record says **l4_bali_blocked** is true. The stated reason is: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” In plain English, a foreigner cannot register this activity in Bali today as a PMA activity. That is not because the national PMA table closes the activity; it is because Bali’s moratorium blocks it locally on the risk-class basis recorded here.\n\nThe moratorium text in the record is blunt: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” The source is listed as **Gubernur letter B.27.000/642/PM/DPMPTSP**. So the honest national-vs-Bali picture is split: this is a legitimate, nationally open electrical repair-and-maintenance activity with a 100% foreign-ownership ceiling, available across all listed business scales, but it is blocked for PMA registration in Bali under the province-level moratorium recorded in the slim record.",
+    "pullQuote": "Nationally this electrical repair activity is open to 100% foreign ownership, but in Bali the record makes the practical answer no.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

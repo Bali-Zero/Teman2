@@ -1,0 +1,27 @@
+{
+  "code": "31022",
+  "editorial": {
+    "headline": "Metal Furniture Manufacturing, With a Bali Scope Check",
+    "standfirst": "KBLI 31022 covers metal furniture production for homes and offices, nationally open to PMA but requiring careful Bali scope verification.",
+    "body": "KBLI 31022 is the industrial classification for making furniture whose main material is metal. The record describes household and office furniture: tables, chairs, racks, beds, cabinets, and room partitions. The useful word here is *manufacturing*. This is not a retail shelf label or a design-services description; it is the activity of producing metal furniture itself, with the finished articles ranging from domestic pieces to office fixtures.\n\nThe scale picture is unusually broad. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** operators, so it is not framed only for a small workshop or only for a large factory. A founder reading this code should therefore think first about the actual activity being registered: whether the business is truly making metal furniture for home or office use, and whether the declared activity matches that production scope. The scope is compact, but it is not vague: the common thread is furniture, the main material is metal, and the end use includes both household and office settings.\n\nNationally, the PMA position is clean. The record marks the activity as **TERBUKA**, with `pma_max_asing` at **100%**, sourced to **Perpres 10/2021, 49/2021**. In plain English, the national record presents this activity as foreign-open, with a full foreign-ownership ceiling. There is no separate national cap, threshold, or capital condition in the slim record, and none should be read into it.\n\nBali is more delicate, but not because the record gives Bali its own percentage. It does not. The Bali field is **BLOCCATO_DIPENDE_SCOPE**, with `l4_bali_blocked` marked **false**. The reason says the OSS risk at scale **Besar** is low on some scopes but higher on others, and that PMA registration in Bali is possible only by declaring the higher-risk scope, with live OSS verification required for the exact activity. That sits beside the Bali moratorium rule: Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. So the honest conclusion is precise: this code is nationally open to PMA at 100%, but a Bali filing cannot be treated as automatic. For Bali, the declared scope and live OSS risk position carry the practical weight.",
+    "pullQuote": "This code is nationally open at 100%, but a Bali filing cannot be treated as automatic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

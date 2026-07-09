@@ -1,0 +1,27 @@
+{
+  "code": "32904",
+  "editorial": {
+    "headline": "Safety Protection Equipment Manufacturing, Fully Open Nationally",
+    "standfirst": "KBLI 32904 covers the making of personal safety and protective equipment, with PMA ownership open nationally up to 100% and no Bali moratorium block in the record.",
+    "body": "KBLI 32904 is a manufacturing activity for equipment whose purpose is bodily protection: the things used when work, sport, emergency response, or hazardous environments require a physical layer of safety. The record’s scope is broad but concrete. It includes protective clothing and fire-resistant clothing, safety belts for wire workers and other job-use belts, life jackets, hard plastic head protection such as construction helmets, and other plastic safety equipment including sports helmets and similar helmets. It also reaches firefighting protective wear, bulletproof vests, radiation-protection equipment such as aprons and gloves, metal safety headgear and other metal personal protective equipment, ear and nose plugs, gas masks, and PPE including face shields.\n\nThe important editorial point is that this is not a trading description and not a service wrapper. The activity is the making of safety-protection equipment itself. A founder using this code is registering an industrial activity centred on producing protective goods, from wearable protection to specialised equipment named in the scope. The record also makes the scale picture unusually straightforward: it is open to Mikro, Kecil, Menengah, and Besar. That means the classification is not reserved only for large factories in the slim record; the same activity label can sit across the full scale ladder recorded here.\n\nNationally, the PMA position is clean. The record marks the activity as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national foreign-ownership ceiling shown in the record is 100%. There is no lower foreign-stake cap in the data, and no additional national threshold or licensing condition is stated in the slim record. For an international founder reading this classification, that matters: the record does not merely say foreign investment is possible; it says the national ceiling reaches full foreign ownership.\n\nBali is also not blocked in this record, but the reason is specific and should be kept precise. The Bali status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The record gives the reason as: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That must be read alongside the moratorium rule supplied in the record: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. Here, however, the record does not place this activity inside the blocked side of that rule. So the honest national-versus-Bali picture is aligned: nationally open up to 100% PMA, and not blocked by the Bali moratorium in the record.",
+    "pullQuote": "The record does not merely say foreign investment is possible; it says the national ceiling reaches full foreign ownership.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

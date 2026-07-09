@@ -1,0 +1,27 @@
+{
+  "code": "30990",
+  "editorial": {
+    "headline": "Small Transport Equipment, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 30990 covers makers of hand-propelled and animal-drawn transport equipment, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 30990 is a manufacturing classification for transport equipment that sits close to the ground, the workshop, and the everyday movement of goods or people. The record describes hand-propelled vehicles such as cargo trolleys, handcarts, sledges, shopping trolleys, strollers, wheelbarrows, carts, and other multipurpose equipment. It also includes animal-drawn vehicles: delman, lorries, racing carts, donkey-drawn carts, and hearses. In plain English, this is not about powered automotive manufacturing; it is about making the simpler physical vehicles used for pushing, pulling, carrying, and local movement.\n\nThe boundaries matter because the scope is practical but not unlimited. The record excludes work trucks used in industrial or factory settings, whether or not they carry lifting or transport equipment and whether or not they are self-propelled. It also excludes decorative restaurant carts, including dessert carts and food carts. That leaves KBLI 30990 with a clear identity: the fabrication of other transport equipment whose function is manual or animal-drawn movement, rather than factory handling equipment or hospitality furniture.\n\nFor registration scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar. That means the classification can describe anything from a small workshop producing handcarts or wheelbarrows to a larger manufacturer making a wider range of non-powered transport equipment. The business substance should still match the scope: the company should be able to show that its activity is manufacturing these forms of transport equipment, not merely trading them or using the code as a loose industrial label.\n\nThe national PMA picture is straightforward. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, the honest reading is that the national foreign-ownership ceiling is 100%. Bali does not add a separate percentage in this record. Instead, the Bali field says OK_or_HIGHER_RISK, with the reason: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently; here, the record does not mark the code as blocked. So the conclusion is clean: nationally open, and not blocked for PMA registration in Bali by the moratorium field provided.",
+    "pullQuote": "The honest reading is simple: nationally open, and not blocked for PMA registration in Bali by the moratorium field provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

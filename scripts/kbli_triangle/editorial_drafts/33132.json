@@ -1,0 +1,27 @@
+{
+  "code": "33132",
+  "editorial": {
+    "headline": "Maintaining Indonesia’s Advanced Medical Equipment",
+    "standfirst": "KBLI 33132 covers the technical repair and upkeep of irradiation, electromedical, and electrotherapy equipment, with national openness but a scope-sensitive Bali pathway.",
+    "body": "KBLI 33132 is the maintenance trade behind some of the most sensitive equipment in a modern health system. The record defines it as repair and maintenance of irradiation, electromedical, and electrotherapy equipment: MRI machinery, medical ultrasound equipment, pacemakers, hearing aids, electrocardiography equipment, electromedical endoscopy equipment, irradiation equipment, and similar devices. In plain English, this is not general workshop repair. It is the activity of keeping specialist clinical technology functional, serviced, and available for use.\n\nThe scope is written broadly enough to cover the equipment category rather than a single device type. That matters for founders because the commercial identity of the business should match the declared activity with care: a company presenting itself around MRI servicing, ultrasound equipment upkeep, pacemaker-related maintenance, hearing-aid repair, ECG equipment, electromedical endoscopy support, or irradiation equipment maintenance is still operating inside the same recorded field when the work is repair and maintenance of those devices. The slim record also places the activity across all business scales: Mikro, Kecil, Menengah, and Besar. In other words, the record does not reserve this KBLI only for large operators; it is open across the listed scale range.\n\nNationally, the foreign-investment position is clear. The PMA status is TERBUKA, and the maximum foreign ownership stated in the record is 100%. The cited source is Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the national table treats this activity as open to full foreign ownership. There is no foreign-share reduction to explain here, and no lower ownership ceiling appears in the record.\n\nBali is more nuanced. The record does not mark the activity as simply blocked: l4_bali_blocked is false. But it does mark the Bali status as BLOCCATO_DIPENDE_SCOPE, and the reason is explicit: “OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity”. That sits beside the Bali moratorium rule in the record: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. The honest reading is therefore not “Bali is open in the same way as the national table.” It is this: nationally, KBLI 33132 is foreign-open up to 100%; in Bali, PMA registration depends on the exact declared scope and its OSS risk treatment, so the activity must be checked against the precise activity formulation before it is treated as registrable.",
+    "pullQuote": "Nationally, KBLI 33132 is foreign-open up to 100%; in Bali, PMA registration depends on the exact declared scope and its OSS risk treatment.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

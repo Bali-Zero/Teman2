@@ -1,0 +1,27 @@
+{
+  "code": "33119",
+  "editorial": {
+    "headline": "Mobile Metalwork Repair Meets a Bali Registration Wall",
+    "standfirst": "KBLI 33119 covers repair and maintenance for fabricated metal goods, nationally open to foreign ownership but blocked for PMA registration in Bali.",
+    "body": "KBLI 33119 is a practical repair-and-maintenance activity for fabricated metal products: the work of keeping metal tools, containers, wire goods, safes, filing cabinets, and other non-structural metal items usable after they leave the factory. Its scope reaches familiar equipment used in agriculture, carpentry, workshops, and households, and it explicitly includes mobile welding that moves from site to site. This is not manufacturing a new metal product; it is the service layer that repairs and maintains fabricated metal goods already in use.\n\nThe registration base is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar scale operators, which means the category can describe anything from a small repair outfit to a larger maintenance business, provided the activity remains inside the stated scope. The wording points to general-purpose metal goods rather than structural metal works, so the editorial center of gravity is everyday fabricated-metal utility: cutting tools, hand tools, common equipment, metal containers, wire goods, safes, cabinets, and similar items that need technical maintenance rather than replacement.\n\nNationally, the position is straightforward. The activity is marked **TERBUKA**, with `pma_max_asing` at **100%**, sourced to **Perpres 10/2021, 49/2021**. On the national record alone, a foreign-owned PMA structure is not capped below full foreign ownership. That matters because the activity may look modest, but the national investment signal is clear: the foreign-ownership ceiling is 100%, not a partial stake, and the open status applies across the scales listed in the slim record.\n\nBali is the decisive exception. The record marks this activity as blocked in Bali: `l4_bali_blocked` is true, with the reason that **OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, blocked by the Bali moratorium of May 13, 2026**. The moratorium rule is also explicit: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, with the source given as **Gubernur letter B.27.000/642/PM/DPMPTSP**. So the honest reading is narrow but important: KBLI 33119 is nationally open to full foreign ownership, yet a foreigner cannot register it as a PMA activity in Bali today under the Bali-side block recorded here.",
+    "pullQuote": "KBLI 33119 is nationally open to full foreign ownership, yet a foreigner cannot register it as a PMA activity in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

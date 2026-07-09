@@ -1,0 +1,27 @@
+{
+  "code": "32503",
+  "editorial": {
+    "headline": "Eyewear Manufacturing Is Open Nationally, but Not for PMA in Bali",
+    "standfirst": "KBLI 32503 covers the making of ophthalmic goods, eyewear, frames, lenses and contact lenses, with national PMA openness but a Bali registration block.",
+    "body": "KBLI 32503 is the manufacturing classification for eyewear and ophthalmic goods. Its scope is practical and broad: it covers the making of vision-assistance glasses, sunglasses, protective and safety goggles, radiation-protection eyewear, eyewear frames, spectacle lenses and contact lenses. In plain terms, this is the code for producing the object itself, not merely selling it, fitting it, prescribing it or distributing it. The record points to the industrial activity: turning optical and protective eyewear products into manufactured goods.\n\nThat breadth matters because the classification is not reserved for one business size. The slim record marks the activity as open to Mikro, Kecil, Menengah and Besar scales. A very small producer and a larger factory are therefore both within the scale language of the code, provided the actual registered activity remains the manufacture of the listed ophthalmic and eyewear products. The operative boundary is the scope itself: glasses for vision assistance, sunglasses, safety goggles for dust, swimming, diving or welding, radiation-protection glasses, frames, spectacle lenses and contact lenses.\n\nNationally, the investment picture is clear. The code is marked TERBUKA, and the foreign-ownership ceiling in the record is 100%, sourced to Perpres 10/2021 and 49/2021. That is the national position: a PMA company can, on this record, be fully foreign-owned for this activity. There is no lesser national percentage to infer, no additional capital threshold to add, and no licence condition stated in the slim record. The clean reading is that, at the national level, KBLI 32503 is foreign-open up to 100%.\n\nBali is the hard stop. The record marks l4_bali_blocked as true and gives the reason: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, so it is blocked by the Bali moratorium of May 13, 2026. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently. That does not create a Bali foreign-ownership percentage; it creates a registration block. So the honest conclusion is simple: eyewear manufacturing may be fully foreign-open nationally, but a foreigner cannot register this PMA activity in Bali under the Bali status recorded here.",
+    "pullQuote": "Eyewear manufacturing may be fully foreign-open nationally, but the Bali record turns that openness into a registration block for PMA.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

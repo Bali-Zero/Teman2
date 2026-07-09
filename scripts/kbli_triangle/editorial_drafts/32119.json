@@ -1,0 +1,27 @@
+{
+  "code": "32119",
+  "editorial": {
+    "headline": "Precious-Metal Goods With a Bali Registration Block",
+    "standfirst": "KBLI 32119 covers specialised precious-metal goods, nationally open to foreign ownership but blocked for PMA registration in Bali under the record’s moratorium rule.",
+    "body": "KBLI 32119 is not a broad jewellery category. The record frames it as the manufacture of other valuable goods from precious metals: precious-metal coins, whether or not they are legal tender; engraving services on personal items, including items that are not themselves made of precious metal; and specialised precious-metal articles for technical and laboratory use. Its scope also reaches comparable precious-metal goods for other uses, such as watch straps, watch bands, cuff links, and cigarette cases.\n\nThat mix gives the code a particular character. It sits where craft, personalisation, and small high-value metal objects meet more technical applications. The laboratory examples in the record are concrete: spatulas, crucibles, cupels, platinum grills for catalysts, and anodes for electroplating. In plain English, this is a manufacturing activity for precious-metal goods that are valuable, specialised, or functional, without turning the code into a catch-all for every precious-metal product.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so it can describe anything from a small engraving or precious-metal workshop to a larger manufacturing setup, provided the activity stays within the stated scope. Nationally, the PMA position is also clear: the activity is marked TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. On the national reading alone, this is therefore foreign-open up to full foreign ownership.\n\nBali changes the practical answer. The record marks l4_bali_blocked as true and gives the reason as: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026”. The linked moratorium rule is broader still: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)”. For a foreign founder, that is the honest conclusion. Nationally, KBLI 32119 is open. In Bali, the record says PMA registration is blocked today, not because the national foreign-ownership ceiling is low, but because Bali’s recorded moratorium blocks this risk class for PMA registration.",
+    "pullQuote": "Nationally, KBLI 32119 is open; in Bali, the record says PMA registration is blocked today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

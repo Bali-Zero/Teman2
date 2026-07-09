@@ -1,0 +1,27 @@
+{
+  "code": "33133",
+  "editorial": {
+    "headline": "Optical and Photography Equipment Repair, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 33133 covers commercial repair and maintenance of photography and optical equipment, with a clean national PMA opening but a hard Bali registration block.",
+    "body": "KBLI 33133 is a specialised repair-and-maintenance activity for photography and optical equipment when that equipment is mainly used commercially. In plain English, this is the workshop layer behind professional lenses, cameras, microscopes outside the excluded electron and proton types, telescopes, binoculars, prisms, and similar optical instruments. The scope is technical rather than retail: the code is about keeping the equipment working, serviced, and repaired, not about selling the equipment or using it as part of a studio, laboratory, or observatory business.\n\nThe record opens the activity across every business scale: Mikro, Kecil, Menengah, and Besar. That matters because the code is not confined to one size of operator in the national classification. A small repair counter and a larger commercial maintenance operation can both sit inside the same activity definition if the work matches the recorded scope. The common thread is the object of the service: photographic and optical equipment, used commercially, repaired or maintained as equipment.\n\nNationally, the PMA picture is simple. The record marks the activity as TERBUKA, with pma_max_asing at 100 under Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the national record does not impose a foreign-shareholding cap below full ownership for this activity. There is no separate condition in the slim record to add, qualify, or soften that point. The national classification is open; the national ceiling is 100%.\n\nBali is the decisive exception. The record marks l4_bali_blocked as true and gives the status as BLOCCATO_CLASSE_RISCHIO. The reason is not a sectoral judgement about photography or optics; it is the Bali-side risk-class rule recorded here: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, which puts the activity inside the Bali moratorium. The moratorium rule in the record says Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest reading is precise: KBLI 33133 is nationally open to 100% foreign ownership, but a foreigner cannot register this activity as a PMA in Bali today.",
+    "pullQuote": "KBLI 33133 is nationally open to 100% foreign ownership, but a foreigner cannot register this activity as a PMA in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

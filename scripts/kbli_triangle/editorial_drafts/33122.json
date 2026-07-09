@@ -1,0 +1,27 @@
+{
+  "code": "33122",
+  "editorial": {
+    "headline": "Special-Purpose Machinery Repair Without a Bali Moratorium Block",
+    "standfirst": "KBLI 33122 covers the repair and maintenance of specialised industrial, agricultural, construction, processing, and extraction machinery.",
+    "body": "KBLI 33122 is a practical, equipment-facing activity: the repair and maintenance of machinery built for special purposes. The record frames it around machinery used in production, extraction, construction, agriculture, forestry, metalworking, transport infrastructure, and industrial processing. In plain English, this is not general workshop work. It is the upkeep of the machines that keep specialised sectors operating: agricultural tractors and farm machinery, forestry and logging equipment, metal-cutting and metal-forming machine tools and their accessories, metallurgical machinery, mining and excavation machinery, oil and gas field machinery, construction machinery, and machinery used for food, beverage, tobacco, textile, garment, leather-garment, and paper manufacturing.\n\nThat breadth matters because the activity is defined by the machine’s function, not by a single customer type. A founder registering under this code would be positioning the business around technical repair and maintenance for specialised machinery across those listed fields. The slim record marks the activity as open across all stated business scales: Mikro, Kecil, Menengah, and Besar. That means the code is not presented here as reserved only for a large industrial operator; it can describe a smaller maintenance provider as well as a larger service operation, provided the registered activity remains within the repair and maintenance scope described in the record.\n\nNationally, the foreign-investment picture is clean. The record marks PMA status as TERBUKA and gives a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. In editorial terms, the national rule shown here is that foreign ownership may reach 100% for this activity. There is no lower foreign-stake cap in the slim record, and there is no extra threshold, licence, capital figure, or timeline stated here to add. For a foreign-owned setup, the honest national reading is therefore straightforward: the activity is foreign-open at the national level, with the recorded ceiling at 100%.\n\nThe Bali reading is also important, because Bali applies a moratorium rule that blocks all Low and Medium-Low risk KBLI for PMA across the province. This record, however, does not mark KBLI 33122 as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest conclusion is not a hidden Bali prohibition. On this record, KBLI 33122 is nationally open to PMA up to 100%, and it is not blocked by the Bali moratorium because the recorded Bali reason places the relevant Besar-scale OSS risk above the moratorium’s Low and Medium-Low block.",
+    "pullQuote": "On this record, KBLI 33122 is nationally open to PMA up to 100%, and it is not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

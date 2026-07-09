@@ -1,0 +1,27 @@
+{
+  "code": "32909",
+  "editorial": {
+    "headline": "A Broad Manufacturing Code That Stops at Bali’s PMA Gate",
+    "standfirst": "KBLI 32909 captures miscellaneous manufactured goods, nationally open to PMA, but the record marks it blocked for foreign registration in Bali.",
+    "body": "KBLI 32909 is the residual home for manufacturing that does not sit neatly elsewhere. The Indonesian scope describes the making of goods not otherwise classified: signs, many kinds of umbrellas, smoking pipes and electronic cigarettes, badges, trophies, medals, stamps, walking sticks, lampshades, candles, brooms, palm-fibre brushes, cigar and betel containers, combs, perfume sprayers, vacuum bottles and vacuum vessels for personal or household use, natural non-animal leather such as plant-based leather from certain fungi, tailor’s mannequins used to dress garments, coffins, and other products not yet covered in another group. In plain English, this is not one product line but a catch-all manufacturing activity for varied finished articles.\n\nThat breadth matters for founders. The record opens this activity across the full scale ladder: Mikro, Kecil, Menengah, and Besar. A small workshop, a mid-sized producer, or a larger manufacturer may all appear within the registered scale universe, provided the activity being registered is genuinely the making of these miscellaneous products. The code’s value is its breadth; its risk is the same breadth. It should not be used as a vague label for trading, distribution, services, or a product whose manufacturing scope is not actually described by the record.\n\nNationally, the PMA position is straightforward. The slim record marks the code as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the national record treats the activity as open and allows the foreign ownership ceiling to be stated cleanly as 100%. There is no lower foreign-share cap in the record, and no invented qualification should be added to it.\n\nBali is the decisive exception. The same record sets l4_bali_blocked to true and gives the reason: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” It also states the moratorium rule as: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” So the honest reading is not that this activity is impossible nationally; it is that a foreigner cannot register this activity as a PMA in Bali today under the Bali-side record. For Bali planning, the national openness is real, but it does not override the local block recorded here.",
+    "pullQuote": "Nationally the activity is open to 100% foreign ownership, but in Bali the record’s practical answer is blocked for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

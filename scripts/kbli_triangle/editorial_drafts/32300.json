@@ -1,0 +1,27 @@
+{
+  "code": "32300",
+  "editorial": {
+    "headline": "Sports Equipment Manufacturing, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 32300 covers the making of sports equipment and gear, nationally open to foreign ownership but unavailable for PMA registration in Bali under the record’s moratorium rule.",
+    "body": "**KBLI 32300 is a manufacturing code for the equipment behind competitive and recreational sport.** Its scope is broad: balls, rackets, clubs, bats, nets, table-tennis tables, ski gear, surfboards, fishing equipment, hunting and shooting equipment, mountaineering gear, sport-specific leather gloves and headgear, swimming tubs and children’s pools, skates, bows and arrows, gymnastics equipment, fitness-centre equipment, and athletics equipment. The common thread is not apparel or ordinary footwear; it is the production of physical sporting goods and sporting apparatus, made from various materials, for professional and amateur use.\n\nThat makes the code relevant to founders who are actually producing sports goods rather than merely trading, coaching, renting space, or running a sports venue. A factory producing inflated balls, a workshop making rackets or bats, a manufacturer of fitness-centre equipment, or a producer of climbing and mountaineering gear all sit naturally inside the record’s stated scope. The activity can serve both indoor and outdoor sport, and both competitive and leisure markets, so the editorial centre of gravity is manufacturing capability: materials, product design, production standards, and the ability to turn sporting equipment into finished goods.\n\nOn scale, the record is unusually straightforward. KBLI 32300 is open to Mikro, Kecil, Menengah, and Besar registrations. In practical terms, the code is not presented as a narrow large-industry-only classification; it can describe anything from a small specialist maker to a large manufacturer, as long as the declared business activity remains inside the record’s manufacturing scope. Nationally, it is also marked **TERBUKA**, with a foreign-ownership ceiling of **100%**, sourced to **Perpres 10/2021, 49/2021**. On the national reading alone, a foreign-owned PMA structure is therefore possible up to full foreign ownership.\n\nThe Bali answer is different, and it is the point a founder should not miss. The record marks Bali as blocked for this code: **BLOCCATO_CLASSE_RISCHIO**. The reason given is that OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, and the Bali moratorium blocks that risk class for PMA registration. The moratorium rule in the record is explicit: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest reading is this: KBLI 32300 is nationally foreign-open, even up to 100%, but a foreigner cannot register this PMA activity in Bali today under the Bali-side rule recorded here.",
+    "pullQuote": "KBLI 32300 is nationally foreign-open up to 100%, but the record’s Bali moratorium makes the PMA registration answer in Bali a clear no.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
