@@ -1360,6 +1360,8 @@ export default function PratichePage() {
                                     onClick={(e) =>
                                       handleMenuClick(e, practice)
                                     }
+                                    title="More options"
+                                    aria-label="More options"
                                   >
                                     <MoreVertical className="w-4 h-4" />
                                   </button>
