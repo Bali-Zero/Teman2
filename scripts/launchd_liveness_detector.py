@@ -86,6 +86,19 @@ STALE_GREEN_SEC = 3 * 24 * 3600
 # fresh and the gate never hides a live failure.
 MARKER_FRESH_SEC = int(os.environ.get("W84_MARKER_FRESH_SEC", str(48 * 3600)))
 
+# Healer tick 2026-07-10: LastExitStatus is STICKY — launchd keeps reporting the
+# PREVIOUS incarnation's exit code for as long as the CURRENT incarnation keeps
+# running (a SIGTERM at sleep/wake, or a crash years ago, never clears itself).
+# A job that died once and has been alive+quiet ever since was reported
+# FAILING-HONESTLY forever, off evidence that predates its current run. Live
+# proof: mlx-server (4d11h uptime, serving /v1/models), fly-pg-tunnel.local
+# (16d uptime, port 15432 accepting connections), local-livekit-server (16d
+# uptime, port 7880 answering 200) — all three FAILING-HONESTLY, all three
+# demonstrably alive and serving. RECOVERED requires the SAME window on BOTH
+# signals (see _classify) so a genuinely still-broken job — log actively
+# re-writing fresh errors, stale_green stays False — is never masked.
+UPTIME_STABLE_SEC = int(os.environ.get("W84_UPTIME_STABLE_SEC", str(STALE_GREEN_SEC)))
+
 
 def _launchctl_status(label: str) -> dict | None:
     """Return the parsed `launchctl list <label>` dict, or None if not loaded."""
@@ -217,6 +230,87 @@ def _newest_log_mtime(paths: list[Path]) -> float | None:
     return mt
 
 
+def _parse_etime(raw: str) -> float | None:
+    """Parse `ps -o etime=` output: `[[DD-]HH:]MM:SS`. Pure, no subprocess."""
+    raw = raw.strip()
+    if not raw:
+        return None
+    days = 0
+    if "-" in raw:
+        day_part, raw = raw.split("-", 1)
+        try:
+            days = int(day_part)
+        except ValueError:
+            return None
+    bits = raw.split(":")
+    try:
+        nums = [int(b) for b in bits]
+    except ValueError:
+        return None
+    if len(nums) == 3:
+        h, m, s = nums
+    elif len(nums) == 2:
+        h, m, s = 0, nums[0], nums[1]
+    elif len(nums) == 1:
+        h, m, s = 0, 0, nums[0]
+    else:
+        return None
+    return float(days * 86400 + h * 3600 + m * 60 + s)
+
+
+def _process_uptime_seconds(pid: int) -> float | None:
+    """Seconds `pid` has been continuously running, via `ps -o etime=`.
+    None if the PID doesn't exist or the output can't be parsed."""
+    try:
+        out = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "etime="],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if out.returncode != 0:
+        return None
+    return _parse_etime(out.stdout)
+
+
+def _classify(
+    *,
+    status: dict | None,
+    marker: str | None,
+    prog_exists: bool,
+    stale_green: bool,
+    uptime_sec: float | None,
+) -> str:
+    """Pure classification — exit-code x log-content x process-uptime.
+
+    RECOVERED only fires when BOTH the process has been alive longer than
+    UPTIME_STABLE_SEC AND the log has been quiet that same window (stale_green).
+    Either signal alone is not enough: a job that just restarted (short uptime)
+    might still be crash-looping, and a job with a fresh log full of new errors
+    (stale_green False) is a live finding no matter how long its PID has run.
+    """
+    if status is None:
+        return "NOT-LOADED"
+    exit_code = status.get("LastExitStatus")
+    pid = status.get("PID")
+    if marker and exit_code == 0:
+        return "DEAD-GREEN"          # the W84 vector: green lies
+    if marker and exit_code not in (0, None):
+        return "DEAD-NONZERO"        # honest non-zero + proven launch failure
+    if exit_code not in (0, None):
+        if (
+            pid is not None
+            and stale_green
+            and uptime_sec is not None
+            and uptime_sec > UPTIME_STABLE_SEC
+        ):
+            return "RECOVERED"       # sticky exit code, provably alive+quiet since
+        return "FAILING-HONESTLY"    # non-zero, no marker, no recovery proof
+    if not prog_exists:
+        return "ARMED-TO-NOTHING"    # plist points at a missing script
+    return "OK"
+
+
 def audit() -> list[dict]:
     findings: list[dict] = []
     if not LAUNCHAGENTS.exists():
@@ -233,22 +327,16 @@ def audit() -> list[dict]:
         prog_exists = bool(prog and Path(os.path.expanduser(prog)).exists())
         newest = _newest_log_mtime(logs)
         stale_green = newest is not None and (now - newest) > STALE_GREEN_SEC
+        pid = (status or {}).get("PID")
+        uptime_sec = _process_uptime_seconds(pid) if pid is not None else None
 
-        # Classification — the whole point: cross exit-code with log content.
-        if status is None:
-            verdict = "NOT-LOADED"   # plist on disk, not in launchd domain
-        else:
-            exit_code = status.get("LastExitStatus")
-            if marker and exit_code == 0:
-                verdict = "DEAD-GREEN"          # the W84 vector: green lies
-            elif marker and exit_code not in (0, None):
-                verdict = "DEAD-NONZERO"        # honest non-zero + proven launch failure
-            elif exit_code not in (0, None):
-                verdict = "FAILING-HONESTLY"    # non-zero, no launch-failure marker (real finding, NOT cry-wolf)
-            elif not prog_exists:
-                verdict = "ARMED-TO-NOTHING"    # plist points at a missing script
-            else:
-                verdict = "OK"
+        # Classification — the whole point: cross exit-code with log content
+        # AND (2026-07-10) process uptime, so a sticky historical exit code
+        # doesn't outlive the incarnation that produced it. See _classify.
+        verdict = _classify(
+            status=status, marker=marker, prog_exists=prog_exists,
+            stale_green=stale_green, uptime_sec=uptime_sec,
+        )
 
         findings.append({
             "label": label,
@@ -308,7 +396,12 @@ def main() -> int:
         else:
             print(f"launchd liveness detector — {len(findings)} job(s), {len(alarms)} alarm(s):\n")
             for f in findings:
-                flag = "🚨" if f["verdict"] in ALARM_VERDICTS else ("⚠️ " if f["verdict"] == "FAILING-HONESTLY" else "✓ ")
+                flag = (
+                    "🚨" if f["verdict"] in ALARM_VERDICTS
+                    else "⚠️ " if f["verdict"] == "FAILING-HONESTLY"
+                    else "♻️ " if f["verdict"] == "RECOVERED"
+                    else "✓ "
+                )
                 print(f"  {flag} {f['verdict']:<17} {f['label']}  (exit={f['last_exit']})")
                 if f["log_marker"]:
                     print(f"        ↳ log proves launch failure: {f['log_marker']}")
