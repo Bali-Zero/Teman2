@@ -295,7 +295,15 @@ async def drive_status(
     even if the generic list_files() call fails (SA may only have access
     to the BZ root folder, not the implicit root).
     """
-    conn_info = drive.get_connection_info()
+    # This router is Service-Account-only (no per-user OAuth flow) — see
+    # module docstring. TeamDriveService has no get_connection_info(); the
+    # mode/OAuth signal is computed here from the real facade API.
+    is_oauth = False
+    conn_info = {
+        "mode": "service_account" if drive.service_account_available else "not_configured",
+        "connected_as": "service_account",
+        "is_oauth": is_oauth,
+    }
 
     try:
         # Quick test - list 1 file (may fail if SA has no access to implicit root)

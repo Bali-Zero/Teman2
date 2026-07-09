@@ -434,6 +434,15 @@ async def get_company_detail(
         }
     except HTTPException:
         raise
+    except ValueError as e:
+        # portal_service.get_company_detail raises ValueError("Company not
+        # found or not accessible") when the client has no link to this
+        # company_id -> not-found, not a 500. Consistent with get_dashboard
+        # (BUG C) and the sibling not-found fix in #2149.
+        logger.warning(
+            f"Company {company_id} not found or not accessible for client {client['client_id']}: {e}"
+        )
+        raise HTTPException(status_code=404, detail="Company not found") from e
     except Exception as e:
         logger.error(f"Failed to get company {company_id} for client {client['client_id']}: {e}")
         raise HTTPException(
