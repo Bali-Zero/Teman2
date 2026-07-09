@@ -384,6 +384,24 @@ asyncio.run(m())
         log(f"CRM write-back failed: {result.stderr[:100]}")
 
 
+def _write_heartbeat(status: str = "ok") -> None:
+    import pathlib
+
+    state_dir = pathlib.Path.home() / ".agent" / "decisions" / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "expiry_alerter.last.json").write_text(
+        json.dumps(
+            {
+                "job": "expiry_alerter",
+                "ts": int(__import__("time").time()),
+                "status": status,
+                "host": __import__("socket").gethostname(),
+            },
+            separators=(",", ":"),
+        )
+    )
+
+
 def main() -> None:
     global VERBOSE
 
@@ -402,6 +420,7 @@ def main() -> None:
     if not raw_items:
         log("No expiries found in next 30 days")
         print("No expiries found.")
+        _write_heartbeat()
         return
 
     # Classify urgency
@@ -420,6 +439,7 @@ def main() -> None:
     if not items:
         log("No critical/warning expiries")
         print("No urgent expiries.")
+        _write_heartbeat()
         return
 
     log(f"Found {len(items)} expiries needing attention")
@@ -452,13 +472,7 @@ def main() -> None:
         print("\n--- TELEGRAM PREVIEW ---")
         print(tg_text)
 
-    # Sentinel heartbeat
-    import pathlib
-    state_dir = pathlib.Path.home() / ".agent" / "decisions" / "state"
-    state_dir.mkdir(parents=True, exist_ok=True)
-    (state_dir / "expiry_alerter.last.json").write_text(
-        f'{{"job":"expiry_alerter","ts":{int(__import__("time").time())},"status":"ok","host":"{__import__("socket").gethostname()}"}}'
-    )
+    _write_heartbeat()
 
 
 if __name__ == "__main__":
