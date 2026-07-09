@@ -1,0 +1,27 @@
+{
+  "code": "10295",
+  "editorial": {
+    "headline": "Fermented Aquatic Biota Processing With Full PMA Access",
+    "standfirst": "This activity covers fermentation-based processing and preservation of aquatic biota, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "**KBLI 10295 sits in the world of fermentation-led aquatic processing: the transformation and preservation of crustaceans, molluscs, echinoderms, and other water biota into fermented products such as shrimp paste.** Its centre of gravity is not fishing, trading, or restaurant preparation, but the industrial act of processing and preserving aquatic material through fermentation. That makes the scope narrower and more technical than its plain title may first suggest: the defining feature is the method, and the record identifies fermentation as the process that gives the activity its character.\n\nThe scale picture is unusually broad. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** operators, so it can describe a small producer as well as a larger processing operation, provided the registered business is truly doing the activity captured here. For founders, that matters because scale is not treated as a closed gate in the record. The code is not reserved only for a large factory, nor only for a small traditional producer. What matters is whether the real business activity matches the recorded scope: processing and preserving specified aquatic biota through fermentation, with shrimp paste given as the example product.\n\nNationally, the foreign-investment position is clear. The PMA status is **TERBUKA**, and the recorded maximum foreign ownership is **100%**. In plain English, the national record treats this activity as open to foreign ownership up to the full ceiling stated in the record. There is no partial cap in the slim record, and there is no separate condition to invent around it. The stated source is **Perpres 10/2021, 49/2021**, so the national picture should be read exactly as the record frames it: open, with a one-hundred-percent foreign-ownership ceiling.\n\nThe Bali picture is also clear, but it needs to be stated carefully. The record does include a Bali moratorium rule: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, under the cited governor letter. For this activity, however, the Bali block flag is **false** and the Bali status is **OK_or_HIGHER_RISK**. The reason given is precise: **\"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\"**. That means the honest national-vs-Bali reading is not a contradiction. Nationally, the activity is foreign-open up to 100%; in Bali, this record does not mark it as blocked by the moratorium. The right conclusion is therefore simple and disciplined: this is a fermentation-based aquatic processing activity that is nationally open to PMA, open across all recorded business scales, and not blocked for PMA registration in Bali according to the slim record.",
+    "pullQuote": "The honest reading is simple: nationally open up to 100% foreign ownership, and not marked as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "10217",
+  "editorial": {
+    "headline": "Canned Fish Processing Built for Every Scale",
+    "standfirst": "KBLI 10217 covers airtight canned fish processing, nationally open to foreign ownership and not blocked for PMA registration in Bali under the record supplied.",
+    "body": "KBLI 10217 is a manufacturing code for the processing and preservation of fish through airtight packaging or canning, supported by retort or pasteurisation. In practical terms, the activity is the industrial transformation of fish into shelf-stable canned products such as canned sardines, canned lemuru, canned mackerel, and canned tuna. The record also brings one important boundary into view: a fish-processing vessel belongs here only when it processes and preserves fish in cans without carrying out the catching activity itself.\n\nThat makes the code less about fishing as an extraction activity and more about controlled food processing. The defining act is not landing fish, trading fish, or operating a mixed capture-and-processing business. It is the preservation process: airtight containment, thermal treatment, and the production of canned fish goods. For founders, that distinction matters because the business identity sits in the processing line, the packaging method, and the final canned product.\n\nThe scale picture is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses, so the code can describe anything from a small formal processor to a large canning operation, provided the activity remains within the stated scope. Nationally, the PMA position is also clear: the code is marked TERBUKA, with a maximum foreign ownership figure of 100%. On the supplied record, there is no national foreign-share cap below full ownership.\n\nThe Bali reading is equally important, and here the honest conclusion is clean rather than dramatic. The record does not mark this activity as blocked in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, which means it is not blocked by the Bali moratorium described in the record. That moratorium blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this record places KBLI 10217 outside that blocked result. For a foreign-owned setup, the national and Bali readings therefore point in the same direction: this canned fish processing activity is nationally open, and the record does not block PMA registration in Bali.",
+    "pullQuote": "For a foreign-owned setup, the national and Bali readings therefore point in the same direction: this canned fish processing activity is nationally open, and the record does not block PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

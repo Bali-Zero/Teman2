@@ -1,0 +1,27 @@
+{
+  "code": "10616",
+  "editorial": {
+    "headline": "Wheat Flour Milling With a Clean National and Bali Path",
+    "standfirst": "KBLI 10616 covers wheat milling into wheat flour, open across all business scales and not marked as blocked for PMA registration in Bali.",
+    "body": "KBLI 10616 is narrowly and practically defined: it covers the milling of wheat that produces wheat flour. That is the centre of the code. The record does not treat it as a broad food category, a trading activity, or a catch-all for downstream processing; its scope is the grinding of wheat into flour. For founders, that narrowness matters because the registration should follow the actual productive activity, not the commercial possibilities that may sit around it.\n\nThe activity is open across the full scale ladder shown in the record: Mikro, Kecil, Menengah, and Besar. That means the code is not reserved only for large industrial operators in the national classification data supplied here. A smaller operator and a larger operator are both within the scale vocabulary of the record, provided the registered activity remains the milling of wheat into wheat flour. The editorial point is simple: this is a production code with a clear activity boundary and a broad scale range.\n\nNationally, the foreign-investment picture is straightforward. The PMA status is marked TERBUKA, and the national maximum foreign ownership value is 100%. In plain English, the record presents this activity as foreign-open at the national level, with no lower foreign-ownership ceiling stated in the supplied data. The source field for that national position is Perpres 10/2021, 49/2021. Nothing in the slim record adds a special capital threshold, extra licence, timeline, or tax condition, so none should be read into the code from this editorial.\n\nThe Bali side is also unusually clear. The record does not mark this activity as blocked for PMA registration in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The stated reason is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the supplied moratorium rule says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently; this record says KBLI 10616 is not caught by that block. The honest national-vs-Bali picture, then, is not a contradiction: nationally foreign-open, and on this record not blocked in Bali.",
+    "pullQuote": "The honest national-vs-Bali picture is not a contradiction: nationally foreign-open, and on this record not blocked in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

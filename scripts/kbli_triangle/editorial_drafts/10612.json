@@ -1,0 +1,27 @@
+{
+  "code": "10612",
+  "editorial": {
+    "headline": "Bean-Flour Milling With a Clear National Lane",
+    "standfirst": "KBLI 10612 covers the milling of bean and legume flours, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 10612 is a manufacturing classification for businesses that make flour from assorted beans and legume crops through a milling process. The slim record names examples such as mung bean flour, soybean flour, peanut flour, and red bean flour. The centre of the activity is not trading the beans or serving the finished food; it is the industrial act of grinding those raw materials into flour products.\n\nThe registration profile is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar scales, so the classification can describe a compact producer as well as a larger milling operation. What matters editorially is the production character: a business entering this code is defining itself around the manufacture of milled bean-based flour, not around a neighbouring food category or a downstream retail use.\n\nNationally, the foreign-investment picture is clean. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%. That means the national record presents this activity as open to foreign ownership up to the full ceiling stated in the data. The source named for that national position is Perpres 10/2021, 49/2021, but the practical reading should stay disciplined: the record gives openness and the ownership ceiling; it does not add a separate capital threshold, licence timeline, tax treatment, or operational permit condition.\n\nBali does not introduce a block here. The Bali status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That matters because the Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This activity is therefore not caught by that PMA block on the record provided. The honest conclusion is simple: for KBLI 10612, the national lane is foreign-open, and the Bali-side record does not mark it as blocked.",
+    "pullQuote": "The honest conclusion is simple: for KBLI 10612, the national lane is foreign-open, and the Bali-side record does not mark it as blocked.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

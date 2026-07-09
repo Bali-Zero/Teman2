@@ -1,0 +1,27 @@
+{
+  "code": "10509",
+  "editorial": {
+    "headline": "The Broad Dairy Code for Butter, Yoghurt, Cheese and Fermented Milk",
+    "standfirst": "KBLI 10509 covers the wider dairy-processing shelf, nationally open to PMA ownership and not blocked by Bali’s moratorium record.",
+    "body": "KBLI 10509 is the classification for other dairy-product manufacturing: the processing of butter, yoghurt, cheese and curd, whey water, casein or lactose, fermented milk, whey, and milk kefir. It also reaches into the more patient end of dairy work, including cheese purification and ageing. In plain English, this is not raw milk collection and not a generic food-trading bucket. It is the manufacturing space where milk is transformed into finished or intermediate dairy products with distinct texture, acidity, fermentation, separation, or maturation.\n\nThat scope matters because the code is broad but not shapeless. A founder using it would be describing a dairy-processing activity, not simply a retail concept or a restaurant menu. The record’s examples point to production: churned, cultured, curdled, fermented, separated, refined, or aged dairy outputs. The boundaries are also visible from what the record leaves outside the group: it does not turn every frozen milk-based product or every kefir variant into this activity. The centre of gravity remains dairy processing, especially products derived from milk through fermentation, coagulation, separation, or further refinement.\n\nOn scale, the record is unusually open. It lists Mikro, Kecil, Menengah, and Besar as scales open to the activity, so this is not reserved only for a large industrial plant. A small yoghurt producer, a medium cheese processor, or a larger dairy manufacturer can all sit inside the same formal activity description, provided the registered business activity remains within the record’s dairy-processing scope. That breadth is useful, but it also makes precision important: the registration should follow the actual manufacturing activity, not the commercial story around the brand.\n\nThe national foreign-investment picture is clean. The record marks the PMA status as TERBUKA and gives the maximum foreign ownership as 100%, sourced to Perpres 10/2021, 49/2021. Bali does not add a separate percentage in this record. Instead, the Bali-side result is a status label: OK_or_HIGHER_RISK. The reason is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That means the record does not treat this activity as blocked in Bali by the island-wide moratorium that blocks all Low and Medium-Low risk KBLI for PMA. The honest reading is therefore straightforward: nationally, this dairy-processing code is open up to full foreign ownership; in Bali, the record does not mark it as blocked by the moratorium.",
+    "pullQuote": "The honest reading is therefore straightforward: nationally, this dairy-processing code is open up to full foreign ownership; in Bali, the record does not mark it as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

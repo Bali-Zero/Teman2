@@ -1,0 +1,27 @@
+{
+  "code": "10414",
+  "editorial": {
+    "headline": "Fish Oil Manufacturing, Read as a Real Production Activity",
+    "standfirst": "KBLI 10414 covers the making of fish oil from fatty fish or fish organs, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 10414 is not a broad seafood label. The record defines it as an industrial activity: making oil from fish with high fat content, such as lemuru, or from fish body organs, such as shark liver. The center of gravity is therefore production, not trading, harvesting, retailing, or general marine processing. Its scope is anchored in the conversion of fish-based raw material into fish oil, and the record also keeps a clear boundary around pharmaceutical or cosmetic ingredient processing.\n\nThat matters for founders because the activity is open across every business scale listed in the record: Mikro, Kecil, Menengah, and Besar. In practical classification terms, this means the code is not reserved only for large industrial operators; it can be used by smaller registered businesses as well as larger manufacturers, provided the real business activity is the manufacture of fish oil described in the scope. The record gives no licence threshold, capital rule, tax treatment, operating timeline, or facility condition, so none should be read into it. The classification tells us what the activity is and which scales are open, not the full operating compliance map.\n\nNationally, the foreign-investment picture is clean. The PMA status is TERBUKA, and the recorded maximum foreign ownership is 100%. That is the plain national reading under the cited source, Perpres 10/2021, 49/2021: a foreign-owned company can treat this activity as open at the national level, with no ownership cap below full foreign ownership stated in the record. This is one of those cases where the headline conclusion should not be made more cautious than the data allows.\n\nBali needs to be read separately, but not pessimistically. The record marks the Bali status as OK_or_HIGHER_RISK and says it is not blocked. The reason given is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The province-wide moratorium blocks all Low and Medium-Low risk KBLI for PMA, but this record does not place KBLI 10414 inside that blocked category. The honest conclusion is therefore straightforward: nationally open to PMA up to 100%, and not blocked for PMA registration in Bali on the record provided.",
+    "pullQuote": "The honest conclusion is therefore straightforward: nationally open to PMA up to 100%, and not blocked for PMA registration in Bali on the record provided.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

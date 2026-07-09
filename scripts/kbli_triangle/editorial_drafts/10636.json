@@ -1,0 +1,27 @@
+{
+  "code": "10636",
+  "editorial": {
+    "headline": "Rice and Corn Oil Manufacturing, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 10636 covers the manufacture of oil from rice and corn, open across all business scales and not blocked for PMA registration in Bali under the record supplied.",
+    "body": "KBLI 10636 is a narrow industrial classification: the manufacture of oil from rice and corn. Its scope is not farming, trading, food retail, or a broad grain-processing label. It is the production activity itself, turning rice and corn into oil. That precision matters because the code’s strength is also its boundary: a founder using it should be describing a manufacturing operation centred on those two raw materials, not a wider packaged-food venture or a general commodities business.\n\nThe record opens this activity to every listed business scale: Mikro, Kecil, Menengah, and Besar. In practical registration language, that means the activity is not reserved in this record for only a large industrial operator, nor confined to small enterprise classifications. A micro producer, a small workshop, a mid-sized processor, and a large manufacturer all sit inside the scale range stated here, provided the registered activity remains the making of oil from rice and corn.\n\nNationally, the PMA picture is clean. The record marks the activity as TERBUKA and gives a foreign-ownership ceiling of 100%. That is the only ownership percentage in the record, and it is national, not Bali-specific. The cited source is Perpres 10/2021, 49/2021. Read plainly, this is a foreign-open manufacturing activity at national level, with no lower foreign-share cap supplied in the slim record.\n\nThe Bali side is also relatively clear, but for a different reason. The record does include Bali’s island-wide moratorium rule: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA. Here, however, `l4_bali_blocked` is false and the Bali status is `OK_or_HIGHER_RISK`. The reason given is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. In other words, this record does not create a separate Bali ownership cap, partnership condition, or quota. It says the activity is nationally foreign-open, and it says Bali does not block it under the supplied moratorium logic.",
+    "pullQuote": "The record says this is nationally foreign-open, and Bali does not block it under the supplied moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

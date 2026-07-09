@@ -1,0 +1,27 @@
+{
+  "code": "10433",
+  "editorial": {
+    "headline": "Crude Palm Fractionation With a Clear Bali Path",
+    "standfirst": "KBLI 10433 covers the first split of crude palm and palm-kernel oil into olein and stearin, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 10433 is an industrial code for fractionating crude palm oil and crude palm-kernel oil before those materials move into later processing. The activity is not the finished-food or consumer-product end of the chain. Its core is the separation of a crude oil stream into two physical fractions: a liquid fraction, olein, and a solid fraction, stearin. The same logic is stated for crude palm oil and for crude palm-kernel oil: crude palm olein and crude palm stearin on one side, crude palm-kernel olein and crude palm-kernel stearin on the other. The record is explicit that these outputs still need further processing, which matters because it places the code in a technical, upstream industrial position rather than in a final retail category.\n\nThe scale profile is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar scales, so the code is not written only for a single size of operator. In practical classification terms, that means the same defined activity can be registered across the scale spectrum, provided the registered business is genuinely doing the fractionation described in the scope: separating crude palm or crude palm-kernel oil into olein and stearin fractions. The editorial discipline here is important. The code is not a general palm-oil trading label, not a catch-all plantation activity, and not a finished processing claim. It is the specific industrial separation step described in the Indonesian scope.\n\nNationally, the PMA picture is clear. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national foreign-ownership ceiling shown in the record is 100%, so the record does not impose a lower foreign-stake cap for this activity at the national level. That is the first half of the founder’s reading: for foreign investment classification, this is nationally open according to the fields provided.\n\nThe Bali reading is also clear, but for a different reason. Bali’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province. This record, however, does not mark KBLI 10433 as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. That does not create a separate Bali foreign-ownership percentage, and it does not add a local quota or partnership condition. It simply means that, on this record, the activity is nationally open to PMA and is not blocked by the Bali moratorium.",
+    "pullQuote": "The record treats KBLI 10433 as a technical upstream fractionation activity: nationally open to PMA and not blocked by Bali’s moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

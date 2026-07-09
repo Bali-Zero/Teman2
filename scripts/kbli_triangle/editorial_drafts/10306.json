@@ -1,0 +1,27 @@
+{
+  "code": "10306",
+  "editorial": {
+    "headline": "Fruit and Vegetable Juice Processing, Without the Bali Detour",
+    "standfirst": "KBLI 10306 covers the industrial work of turning fruit and vegetables into juices, concentrates, nectars, powders, and derivative juice products.",
+    "body": "KBLI 10306 is about transformation rather than retail display. The activity in the record is the processing and preservation of fruit and vegetables into juice products: fruit and vegetable juices, juice powders, fruit-juice concentrates, vegetable-juice concentrates, and fruit or vegetable nectars. It also reaches the processing of those juices into derivative products. In practical terms, this is the code for a business whose core work is taking agricultural inputs and making shelf-ready or further-processable juice-based outputs, not simply selling produce or serving drinks across a counter.\n\nThe boundaries matter because the record is precise about what sits inside this activity. It is not a catch-all label for every fruit-themed beverage. The scope points to real fruit and vegetable juice processing, preservation, concentration, powdering, nectar production, and downstream juice derivatives. It also draws a line away from artificial concentrates and fruit-flavoured drinks. That distinction gives the code its editorial centre: this is a food-processing activity anchored in the substance of fruit and vegetable juice, not a broader beverage-marketing category.\n\nFor registration scale, the record is unusually open: Mikro, Kecil, Menengah, and Besar are all listed as available scales. That means the activity can describe a small processing operation as well as a larger industrial setup, provided the business being registered genuinely matches the processing scope above. Nationally, the foreign-investment position is also clear. The PMA status is TERBUKA, and the stated maximum foreign ownership is 100%, sourced to Perpres 10/2021, 49/2021. There is no partial ceiling in this record; on the national reading, the activity is foreign-open up to full ownership.\n\nThe Bali reading is where the code avoids the common trap. The province’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this activity is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the reason given is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That does not create a separate Bali percentage, condition, quota, or partnership requirement. It simply means the record does not treat this code as blocked for PMA registration in Bali under the stated moratorium logic. For a foreign-owned setup, the honest conclusion is therefore clean: nationally open, 100% foreign-owned, and not blocked in Bali on the facts provided here.",
+    "pullQuote": "For a foreign-owned setup, the honest conclusion is clean: nationally open, 100% foreign-owned, and not blocked in Bali on the facts provided here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

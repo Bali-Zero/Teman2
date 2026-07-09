@@ -1,0 +1,27 @@
+{
+  "code": "10614",
+  "editorial": {
+    "headline": "Premix Flour and Batter Manufacturing, Clearly Open Nationally and in Bali",
+    "standfirst": "This code covers the industrial making of mixed flours and prepared batters for breads, cakes, biscuits, pancakes, coatings, seasonings, and cereal-based dessert premixes.",
+    "body": "This activity is about the quiet infrastructure behind a great deal of everyday food production: flour that has already been mixed, seasoned, blended, or prepared so that another business can turn it into bread, cakes, biscuits, pancakes, coatings, or dessert bases. The record describes a manufacturing activity, not a cafe, bakery counter, or trading operation. Its centre of gravity is the making of mixed flour and ready batter products: flour for doughs, flour used to coat fish or chicken, seasoned flour, bakwan flour, bakso flour, cereal-based dessert premixes, and egg-free custard starch or flour. In plain English, this is where dry formulation becomes a repeatable food-manufacturing product.\n\nThat distinction matters because the code is broad enough for small producers but industrial enough for larger plants. The record opens it to Mikro, Kecil, Menengah, and Besar scales, so it can describe anything from a compact local premix operation to a larger factory supplying food-service, retail, or downstream food manufacturers. What unifies those businesses is not the size of the premises but the act of producing the prepared flour or batter itself. The finished product may support many kinds of cooking, baking, coating, or dessert preparation, but the registered activity is the manufacture of those flour mixtures and batter preparations.\n\nNationally, the foreign-investment picture is clean. The PMA status is TERBUKA, and the recorded foreign-ownership ceiling is 100%. That means the slim record does not show a national foreign-share cap below full ownership for this activity. It also does not contain any additional licensing threshold, minimum-capital figure, tax treatment, timeline, or special approval condition, so none should be read into the code. For a foreign-owned structure, the reliable national takeaway is simple: the activity is marked open, with the maximum foreign ownership recorded as 100%, under the listed national source.\n\nBali does not add a separate percentage, quota, partnership rule, or local ownership condition in this record. The Bali-side status is OK_or_HIGHER_RISK, and the activity is not blocked. The reason is stated as: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this activity is not caught by that block on the information supplied. The honest editorial reading is therefore not a warning disguised as openness, but openness with proper boundaries: nationally open to PMA, recorded at a 100% ceiling, available across all listed business scales, and not blocked for PMA registration in Bali on the slim record provided.",
+    "pullQuote": "The honest editorial reading is therefore not a warning disguised as openness, but openness with proper boundaries.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

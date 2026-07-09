@@ -1,0 +1,27 @@
+{
+  "code": "10219",
+  "editorial": {
+    "headline": "The Broad, Practical Edge of Fish Processing",
+    "standfirst": "KBLI 10219 covers specialised fish processing and preservation methods that sit beyond standard handling, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 10219 is for fish processing and preservation work that uses other methods within the record’s stated scope. In plain English, it captures specialised handling of finfish after capture: processing or preserving fish on vessels used only for that purpose, producing fish meal for human consumption or animal feed, making meal and soluble meal from fish that cannot be eaten by humans, preparing fish-meal concentrate, cutting fish into filet, loin, saku, steak, and chunk where freezing is not part of the process, and using radiation through an irradiator as a preservation method.\n\nThat makes this activity less about retail seafood and more about industrial transformation. The record points to operations that change the condition, form, or shelf-life of fish before the product moves onward. Some are food-facing, such as non-frozen cuts or fish meal for human consumption. Others are input-facing, such as animal-feed fish meal or products made from fish unsuitable for human consumption. The common thread is not a single product but a processing logic: fish is being preserved, reduced, concentrated, cut, or otherwise prepared through methods covered by this entry.\n\nThe registration picture is broad on scale. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, so the code is not framed around one size of operator. A small processor cutting finfish without freezing and a larger facility making fish-meal concentrate both sit within the scale range stated in the record, provided the actual activity matches the scope. The important discipline is to stay inside what the code says: this is finfish processing and preservation by the listed or comparable methods, not a general licence for every seafood activity or every frozen-processing workflow.\n\nThe national-versus-Bali picture is unusually clean. Nationally, the record marks the PMA status as TERBUKA and gives the foreign-ownership ceiling as 100%, sourced to Perpres 10/2021, 49/2021. For Bali, the record does not mark the activity as blocked: l4_bali_blocked is false, and the reason given is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The moratorium rule itself remains important because Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently; here, however, the slim record’s Bali status is OK_or_HIGHER_RISK. The honest reading is therefore direct: for this activity, the record shows national PMA openness and no Bali moratorium block.",
+    "pullQuote": "The honest reading is therefore direct: for this activity, the record shows national PMA openness and no Bali moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

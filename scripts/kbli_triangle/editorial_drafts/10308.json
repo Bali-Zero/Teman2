@@ -1,0 +1,27 @@
+{
+  "code": "10308",
+  "editorial": {
+    "headline": "Soybean Tofu Is Open Nationally, but Blocked for PMA in Bali",
+    "standfirst": "KBLI 10308 covers soybean tofu manufacturing across every business scale, yet Bali’s PMA moratorium changes the practical answer for foreign investors.",
+    "body": "KBLI 10308 is a precise manufacturing category: the making of tofu from soybeans. The record’s scope is narrow and material-led. What matters is not a broad food-processing ambition, a general plant-protein concept, or a retail-facing tofu brand, but the production activity itself: soybean tofu manufacturing. That clarity is useful because the code is built around the input and the process, not around how the finished product is later sold.\n\nOn the national register, the activity is open across the full scale range recorded for it. Mikro, Kecil, Menengah, and Besar are all listed as available scales, so the code is not confined to one size of operator. Nationally, the PMA status is TERBUKA, with `pma_max_asing` recorded at 100. In plain English, the national foreign-ownership ceiling shown in the record is 100%, sourced to Perpres 10/2021 and 49/2021. That is the national picture, and it is clean: the activity is foreign-open under the record’s PMA fields.\n\nBali is the hard exception. The record marks this activity as blocked for PMA registration in Bali, with `l4_bali_blocked` set to true and the status shown as BLOCCATO_CLASSE_RISCHIO. The stated reason is: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” Spelled out without adding anything beyond the record, the local problem is not the soybean tofu activity itself; it is Bali’s moratorium treatment of Low and Medium-Low risk activities for PMA. The rule supplied in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent.\n\nThat creates the honest national-vs-Bali reading for founders. A foreign investor looking only at the national PMA line would see an open activity with a 100% foreign-ownership ceiling. A foreign investor trying to register the same activity in Bali today meets a different answer: the record says it is blocked for PMA in Bali under the provincial moratorium. The practical conclusion is therefore simple and fairly important: KBLI 10308 is nationally open, but for Bali PMA registration the record does not support a go-ahead.",
+    "pullQuote": "KBLI 10308 is nationally open, but for Bali PMA registration the record does not support a go-ahead.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

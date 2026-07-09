@@ -1,0 +1,27 @@
+{
+  "code": "10292",
+  "editorial": {
+    "headline": "Smoked and Roasted Aquatic Biota, Open Nationally but Blocked in Bali",
+    "standfirst": "This activity covers smoked or roasted non-fish aquatic products, with national PMA openness offset by a Bali PMA block under the provincial risk moratorium.",
+    "body": "This KBLI activity is about a very specific processing craft: preserving and preparing aquatic biota other than ordinary fish through smoking or roasting. The record names crustaceans, molluscs, echinoderms, and other aquatic organisms, with examples such as smoked or roasted squid and smoked or roasted sea cucumber. The commercial identity of the activity is therefore not seafood trading, restaurant service, or general food manufacturing in the abstract. It is the transformation and preservation of aquatic raw material by heat and smoke, producing a finished smoked or roasted product.\n\nThat narrowness matters. A founder reading this code should see a processing activity, not a broad licence to operate across the whole seafood chain. The slim record points to production work: taking qualifying aquatic biota and applying smoking or roasting as the preservation method. It also shows that the activity is not reserved to one business size. The scales open to it are Mikro, Kecil, Menengah, and Besar, so the code can describe anything from a small producer to a larger processing operation, as long as the underlying activity stays within the recorded scope.\n\nNationally, the record is straightforward: PMA status is marked TERBUKA, with pma_max_asing at 100. In plain English, the national investment list treats this activity as open to foreign ownership up to 100%, with the cited national source being Perpres 10/2021, 49/2021. That is the first half of the picture, and it is important because it means the national entry is not the obstacle. On the national record alone, a foreign-owned setup is not capped below full ownership.\n\nBali is the decisive second half. The Bali-side field says l4_bali_blocked is true, and the reason is stated as: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026. The moratorium rule in the record is also direct: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent). So the honest conclusion is simple but uncomfortable: a foreigner cannot register this PMA activity in Bali today, even though the same activity is nationally open. The contradiction is not in the scope of the activity; it is in the layer of administration. Nationally open does not mean Bali-registerable when the provincial moratorium blocks the risk class.",
+    "pullQuote": "A foreigner cannot register this PMA activity in Bali today, even though the same activity is nationally open.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

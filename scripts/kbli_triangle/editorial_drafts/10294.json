@@ -1,0 +1,27 @@
+{
+  "code": "10294",
+  "editorial": {
+    "headline": "Boiling and Preserving Other Aquatic Biota Under KBLI 10294",
+    "standfirst": "Nationally open to foreign ownership, this aquatic processing activity is still blocked for PMA registration in Bali under the province’s risk-class moratorium.",
+    "body": "KBLI 10294 covers a specific kind of food-processing activity: the processing and preservation of crustaceans, molluscs, echinoderms, and other aquatic biota through **pemindangan**, the Indonesian preservation method named in the record. It is not a general seafood category. The scope points to an industrial treatment of aquatic organisms other than ordinary fish, with the defining feature being the preservation process itself. For a founder, that makes the code less about retail, trading, or aquaculture, and more about the activity of transforming aquatic raw material into a preserved product.\n\nThe national record is straightforward. The activity is marked **TERBUKA**, and the foreign-ownership ceiling is **100%** under **Perpres 10/2021, 49/2021**. The code is also open across the recorded business scales: **Mikro, Kecil, Menengah, Besar**. In plain English, the national classification does not reserve this activity only for Indonesian ownership, and it does not confine it to one narrow size band. A small processor and a larger processing operation both sit within the scale range shown in the record, provided the registered activity is genuinely the processing and preservation described in the scope.\n\nThe Bali answer is materially different. The record marks the Bali status as **BLOCCATO_CLASSE_RISCHIO**, with `l4_bali_blocked` set to true. Its stated reason is: **OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026**. The moratorium rule supplied in the record is wider than this one activity: **Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)**. For this code, the practical editorial conclusion is therefore clear: a foreign-owned company may see a 100% national ceiling, but cannot register this activity as PMA in Bali today according to the Bali-side fields in the record.\n\nThat distinction matters because the national headline alone would be misleading. KBLI 10294 is nationally open, and the ownership ceiling shown is complete foreign ownership. But Bali’s moratorium is not expressed here as a reduced foreign-share cap, a partnership requirement, or a negotiable local quota. The record gives only a blocked Bali status, a stated risk-class reason, and the governor-letter source. So the honest reading is precise: this is a nationally foreign-open aquatic biota processing code, available across all recorded scales, but blocked for PMA registration in Bali by the province’s Low and Medium-Low risk moratorium.",
+    "pullQuote": "A foreign-owned company may see a 100% national ceiling, but cannot register this activity as PMA in Bali today according to the Bali-side fields in the record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

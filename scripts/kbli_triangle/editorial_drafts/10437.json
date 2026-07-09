@@ -1,0 +1,27 @@
+{
+  "code": "10437",
+  "editorial": {
+    "headline": "Palm Oil Cooking Oil Refining, Without the Bali Dead End",
+    "standfirst": "KBLI 10437 covers the further processing of crude palm oil into consumer-ready cooking oil, and the record treats it as nationally open to foreign ownership.",
+    "body": "KBLI 10437 is not the cultivation of palm fruit or the broad trading of edible oils. On this record, its subject is the industrial further processing of crude palm oil into palm cooking oil ready for consumption. The work named in the scope is practical and technical: refining, bleaching, and removing unwanted odours from crude palm oil, so that the input becomes a finished cooking oil product. The scope also expressly includes red palm oil processing and the addition of certain substances to improve quality or added value.\n\nThat makes this a processing code with a clear manufacturing character. A founder using it is describing an operation that takes crude palm oil as a feedstock and performs the downstream steps that turn it into a consumable oil product. The record is also broad on business scale: it is open to Mikro, Kecil, Menengah, and Besar. In plain terms, the activity is not confined in the record to only a small producer or only an industrial-scale plant; the scale field allows the whole ladder of registered business sizes.\n\nThe national PMA position is equally direct. The record marks the activity as TERBUKA and gives the foreign-ownership ceiling as 100%. That is the national picture: a foreign-owned company can read this slim record as allowing full foreign participation, with the cited PMA source recorded as Perpres 10/2021, 49/2021. There is no separate minimum-capital figure, licence threshold, tax rule, or operating timetable in the record, so none should be inferred from it.\n\nThe Bali reading is important because it does not create a contradiction. The record does include Bali’s moratorium rule, which blocks all Low and Medium-Low risk KBLI for PMA across the province. But for this code the Bali status is OK_or_HIGHER_RISK, the Bali blocked flag is false, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. So the honest conclusion is measured rather than dramatic: nationally, the code is open to 100% foreign ownership; in Bali, this record does not mark it as blocked by the moratorium.",
+    "pullQuote": "Nationally, the code is open to 100% foreign ownership; in Bali, this record does not mark it as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

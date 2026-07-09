@@ -1,0 +1,27 @@
+{
+  "code": "10434",
+  "editorial": {
+    "headline": "Palm Oil Refining With A Clear Bali Path",
+    "standfirst": "KBLI 10434 covers the refining step that turns crude palm and palm-kernel oils into further-processable refined oils.",
+    "body": "KBLI 10434 is a manufacturing code for a precise industrial step: refining crude palm oil into refined bleached deodorized palm oil, and refining crude palm-kernel oil into refined bleached deodorized palm-kernel oil. The record is clear that these refined oils are still not necessarily end products; they remain materials that need further processing. In practical terms, this is the activity of improving crude palm-based oils into cleaner, more stable refined forms within the palm-oil value chain.\n\nThe code is open across the full scale range recorded here: Mikro, Kecil, Menengah, and Besar. That matters because the activity is not framed only as a large industrial category in the slim record. A registrant can read the scale field as deliberately broad, while still treating the underlying activity as manufacturing rather than trading, farming, or final-product retail. The business description should therefore stay close to the refining operation itself: crude palm oil or crude palm-kernel oil in, refined bleached deodorized palm or palm-kernel oil out, with further processing still expected.\n\nNationally, the PMA picture is straightforward. The record marks the code as TERBUKA and gives pma_max_asing as 100, which means the national foreign-ownership ceiling should be rendered as 100%. The source field is Perpres 10/2021, 49/2021. Nothing in this record adds a special national licence, minimum capital number, production threshold, or tax condition, so none should be inferred. The clean reading is that the activity is nationally open to foreign investment up to the recorded ceiling.\n\nBali does not change that conclusion in this record. The province-wide moratorium rule says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this code is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, l4_bali_blocked is false, and the recorded reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. So the honest Bali reading is not a hidden cap or a local quota; it is that the record treats this activity as not blocked by the Bali PMA moratorium.",
+    "pullQuote": "The honest Bali reading is not a hidden cap or a local quota; it is that the record treats this activity as not blocked by the Bali PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

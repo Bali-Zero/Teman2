@@ -1,0 +1,27 @@
+{
+  "code": "10215",
+  "editorial": {
+    "headline": "Fermented Fish Processing, With a Clear Bali Path",
+    "standfirst": "KBLI 10215 covers fermented fish preservation and fish-based condiments, open nationally to all business scales and not blocked for PMA in Bali under the record.",
+    "body": "KBLI 10215 is a focused food-processing activity: the treatment and preservation of finfish through fermentation. The record names familiar product forms rather than abstract industrial language: fermented fish such as ikan peda and ikan kayu, plus fish sauce and fish terasi. In plain English, this is the category for businesses that turn fish into preserved, fermented products where time, salt, process control, and handling transform the raw material into a stable food ingredient or finished condiment.\n\nThat makes the activity broader than one product line but still tightly bounded. It is not a general seafood-trading category and not a catch-all for every marine product. Its centre of gravity is processing and preservation, specifically by fermentation, and specifically for finfish and fish-derived fermented outputs named in the scope. A founder choosing this activity should read the scope as a production classification: the business is making or preserving these fish-based fermented goods, not merely branding them, distributing them, or operating a restaurant that happens to serve them.\n\nThe registration picture is unusually clean in the slim record. The activity is open to Mikro, Kecil, Menengah, and Besar scales, so the classification is not limited to one enterprise size. Nationally, its PMA status is TERBUKA, and the foreign-ownership ceiling is 100%. That means the record presents KBLI 10215 as nationally open to foreign ownership up to the full stated ceiling. There is no lower percentage in the record, and there is no separate Bali ownership cap to add on top of it.\n\nThe Bali reading is also direct. The record marks the Bali status as OK_or_HIGHER_RISK and says l4_bali_blocked is false. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently; this activity is not blocked under that rule because the record’s Bali reason states: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest national-vs-Bali picture is not a hidden contradiction. Nationally, it is open; in Bali, the record does not mark it as blocked by the PMA moratorium. For this code, the decisive point is restraint: use the national 100% ceiling, use the recorded Bali status, and do not invent a Bali-side percentage or extra local condition that the record does not contain.",
+    "pullQuote": "For this code, the decisive point is restraint: use the national 100% ceiling, use the recorded Bali status, and do not invent a Bali-side percentage.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

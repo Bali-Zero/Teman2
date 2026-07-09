@@ -1,0 +1,27 @@
+{
+  "code": "10622",
+  "editorial": {
+    "headline": "Palm Starch Manufacturing With a Clear National Opening",
+    "standfirst": "KBLI 10622 covers palm-based starch production, nationally open to full foreign ownership and not blocked for PMA registration in Bali under the record supplied.",
+    "body": "KBLI 10622 is a manufacturing activity for starch made from palm-family plants. In plain English, the record points to factories or production operations that turn various palm sources into starch products, including sago starch, pearl starch, aren palm starch, and modified palm starch. Its scope is industrial and material-specific: the defining feature is not a trading channel, a food-service format, or an agricultural estate, but the making of palm-derived starch itself.\n\nThe activity is open across the business scales listed in the record: Mikro, Kecil, Menengah, and Besar. That matters because the code is not framed as a narrow large-industry lane only, nor as a micro-business lane only. A registrant reading this record can see the full scale range named explicitly, while still needing to keep the activity anchored to the stated scope: palm starch production, including modified palm starch where the product remains within that description.\n\nNationally, the PMA picture is straightforward. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, so the foreign-ownership ceiling is 100%. The cited basis is Perpres 10/2021, 49/2021. There is no lower ownership cap in the slim record, and no added threshold, licence, capital rule, or special condition is stated here. The honest national reading is therefore clean: for this activity code, the record presents full foreign ownership as available at the national level.\n\nBali does not change that into a separate percentage. The Bali-side field is `OK_or_HIGHER_RISK`, and the record says it is not blocked: `OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium`. That sentence is the operative Bali distinction. The moratorium rule supplied here blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this record says KBLI 10622 is not caught by that block because the OSS risk at Besar scale is Menengah-Tinggi/Tinggi. So the final reading is neither evasive nor alarmist: nationally open up to 100% foreign ownership, open across all listed scales, and not blocked for PMA registration in Bali on the supplied record.",
+    "pullQuote": "The honest reading is clean: KBLI 10622 is nationally open up to 100% foreign ownership and is not blocked for PMA registration in Bali on the supplied record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

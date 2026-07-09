@@ -1,0 +1,27 @@
+{
+  "code": "10412",
+  "editorial": {
+    "headline": "Margarin Manufacturing Is Nationally Open and Bali-Registerable",
+    "standfirst": "KBLI 10412 covers the making of margarine from edible vegetable oil, open nationally to PMA and not blocked by Bali’s moratorium record.",
+    "body": "KBLI 10412 is a narrow industrial code: it covers the manufacturing of margarine from edible vegetable oil. That is the full commercial centre of gravity in the record. It is not a trading category, not a restaurant category, and not a broad food-processing basket. The activity is the making of margarine itself, with the raw material described as plant-based edible oil. For a founder, that matters because the code reads like a production activity rather than a general food business label.\n\nThe scale picture is unusually clean. The record opens this activity to Mikro, Kecil, Menengah, and Besar scales, so the code is not framed only for one size of operator. A small producer and a larger industrial player sit in the same activity definition, provided their registered business is still the manufacture of margarine from edible vegetable oil. The record does not add extra thresholds, production volumes, facilities, or minimum-capital figures, so none should be read into it.\n\nNationally, the PMA signal is direct: the code is marked TERBUKA, with pma_max_asing at 100. In practical editorial terms, that means the national record treats the activity as open to foreign ownership up to 100%. The cited national basis is Perpres 10/2021, 49/2021. There is no lower foreign-share ceiling in the slim record, and there is no special national caveat supplied here that would reduce that headline position.\n\nThe Bali picture is also clear, but for a different reason. The code is not marked as blocked in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The record’s reason is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not caught by that block on the supplied record. So the honest conclusion is not that Bali creates a separate ownership cap or partnership condition. It does not, at least not in this record. The honest conclusion is that KBLI 10412 is nationally foreign-open and, on the Bali moratorium data provided, not blocked for PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is that KBLI 10412 is nationally foreign-open and, on the Bali moratorium data provided, not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

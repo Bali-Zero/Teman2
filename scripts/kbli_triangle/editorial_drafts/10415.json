@@ -1,0 +1,27 @@
+{
+  "code": "10415",
+  "editorial": {
+    "headline": "Edible Oils Beyond Coconut and Palm",
+    "standfirst": "This activity covers cooking and edible oils made from other raw materials, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "**KBLI 10415 is a manufacturing activity, not a trading label.** Its scope is the making of cooking oil and edible oil from materials other than coconut oil and palm oil. The record names sesame oil, rice-bran oil, pig cooking oil, and poultry cooking oil as examples. That gives the code a clear industrial centre of gravity: it is about processing edible-oil inputs into finished cooking or eating oils, where the defining boundary is what the oil is made from and the fact that coconut and palm oil sit outside this activity.\n\nThe registration profile is unusually broad on business scale. The record opens the activity to Mikro, Kecil, Menengah, and Besar operators, so the code is not framed only for industrial groups with large plants. A small producer and a larger manufacturer can both sit within the scale range if the registered activity is the production of these non-coconut, non-palm edible oils. The practical reading is simple: scale does not change the identity of the activity; it changes the business footprint around the same core manufacturing scope.\n\nNationally, the PMA picture is clean. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national foreign-ownership ceiling in this record is 100%. There is no lower national cap stated here, and nothing in the slim record adds a special capital threshold, licence condition, tax treatment, or timeline. The only defensible national statement is that this activity is foreign-open up to the stated ceiling.\n\nThe Bali reading is also clear, but for a different reason. Bali’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently. This activity, however, is not marked as blocked: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The record’s reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest national-vs-Bali conclusion is not a warning about a hidden Bali cap. It is that the activity is nationally open to the stated foreign-ownership ceiling, and the slim record does not show a Bali moratorium block for PMA registration.",
+    "pullQuote": "The honest national-vs-Bali conclusion is that this activity is foreign-open nationally and not marked as blocked by Bali’s moratorium in the record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

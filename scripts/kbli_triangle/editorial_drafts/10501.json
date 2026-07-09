@@ -1,0 +1,27 @@
+{
+  "code": "10501",
+  "editorial": {
+    "headline": "Fresh Milk and Cream, Open Nationally and Clear for Bali PMA",
+    "standfirst": "KBLI 10501 covers the processing of fresh liquid milk, UHT milk, and cream, with access across all business scales and no Bali moratorium block recorded.",
+    "body": "KBLI 10501 is a processing code for milk in its liquid and semi-liquid form. The record defines the activity around fresh liquid milk, pasteurised milk, sterilised milk, homogenised milk, and ultra-high temperature milk, with cream-making included when it is made from fresh, pasteurised, sterilised, or homogenised liquid milk. In plain English, this is not a retail dairy label or a farm gate description. It is the industrial activity of turning milk into market-ready liquid milk and cream products.\n\nThe scale picture is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so the code can describe a small processing business as well as a larger industrial plant, provided the registered activity remains within the processing scope described above. That breadth matters because the same activity can sit at very different operational sizes: a compact local producer handling pasteurised milk is not the same business footprint as a large UHT facility, but both are within the same activity family when the substance of the work is milk and cream processing.\n\nNationally, the foreign-investment position is clean. The record marks the PMA status as TERBUKA and gives pma_max_asing as 100, sourced to Perpres 10/2021, 49/2021. That means the national foreign-ownership ceiling shown in the record is 100%. There is no lower cap, shareholder formula, licence threshold, or minimum-capital figure in the record, so none should be read into the code from this editorial. The most precise conclusion is simply that the activity is nationally open to foreign ownership up to the recorded ceiling.\n\nBali does not change that conclusion in this record. The province’s moratorium rule is serious: it blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But this code is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the reason given is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The honest Bali-side reading is therefore straightforward: this activity is not recorded as blocked for PMA registration in Bali under the moratorium. For founders, that is the important distinction. KBLI 10501 is nationally open, and the Bali record does not impose a moratorium block on it.",
+    "pullQuote": "The honest Bali-side reading is straightforward: this activity is not recorded as blocked for PMA registration in Bali under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "10120",
+  "editorial": {
+    "headline": "Meat Preservation at Industrial Breadth",
+    "standfirst": "KBLI 10120 covers the processing and preservation of meat products, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 10120 is the activity code for turning meat into preserved or processed products. Its scope is broad: canning, smoking, salting, freezing, sweetening, irradiation with an irradiator, and similar preservation methods. It also reaches the production of frozen meat as carcasses, cuts, and individual portions, as well as dried, salted, and smoked meat. The record names finished meat products too: sausages, salami, pudding, andouilettes, saveloy, bologna, pates, rillettes, meatballs, and ham. It even includes whale-meat processing carried out on land or on a special vessel.\n\nThat breadth matters because this is not merely a retail or kitchen activity. The centre of gravity is transformation and preservation: changing raw meat into stable, packaged, frozen, cured, smoked, or otherwise processed goods. A founder using this code should therefore read it as a manufacturing and processing classification, not as a catch-all for every business that happens to use meat. The slim record also draws a boundary around the code by excluding ready-to-eat food made from meat and poultry, and soups containing meat, without making those excluded activities part of this classification.\n\nOn scale, the record is unusually inclusive. It is open to Mikro, Kecil, Menengah, and Besar operators. That means the classification can describe anything from a small processor producing preserved meat products to a larger plant handling frozen carcasses, portioned meat, or packaged processed meats. The record does not add a production threshold, licence condition, capital requirement, facility size, tax rule, or timeline, so none should be inferred. The only safe reading is that all four listed business scales are available under this code.\n\nThe national foreign-investment picture is clean. The PMA status is TERBUKA, with pma_max_asing at 100, so the national record permits full foreign ownership. Bali does not overturn that here. The Bali status is OK_or_HIGHER_RISK, l4_bali_blocked is false, and the reason given is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi -> not blocked by moratorium\". The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not marked as blocked. The honest conclusion is therefore straightforward: nationally it is open, and in Bali it is not blocked for PMA registration on the record provided.",
+    "pullQuote": "The honest conclusion is straightforward: nationally it is open, and in Bali it is not blocked for PMA registration on the record provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

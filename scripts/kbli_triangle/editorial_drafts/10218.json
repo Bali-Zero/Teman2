@@ -1,0 +1,27 @@
+{
+  "code": "10218",
+  "editorial": {
+    "headline": "Surimi-Based Fish Processing Is Open Nationally and in Bali",
+    "standfirst": "This activity covers fish mince and surimi processing into prepared foods, with access across all business scales and no Bali PMA moratorium block in the record.",
+    "body": "KBLI 10218 is about turning fish-based mince or surimi into further processed products. The slim record defines the activity as processing and preserving fish based on lumatan or surimi, then carrying it into foods such as bakso, nuget, otak-otak, kamaboko, sosis, pempek, siomai, dimsum, cikuwa, and imitation crab sticks. In plain English, this is not a raw-fish trading activity and not a general restaurant category. It sits in the manufacturing space where fish material is shaped, preserved, and transformed into recognizable prepared products.\n\nThat scope matters because the commercial profile can range from small prepared-food production to larger industrial processing. The record opens the activity to Mikro, Kecil, Menengah, and Besar scales. A founder reading this should therefore treat the code as scale-flexible: it is not written only for a household-size operation, and it is not reserved only for a large factory. The same activity description can support different operating sizes, as long as the registered business is genuinely doing the fish-based processing and preservation described in the record.\n\nNationally, the foreign-investment picture is clean. The PMA status is TERBUKA, and the listed maximum foreign ownership is 100%. That means the national record does not impose a foreign-shareholding cap below full foreign ownership for this activity. The source stated for that national position is Perpres 10/2021, 49/2021. Nothing in the slim record adds a minimum capital figure, special licence, quota, timeline, or separate approval condition, so those points should not be inferred from the activity code itself.\n\nThe Bali reading is also straightforward, but for a different reason. The record marks Bali as OK_or_HIGHER_RISK, with l4_bali_blocked set to false. Its reason is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently; this record says the code is not caught by that block. The honest conclusion is therefore simple: on the information provided here, this fish-processing activity is nationally open to PMA and is not blocked for PMA registration in Bali.",
+    "pullQuote": "On the information provided here, this fish-processing activity is nationally open to PMA and is not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

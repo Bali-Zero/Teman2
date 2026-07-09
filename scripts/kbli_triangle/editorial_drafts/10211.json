@@ -1,0 +1,27 @@
+{
+  "code": "10211",
+  "editorial": {
+    "headline": "Salted and Dried Fish Processing, Open Nationally but Blocked in Bali",
+    "standfirst": "This activity covers preserved finfish and roe products, open across all business scales nationally, yet blocked for PMA registration in Bali under the record’s risk-class moratorium.",
+    "body": "KBLI 10211 is a food-processing activity, not a fishing activity. Its scope is the processing and preservation of finned fish through salting or drying, producing items such as salted tembang, salted anchovies, and plain dried fish. The same record also brings in the processing and preservation of salmon eggs or roes, caviar, and caviar substitutes. In plain English, this is the industrial or business-side treatment of fish and fish roe into preserved products whose identity comes from salt, drying, or comparable preservation within the recorded scope.\n\nThe registration picture is broad at the national level. The record marks the activity as open to Mikro, Kecil, Menengah, and Besar scale businesses. That matters because the code is not reserved in the record for one narrow size of operator: it can describe a small producer working with a defined preserved-fish line, a medium processor, or a larger operation dealing in the same category of salted, dried, or roe-based products. The editorial point is discipline: the scale tells us who can register the activity, while the scope tells us what the activity is. It does not turn this code into a wider seafood licence, and it does not add activities that are not named in the record.\n\nNationally, the foreign-investment position is clean. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%, sourced in the record to Perpres 10/2021, 49/2021. For an investor reading only the national layer, this is a foreign-open activity with no lower percentage cap shown in the slim record. The correct national statement is therefore simple: the activity is open for PMA nationally, up to 100% foreign ownership, across the listed business scales.\n\nBali is the decisive caveat. The record says l4_bali_blocked is true, and gives the reason as: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule in the record states that Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest practical reading is that a foreigner cannot register this activity as a PMA in Bali today, even though the same activity is nationally marked TERBUKA with a 100% foreign-ownership ceiling. That is not a contradiction; it is the national-versus-Bali split this record is asking the reader to notice.",
+    "pullQuote": "A foreigner sees a nationally open activity, but in Bali the record’s moratorium turns that opening into a blocked PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

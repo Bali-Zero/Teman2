@@ -1,0 +1,27 @@
+{
+  "code": "10303",
+  "editorial": {
+    "headline": "Dried Produce Manufacturing With a Clear Bali Path",
+    "standfirst": "KBLI 10303 covers the drying and crisping of fruits, vegetables, and tubers, with national PMA openness and no Bali moratorium block in this record.",
+    "body": "**KBLI 10303 is a processing code, not a trading label.** Its centre of gravity is the preservation of fruits and vegetables by drying, whether the finished goods are packaged or unpackaged. The record names a practical range of outputs: raisins from grapes, dried shallots, dried garlic, dried chillies, dried bamboo shoots, potato flour, dried mashed potato, and dried mushrooms. It also reaches into the production of fruit and vegetable chips, including potato chips and potato snacks, plus freeze-dried fruit and the drying of tubers such as cassava and porang.\n\nThat scope matters because it describes an activity built around transformation: fresh agricultural material becomes a shelf-stable product through drying, crisping, freeze-drying, or tuber processing. A founder using this code should therefore be thinking about a production operation whose identity is the preservation and manufacture of dried produce, not simply the buying and selling of fruit, vegetables, or snacks. The examples in the record are deliberately varied, moving from ingredients such as dried garlic to consumer-facing products such as chips, but they all sit inside the same logic of drying-based food processing.\n\nThe scale position is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar, so it can describe anything from a small dried-produce operation to a larger manufacturing setup, provided the real activity remains inside the stated scope. Nationally, the PMA status is TERBUKA and the recorded foreign-ownership ceiling is 100%. Put plainly, the national record treats this as foreign-open, with no partial foreign-share cap stated in the slim record.\n\nThe Bali reading is also relatively clean, but it should be stated precisely. The record does not mark this activity as blocked for PMA registration in Bali: `l4_bali_blocked` is false, and the Bali status is `OK_or_HIGHER_RISK`. The reason given is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. That matters because the moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali. For this code, the honest national-vs-Bali picture is therefore consistent: nationally open to foreign ownership up to 100%, and not blocked by the Bali moratorium on the basis recorded here.",
+    "pullQuote": "For this code, the honest national-vs-Bali picture is consistent: nationally open to foreign ownership up to 100%, and not blocked by the Bali moratorium on the basis recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "KBLI code",
+        "value": "10303"
+      },
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "10216",
+  "editorial": {
+    "headline": "Surimi Processing with a Clear Bali Opening",
+    "standfirst": "KBLI 10216 covers fish mincing and grinding into minced fish meat or surimi, open across all business scales and not blocked for PMA registration in Bali.",
+    "body": "KBLI 10216 is a narrow but important food-processing activity: the processing and preservation of finned fish through mincing or grinding the fish meat to produce minced fish meat or surimi. Its character is not retail, capture, cold storage, or general seafood trade. The recorded scope points to transformation: fish flesh is worked mechanically into a prepared intermediate or product form, with preservation sitting inside that same processing frame.\n\nThat makes the code relevant for operators whose business identity is built around fish meat preparation rather than simply handling fish as a commodity. The record opens the activity to every listed scale: Mikro, Kecil, Menengah, and Besar. In practical editorial terms, this means the classification is not reserved only for industrial plants or only for small local processors. A micro or small operator can sit inside the same activity definition as a larger processor, so long as the registered activity remains the processing and preservation of finned fish through mincing or grinding into minced fish meat or surimi.\n\nThe national foreign-investment picture is clean. The slim record marks the activity as TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. There is no lower percentage in the record, and there is no special national caveat supplied here. The responsible reading is therefore straightforward: nationally, this activity is open to PMA ownership up to the recorded 100% ceiling.\n\nBali does not change that into a hidden percentage cap. The Bali-side field is not a second ownership calculation; it is a registration-status screen. Here, l4_bali_blocked is false and the status is OK_or_HIGHER_RISK. The reason given is specific: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this activity is recorded as not blocked by that rule. The honest national-versus-Bali conclusion is therefore unusually simple: KBLI 10216 is nationally foreign-open up to 100%, and the record does not mark it as blocked for PMA registration in Bali.",
+    "pullQuote": "KBLI 10216 is nationally foreign-open up to 100%, and the record does not mark it as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

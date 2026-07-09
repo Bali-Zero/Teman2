@@ -1,0 +1,27 @@
+{
+  "code": "10423",
+  "editorial": {
+    "headline": "Coconut Cooking Oil Refining, Open Nationally and Not Blocked in Bali",
+    "standfirst": "KBLI 10423 covers the further processing of crude coconut oil into cooking oil, with PMA access open nationally and no Bali moratorium block recorded.",
+    "body": "KBLI 10423 is a manufacturing activity with a narrow, practical centre of gravity: it covers the further processing of crude coconut oil into coconut cooking oil. The record describes the work as refining, bleaching, and removing unwanted odours. In plain English, this is not the cultivation of coconuts and not the broad trade of edible oils; it is the industrial step that takes crude coconut oil and prepares it as cooking oil through additional processing.\n\nThat specificity matters because it tells founders what kind of business should sit under this code. A company registering this activity is positioning itself as an oil-processing operator, not merely a distributor. The record opens the activity across every listed business scale: Mikro, Kecil, Menengah, and Besar. That means the classification is not framed only for large plants or only for small producers; it can describe operations at any of the stated scales, provided the activity remains within the recorded scope of further processing crude coconut oil into cooking oil.\n\nThe national PMA picture is straightforward. The record marks the activity as TERBUKA, with a maximum foreign ownership value of 100%, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, that is the core national reading: the activity is open, and the record does not show a foreign-share cap below full ownership. The correct way to read that is cleanly and without embellishment: nationally, KBLI 10423 is available for PMA registration up to 100% foreign ownership.\n\nBali does not change that into a separate percentage or a local quota in this record. The Bali status is OK_or_HIGHER_RISK, and the Bali reason says: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not marked as blocked. So the honest Bali-side conclusion is equally direct: the slim record does not block PMA registration in Bali for this code under the stated moratorium logic.",
+    "pullQuote": "Nationally, KBLI 10423 is open up to 100% foreign ownership, and the Bali record does not mark it as blocked.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "10301",
+  "editorial": {
+    "headline": "Salt-Preserved Fruit and Vegetables, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 10301 covers salted fruit and vegetable preservation, from loose to packaged asinan, with a national PMA opening that does not translate into Bali registration today.",
+    "body": "KBLI 10301 is a narrow food-processing activity: the preservation of fruit and vegetables through salting. The record points to products such as **asinan kedondong** and **asinan wortel**, and it is careful about form: the activity may be done in packaged or unpackaged products. Its centre of gravity is not general food trading, catering, farming, or broad vegetable processing. It is the act of preserving fruit and vegetables by a salt-based process, then producing the resulting preserved food.\n\nThat makes the code relevant for operators who are building a production activity around Indonesian preserved produce rather than merely selling finished goods. The scale access is broad: the record opens it to **Mikro, Kecil, Menengah, and Besar**. In practical classification terms, that means the activity is not reserved in the record for one business size. A small local producer, a mid-sized processor, or a larger factory-style operation can all sit within the scale language given here, provided the registered activity is genuinely this salted preservation activity.\n\nNationally, the PMA picture is simple. The record marks the activity as **TERBUKA**, with `pma_max_asing` at **100%**, sourced to **Perpres 10/2021, 49/2021**. On the national reading alone, this is therefore a foreign-open activity with no lower foreign-equity ceiling shown in the slim record. That is an important distinction: there is no percentage to negotiate downward in the national field, no partial cap stated here, and no separate threshold or licensing condition supplied in the record. The national data says open; the foreign-ownership number says 100%.\n\nBali is where the analysis changes. The record says `l4_bali_blocked` is **true** and marks the Bali status as **BLOCCATO_CLASSE_RISCHIO**. The reason is given as: **“OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026”**. The moratorium rule is also explicit: **“Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)”**. So the honest reading is this: a foreign-owned company may see a nationally open KBLI, but cannot treat that national opening as a Bali registration path today. For Bali PMA purposes, the record blocks the code because of the provincial moratorium logic, not because the national PMA percentage is below 100%.",
+    "pullQuote": "A foreign-owned company may see a nationally open KBLI, but cannot treat that national opening as a Bali registration path today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

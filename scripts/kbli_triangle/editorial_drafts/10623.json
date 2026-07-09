@@ -1,0 +1,27 @@
+{
+  "code": "10623",
+  "editorial": {
+    "headline": "Glucose Manufacturing Is Nationally Open and Not Moratorium-Blocked in Bali",
+    "standfirst": "This code covers industrial glucose and similar sugar production, with all business scales open and full foreign ownership allowed under the record.",
+    "body": "**KBLI 10623 is about the industrial making of glucose and closely related sugars.** The record frames it as manufacturing glucose and similar sweeteners outside the rice-and-corn category, including fructose, maltose, sucrose, glucose syrup, and comparable syrups. In practical terms, this is not a retail food activity or a general trading label; it is a production classification for businesses whose core operation is making these sugar products themselves.\n\nThe scale picture is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar operators, so the classification is not reserved only for large factories. A small producer and a larger industrial undertaking can both sit inside the same activity description if the registered business is genuinely making the products described in the scope. The important discipline is fit: the business should be registered here because its real activity is glucose or similar sugar manufacturing, not because the label sounds adjacent to food, commodities, or distribution.\n\nNationally, the foreign-investment position is clear. The PMA status is marked **TERBUKA**, and the maximum foreign ownership figure in the record is **100%**, sourced to **Perpres 10/2021, 49/2021**. That means the national record does not impose a foreign-shareholding cap for this activity. If a foreign-owned company is being assessed at the national level, the plain reading is that the code is open to full foreign ownership, subject only to facts and rules that actually appear in the record.\n\nBali does not add a separate ownership percentage here. The Bali-side status is **OK_or_HIGHER_RISK**, and the record says it is **not blocked**. The reason is specific: **“OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.”** The moratorium rule still matters as background because Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently, under the cited governor letter. But for this code, the record’s own conclusion is that the Bali moratorium does not block PMA registration today.",
+    "pullQuote": "For this code, the honest reading is simple: nationally it is fully foreign-open, and Bali does not mark it as moratorium-blocked.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
