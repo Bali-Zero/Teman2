@@ -792,7 +792,7 @@ class PostgreSQLDebugger:
                     relation::regclass as relation,
                     mode,
                     granted,
-                    pid,
+                    a.pid,
                     usename,
                     application_name,
                     state,
