@@ -1,0 +1,27 @@
+{
+  "code": "01616",
+  "editorial": {
+    "headline": "Seed-Planting Services for Contracted Agricultural Work",
+    "standfirst": "KBLI 01616 covers paid or contract-based seed planting, fertilising, and crop-protection work across agriculture, horticulture, and plantations.",
+    "body": "KBLI 01616 is a practical service category for agricultural work performed for a fee or under contract. Its core is seed or seedling planting for agricultural commodities, but the scope is broader than planting alone: it also includes fertilising farmland and controlling pests, plant diseases, and weeds. The activity sits on the service side of farming rather than the ownership of the crop itself. A business under this code is being engaged to carry out field operations for another party, whether the crop is food agriculture, horticulture, or plantation-based.\n\nThat distinction matters because the code describes a hired agricultural operator: someone providing the labour, know-how, and field service required to prepare and maintain cultivation. The Indonesian scope points to work done “atas dasar balas jasa atau kontrak”, which is the centre of gravity here. It is not framed as trading produce, processing harvests, or owning a plantation business. It is the contracted service layer around planting and crop maintenance.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar scales, so the code can describe a small local operator as well as a larger service company. Foreign investment is also nationally open: the PMA status is TERBUKA and the foreign ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. On the national reading, that means a foreign-owned company may register this activity without a foreign-share cap in the record.\n\nThe Bali reading is more precise, and it is not a hidden block. Bali’s moratorium blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this record marks KBLI 01616 as not blocked because OSS risk at Besar scale is Menengah-Tinggi/Tinggi. The Bali status is therefore OK_or_HIGHER_RISK rather than moratorium-blocked. For a founder, the honest conclusion is clean: nationally this activity is open to 100% foreign ownership, and in Bali the record does not mark it as blocked by the PMA moratorium.",
+    "pullQuote": "This code is best understood as the contracted service layer around planting and crop maintenance, not the ownership of the crop itself.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

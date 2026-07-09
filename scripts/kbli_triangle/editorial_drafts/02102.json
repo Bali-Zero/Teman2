@@ -1,0 +1,27 @@
+{
+  "code": "02102",
+  "editorial": {
+    "headline": "Timber Production Is Nationally Open, While Bali Marks It Restricted",
+    "standfirst": "KBLI 02102 covers forest timber management through to roundwood output, open nationally to all business scales but marked restricted in Bali’s own field.",
+    "body": "KBLI 02102 is about the management of timber inside forest areas, from planting through to felling, where the recorded output is roundwood. The activity can take place in natural forest, semi-natural forest, or plantation forest, and the scope also names the use of timber forest products from plantation forest and natural forest within production forest. In plain English, this is not a downstream furniture, retail, or trading label; it is the forestry activity that manages standing timber and brings it to the point of harvested logs.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so the code is not reserved only for large enterprises by classification. That matters because the business description itself is heavy and land-based, but the scale field does not narrow the registration class. A small operator and a large operator are therefore both within the record’s scale vocabulary, provided the activity they register is the same forest-timber management described in the scope.\n\nNationally, the foreign-investment field is clear: the PMA status is TERBUKA, with pma_max_asing at 100. Rendered as an ownership ceiling, that is 100%. The source field is Perpres 10/2021, 49/2021. On the national reading alone, the code is foreign-open; there is no lower foreign share cap in the slim record, and no extra national condition stated here beyond the fields provided. For a foreign-owned setup, the important national conclusion is therefore simple: this activity is not nationally closed in the record.\n\nBali is more delicate, and the record should be read exactly rather than inflated. The Bali status is TERBATAS, while l4_bali_blocked is false. The Bali reason field reads: “PMA max 95% (kemitraan dengan masyarakat setempat). Not closed — this 2025 code merges KBLI 2020 codes 02111, 02112, 02113, 02119, 02121 and 02122.” The same record also carries a moratorium rule: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” Taken together, this is not a clean Bali “OK” signal, and it is not marked closed either. The honest editorial reading is that KBLI 02102 is nationally open to full foreign ownership, but Bali’s own status field marks it restricted; the restriction should be quoted from the record, not re-engineered into extra percentages, permits, or timelines.",
+    "pullQuote": "The honest editorial reading is that KBLI 02102 is nationally open to full foreign ownership, but Bali’s own status field marks it restricted; the restriction should be quoted from the record, not re-engineered into extra percentages, permits, or timelines.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "TERBATAS"
+      }
+    ]
+  }
+}

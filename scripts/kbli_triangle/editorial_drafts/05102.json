@@ -1,0 +1,27 @@
+{
+  "code": "05102",
+  "editorial": {
+    "headline": "Coal Upgrading, After the Mine and Before the Market",
+    "standfirst": "This activity covers the standalone processing that cleans, sorts, crushes, compacts, and grades coal to improve quality, calories, transport, or storage.",
+    "body": "Coal beneficiation under this activity is not the extraction of coal. It sits after the mining act and before the coal is treated as a more usable commercial material: cleaned, measured, grouped, crushed, compacted, and otherwise prepared so its quality or calorific value can be classified or improved. The practical centre of the activity is physical upgrading. It makes coal easier to sort, move, store, and present according to quality, but it must be carried out separately from the coal mining process itself.\n\nThat distinction matters for founders because the business being registered is a processing and quality-improvement activity, not a mining concession. A company using this activity would be built around facilities, handling systems, grading procedures, crushing or compaction capability, storage flow, and quality classification. The record opens it across every business scale: Mikro, Kecil, Menengah, and Besar. That breadth does not make the activity informal; it simply means the classification is not restricted to one company size. The real question is whether the applicant’s actual operations match the standalone beneficiation scope, rather than drifting into extraction.\n\nNationally, the foreign-investment signal is clean. The activity is marked TERBUKA, with foreign ownership allowed up to 100% under Perpres 10/2021, 49/2021. In plain terms, the record does not impose a foreign-equity cap below full ownership. A PMA structure can therefore read this as nationally open for foreign participation, provided the actual activity remains within the recorded scope: beneficiation or quality improvement of coal, conducted separately from mining.\n\nThe Bali picture is also specific. This record is not blocked by the Bali PMA moratorium because its listed risk note is medium-high/high risk, and the moratorium described here blocks Low and Medium-Low risk KBLI for PMA across Bali. The Bali status is still not a blank cheque: it is recorded as OK_or_HIGHER_RISK, with the instruction to verify per address. The honest reading is that a foreign investor is not barred by the Bali moratorium on this record today, but location-level verification remains part of the registration judgment.",
+    "pullQuote": "The honest reading is that a foreign investor is not barred by the Bali moratorium on this record today, but location-level verification remains part of the registration judgment.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

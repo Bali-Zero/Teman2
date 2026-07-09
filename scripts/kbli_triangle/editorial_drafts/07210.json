@@ -1,0 +1,27 @@
+{
+  "code": "07210",
+  "editorial": {
+    "headline": "Uranium and Thorium Mining Is Open, but Only at Large Scale",
+    "standfirst": "KBLI 07210 covers uranium and thorium ore mining and concentration, with PMA access nationally and no Bali moratorium block at large scale.",
+    "body": "KBLI 07210 sits in a narrow and highly specialised part of the mining map: the extraction of ores containing uranium and thorium concentrates. The record names uranium ore, including pitchblende, as an example of the material in scope. It also includes the concentration of uranium and thorium, and the making of yellowcake. In plain English, this is not a general mining category and not a broad mineral-trading label; it is for radioactive mineral mining and the first-stage concentration work that belongs to that activity.\n\nThe boundaries matter. The scope does not extend to improving the grade or quality of uranium and thorium ore beyond the activity described here. It also does not cover producing uranium metal from ore, nor further processing such as smelting and refining. The record additionally includes radioactive mineral processing and associated radioactive mineral processing outside the assigned radioactive mineral mining area, as well as radioactive mineral mining and/or processing. Taken together, the code is best read as a large-scale industrial activity around radioactive mineral extraction and concentration, not downstream metallurgy.\n\nFor registration, the scale signal is unusually simple: this activity is open only to **Besar** scale. Nationally, the investment status is **TERBUKA**, and the foreign ownership ceiling is **100%** under the cited presidential regulations. That means the national reading is clear: a foreign-owned PMA structure is not capped below full ownership in the slim record. There is no basis here to invent a smaller ceiling, a special timeline, or an additional capital threshold. The record gives one scale, one national status, one foreign-ownership ceiling, and one source.\n\nThe Bali picture is also direct, and it is not the common moratorium problem. Bali’s provincial moratorium blocks all low and medium-low risk KBLI for PMA across the island, permanently, according to the cited governor letter. But this record marks the Bali status as **OK_or_HIGHER_RISK** and says the OSS risk at **Besar** scale is **Menengah-Tinggi/Tinggi**, so it is **not blocked by the moratorium**. The honest conclusion is therefore not that Bali closes this activity to foreign investors today, but that this specific PMA path is nationally open and, on the record provided, not caught by Bali’s low and medium-low risk moratorium.",
+    "pullQuote": "The honest conclusion is that this specific PMA path is nationally open and not caught by Bali’s low and medium-low risk moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

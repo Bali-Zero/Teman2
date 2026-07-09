@@ -1,0 +1,27 @@
+{
+  "code": "03232",
+  "editorial": {
+    "headline": "Brackish Ornamental Fish Culture With a Clear PMA Path",
+    "standfirst": "For unprotected ornamental fish culture in brackish-water media, this activity is nationally open to foreign ownership and not blocked in Bali under the moratorium rule.",
+    "body": "This activity sits in the practical world of ornamental fish culture: nursery work, maintenance, grow-out, breeding or hatchery activity, and harvesting for fish that are not protected. The record describes production that may take place on land, in waters, or in artificial facilities, with brackish water as the cultivation medium. In plain English, it is not a general fisheries trading label; it is for the biological cultivation cycle itself, from early-stage handling through to harvest, where the product is ornamental fish rather than food fish.\n\nThe registration picture is unusually broad. The activity is open to Mikro, Kecil, Menengah, and Besar scales, which means the code is not framed only for industrial operators or only for small livelihood businesses. A small nursery-style operation, a growing facility, or a larger cultivation setup can all sit within the scale range shown in the record, provided the real activity remains the cultivation of unprotected ornamental fish in the described media and facilities.\n\nNationally, the foreign-investment signal is clean: the PMA status is TERBUKA, with a foreign-ownership ceiling of 100% under the cited national source. That is the key commercial reading for foreign founders. There is no reduced foreign share to explain here, because the recorded ceiling is full foreign ownership. The editorial caution is instead about matching the activity honestly: the scope points to cultivation steps, not every downstream commercial function that might surround an ornamental fish business.\n\nThe Bali reading is also clean, but for a different reason. Bali’s moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently, yet this record is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the reason given is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore not that Bali is closed for this activity; it is that this code currently stands outside the moratorium block for PMA registration in Bali, while still needing to be registered against the real cultivation activity described in the record.",
+    "pullQuote": "The honest conclusion is not that Bali is closed for this activity; it is that this code currently stands outside the moratorium block for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

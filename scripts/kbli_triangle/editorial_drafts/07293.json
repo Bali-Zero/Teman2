@@ -1,0 +1,27 @@
+{
+  "code": "07293",
+  "editorial": {
+    "headline": "Bauxite Ore Mining With a Clear National and Bali Path",
+    "standfirst": "KBLI 07293 covers bauxite ore mining and holding, open to every business scale and fully open to foreign ownership under the record supplied.",
+    "body": "KBLI 07293 is a mining classification for **bauxite ore**. In plain English, the activity is not trading, processing, or manufacturing aluminium products; it is the extraction and holding of bauxite ore itself. The Indonesian scope is brief but firm: it covers mining activities and the penampungan, or holding and storage, of bauxite ore. The same scope text also names the mining-permit terrain attached to the activity: IUPK Exploration and extension of the IUP Production Operation stage.\n\nThe scale profile is unusually broad. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** businesses, so the classification is not confined to one size of operator. A founder reading it should understand the scale line as a registration-access signal, not as a promise that every scale will face the same operational reality. The activity remains mining, and the supplied scope points to a sector where exploration and production-operation status matter because the record itself names them.\n\nNationally, the foreign-investment picture is straightforward: the PMA status is **TERBUKA**, with a foreign-ownership ceiling of **100%**. There is no partial cap in the record. On the supplied facts, a foreign-owned company is not being told to stop at a minority or capped stake; the classification is open at full foreign ownership under the cited national source, **Perpres 10/2021, 49/2021**.\n\nThe Bali position is also clear, and it is important not to overstate the moratorium. Bali’s rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this record says KBLI 07293 is **not blocked** in Bali. The reason given is specific: OSS risk at the Besar scale is Menengah-Tinggi/Tinggi, so it is not caught by that moratorium. The honest conclusion is therefore clean: for this record, Bali is not showing a PMA moratorium block, while the activity remains one that should be read through its mining scope and risk classification rather than through a generic “easy registration” lens.",
+    "pullQuote": "The honest conclusion is therefore clean: for this record, Bali is not showing a PMA moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

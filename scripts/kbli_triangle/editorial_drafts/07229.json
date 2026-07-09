@@ -1,0 +1,27 @@
+{
+  "code": "07229",
+  "editorial": {
+    "headline": "Platinum-Track Precious Metal Mining, Open Nationally and Viable in Bali",
+    "standfirst": "This activity covers precious metal ore mining beyond gold and silver, with full foreign ownership nationally and no Bali moratorium block on the record supplied.",
+    "body": "KBLI 07229 sits in a narrow but consequential corner of the mining economy: the extraction and cleaning of precious metal ores other than gold and silver. The record gives platinum ore as the clear example, so the activity should be read as a specialist precious-metal mining classification rather than a general metals or jewellery trade category. Its centre of gravity is upstream: mineral-bearing ore, the mining work around it, and the cleaning process that prepares that ore within the stated scope.\n\nThe scope also names two formal mining-stage references: Izin Usaha Pertambangan Khusus (IUPK) Eksplorasi and Perpanjangan IUP Tahap Operasi Produksi. For an editorial reading, that places the code within both exploration and production-operation continuity, without expanding the record into assumptions about procedures, timing, or eligibility. The practical point is simpler: this is not a retail, craft, or downstream precious-metals activity. It is a mining classification for founders or operators whose business substance is tied to precious metal ore itself.\n\nOn scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar. That does not mean every project looks the same; it means the classification is not confined in the supplied data to one enterprise scale. A small registered operator and a larger mining company may both encounter the same KBLI label if the underlying activity is the mining and cleaning of qualifying precious metal ore. The editorial discipline is to keep the classification tied to the activity, not to the size or ambition of the company using it.\n\nThe foreign-investment picture is clean. Nationally, the record marks the PMA status as TERBUKA and gives a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. Bali does not reverse that position on the supplied record: l4_bali_blocked is false, and the stated reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the Bali moratorium. The moratorium rule still matters as context because Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But this record does not place KBLI 07229 inside that blocked group. The honest conclusion is therefore direct: on the data supplied, a foreign-owned company can use this KBLI nationally, and the Bali moratorium does not block PMA registration for it today.",
+    "pullQuote": "The honest conclusion is therefore direct: on the data supplied, a foreign-owned company can use this KBLI nationally, and the Bali moratorium does not block PMA registration for it today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

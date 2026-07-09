@@ -1,0 +1,27 @@
+{
+  "code": "02202",
+  "editorial": {
+    "headline": "Wood Collection That Remains Open for Foreign Investment in Bali",
+    "standfirst": "This activity covers forest wood residues and traditional charcoal linked to forestry, with full-scale registration open and no Bali PMA moratorium block.",
+    "body": "Wood collection under this activity is not simply timber in the commercial shorthand. Its defined scope is the gathering of forest wood and the residues produced by forest tree-felling: scrub, stumps, wood chips, and other forestry waste used for energy. The scope also includes traditional charcoal production when that production is associated with forestry activity. Read carefully, this is an activity built around the afterlife of forest material, where usable energy inputs and traditional charcoal arise from what the record describes as forest residue and related collection.\n\nThe registration field is broad. The activity is open across Mikro, Kecil, Menengah, and Besar scales, which means the record does not reserve it for only one size of operator. A small local forestry-linked collector and a larger structured enterprise sit inside the same scale ladder, provided the registered activity is still the one described here: collecting forest wood and residues from tree-felling activity, and producing traditional charcoal where that remains associated with forestry. The scope text also names circulation of foreign and domestic wild plant and animal species, so the activity should be read as a forestry-linked category whose boundaries are defined by the record’s stated objects, not by a generic idea of wood trading.\n\nNationally, the investment message is clean: the PMA status is TERBUKA and the stated foreign-ownership ceiling is 100%. There is no partial cap to explain away. For a foreign-owned company, the national reading is therefore straightforward: this activity is open to full foreign ownership under the source cited in the record. That does not make the activity casual or automatically simple; it only means the record itself does not impose a foreign-share limitation. The editorial point is to separate ownership openness from operational substance, because the activity still describes forestry materials, residues, energy use, traditional charcoal, and the circulation scope named in the Indonesian text.\n\nThe Bali picture is also explicit, but it is not a block. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. Here, however, the Bali status is recorded as OK_or_HIGHER_RISK, with the reason that OSS risk at Besar scale is Menengah-Tinggi/Tinggi and therefore not blocked by the moratorium. The honest lede is consequently not that Bali is closed; it is that this foreign-open activity is not stopped by the Bali PMA moratorium on the record given. For a founder, that distinction matters: the national register says open, the foreign ceiling says 100%, and the Bali moratorium analysis says this code is not blocked because its relevant risk position sits outside the Low and Medium-Low category targeted by the provincial rule.",
+    "pullQuote": "The honest lede is not that Bali is closed; it is that this foreign-open activity is not stopped by the Bali PMA moratorium on the record given.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

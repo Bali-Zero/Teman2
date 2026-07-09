@@ -1,0 +1,27 @@
+{
+  "code": "01493",
+  "editorial": {
+    "headline": "Bee Cultivation and Breeding for Honey, Wax, Propolis and Honeycomb",
+    "standfirst": "KBLI 01493 covers bee cultivation and breeding, open across all business scales and fully open to foreign ownership, including in Bali under the stated risk picture.",
+    "body": "KBLI 01493 is a practical agricultural activity code for businesses built around bees themselves: cultivating and breeding bees to produce honey, beeswax, propolis and honeycomb, as well as the activity of bee breeding. The centre of the code is not retail, processing, packaging, or a wellness concept wrapped around honey. It is the underlying beekeeping and breeding operation that creates those bee-derived products.\n\nThat makes the code relevant for founders whose business model begins at the production layer. A micro beekeeper, a small farm-linked honey producer, a medium operator building a more formal supply base, or a large-scale venture can all sit within the scale range recorded for this activity. The record opens the code to Mikro, Kecil, Menengah and Besar, so the question is not whether the activity is reserved for a particular enterprise size. It is how the founder’s actual operation, capital structure and registration scale match the activity being declared.\n\nFor foreign-owned companies, the national position is clean: the code is marked TERBUKA, with a foreign-ownership ceiling of 100%, under Perpres 10/2021, 49/2021. In plain English, the national investment list does not cap foreign shareholding below full ownership for this activity. A PMA company can therefore use this code nationally, provided the registered business genuinely corresponds to bee cultivation and breeding rather than a neighbouring commercial activity not described in the record.\n\nThe Bali position is also important because many foreign founders assume that an activity open nationally is automatically blocked on the island if agriculture is involved. The record does not support that conclusion here. Bali’s moratorium blocks all Low and Medium-Low risk KBLI for PMA island-wide, but this record states that the OSS risk at Besar scale is Menengah-Tinggi/Tinggi and is therefore not blocked by the moratorium. The honest reading is straightforward: this KBLI is nationally foreign-open up to 100%, and the Bali status in the record is not a PMA registration block today. The caveat is narrow but real: the code should be used for the beekeeping and bee-breeding activity it actually describes, not stretched to cover downstream ideas that are not in the scope.",
+    "pullQuote": "The honest reading is straightforward: this KBLI is nationally foreign-open up to 100%, and the Bali status in the record is not a PMA registration block today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

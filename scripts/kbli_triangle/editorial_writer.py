@@ -118,6 +118,7 @@ You are given a SLIM RECORD as JSON. It is the ONLY source of truth. Everything 
 1. NEVER describe, name, number, or characterise any OTHER KBLI code. This code stands alone. Do not write "unlike 47112", "its sibling 85312 covers…", "pairs with 46201". The #1 cause of discarded drafts is inventing details about neighbouring codes.
 2. NEVER invent an obligation, permit, licence, threshold, tax, timeline, or minimum-capital figure. If a fact is not in the slim record, it does not exist for you.
 3. NEVER invent numbers. `byTheNumbers` values must come verbatim from the record (pma_max_asing, scales, pma_source, the Bali status). Do not compute or estimate.
+3b. NEVER invent a Bali-side figure or condition. The ONLY foreign-ownership percentage that exists is `pma_max_asing` (a NATIONAL figure). Bali is described ONLY by `l4_bali_status` (a word: TERTUTUP / TERBATAS / OK…) and `l4_bali_reason`/moratorium text — Bali has NO separate percentage in the record. NEVER write "Bali limits the foreign stake to 95%", "a 67% Bali ceiling", "a local-community partnership", or any Bali cap/partnership/quota that is not literally in the record. If l4_bali_status is TERBATAS, say the record marks Bali as "restricted" and cite l4_bali_reason verbatim — do NOT quantify the restriction.
 4. NO dates in prose in dd/mm/yyyy or ISO form. Spell any date out ("May 2026").
 5. NO banned stock sentences: do not write "Let me walk you through what it means for a foreign-owned setup." or "Here is the honest national-vs-Bali picture…".
 

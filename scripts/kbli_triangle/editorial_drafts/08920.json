@@ -1,0 +1,27 @@
+{
+  "code": "08920",
+  "editorial": {
+    "headline": "Peat Extraction Is Open to Foreign Capital, Including in Bali",
+    "standfirst": "KBLI 08920 covers the extraction, preparation, and handling of peat as a raw material, with national PMA access and a Bali status that remains open but high-risk.",
+    "body": "KBLI 08920 is the classification for peat extraction: the physical taking of peat from the ground, followed by the industrial handling needed to make it usable, movable, and storable. Its scope is not just digging. The record includes excavation, crushing, washing, screening, collection, agglomeration, and preparation to improve quality or ease transport and storage. In plain English, this is the upstream peat activity: removing peat and conditioning it before it moves further along a supply chain.\n\nThat makes it a code for operators dealing directly with the material itself, not a broad downstream category. A business registering here is saying that its core activity is the extraction and preparation of peat, with the operational footprint that comes from working at the resource level. The scale access is unusually broad: Mikro, Kecil, Menengah, and Besar are all open in the record. So the code is not reserved only for large industrial players. It can be used across business sizes, provided the actual activity remains within this extraction-and-preparation scope.\n\nNationally, the foreign-investment position is clear. The PMA status is TERBUKA, and the foreign ownership ceiling is 100%. For a foreign-owned company, that means the record does not impose a foreign-shareholding cap below full ownership. The legal source recorded for that position is Perpres 10/2021, 49/2021. Nothing in the slim record supports adding a minimum capital figure, a special licence timeline, or a tax condition, so those should not be read into the classification. The clean national reading is simple: this activity is open to PMA, including up to full foreign ownership.\n\nThe Bali position is also open, but it has to be read carefully. Bali's province-wide moratorium blocks all Low and Medium-Low risk KBLI for PMA, permanently, according to the recorded moratorium rule and source. This code is not marked as blocked in Bali. The reason is specific: nationally it is TERBUKA, and the Besar scale is classified as Tinggi, so it survives the Bali moratorium. The Bali status is therefore not a quiet prohibition; it is APERTO_BALI_RISCHIO_ALTO. A PT PMA can register this in Bali today on the record provided, but the editorial point is precision: it is open because it sits outside the moratorium's blocked risk band, not because the moratorium has disappeared.",
+    "pullQuote": "A PT PMA can register this in Bali today, but only because the recorded risk position keeps it outside the moratorium's blocked band.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "APERTO_BALI_RISCHIO_ALTO"
+      }
+    ]
+  }
+}

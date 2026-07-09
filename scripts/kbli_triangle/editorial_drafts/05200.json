@@ -1,0 +1,27 @@
+{
+  "code": "05200",
+  "editorial": {
+    "headline": "Lignite Mining, Clearly Open but Still Address-Sensitive in Bali",
+    "standfirst": "KBLI 05200 covers the extraction and basic preparation of lignite, with national PMA access open across all business scales and no Bali moratorium block on the record.",
+    "body": "KBLI 05200 is a mining classification for lignite, the younger form of coal. Its scope is not merely the act of taking material from the ground; it covers underground and surface extraction, including mining by liquefaction methods, and the immediate physical handling that makes lignite usable, movable, and storable. The record brings together excavation, crushing, washing, screening, blending, and compaction when these activities are part of improving quality or easing transport and storage. In plain English, this is the code for operators whose business is the extraction and primary preparation of lignite itself.\n\nThat distinction matters because the activity is industrial in character, but the slim record keeps the scale door wide. It is open to Mikro, Kecil, Menengah, and Besar businesses. A small domestic operator and a large enterprise may sit under the same activity code if the actual activity remains within the lignite mining and basic preparation scope described above. The important editorial point is to read the code through what it does, not through the size of the company: the defining feature is lignite extraction and its direct preparation, not a downstream product, a support service, or a separate construction activity.\n\nNationally, the foreign-investment position is clean. The record marks the activity as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. That means the record gives no foreign-share cap below full ownership. For a PMA analysis, the plain reading is therefore that foreign ownership may reach 100% at the national level, subject only to facts and procedures not stated in this slim record. Nothing in this record supports adding a minimum capital figure, a special licence summary, a tax treatment, or a timeline, so those should not be smuggled into the classification note.\n\nBali is the more practical reading, and here the answer is still not a ban. The Bali status is OK_or_HIGHER_RISK, and the reason says medium-high/high risk is not blocked by the moratorium, with verification per address. The province-wide moratorium in the record blocks all Low and Medium-Low risk KBLI for PMA, but this activity is recorded as outside that block. The honest conclusion is narrow but useful: KBLI 05200 is nationally open to PMA up to 100%, and the Bali moratorium does not block it on this record; the remaining caution is location-specific verification, not a disguised provincial prohibition.",
+    "pullQuote": "The honest conclusion is narrow but useful: KBLI 05200 is nationally open to PMA up to 100%, and the Bali moratorium does not block it on this record; the remaining caution is location-specific verification, not a disguised provincial prohibition.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

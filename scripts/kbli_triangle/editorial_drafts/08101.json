@@ -1,0 +1,27 @@
+{
+  "code": "08101",
+  "editorial": {
+    "headline": "Decorative and Building Stone Quarrying, With a Clear Bali Path",
+    "standfirst": "KBLI 08101 covers quarrying and basic processing of decorative and building stone, open nationally to all business scales and not blocked for PMA registration in Bali.",
+    "body": "KBLI 08101 is a quarrying classification for decorative stone and building stone. Its scope is not a broad construction label; it is tied to the extraction of named stone materials, including marble, andesite, paras, obsidian, and granite. The record also brings the immediate quarry-side handling into the same frame: breaking, separating, and cleaning the stone are part of the activity as described. In plain English, this is the code for taking these building and ornamental stones from the ground and preparing them at the basic material stage, before they become architectural finishes, structural inputs, or traded stone products.\n\nThat scope matters because it gives the code a practical industrial character. A founder using this classification is not simply describing design, retail, contracting, or trading activity. The centre of gravity is extraction, with associated first-stage processing. The Indonesian wording also names the extension of an IUP for the rock production-operation stage and an individual IPR application within the slim record’s scope text. Those references should be read carefully and only as part of the stated record: they signal the mining-administration context around the activity, without turning this editorial into a permit checklist or adding obligations that are not provided here.\n\nNationally, the code is marked **TERBUKA** for PMA, with a foreign-ownership ceiling of **100%**. That is the clean national reading: foreign investment is not capped below full ownership in the record, and the stated source is **Perpres 10/2021, 49/2021**. The classification is also open across all listed scales: **Mikro**, **Kecil**, **Menengah**, and **Besar**. So the business scale signal is unusually broad in the record. It is not confined to a single small-business category, nor reserved only for larger operators; the slim record lists the full scale range.\n\nThe Bali picture is also clear, and it is less restrictive than many founders might expect from the island-wide moratorium rule. Bali’s rule, as stated in the record, blocks all Low and Medium-Low risk KBLI for PMA across the province on a permanent basis. But this code is not marked as blocked: **l4_bali_blocked** is false, and the Bali status is **OK_or_HIGHER_RISK**. The record’s reason is specific: at **Besar** scale the OSS risk is **Menengah-Tinggi/Tinggi**, so it is not blocked by the moratorium. The honest lede, therefore, is not that a foreigner is shut out of Bali. It is that this nationally open, 100% PMA classification remains available in Bali under the record’s stated risk-and-moratorium reading.",
+    "pullQuote": "The honest lede is not that a foreigner is shut out of Bali; this nationally open, 100% PMA classification remains available under the record’s stated risk-and-moratorium reading.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

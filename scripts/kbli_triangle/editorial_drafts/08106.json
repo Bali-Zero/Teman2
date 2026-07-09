@@ -1,0 +1,27 @@
+{
+  "code": "08106",
+  "editorial": {
+    "headline": "Gypsum Extraction With Full Foreign Ownership Open in Bali",
+    "standfirst": "This activity covers gypsum excavation and finishing work, open nationally to all business scales and not blocked for PMA registration in Bali under the stated moratorium rule.",
+    "body": "Gypsum extraction is a narrow but economically serious mining activity: the record defines it as the excavation of gypsum, including the cleaning and smoothing work that prepares the material after it is taken from the ground. That scope matters because it keeps the activity anchored in mineral extraction, not trading, manufacturing, construction, or general materials supply. The Indonesian title is concise, but the operational picture is clear: this is about taking gypsum from its source and carrying out the immediate preparation work attached to that extraction.\n\nThe slim record also names two regulatory phrases inside the scope: *Permohonan IPR Koperasi* and *IUP Tahap Operasi Produksi Mineral Bukan Logam*. Those phrases should be read exactly as the record gives them: they sit within the official description of the activity and point to the mining-administration character of the code. They do not expand the scope beyond gypsum, and they should not be treated as a licence checklist here. For editorial purposes, the practical boundary is simple: if the proposed business is genuinely about gypsum excavation, with cleaning and smoothing as part of that extraction activity, this is the relevant activity described by the record.\n\nOn business scale, the code is unusually broad. The record says it is open to Mikro, Kecil, Menengah, and Besar. That means the classification is not reserved only for large industrial operators, nor limited only to small local activity. The same activity label can sit across the full scale spectrum stated in the record, from micro through large. For a founder, that makes the classification question less about whether the scale exists in the record and more about whether the planned activity is truly the extraction of gypsum and its immediate preparation, rather than an adjacent commercial activity that the record does not describe.\n\nThe national-vs-Bali picture is also clean. Nationally, the PMA status is TERBUKA and the foreign ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. In Bali, the record does not mark this activity as blocked: `l4_bali_blocked` is false, and the stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The moratorium rule in the record blocks Low and Medium-Low risk KBLI for PMA across Bali, permanently, but this activity is not recorded as falling into that blocked category. The honest reading is therefore neither evasive nor inflated: for this slim record, gypsum excavation is foreign-open nationally up to 100%, and it is not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "pullQuote": "The honest reading is that gypsum excavation is foreign-open nationally up to 100%, and not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

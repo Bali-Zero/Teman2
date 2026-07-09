@@ -1,0 +1,27 @@
+{
+  "code": "08104",
+  "editorial": {
+    "headline": "Sand Extraction, Open Nationally and Not Blocked in Bali",
+    "standfirst": "This activity covers the excavation, cleaning, and separation of sand, with a national PMA opening that remains usable in Bali under the recorded risk position.",
+    "body": "**Sand extraction under this activity is not a vague trading label.** It is the physical work of digging sand, then cleaning and separating it into usable forms. The record names concrete outputs: concrete sand, masonry sand with only a small soil content, fill sand with a larger soil content, and other sand products. That makes the activity operationally grounded: it is about extracting and preparing material, not merely brokering, storing, or reselling it.\n\nThe scope also reaches sand excavation, cleaning, and separation at sea, but only within the boundaries stated in the record. It covers marine locations outside port working areas, port interest areas, special terminals, mining business permit areas, shipping lanes, and the core zones of conservation areas except where conservation-area management is provided for in spatial or zoning plans. The same record also references the extension of a rock production-operation mining business permit stage, so the classification sits in a regulated extraction context rather than in ordinary low-friction commerce.\n\nOn who may register it, the national picture is broad. The activity is marked **TERBUKA** for PMA, with a foreign ownership ceiling of **100%**. It is also open across the stated business scales: Mikro, Kecil, Menengah, and Besar. In plain English, the slim record does not describe a partial foreign cap here; it records a full foreign-ownership ceiling nationally, and it does not restrict the available registration scale to only large operators.\n\nThe Bali position is the important practical nuance. The record does not say this activity is blocked for PMA in Bali. Its Bali status is **OK_or_HIGHER_RISK**, and the stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the Bali moratorium. The moratorium rule itself is still real and island-wide: Bali blocks all Low and Medium-Low risk KBLI for PMA. But this record places the relevant Bali reading outside that blocked bucket. For a foreign-owned setup, the honest conclusion is therefore straightforward: nationally this activity is open to PMA up to 100%, and in Bali it is not recorded as blocked by the moratorium under the supplied risk note.",
+    "pullQuote": "Nationally this activity is open to PMA up to 100%, and in Bali it is not recorded as blocked by the moratorium under the supplied risk note.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

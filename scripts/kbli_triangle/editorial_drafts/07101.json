@@ -1,0 +1,27 @@
+{
+  "code": "07101",
+  "editorial": {
+    "headline": "Iron Sand Mining With a Clear Bali Registration Path",
+    "standfirst": "KBLI 07101 covers iron sand mining and its immediate handling steps, open nationally to all business scales and not blocked for PMA registration in Bali.",
+    "body": "KBLI 07101 is the activity code for **iron sand mining**. Its recorded scope is narrow but material: the mining of iron sand, including the sorting, separation, and cleaning activities that sit directly around that mining activity. In plain English, this is not a general trading, processing, or construction classification. It is a mining classification for extracting iron sand and handling it through the first operational steps described in the record.\n\nThe slim record also names the regulatory instruments attached to this activity: an **Izin Usaha Pertambangan Khusus (IUPK) Eksplorasi** and an **extension of an IUP for the production-operation stage**. Those phrases matter because they keep the code anchored in the mining-permit universe rather than in ordinary commercial registration. The record does not give timelines, technical thresholds, land conditions, tax treatment, capital figures, or operational obligations beyond those named instruments, so the clean reading is disciplined: this code describes the activity and its listed permit context, but it does not by itself supply the full licensing route.\n\nNationally, the investment signal is clear. The PMA status is **TERBUKA**, with a foreign-ownership ceiling of **100%**, sourced to **Perpres 10/2021, 49/2021**. That means the record treats this activity as open to foreign investment nationally, without a foreign-equity cap below full ownership. The code is also open across every business scale in the record: Mikro, Kecil, Menengah, and Besar. For founders reading this as a market-entry signal, the important point is that the national classification does not reserve the activity only for a single scale or close it to PMA by ownership percentage.\n\nThe Bali picture is also unusually direct. The Bali status is **OK_or_HIGHER_RISK**, and the activity is **not blocked** for PMA registration in Bali. The reason given is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not caught by Bali’s moratorium on Low and Medium-Low risk KBLI for PMA. That does not turn the code into a simple business, and it does not add any extra permission beyond what the record says. It simply means the honest Bali lede is not a prohibition: for this recorded activity, the island-wide PMA moratorium does not block registration today.",
+    "pullQuote": "The honest Bali lede is not a prohibition: for this recorded activity, the island-wide PMA moratorium does not block registration today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

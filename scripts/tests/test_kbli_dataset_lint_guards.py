@@ -44,6 +44,9 @@ L10_GUILT = [
     ("self 80 no region no sibling", "Foreign ownership of this code is limited to 80%.", "10110", 100),
     ("bare It 100 no sibling named", "This is a government-run activity. It is fully open to 100% foreign ownership.", "85311", 0),
     ("self 0 national no qualifier", "Foreign ownership of this code is 0% — the activity is reserved for nationals.", "10110", 100),
+    # cap ASSERTED (no negation) — must still flag despite the cap-denial innocence class
+    ("real cap asserted with ceiling noun", "This activity is capped at 67%; the foreign stake hits that ceiling and no further.", "73100", 100),
+    ("real cap limited-to with noun", "The record limits the foreign stake to a 49% ceiling for this code.", "73100", 100),
 ]
 
 L10_INNOCENCE = [
@@ -57,6 +60,9 @@ L10_INNOCENCE = [
     ("on-the-ground Bali cap", "On the ground in Bali, the record caps it at 49% foreign shareholding.", "52292", 100),
     ("historical after the figure", "Founders who still hear about a 49% cap on marketing agencies are working from an old briefing; that ceiling closed.", "73100", 100),
     ("in-practice zero", "Foreign ownership (in practice): 0% — no Usaha Besar tier for PT PMA to register against.", "86995", 100),
+    # cap-denial enumeration (01622 class): the prose lists caps only to DENY them
+    ("cap-denial enumeration", "There is no capped foreign stake to explain here: the record does not impose a 67%, 49%, or minority ceiling.", "01622", 100),
+    ("no-cap-here", "For this activity there is no 67% cap and no minority-partner rule — the national ceiling is the only figure.", "01622", 100),
 ]
 
 

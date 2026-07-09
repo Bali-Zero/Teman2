@@ -1,0 +1,27 @@
+{
+  "code": "03213",
+  "editorial": {
+    "headline": "Seaweed and Marine-Plant Cultivation, With Carbon Value in View",
+    "standfirst": "KBLI 03213 covers non-protected marine plants, from seaweed and microalgae cultivation to harvest-linked carbon credits, and is open nationally and in Bali for PMA registration.",
+    "body": "KBLI 03213 is a marine-cultivation activity, not a catch-all label for ocean commerce. Its core is the maintenance, grow-out, and harvesting of non-protected sea plants, with the record naming seaweed across several species groups and microalgae as examples. It also includes seedling or nursery activity for marine plants, so the code reaches earlier into the production cycle than a narrow harvest-only reading would suggest.\n\nThe scope is spatially broad but still precise. The activity may take place at sea, in river mouths, lagoons, other tidal-influenced locations, and artificial facilities that use seawater as the cultivation medium. That matters because the code is defined by the biological activity and seawater-based cultivation context, not by one fixed site format. The record also gives this code a contemporary carbon dimension: marine-plant cultivation may be undertaken for natural carbon absorption and storage, including the sale of carbon credits or emission-reduction certificates resulting from the cultivation activity.\n\nOn registration scale, the code is unusually broad. The slim record opens it to Mikro, Kecil, Menengah, and Besar, so it can describe anything from a small-scale cultivation operation to a larger structured venture, provided the activity remains within the stated scope. Nationally, the foreign-investment position is clean: the PMA status is TERBUKA, with a 100% foreign-ownership ceiling under the cited source. In plain English, the record does not show a foreign-share cap below full ownership for this activity.\n\nThe Bali reading is also straightforward, and this is where precision matters. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province, but this code is not marked as blocked in the slim record. The stated reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore not a national-versus-Bali contradiction: KBLI 03213 is foreign-open nationally and, on this record, not blocked for PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is therefore not a national-versus-Bali contradiction: KBLI 03213 is foreign-open nationally and, on this record, not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "08996",
+  "editorial": {
+    "headline": "Rare Earth Mining Is Open, Including in Bali, but Only on the Higher-Risk Track",
+    "standfirst": "KBLI 08996 covers rare earth metal ore mining, open to PMA up to 100% and not caught by Bali’s low-risk moratorium because its large-scale OSS risk is higher.",
+    "body": "KBLI 08996 is a mineral-mining classification for rare earth metal ore and rare earth metal alloys. Its scope is unusually explicit: it covers the mining of rare earth metals and alloys associated with lanthanum, cerium, praseodymium, neodymium, promethium, samarium, europium, gadolinium, terbium, dysprosium, holmium, erbium, thulium, ytterbium, lutetium, plus scandium and yttrium. In plain English, this is not a general trading or processing label. It is the activity lane for extracting the rare earth mineral base itself.\n\nThe record also places the activity inside an IUP sequence. It names an Exploration Stage IUP for rare earth metal minerals and an upgrade to a Production Operation Stage IUP for the same mineral group. That wording matters editorially because it frames the code as a mining activity that moves from exploration into production operation, rather than a broad umbrella for downstream commercial uses. The classification is available across **Mikro, Kecil, Menengah, and Besar** scales, so it is not reserved only for one enterprise size in the slim record.\n\nFor foreign investors, the national position is clean: the PMA status is **TERBUKA**, with a stated foreign-ownership ceiling of **100%** under **Perpres 10/2021, 49/2021**. There is no partial cap in the record, so the correct reading is full foreign ownership at the national classification level. That does not remove the need to respect the exact mining pathway named in the scope, but it does mean the KBLI itself is not nationally closed to foreign capital and is not capped below full ownership.\n\nThe Bali reading is also unusually straightforward. Bali’s moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province, but this record is marked **l4_bali_blocked: false**. The reason given is that OSS risk at **Besar** scale is **Menengah-Tinggi/Tinggi**, so it is not blocked by the moratorium. In honest terms: a foreign-owned setup is not barred from registering this KBLI in Bali by the low-risk moratorium described in the record. The classification remains a higher-risk mining lane, but the Bali-specific status is not a prohibition.",
+    "pullQuote": "A foreign-owned setup is not barred from registering this KBLI in Bali by the low-risk moratorium described in the record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

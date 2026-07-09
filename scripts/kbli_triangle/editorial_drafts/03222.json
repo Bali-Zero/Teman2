@@ -1,0 +1,27 @@
+{
+  "code": "03222",
+  "editorial": {
+    "headline": "Freshwater Ornamental Fish Cultivation, Open Nationally and Clear in Bali",
+    "standfirst": "This code covers non-protected freshwater ornamental fish breeding and cultivation, with full PMA openness nationally and no Bali moratorium block in the supplied record.",
+    "body": "KBLI 03222 is about the cultivated life cycle of non-protected freshwater ornamental fish. The scope is not limited to one moment in production: it covers nursery work, maintenance, grow-out, breeding or seed production, and harvesting. The record names fish such as discus, botia, goldfish, koi, arwana, black ghost, betta, silver dollar, palmas, rainbow, tetra, diamond tetra, barnabus fish, molly, platty, and manfish. The common thread is not the species list alone, but the use of freshwater as the cultivation medium, whether the activity takes place on land, in waters, or in other artificial facilities.\n\nFor registration purposes, the scale reading is broad. The activity is open to Mikro, Kecil, Menengah, and Besar scales, so the slim record does not frame it as a niche reserved for one business size. That matters because this is a practical cultivation category: it can describe small ornamental fish breeding work, larger grow-out and seed-production operations, or a more extensive facility using freshwater systems. The editorial point is simple: this code follows the activity, not a decorative retail story around the fish. It is about cultivating, breeding, raising, and harvesting non-protected freshwater ornamental fish.\n\nThe national PMA position is also clear. The status is TERBUKA and the foreign-ownership ceiling is 100%, so the record supports full foreign ownership at the national level. There is no sub-100% foreign-stake cap to explain here. This is a genuinely open national classification, and the Bali record does not turn it into a local PMA dead end. The cited PMA source is the supplied Perpres reference, but the operative reading in this editorial remains anchored to the record: TERBUKA, 100%, and open across the listed scales.\n\nThe Bali point is where this code needs precision rather than drama. The record says Bali's moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently. But this activity is not marked as blocked: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason given is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. In plain terms, the supplied record presents this as nationally open to PMA and not blocked for PMA registration in Bali under the moratorium logic stated here.",
+    "pullQuote": "This is a genuinely open national classification, and the Bali record does not turn it into a local PMA dead end.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

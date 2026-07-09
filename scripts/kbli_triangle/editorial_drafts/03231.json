@@ -1,0 +1,27 @@
+{
+  "code": "03231",
+  "editorial": {
+    "headline": "KBLI 03231 Is Brackish-Water Aquaculture Without a Bali PMA Block",
+    "standfirst": "This code covers non-protected brackish-water finfish and other biota, open nationally to full foreign ownership and, on this record, not blocked for PMA registration in Bali.",
+    "body": "KBLI 03231 covers cultivation of non-protected brackish-water finfish and other brackish aquatic biota, excluding ornamental fish. In practical terms, this is the aquaculture lane for raising, breeding, hatchery work, nursery-stage holding, and harvesting until the stock reaches the age, form, or size intended either for consumption or for onward grow-out. The record names milkfish, pangasius, saline tilapia, snapper, crab, tiger prawn, and vannamei shrimp as examples. The medium is as important as the animal: the activity can sit on land, in waters, or in artificial facilities, so long as brackish water is the cultivation medium.\n\nThat scope makes the code broad, but not vague. It gathers the core production cycle of brackish-water aquaculture: preparing young stock, growing it out, breeding or producing seed, and harvesting non-protected stock within the defined biological stage. The scales field is equally plain. The activity is open to Mikro, Kecil, Menengah, and Besar, so the record does not reserve it to a single enterprise size. A registrant using this classification should be doing the actual brackish-water cultivation work described above; the center of gravity is cultivation, not a merely adjacent activity around it.\n\nNationally, the investment position is open. The record gives PMA status as TERBUKA and a pma_max_asing of 100, which means the foreign-ownership ceiling is 100%. It cites Perpres 10/2021, 49/2021 as the source. There is no lower cap in this slim record, so the editorial conclusion should not soften the point: a foreign investor is not capped below full ownership at the national level for this activity. The classification is not being presented here as a domestic-only lane, nor as one that requires a local majority.\n\nBali needs a separate reading because the provincial moratorium described in the record blocks Low and Medium-Low risk PMA activity island-wide and permanently. This activity, however, is marked l4_bali_blocked false, with Bali status OK_or_HIGHER_RISK. The stated reason is that OSS risk at the Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by that moratorium. For this activity, Bali is not a separate prohibition layered over an open national classification. The honest national-vs-Bali picture is therefore aligned: open nationally to 100% foreign ownership, and not blocked for PMA registration in Bali under the moratorium logic recorded here.",
+    "pullQuote": "For this activity, Bali is not a separate prohibition layered over an open national classification.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

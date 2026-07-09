@@ -1,0 +1,27 @@
+{
+  "code": "10111",
+  "editorial": {
+    "headline": "Where Ruminant Slaughter Becomes a Registered Industrial Activity",
+    "standfirst": "KBLI 10111 covers ruminant slaughterhouse work, nationally open to full foreign ownership and not blocked for Bali PMA registration under the record supplied.",
+    "body": "**KBLI 10111 is the registration lane for ruminant slaughterhouse activity.** In plain English, the record describes a facility handling animals such as cattle, buffalo, goats, and sheep, with the activity extending beyond the moment of slaughter itself. Its scope includes slaughtering, skinning, cleaning, and packing meat, which makes this a code for an operational processing site rather than a narrow trading label.\n\nThe same scope also reaches into the practical byproducts of slaughterhouse work. The record includes handling side outputs such as hides and skins from slaughterhouses and livestock operations, drying bones, processing animal remnants or waste, sorting wool, and cleaning fat. That breadth matters editorially: this is not just a meat-cutting description, but a classification for the controlled conversion of ruminant livestock into meat and associated materials.\n\nOn scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar operators, so the activity can be registered across the full range of business sizes named in the data. That does not turn the code into a casual category; it simply means the record does not reserve it for one scale of operator. A small slaughterhouse and a larger industrial facility are both contemplated by the same scale field, provided the activity being registered is the slaughterhouse work described in the scope.\n\nThe national-versus-Bali picture is clean rather than contradictory. Nationally, the PMA status is TERBUKA, with `pma_max_asing` recorded at 100, so the foreign-ownership ceiling is 100% according to the supplied record and its cited source. Bali is also not marked as blocked: `l4_bali_blocked` is false, and the Bali status is `OK_or_HIGHER_RISK`. The record’s reason is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That means the Bali moratorium rule exists in the record, but this activity is not blocked by it on the supplied facts. The honest reading is therefore straightforward: KBLI 10111 is nationally open to PMA, carries a 100% foreign-ownership ceiling in the record, and is not blocked for PMA registration in Bali under the Bali field provided.",
+    "pullQuote": "The honest reading is straightforward: KBLI 10111 is nationally open to PMA and is not blocked for Bali registration on the supplied record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -148,6 +148,24 @@ L10_FOREIGN_CTX = re.compile(
 L10_CLOSED_IDIOM = re.compile(r"^\s*(?:closed|tertutup)", re.IGNORECASE)
 # innocence: "not 100% open" negation
 L10_NEG = re.compile(r"\bnot\s*$", re.IGNORECASE)
+# innocence: an explicit CAP-DENIAL enumeration in the editorial register — the prose
+# lists percentages only to say NONE of them applies ("the record does not impose a
+# 67%, 49%, or minority ceiling", "there is no 67% cap here"). A negation verb sits
+# before the figure and a cap-noun (ceiling/cap/limit/minority) bounds the clause, so
+# the % is being denied, not asserted. Guilt is preserved: "capped at 67%" / "limited
+# to 49%" carry NO negation and still flag. Matched against the ~60-char window BEFORE
+# the figure (negation) combined with a cap-noun anywhere in the local window.
+L10_NEG_CAP_BEFORE = re.compile(
+    r"\b(?:no|not|does\s+not|do\s+not|doesn't|don't|isn't|is\s+not|are\s+not|"
+    r"never|without|there\s+is\s+no|there's\s+no|free\s+of|absent)\b"
+    r"[^.]{0,50}$",
+    re.IGNORECASE,
+)
+L10_CAP_NOUN = re.compile(
+    r"\b(?:ceiling|cap(?:ped|s)?|limit(?:ed|s)?|minority|ownership\s+ceiling|"
+    r"equity\s+ceiling|restriction)\b",
+    re.IGNORECASE,
+)
 # innocence: KSO construction work-share percentages ("min 50% domestic work",
 # "min 30% by national partner") are volume-of-work quotas, not equity (41019 class)
 L10_WORK_SHARE = re.compile(r"\b(?:kso|domestic work|construction work|work volume)\b", re.IGNORECASE)
@@ -241,6 +259,12 @@ def l10_ownership_contradiction(text, code, maxa, maxa_by_code):
         if L10_CLOSED_IDIOM.match(after):
             continue
         if L10_NEG.search(text[max(0, m.start() - 6) : m.start()]):
+            continue
+        # cap-denial enumeration: negation verb before the figure AND a cap-noun in the
+        # local window ("does not impose a 67%, 49%, or minority ceiling")
+        before_neg = text[max(0, m.start() - 60) : m.start()]
+        neg_cap_win = text[max(0, m.start() - 60) : m.end() + 40]
+        if L10_NEG_CAP_BEFORE.search(before_neg) and L10_CAP_NOUN.search(neg_cap_win):
             continue
         if L10_HISTORICAL.search(text[max(0, m.start() - 40) : m.start()]):
             continue

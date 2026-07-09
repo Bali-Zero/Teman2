@@ -1,0 +1,27 @@
+{
+  "code": "08999",
+  "editorial": {
+    "headline": "Other Mining and Quarrying, Treated as a Serious Mineral Activity",
+    "standfirst": "KBLI 08999 covers residual mining and quarrying activities, including sorting and cleaning of specified minerals and extraction from brine, with national PMA access open.",
+    "body": "KBLI 08999 is the residual home for mining and quarrying activities that are not already placed in another group. The record describes it in practical terms: mining, quarrying, separation, sorting, and cleaning of certain extracted materials. The examples matter because they show the character of the activity: mica, leucite, jarosite, zeolite, polishing stone, natural graphite, steatite or talc, siliceous fossil flour, ochre, and toseki. It also includes extraction of various minerals and materials from brine, such as lithium, uranium, and thorium, while expressly excluding table salt. This is not a general trading or advisory category. It is an extractive activity, with physical materials, mineral classification, and processing steps inside the scope.\n\nThe registration field is unusually broad on business scale. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar operators, so it is not reserved only for large projects in the classification data. That said, the wording of the scope still keeps the activity anchored in mining and quarrying. The record also names two IUP-related phrases: exploration-stage IUP for certain non-metal minerals, and upgrade to operation-production stage IUP for non-metal minerals. Those phrases are part of the record’s description of the activity; they should not be expanded into extra assumptions about timing, thresholds, or procedural steps beyond what is written here.\n\nNationally, the foreign-investment picture is clean. The record marks PMA status as TERBUKA and gives a foreign-ownership ceiling of 100%, with the source stated as Perpres 10/2021, 49/2021. For a founder reading the category, that means the national classification does not itself impose a reduced foreign-share cap in this record. The activity may be registered across all listed scales, and the PMA field is not half-open or ambiguous: it is open, with the maximum foreign stake rendered at the full percentage shown in the data.\n\nThe Bali reading is also important because it is not the usual blocked-moratorium case in this record. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province, but this code is not marked as blocked. The Bali status is OK_or_HIGHER_RISK, and the reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. That does not create a separate Bali ownership cap, a local partnership requirement, or a special Bali percentage. It simply means that, on the record provided, KBLI 08999 is nationally foreign-open and not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "pullQuote": "The honest reading is that KBLI 08999 is nationally foreign-open and, on this record, not blocked for PMA registration in Bali by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

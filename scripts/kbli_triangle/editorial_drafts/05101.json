@@ -1,0 +1,27 @@
+{
+  "code": "05101",
+  "editorial": {
+    "headline": "Coal Mining, Open Nationally and Not Stopped by Bali’s PMA Moratorium",
+    "standfirst": "This code covers coal extraction and on-site coal preparation, with all business scales open and a national PMA ceiling recorded at 100%.",
+    "body": "**Coal mining under this activity code is not a decorative category.** The slim record defines it as the mining of coal by underground or surface methods, including mining by liquefaction methods. Its operational core is extraction, but the scope also reaches the immediate handling that makes mined coal usable, classifiable, movable, and storable: cleaning, measuring, grouping, crushing, and compacting coal to classify it, improve quality, or make transport and storage easier. It also covers the recovery of coal from mine-waste piles, which keeps the activity tied to coal that comes from the mining environment itself.\n\nThat makes this a code for operators whose business substance is coal mining and direct coal preparation, not a loose energy, trading, support, or processing label. The record itself also flags mining-authorisation language connected to this field, including Izin Usaha Pertambangan Khusus (IUPK) Eksplorasi and Perpanjangan IUP Tahap Operasi Produksi. Those names should be read carefully: the slim record identifies them, but it does not give thresholds, timelines, capital rules, or procedural steps. For a founder, the important classification point is narrower and more useful: the activity is about extracting coal and carrying out the immediate preparation work that belongs with that extraction.\n\nOn scale, the record is unusually broad. It says the activity is open to Mikro, Kecil, Menengah, and Besar. In plain English, the classification is not reserved in the record for one enterprise size; the record places every scale on the open side. For foreign investment, the national PMA position is also clear: the status is TERBUKA, with pma_max_asing recorded as 100. That means the national foreign-ownership ceiling shown in the record is 100%, and there is no foreign-stake cap below full ownership in the data provided here. The cited national source is Perpres 10/2021, 49/2021.\n\nThe Bali picture is the part that needs precision. Bali’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently. This coal-mining code is not marked as blocked: l4_bali_blocked is false, with the Bali status recorded as OK_or_HIGHER_RISK. The reason given is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest reading is therefore not that Bali is casually easy, and not that a foreigner is barred. It is that, based only on this slim record, the code is nationally open to PMA up to 100% and is not stopped by Bali’s Low and Medium-Low risk PMA moratorium.",
+    "pullQuote": "The honest reading is that this code is nationally open to PMA up to 100% and is not stopped by Bali’s Low and Medium-Low risk PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

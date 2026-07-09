@@ -1,0 +1,27 @@
+{
+  "code": "08995",
+  "editorial": {
+    "headline": "Quartz and Silica Sand Extraction, Open Nationally and Workable in Bali",
+    "standfirst": "This activity covers quartz, quartz sand and silica sand extraction, with processing steps included and PMA access open across every recorded business scale.",
+    "body": "Quartz and silica sand sit in a practical, industrial part of the mineral economy: not an abstract trading category, but the physical extraction and preparation of a defined material. The recorded scope covers the digging of quartz, quartz sand and silica sand, and it also includes the immediate processing activities that make the material usable: breaking, crushing, screening and refining. In plain English, this is a quarrying and preparation activity for quartz-based sand materials, not merely brokerage or distribution.\n\nThe scale picture is broad. The record opens this activity to Mikro, Kecil, Menengah and Besar operators, which means the classification is not reserved only for one size of enterprise. A small local operator and a larger industrial setup may sit under the same activity description if their work is genuinely the extraction and preparation of quartz or silica sand as described. The scope also names two administrative touchpoints: Permohonan SIPB and Perpanjangan IUP Tahap Operasi Produksi Mineral Bukan Logam Jenis Tertentu. Those phrases should be read exactly as recorded, without adding extra assumptions about procedure, timing or eligibility.\n\nFor foreign-owned companies, the national reading is straightforward: PMA status is TERBUKA, with foreign ownership recorded at 100%. That makes this one of the cleaner cases nationally, because the record does not impose a partial foreign-share ceiling. The investor still has to respect the activity’s actual substance: extraction and included processing of quartz, quartz sand or silica sand. A company that is only adjacent to that work should not stretch the classification beyond the field that the record actually describes.\n\nThe Bali picture is also unusually clear, but for a different reason. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. This activity is marked OK_or_HIGHER_RISK, and the Bali reason states that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. In practical editorial terms, this is not a hidden Bali closure: nationally it is foreign-open, and the Bali note does not convert it into a PMA block. The honest conclusion is therefore disciplined rather than dramatic: quartz and silica sand extraction is open to PMA nationally, up to full foreign ownership, and the Bali moratorium record does not block it where the stated risk position applies.",
+    "pullQuote": "This is not a hidden Bali closure: nationally it is foreign-open, and the Bali note does not convert it into a PMA block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

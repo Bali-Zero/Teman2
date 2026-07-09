@@ -1,0 +1,27 @@
+{
+  "code": "01621",
+  "editorial": {
+    "headline": "Livestock Breeding Services With a Clean Bali Reading",
+    "standfirst": "KBLI 01621 covers contracted livestock mating work, nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 01621 is a technical services classification for livestock reproduction work performed for a fee or under contract. Its scope is not the ownership of the animals, nor a broad livestock-trading activity; it is the service layer around breeding. The record names artificial insemination, embryo transfer, pregnancy examination, and bull master activity as examples of what sits inside the code. In plain English, this is the professional handling of livestock mating and reproductive support when another party pays for that work as a service.\n\nThat service character matters because it defines who would normally use the classification. A business registering under this code is positioning itself as a provider of livestock breeding services rather than as a general farm, dealer, or feed operation. The code is open across the full scale range in the record: Mikro, Kecil, Menengah, and Besar. That makes the classification structurally available from small local service operators through to larger organized providers, provided the registered activity remains within the scope described in the record.\n\nThe national foreign-investment position is straightforward. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%. There is no partial cap in the record, so the national reading is that a foreign investor may hold the full interest in a PMA company using this activity code. The legal source given for that national position is Perpres 10/2021, 49/2021. Nothing in the slim record adds a special licence threshold, capital threshold, timeline, tax treatment, or extra permit condition, so the editorial reading should stay narrow: nationally, this is open, including to full foreign ownership.\n\nThe Bali picture is also clear, but for a different reason. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province on a permanent island-wide basis. For this code, however, the Bali field says it is not blocked: the reason given is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not caught by that moratorium. The result is an unusually clean conclusion for a foreign-owned setup in Bali: this activity is nationally open and, on the record provided, not blocked by the Bali PMA moratorium today.",
+    "pullQuote": "For a foreign-owned setup in Bali, this code is nationally open and not caught by the province’s PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

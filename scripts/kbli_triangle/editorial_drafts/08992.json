@@ -1,0 +1,27 @@
+{
+  "code": "08992",
+  "editorial": {
+    "headline": "Feldspar and Calcite Quarrying With Room for Foreign Capital",
+    "standfirst": "A mineral-quarrying activity open across business scales, with Bali not blocking PMA registration under the record’s risk reading.",
+    "body": "This activity is about the quarrying of feldspar and calcite, with slate also brought inside the same operational scope. The record is practical rather than decorative: it includes extraction, then the physical handling that makes the material usable, namely breaking, crushing, screening, and smoothing. In other words, it is not only the act of taking mineral material from the ground; it also covers the immediate processing steps that shape quarried material into a more workable form.\n\nThe scale picture is unusually broad. The record opens the activity to micro, small, medium, and large businesses, so the classification is not reserved only for heavy industrial operators. A smaller quarrying operation and a larger mineral operation can both sit inside the same activity description, provided the registered activity remains the one described here. The slim record also names SIPB applications and extensions of IUP operation-production stage for non-metal minerals, which signals that the administrative surface is tied to formal mineral business registration rather than informal material handling.\n\nNationally, the foreign-investment position is clean: the activity is marked open, with a maximum foreign ownership figure of 100%. That means the record does not impose a foreign-share cap below full ownership. The source given for that position is Perpres 10/2021, 49/2021, and the editorial point should stay exactly there: open nationally, with the ceiling stated as the record states it. There is no basis in the slim record to add a minimum capital number, a separate sectoral licence threshold, a tax consequence, or a processing deadline.\n\nBali is where many open activities become more complicated, but this record does not show a block. The province’s moratorium rule blocks all low and medium-low risk activities for PMA on an island-wide, permanent basis. Here, however, the Bali status is recorded as OK_or_HIGHER_RISK, and the reason given is that OSS risk at large scale is medium-high/high, so it is not blocked by the moratorium. The honest conclusion is therefore narrow and useful: a foreign-owned company can look at this activity nationally as open, and the Bali record supplied here does not mark it as blocked by the provincial PMA moratorium.",
+    "pullQuote": "The honest conclusion is narrow and useful: the activity is open nationally, and the Bali record supplied here does not mark it as blocked.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

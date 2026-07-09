@@ -1,0 +1,27 @@
+{
+  "code": "08915",
+  "editorial": {
+    "headline": "Potash Mining With a Clear National Opening",
+    "standfirst": "KBLI 08915 covers potash mineral extraction and processing, nationally open to foreign ownership and not blocked by Bali’s PMA moratorium.",
+    "body": "KBLI 08915 is a mining classification for potash, or potassium carbonate-related mineral activity. Its scope is not just the act of extracting potassium oxide or potash from the ground; it also covers the mineral forms named in the record, including salt, feldspar, leucite, and analcite/analeum. The classification also reaches the crushing and cleaning of those minerals, so the activity should be understood as a focused upstream mineral operation rather than a general trading or industrial-processing category.\n\nThat scope matters because this is a code for operators handling the mineral itself. The record also references applications for SIPB and extensions of an IUP production-operation stage for non-metal minerals, which places the activity inside a regulated mining-administration frame. A founder reading this code should therefore treat it as a classification for mineral extraction and immediate mineral handling, not as a loose business label that can be stretched into unrelated potassium, construction, or commodity activity.\n\nOn scale, the national record is broad. This activity is open to Mikro, Kecil, Menengah, and Besar operators, and the PMA status is TERBUKA. The foreign-ownership ceiling is 100%, so the national classification does not impose a reduced foreign shareholding cap in the slim record. In plain terms, a foreign-owned company can read the national line as open, with full foreign ownership allowed under the cited presidential-regulation source.\n\nThe Bali picture is also clear, but for a different reason than many founders expect. Bali’s provincial moratorium blocks all Low and Medium-Low risk KBLI for PMA across the island, yet this record says the Bali status is OK_or_HIGHER_RISK and that the activity is not blocked. The reason given is specific: at Besar scale the OSS risk is Menengah-Tinggi/Tinggi, so it is outside the moratorium’s blocked Low and Medium-Low band. The honest conclusion is therefore straightforward: nationally, KBLI 08915 is foreign-open up to 100%, and in Bali it is not blocked by the PMA moratorium according to this record.",
+    "pullQuote": "The honest conclusion is straightforward: KBLI 08915 is foreign-open up to 100%, and in Bali it is not blocked by the PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

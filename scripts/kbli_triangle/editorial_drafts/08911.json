@@ -1,0 +1,27 @@
+{
+  "code": "08911",
+  "editorial": {
+    "headline": "Sulphur Mining Sits Open Nationally and Passes Bali’s PMA Filter",
+    "standfirst": "KBLI 08911 covers sulphur ore mining, crushing, and cleaning, with full foreign ownership available across every business scale listed in the record.",
+    "body": "KBLI 08911 is a mining activity, not a trading label or a downstream chemical business. Its Indonesian scope is tightly drawn around **pertambangan bijih belerang**: the extraction of sulphur ore, together with the crushing and cleaning of sulphur minerals. That gives the code a clear industrial centre of gravity. It is about taking sulphur-bearing mineral material from the ground and preparing it at the mineral stage, before any further industrial transformation.\n\nThe record also places the activity inside the non-metallic mineral licensing universe by naming **IUP Tahap Eksplorasi Mineral Bukan Logam** and **Perpanjangan IUP Tahap Operasi Produksi Mineral Bukan Logam**. Editorially, that matters because it signals a real extractive-sector registration profile: this is the kind of code chosen by operators whose business activity is mineral exploration or the continuation of production operations for a non-metallic mineral. It is not a light service activity that happens to mention sulphur in passing. The activity being registered is the mining and physical preparation of sulphur minerals themselves.\n\nOn scale, the record is unusually broad. KBLI 08911 is open to **Mikro, Kecil, Menengah, and Besar**. That means the record does not reserve the activity only for one enterprise size. A founder reading this should understand the code as scale-inclusive on the face of the slim record: micro and small businesses appear alongside medium and large operators. The editorial caution is not about scale availability; it is about correctly matching the registered activity to the actual work. If the business is not mining sulphur ore, or crushing and cleaning sulphur minerals, this code should not be stretched to fit a merely adjacent idea.\n\nThe foreign-investment picture is clean. Nationally, the code is marked **TERBUKA**, with a **100%** foreign-ownership ceiling under the cited presidential-regulation sources. Bali does not reverse that outcome in this record. The provincial moratorium blocks all Low and Medium-Low risk KBLI for PMA across the island, but the Bali status here is **OK_or_HIGHER_RISK** and the stated reason is that OSS risk at large scale is **Menengah-Tinggi/Tinggi**, so it is not blocked by the moratorium. The honest conclusion is therefore straightforward: for this slim record, sulphur mining is foreign-open nationally and not blocked for PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is therefore straightforward: for this slim record, sulphur mining is foreign-open nationally and not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

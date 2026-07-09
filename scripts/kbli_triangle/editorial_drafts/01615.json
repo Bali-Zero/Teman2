@@ -1,0 +1,27 @@
+{
+  "code": "01615",
+  "editorial": {
+    "headline": "Plant-Protection Services for Contracted Agriculture",
+    "standfirst": "This activity covers paid or contracted crop protection, field fertilisation, seedling work, and weed control across food crops, horticulture, and plantations.",
+    "body": "This activity is about agricultural field services performed for a fee or under contract, with a clear emphasis on protecting crops from the things that reduce yield and quality. The Indonesian scope covers pest control, plant disease control, and weed control on cultivated land. It also reaches supporting work that sits close to that protection function: fertilising agricultural land and planting seedlings or seeds. In plain English, this is not the ownership of a farm or plantation as such; it is the service business that comes onto agricultural land to help establish, maintain, and defend crops.\n\nThe scope is broad across the kinds of crops it can serve. It expressly includes food crops, horticulture, and plantation crops, so the commercial setting can range from routine field maintenance to more specialised crop-protection work. The constant is the basis of the work: it is carried out for compensation or by contract. That matters because the activity is defined by the service relationship. A business under this code is selling agricultural support and plant-protection capability, not merely managing its own internal planting activity.\n\nRegistration is open across the full scale ladder recorded here: Mikro, Kecil, Menengah, and Besar. That gives the activity an unusually wide formal span, from small local service operators to larger agricultural contractors. Nationally, the foreign-investment position is also clear. The record marks the activity as TERBUKA, with a foreign-ownership ceiling of 100%. There is no partial cap in the supplied record, so the national reading is straightforward: a foreign-owned company can use this activity code at full foreign ownership, provided the registration stays within the activity actually described.\n\nThe Bali position is equally important, because Bali applies a province-wide PMA moratorium to Low and Medium-Low risk activities. This record, however, is not blocked for Bali PMA registration. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore not a warning disguised as optimism: for this specific activity, the national regime is open, the foreign ceiling is 100%, and the Bali moratorium does not block PMA registration on the record provided.",
+    "pullQuote": "For this specific activity, the national regime is open, the foreign ceiling is 100%, and the Bali moratorium does not block PMA registration on the record provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
