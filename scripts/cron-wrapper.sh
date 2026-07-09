@@ -72,14 +72,16 @@ if [[ -n "${DATABASE_URL_LOCAL:-}" ]]; then
     export DATABASE_URL
 fi
 
-# macOS uses gtimeout from coreutils
-if command -v gtimeout &>/dev/null; then
+# macOS usually needs gtimeout from coreutils, but production Pro may not have
+# it installed. Keep the wrapper functional with a small bash-native fallback.
+if [[ "${CRON_WRAPPER_DISABLE_EXTERNAL_TIMEOUT:-}" == "1" ]]; then
+    TIMEOUT_CMD=""
+elif command -v gtimeout &>/dev/null; then
     TIMEOUT_CMD="gtimeout"
 elif command -v timeout &>/dev/null; then
     TIMEOUT_CMD="timeout"
 else
-    echo "ERROR: neither timeout nor gtimeout found. Install coreutils." >&2
-    exit 1
+    TIMEOUT_CMD=""
 fi
 
 mkdir -p "$LOG_DIR" "$LOCK_DIR" "$SENTINEL_STATE_DIR"
@@ -122,6 +124,42 @@ send_telegram() {
         -- "$msg" >> "$LOG_FILE" 2>&1 || true
 }
 
+run_command_with_timeout() {
+    if [ -n "$TIMEOUT_CMD" ]; then
+        OUTPUT=$("$TIMEOUT_CMD" "$TIMEOUT" "${COMMAND[@]}" 2>&1) && return 0 || return $?
+    fi
+
+    local output_file timeout_file pid watcher exit_code
+    output_file="$(mktemp "${TMPDIR:-/tmp}/cron-wrapper.${SENTINEL_JOB_KEY}.XXXXXX")"
+    timeout_file="${output_file}.timeout"
+
+    "${COMMAND[@]}" > "$output_file" 2>&1 &
+    pid=$!
+
+    (
+        sleep "$TIMEOUT"
+        if kill -0 "$pid" 2>/dev/null; then
+            : > "$timeout_file"
+            kill "$pid" 2>/dev/null || true
+            sleep 2
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    ) &
+    watcher=$!
+
+    wait "$pid" && exit_code=0 || exit_code=$?
+    kill "$watcher" 2>/dev/null || true
+    wait "$watcher" 2>/dev/null || true
+
+    OUTPUT="$(cat "$output_file" 2>/dev/null || true)"
+    if [ -f "$timeout_file" ]; then
+        exit_code=124
+    fi
+    rm -f "$output_file" "$timeout_file"
+
+    return "$exit_code"
+}
+
 # ── Execute with retry ───────────────────────────────────────────────────────
 ATTEMPT=0
 EXIT_CODE=1
@@ -130,7 +168,7 @@ OUTPUT=""
 while [ $ATTEMPT -le $MAX_RETRIES ]; do
     ATTEMPT=$((ATTEMPT + 1))
 
-    OUTPUT=$($TIMEOUT_CMD "$TIMEOUT" "${COMMAND[@]}" 2>&1) && EXIT_CODE=0 || EXIT_CODE=$?
+    run_command_with_timeout && EXIT_CODE=0 || EXIT_CODE=$?
 
     if [ $EXIT_CODE -eq 0 ]; then
         break

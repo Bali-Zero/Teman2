@@ -11,6 +11,7 @@ WHAT: launchd runs this 3x/day (09:00 / 13:00 / 18:00 WITA). Each tick:
   2. Decide ONE action (pure function `decide()` — unit-tested):
        ok                    -> a draft reached rendered/pending_review/approved/published
        wait                  -> a draft is in-flight and fresh — let the pipeline work
+                                (heartbeat stays running; not a dead-organ condition)
        kick_stuck            -> in-flight but stale >2h — kickstart the supervisor
        requeue_render_failed -> today's draft failed with attempts left — requeue + kick renderer
        new_topic             -> nothing alive today — kickstart the topic-selector (dedup
@@ -98,7 +99,7 @@ def decide(
         if freshest["updated_at"].astimezone(timezone.utc) >= stuck_cutoff:
             return Decision(
                 "wait", f"draft {freshest['id']} in-flight ({freshest['status']}), fresh",
-                str(freshest["id"]), escalate=late,
+                str(freshest["id"]),
             )
         return Decision(
             "kick_stuck",
@@ -358,6 +359,10 @@ async def _tick(
         return 0
 
     if dry_run:
+        return 0
+
+    if decision.action == "wait":
+        _heartbeat("running", f"{decision.action}: {decision.reason}")
         return 0
 
     if decision.escalate:
