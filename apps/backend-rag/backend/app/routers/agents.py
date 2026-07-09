@@ -460,7 +460,7 @@ async def export_knowledge_graph(
             internal_format = "graphml"
 
         # Generate export
-        export_data = knowledge_graph.export_graph(format=internal_format)
+        export_data = await knowledge_graph.export_graph(format=internal_format)
 
         return {
             "success": True,

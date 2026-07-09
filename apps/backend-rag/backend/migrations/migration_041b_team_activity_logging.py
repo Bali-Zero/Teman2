@@ -24,18 +24,18 @@ async def run_migration():
     from backend.app.core.config import settings
 
     if not settings.database_url:
-        logger.info("$1")
+        logger.info("DATABASE_URL not configured, skipping migration 041b")
         return False
 
     try:
-        logger.info("$1")
+        logger.info("Connecting to database for migration 041b")
         conn = await asyncpg.connect(settings.database_url)
-        logger.info("$1")
+        logger.info("Connected to database")
 
         # =============================================================================
         # Table 1: activity_logs - General activity tracking
         # =============================================================================
-        logger.info("$1")
+        logger.info("Creating activity_logs table")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS activity_logs (
                 id SERIAL PRIMARY KEY,
@@ -48,15 +48,20 @@ async def run_migration():
                 ip_address VARCHAR(50),
                 user_agent TEXT,
                 session_id VARCHAR(255),
-                created_at TIMESTAMP DEFAULT NOW(),
-
-                -- Indexes for fast querying
-                INDEX idx_activity_logs_user_email (user_email),
-                INDEX idx_activity_logs_action_type (action_type),
-                INDEX idx_activity_logs_resource_type (resource_type),
-                INDEX idx_activity_logs_created_at (created_at DESC),
-                INDEX idx_activity_logs_session_id (session_id)
+                created_at TIMESTAMP DEFAULT NOW()
             );
+
+            -- Indexes for fast querying (moved out of table body — Postgres has no inline INDEX syntax)
+            CREATE INDEX IF NOT EXISTS idx_activity_logs_user_email
+                ON activity_logs(user_email);
+            CREATE INDEX IF NOT EXISTS idx_activity_logs_action_type
+                ON activity_logs(action_type);
+            CREATE INDEX IF NOT EXISTS idx_activity_logs_resource_type
+                ON activity_logs(resource_type);
+            CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at
+                ON activity_logs(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_activity_logs_session_id
+                ON activity_logs(session_id);
 
             -- Composite indexes for common queries
             CREATE INDEX IF NOT EXISTS idx_activity_logs_user_date
@@ -68,12 +73,12 @@ async def run_migration():
             CREATE INDEX IF NOT EXISTS idx_activity_logs_details_gin
                 ON activity_logs USING GIN (details);
         """)
-        logger.info("$1")
+        logger.info("Created activity_logs table and indexes")
 
         # =============================================================================
         # Table 2: team_interactions - Communication tracking
         # =============================================================================
-        logger.info("$1")
+        logger.info("Creating team_interactions table")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS team_interactions (
                 id SERIAL PRIMARY KEY,
@@ -94,15 +99,20 @@ async def run_migration():
 
                 -- Foreign keys
                 FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL,
-                FOREIGN KEY (practice_id) REFERENCES practices(id) ON DELETE SET NULL,
-
-                -- Indexes
-                INDEX idx_team_interactions_user_email (user_email),
-                INDEX idx_team_interactions_type (interaction_type),
-                INDEX idx_team_interactions_direction (direction),
-                INDEX idx_team_interactions_client_email (client_email),
-                INDEX idx_team_interactions_created_at (created_at DESC)
+                FOREIGN KEY (practice_id) REFERENCES practices(id) ON DELETE SET NULL
             );
+
+            -- Indexes (moved out of table body — Postgres has no inline INDEX syntax)
+            CREATE INDEX IF NOT EXISTS idx_team_interactions_user_email
+                ON team_interactions(user_email);
+            CREATE INDEX IF NOT EXISTS idx_team_interactions_type
+                ON team_interactions(interaction_type);
+            CREATE INDEX IF NOT EXISTS idx_team_interactions_direction
+                ON team_interactions(direction);
+            CREATE INDEX IF NOT EXISTS idx_team_interactions_client_email
+                ON team_interactions(client_email);
+            CREATE INDEX IF NOT EXISTS idx_team_interactions_created_at
+                ON team_interactions(created_at DESC);
 
             -- Composite indexes for analytics
             CREATE INDEX IF NOT EXISTS idx_team_interactions_user_date
@@ -114,12 +124,12 @@ async def run_migration():
             CREATE INDEX IF NOT EXISTS idx_team_interactions_content_fts
                 ON team_interactions USING GIN (to_tsvector('english', message_content));
         """)
-        logger.info("$1")
+        logger.info("Created team_interactions table and indexes")
 
         # =============================================================================
         # Table 3: api_audit_trail - Complete API audit
         # =============================================================================
-        logger.info("$1")
+        logger.info("Creating api_audit_trail table")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS api_audit_trail (
                 id SERIAL PRIMARY KEY,
@@ -136,16 +146,22 @@ async def run_migration():
                 user_agent TEXT,
                 correlation_id VARCHAR(100),            -- For request tracing
                 session_id VARCHAR(255),
-                created_at TIMESTAMP DEFAULT NOW(),
-
-                -- Indexes for performance
-                INDEX idx_api_audit_user_email (user_email),
-                INDEX idx_api_audit_method (method),
-                INDEX idx_api_audit_endpoint (endpoint),
-                INDEX idx_api_audit_status (response_status),
-                INDEX idx_api_audit_created_at (created_at DESC),
-                INDEX idx_api_audit_correlation_id (correlation_id)
+                created_at TIMESTAMP DEFAULT NOW()
             );
+
+            -- Indexes for performance (moved out of table body — Postgres has no inline INDEX syntax)
+            CREATE INDEX IF NOT EXISTS idx_api_audit_user_email
+                ON api_audit_trail(user_email);
+            CREATE INDEX IF NOT EXISTS idx_api_audit_method
+                ON api_audit_trail(method);
+            CREATE INDEX IF NOT EXISTS idx_api_audit_endpoint
+                ON api_audit_trail(endpoint);
+            CREATE INDEX IF NOT EXISTS idx_api_audit_status
+                ON api_audit_trail(response_status);
+            CREATE INDEX IF NOT EXISTS idx_api_audit_created_at
+                ON api_audit_trail(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_api_audit_correlation_id
+                ON api_audit_trail(correlation_id);
 
             -- Composite indexes for common queries
             CREATE INDEX IF NOT EXISTS idx_api_audit_user_date
@@ -159,12 +175,12 @@ async def run_migration():
             CREATE INDEX IF NOT EXISTS idx_api_audit_query_params_gin
                 ON api_audit_trail USING GIN (query_params);
         """)
-        logger.info("$1")
+        logger.info("Created api_audit_trail table and indexes")
 
         # =============================================================================
         # Table 4: session_tracking - User session tracking
         # =============================================================================
-        logger.info("$1")
+        logger.info("Creating session_tracking table")
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS session_tracking (
                 id SERIAL PRIMARY KEY,
@@ -180,21 +196,25 @@ async def run_migration():
                 last_activity_at TIMESTAMP DEFAULT NOW(),
                 duration_seconds INTEGER,           -- Session duration
                 actions_count INTEGER DEFAULT 0,    -- Number of actions in session
-                is_active BOOLEAN DEFAULT TRUE,
-
-                -- Indexes
-                INDEX idx_session_tracking_session_id (session_id),
-                INDEX idx_session_tracking_user_email (user_email),
-                INDEX idx_session_tracking_is_active (is_active),
-                INDEX idx_session_tracking_login_at (login_at DESC)
+                is_active BOOLEAN DEFAULT TRUE
             );
+
+            -- Indexes (moved out of table body — Postgres has no inline INDEX syntax)
+            CREATE INDEX IF NOT EXISTS idx_session_tracking_session_id
+                ON session_tracking(session_id);
+            CREATE INDEX IF NOT EXISTS idx_session_tracking_user_email
+                ON session_tracking(user_email);
+            CREATE INDEX IF NOT EXISTS idx_session_tracking_is_active
+                ON session_tracking(is_active);
+            CREATE INDEX IF NOT EXISTS idx_session_tracking_login_at
+                ON session_tracking(login_at DESC);
         """)
-        logger.info("$1")
+        logger.info("Created session_tracking table and indexes")
 
         # =============================================================================
         # Create views for common queries
         # =============================================================================
-        logger.info("$1")
+        logger.info("Creating views for common queries")
 
         # View 1: Today's team activity summary
         await conn.execute("""
@@ -210,7 +230,7 @@ async def run_migration():
             GROUP BY user_email
             ORDER BY total_actions DESC;
         """)
-        logger.info("$1")
+        logger.info("Created view v_today_team_activity")
 
         # View 2: Team interactions summary
         await conn.execute("""
@@ -226,7 +246,7 @@ async def run_migration():
             GROUP BY user_email, interaction_type, direction, DATE(created_at)
             ORDER BY date DESC, count DESC;
         """)
-        logger.info("$1")
+        logger.info("Created view v_team_interactions_summary")
 
         # View 3: API usage by endpoint
         await conn.execute("""
@@ -243,18 +263,12 @@ async def run_migration():
             GROUP BY endpoint, method, DATE(created_at)
             ORDER BY date DESC, request_count DESC;
         """)
-        logger.info("$1")
+        logger.info("Created view v_api_usage_by_endpoint")
 
-        logger.info("$1")
-        logger.info("$1")
-        logger.info("$1")
-        logger.info("$1")
-        logger.info("$1")
-        logger.info("$1")
-        logger.info("$1")
-        logger.info("$1")
-        logger.info("$1")
-        logger.info("$1")
+        logger.info("Migration 041b complete: 4 tables created (activity_logs, team_interactions, api_audit_trail, session_tracking)")
+        logger.info("Migration 041b complete: 3 views created (v_today_team_activity, v_team_interactions_summary, v_api_usage_by_endpoint)")
+        logger.info("Migration 041b complete: all indexes created successfully")
+        logger.info("Team activity logging system is now ready")
 
         await conn.close()
         return True
