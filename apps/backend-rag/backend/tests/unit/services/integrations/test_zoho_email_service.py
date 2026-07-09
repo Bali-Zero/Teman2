@@ -237,6 +237,50 @@ class TestRequest:
         with pytest.raises(ValueError, match="API error"):
             await service._request("user1", "GET", "/messages/view")
 
+    @pytest.mark.asyncio
+    async def test_error_response_non_dict_json_body(self, service: ZohoEmailService) -> None:
+        """
+        Regression test (prod 500 on /api/integrations/zoho/folders):
+
+        Zoho (or an intermediary gateway/proxy) can return an error status with
+        a JSON body that is NOT a dict — e.g. a bare list or string. The old
+        code did `error_data.get(...)` unconditionally, which raised
+        AttributeError (not ValueError) and leaked as an unhandled 500 instead
+        of the router's honest `except ValueError -> 400` path.
+        """
+        mock_response = MagicMock()
+        mock_response.status_code = 502
+        mock_response.content = b'["Bad Gateway"]'
+        mock_response.json.return_value = ["Bad Gateway"]
+
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+        service._client = mock_client
+
+        # Must raise ValueError (caught by the router -> 400), never AttributeError/TypeError.
+        with pytest.raises(ValueError, match="API error"):
+            await service._request("user1", "GET", "/folders")
+
+    @pytest.mark.asyncio
+    async def test_success_response_non_dict_json_body(self, service: ZohoEmailService) -> None:
+        """
+        Same class of bug on the success path: a 200 OK with a non-dict JSON
+        body (e.g. `null` or a bare list) must raise ValueError, not silently
+        return a non-dict that crashes a caller's `.get("data", [])`.
+        """
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = None
+
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+        service._client = mock_client
+
+        with pytest.raises(ValueError, match="Unexpected response format"):
+            await service._request("user1", "GET", "/folders")
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ZohoEmailService.list_folders

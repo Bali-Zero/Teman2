@@ -242,3 +242,89 @@ class TestPostgreSQLDebuggerInit:
             mock_settings.database_url = "postgresql://from-settings"
             debugger = PostgreSQLDebugger()
             assert debugger.database_url == "postgresql://from-settings"
+
+
+class TestGetTableStatsSQL:
+    """
+    Regression tests for get_table_stats() SQL generation.
+
+    Bug: prod 500 on GET /api/debug/postgres/stats/tables —
+    "relation \"information_schema.statistics\" does not exist".
+    information_schema.statistics is a MySQL-only relation; PostgreSQL has
+    no such view. The index-count subquery must use pg_indexes instead,
+    qualified against the outer pg_tables columns to avoid ambiguity.
+    """
+
+    @pytest.fixture
+    def debugger(self):
+        """Create debugger instance"""
+        with patch("backend.app.utils.postgres_debugger.settings") as mock_settings:
+            mock_settings.database_url = "postgresql://test"
+            return PostgreSQLDebugger()
+
+    @staticmethod
+    def _mock_connection_capturing_sql():
+        """Return (mock_conn, get_connection_patch_target) that records the SQL passed to fetch()."""
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=[])
+        mock_conn.close = AsyncMock()
+        return mock_conn
+
+    @pytest.mark.asyncio
+    async def test_single_table_query_has_no_mysql_only_relation(self, debugger):
+        """table_name branch: query must not reference information_schema.statistics"""
+        mock_conn = self._mock_connection_capturing_sql()
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            await debugger.get_table_stats(table_name="clients")
+
+        assert mock_conn.fetch.await_count == 1
+        sql = mock_conn.fetch.await_args.args[0]
+        assert "information_schema.statistics" not in sql
+        assert "STATISTICS" not in sql.upper()
+
+    @pytest.mark.asyncio
+    async def test_single_table_query_uses_qualified_pg_indexes(self, debugger):
+        """table_name branch: index_count subquery must use pg_indexes, qualified vs pg_tables"""
+        mock_conn = self._mock_connection_capturing_sql()
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            await debugger.get_table_stats(table_name="clients")
+
+        sql = mock_conn.fetch.await_args.args[0]
+        assert "FROM pg_indexes" in sql
+        assert "pg_indexes.schemaname = pg_tables.schemaname" in sql
+        assert "pg_indexes.tablename = pg_tables.tablename" in sql
+
+    @pytest.mark.asyncio
+    async def test_all_tables_query_has_no_mysql_only_relation(self, debugger):
+        """else branch (no table_name filter): same MySQL-ism must be absent"""
+        mock_conn = self._mock_connection_capturing_sql()
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            await debugger.get_table_stats(table_name=None)
+
+        assert mock_conn.fetch.await_count == 1
+        sql = mock_conn.fetch.await_args.args[0]
+        assert "information_schema.statistics" not in sql
+
+    @pytest.mark.asyncio
+    async def test_all_tables_query_uses_qualified_pg_indexes(self, debugger):
+        """else branch: index_count subquery must use pg_indexes, qualified vs pg_tables"""
+        mock_conn = self._mock_connection_capturing_sql()
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            await debugger.get_table_stats(table_name=None)
+
+        sql = mock_conn.fetch.await_args.args[0]
+        assert "FROM pg_indexes" in sql
+        assert "pg_indexes.schemaname = pg_tables.schemaname" in sql
+        assert "pg_indexes.tablename = pg_tables.tablename" in sql
+
+    def test_module_source_has_no_information_schema_statistics(self):
+        """
+        Static guard: the whole module must never reference the MySQL-only
+        information_schema.statistics relation again (W89 class regression guard).
+        """
+        import inspect
+
+        from backend.app.utils import postgres_debugger
+
+        source = inspect.getsource(postgres_debugger)
+        assert "information_schema.statistics" not in source
