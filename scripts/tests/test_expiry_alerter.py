@@ -84,8 +84,30 @@ def test_main_fails_closed_when_query_fails(monkeypatch, tmp_path, capsys) -> No
     assert heartbeat["status"] == "failed"
 
 
-def test_run_fly_console_python_uses_local_shell_on_pro(monkeypatch) -> None:
+def test_run_prod_python_prefers_local_database_url(monkeypatch) -> None:
     calls = []
+    monkeypatch.setenv("DATABASE_URL_LOCAL", "postgresql://local/test")
+    monkeypatch.delenv("EXPIRY_ALERTER_DATABASE_URL", raising=False)
+
+    def fake_run(cmd, **kwargs):
+        calls.append((cmd, kwargs))
+        return CompletedProcess(cmd, 0, stdout="[]", stderr="")
+
+    monkeypatch.setattr(expiry.subprocess, "run", fake_run)
+
+    result = expiry._run_prod_python("abc", timeout_s=7)
+
+    assert result.returncode == 0
+    assert calls[0][0][:2] == [sys.executable, "-c"]
+    assert calls[0][1]["env"]["DATABASE_URL"] == "postgresql://local/test"
+    assert calls[0][1]["timeout"] == 7
+
+
+def test_run_prod_python_uses_local_fly_fallback_on_pro(monkeypatch) -> None:
+    calls = []
+    monkeypatch.delenv("DATABASE_URL_LOCAL", raising=False)
+    monkeypatch.delenv("EXPIRY_ALERTER_DATABASE_URL", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setattr(expiry, "SSH_HOST", "pro")
     monkeypatch.setattr(expiry.socket, "gethostname", lambda: "Nuzantara")
     monkeypatch.setattr(expiry.socket, "getfqdn", lambda: "Nuzantara.local")
@@ -96,7 +118,7 @@ def test_run_fly_console_python_uses_local_shell_on_pro(monkeypatch) -> None:
 
     monkeypatch.setattr(expiry.subprocess, "run", fake_run)
 
-    result = expiry._run_fly_console_python("abc", timeout_s=7)
+    result = expiry._run_prod_python("abc", timeout_s=7)
 
     assert result.returncode == 0
     assert calls[0][0][0] == "fly"

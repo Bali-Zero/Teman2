@@ -86,8 +86,35 @@ def _is_local_fly_host() -> bool:
     )
 
 
-def _run_fly_console_python(encoded: str, timeout_s: int = 30) -> subprocess.CompletedProcess[str]:
+def _local_database_url() -> str:
+    for key in ("EXPIRY_ALERTER_DATABASE_URL", "DATABASE_URL_LOCAL"):
+        value = os.environ.get(key, "").strip()
+        if value:
+            return value
+
+    database_url = os.environ.get("DATABASE_URL", "").strip()
+    if "localhost" in database_url or "127.0.0.1" in database_url:
+        return database_url
+    return ""
+
+
+def _run_prod_python(encoded: str, timeout_s: int = 30) -> subprocess.CompletedProcess[str]:
     python_command = f"import base64;exec(base64.b64decode(b'{encoded}'))"
+    local_db_url = _local_database_url()
+    if local_db_url:
+        env = os.environ.copy()
+        env["DATABASE_URL"] = local_db_url
+        try:
+            return subprocess.run(
+                [sys.executable, "-c", python_command],
+                capture_output=True,
+                text=True,
+                timeout=timeout_s,
+                env=env,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            raise ExpiryAlerterError(f"Local query runner failed: {exc}") from exc
+
     fly_args = [
         "fly",
         "ssh",
@@ -97,20 +124,23 @@ def _run_fly_console_python(encoded: str, timeout_s: int = 30) -> subprocess.Com
         "-C",
         f"python3 -c {shlex.quote(python_command)}",
     ]
-    if _is_local_fly_host():
+    try:
+        if _is_local_fly_host():
+            return subprocess.run(
+                fly_args,
+                capture_output=True,
+                text=True,
+                timeout=timeout_s,
+            )
+        remote_command = " ".join(shlex.quote(arg) for arg in fly_args)
         return subprocess.run(
-            fly_args,
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", SSH_HOST, remote_command],
             capture_output=True,
             text=True,
             timeout=timeout_s,
         )
-    remote_command = " ".join(shlex.quote(arg) for arg in fly_args)
-    return subprocess.run(
-        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", SSH_HOST, remote_command],
-        capture_output=True,
-        text=True,
-        timeout=timeout_s,
-    )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise ExpiryAlerterError(f"Remote query runner failed: {exc}") from exc
 
 
 def _query_expiries() -> list[dict]:
@@ -190,7 +220,7 @@ asyncio.run(m())
 '''
     encoded = __import__("base64").b64encode(code.encode()).decode()
 
-    result = _run_fly_console_python(encoded, timeout_s=30)
+    result = _run_prod_python(encoded, timeout_s=30)
 
     if result.returncode != 0:
         raise ExpiryAlerterError(f"Query failed: {result.stderr[:200]}")
@@ -416,7 +446,11 @@ asyncio.run(m())
         print(f"[DRY RUN] Would mark renewal_required for {len(client_ids)} clients: {ids_csv}")
         return
 
-    result = _run_fly_console_python(encoded, timeout_s=30)
+    try:
+        result = _run_prod_python(encoded, timeout_s=30)
+    except ExpiryAlerterError as exc:
+        log(f"CRM write-back failed: {exc}")
+        return
     if result.returncode == 0:
         log(f"CRM write-back: marked {len(client_ids)} clients renewal_required")
     else:
@@ -451,6 +485,9 @@ def main() -> None:
     VERBOSE = args.verbose
 
     env = _load_env()
+    for key in ("EXPIRY_ALERTER_DATABASE_URL", "DATABASE_URL_LOCAL", "DATABASE_URL"):
+        if key in env and key not in os.environ:
+            os.environ[key] = env[key]
     bot_token = env.get("TELEGRAM_BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
     log("Querying CRM for expiries...")
