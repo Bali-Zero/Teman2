@@ -1,0 +1,27 @@
+{
+  "code": "25951",
+  "editorial": {
+    "headline": "Metal Wire Goods Without the Cable Confusion",
+    "standfirst": "This KBLI covers the practical factory work of turning metal wire into fences, mesh, springs, chains, grills, and related non-cable products.",
+    "body": "KBLI 25951 is a manufacturing code for metal-wire goods that are not cable. Its centre of gravity is the workshop or factory floor where wire becomes a finished industrial or household object: barbed wire, wire fencing, wire mesh, wire nets, metal wire rope, and grill products. The same scope also reaches into spring production, including leaf springs, helical springs, torsion bar springs, and spring sheets, while explicitly keeping clock springs outside the boundary. It also covers chain manufacturing, except for power-transmission chains. The practical reading is simple: this is not a trading code and not a general metalworking bucket. It is for making tangible goods from metal wire, provided the product is not an electrical-transmission cable and not one of the excluded spring or chain categories.\n\nThe scale position is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar, so the code can describe anything from a small producer making wire fencing or grills to a larger plant manufacturing mesh, springs, wire rope, or chains. That matters because this activity is not defined only by industrial size; it is defined by the nature of the manufactured object. A smaller producer and a larger factory can both sit inside the same activity when the work is still the making of non-cable metal-wire goods. For founders, the editorial point is that the code follows the product and process, not the ambition of the company.\n\nNationally, the investment picture is clean. The record marks the PMA status as TERBUKA and gives the foreign-ownership ceiling as 100%. That means the national record treats this activity as open to foreign investment up to full foreign ownership. There is no lower cap in the slim record, no special threshold, and no minimum-capital detail beyond the foreign-ownership ceiling itself. The cited national source is carried in the record, but the operative conclusion is the status and ceiling: open, with a 100% PMA maximum.\n\nBali does not add a separate ownership percentage here. The Bali-side status is OK_or_HIGHER_RISK, and the record says: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That is the important local distinction. The province’s moratorium rule blocks Low and Medium-Low risk KBLI for PMA, but this record is not marked as blocked in Bali. So the honest national-vs-Bali picture is not a contradiction: nationally open, and not blocked by the Bali moratorium in this record. The caveat is only the one the record actually gives: the Bali status is framed through risk status, not through a separate Bali foreign-ownership cap.",
+    "pullQuote": "The honest national-vs-Bali picture is not a contradiction: nationally open, and not blocked by the Bali moratorium in this record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

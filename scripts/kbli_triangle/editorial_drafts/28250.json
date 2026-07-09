@@ -1,0 +1,27 @@
+{
+  "code": "28250",
+  "editorial": {
+    "headline": "Food-Processing Machinery, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 28250 covers the machinery behind food, drink, and tobacco processing, with a sharp split between national openness and Bali PMA registration.",
+    "body": "KBLI 28250 is the manufacturing lane for machinery used to process food, beverages, and tobacco. Its scope is industrial rather than retail: machines that dry agricultural products, handle dairy production, clean and sort rice or grain, mill flour, press fruit for wine, cider, and juice, bake bread, form pasta, and process meat, poultry, fruit, nuts, vegetables, fish, shellfish, cocoa, chocolate, sugar, beer, and related food inputs. In plain English, this is the code for building the equipment that turns agricultural and marine products into processed food and drink at production scale.\n\nThe record makes the breadth of the activity clear. It includes cream separators, milk homogenizers, butter-making and cheese-making machinery; grain cleaners, sifters, separators, polishers, mills, flour sieves, fillers, blenders, rice-husk cleaners, rice mills, and pea splitters; presses and crushers used for fruit-based drinks; bakery ovens, mixers, dough makers, moulds, cutters, and bread-making machines; and other machinery for confectionery, cocoa, chocolate, sugar, brewing, meat, poultry, fruit, vegetable, nut, fish, shellfish, seafood, distillation, and refining processes. A company registering this activity is not simply trading finished machines. It is placing itself in the manufacturing of equipment for the production chain.\n\nOn the national record, the activity is open. The PMA status is marked **TERBUKA**, and the foreign-ownership ceiling is **100%** under **Perpres 10/2021, 49/2021**. The scale field is also broad: **Mikro**, **Kecil**, **Menengah**, and **Besar** are all listed as open. Taken nationally, then, the code reads as a permitted manufacturing activity across the listed business scales, including full foreign ownership according to the slim record.\n\nBali changes the practical answer. The Bali status is **BLOCCATO_CLASSE_RISCHIO**, and the record marks `l4_bali_blocked` as true. The stated reason is: **OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026**. The moratorium rule is also explicit: **Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)**. So the honest reading is direct: while KBLI 28250 is nationally open to PMA with a 100% ceiling, a foreigner cannot register this activity in Bali today under the Bali-side block recorded here.",
+    "pullQuote": "Nationally, KBLI 28250 is open to full PMA ownership, but the Bali record turns that openness into a practical registration block.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

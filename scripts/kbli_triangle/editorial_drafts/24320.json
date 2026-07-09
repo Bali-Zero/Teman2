@@ -1,0 +1,27 @@
+{
+  "code": "24320",
+  "editorial": {
+    "headline": "Non-Ferrous Metal Casting, Open Nationally and Workable in Bali",
+    "standfirst": "KBLI 24320 covers the melting, alloying, and casting of non-ferrous metals, with national PMA access at 100% and no Bali moratorium block in the record.",
+    "body": "KBLI 24320 is the industrial language for foundry work outside iron and steel: the melting, alloying, casting, and pouring of non-ferrous metals into basic forms. In practical terms, the record points to cast copper and its alloys, cast aluminium and its alloys, and cast nickel and its alloys. It also reaches into semi-finished casting from aluminium, magnesium, titanium, zinc, and similar metals, along with light-metal casting, heavy-metal casting, precious-metal casting, and die-casting for non-ferrous metals.\n\nThat scope matters because this is not written as a narrow retail or trading activity. It is production: taking metal through heat, composition, moulding, and casting into forms that can sit early in a manufacturing chain. The Indonesian description is broad enough to catch both basic cast forms and semi-finished non-ferrous outputs, while remaining anchored to one clear boundary: these are not iron-and-steel casting activities. For a founder, the clean reading is that the business identity sits around the foundry process itself, not merely the downstream sale of finished goods.\n\nThe registration picture is also unusually straightforward in the slim record. The activity is open to Micro, Small, Medium, and Large scales, so the scale field does not reserve the code only for a large industrial operator. Nationally, the PMA status is marked TERBUKA, with `pma_max_asing` at 100 under the stated source, Perpres 10/2021, 49/2021. That means the record does not show a national foreign-shareholding cap below full ownership for this activity. It is a nationally open code for foreign investment, subject only to the facts actually recorded here.\n\nBali does not change that conclusion in this record. The province’s moratorium rule is stated as blocking all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but KBLI 24320 is not marked as blocked. Its Bali status is `OK_or_HIGHER_RISK`, and the reason given is that OSS risk at Large scale is Medium-High/High, therefore not blocked by the moratorium. The honest national-versus-Bali picture is therefore clean: nationally open at 100% foreign ownership, and not blocked for PMA registration in Bali by the moratorium data supplied in the record.",
+    "pullQuote": "The honest national-versus-Bali picture is clean: nationally open at 100% foreign ownership, and not blocked for PMA registration in Bali by the moratorium data supplied in the record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "26191",
+  "editorial": {
+    "headline": "Electronic Tubes and Connectors as a Manufacturing Code",
+    "standfirst": "KBLI 26191 covers the factory production of electronic tubes, valves, connectors, and common device cables, with full national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 26191 is a manufacturing classification for the physical production of electronic tube and connector components. The record describes a scope that includes television picture tubes, television camera tubes, amplifier and receiver tubes and valves, electronic tubes, electronic connectors, printer cables, monitor cables, USB cables, other connectors, electronic valves, and lamp tubes. In plain English, this is not a retail or repair activity. It is a factory-side code for making the componentry and connection hardware that sits inside, between, or alongside electronic devices.\n\nThe code is open across every business scale named in the record: Mikro, Kecil, Menengah, and Besar. That matters because the activity is not reserved only for large industrial operators in the classification data provided here. A small producer of connector assemblies, a mid-sized cable manufacturer, or a larger electronics-component plant all sit within the scale language of the record, provided the actual registered activity remains inside this manufacturing scope.\n\nNationally, the foreign-investment position is straightforward. The PMA status is marked TERBUKA, with `pma_max_asing` recorded as 100. That means the national record treats the activity as open to foreign ownership up to 100%, with the source listed as Perpres 10/2021, 49/2021. There is no lower foreign-ownership cap in the slim record, and no additional national threshold or special condition is stated here, so the editorial point should stay clean: at the national level, this activity is foreign-open.\n\nThe Bali picture is also clear, but for a different reason than many founders expect. The Bali status is recorded as OK_or_HIGHER_RISK, and `l4_bali_blocked` is false. The reason given is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this code is not marked as blocked by that rule. So the honest reading is that KBLI 26191 is nationally open to PMA, and the Bali-side record does not block PMA registration under the stated moratorium logic.",
+    "pullQuote": "The honest reading is that KBLI 26191 is nationally open to PMA, and the Bali-side record does not block PMA registration under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

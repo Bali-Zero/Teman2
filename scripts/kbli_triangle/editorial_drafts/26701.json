@@ -1,0 +1,27 @@
+{
+  "code": "26701",
+  "editorial": {
+    "headline": "Photographic Equipment Manufacturing, With Bali Open on the Record",
+    "standfirst": "KBLI 26701 covers the manufacture of cameras and photographic equipment, nationally open to foreign ownership and not blocked by Bali’s PMA moratorium.",
+    "body": "KBLI 26701 is the industrial code for making photographic equipment. In plain English, it covers the manufacture of cameras and closely related photographic apparatus: ordinary still cameras, instant-print cameras, microfilm cameras, digital cameras, cameras fitted with mini projectors, underwater cameras, still-picture cameras, aerial-research cameras, forensic or criminology comparison cameras, and other photographic cameras. The scope also reaches the equipment around the camera itself, including photographic light meters, photographic flash apparatus, and flash bulbs other than tube lamps.\n\nThat makes this a manufacturing classification, not a retail, studio, or media-service activity. The record is concerned with the production of the physical photographic devices and equipment named in the scope. A founder using this code should therefore be describing an industrial activity centered on making cameras or photographic instruments, rather than selling cameras, operating photography services, or producing visual content. The language of the scope is broad inside that manufacturing lane, but it remains anchored to photographic equipment.\n\nThe scale picture is unusually clear. The activity is open to Mikro, Kecil, Menengah, and Besar scales, so the record does not reserve it only for large manufacturers or only for small domestic operators. Nationally, the PMA status is TERBUKA, and the foreign-ownership ceiling recorded here is 100%. In practical editorial terms, the national record treats this as a foreign-open manufacturing activity, with no lower foreign cap shown in the slim record.\n\nThe Bali question is the point to read carefully. The Bali moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But this code is not marked as blocked: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason given is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest national-vs-Bali picture is not a hidden Bali closure. On this record, KBLI 26701 is nationally open, carries a 100% foreign-ownership ceiling, and is not blocked by the Bali PMA moratorium.",
+    "pullQuote": "On this record, KBLI 26701 is nationally open, carries a 100% foreign-ownership ceiling, and is not blocked by the Bali PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

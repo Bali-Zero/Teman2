@@ -1,0 +1,27 @@
+{
+  "code": "27203",
+  "editorial": {
+    "headline": "Electric-Vehicle Battery Manufacturing, Open at National and Bali Level",
+    "standfirst": "KBLI 27203 covers the manufacture of electric-vehicle batteries, including BESS for EVs, and is open to PMA registration across all recorded scales.",
+    "body": "KBLI 27203 is a manufacturing activity for batteries used in electric vehicles and electric bicycles. The record also brings battery-based energy storage systems into scope when they are made for electric vehicles, and it includes electric-vehicle batteries made with cathodes produced by the same operator. In plain English, this is not a trading or repair category: its centre of gravity is production, with the activity defined around making the battery product itself.\n\nThe scale picture is unusually broad. The slim record marks the activity as open to **Mikro, Kecil, Menengah, and Besar** operators, so the registration frame is not limited to one business size. That matters because the code can cover a small manufacturing setup as well as a larger industrial operator, provided the activity being registered remains inside the recorded scope: making batteries for electric vehicles or electric bicycles, including BESS for electric vehicles, and including battery production using self-produced cathodes.\n\nNationally, the PMA reading is clean. The record marks the activity as **TERBUKA**, with `pma_max_asing` at **100**. Rendered commercially, that means the national foreign-ownership ceiling is **100%**. There is no lower foreign-share cap in the slim record, and no additional national condition is stated here beyond the recorded PMA status, ceiling, and source. The responsible editorial reading is therefore direct: for a foreign-owned setup at national level, this activity is recorded as open up to full foreign ownership.\n\nThe Bali picture is also open on this record, but for a specific reason. The province-wide moratorium rule in the record blocks **Low + Medium-Low risk KBLI for PMA**, island-wide and permanently. KBLI 27203 is not marked as blocked in Bali: `l4_bali_blocked` is **false**, and the Bali status is **OK_or_HIGHER_RISK**. The recorded reason is: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. So the honest national-versus-Bali conclusion is not a warning about a Bali ban, nor a hidden local percentage. It is simpler: this code is nationally foreign-open, carries a 100% national foreign-ownership ceiling, and is not blocked for PMA registration in Bali by the moratorium described in the record.",
+    "pullQuote": "The honest national-versus-Bali conclusion is not a hidden local percentage: this code is foreign-open nationally and not blocked in Bali by the recorded moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

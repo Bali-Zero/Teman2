@@ -1,0 +1,27 @@
+{
+  "code": "25933",
+  "editorial": {
+    "headline": "Metal Cutlery Manufacturing, Open Nationally and Clear in Bali",
+    "standfirst": "This activity covers metal cutlery for the kitchen and table, with national PMA openness and a Bali record that is not blocked by the province-wide moratorium.",
+    "body": "KBLI 25933 is the industrial home for making metal cutlery: the everyday metal implements that move between kitchen work and the dining table. The slim record names spoons, forks, soup ladles, dinner knives, butter knives, sugar tongs, chopsticks, straws, and similar tools as the core scope. Its boundary matters just as much as its centre. Dinnerware, flat tableware, and cookware sit outside this activity, so the code should be read as a manufacturing category for metal eating, serving, and closely related utensils, not as a broad kitchen-goods basket.\n\nThe registration scale is wide. The record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, which means the same code can frame a modest formal workshop or a larger manufacturing operation, provided the output remains within the described scope. A founder should therefore start with the object being made. If the business is producing the metal tools listed in the record, the fit is direct. If the business concept drifts into dinnerware, flat tableware, or cookware, the record itself draws a boundary and this activity no longer carries the whole description.\n\nNationally, the PMA picture is straightforward. The activity is marked TERBUKA, and the recorded foreign-ownership ceiling is 100%. In plain English, the supplied data treats this as open to foreign ownership at the national level, with no lower foreign-stake ceiling stated in the record. That clarity should not be diluted with invented conditions. The source field supports the national reading, but the editorial point is simple: for this activity, the national foreign-ownership line is open.\n\nBali needs a separate reading, because the province-side status is not a separate ownership percentage. The record says Bali blocks all Low and Medium-Low risk KBLI for PMA under an island-wide, permanent moratorium, yet this activity is not marked as blocked. The stated reason is precise: OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. Bali’s record is not a hidden equity cap; it is a clear not-blocked reading under the stated moratorium logic.",
+    "pullQuote": "Bali’s record is not a hidden equity cap; it is a clear not-blocked reading under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

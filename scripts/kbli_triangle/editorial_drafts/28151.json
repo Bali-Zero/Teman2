@@ -1,0 +1,27 @@
+{
+  "code": "28151",
+  "editorial": {
+    "headline": "Non-Electric Industrial Furnaces With a Clear Bali Path",
+    "standfirst": "KBLI 28151 covers the manufacture of non-electric furnaces, boilers, scrubbers, and related heat-processing equipment, open nationally and not blocked for PMA in Bali.",
+    "body": "KBLI 28151 is about heavy heat equipment made without electric current as the operating basis: furnaces and similar apparatus used to heat, roast, or melt iron ore, metals, and related materials. The record also brings into the same activity the manufacture of burners, central-heating boilers, industrial processing boilers, utility boilers, scrubbers, and solar water heaters. Its scope is not decorative or household-oriented; it is the manufacturing side of thermal equipment used where heat, combustion, steam, ash handling, or industrial processing must be engineered into machinery.\n\nThe activity also reaches into mechanical components that make combustion systems work: coal-burning chambers for steam locomotives, mechanical stokers, roasters, mechanical grates, and mechanical ash discharges. Read in plain English, this code is for producers of non-electric furnace and boiler systems and their close mechanical ecosystem. It is the kind of registration a manufacturer would look at when the business is not merely trading equipment, installing it, or servicing it, but making the apparatus itself.\n\nOn scale, the record is broad. It marks the activity open to Mikro, Kecil, Menengah, and Besar. That matters because the code is not reserved in the record for only one class of operator: the slim record presents it as available across the full scale range. A small producer and a larger industrial manufacturer are not described as separate worlds here; the difference is scale, not the nature of the KBLI activity itself. The editorial discipline is to keep that distinction clean: this code describes manufacturing scope and open scales, not extra licensing thresholds or capital rules that the record does not state.\n\nThe national investment picture is equally direct. The PMA status is TERBUKA, with the foreign-ownership ceiling recorded at 100%, sourced to Perpres 10/2021, 49/2021. Bali does not add a separate foreign-share percentage in this record. Instead, Bali is marked OK_or_HIGHER_RISK, and the Bali block flag is false. The reason is specific: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.\" The moratorium rule still matters as background because Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently. But this record does not put KBLI 28151 inside that blocked result. The honest reading is therefore clean: nationally, this activity is foreign-open up to 100%; in Bali, the record does not block PMA registration under the stated moratorium logic.",
+    "pullQuote": "Nationally, KBLI 28151 is foreign-open up to 100%; in Bali, this record does not block PMA registration under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

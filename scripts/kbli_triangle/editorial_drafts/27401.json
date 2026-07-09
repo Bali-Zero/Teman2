@@ -1,0 +1,27 @@
+{
+  "code": "27401",
+  "editorial": {
+    "headline": "Incandescent, Stage, UV and Medical Lighting Manufacturing in One Code",
+    "standfirst": "A nationally foreign-open lighting manufacturing activity that spans every business scale, but is blocked for PMA registration in Bali under the recorded moratorium.",
+    "body": "KBLI 27401 is a manufacturing code for a specific corner of the lighting industry: the making of incandescent lamps and related specialist lamps. The record describes ordinary lighting bulbs, while excluding fittings and accessories. It also reaches into photographic flash bulbs, stage and spotlight lamps, ultraviolet lamps, infrared lamps, flashlight lamps, and lighting used in medical equipment. In practical terms, this is not a retail lighting code and not a broad electrical-goods label; it is about producing the lamps themselves, from familiar bulbs to more technical illumination products used in photography, performance, portable lighting, and medical devices.\n\nThe scale picture is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, so it can describe a small production operation as well as a larger industrial manufacturer. That breadth matters editorially because the activity is not reserved in the record for only one business size. A founder reading the classification should see it as a manufacturing scope that can sit at different operational scales, provided the business being registered is genuinely making the kinds of lamps named in the scope rather than trading them or producing separate lighting accessories.\n\nNationally, the foreign-investment signal is clean: the PMA status is TERBUKA, and the recorded foreign-ownership ceiling is 100%. The source named for that national position is Perpres 10/2021, 49/2021. On the national reading alone, this is therefore not a restricted foreign-ownership activity in the slim record. The honest interpretation is simple: as a national KBLI category, this lighting-manufacturing activity is open to foreign ownership up to the stated ceiling.\n\nBali changes the answer completely. The record marks the Bali status as BLOCCATO_CLASSE_RISCHIO and sets l4_bali_blocked to true. Its reason is: \"OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026\". The moratorium rule is also explicit: \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\". So the practical Bali lede is not that the activity is nationally closed; it is the opposite. The code is nationally foreign-open, but a foreign-owned company cannot register this KBLI in Bali today because the Bali-side moratorium blocks it for PMA registration.",
+    "pullQuote": "The code is nationally foreign-open, but a foreign-owned company cannot register this KBLI in Bali today because the Bali-side moratorium blocks it for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

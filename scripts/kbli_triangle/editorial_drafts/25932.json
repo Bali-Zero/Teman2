@@ -1,0 +1,27 @@
+{
+  "code": "25932",
+  "editorial": {
+    "headline": "Metal Cutting Tools, Open Nationally, Conditional in Bali",
+    "standfirst": "A metal cutting-tool manufacturing code that is nationally open to 100% PMA, while Bali turns on declared scope and live OSS risk reading.",
+    "body": "KBLI 25932 is a manufacturing code for metal cutting tools, not for a broad metals business or a retail label. The scope centres on making cutting articles from metal: machetes, serrated knives, razors, razor blades, scissors, hair clippers, short knives or daggers, swords, bayonets, and traditional weapons. It also includes machine-facing output - knives and blades for machines or mechanical equipment, plus saws and saw blades. The common line is the made cutting edge itself. The scope is item-specific enough to hold handheld blade products, grooming blades, traditional weapons, and mechanical blades in the same manufacturing class. Whether the article is handheld, grooming-related, weapon-related, or fitted to equipment, the record keeps the activity inside manufacturing.\n\nThe registration story starts broad. The slim record marks national PMA status as TERBUKA and gives the foreign-ownership ceiling as 100%. It opens the code across Mikro, Kecil, Menengah and Besar scales, so the activity is not presented as belonging only to one size of operator. On the national line, then, this is a clean foreign-open manufacturing activity: the record does not cap foreign ownership below full control, and it does not narrow the available scale set.\n\nBali is where the title has to be read with more discipline. The record does not mark the code as categorically blocked in Bali: l4_bali_blocked is false. But the Bali status is BLOCCATO_DIPENDE_SCOPE, and the reason makes the condition explicit. OSS risk at scale Besar is low on some scopes and higher on others; PMA registration in Bali is described as available only by declaring the higher-risk scope, with live OSS verification per exact activity. The national door is open, but in Bali the practical question is which exact cutting-tool activity OSS sees when the business is declared.\n\nThe backdrop is the Bali moratorium rule recorded in the slim record: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanently. The Bali fields give a status and a reason rather than another ownership number. For a founder, the practical reading is narrow but important. A large-scale declaration that OSS treats as higher risk has a route to verify. A low or medium-low risk reading runs into the provincial moratorium. The honest editorial answer is therefore neither panic nor simplification: nationally open to 100% PMA, open across all recorded scales, and usable in Bali only where the exact declared scope clears the recorded Bali condition.",
+    "pullQuote": "The national door is open, but in Bali the practical question is which exact cutting-tool activity OSS sees when the business is declared.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

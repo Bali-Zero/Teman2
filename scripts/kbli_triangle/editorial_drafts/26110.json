@@ -1,0 +1,27 @@
+{
+  "code": "26110",
+  "editorial": {
+    "headline": "Solar Manufacturing With a Clear Bali Opening",
+    "standfirst": "KBLI 26110 covers the factory side of photovoltaic hardware, and the record treats it as nationally open while not blocked for PMA registration in Bali.",
+    "body": "KBLI 26110 is the industrial code for making the core hardware of photovoltaic power: solar cells, solar panels, and photovoltaic inverters. The scope is manufacturing, not installation and not a general renewable-energy umbrella. Its center of gravity is the physical production of cells, modules, panels, and inverters, the components that turn sunlight into usable electrical architecture. In plain English, this is the factory code for photovoltaic equipment, from the cell level through finished panel assemblies and the inverter layer that makes the system workable.\n\nThat manufacturing character matters because the record opens the activity across the full business-scale ladder: Mikro, Kecil, Menengah, and Besar. A small workshop, a growing component maker, a mid-sized industrial producer, and a large factory all sit inside the scale language of the record. The code is therefore not framed only for large industrial capital, even though the product category naturally points toward equipment, production control, and supply-chain discipline. The editorial point is simple: the activity is defined by what is made, not by a single assumed company size.\n\nNationally, the foreign-investment position is clean. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, so the national foreign-ownership ceiling is 100%. That is the strongest form of openness available in the slim record: a PMA is not being pushed into a lower ownership cap by the fields provided here. The stated source is Perpres 10/2021, 49/2021. Nothing in the record adds a special licence condition, minimum capital figure, tax treatment, timeline, or operational threshold, so none should be read into the code.\n\nThe Bali reading is also unusually direct. The record does not mark this activity as blocked in Bali: l4_bali_blocked is false, and the status is OK_or_HIGHER_RISK. The reason given is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the Bali moratorium. That moratorium is still relevant background because the record says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently. But for this activity, the record’s own conclusion is that the moratorium does not block PMA registration in Bali today. The honest result is therefore not a hidden restriction: nationally open, 100% foreign ownership ceiling, and not blocked by the Bali rule recorded here.",
+    "pullQuote": "The honest result is therefore not a hidden restriction: nationally open, 100% foreign ownership ceiling, and not blocked by the Bali rule recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

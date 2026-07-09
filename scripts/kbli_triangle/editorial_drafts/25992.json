@@ -1,0 +1,27 @@
+{
+  "code": "25992",
+  "editorial": {
+    "headline": "Metal Kitchenware Manufacturing With a Clear Bali Path",
+    "standfirst": "KBLI 25992 covers the making of metal kitchen and table equipment, nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 25992 is a manufacturing code for the objects that sit closest to daily use: metal kitchenware and metal table equipment. Its scope covers production of kitchen tools made from aluminium and from other metals, including eating utensils, plates, shallow plates, bowls, teapots, pots, pans, kettles, cooking pots, steamers, food carriers, basins, trays, containers, and similar goods. The record also brings in other non-electric equipment used at the table or in the kitchen, small hand-operated kitchen tools and their accessories, and metal scouring tools.\n\nThat makes the code practical rather than decorative. It is not simply about finished consumer goods in a showroom; it is about the industrial making of household and kitchen objects from metal. A founder using this code should be describing a business whose core activity is fabrication or manufacture: shaping, producing, and supplying these kitchen and table items as metal goods. The record does not add separate permit names, technical standards, capital thresholds, or production-volume conditions, so the editorial picture stays deliberately within the activity definition and ownership fields provided.\n\nThe registration scale is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, so it can describe anything from a small producer of hand-operated kitchen tools to a larger factory making pans, kettles, trays, or related metalware. That does not mean every business model is identical; it means the KBLI record itself does not reserve the activity to only one scale. The important test is whether the actual registered activity remains the manufacture of the metal kitchen and table equipment named in the scope.\n\nThe national-vs-Bali picture is clean. Nationally, the PMA status is marked TERBUKA, with pma_max_asing recorded at 100, so the foreign-ownership ceiling is 100%. Bali does not add a separate percentage in this record. Its status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this code is not blocked on the provided Bali logic. For a foreign-owned setup in Bali, that is the central conclusion: this activity is nationally open and, on this slim record, not blocked by the Bali moratorium.",
+    "pullQuote": "For a foreign-owned setup in Bali, the central conclusion is that this activity is nationally open and not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "28173",
+  "editorial": {
+    "headline": "Electronic Office Machinery With a Clear Bali Path",
+    "standfirst": "KBLI 28173 covers the manufacture of electronic office and accounting machines, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 28173 is a manufacturing classification for electronic office and accounting machinery. The record defines it around the making of products such as electronic calculating machines, digital photocopiers, and cash registers. Its centre of gravity is not software, retail distribution, or generic electronics trading; it is the production of finished office and accounting machines with electronic functions. The scope also draws a boundary around what it is not: the manufacture of electronic subassemblies and components for computing machinery sits outside this activity.\n\nThe registration picture is broad. The slim record opens this activity to Mikro, Kecil, Menengah, and Besar scales, so it can describe anything from a small manufacturing setup to a larger industrial operation, provided the actual activity remains inside the recorded scope. That breadth matters because the classification is not reserved only for large factories. What anchors it is the kind of manufacturing being performed: electronic office and accounting machines, including the examples named in the record.\n\nNationally, the foreign-investment position is straightforward. The activity is marked TERBUKA, with pma_max_asing recorded at 100, under Perpres 10/2021, 49/2021. In plain English, the national record treats this activity as open to foreign ownership up to 100%. There is no lower ceiling, partner requirement, paid-up capital figure, licence timeline, or additional quantitative condition in the slim record, so none should be read into it.\n\nThe Bali picture is also clear, but for a different reason. The province’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. This activity is not marked as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The honest conclusion is therefore clean: based on this record, KBLI 28173 is nationally foreign-open and not blocked for PMA registration in Bali today.",
+    "pullQuote": "Based on this record, KBLI 28173 is nationally foreign-open and not blocked for PMA registration in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

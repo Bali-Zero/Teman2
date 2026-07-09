@@ -1,0 +1,27 @@
+{
+  "code": "28292",
+  "editorial": {
+    "headline": "Paper-Mill Machinery With a Closed Door in Bali",
+    "standfirst": "This activity covers the factory machinery behind pulp, paper, carton, paperboard, and paper-goods production, but Bali blocks PMA registration under its moratorium.",
+    "body": "**KBLI 28292 is an industrial machinery activity, not a paper-trading or paper-making activity.** The record places it around the manufacture of machines used inside paper plants: equipment for pulp processing, paper and carton production, paperboard making or finishing, drying machines for wood, pulp, and paper, and the machinery used to turn paper or paperboard into finished goods. That includes paper-cutting machines, envelope-making machines, paper-bag machines, and similar equipment. In plain English, this is the code for building the machines that make and finish paper-industry output.\n\nThat scope matters because it points to a manufacturing business with a technical production profile. The activity is open across the full recorded scale range: Mikro, Kecil, Menengah, and Besar. A small machine workshop and a larger industrial manufacturer are therefore both inside the scale language of the record, provided the actual registered activity remains the manufacture of the paper-plant and paper-goods machinery described above. The record does not add a licensing timetable, a capital floor, a tax treatment, or any operational threshold, so the clean editorial reading stops at the activity scope, the scale range, and the investment-access status it actually states.\n\nNationally, the picture is straightforward. The PMA status is TERBUKA, and the recorded maximum foreign ownership is 100%. For a foreign-owned company looking only at the national investment line, this is therefore not a capped activity. The stated national source is Perpres 10/2021, 49/2021. On the national record alone, the activity reads as fully foreign-open across the manufacturing scope described in the slim record.\n\nBali is the decisive exception. The record marks this activity as blocked for PMA registration in Bali: l4_bali_blocked is true, and the Bali status is BLOCCATO_CLASSE_RISCHIO. The reason given is that OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, which brings it inside the Bali moratorium dated May 13, 2026. The moratorium rule in the record is blunt: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest conclusion is narrow but important: KBLI 28292 is nationally open to full foreign ownership, yet a foreigner cannot register it as PMA in Bali today under the Bali-side block recorded here.",
+    "pullQuote": "KBLI 28292 is nationally open to full foreign ownership, yet a foreigner cannot register it as PMA in Bali today under the Bali-side block recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

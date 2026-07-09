@@ -1,0 +1,27 @@
+{
+  "code": "27112",
+  "editorial": {
+    "headline": "Generator Manufacturing Is Open Nationally, But Blocked in Bali",
+    "standfirst": "KBLI 27112 covers generator manufacturing across every business scale, yet the record blocks PMA registration in Bali under the province’s moratorium.",
+    "body": "KBLI 27112 is the manufacturing code for electric generators and their parts. Its scope is industrial rather than retail-facing: it covers the making of AC generators, DC generators, generator sets, stators, rotors, commutators, and rotary converters. The record also includes power generators, motor-generator devices, and generator units with a prime mover, while carving out battery-charging alternators for internal combustion engines and turbine generator devices. In plain English, this is the code for businesses that manufacture the machinery and core components that turn mechanical input into electrical output.\n\nThe code is broad in business scale. The record opens it to Mikro, Kecil, Menengah, and Besar operators, so it can describe anything from a very small producer of generator components to a large-scale manufacturer assembling complete generator systems. That breadth matters because the activity is not limited to one size of enterprise in the national classification record. A founder reading this code should therefore focus less on whether the activity sounds “big” and more on whether the actual business is manufacturing generators, generator parts, or covered generator devices.\n\nNationally, the foreign-investment picture is clear: the PMA status is TERBUKA, and the maximum foreign ownership shown in the record is 100%. The cited national basis is Perpres 10/2021, 49/2021. On the national layer alone, this is not presented as a closed or capped activity for foreign ownership. For a foreign-owned setup, that would normally be the clean headline: the classification is open, the ceiling is 100%, and every business scale is listed as open in the record.\n\nBali changes the practical answer completely. The record marks `l4_bali_blocked` as true and gives the reason as: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” It also states the province rule directly: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” So the honest reading is this: KBLI 27112 is nationally open to 100% foreign ownership, but a foreigner cannot register this activity as a PMA in Bali today under the Bali-side block recorded here. The source named for that Bali rule is Gubernur letter B.27.000/642/PM/DPMPTSP.",
+    "pullQuote": "KBLI 27112 is nationally open to 100% foreign ownership, but a foreigner cannot register this activity as a PMA in Bali today under the Bali-side block recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

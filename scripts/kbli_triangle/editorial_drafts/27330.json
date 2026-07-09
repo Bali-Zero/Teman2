@@ -1,0 +1,27 @@
+{
+  "code": "27330",
+  "editorial": {
+    "headline": "Cable-Accessory Manufacturing With a Clean PMA Reading",
+    "standfirst": "KBLI 27330 covers the making of electrical cable fittings and related hardware, with the record marking it nationally open to foreign ownership and not blocked by Bali's PMA moratorium.",
+    "body": "KBLI 27330 sits in the practical hardware layer of electrical infrastructure. Its scope is the making of current-carrying and non-current-carrying wire equipment for electrical circuits, across all materials. In plain English, this is the manufacturing of the components that let electrical systems connect, switch, protect, mount, and carry current: conductor bars, electrical conductors outside switchgear type, fittings, switches, sockets, GFCI units, lamp holders, lightning rods, coils, plugs, connectors, electrical boxes, conduit and its fittings, transmission poles, line hardware, and plastic non-current-carrying parts such as junction boxes, face plates, pole-line equipment, and plastic switch covers.\n\nThe business identity here is manufacturing, not trading, installation, or a general electrical-services label. A company choosing this code is saying that its activity is to make these cable accessories and wiring-equipment components. The record opens the activity to Mikro, Kecil, Menengah, and Besar scale, so the classification is not confined to a single business size. What matters is that the registered activity remains within the product scope: electrical cable equipment and related hardware, including both conductive parts and non-conductive supporting parts. Ceramic insulators are outside the stated scope.\n\nFor a foreign-owned PMA reading, the national position is unusually direct. The record marks the PMA status as TERBUKA and gives pma_max_asing as 100. That means the national foreign-ownership ceiling recorded here is 100%, not a partial cap. The cited source is the presidential-regulation source named in the record, and there is no separate national limitation stated in the slim record. For a founder checking the classification itself, the national answer is therefore open.\n\nThe Bali side does not reverse that answer. Bali's moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this activity is not marked as blocked. The Bali reason is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The honest reading is not national yes and Bali no; it is national yes, and Bali not blocked by the moratorium on this record. Do not add a Bali percentage, partnership condition, quota, or local-side cap: the record gives none.",
+    "pullQuote": "The honest reading is not national yes and Bali no; it is national yes, and Bali not blocked by the moratorium on this record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

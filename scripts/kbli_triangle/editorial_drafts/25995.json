@@ -1,0 +1,27 @@
+{
+  "code": "25995",
+  "editorial": {
+    "headline": "Metal Lighting Manufacturing, Without the Bali Moratorium Trap",
+    "standfirst": "KBLI 25995 covers metal-based lamps and components, nationally open to foreign ownership and not blocked for PMA registration in Bali under the record supplied.",
+    "body": "KBLI 25995 is a manufacturing classification for lamps whose main material is metal. The Indonesian scope is compact but clear: it covers the making of various metal lamps, including lighthouse lamps, pressure lamps, hanging lamps, and their components. This is not a retail or installation activity in the record; its centre of gravity is production, with the object being the metal lamp itself and the parts that belong to it.\n\nThe scale profile is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar operators, which means the classification is not framed only for a large factory or only for a small workshop. A business using this code could sit anywhere on that stated scale ladder, provided the registered activity remains within the recorded manufacturing scope: metal-based lamps and components. That scale openness matters because it tells the founder that the code is not inherently confined to one size of enterprise.\n\nNationally, the investment reading is direct. The PMA status is marked TERBUKA, and the foreign-ownership ceiling supplied in the record is 100%. In plain English, the national record treats this activity as open to foreign investment up to full foreign ownership. That conclusion should not be stretched into claims about permits, capital, operating timelines, taxes, or technical standards, because none of those details appear in the supplied record. The authoritative investment facts here are the status, the ceiling, the source, and the registered scale range.\n\nThe Bali picture is also clean, and it is important not to overcomplicate it. The record does not mark this KBLI as blocked in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently, but this record’s Bali-side assessment does not place the activity inside that blocked result. So the honest conclusion is that KBLI 25995 is nationally foreign-open and, on the supplied Bali record, not blocked by the Bali moratorium.",
+    "pullQuote": "The honest conclusion is that KBLI 25995 is nationally foreign-open and, on the supplied Bali record, not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

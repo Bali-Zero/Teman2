@@ -1,0 +1,27 @@
+{
+  "code": "29100",
+  "editorial": {
+    "headline": "Four-Wheel Motor Vehicle Manufacturing, Read at Factory Scale",
+    "standfirst": "KBLI 29100 is the vehicle-making code for cars, buses, commercial vehicles, engines, and special-purpose four-wheel machinery, with national foreign ownership open up to 100%.",
+    "body": "KBLI 29100 is a manufacturing code for the making and remaking of motor vehicles with four wheels or more. Its scope is broad, but it is not vague: it covers electric vehicles, hybrid combustion vehicles, autonomous vehicles, passenger cars, buses, ambulances, station wagons, vans, lorries, road tractors for semitrailers, trolley buses, rail coaches, and special-purpose vehicles. The record also brings vehicle engines into the frame, including electric motors used for propulsion, and it extends to the remanufacture of motor-vehicle engines.\n\nThe practical centre of gravity is clear. This is a production code, not a showroom code and not a light trading category. It is for operators whose business activity is the industrial creation or rebuilding of complete vehicles, vehicle platforms, or propulsion systems within the stated scope. The examples range from ordinary passenger and commercial vehicles to fire trucks, road sweepers, armoured vehicles, tow trucks, all-terrain vehicles, go-carts, racing cars, golf cars, amphibious vehicles, snow cars, travelling-library vehicles, and rural multipurpose four-wheel mechanical equipment. A founder choosing this code is therefore describing a manufacturing activity with a serious technical footprint.\n\nThe scale position is unusually open in the record: Mikro, Kecil, Menengah, and Besar are all listed as open. That matters because the code is not confined to one size of enterprise in the slim record. A small remanufacturing business and a large industrial manufacturer may both recognise themselves in the registered scope, provided the activity is genuinely within the making or remaking of the vehicles, engines, or special-purpose vehicle types described. The editorial caution is not to stretch the code beyond that factual centre. If the business is mainly producing unrelated components, bodies, agricultural machinery, forestry tractors, excavating machinery, or off-road dumping trucks, the record itself signals that those activities sit outside this scope.\n\nThe national-vs-Bali picture is clean rather than dramatic. Nationally, the record marks the PMA status as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national foreign-ownership ceiling is 100%. Bali does not add a separate percentage in this record, and the Bali status is not blocked: l4_bali_blocked is false, with the reason stated as “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule still matters as context, because Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently. But for this record, the conclusion is that KBLI 29100 is nationally foreign-open and not marked as blocked for PMA registration in Bali.",
+    "pullQuote": "The national-vs-Bali picture is clean rather than dramatic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "24201",
+  "editorial": {
+    "headline": "Precious Metals at the Basic-Materials Stage",
+    "standfirst": "KBLI 24201 covers the industrial making of precious metals in basic forms, nationally open to foreign ownership and not blocked for Bali PMA on this record.",
+    "body": "KBLI 24201 sits at the industrial beginning of the precious-metals chain. The record describes the activity as the making, refining, smelting, alloying, and casting of precious metals into basic forms: ingots, billets, slabs, bars, pellets, blocks, sheets, pigs, alloys, and powders. Its examples are deliberately material and unfinished: silver ingots, gold ingots, and platinum pellets. This is not a retail-facing description and not a jewellery description. It is about producing the base metal forms from which further industrial, commercial, or manufacturing activity can proceed.\n\nThat matters because the code is framed around process and form, not around a single commodity story. A founder registering this activity is telling OSS that the business handles precious metals at the primary industrial stage: purification, melting, blending into alloys, and casting into standardized shapes or powders. The scope is broad enough to cover different precious metals and several basic output formats, but it is still bounded by the record's own wording. The activity is the industrial creation of those base forms; anything beyond that would need its own source before it could be claimed.\n\nOn scale, the record is unusually clear. The activity is open to Mikro, Kecil, Menengah, and Besar scales. In practical editorial terms, this means the classification is not reserved in the record for only large industrial operators; it can be registered across the full scale ladder stated in the slim record. That does not create extra rights, licences, or operational permissions by itself. It simply tells us which business scales the record marks as open for this KBLI activity.\n\nThe national-vs-Bali picture is also straightforward. Nationally, the PMA status is TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. For Bali, the record does not mark this activity as blocked: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The stated reason is precise: OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the Bali moratorium that blocks all Low and Medium-Low risk KBLI for PMA. The honest reading is therefore clean: on this record, a foreign-owned company can treat KBLI 24201 as nationally open and not blocked for PMA registration in Bali, while still respecting the record's limits and not inventing any Bali-specific percentage, quota, or side condition.",
+    "pullQuote": "On this record, KBLI 24201 is nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

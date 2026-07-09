@@ -1,0 +1,27 @@
+{
+  "code": "26513",
+  "editorial": {
+    "headline": "Electronic Measuring Instruments, Nationally Open, Bali Scope-Dependent",
+    "standfirst": "KBLI 26513 covers factories making electronic measurement, testing, monitoring, control, and sensing equipment; nationally it is open to PMA up to 100%, while Bali depends on OSS risk by exact scope.",
+    "body": "This is the manufacturing code for electronic instruments that sense, measure, test, monitor, and control. The record's scope reaches laboratory analytical instruments, scales, balances, incubators, and other lab equipment used for measurement and testing. It also includes electronic measuring and inspection devices, whether tied to scientific investigation or not: automatic electronic controllers, speedometers, argometers, cathode-ray electronics, radar and radar equipment, radio control, electronic sensors, radiation detectors, and GPS.\n\nThe same scope continues into navigation, meteorology, geophysics, hydrology, and spectrophotometer instruments, plus digital measuring tools such as thermometers, barometers, and digital scales. It also covers proton and electron microscopes, except optical microscopes, and electronic monitoring and control modules with communication capability: IoT devices, embedded systems, data loggers, real-time monitoring units, early warning systems, including fire and theft alarms that send signals to a control station. The editorial point is not consumer electronics in general; it is instrumentation that turns physical conditions, movement, position, warning signals, and laboratory variables into measurable electronic information.\n\nThe record opens the activity to Mikro, Kecil, Menengah, and Besar scales. That matters because the code can hold anything from digital measuring tools to laboratory instruments, radar equipment, sensors, and electronic monitoring systems, provided the declared activity remains manufacturing inside this scope. The shared denominator is production, not a loose technology label. A registrant should treat the exact activity declaration as material, because the Bali field turns on OSS risk at scale Besar.\n\nNationally, the record is clean: pma_status is TERBUKA, pma_max_asing is 100, and the source named is Perpres 10/2021, 49/2021. Plainly stated, the national record allows full foreign ownership for PMA registration. Bali is not as clean. l4_bali_blocked is false, but l4_bali_status is BLOCCATO_DIPENDE_SCOPE. The reason is precise: OSS risk at scale Besar is low on some scopes but higher on others, so PMA registrability in Bali depends on declaring the higher-risk exact activity and checking live OSS for that activity. The standing Bali rule in this record is that the province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. So this is not a Bali no; it is a Bali yes only when the declared scope survives the OSS risk test.",
+    "pullQuote": "So this is not a Bali no; it is a Bali yes only when the declared scope survives the OSS risk test.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

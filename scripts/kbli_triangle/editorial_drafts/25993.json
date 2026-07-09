@@ -1,0 +1,27 @@
+{
+  "code": "25993",
+  "editorial": {
+    "headline": "Metal Household Goods With a Clear PMA Path",
+    "standfirst": "KBLI 25993 covers non-kitchen metal household products, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 25993 is a manufacturing category for household goods made from metal, outside the narrower world of kitchenware and table equipment. The record describes the activity as the production of other household-use tools and fixtures, made from aluminium or non-aluminium metals, including clothes-drying racks, ladders, bathtubs, dishwashing tubs, washbasins, and similar equipment. In plain English, this is the metal-fabrication lane for practical domestic products: the everyday objects that sit between light construction fittings and finished home utility goods.\n\nThe scope is industrial rather than retail-facing. A founder using this activity code is registering the making of the products, not merely selling them, importing them, or installing them as a service. The examples in the record matter because they give the code its texture: not ornamental metalwork, not kitchen utensils, not dining equipment, but household fixtures and tools that are useful, durable, and commonly formed from aluminium or other metals. The final word in the Indonesian scope, “Seluruh,” also indicates that the record treats the activity as covering the whole described scope rather than carving out a narrower subset.\n\nOn business scale, the registration path is broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar operators, which means it can describe anything from a small fabrication outfit producing simple household metal goods to a larger manufacturer running more formal production. That scale range is important for founders because the same activity definition can sit beneath very different operating models, provided the registered business is still genuinely engaged in making the household metal products described in the scope.\n\nThe national foreign-investment picture is clean. The record marks the PMA status as TERBUKA and gives the maximum foreign ownership as 100%, with the cited source shown as Perpres 10/2021, 49/2021. Bali does not add a separate foreign-ownership percentage in this record. Instead, the Bali question is whether the province-side moratorium blocks PMA registration for this activity. Here, it does not: `l4_bali_blocked` is false, and the Bali status is `OK_or_HIGHER_RISK`. The stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule still matters as background because the record says Bali blocks all low and medium-low risk KBLI for PMA, island-wide and permanent; but for this code, the record’s conclusion is that the activity is not blocked by that rule. For a foreign founder looking at Bali, the honest reading is therefore straightforward: this activity is nationally open to 100% foreign ownership and, on the record provided, not blocked for PMA registration in Bali today.",
+    "pullQuote": "For a foreign founder looking at Bali, the honest reading is straightforward: this activity is nationally open to 100% foreign ownership and not blocked for PMA registration in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "KBLI code",
+        "value": "25993"
+      },
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

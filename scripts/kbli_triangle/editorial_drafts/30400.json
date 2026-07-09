@@ -1,0 +1,27 @@
+{
+  "code": "30400",
+  "editorial": {
+    "headline": "Military Combat Vehicles, Treated as a National Industrial Activity",
+    "standfirst": "KBLI 30400 covers the manufacture and rebuilding of military combat vehicles, nationally open to PMA and not blocked by Bali’s moratorium record.",
+    "body": "KBLI 30400 is a defence-manufacturing activity, not a general automotive line. The record defines it around the making of military war vehicles, whether already fitted with weapons or not, and around the parts that make those vehicles what they are: armoured bodies, turrets, doors, protective structures, armour plate identified as part of a military combat vehicle, and other military war vehicles. Its centre of gravity is the combat platform itself: tanks, armoured combat carriers for transporting people, armoured supply or recovery vehicles with cranes, armoured amphibious military vehicles, and remotely operated tanks.\n\nThe scope also reaches factory inspection and rebuilding of military war vehicles. That matters because this code is not limited to first manufacture from a blank production line; it includes industrial rebuilding activity at the factory level. At the same time, the record keeps the boundary tight. It is not the making of weapons and ammunition, not ordinary passenger cars or trucks with light or detachable armour, not military ships, not repair and maintenance of military combat vehicles, and not military drones. The editorial reading is therefore precise: this is the industrial manufacture and factory rebuilding of military combat vehicles and their identified vehicle parts.\n\nOn registration scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar scales. That does not make the business ordinary; it simply means the scale field does not reserve the activity for one size of enterprise. A founder reading this record should separate two ideas that are often blurred: the activity’s industrial seriousness comes from the scope, while the scale availability comes from the registration data. The code can be registered across all listed business scales, but the substance remains defence-vehicle manufacturing.\n\nThe national-versus-Bali picture is clean. Nationally, the activity is marked **TERBUKA** for PMA, with `pma_max_asing` at 100, so the foreign-ownership ceiling in the record is 100%. Bali does not add a separate percentage, quota, or partnership condition in this data. The Bali status is **OK_or_HIGHER_RISK**, and `l4_bali_blocked` is false. The reason is explicit: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium field says Bali blocks all Low + Medium-Low risk KBLI for PMA, island-wide and permanent; this record is not caught by that block. The honest conclusion is therefore straightforward: for Bali, KBLI 30400 is not marked as blocked by the moratorium in the supplied record, while nationally it is foreign-open up to 100%.",
+    "pullQuote": "The honest conclusion is straightforward: KBLI 30400 is nationally foreign-open up to 100% and is not marked as blocked by Bali’s moratorium in this record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

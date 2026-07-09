@@ -1,0 +1,27 @@
+{
+  "code": "25120",
+  "editorial": {
+    "headline": "Metal Tanks and Pressure Vessels, Open Nationally and Not Blocked in Bali",
+    "standfirst": "KBLI 25120 covers metal storage tanks, insulated vessels, LPG cylinders, autoclaves, and silo tanks, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 25120 is a manufacturing classification for metal tanks, water reservoirs, vats, and similar containers made for equipment, storage, or industrial use. The record makes clear that the scope is not limited to simple storage. It includes vessels that may be lined or thermally insulated, and it extends into pressure-related products for compressed or liquefied gas, including autoclaves, LPG cylinders, and silo tanks. In practical terms, this is the code for fabrication businesses whose product is a metal vessel with an equipment, storage, or industrial function, rather than a disposable or transport-focused package.\n\nThat boundary matters because the record also separates this activity from ordinary metal packaging and from transport-container manufacturing. The emphasis here is on tanks, reservoirs, vats, pressure cylinders, and comparable industrial vessels. A founder using this code would need the commercial reality of the business to match that manufacturing profile: the making of metal storage or pressure containers, not merely trading them, filling them, or producing general-purpose packaging. The Indonesian scope is unusually concrete, and its examples help keep the classification anchored in the physical product being made.\n\nOn scale, the record is broad. It marks the activity as open to Mikro, Kecil, Menengah, and Besar. That means the classification is not framed in the slim record as a scale-exclusive activity; small workshops and larger industrial manufacturers can both sit inside the same KBLI identity if the actual activity remains the manufacture of these metal vessels. For a founder, the useful reading is that scale is not the deciding filter here. The deciding filter is the product: metal tanks, water reservoirs, vats, gas cylinders, autoclaves, LPG cylinders, silo tanks, and similar industrial containers.\n\nThe national foreign-investment position is also direct. The record marks PMA status as TERBUKA and gives pma_max_asing as 100, sourced to Perpres 10/2021, 49/2021. Put plainly, the national record treats this activity as open to foreign ownership up to 100%. The Bali-side result is not a contradiction of that national openness. The Bali status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason given is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA in Bali, but this record says KBLI 25120 is not blocked by that rule. For this activity, the honest picture is therefore unusually clean: nationally open to PMA, and not blocked for PMA registration in Bali by the moratorium record supplied.",
+    "pullQuote": "For this activity, the honest picture is unusually clean: nationally open to PMA, and not blocked for PMA registration in Bali by the moratorium record supplied.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

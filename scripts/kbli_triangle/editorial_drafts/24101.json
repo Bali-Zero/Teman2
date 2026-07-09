@@ -1,0 +1,27 @@
+{
+  "code": "24101",
+  "editorial": {
+    "headline": "Basic Iron and Steel at Industrial Scale",
+    "standfirst": "KBLI 24101 covers the foundational making of iron and crude steel, nationally open to foreign ownership and not blocked for PMA in Bali under the record supplied.",
+    "body": "KBLI 24101 is not a decorative manufacturing code. It is the industrial base of iron and steel: the making of iron and steel in basic form, beginning with materials such as iron ore pellets, sponge iron, pig iron, and moving into crude steel forms such as steel ingots, billets, blooms, and slabs. The record also places alloy iron and alloy steel inside the same field, together with furnace activity, steel converters, rolling mills, and finishing. In plain English, this is the code for turning mined products, scrap, and other sources into the basic iron and semi-finished steel forms that sit upstream of many later manufacturing chains.\n\nThe scope is broad because the activity is broad. It includes pig iron in basic block form, ferro-alloys, directly reduced iron products made from iron ore, hollow iron products, iron produced through electrolysis or other chemical refining processes, iron granules and iron powder, steel ingots and other basic steel forms, the remelting of iron or steel scrap ingots, and semi-finished steel from mining products and other sources. The important editorial point is that the code is about primary transformation, not retailing, trading, installation, or downstream fabricated goods. It is a heavy manufacturing category for the basic production stage itself.\n\nThe record opens this activity across the full business-scale ladder: Mikro, Kecil, Menengah, and Besar. That means the classification is not reserved in the record to one scale only, even though the commercial reality of iron and steel production will usually be shaped by plant, process, energy, raw material, and finishing capacity. For registration analysis, however, the slim record says the scale availability is complete. A founder reading this should therefore separate the legal classification question from the practical industrial question: the code describes the activity; the record states which scales are open to it.\n\nNationally, the PMA picture is clean. The record marks the activity as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. In Bali, the same record does not mark it as blocked. The Bali status is OK_or_HIGHER_RISK, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record is still important: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. But this activity, on the supplied record, is not caught by that block. The honest conclusion is therefore straightforward: KBLI 24101 is nationally open to foreign ownership up to 100%, and the Bali record supplied does not block PMA registration for it.",
+    "pullQuote": "The honest conclusion is straightforward: KBLI 24101 is nationally open to foreign ownership up to 100%, and the Bali record supplied does not block PMA registration for it.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

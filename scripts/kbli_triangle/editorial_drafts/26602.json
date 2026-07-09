@@ -1,0 +1,27 @@
+{
+  "code": "26602",
+  "editorial": {
+    "headline": "Electromedical Manufacturing With a Clear Bali Reading",
+    "standfirst": "KBLI 26602 covers the making of serious medical devices, from ECG and MRI equipment to ventilators, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 26602 is a manufacturing code for electromedical and electrotherapy equipment. In plain English, it covers the production of medical devices that use electrical, imaging, therapeutic, or connected functions: electrocardiograph equipment, eye-testing equipment, ozone and oxygen therapy equipment, diagnostic medical scanners, MRI equipment, ultrasonography equipment, electromedical endoscopy equipment, medical lasers, hearing aids, respiratory assistance and therapy devices, pacemakers, electric medical massage equipment, X-ray film viewers, and electromedical ventilators. The record also brings internet-of-things features inside the same activity, where the electromedical or electrotherapy device is made with connected functionality.\n\nThat scope is broad, but it is not vague. The centre of gravity is the making of equipment and supplies, not a general healthcare service description. A founder registering under this activity is describing a production business around electromedical or electrotherapy devices. The examples in the record range from diagnostic equipment to therapy equipment and assistive devices, which is why the activity reads as a serious industrial code rather than a narrow product label.\n\nThe scale picture is unusually straightforward in the slim record: Mikro, Kecil, Menengah, and Besar are all listed as open. That matters because the activity is not reserved in the record for only one size of operator. A small founder, a mid-sized manufacturer, or a larger industrial setup can all read the scale line without needing to invent a missing category. The record does not add any extra licence, capital, threshold, tax, or operating timeline, so none should be assumed from the editorial layer.\n\nThe foreign-ownership picture is also clear. Nationally, the PMA status is TERBUKA, and the foreign-ownership ceiling in the record is 100%, with Perpres 10/2021, 49/2021 named as the source. Bali does not change that into a hidden percentage. The Bali-side field is not a separate ownership cap; it says OK_or_HIGHER_RISK, with the reason: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this code is marked as not blocked. The honest reading, therefore, is simple: nationally open, foreign ownership up to 100%, and not blocked for PMA registration in Bali on the slim record provided.",
+    "pullQuote": "The honest reading is simple: nationally open, foreign ownership up to 100%, and not blocked for PMA registration in Bali on the slim record provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

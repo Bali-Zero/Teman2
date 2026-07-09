@@ -1,0 +1,27 @@
+{
+  "code": "28192",
+  "editorial": {
+    "headline": "Weighing-Machine Manufacturing Is Open Nationally, Blocked in Bali",
+    "standfirst": "KBLI 28192 covers non-laboratory weighing machines and their components, with full national PMA openness but a clear Bali block for PMA registration.",
+    "body": "For KBLI 28192, the activity is the manufacture of weighing machines outside the laboratory setting. The record places the work in practical, commercial, and domestic territory: scales for shops, offices, and households; baby scales and body scales; weighing devices integrated with calculators; station scales; continuous weighing scales; weighbridges; and other weighing equipment. The scope also includes both mobile and fixed forms, along with the manufacture of components and accessories. In plain English, this is the industrial production of everyday and operational weighing systems, not laboratory measurement equipment.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so the classification is not reserved only for large factories. A small producer of scale components and a larger manufacturer of weighbridge systems both sit inside the same recorded activity, provided the work remains within the stated scope: non-laboratory weighing machinery and its supporting parts. That breadth matters because the code is about the activity itself, not one single product size, customer type, or production footprint.\n\nNationally, the PMA reading is clean. The record marks the activity as TERBUKA, with pma_max_asing at 100 under Perpres 10/2021, 49/2021. That means the national foreign-ownership ceiling shown in the record is full foreign ownership. There is no lower national cap in this slim record, and no additional threshold, licence, tax, timeline, or capital rule is stated here. The national note is therefore simple: for foreign ownership, the record presents KBLI 28192 as open up to 100%.\n\nBali is the hard stop. The same record marks l4_bali_blocked as true and gives the status BLOCCATO_CLASSE_RISCHIO. Its stated reason is: \"OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026\". The moratorium rule supplied in the record is also explicit: \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\", with the source shown as Gubernur letter B.27.000/642/PM/DPMPTSP. So the honest reading is this: nationally, KBLI 28192 is foreign-open up to 100%; in Bali, a foreigner cannot register this activity as PMA today because the Bali-side block applies.",
+    "pullQuote": "Nationally, KBLI 28192 is foreign-open up to 100%; in Bali, a foreigner cannot register this activity as PMA today because the Bali-side block applies.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

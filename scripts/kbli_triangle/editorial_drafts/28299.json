@@ -1,0 +1,27 @@
+{
+  "code": "28299",
+  "editorial": {
+    "headline": "Special-Purpose Machinery Is Open Nationally, Blocked in Bali",
+    "standfirst": "KBLI 28299 covers a broad industrial machinery class: nationally open to foreign ownership, but not registerable by PMA in Bali under the record’s risk-class moratorium.",
+    "body": "KBLI 28299 is a catch-all industrial machinery classification for special-purpose machines that do not sit in the earlier, more specific machinery groups. The record describes machinery for rubber and soft-plastic processing, including extrusion, moulding, pneumatic-tyre and vulcanisation equipment; machinery for printing, bookbinding and print support on many kinds of material; three-dimensional printing machines; equipment for producing tiles, bricks, ceramic adhesives, pipes, graphite electrodes, chalk, cast-iron moulds and other industrial products. It also reaches into semiconductor plant machinery, industrial robots assigned to special-purpose tasks, equipment for assembling electric and electronic lamps, machinery for hot-working glass and glass products, and isotope-separation equipment.\n\nThat breadth is the point. This is not a narrow retail or service activity; it is a manufacturing-machine category for producers of technical equipment used by other industries. The scope also includes tyre-straightening and balancing equipment, tyre-mounting and removal machines including those for heavy equipment and defence equipment, central lubrication systems, aircraft launching gear, carrier catapults and related equipment, automatic bowling pin-setters, amusement equipment such as roundabouts, swings, shooting galleries and other entertainment-park devices, agricultural briquette-making machines, and additive industrial machinery. In plain English, the code is for manufacturers of specialised production, processing, assembly, industrial, defence-adjacent, entertainment-equipment and additive-manufacturing machines that fall within this residual special-purpose machinery class.\n\nOn scale, the national record is broad: the activity is open to Mikro, Kecil, Menengah and Besar. The foreign-investment position is also clear at the national level. The PMA status is marked TERBUKA, the maximum foreign ownership figure is 100, and the source is Perpres 10/2021, 49/2021. For a founder reading the national line only, that means the activity is presented as fully foreign-open, with a 100% foreign-ownership ceiling in the record and no partial cap stated here.\n\nBali changes the practical answer. The record marks `l4_bali_blocked` as true and gives the reason: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” It also states the moratorium rule as: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” So the honest reading is split: nationally, KBLI 28299 is open for PMA up to the recorded foreign-ownership ceiling; in Bali, a foreigner cannot register this activity today as PMA because the Bali-side record blocks it by risk class. The distinction matters: the block is not a separate Bali percentage, quota or local-partner formula. The only ownership percentage in the record is the national PMA figure; Bali’s status is a registration block under the stated moratorium.",
+    "pullQuote": "Nationally, KBLI 28299 is fully foreign-open in the record; in Bali, the same activity is blocked for PMA registration by risk class.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

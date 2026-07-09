@@ -1,0 +1,27 @@
+{
+  "code": "25994",
+  "editorial": {
+    "headline": "Welded steel profiles, open nationally and not blocked in Bali",
+    "standfirst": "KBLI 25994 covers welded steel profile manufacturing, from H-Beams to I-Beams, with national PMA openness and a Bali status that is not moratorium-blocked.",
+    "body": "KBLI 25994 is a manufacturing code for **Industri Profil Logam**: the making of steel profiles by welding. The slim record gives the practical shape of the activity clearly: H profiles, I profiles, H-Beams, I-Beams, and similar welded steel forms. This is not a vague metalworking category. It is about producing structural-looking profile shapes through a welding process, with the scope text keeping the emphasis on the profile itself rather than on downstream installation, trading, or construction services.\n\nThe record also draws a boundary around the activity. It states an exclusion for the manufacture of welded profiles for heavy construction, and repeats that exclusion in the source text. That matters because the code should be read as a defined industrial manufacturing activity, not as a licence to absorb every possible heavy-construction steel profile operation. A founder reading this code should treat the Indonesian scope as the controlling description: welded steel profiles such as H-Beam, I-Beam, and similar products are inside the frame; the excluded heavy-construction profile manufacturing language sits outside it.\n\nOn registration scale, the code is broad. The record marks it as open to **Mikro, Kecil, Menengah, and Besar** scales, so the classification is not reserved only for large industrial operators. In editorial terms, that says the KBLI can describe a small metal-profile operation as well as a larger manufacturing setup, provided the real activity remains within the stated scope. The scale list should not be overread as a promise about facilities, permits, capital, or operating conditions; it simply records the scales that are open in the slim record.\n\nThe national-vs-Bali picture is unusually clean here. Nationally, the PMA status is **TERBUKA**, with `pma_max_asing` recorded as **100**, so the foreign-ownership ceiling is properly rendered as **100%**. For Bali, the record does not create a separate foreign-ownership percentage and does not impose a Bali-side cap. Instead, it gives the Bali status as **OK_or_HIGHER_RISK** and says: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this code is not marked as blocked. The honest reading is therefore straightforward: for this record, KBLI 25994 is foreign-open nationally and not blocked for PMA in Bali by the cited provincial moratorium.",
+    "pullQuote": "The honest reading is straightforward: KBLI 25994 is foreign-open nationally and not blocked for PMA in Bali by the cited provincial moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

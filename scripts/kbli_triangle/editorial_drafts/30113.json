@@ -1,0 +1,27 @@
+{
+  "code": "30113",
+  "editorial": {
+    "headline": "Unmanned Marine Vehicles With a Clear National Opening",
+    "standfirst": "KBLI 30113 covers the making and assembly of unmanned water and underwater vehicles, with national PMA access open and no Bali moratorium block recorded.",
+    "body": "KBLI 30113 is a manufacturing and assembly activity for unmanned marine vehicles: surface craft and underwater vehicles designed to operate without a conventional crew on board. The record names unmanned surface vehicles and unmanned underwater vehicles, including remotely operated underwater vehicles, and it also recognises systems that can run by remote crew control, automatic artificial-intelligence-based control, or mixed control where the vehicle can be crewed if needed. In plain English, this is the industrial code for building advanced marine platforms rather than merely using them.\n\nThe scope is deliberately practical. These vehicles are described for bathymetric surveys, monitoring and mapping, underwater infrastructure inspection, marine research, underwater archaeological survey, rescue operations, and military operations. That range matters because it shows the activity is not limited to one narrow research niche. It sits across marine technology, vessel manufacturing, survey infrastructure, and specialist underwater work, while the record also places it in the wider context of boat and ship industry.\n\nFor registration scale, the record is broad: Mikro, Kecil, Menengah, and Besar are all open. That means the activity is not reserved in the record for only one size of operator. A founder reading this code should therefore focus first on whether the intended business is genuinely about making or assembling these vehicles, including their relevant control model and use case, rather than treating the code as a generic marine-services label.\n\nThe national foreign-investment position is clean. The record marks PMA status as TERBUKA and gives a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. Bali is also not marked as blocked: l4_bali_blocked is false, and the Bali-side reason says, “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule still matters as context because the record states that Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently, but this record does not place KBLI 30113 inside that blocked outcome. The honest reading is therefore direct: nationally open to foreign ownership up to the stated ceiling, and not blocked for PMA registration in Bali on the record provided.",
+    "pullQuote": "The honest reading is direct: nationally open to foreign ownership up to the stated ceiling, and not blocked for PMA registration in Bali on the record provided.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

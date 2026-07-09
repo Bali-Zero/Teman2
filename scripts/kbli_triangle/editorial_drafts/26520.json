@@ -1,0 +1,27 @@
+{
+  "code": "26520",
+  "editorial": {
+    "headline": "Timekeeping Manufacture Is Nationally Open, but Bali Blocks PMA Registration",
+    "standfirst": "KBLI 26520 covers the making of watches, clocks, time-recording devices, and their parts; nationally it is open to PMA, but Bali blocks PMA registration under its risk-class moratorium.",
+    "body": "For a foreign-owned company looking at KBLI 26520, the decisive fact is not the national ceiling. Nationally, the activity is marked **TERBUKA**, with foreign ownership permitted up to **100%** under **Perpres 10/2021, 49/2021**. In Bali, however, the record is explicit: this activity is blocked for PMA registration today. The reason given is: **OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026**.\n\nThe business activity itself is the manufacture of time-measuring equipment. In plain English, this means making watches and clocks of many kinds: wristwatches, pocket watches, necklace watches, wall clocks, alarm clocks, bells, clock-panel devices, and clocks that contain radioactive substances. The scope also reaches deep into the industrial anatomy of timekeeping: movement parts, jewels, dials, plates, hands, bridges, springs, clock faces, watch cases, including cases made from precious metal, and protective outer covers made from different materials.\n\nThis is not only a consumer-watch category. The record also brings in equipment that measures, records, or displays intervals of time using a watch or clock mechanism or a synchronous motor. That includes alarms for watches, panel-clock instruments, chronometers, stopwatches, parking time recorders, employee attendance time recorders, time and date stamps, process-time recorders, and time switches or time locks. The common thread is precise mechanical or motor-driven time measurement, whether the product sits on a wall, a wrist, a factory panel, a parking system, or an administrative timekeeping desk.\n\nOn scale, the national record is broad: **Mikro**, **Kecil**, **Menengah**, and **Besar** are all listed as open. That matters because it shows the activity is not confined to one size of enterprise in the national classification. But for a PMA structure in Bali, the scale openness does not rescue the filing. The Bali-side rule in the record says the province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. So the clean conclusion is this: KBLI 26520 can be understood as a nationally foreign-open timekeeping-manufacturing activity, but it cannot be registered by a foreign-owned company in Bali under the stated moratorium.",
+    "pullQuote": "KBLI 26520 is nationally open to full foreign ownership, but in Bali the record blocks PMA registration outright under the risk-class moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

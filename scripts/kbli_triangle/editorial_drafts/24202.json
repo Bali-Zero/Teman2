@@ -1,0 +1,27 @@
+{
+  "code": "24202",
+  "editorial": {
+    "headline": "The Basic Metals Code for Non-Ferrous Smelting and Casting",
+    "standfirst": "KBLI 24202 covers the industrial base where non-ferrous metals are refined, melted, alloyed, and cast into primary forms.",
+    "body": "KBLI 24202 is not a retail or workshop category. It is an industrial code for making non-ferrous metals in their basic forms: ingots, billets, slabs, rods, pellets, blocks, sheets, pig metal, powders, granules, alloys, cathodes, bearing metal, and related primary outputs. The record places brass, aluminium, zinc, copper, tin, rare-earth metals, and rare-earth alloys inside its scope, including the group of 15 lanthanides plus scandium and yttrium. In plain English, this is the upstream metal-making activity before those materials become components, consumer products, or construction inputs.\n\nThe operative verbs are refining, smelting, alloying, and casting. That matters because the code is anchored in transformation at the basic-metal stage, not merely trading, storing, or using finished metal. A business using this code is positioning itself as a producer of primary non-ferrous metal forms: the plant that turns material into ingots, billets, slabs, rods, pellets, cathodes, powder, granules, or alloys. The Indonesian scope is broad, but it is also specific: it repeatedly returns to non-ferrous metals in basic form, including rare-earth metals and their alloys.\n\nOn scale, the record is unusually broad. The activity is open to Mikro, Kecil, Menengah, and Besar operators. That does not make every project operationally simple, and the record does not give any capital, licensing, tax, land, or timeline detail. What it does say is that the KBLI scale door is not confined to a single business size. A founder reading this should separate that scale eligibility from the physical reality of the activity itself: this is still an industrial metals code whose scope is defined by smelting, refining, alloying, and casting primary non-ferrous outputs.\n\nThe national-vs-Bali picture is clean. Nationally, the code is marked TERBUKA, with a foreign-ownership ceiling of 100%. For a PMA reading of the record, that means the national field does not show a foreign-equity cap below full foreign ownership. Bali is also not marked as blocked: the Bali-side status is OK_or_HIGHER_RISK, and the reason is stated as “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium text in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this record does not place KBLI 24202 inside that blocked result. The honest conclusion is therefore straightforward: on the fields provided, KBLI 24202 is nationally foreign-open and not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "pullQuote": "The honest conclusion is straightforward: KBLI 24202 is nationally foreign-open and not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

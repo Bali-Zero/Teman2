@@ -1,0 +1,27 @@
+{
+  "code": "22206",
+  "editorial": {
+    "headline": "Industrial Plastic Parts With a Clear PMA Route in Bali",
+    "standfirst": "KBLI 22206 covers technical and industrial plastic goods, from machine components to conveyor belts, and is nationally open to full foreign ownership.",
+    "body": "KBLI 22206 is the industrial end of plastic manufacturing: not household packaging as a general idea, but plastic goods and equipment made for technical or industrial use. The record’s scope points to plastic machine parts, motor-drive components, transmission parts, body and frame elements, suspension and steering components, axles, industrial bottles, pipes, plastic cabinets, and conveyor belts. In plain English, this is the code for plastic fabrication where the finished output serves machinery, production systems, vehicles, or industrial infrastructure.\n\nThat breadth matters because the activity is open across every business scale named in the record: Mikro, Kecil, Menengah, and Besar. A small workshop producing specialised plastic fittings and a larger manufacturer supplying plastic technical components can both sit within the same activity description, provided the actual business is still the manufacture of plastic goods and equipment for technical or industrial purposes. The code is therefore not defined by company size; it is defined by what is being made and the industrial function those products serve.\n\nNationally, the PMA position is straightforward. The record marks the activity as TERBUKA and gives the foreign-ownership ceiling as 100%. That means the national classification, on this record, does not impose a foreign-share cap below full ownership. It is still important to keep that sentence narrow: the record gives the PMA status, the maximum foreign share, the legal source, and the eligible scales; it does not create any separate licence, capital threshold, operating permit, or tax conclusion beyond those fields.\n\nThe Bali reading is also unusually clean. The record does not mark this code as blocked for PMA registration in Bali. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. That sits against the moratorium rule recorded here, which blocks all Low and Medium-Low risk KBLI for PMA across Bali. For this activity, the supplied record’s conclusion is that the moratorium does not block it. The honest planning takeaway is therefore not a hidden Bali ceiling or a local-partner condition; it is that this industrial plastic manufacturing code is nationally open to 100% foreign ownership and, on the Bali fields provided, not blocked by the island-wide PMA moratorium.",
+    "pullQuote": "The honest planning takeaway is that this industrial plastic manufacturing code is nationally open to 100% foreign ownership and not blocked by the Bali PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

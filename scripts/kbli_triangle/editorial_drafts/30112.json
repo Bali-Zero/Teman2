@@ -1,0 +1,27 @@
+{
+  "code": "30112",
+  "editorial": {
+    "headline": "Offshore and Floating Structures With a Clear Bali Path",
+    "standfirst": "KBLI 30112 covers industrial construction of offshore and floating structures, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 30112 is an industrial code for building offshore constructions and floating structures, together with their equipment and fittings. Its scope is deliberately heavy and marine-facing: platforms and floating or diving structures for drilling activity; floating docks, lifeboats and floating cranes; floating bridges, pontoons and coffer-dams; floating landing structures, living quarters, jackets, platforms and mooring buoys; buoys, floating tanks, barges, crane vessels and inflatable rafts that are not for recreation. The record also includes hovercraft manufacturing, while excluding recreational hovercraft.\n\nThat makes this a manufacturing and construction activity, not a general marine-service label. A company using this code should be anchored in the making of these offshore or floating assets: the physical structures, hull-like equipment, support buildings and marine industrial units named in the scope. The language of the record is broad, but it is not casual. It points to engineered objects built for work at sea, on water, around drilling activity or in floating infrastructure contexts.\n\nOn scale, the record is unusually straightforward. It is open to Mikro, Kecil, Menengah and Besar operators, so the registration pathway is not confined to one business size. A small workshop fabricating qualifying floating components and a larger industrial builder making platforms or floating cranes sit within the same scale logic, provided the registered activity remains the construction or manufacture described by the record. The important editorial point is that scale openness does not change the identity of the activity: the code is still about building offshore and floating structures, including their equipment and fittings.\n\nThe national foreign-ownership position is clean. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%, with the source recorded as Perpres 10/2021, 49/2021. Bali also does not block this code under the moratorium record supplied here. Its Bali status is OK_or_HIGHER_RISK, with the reason stated as: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. That matters because the Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. For this code, the supplied Bali-side result is not a percentage, quota or partnership condition; it is simply that the record does not mark PMA registration as blocked in Bali.",
+    "pullQuote": "For this code, the supplied Bali-side result is not a percentage, quota or partnership condition; it is simply that the record does not mark PMA registration as blocked in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

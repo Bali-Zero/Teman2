@@ -1,0 +1,27 @@
+{
+  "code": "27900",
+  "editorial": {
+    "headline": "Other Electrical Equipment, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 27900 covers a wide band of electrical equipment manufacturing, nationally open to PMA, but the Bali record blocks PMA registration under the moratorium.",
+    "body": "KBLI 27900 is the manufacturing home for electrical equipment that sits outside the better-known families of motors, generators, transformers, batteries, wiring, lighting equipment, and household appliances. In practical English, it is a broad industrial category for making specialised electrical devices and components: battery chargers, electric door openers and closers, bells, extension cables made from purchased insulated wire, ultrasonic cleaning machines outside laboratory and dental use, tanning beds, fuel cells outside motor vehicles, regulated and unregulated power supplies, UPS units, surge suppressors outside distribution-voltage level, appliance cords, electrical extension cords, carbon and graphite electrodes and contacts, particle accelerators, capacitors, resistors, condensers, electromagnets, sirens, scoreboards, electric advertising signs, traffic and pedestrian signalling equipment, and related electrical products named in the record.\n\nThat breadth matters because this is not a retail or service label. It is an industrial manufacturing classification for businesses that actually make the equipment or electrical product identified in the scope. The record opens the activity across all listed enterprise scales: Mikro, Kecil, Menengah, and Besar. A founder reading the code should therefore treat scale as a registration dimension, not as a clue that the activity changes character. Whether the operation is small or large, the core activity remains the production of other electrical equipment within the scope stated above.\n\nThe national PMA picture is clean. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. In plain terms, the national record treats this activity as open to foreign investment up to a 100% foreign-ownership ceiling. There is no separate percentage to calculate, soften, or reinterpret. If the question is only whether the national classification is foreign-open, the answer from the record is yes.\n\nBali is the decisive constraint. The same record marks l4_bali_blocked as true and gives the reason: \"OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026\". The moratorium rule is equally direct: \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\". So the honest reading is national openness without Bali registrability for PMA today. A foreign investor can see a 100% national ceiling in the record, but that does not make this activity registerable as PMA in Bali under the Bali-side block recorded here.",
+    "pullQuote": "A foreign investor can see a 100% national ceiling in the record, but that does not make this activity registerable as PMA in Bali under the Bali-side block recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

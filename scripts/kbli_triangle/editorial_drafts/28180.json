@@ -1,0 +1,27 @@
+{
+  "code": "28180",
+  "editorial": {
+    "headline": "Powered Hand-Tool Manufacturing: Open Nationally, Blocked in Bali",
+    "standfirst": "This code covers factories making powered hand tools, open nationally across all scales, but the record blocks PMA registration in Bali under the moratorium.",
+    "body": "Powered hand-tool manufacturing is a compact industrial category with a practical centre of gravity: the making of hand-held tools driven by power. The record describes tools moved by electric motors, non-electric motors, air pressure, or water pressure. Its examples are workshop and construction staples: circular and reciprocating saws, chainsaws, drills and hammer drills, hand-operated sand spreaders, pneumatic nailers, buffers, routers, grinders, staplers, nail guns, planers, shears and pliers, adjustable wrenches, and powder-actuated fastening tools.\n\nIn plain English, this is not general machinery manufacturing and it is not retail trading in tools. It is the factory-side activity of producing powered tools that workers can carry, guide, hold, or operate by hand. The record is broad enough to include electric, pneumatic, hydraulic, and other powered formats, but it remains anchored in the same industrial idea: making practical, hand-operated equipment for cutting, drilling, fastening, grinding, shaping, sanding, gripping, or driving fixings. A founder using this code would normally be describing a production business, not a showroom, service desk, or import-only operation.\n\nOn the national investment reading, the code is clearly foreign-open. The PMA status is marked **TERBUKA**, the foreign-ownership ceiling is **100%**, and the cited basis is **Perpres 10/2021, 49/2021**. The record also opens the activity to the full range of business scales: **Mikro**, **Kecil**, **Menengah**, and **Besar**. That matters because the code is not written only for a large industrial plant; the slim record recognises it across all listed scales. Nationally, therefore, the basic signal is straightforward: a foreign-owned company can sit inside this activity, and the ownership ceiling shown in the record is complete foreign ownership.\n\nBali is the decisive caveat, and it changes the practical answer for PMA founders on the island. The Bali-side status is **BLOCCATO_CLASSE_RISCHIO**, with `l4_bali_blocked` marked true. The stated reason is: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” Spelled out, the record says this activity may be open nationally, but it is blocked for PMA registration in Bali because the Bali province rule blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently. For a foreign founder, the honest reading is not “open with a Bali nuance”; it is open nationally, but unavailable for PMA registration in Bali today under the moratorium recorded here.",
+    "pullQuote": "For a foreign founder, the honest reading is not “open with a Bali nuance”; it is open nationally, but unavailable for PMA registration in Bali today under the moratorium recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

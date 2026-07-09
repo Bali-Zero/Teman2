@@ -1,0 +1,27 @@
+{
+  "code": "28263",
+  "editorial": {
+    "headline": "Leather-Product Machinery, Open Nationally but Blocked for PMA in Bali",
+    "standfirst": "This activity covers machinery for preparing, tanning, working, making, and repairing leather products, with a national foreign-ownership ceiling of 100%.",
+    "body": "KBLI 28263 is about the machinery behind leather production, not the leather goods themselves. The record describes an industrial activity for making machines used to prepare, tan, or work leather, and machines used to make or repair footwear and other products from large hides, small hides, and fur-bearing skins. In plain English, this is the manufacturing lane for the equipment that turns animal-derived leather materials into workable industrial inputs and finished leather-product processes.\n\nThat distinction matters because the activity sits upstream of the finished product. A company registering this code is not simply trading shoes or bags; it is positioning itself as a maker of the machines used in leather preparation, leather processing, and the production or repair of footwear and other leather goods. The slim record also marks the scope as \"Seluruh\", so the editorial reading has to stay broad: the activity covers the full stated scope of machinery for leather-product preparation and manufacture, rather than a narrowed sub-segment.\n\nOn scale, the record is unusually clear. The activity is open to Mikro, Kecil, Menengah, and Besar operators. That means the code is not framed only for large industrial players; the registration window in the record spans the full scale ladder. Nationally, it is also marked TERBUKA for PMA, with pma_max_asing at 100 and the source given as Perpres 10/2021, 49/2021. The national picture, therefore, is straightforward: the slim record treats foreign ownership as open up to 100%.\n\nBali is the hard qualification, and it changes the practical answer for a foreign-owned setup on the island. The record marks l4_bali_blocked as true and gives the status as BLOCCATO_CLASSE_RISCHIO. The stated reason is: \"OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026\". The moratorium rule is equally direct: \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\". So the honest reading is not that Bali applies a different percentage, quota, or partnership formula. The record gives no Bali-side cap at all. It says this nationally open, 100% foreign-ownership activity is blocked for PMA registration in Bali because of the Bali moratorium rule attached to the recorded risk classification.",
+    "pullQuote": "The honest reading is that this nationally open, 100% foreign-ownership activity is blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

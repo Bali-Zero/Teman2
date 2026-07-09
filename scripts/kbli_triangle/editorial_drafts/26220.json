@@ -1,0 +1,27 @@
+{
+  "code": "26220",
+  "editorial": {
+    "headline": "Computer Peripherals Manufacturing, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 26220 covers the factory side of computer peripherals: nationally open to foreign ownership, but not registerable as PMA in Bali under the record’s moratorium rule.",
+    "body": "KBLI 26220 is the manufacturing code for the physical equipment that sits around a computer and makes it usable: storage devices, input devices, output devices, display hardware, scanning equipment, and immersive-media peripherals. In plain English, this is not software, consulting, retail, repair, or online trading. It is the industrial production of computer peripherals themselves: magnetic disk drives, flash drives and other storage equipment; optical disk drives for computers; printers; monitors; keyboards; mice, joysticks and trackball accessories; scanners, including barcode scanners; smart card readers; computer projectors; and immersive-media equipment such as virtual reality helmets and augmented reality glasses. The record also brings in multifunction office equipment that can print, copy and fax, which places this activity firmly in the machinery-and-device manufacturing world rather than the services layer around it.\n\nThe scale position is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar scales, so the code is not confined to one size of operator. A small workshop-like manufacturer and a larger industrial producer both belong inside the same activity frame if the work is the making of these computer peripheral products. That breadth matters because the code describes the object of production, not a single commercial format. What unifies the category is the act of manufacturing peripheral computer equipment: devices that store, display, input, output, scan, project, or extend computer interaction into immersive media.\n\nNationally, the foreign-investment picture is simple and generous. The PMA status is TERBUKA, and the maximum foreign ownership figure in the record is 100%. On the national reading, therefore, a foreign-owned company can hold the full foreign stake allowed by the record for this activity. The source named for that national position is Perpres 10/2021, 49/2021. There is no partial ceiling in the record, no special ownership split, and no extra national condition stated here. The editorial conclusion at national level is clean: as a KBLI activity, computer peripherals manufacturing is foreign-open up to 100% according to the slim record.\n\nBali is the decisive complication. The record marks the Bali status as BLOCCATO_CLASSE_RISCHIO and sets `l4_bali_blocked` to true. Its reason is explicit: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule in the record says Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent, with the source identified as Gubernur letter B.27.000/642/PM/DPMPTSP. That means the honest operating sentence is not “open in Bali with conditions.” It is sharper: a foreigner cannot register this activity as PMA in Bali today, even though the same code is nationally open to 100% foreign ownership.",
+    "pullQuote": "A foreigner cannot register this activity as PMA in Bali today, even though the same code is nationally open to 100% foreign ownership.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

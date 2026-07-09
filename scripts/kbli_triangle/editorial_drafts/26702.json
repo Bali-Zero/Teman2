@@ -1,0 +1,27 @@
+{
+  "code": "26702",
+  "editorial": {
+    "headline": "Cinematography Equipment Manufacturing, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 26702 covers the manufacture of cinematography cameras, projectors, and related accessories, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 26702 is a manufacturing activity, not a production-house, studio, rental, or media-service category. The slim record defines it around the making of cinematography equipment: various kinds of cinematography cameras and projectors, whether or not they are fitted with sound recording and reproduction apparatus. It also reaches the making of cinematography accessories, including camera frames, camera casings, and film holders. In plain English, this is the industrial side of cinema hardware: the physical devices and fittings that allow moving images to be captured, projected, housed, or handled.\n\nThat scope matters because the record places the activity inside manufacturing, and it is open across the listed operating scales: Mikro, Kecil, Menengah, and Besar. A founder reading this code should therefore see it as suitable where the registered business is making the equipment itself or its cinematography-specific accessories. The record does not add separate language on retail, distribution, repair, content creation, venue operation, or film services, so those ideas should not be smuggled into the interpretation. The editorial centre of gravity remains narrow: cameras, projectors, sound-capable or not, and the accessory hardware named in the scope.\n\nNationally, the investment picture is clean. The record marks the PMA status as **TERBUKA**, with `pma_max_asing` at **100%**. That means the national foreign-ownership ceiling recorded for this activity is 100%, not a lower capped stake. The source field for that PMA reading is `Perpres 10/2021, 49/2021`. Nothing in the slim record adds a minimum capital figure, special licensing threshold, tax treatment, registration timeline, or operational condition, so the correct reading is limited but useful: this activity is nationally open to foreign investment at the full percentage shown in the record.\n\nThe Bali picture is also important, because many KBLI choices that look viable nationally can fail at the Bali registration layer. Here, the slim record does **not** mark the activity as blocked in Bali: `l4_bali_blocked` is false, and the Bali status is `OK_or_HIGHER_RISK`. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently; this code is not caught by that block on the facts provided. So the honest conclusion is restrained but positive: KBLI 26702 is nationally foreign-open, and the Bali moratorium data supplied here does not block PMA registration for it today.",
+    "pullQuote": "The honest reading is restrained but positive: KBLI 26702 is nationally foreign-open, and the Bali moratorium data supplied here does not block PMA registration for it today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "30111",
+  "editorial": {
+    "headline": "Crewed Shipbuilding Without a Bali Moratorium Block",
+    "standfirst": "This activity covers the manufacture and assembly of crewed surface and underwater vessels, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "**KBLI 30111 is industrial shipbuilding for crewed vessels, not a loose maritime services category.** The record frames it around the making or assembly of water and underwater vehicles, military or civilian, whose core functions depend on a physically present crew. Navigation, propulsion, and safety are explicitly tied to crewed operation. In practical language, the activity includes passenger ships, ferries, cargo ships, tankers, tugboats, commercial sailing vessels, warships, research vessels, fishing vessels, and vessels used for fish processing or preserving fishery products when those vessels can operate only with crew physically on board.\n\nThat scope gives the code a manufacturing character. It is about building or assembling the vessel itself: industri perahu, industri kapal, and the wider set of crewed ships and underwater craft described in the record. A founder using this activity would be registering an industrial undertaking around vessel production or assembly, not merely operating a ferry route, providing logistics, or trading marine equipment. The defining question is whether the business is making or assembling crewed water or underwater vehicles that perform their main functions through an onboard crew.\n\nThe scale picture is broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar. That matters because it does not reserve the activity only for large industrial groups in the slim data; it recognises the activity across the full listed scale range. At the same time, the content of the scope remains heavy and specific: the activity is still ship and boat industry work, including commercial, research, fishing, cargo, tanker, tug, ferry, passenger, and military vessel examples given by the record.\n\nThe national foreign-investment picture is clean: the activity is marked TERBUKA, with pma_max_asing at 100. Put plainly, the national record treats it as open to foreign ownership up to 100%. Bali does not introduce a separate percentage in this record, and none should be inferred. The Bali-side status is OK_or_HIGHER_RISK, with l4_bali_blocked set to false. The reason is also explicit: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this activity is not blocked by that moratorium in the slim record.",
+    "pullQuote": "The national record treats this activity as open to foreign ownership up to 100%, and the Bali record does not mark it as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "27530",
+  "editorial": {
+    "headline": "Non-Electric Household Appliances With a Clear Bali Route",
+    "standfirst": "KBLI 27530 covers the making of non-electric domestic cooking, heating, and warming equipment, with national PMA access and no Bali moratorium block in the record.",
+    "body": "KBLI 27530 is a manufacturing code for household equipment that works without electricity. The record places it around domestic cooking and heating appliances: cooking stoves, grills, water heaters, food warmers, plate warmers, and non-electric room heaters such as stoves or fireplaces. Its centre of gravity is practical household hardware, not commercial machinery or electrical appliances.\n\nThat boundary matters. The activity is about making products for household use where heat is generated or managed without an electrical system. It includes the familiar objects that sit between domestic utility and light industrial fabrication: a stove body, a grill unit, a warmer, a water-heating appliance, or a fireplace-style room heater. The record also draws a clear exclusion line around commercial equipment such as commercial refrigeration, air conditioning, attic fans, permanent room-heating systems, commercial ventilation or exhaust fans, commercial cooking appliances, laundry and dry-cleaning equipment, and commercial vacuum cleaners. In plain English, this code is not a catch-all for every appliance workshop; it is for non-electric household appliances within the described domestic scope.\n\nThe registration picture is broad on scale. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar operators, so it can describe anything from a small producer to a larger manufacturing setup, provided the business is still inside the stated activity. Nationally, the PMA status is TERBUKA, and the foreign-ownership ceiling is 100%. That means the national record does not impose a foreign-share cap below full ownership for this activity. The legal source named in the record is Perpres 10/2021, 49/2021, and the practical reading is simple: for a foreign-owned company, this code is nationally open.\n\nThe Bali side is also unusually clear. The record does contain the Bali moratorium rule: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But for this specific record, l4_bali_blocked is false. The Bali status is OK_or_HIGHER_RISK, and the reason given is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. So the honest national-vs-Bali picture is not a contradiction here. Nationally, the activity is open to PMA up to 100%; in Bali, the record does not mark it as blocked by the moratorium. The remaining discipline is editorial as much as legal: stay inside the household, non-electric manufacturing scope, and do not stretch the code into commercial appliance production that the record expressly excludes.",
+    "pullQuote": "Nationally, the activity is open to PMA up to 100%; in Bali, the record does not mark it as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}
