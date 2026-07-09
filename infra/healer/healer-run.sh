@@ -28,7 +28,7 @@ set -u
 LOG_DIR="$HOME/logs/healer"
 LOG="$LOG_DIR/healer.log"
 mkdir -p "$LOG_DIR"
-REPO="$HOME/Desktop/nuzantara"
+REPO="${HEALER_REPO:-$HOME/Desktop/nuzantara}"
 SIDECAR_DIR="$HOME/.organism/last_seen"
 SIDECAR="$SIDECAR_DIR/mini.healer.json"
 PIDFILE="/tmp/nuzantara-healer.pid"
@@ -122,14 +122,7 @@ fi
 
 # Receptor 2: proprioception — boundary divergences on THIS machine
 PROP_JSON=$(python3 scripts/proprioception.py --json --no-fetch 2>/dev/null)
-DIVERGED=$(printf '%s' "$PROP_JSON" | python3 -c "
-import json,sys
-try:
-    d=json.load(sys.stdin)
-    print(sum(1 for p in d.get('probes',[]) if str(p.get('verdict','')).upper()=='DIVERGED'))
-except Exception:
-    print(0)
-" 2>/dev/null)
+DIVERGED=$(printf '%s' "$PROP_JSON" | python3 scripts/healer_run_checks.py count-diverged 2>/dev/null || echo 0)
 if [ "${DIVERGED:-0}" -gt 0 ] 2>/dev/null; then
     ACTIONABLE=1; REASONS="${REASONS}proprioception:${DIVERGED}-diverged "
 fi
@@ -290,7 +283,16 @@ if [ $CEXIT -eq 0 ]; then
     heartbeat "ok" "session done: ${REASONS}"
     telegram "🩹 HEALER (Mini): run completato su ${REASONS}. Esito: ${TAIL:0:400}"
 else
-    heartbeat "degraded" "session exit=$CEXIT"
-    telegram "⚠️ HEALER (Mini): sessione uscita $CEXIT su ${REASONS}. Log: $SESSION_LOG"
+    FAILURE_CLASS=$(printf '%s' "$TAIL" | python3 scripts/healer_run_checks.py classify-session-tail 2>/dev/null || echo session_error)
+    if [ "$FAILURE_CLASS" = "rate_or_quota_limit" ]; then
+        heartbeat "degraded" "claude quota/rate limit: ${REASONS}"
+        telegram "⚠️ HEALER (Mini): Claude quota/rate limit su ${REASONS}. Nessuna cascade debole per policy; log: $SESSION_LOG"
+    elif [ "$FAILURE_CLASS" = "auth_required" ]; then
+        heartbeat "degraded" "claude auth required: ${REASONS}"
+        telegram "⚠️ HEALER (Mini): Claude auth richiesta su ${REASONS}. Nessuna cascade debole per policy; log: $SESSION_LOG"
+    else
+        heartbeat "degraded" "session exit=$CEXIT"
+        telegram "⚠️ HEALER (Mini): sessione uscita $CEXIT su ${REASONS}. Log: $SESSION_LOG"
+    fi
 fi
 exit 0
