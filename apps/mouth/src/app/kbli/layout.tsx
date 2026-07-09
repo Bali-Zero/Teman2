@@ -3,6 +3,7 @@ import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
 import { HeaderWhatsAppCTA } from "@/components/funnel/HeaderWhatsAppCTA";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
+import { MobileNav } from "@/app/v2/_components/MobileNav";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -16,6 +17,8 @@ export default function KBLILayout({
 }: {
   children: React.ReactNode;
 }) {
+  const navItems = getFunnelNavItems("kbli");
+
   return (
     <div
       className={`${montserrat.variable} relative z-1`}
@@ -25,7 +28,8 @@ export default function KBLILayout({
     >
       <NavShell
         logo={<BZLogo variant="full" />}
-        items={getFunnelNavItems("kbli")}
+        items={navItems}
+        slotAfter={<MobileNav items={navItems} />}
         actions={<HeaderWhatsAppCTA funnel="kbli" />}
       />
       <SessionInit funnel="kbli" />
