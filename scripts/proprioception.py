@@ -391,7 +391,7 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "launchd exit-code <-> payload log content (W84)",
         "machines": ["all"], "tags": ["launchd"], "timeout_sec": 60,
         "severity": "P1", "parse": "findings_list", "unwrap_key": "findings",
-        "verdict_key": "verdict", "ok_values": ["OK", "NOT-LOADED"],
+        "verdict_key": "verdict", "ok_values": ["OK", "NOT-LOADED", "RECOVERED"],
         "fix_hint": "read the job's real log; DEAD-GREEN = TCC re-grant (operator); ARMED-TO-NOTHING = retire or repoint the plist",
     },
     {
