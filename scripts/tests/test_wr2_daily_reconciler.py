@@ -6,6 +6,7 @@ that says why". `decide()` is pure (no DB, no launchctl) by construction.
 from __future__ import annotations
 
 import importlib.util
+import asyncio
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -97,9 +98,42 @@ def test_rejected_only_goes_new_topic_and_escalates_late():
     assert d.action == "new_topic" and d.escalate
 
 
-def test_late_inflight_still_waits_but_flags_escalation():
+def test_late_inflight_still_waits_without_escalation():
     d = rec.decide([_row("rendering", updated_min_ago=5, now=EVENING)], EVENING)
-    assert d.action == "wait" and d.escalate
+    assert d.action == "wait" and not d.escalate
+
+
+def test_tick_wait_writes_running_heartbeat_without_p0(monkeypatch):
+    class FakeConn:
+        async def fetch(self, *_args, **_kwargs):
+            return [_row("drafts_imaged_checked", updated_min_ago=5, now=EVENING)]
+
+    heartbeats = []
+    notifications = []
+    monkeypatch.setattr(rec, "_heartbeat", lambda status, note: heartbeats.append((status, note)))
+    monkeypatch.setattr(
+        rec,
+        "_tg_notify",
+        lambda tier, dedup_key, text: notifications.append((tier, dedup_key, text)) or True,
+    )
+
+    rc = asyncio.run(
+        rec._tick(
+            FakeConn(),
+            EVENING,
+            EVENING.astimezone(timezone.utc),
+            dry_run=False,
+            escalate_hour=17,
+            stuck_hours=2,
+            max_attempts=3,
+        )
+    )
+
+    assert rc == 0
+    assert len(heartbeats) == 1
+    assert heartbeats[0][0] == "running"
+    assert heartbeats[0][1].startswith("wait: draft ")
+    assert notifications == []
 
 
 # ── visibility verify/backfill (Codex red-team #1/#15: status='rendered' is a proxy) ──
