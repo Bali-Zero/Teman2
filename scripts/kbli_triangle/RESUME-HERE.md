@@ -1,5 +1,8 @@
 # KBLI editorial regen — RESUME HERE (paused 2026-07-10 ~12:15 CST)
 
+> **TRIGGER WORD: `KBLIREGEN`** — when Zero types it at session start, this file is the resume
+> command. Count drafts, probe Codex quota on the Pro, and resume (steps in "HOW TO RESUME" below).
+
 **Mandate**: `/goal` — a magazine-grade editorial for every one of the 1559 KBLI 2025 codes
 (`intel_2026.editorial`), then apply → website + native app aligned. Branch
 `agent/air-m5/mouth/kbli-editorials`, worktree `.worktrees/mouth-kbli-monumental`.
