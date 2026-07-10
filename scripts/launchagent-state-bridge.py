@@ -12,6 +12,7 @@ import json
 import os
 import socket
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +22,25 @@ from typing import Any
 DEFAULT_LAST_SEEN_DIR = Path("~/.organism/last_seen").expanduser()
 DEFAULT_LEGACY_STATE_DIR = Path("~/.agent/decisions/state").expanduser()
 HEALTHY_EXIT_CODES = {0}
+
+# Every label in BRIDGED_LABELS is a Pro-resident launchd job (com.balizero.*,
+# com.nuzantara.*, homebrew.mxcl.*) — this bridge exists to read PRO's own
+# `launchctl list` and stamp PRO's organism sidecars. Run on any other host
+# (Mini, M5), it still executes happily: `launchctl list` succeeds locally,
+# every one of these ~90 labels is legitimately absent there, and
+# build_receipt() writes "label not loaded" -> status=failed for all of them —
+# a wholesale false-failed wave for organs that are healthy on their real host.
+# Same node-guard idiom as mini-fleet-watch.sh's G4 (checked-in 2026-07-07).
+# Root cause: an ad-hoc `--json` diagnostic run on Mini on 2026-07-09 21:27
+# (evidence: /tmp/launchagent-state-bridge-mini.{json,err}) silently clobbered
+# ~/.organism/last_seen/ with 89 false-failed receipts, surfaced by
+# proprioception's organs_heartbeat probe as a 78-organ P1 the next session.
+RESIDENT_HOST = "nuzantara"  # Pro's hostname, lowercased, first label
+
+
+def running_on_resident_host(host: str | None = None) -> bool:
+    name = (host if host is not None else os.uname().nodename).split(".")[0].lower()
+    return name == RESIDENT_HOST
 
 
 @dataclass(frozen=True)
@@ -670,7 +690,29 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--legacy-state-dir", default=str(DEFAULT_LEGACY_STATE_DIR))
     parser.add_argument("--no-legacy", action="store_true")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument(
+        "--allow-off-host",
+        action="store_true",
+        help=(
+            "write receipts even when not running on the resident host "
+            "(RESIDENT_HOST). Every BRIDGED_LABELS entry is a Pro-only "
+            "launchd job — off-host runs otherwise produce a false-failed "
+            "receipt for every one of them. Intended for tests/fixtures."
+        ),
+    )
     args = parser.parse_args(argv)
+
+    if not args.allow_off_host and not running_on_resident_host():
+        host = os.uname().nodename
+        print(
+            f"[launchagent-state-bridge] refusing to write receipts: host "
+            f"'{host}' is not the resident host '{RESIDENT_HOST}'. Every "
+            "BRIDGED_LABELS entry is a Pro-only launchd job — running here "
+            "would stamp ~/.organism/last_seen/ with a false-failed receipt "
+            "for each of them. Pass --allow-off-host to override (tests only).",
+            file=sys.stderr,
+        )
+        return 0
 
     if args.launchctl_file:
         agents = parse_launchctl(Path(args.launchctl_file).read_text(encoding="utf-8"))
