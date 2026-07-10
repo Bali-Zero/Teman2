@@ -5,6 +5,8 @@ Endpoints for managing client data (anagrafica clienti)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
+import base64
+import binascii
 import json
 import re
 import time
@@ -13,6 +15,7 @@ from typing import Any
 
 import asyncpg
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, Request
+from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
@@ -405,6 +408,10 @@ class ClientResponse(BaseModel):
     assigned_to: str | None = None
     tax_consultant: str | None = None
     avatar_url: str | None = None
+    # has_avatar: list views omit the (potentially base64 data-URI) avatar_url
+    # to keep the page lean; the card lazy-loads the image from
+    # GET /api/crm/clients/{id}/avatar when this is true.
+    has_avatar: bool = False
     address: str | None = None
     notes: str | None = None
     strategic_recap: str | None = None
@@ -752,7 +759,13 @@ async def list_clients(
                 """
                 SELECT
                     c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
-                    c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
+                    c.client_type, c.assigned_to,
+                    -- Base64 data-URI avatars (avg 20KB, max 518KB) bloat the list
+                    -- page to ~10MB. Inline only http(s) URLs; the card lazy-loads
+                    -- data-URI images from /{id}/avatar via the has_avatar flag.
+                    CASE WHEN c.avatar_url LIKE 'data:%' THEN NULL ELSE c.avatar_url END AS avatar_url,
+                    (c.avatar_url IS NOT NULL AND length(c.avatar_url) > 0) AS has_avatar,
+                    c.first_contact_date, c.last_interaction_date,
                     c.passport_number, c.passport_expiry, c.date_of_birth, c.gender, c.birthplace, c.company_name,
                     c.custom_fields, c.address, c.notes, c.npwp, c.nib,
                     c.tags, c.created_at, c.updated_at,
@@ -936,6 +949,63 @@ async def get_client(
                 raise HTTPException(status_code=404, detail="Client not found")
 
             return ClientResponse(**dict(row))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise handle_database_error(e) from e
+
+
+@router.get("/{client_id}/avatar")
+async def get_client_avatar(
+    client_id: int = Path(..., gt=0),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> Response:
+    """Serve a client's avatar image.
+
+    The list endpoint (`GET /`) omits base64 data-URI avatars to keep the page
+    lean (they average ~20KB, up to 518KB, and would bloat a 200-row page to
+    ~10MB). Cards lazy-load the image here when `has_avatar` is true.
+
+    - Stored as a `data:` URI  -> decoded and streamed as image bytes.
+    - Stored as an http(s) URL  -> 302 redirect to that URL.
+
+    Access Control: admin sees any client; a team member only their assigned
+    ones (same rule as `GET /{client_id}`).
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+            avatar_url = await conn.fetchval(
+                "SELECT avatar_url FROM clients WHERE id = $1 AND deleted_at IS NULL",
+                client_id,
+            )
+
+        if not avatar_url:
+            raise HTTPException(status_code=404, detail="No avatar for this client")
+
+        if avatar_url.startswith("http://") or avatar_url.startswith("https://"):
+            return RedirectResponse(url=avatar_url, status_code=302)
+
+        if avatar_url.startswith("data:"):
+            # data:[<mediatype>][;base64],<data>
+            try:
+                header, b64 = avatar_url.split(",", 1)
+                media_type = "image/jpeg"
+                if header.startswith("data:") and ";" in header:
+                    media_type = header[len("data:"):].split(";", 1)[0] or media_type
+                image_bytes = base64.b64decode(b64)
+            except (ValueError, binascii.Error) as e:
+                raise HTTPException(status_code=422, detail="Malformed avatar data") from e
+            return Response(
+                content=image_bytes,
+                media_type=media_type,
+                headers={"Cache-Control": "private, max-age=86400"},
+            )
+
+        # Unknown scheme -> treat as not found rather than leaking the raw value.
+        raise HTTPException(status_code=404, detail="No servable avatar for this client")
 
     except HTTPException:
         raise
