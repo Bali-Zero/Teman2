@@ -8,12 +8,9 @@ No heavy service imports at module level — only jose, fastapi.security.
 import logging
 from typing import Annotated, Any
 
-import asyncpg
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-
-from backend.app.deps.database import get_database_pool
 
 logger = logging.getLogger(__name__)
 
