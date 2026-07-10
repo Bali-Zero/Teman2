@@ -126,8 +126,6 @@ def include_routers(api: FastAPI) -> None:
         portal_notification_prefs,
         portal_notifications,
         portal_process_timeline,
-        portal_taxes,
-        portal_visa,
         prime,
         prime_v2,  # [PRIME NEXUS] Layered geospatial intelligence API
         query_analytics,
@@ -274,8 +272,6 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(portal_notifications.router)
     api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
-    api.include_router(portal_taxes.router)
-    api.include_router(portal_visa.router)
 
     # Compliance routers
     api.include_router(compliance_alerts.router)
@@ -570,8 +566,6 @@ def include_light_routers(api: FastAPI) -> None:
         portal_notification_prefs,
         portal_notifications,
         portal_process_timeline,
-        portal_taxes,
-        portal_visa,
         prime,
         prime_v2,
         query_analytics,
@@ -703,8 +697,6 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(portal_notifications.router)
     api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
-    api.include_router(portal_taxes.router)
-    api.include_router(portal_visa.router)
 
     # Compliance routers
     api.include_router(compliance_alerts.router)
