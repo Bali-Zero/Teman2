@@ -1,0 +1,27 @@
+{
+  "code": "36003",
+  "editorial": {
+    "headline": "The Quiet Infrastructure Behind Water Supply",
+    "standfirst": "KBLI 36003 covers practical support work around water provision, from distribution-network use to billing and direct water distribution.",
+    "body": "KBLI 36003 is not the headline act of water production; it is the operational layer that keeps water provision functioning around the edges. The activity covers work directly connected with supplying water, including the rental or lending of water distribution networks, billing, and other support activities tied to the provision of water. Its scope also reaches a very practical end of the market: water distribution carried out by individuals, including sellers using shoulder poles, pushcarts, or tanker vehicles.\n\nThat breadth matters because this code sits across very different business realities. A company may be formalising support services around a distribution network or customer billing process. A smaller operator may be registering direct water distribution as a personal or micro-scale activity. The record opens the code across **Mikro, Kecil, Menengah, and Besar** scales, so it is not framed only for large infrastructure players. The common thread is proximity to water supply itself: the activity must be directly related to provision, rather than a detached administrative service.\n\nNationally, the foreign-investment position is clear. The code is marked **TERBUKA**, with a foreign-ownership ceiling of **100%** under the cited presidential-regulation source. In plain English, the national record treats this activity as open to full foreign ownership. There is no partial cap in the slim record, so there is no basis here for inventing one. For founders, the national reading is therefore straightforward: the activity can be used for a PMA structure at the recorded ceiling, provided the business being registered genuinely fits the water-supply support scope described above.\n\nBali is also not blocked in this record, but the reason needs to be read carefully. The province’s moratorium blocks all Low and Medium-Low risk activities for PMA registration island-wide on a permanent basis; this activity is recorded on the Bali side as **OK_or_HIGHER_RISK** because it is medium-high or high risk, and therefore not blocked by that moratorium. That is a meaningful green light, not a guarantee that every address or implementation detail will pass untouched. The record itself says to verify per address, so the honest conclusion is narrow but useful: KBLI 36003 is nationally open to full foreign ownership, and in Bali it is not stopped by the stated PMA moratorium, subject to address-level verification.",
+    "pullQuote": "KBLI 36003 is nationally open to full foreign ownership, and in Bali it is not stopped by the stated PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}
