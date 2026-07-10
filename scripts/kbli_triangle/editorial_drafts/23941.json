@@ -1,0 +1,27 @@
+{
+  "code": "23941",
+  "editorial": {
+    "headline": "Cement Manufacturing With a Clear Bali Reading",
+    "standfirst": "KBLI 23941 covers the making of cement products, nationally open to PMA, with Bali treating it outside the moratorium block at large scale.",
+    "body": "KBLI 23941 is the industrial home for cement manufacturing: the making of multiple forms of cement, including hydraulic cement and cement associated with charcoal or iron slag. Its scope reaches across the familiar and technical categories named in the record: portland cement, natural cement, aluminium-containing cement, slag cement, superphosphate cement, and other cement types. In plain English, this is not a trading or contracting label; it is for the activity of producing cement itself.\n\nThe registration picture is unusually broad by scale. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so the classification is not reserved only for large industrial players. That matters editorially because the code describes the activity, while the scale tells us who may sit inside it. A small producer and a large industrial operator may both be within the same activity description if what they do is the manufacturing of cement covered by the scope.\n\nNationally, the PMA position is clean: the activity is marked TERBUKA, with a foreign-ownership ceiling of 100%. That means the record does not impose a foreign-share cap below full ownership. The source cited for that national position is Perpres 10/2021, 49/2021, and there is no basis in the slim record to add side conditions, minimum capital figures, special licences, or timelines. The honest national reading is therefore simple: for foreign investment classification, this cement-manufacturing activity is open up to 100% foreign ownership.\n\nBali is where the reading must become more precise, but not more dramatic than the record allows. The provincial moratorium blocks all low and medium-low risk KBLI for PMA across Bali on a permanent, island-wide basis. This activity, however, is not marked as blocked in Bali. The reason given is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, placing it outside the moratorium block. So the honest Bali conclusion is not that cement manufacturing is casually frictionless; it is that, on the record provided, PMA registration is not blocked by the Bali moratorium because the relevant large-scale risk level is medium-high or high.",
+    "pullQuote": "The honest Bali conclusion is not that cement manufacturing is casually frictionless; it is that PMA registration is not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

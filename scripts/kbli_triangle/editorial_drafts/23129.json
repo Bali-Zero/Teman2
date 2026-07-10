@@ -1,0 +1,27 @@
+{
+  "code": "23129",
+  "editorial": {
+    "headline": "A Broad Glass-Manufacturing Code With National PMA Access",
+    "standfirst": "KBLI 23129 covers specialist glass and crystal products, open to all business scales nationally and not blocked for PMA registration in Bali.",
+    "body": "KBLI 23129 is the broad manufacturing home for glass products that do not sit inside the narrower named glass-product categories. Its practical range is wide: devotional beads such as tasbih and rosaries, glass beads, enameled glassware, aquariums, fiberglass, glass wool and nonwoven glass products, watch and wall-clock glass, non-working optical glass and elements, glass used in imitation jewelry, insulating glass and glass insulation fittings, and other glass or crystal products. It also reaches construction-facing glass materials such as glass bricks, tiles, roof tiles, paving blocks, and wall partitions.\n\nThat breadth matters because this is not a retail or trading classification. The center of gravity is production: shaping, forming, or manufacturing glass into finished or semi-finished goods for consumer, decorative, technical, insulation, or building-material use. A founder using this code should be describing an industrial activity, not merely the sale, installation, or distribution of glass items. The record supports registration across the full size spectrum: micro, small, medium, and large enterprises are all listed as open scales.\n\nNationally, the foreign-investment picture is clean. The activity is marked TERBUKA, and the foreign-ownership ceiling is 100%, sourced to Perpres 10/2021 and 49/2021. In plain terms, the national rule shown in the record allows full foreign ownership for this activity. There is no lower national cap in the slim record, so none should be implied. The editorial caution is therefore not about a national shareholding limit, but about reading the Bali position separately from the national PMA status.\n\nFor Bali, the same record gives a more specific and still usable answer. Bali’s island-wide moratorium blocks all low and medium-low risk KBLI for PMA, but this activity is not marked as blocked. The reason given is that OSS risk at large scale is medium-high or high, so it is not caught by the moratorium. That means the honest Bali read is not “blocked despite being nationally open.” It is nationally open to PMA, and in Bali it is recorded as OK_or_HIGHER_RISK rather than blocked. The practical conclusion is narrow but important: based only on this record, a foreign-owned setup can treat KBLI 23129 as available nationally and not blocked by the Bali moratorium, while still respecting that the record’s Bali comfort rests on the risk profile at large scale.",
+    "pullQuote": "The caution is not a national foreign-ownership cap, but the need to read Bali’s moratorium status separately from the national PMA rule.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

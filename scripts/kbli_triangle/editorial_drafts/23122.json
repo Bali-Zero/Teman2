@@ -1,0 +1,27 @@
+{
+  "code": "23122",
+  "editorial": {
+    "headline": "Glassware for Clinics and Laboratories, Open Nationally and in Bali",
+    "standfirst": "This code covers the manufacture of glass laboratory and health equipment, with full foreign ownership nationally and no Bali PMA moratorium block on the record.",
+    "body": "KBLI 23122 is a manufacturing code for glass equipment used in laboratory and health settings. Its center of gravity is practical, clinical, and technical: the making of glass items used in diagnosis and routine laboratory work, including clinical laboratory tools for biological samples such as blood, urine, and saliva. The scope also reaches nonclinical laboratory and health glassware, including serum or infusion bottles, ampoules, test tubes, measuring tubes, microscope slides, cuvettes, and desiccators.\n\nThat makes this a code for producers, not traders or service operators. A company registering here is positioning itself as a manufacturer of defined glass instruments and containers for laboratory and health use. The record also draws a boundary around the activity: it does not cover fire-resistant glass laboratory equipment designed for very high temperatures, such as distillation flasks. For founders, that boundary matters because the commercial label “laboratory glassware” can sound broader than the registered activity actually is.\n\nThe scale position is unusually broad. The activity is open to Mikro, Kecil, Menengah, and Besar scales, so the code can accommodate anything from a very small manufacturing setup to a large industrial operation, provided the activity remains within the recorded scope. It is not framed as a niche reserved for one enterprise size. The relevant question is therefore less whether the scale is available, and more whether the actual production line matches the glass laboratory and health equipment described in the record.\n\nThe national PMA position is clean: the activity is marked TERBUKA, with a pma_max_asing of 100 under Perpres 10/2021, 49/2021. In plain English, the national record allows full foreign ownership. Bali does not add a registration block on this record. The province’s moratorium blocks all Low and Medium-Low risk KBLI for PMA, but the Bali reason here states that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by that moratorium. The honest picture is therefore straightforward: nationally open to foreign ownership up to 100%, and in Bali not blocked by the PMA moratorium on the information provided.",
+    "pullQuote": "The honest picture is therefore straightforward: nationally open to foreign ownership up to 100%, and in Bali not blocked by the PMA moratorium on the information provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

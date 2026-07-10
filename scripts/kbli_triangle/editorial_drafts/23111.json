@@ -1,0 +1,27 @@
+{
+  "code": "23111",
+  "editorial": {
+    "headline": "Sheet Glass Manufacturing, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 23111 covers the making, shaping, and processing of sheet glass, with national PMA access up to 100% and no Bali moratorium block recorded.",
+    "body": "KBLI 23111 is a manufacturing code for sheet glass: the industrial making of flat glass in several finished or semi-finished forms. Its scope covers clear colourless sheet glass, clear coloured sheet glass, coloured opaque sheet glass, stained glass, engraved glass, and mirror glass. It also reaches beyond the initial making of the sheet itself, because the record includes the forming and processing of sheet glass within the same activity. In plain terms, this is not a general retail or installation category; it is about producing and working sheet glass as an industrial material and finished surface.\n\nThat scope matters because the code can fit businesses operating at very different sizes. The record opens it to **Mikro, Kecil, Menengah, and Besar** scales, so the activity is not reserved only for large industrial plants. A smaller workshop focused on processed or shaped sheet glass can sit within the same activity logic as a larger manufacturer producing clear, coloured, opaque, stained, engraved, or mirror glass, provided the registered activity remains the making, forming, or processing of sheet glass. The scale range is broad, but the commercial identity stays specific: sheet glass is the centre of the registration.\n\nNationally, the investment signal is straightforward. The PMA status is **TERBUKA**, and the recorded maximum foreign ownership is **100%** under the cited source. For a foreign-owned company, that means the national record does not impose a lower foreign-share cap for this activity. The important discipline is to read that exactly as far as the record goes: it confirms openness and the foreign-ownership ceiling, but it does not by itself add any extra licence, permit, capital threshold, tax treatment, or operating timeline.\n\nThe Bali picture is also unusually clear. Bali’s moratorium blocks PMA registration for Low and Medium-Low risk KBLI activities across the province, but this record is not blocked. The reason given is that at **Besar** scale the OSS risk is **Menengah-Tinggi/Tinggi**, so it does not fall into the moratorium’s blocked Low or Medium-Low risk band. The honest conclusion is therefore not a warning against Bali registration, but a distinction: nationally this activity is foreign-open up to 100%, and in Bali it is recorded as not blocked by the moratorium, with the Bali status marked **OK_or_HIGHER_RISK**.",
+    "pullQuote": "The honest conclusion is therefore not a warning against Bali registration, but a distinction: nationally this activity is foreign-open up to 100%, and in Bali it is recorded as not blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

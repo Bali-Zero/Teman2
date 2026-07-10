@@ -1,0 +1,27 @@
+{
+  "code": "33190",
+  "editorial": {
+    "headline": "KBLI 33190: The Repair Work That Bali Will Not Register for PMA",
+    "standfirst": "A broad repair-and-maintenance activity is nationally open to foreign ownership, but Bali’s risk-class moratorium blocks PMA registration for it today.",
+    "body": "KBLI 33190 is a practical, catch-all home for repair and maintenance work on equipment that does not sit elsewhere in the main division. Its scope is not glamorous, but it is commercially real: repairing fishing nets, including patching; repairing snares, ropes, canvas, and tarpaulins; repairing storage bags for fertiliser and chemicals; renewing wooden pallets, shipping drums, and similar containers; repairing amusement equipment and gambling machines; repairing historic organs and other musical equipment; and repairing hospital beds. The common thread is not the customer sector, but the work itself: keeping specialised, often work-critical equipment usable.\n\nThat breadth matters for founders because this activity can serve very different markets. A workshop repairing nets and tarps for field use, a service team maintaining hospital beds, or a repair operator handling pallets and shipping drums could all sit within the same activity description when the work matches the stated scope. The record opens the activity across every business scale: Mikro, Kecil, Menengah, and Besar. In other words, the classification is not reserved only for large industrial operators; it can also fit smaller repair businesses, provided the registered activity remains inside the defined repair-and-maintenance scope.\n\nNationally, the foreign-investment position looks straightforward. The activity is marked TERBUKA, and the foreign-ownership ceiling is 100%, with the cited basis given as Perpres 10/2021, 49/2021. Taken only at the national level, that means a PMA structure is not capped below full foreign ownership in this record. There is no basis here to add a special capital threshold, licence condition, tax treatment, or timeline, so those should not be assumed from the classification alone.\n\nBali is the decisive complication. The Bali field says the activity is blocked for PMA registration, because OSS risk at Besar scale is Rendah or Menengah-Rendah across every scope, and Bali’s moratorium blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. The practical conclusion is blunt: although KBLI 33190 is nationally open to 100% foreign ownership, a foreign investor cannot register this activity as a PMA in Bali today under the stated moratorium. For a Bali setup, that local block is not a footnote; it is the controlling fact.",
+    "pullQuote": "Although KBLI 33190 is nationally open to 100% foreign ownership, a foreign investor cannot register this activity as a PMA in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

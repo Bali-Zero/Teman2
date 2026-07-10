@@ -1,0 +1,27 @@
+{
+  "code": "33202",
+  "editorial": {
+    "headline": "Industrial Dismantling Is Nationally Open, but Bali Blocks PMA",
+    "standfirst": "This code covers the dismantling of industrial machinery, equipment, and systems, with national PMA access but a Bali registration block for foreign-owned companies.",
+    "body": "This activity is about taking industrial machinery, equipment, and systems apart. Its scope is broad enough to cover both hardware and software, and it can apply to a whole system or only part of one. The scale of the work is not what defines the code: the record expressly includes dismantling on both large and small scales. In plain terms, this is the business of dismantling industrial assets, not installing them, integrating them, or demolishing civil buildings.\n\nThat distinction matters because the code sits around a very practical operational moment in an industrial asset's life. A factory line, production system, control setup, or other industrial equipment package may need to be removed, separated, decommissioned, or partially broken down. The activity here is the dismantling itself. It is not the original assembly of the system, and it is not the construction-sector demolition of the building that may surround it. Founders should read the scope as a technical industrial service, not as a general construction or installation category.\n\nNationally, the foreign-investment picture is clean. The record marks the activity as open, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021 and 49/2021. The code is also open across the full scale range listed in the record: Mikro, Kecil, Menengah, and Besar. On the national face of the classification, then, this is not a restricted activity for PMA ownership, and the record does not state any foreign-share cap below full ownership.\n\nBali changes the answer. The Bali status is blocked by risk class, and the reason is specific: at Besar scale, the OSS risk classification is Low or Medium-Low across every scope, which places it inside Bali's PMA moratorium from May 2026. The moratorium rule in the record is province-wide and permanent for Low and Medium-Low risk activities. So the honest operating conclusion is sharp: while this activity is nationally open to foreign ownership, a foreign-owned company cannot register it in Bali today under the Bali rule recorded here.",
+    "pullQuote": "Nationally this industrial dismantling activity is open to full foreign ownership, but Bali's risk-class moratorium blocks PMA registration today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

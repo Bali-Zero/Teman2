@@ -1,0 +1,27 @@
+{
+  "code": "35111",
+  "editorial": {
+    "headline": "Fossil Power Generation, Open Nationally and Not Blocked in Bali",
+    "standfirst": "This code covers fossil-fuel electricity generation, including carbon-credit sales by the power producer, with full national PMA access and no Bali moratorium block.",
+    "body": "This activity is about the operation of electricity-generating facilities that produce power from non-renewable fossil sources. The record names natural gas, coal, petroleum, petroleum products, peat, and other fossil fuels as the energy base. In plain terms, it is the KBLI home for an enterprise whose business is running the generating plant itself, not merely trading equipment, advising on energy, or handling downstream distribution. The scope also includes the sale of carbon units, or carbon credits, when that activity is carried out by the electricity generation company.\n\nThat carbon-credit inclusion matters editorially because it keeps the code centred on the producer. The commercial identity here is still a power-generation business: a company operating facilities that create electricity from fossil inputs and, where relevant, monetising carbon units as part of that same generating-company activity. Nothing in the record adds a special threshold, timetable, licence, tax treatment, or technical permit, so the clean reading is deliberately narrow: register this when the described operating activity is the business you are actually conducting.\n\nOn scale, the record is unusually broad. It is open to **Mikro, Kecil, Menengah, and Besar** enterprises, so the registration frame is not limited to a single business size. A founder should read that as a scale-access statement, not as a promise that every project will be simple in practice. Power generation is infrastructure-heavy by nature, but the slim record only authorises one conclusion on KBLI access: all four listed Indonesian enterprise scales are available for this activity.\n\nThe national foreign-investment position is straightforward. The code is marked **TERBUKA**, and the national foreign-ownership ceiling is **100%**, sourced to **Perpres 10/2021, 49/2021**. Bali does not overturn that access for this record. The province’s moratorium blocks all Low and Medium-Low risk KBLI for PMA registration across the island, but this activity is not blocked because, at **Besar** scale, its OSS risk is **Menengah-Tinggi/Tinggi**. The honest reading is therefore not a warning that foreign investors are shut out of Bali; it is the opposite. For this activity, a PMA can look at Bali without a moratorium block in the slim record, while still respecting the exact risk and scale framing stated there.",
+    "pullQuote": "For this activity, a PMA can look at Bali without a moratorium block in the slim record, while still respecting the exact risk and scale framing stated there.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

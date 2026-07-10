@@ -1,0 +1,27 @@
+{
+  "code": "35120",
+  "editorial": {
+    "headline": "Renewable Power Generation Is Open, Including in Bali",
+    "standfirst": "This code covers renewable electricity generation, with national PMA openness and no Bali moratorium block recorded for large-scale registration.",
+    "body": "KBLI 35120 is the activity code for operating power-generation facilities that produce electricity from renewable energy sources. In practical terms, the record points to renewable-source electricity generation across a broad energy mix: biofuel gas, hydropower, onshore and offshore wind, photovoltaic solar, thermal energy, geothermal energy, tidal power, wave power, and marine energy. It also includes carbon-credit sales when those sales are carried out by the electricity-generation company itself.\n\nThe scope is deliberately tied to generation from renewable sources, not to electricity production in general. The record excludes production from non-renewable energy sources and also excludes electricity production through waste combustion. That boundary matters for founders because the code is not a flexible label for every power project; it is a renewable-generation classification, with carbon-credit activity only where it belongs to the generating company.\n\nOn scale, this is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar business scales. That means the code can sit behind very different operating profiles, from smaller renewable-generation businesses through larger infrastructure-scale projects, as long as the registered activity remains inside the stated renewable-generation scope. The editorial point is simple: the classification is broad in technology and broad in scale, but still narrow in source. The electricity must come from the renewable sources described in the record.\n\nThe national foreign-investment position is clean. The PMA status is TERBUKA, and the recorded maximum foreign ownership is 100%, sourced to Perpres 10/2021 and 49/2021. Bali does not add a moratorium block on this record: the Bali status is OK_or_HIGHER_RISK, and the Bali reason says that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the province’s moratorium. That matters because the Bali rule blocks Low and Medium-Low risk KBLI for PMA island-wide on a permanent basis. Here, the record’s Bali-side conclusion is that the moratorium does not block PMA registration.",
+    "pullQuote": "The national position is clean: this renewable power-generation activity is open to PMA up to 100%, and the Bali record does not impose a moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

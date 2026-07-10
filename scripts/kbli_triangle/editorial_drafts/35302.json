@@ -1,0 +1,27 @@
+{
+  "code": "35302",
+  "editorial": {
+    "headline": "Ice Production With a Clear Bali Path",
+    "standfirst": "KBLI 35302 covers ice and chilled-water production and distribution, nationally open to PMA and not blocked by Bali’s moratorium.",
+    "body": "KBLI 35302 is a practical, infrastructure-facing activity: the production and distribution of cold water or ice water for cooling needs, together with the production of ice itself. In plain terms, it is the category for businesses making and moving cooling media and commercial ice products such as crystal ice, ice tubes, and ice cubes. The scope is not framed as a hospitality, retail, or food-service activity; its centre of gravity is production and distribution, with cooling demand as the underlying use case.\n\nThat distinction matters for founders because the registered activity should match the operating reality. A company producing ice at a dedicated facility, distributing ice water for cooling, or supplying formed ice products would read naturally within this scope. The record also makes the scale position unusually broad: it is open to Mikro, Kecil, Menengah, and Besar. That means the code is not reserved only for large industrial operators; it can describe activity from smaller-scale production through to large-scale operations, provided the actual business remains inside the stated production-and-distribution scope.\n\nNationally, the foreign-investment position is straightforward. The activity is marked TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. For a PMA structure, that means the national ceiling is 100% foreign ownership. There is no lower foreign-stake cap in the slim record, and none should be inferred. The clean national reading is therefore that this activity is foreign-open at the full stated ceiling.\n\nBali’s position is also clear, but for a different reason. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across Bali on a permanent, island-wide basis, according to the governor letter source in the record. This activity is not blocked: l4_bali_blocked is false, and the Bali reason says that at Besar scale the OSS risk is Menengah-Tinggi/Tinggi, so the moratorium does not catch it. The honest Bali conclusion is therefore not a hidden prohibition, but an open path under this record: KBLI 35302 is nationally open to PMA at 100%, and in Bali it is not blocked by the moratorium because the cited OSS risk position sits above the Low and Medium-Low band.",
+    "pullQuote": "The honest Bali conclusion is therefore not a hidden prohibition, but an open path under this record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

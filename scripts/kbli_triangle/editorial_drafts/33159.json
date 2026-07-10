@@ -1,0 +1,27 @@
+{
+  "code": "33159",
+  "editorial": {
+    "headline": "KBLI 33159: Repair Work for Transport Outside the Motor-Vehicle Lane",
+    "standfirst": "This activity is nationally open to full foreign ownership, but Bali depends on the exact declared scope because low and medium-low risk PMA activity is blocked island-wide.",
+    "body": "KBLI 33159 sits in a narrow but important repair-and-maintenance lane: transport equipment that is outside the usual motor-vehicle, motorcycle, and bicycle categories. The scope named in the record covers the repair and upkeep of other transport tools, including war vehicles, horse-drawn carriages, animal-drawn carts, and similar forms of transport. In plain English, this is not a general garage classification. It is a maintenance home for transport equipment that falls outside the everyday road-vehicle frame, with the record explicitly separating repair of other non-motor transport equipment from repair of war vehicles.\n\nThat distinction matters because the activity is broader than a picturesque carriage workshop, but still tightly defined by the equipment being repaired. A founder reading this code should treat the declared activity as the centre of the analysis: the business is about repair and maintenance, not the sale, rental, manufacture, or operation of the transport equipment itself. The record does not add extra licence language, capital thresholds, or operating conditions, so none should be implied. Its practical meaning is simply the maintenance activity described: keeping these specified kinds of transport equipment serviceable.\n\nNationally, the posture is straightforward. The record marks the activity as open for PMA, with a foreign-ownership ceiling of 100%. It is also open across all listed business scales: micro, small, medium, and large. On the national view, then, this is not a restricted foreign-equity activity in the supplied record. A foreign-owned company can read the national line as fully open, subject only to the exact activity it is registering and the scale it selects. The cited national basis is Perpres 10/2021, 49/2021, which is the source field supplied for the PMA position.\n\nBali is more exacting. The record does not say this code is flatly blocked for PMA in Bali today; `l4_bali_blocked` is false. But the Bali status is scope-dependent, and the reason is operationally important: Bali registration as PMA is available only where the exact declared scope falls into the higher-risk side of the activity, while some scopes at large scale are low risk. That matters because the Bali province rule blocks all Low and Medium-Low risk KBLI for PMA across the island on a permanent basis. For this code, the honest reading is therefore conditional rather than universally open: nationally it is open up to 100% foreign ownership, but in Bali a PMA filing depends on declaring the exact registrable, higher-risk activity and verifying that position live in OSS before relying on it.",
+    "pullQuote": "Nationally this activity is fully foreign-open, but in Bali the decisive question is the exact scope declared in OSS.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

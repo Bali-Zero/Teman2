@@ -1,0 +1,27 @@
+{
+  "code": "35159",
+  "editorial": {
+    "headline": "Electricity Support Services, Nationally Open but Blocked in Bali",
+    "standfirst": "KBLI 35159 covers practical support work around electricity supply and use, yet Bali’s moratorium changes the PMA answer decisively.",
+    "body": "For a foreign-owned company looking at KBLI 35159, the first practical point is also the sharpest: this activity is nationally open, but it cannot be registered by PMA in Bali under the record provided. The national line is straightforward enough. The activity is marked **TERBUKA**, with a foreign-ownership ceiling of **100%** under the cited presidential regulations. Bali, however, records the activity as blocked by risk class, because OSS treats the large-scale version as low or medium-low risk across every scope, bringing it inside the provincial moratorium.\n\nSubstantively, this code is about support services directly connected with the supply and use of electricity. The record points to work that sits around the electricity system rather than the generation or sale of power itself: electricity energy-conservation services, meter-reading services, billing services, and other directly related support activities. That makes it a practical code for operators whose business model is service-heavy: monitoring, conservation, usage administration, customer-facing utility support, and adjacent work tied to how electricity is consumed, measured, and managed.\n\nThe registration scale is broad. The record opens the activity to **Mikro, Kecil, Menengah, and Besar** businesses, so the code is not reserved for only one size of operator. That breadth matters editorially because the Bali restriction is not framed as a narrow ownership cap or a company-size preference. It turns on the Bali moratorium rule in the record: Bali province blocks all low and medium-low risk KBLI for PMA, island-wide and permanently. In the specific Bali reason, the decisive point is the large-scale OSS risk classification, not a separate Bali-side percentage or partnership condition.\n\nThe honest reading is therefore split, not ambiguous. Nationally, KBLI 35159 is open to foreign investment up to 100%, and the slim record gives no lower national cap. In Bali, the same activity is blocked for PMA registration because of the risk-class moratorium recorded from the Governor’s letter and the Bali reason dated May 13, 2026. A founder should read that as a location-specific stop sign: the national framework says foreign-open, but Bali’s PMA treatment for this activity is blocked under the record.",
+    "pullQuote": "The national framework says foreign-open, but Bali’s PMA treatment for this activity is blocked under the record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

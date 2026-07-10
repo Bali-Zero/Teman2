@@ -1,0 +1,27 @@
+{
+  "code": "35132",
+  "editorial": {
+    "headline": "Electricity Storage With a Clear Bali Path",
+    "standfirst": "KBLI 35132 covers power storage, battery-swap infrastructure, and reconversion of stored energy, open nationally to full foreign ownership and not blocked in Bali.",
+    "body": "KBLI 35132 is the activity code for electricity storage in its practical, infrastructure-facing sense. Its scope is not simply warehousing batteries or trading equipment. The record describes the conversion of electrical energy into a form that can be stored, the storage of that energy, and the conversion back into electricity. In operational terms, that includes pump-storage facilities, compressed-air storage facilities, and battery storage facilities. It also expressly includes the operation of public electric-vehicle battery exchange stations, known as SPBKLU.\n\nThat makes the code relevant to founders working on the balancing layer of the power system: assets that absorb electricity, hold it, and return it when needed. It is also relevant to public EV battery-swap operators, because the activity is named directly inside the scope. The registration picture is broad by scale. The record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, so it is not framed only as a large-utility category. A small operator and a large infrastructure platform are both within the scale language of the record, provided the activity itself matches the storage, reconversion, or public battery-exchange scope.\n\nNationally, the foreign-investment picture is clean. The PMA status is TERBUKA, and the maximum foreign ownership is 100%. In plain English, a foreign-owned company may register this activity nationally with full foreign ownership under the record’s cited investment framework. There is no lower national foreign-share cap in the slim record, and no additional capital threshold, licence, deadline, or operational condition is stated here. For this editorial, those unstated items stay unstated.\n\nBali is also clear, but for a different reason. The province’s moratorium rule blocks all low and medium-low risk activities for PMA across the island, yet this record does not mark KBLI 35132 as blocked. Its Bali status is OK_or_HIGHER_RISK, and the Bali reason says that at Besar scale the OSS risk is Menengah-Tinggi/Tinggi, meaning medium-high to high risk, so it is not blocked by the moratorium. The honest conclusion is therefore straightforward: this is a nationally open, 100% foreign-ownership activity, and the Bali-side record does not close it to PMA registration. The caution is not a hidden Bali cap; it is the risk classification itself, which the record treats as the reason the moratorium does not apply.",
+    "pullQuote": "This is a nationally open, 100% foreign-ownership activity, and the Bali-side record does not close it to PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to registration",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}
