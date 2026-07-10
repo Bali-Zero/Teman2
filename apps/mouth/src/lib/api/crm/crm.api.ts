@@ -1043,6 +1043,23 @@ export class CrmApi {
   /**
    * Upload file to a subfolder
    */
+  /**
+   * Upload a client avatar image to storage (Tigris) and set avatar_url to the
+   * returned public URL. Replaces the legacy base64-into-avatar_url path that
+   * bloated the clients list. Backend: POST /api/crm/clients/{id}/avatar.
+   */
+  async uploadClientAvatar(
+    clientId: number,
+    file: File,
+  ): Promise<{ success: boolean; avatar_url: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    return this.client.request(`/api/crm/clients/${clientId}/avatar`, {
+      method: "POST",
+      body: formData,
+    });
+  }
+
   async uploadFileToFolder(
     clientId: number,
     folderName: string,
