@@ -1,0 +1,27 @@
+{
+  "code": "41011",
+  "editorial": {
+    "headline": "Residential Building Construction, Read Precisely",
+    "standfirst": "KBLI 41011 covers conventional construction, maintenance, rebuilding, alteration, and renovation of residential buildings, with a nationally open PMA setting and a restricted Bali note.",
+    "body": "KBLI 41011 is the conventional construction lane for residential buildings. The record describes activity that is practical and physical: building, maintaining, and rebuilding residential structures using conventional methods. Its examples are clear enough to define the commercial field without stretching it: houses, temporary residences, apartment blocks, apartments, and condominiums. It also covers changes and renovations to residential buildings, which matters because the code is not limited to first-time construction; it also reaches the work of altering an existing residential building.\n\nThe same scope identifies the construction sub-classification references attached to the activity: BG001 for residential building construction and GT001 for residential building structures. Those references sit inside the activity description rather than outside it, so the editorial point is simple: this code is about residential building work as a construction activity, not about property sales, accommodation operations, design services, or any neighbouring category. A founder using this code should be able to recognise the core business as execution of residential building works by conventional construction methods, including maintenance, rebuilding, changes, and renovation.\n\nOn business scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar. That means the activity is not framed only for a large contractor profile; the record places it across the full listed scale range. Nationally, the PMA status is also straightforward: TERBUKA, with `pma_max_asing` at 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national foreign-ownership ceiling shown in this record is 100%. There is no extra capital threshold, licence timeline, tax treatment, or permit detail in the slim record, so none should be added to the interpretation.\n\nBali needs to be read separately and carefully. The record does not say this activity is blocked for PMA registration in Bali: `l4_bali_blocked` is false. It does, however, mark the Bali status as TERBATAS, and the Bali reason is stated as `konstruksi gedung: max 67% WNA + partner locale + IUJK`. The moratorium rule in the same record says Bali province blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently, with source `Gubernur letter B.27.000/642/PM/DPMPTSP`. The honest conclusion is therefore not that the code is nationally closed, nor that Bali is cleanly open. It is nationally open up to the recorded 100% ceiling, while the Bali-side record marks the activity as restricted and must be read against the stated Bali reason and moratorium text.",
+    "pullQuote": "The honest conclusion is not that the code is nationally closed, nor that Bali is cleanly open.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "TERBATAS"
+      }
+    ]
+  }
+}

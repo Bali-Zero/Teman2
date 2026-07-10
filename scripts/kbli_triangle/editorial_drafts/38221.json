@@ -1,0 +1,27 @@
+{
+  "code": "38221",
+  "editorial": {
+    "headline": "Hazardous Waste Treatment Beyond the Radioactive Line",
+    "standfirst": "KBLI 38221 covers nonradioactive hazardous waste treatment and disposal, nationally open to PMA and not blocked by Bali’s moratorium record.",
+    "body": "KBLI 38221 is a serious environmental-services category: the treatment and disposal of hazardous waste, and of specific dangerous nonradioactive waste, before final disposal. The record places both government-managed and privately managed activity inside the scope. Its material range is broad but sharply defined: explosive substances, oxidising materials, flammables, toxic and irritant materials, carcinogenic and corrosive substances, infectious materials, and other preparations dangerous to human health and the environment.\n\nIn practical terms, this is not ordinary rubbish handling. The activity includes operating facilities for hazardous-waste treatment and specific nonradioactive waste treatment; treating and disposing of poisonous live or dead animals and other contaminated waste; burning hazardous waste; and disposing of used goods such as refrigerators in order to remove hazardous waste. The slim record also names B3 waste treatment for tank-cleaning activities that are not integrated with B3 collection, treatment, and utilisation, as well as B3 waste landfill activity. The common thread is controlled handling of dangerous material before, during, or at the point of disposal.\n\nThe registration picture is unusually wide. The record marks the code as open to Mikro, Kecil, Menengah, and Besar scales, so it is not framed only as a large-company activity. Nationally, PMA status is TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. Put plainly: on the national investment record supplied here, a foreign-owned company may register this activity up to full foreign ownership.\n\nBali does not add a separate ownership percentage in this record, and none should be inferred. The Bali-side status is OK_or_HIGHER_RISK, and the record says it is not blocked: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. That matters because the same record also states Bali’s moratorium rule: the province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. For this code, however, the supplied Bali assessment does not block PMA registration. The honest national-versus-Bali reading is therefore clean: this hazardous-waste treatment and disposal activity is nationally open to PMA at 100%, and the Bali moratorium record supplied here does not close it.",
+    "pullQuote": "The honest national-versus-Bali reading is clean: this activity is nationally open to PMA at 100%, and the Bali moratorium record supplied here does not close it.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

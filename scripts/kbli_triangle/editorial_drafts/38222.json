@@ -1,0 +1,27 @@
+{
+  "code": "38222",
+  "editorial": {
+    "headline": "Radioactive Waste Treatment With a Clear National Opening",
+    "standfirst": "KBLI 38222 covers the handling, storage, treatment, and disposal of radioactive waste, with national PMA access open and Bali not blocked by its moratorium.",
+    "body": "KBLI 38222 is a narrowly defined activity: the treatment, disposal, and storage of radioactive waste. The record describes a field concerned with radioactive material after use, including waste in a transitional phase, decay during transport from hospitals, encapsulation, preparation, and other treatment of radioactive waste. In plain English, this is not a broad environmental-services category; it is the controlled handling of waste whose radioactive character is the defining feature of the business activity.\n\nThe scale profile is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, so the classification is not reserved in the data for only one size of operator. A founder reading the code should therefore separate two questions. First, whether the intended activity truly matches the scope: treatment, disposal, storage, transitional decay from hospital waste, encapsulation, preparation, or other radioactive-waste processing. Second, whether the business scale being registered fits one of the listed scale bands. On this record, all four scale bands are present.\n\nNationally, the foreign-investment picture is direct. The PMA status is marked TERBUKA, and the maximum foreign ownership field is 100. That means the national record treats the activity as open to foreign ownership up to a 100% ceiling. The cited source for that national position is Perpres 10/2021, 49/2021. There is no lower foreign-share number in the record, and there is no separate Bali percentage to add beside it. The honest national reading is therefore simple: as a national PMA matter, this activity is open at the full stated ceiling.\n\nBali needs its own, more careful reading, but not because the record blocks it. The Bali status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason given is: “medium-high/high risk → not blocked by moratorium (verify per address)”. That matters because the moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, island-wide and permanent; this activity is not marked as caught by that block. The clean conclusion is that KBLI 38222 is nationally open to PMA and, on this slim record, not blocked by the Bali moratorium, while the address-level verification caveat remains part of the record itself.",
+    "pullQuote": "The clean conclusion is that KBLI 38222 is nationally open to PMA and, on this slim record, not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
