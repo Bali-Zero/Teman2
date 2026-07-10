@@ -26,17 +26,6 @@ class TaxObligation(BaseModel):
         from_attributes = True
 
 
-class TaxSummary(BaseModel):
-    """Tax summary for dashboard card."""
-
-    total_due: float = 0
-    next_deadline: date | None = None
-    days_until_deadline: int | None = None
-    pending_count: int = 0
-    overdue_count: int = 0
-    status: str = "ok"  # ok, attention, critical
-
-
 class VisaRecord(BaseModel):
     """Visa record."""
 
@@ -54,16 +43,6 @@ class VisaRecord(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class VisaSummary(BaseModel):
-    """Visa summary for dashboard card."""
-
-    has_active_visa: bool = False
-    visa_type: str | None = None
-    expiry_date: date | None = None
-    days_until_expiry: int | None = None
-    status: str = "none"  # none, active, expiring_soon, expired
 
 
 class TimelineEvent(BaseModel):
