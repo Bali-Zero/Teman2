@@ -64,13 +64,14 @@ while true; do
   #  --ignore-existing  → never re-pull or overwrite a carousel M5 already has
   #  (no --delete)      → never remove M5-local carousels (M5 is a superset today)
   # So only carousels NEW on Pro land on M5; existing ones are untouched.
-  # --exclude on quarantined dirs: macOS com.apple.provenance xattr on a single
-  # local file (SIP-protected, cannot be stripped) aborts the WHOLE rsync batch
-  # with "open: Operation not permitted" — exclude the tagged dir by name so the
-  # rest of the batch still lands (M5 already has this one, --ignore-existing
-  # would have skipped it anyway).
-  if rsync -a --ignore-existing \
-       --exclude="2026-07-08-indonesia-s-dubai-play-0-income-tax-proposed-for-its-new-fin-afda5774/" \
+  # --ignore-errors: macOS tags some local carousel files with a com.apple.provenance
+  # xattr (SIP-protected, cannot be stripped). Without this flag openrsync aborts
+  # the ENTIRE batch on the first "open: Operation not permitted" it hits — and
+  # there are dozens of tagged files scattered across the tree (not just one), so
+  # a per-dir --exclude doesn't scale. --ignore-errors lets rsync skip the tagged
+  # file and continue the rest of the batch (already-synced files are unaffected
+  # by --ignore-existing regardless).
+  if rsync -a --ignore-existing --ignore-errors \
        -e "ssh -o ConnectTimeout=10 -o BatchMode=yes" \
        "pro:$CAROUSEL_SRC/" "$CAROUSEL_DEST/" >/dev/null 2>>"$LOG"; then
     : # silent on success (rsync is chatty enough on error)
