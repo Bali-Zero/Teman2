@@ -1,0 +1,27 @@
+{
+  "code": "41018",
+  "editorial": {
+    "headline": "Entertainment and Sports Buildings, Built the Conventional Way",
+    "standfirst": "KBLI 41018 covers conventional construction, upkeep, rebuilding, alteration, and renovation of entertainment and sports buildings in Indonesia.",
+    "body": "KBLI 41018 is a construction activity code for buildings made by conventional methods and used for entertainment, culture, tourism, recreation, or sport. In practical terms, the record points to the physical work behind cinemas, cultural or arts buildings, tourism and recreation buildings, and sports buildings. The scope is not limited to new construction. It also includes maintenance, rebuilding, changes, and renovation of these entertainment and sports premises.\n\nThat breadth matters because this code is defined by the nature of the building and the construction method, not by the business that will later operate inside it. A developer, contractor, or project company using this classification is registering the activity of building or renewing the venue itself. The record also identifies the construction subclassification references for this activity as GT008 and BG008, which keeps the code anchored to the construction of entertainment and sports buildings rather than to event operation, cinema management, or hospitality activity.\n\nOn scale, the code is open across the full range listed in the record: Besar, Mikro, Kecil, and Menengah. That means the activity is not presented here as a scale-exclusive classification. A small contractor doing renovation work and a larger company taking on conventional construction of a sports or recreation building both sit within the same stated activity boundary, provided the work remains the construction, maintenance, rebuilding, alteration, or renovation of the relevant building type.\n\nThe national foreign-investment picture is clean: the record marks the code as TERBUKA and gives a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. Bali is also not marked as blocked in this record. The Bali status is OK_or_HIGHER_RISK, with the reason stated as: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule still matters as background because Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently, under the cited governor letter. But for this slim record, the conclusion is not a hidden restriction: KBLI 41018 is nationally open to foreign ownership up to 100%, and the Bali field does not block PMA registration.",
+    "pullQuote": "For this slim record, the conclusion is not a hidden restriction: KBLI 41018 is nationally open to foreign ownership up to 100%, and the Bali field does not block PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Besar, Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

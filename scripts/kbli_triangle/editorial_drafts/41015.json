@@ -1,0 +1,27 @@
+{
+  "code": "41015",
+  "editorial": {
+    "headline": "Healthcare Building Construction, Open Nationally and Clear in Bali",
+    "standfirst": "KBLI 41015 covers conventional construction and renovation of healthcare buildings, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 41015 is the construction code for healthcare buildings built through conventional methods. The record defines it broadly: the activity includes building, maintaining, rebuilding, changing, and renovating facilities used for health services. In practical English, this is the code for constructing places such as hospitals, polyclinics, puskesmas, treatment halls, healthcare service buildings, and laboratory buildings. It is not a medical-service code; its centre of gravity is the physical building work for health infrastructure.\n\nThe scope is also precise about sub-classification signals. The record names the health-building construction sub-classification as GT005 and BG005, which keeps the activity anchored in construction rather than in the operation of the facilities themselves. That distinction matters editorially because the activity being registered is the conventional construction of the healthcare premises, including later changes and renovation, not the clinical business that may occupy the finished building.\n\nOn scale, the record is unusually broad. KBLI 41015 is open to Besar, Mikro, Kecil, and Menengah. That means the record does not frame this activity as belonging only to a large contractor or only to a small operator; it recognises the activity across the listed business scales. The important constraint for this article is that no extra threshold, project value, capital number, licence, or timeline appears in the slim record, so none should be inferred. The safe reading is simply that the activity is available across those stated scales.\n\nThe national-vs-Bali picture is clean. Nationally, the PMA status is TERBUKA and the foreign-ownership ceiling is 100%, with the source listed as Perpres 10/2021, 49/2021. On the Bali side, the record does not mark this activity as blocked: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason given is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this activity is not caught by that block in the record. The honest conclusion is therefore straightforward: KBLI 41015 is foreign-open nationally and, on this record, not blocked for PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is therefore straightforward: KBLI 41015 is foreign-open nationally and, on this record, not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "KBLI code",
+        "value": "41015"
+      },
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Besar, Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

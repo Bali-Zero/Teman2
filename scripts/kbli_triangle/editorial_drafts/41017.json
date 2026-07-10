@@ -1,0 +1,27 @@
+{
+  "code": "41017",
+  "editorial": {
+    "headline": "Conventional Hotel-Building Construction, Without a Bali Moratorium Block",
+    "standfirst": "KBLI 41017 covers conventional construction, maintenance, rebuilding, alteration, and renovation of accommodation buildings, with full national PMA openness and no Bali block recorded.",
+    "body": "KBLI 41017 is about the physical work behind accommodation buildings. Its scope covers the conventional construction, maintenance, and rebuilding of structures used for lodging, including hotel buildings, hostels, and losmen. It also reaches alterations and renovations of accommodation buildings, so the code is not limited to new-build projects. The defining point is the method and the asset: conventional building construction applied to places where guests stay.\n\nThis is the kind of activity a company would register when its business is the construction-side delivery of lodging buildings, not the operation of the accommodation itself. The record places it across the full scale range: Mikro, Kecil, Menengah, and Besar. That breadth matters because the activity is not framed as only a large-contractor field, even though the Bali-side risk note specifically refers to the Besar scale. The record also lists construction sub-classification references GT007 and BG007, anchoring the scope in accommodation-building construction rather than a generic building category.\n\nNationally, the PMA picture is clean. The activity is marked TERBUKA, and the foreign-ownership ceiling is 100%. In plain English, the slim record gives no national foreign-equity cap below full ownership for this activity. That conclusion should stay narrow: it comes from the recorded PMA status and maximum foreign-ownership field, sourced to the listed presidential regulations. Nothing in the record adds a special capital figure, licensing threshold, tax treatment, or timetable, so those should not be implied.\n\nThe Bali reading is also direct, but more nuanced than a generic “open” label. Bali’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently. This activity, however, is not marked as blocked: `l4_bali_blocked` is false, and the reason given is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest editorial conclusion is that KBLI 41017 is nationally open to PMA up to 100% foreign ownership, and the Bali record does not block it under the stated moratorium rule. The key is not to invent a Bali percentage or a separate local condition; the Bali-side fact is simply that the record marks it as OK_or_HIGHER_RISK and not blocked for the reason stated.",
+    "pullQuote": "KBLI 41017 is nationally open to full foreign ownership, and the Bali record does not block it under the stated moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Besar, Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

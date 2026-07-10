@@ -1,0 +1,27 @@
+{
+  "code": "41014",
+  "editorial": {
+    "headline": "A Clear Path for Conventional Shopping-Building Construction",
+    "standfirst": "KBLI 41014 covers the conventional construction, upkeep, rebuilding, alteration, and renovation of shopping buildings, with national PMA access and no Bali moratorium block in the record.",
+    "body": "KBLI 41014 is about the physical making and remaking of places where commerce happens. The record defines it as conventional construction for shopping buildings: trade buildings, markets, malls, department stores, shops, shophouses, and warung. It is not limited to new construction. The same activity also covers maintenance, rebuilding, alteration, and renovation, so the scope reaches across the practical life of a retail property, from the first structure to later changes that keep it commercially usable.\n\nThat breadth matters because the activity is framed around the building method and the commercial use of the premises, not around the particular retail business that may later operate inside. A founder using this code is registering construction work for shopping-oriented buildings by conventional method. The slim record also identifies the construction subclassifications for this activity as GT004 and BG004, which keeps the editorial focus on the construction category itself rather than on the eventual tenant mix or trading activity inside the building.\n\nThe scale picture is unusually straightforward. The record marks this activity as open to Besar, Mikro, Kecil, and Menengah. In plain English, it is not written here as an activity reserved only for large contractors, nor only for smaller domestic operators. The registration window in the record spans all listed business scales, which is an important point for reading the code accurately: the same activity description can sit behind very different business sizes, from smaller works to large shopping-building construction.\n\nThe national-versus-Bali position is also clear. Nationally, the PMA status is TERBUKA and the foreign-ownership ceiling in the record is 100%, with the cited national source stated as Perpres 10/2021, 49/2021. Bali then needs a separate reading because the record includes a provincial moratorium rule: Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. For this code, however, the Bali block is false. The record gives the reason directly: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. So the honest reading is not that Bali adds a hidden cap or a separate percentage. It does not, in this record. The honest reading is that KBLI 41014 is nationally foreign-open up to 100%, and the Bali moratorium does not block PMA registration for it on the facts provided.",
+    "pullQuote": "The honest reading is that KBLI 41014 is nationally foreign-open up to 100%, and the Bali moratorium does not block PMA registration for it on the facts provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Besar, Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

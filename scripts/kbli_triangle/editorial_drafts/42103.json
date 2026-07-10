@@ -1,0 +1,27 @@
+{
+  "code": "42103",
+  "editorial": {
+    "headline": "Railway Track Construction With a Clear PMA Path",
+    "standfirst": "Railway-line construction, maintenance, and rebuilding are nationally open to full foreign ownership, and the Bali record does not mark this activity as moratorium-blocked.",
+    "body": "KBLI 42103 is for the physical rail corridor itself: building, maintaining, and rebuilding railway lines. The slim record names railway track, underground rail, and conductor rail for trains, and it also allows the work to include rail installation, sleeper installation, and gravel fill for the railway bed. That makes the code less about a transport service than about the civil-construction activity that creates or renews the trackway. The boundary is equally important: the record excludes railway bridge construction, so the editorial center of this code is the rail line and its supporting track bed, not the bridge structure that may carry it.\n\nOn scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar businesses, so it is not framed only as a large-company activity in the classification data. A registrant should read that breadth carefully: the scope still describes rail construction, maintenance, and reconstruction, which means the business activity being registered must genuinely sit inside that track-construction envelope. The construction subclassification attached to the record is BS003, giving the activity a specific construction identity inside the record rather than a generic infrastructure label.\n\nThe national PMA picture is clean. The activity is marked TERBUKA, and the foreign-ownership ceiling given in the record is 100%. In plain English, the national record presents this rail-construction activity as open to foreign investment up to full ownership. There is no lower ceiling in the slim record, no additional percentage tier, and no capital or licensing condition stated here, so none should be read into the classification summary.\n\nFor Bali, the important point is that the record does not show a moratorium block. The Bali status is OK_or_HIGHER_RISK, with the reason stated as: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. That matters because the moratorium rule in the same record blocks ALL Low + Medium-Low risk KBLI for PMA island-wide, permanent. This code is therefore not presented as one of the blocked Low or Medium-Low risk cases for Bali; the national openness and the Bali-side status point in the same practical direction.",
+    "pullQuote": "For Bali, the important point is that the record does not show a moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

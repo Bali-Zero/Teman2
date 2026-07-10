@@ -1,0 +1,27 @@
+{
+  "code": "41020",
+  "editorial": {
+    "headline": "Prefabricated Building Construction, Clearly Open at Scale",
+    "standfirst": "KBLI 41020 covers on-site assembly of factory-made building components, with full national PMA opening and no Bali moratorium block in this record.",
+    "body": "KBLI 41020 is not about manufacturing the components themselves. The record defines it as construction activity at the building site, using prefabricated building materials produced by another unit. In practical terms, this is the site-side work of putting factory-made building elements into a finished building structure: precast concrete, steel, plastic, rubber, wood, aluminium, sandwich panels, and other factory-produced materials installed through fabrication, erection, or assembly methods. The construction-work subclassification noted in the record is KP001.\n\nThat scope matters because this code sits in the execution phase of a building project. A company registering it is presenting itself as the party that installs and assembles prefabricated building systems on-site, rather than as the producer of the panels, frames, or other materials. The scale profile is unusually broad: the record opens it to Mikro, Kecil, Menengah, and Besar. That means the activity is not reserved only for large contractors in the classification record, even though actual project size and operational capacity may differ from one business to another.\n\nNationally, the PMA position is straightforward. The record marks the activity as TERBUKA, with a foreign-ownership ceiling of 100%. In plain English, the national classification shown here allows full foreign ownership for this activity. There is no smaller foreign-share cap in the record, and no additional national condition, threshold, licence, timeline, or minimum-capital figure is supplied here. The clean reading is therefore simple: for a foreign-owned setup, the national PMA door is open up to the full stated ceiling.\n\nThe Bali picture is also clear, but for a different reason. The record says Bali is not blocking this activity under the moratorium: l4_bali_blocked is false, and the reason given is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The moratorium rule in the record blocks Low and Medium-Low risk KBLI for PMA across Bali, but this record does not place KBLI 41020 inside that blocked result. So the honest national-vs-Bali conclusion is aligned rather than contradictory: nationally open, and not blocked for PMA registration in Bali on the facts provided here.",
+    "pullQuote": "The honest national-vs-Bali conclusion is aligned rather than contradictory: nationally open, and not blocked for PMA registration in Bali on the facts provided here.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

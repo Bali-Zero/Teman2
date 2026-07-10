@@ -1,0 +1,27 @@
+{
+  "code": "42201",
+  "editorial": {
+    "headline": "Irrigation and Drainage Network Construction, Read Without Decoration",
+    "standfirst": "This activity covers the building, maintenance, and reconstruction of irrigation channels and drainage networks, nationally open to PMA and not blocked by Bali’s moratorium record.",
+    "body": "KBLI 42201 is a public-infrastructure kind of activity, but the record keeps its scope narrow and practical: it covers the construction, maintenance, and reconstruction of water-channel networks for irrigation and drainage networks. In plain English, this is not a general water business and not a broad civil-engineering umbrella. It is the work of making, keeping, or rebuilding the physical channel systems that move irrigation water and manage drainage. The slim record also anchors the construction sub-classification as BS004, which matters because it frames the activity as a construction-network category rather than a service advisory or trading activity.\n\nThe registration picture is unusually broad on business scale. The record opens this activity to Mikro, Kecil, Menengah, and Besar, so the category is not reserved only for large contractors in the data provided here. A small operator and a larger construction company can both sit inside the same activity code, provided the activity itself remains the construction, maintenance, or rebuilding of irrigation and drainage networks. That scale range is important editorially because it prevents a false reading of the code as only a heavy-infrastructure lane. The scope is technical, but the record’s scale access is wide.\n\nNationally, the PMA position is clean: the activity is marked TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. Rendered in business language, that means the national record allows foreign ownership up to 100% for this activity. There is no foreign-share cap below full ownership in the slim record, and there is no separate national qualification invented here beyond what the record states. For a foreign-owned setup, the national signal is therefore not ambiguous: this is a foreign-open activity under the stated source.\n\nThe Bali picture is also clear, but it needs to be read carefully. The Bali moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This activity, however, is not marked as blocked in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason given is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. That does not create a separate Bali ownership percentage, and it does not add a local quota or partnership condition. It simply means that, on this record, the activity is nationally open to foreign ownership and not blocked by the Bali moratorium logic stated here.",
+    "pullQuote": "On this record, the activity is nationally open to foreign ownership and not blocked by the Bali moratorium logic stated here.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

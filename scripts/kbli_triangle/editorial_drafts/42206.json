@@ -1,0 +1,27 @@
+{
+  "code": "42206",
+  "editorial": {
+    "headline": "Building the Physical Backbone of Telecommunications",
+    "standfirst": "A construction activity for telecom exchanges, towers, stations, pipelines, and cable networks, nationally open to foreign ownership and not blocked for Bali PMA registration in this record.",
+    "body": "This activity is about the hard infrastructure behind telecommunications: the construction, maintenance, and repair of central telecommunications buildings and their equipment. In practical terms, the record describes work on telephone and telegraph exchange buildings, transmitter tower buildings, microwave radar receiving structures, small earth-station buildings, and satellite stations. It also reaches into the physical networks that carry communication: local and long-distance communication pipelines, transmission networks, and telecommunication or telephone cable distribution networks built above ground, underground, or underwater.\n\nThat makes this a construction classification with a specifically telecommunications character. It is not merely general building work, and it is not only a cable-laying label. The scope ties together the structures that house telecom systems and the network routes that connect them. The listed construction subclassification is BS009, which anchors the activity in the construction taxonomy for central telecommunications construction.\n\nThe scale picture is broad. The record marks the activity as open to Mikro, Kecil, Menengah, and Besar operators, so the classification is not reserved only for large enterprises. A small contractor maintaining local communication cable distribution, a medium business working on telecom transmission structures, and a large operator building or repairing central telecom facilities all sit within the same stated scale universe, provided the activity being registered matches the scope described in the record.\n\nThe national-vs-Bali picture is unusually clean. Nationally, the activity is marked TERBUKA for PMA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. On the Bali side, the record does not mark it as blocked: `l4_bali_blocked` is false, and the Bali status is `OK_or_HIGHER_RISK`. The stated reason is precise: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule still matters as background because Bali province blocks all low and medium-low risk KBLI for PMA island-wide, permanently, but this record’s Bali conclusion is that the activity is not blocked by that rule. The honest reading is therefore direct: for this code, the record describes a nationally foreign-open activity and does not block PMA registration in Bali today.",
+    "pullQuote": "The honest reading is direct: this record describes a nationally foreign-open activity and does not block PMA registration in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}
