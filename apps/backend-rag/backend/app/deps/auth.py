@@ -276,24 +276,47 @@ async def get_current_portal_client(
             detail="This endpoint is only accessible to clients",
         )
 
+    # Client accounts live in team_members (role='client', linked_client_id ->
+    # clients.id), NOT user_profiles. The old JOIN targeted user_profiles.role /
+    # .linked_client_id — columns that do not exist there — so every real client
+    # (role=client) hitting /api/portal/taxes or /visa got HTTP 500
+    # (UndefinedColumnError). Mirror the working resolver in
+    # portal.get_current_client (team_members lookup). Observed live 2026-07-10.
+    user_id = user.get("id") or user.get("user_id")
     async with db_pool.acquire() as conn:
-        client_row = await conn.fetchrow(
+        row = await conn.fetchrow(
             """
-            SELECT c.id, c.email, c.full_name
-            FROM clients c
-            JOIN user_profiles up ON up.linked_client_id = c.id
-            WHERE up.id = $1 AND up.role = 'client'
+            SELECT id, email, full_name, linked_client_id, portal_access
+            FROM team_members
+            WHERE id = $1 AND role = 'client' AND active = true
             """,
-            user.get("user_id"),
+            str(user_id),
         )
 
-        if not client_row:
+        if not row:
             logger.warning(
-                f"Portal client lookup failed for user_id={user.get('user_id')} email={user.get('email')}",
+                "Portal client lookup failed for user_id=%s email=%s",
+                user_id,
+                user.get("email"),
             )
             raise HTTPException(
-                status_code=404,
-                detail="Client profile not found. Please contact support.",
+                status_code=403,
+                detail="Client account not found or inactive",
+            )
+        if not row["portal_access"]:
+            raise HTTPException(
+                status_code=403,
+                detail="Portal access not enabled for this account",
+            )
+        if not row["linked_client_id"]:
+            raise HTTPException(
+                status_code=403,
+                detail="Client profile not linked to account",
             )
 
-        return {**dict(client_row), "impersonating": False}
+        return {
+            "id": row["linked_client_id"],
+            "email": row["email"],
+            "full_name": row["full_name"],
+            "impersonating": False,
+        }
