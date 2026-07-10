@@ -1,3 +1,7 @@
 _out/
 _pilot*.out
 editorial_writer.log
+_prorun.out
+_push.out
+_commit.out
+_fullrun.out
