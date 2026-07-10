@@ -92,11 +92,24 @@ MARKER_FRESH_SEC = int(os.environ.get("W84_MARKER_FRESH_SEC", str(48 * 3600)))
 # A job that died once and has been alive+quiet ever since was reported
 # FAILING-HONESTLY forever, off evidence that predates its current run. Live
 # proof: mlx-server (4d11h uptime, serving /v1/models), fly-pg-tunnel.local
-# (16d uptime, port 15432 accepting connections), local-livekit-server (16d
-# uptime, port 7880 answering 200) — all three FAILING-HONESTLY, all three
-# demonstrably alive and serving. RECOVERED requires the SAME window on BOTH
-# signals (see _classify) so a genuinely still-broken job — log actively
-# re-writing fresh errors, stale_green stays False — is never masked.
+# (16d uptime, port 15432 accepting connections) — both FAILING-HONESTLY,
+# both demonstrably alive and serving. RECOVERED requires a stable uptime
+# (see _classify) so a job that JUST restarted (could still be crash-looping)
+# is never masked.
+#
+# Healer tick 2026-07-10 (same day, second pass): the FIRST version of this
+# fix additionally required `stale_green` (log quiet for STALE_GREEN_SEC) on
+# the theory that "log actively re-writing" meant "actively re-writing fresh
+# ERRORS". False: stale_green only measures ANY log write, not a failure one.
+# local-livekit-server (16d uptime, port 7880 answering 200) logs benign
+# periodic "high cpu load" INFO lines every few hours — its log is NEVER
+# stale, so it stayed FAILING-HONESTLY forever despite being provably healthy.
+# The real "no active failure" signal already exists: `marker is None`, which
+# _log_has_failure_marker gates on its OWN freshness window (MARKER_FRESH_SEC,
+# 48h) and only matches known launch-failure signatures. By the time
+# `_classify` reaches the RECOVERED branch, marker is already guaranteed None
+# (the marker-present branches return earlier) — stale_green added no real
+# protection beyond that, only false negatives for chatty-but-healthy jobs.
 UPTIME_STABLE_SEC = int(os.environ.get("W84_UPTIME_STABLE_SEC", str(STALE_GREEN_SEC)))
 
 
@@ -278,16 +291,18 @@ def _classify(
     status: dict | None,
     marker: str | None,
     prog_exists: bool,
-    stale_green: bool,
     uptime_sec: float | None,
 ) -> str:
     """Pure classification — exit-code x log-content x process-uptime.
 
-    RECOVERED only fires when BOTH the process has been alive longer than
-    UPTIME_STABLE_SEC AND the log has been quiet that same window (stale_green).
-    Either signal alone is not enough: a job that just restarted (short uptime)
-    might still be crash-looping, and a job with a fresh log full of new errors
-    (stale_green False) is a live finding no matter how long its PID has run.
+    RECOVERED fires when the process has been alive longer than
+    UPTIME_STABLE_SEC with NO failure marker. Marker is already guaranteed
+    None by the time we reach this branch (the marker-present branches above
+    return first), and `_log_has_failure_marker` has its own freshness gate
+    (MARKER_FRESH_SEC) — so "no marker" already means "no known launch-failure
+    signature in the recent log", independent of how chatty the log is.
+    Short uptime alone still blocks RECOVERED: a job that just restarted
+    could still be crash-looping regardless of log content.
     """
     if status is None:
         return "NOT-LOADED"
@@ -300,11 +315,10 @@ def _classify(
     if exit_code not in (0, None):
         if (
             pid is not None
-            and stale_green
             and uptime_sec is not None
             and uptime_sec > UPTIME_STABLE_SEC
         ):
-            return "RECOVERED"       # sticky exit code, provably alive+quiet since
+            return "RECOVERED"       # sticky exit code, provably alive since
         return "FAILING-HONESTLY"    # non-zero, no marker, no recovery proof
     if not prog_exists:
         return "ARMED-TO-NOTHING"    # plist points at a missing script
@@ -335,7 +349,7 @@ def audit() -> list[dict]:
         # doesn't outlive the incarnation that produced it. See _classify.
         verdict = _classify(
             status=status, marker=marker, prog_exists=prog_exists,
-            stale_green=stale_green, uptime_sec=uptime_sec,
+            uptime_sec=uptime_sec,
         )
 
         findings.append({
