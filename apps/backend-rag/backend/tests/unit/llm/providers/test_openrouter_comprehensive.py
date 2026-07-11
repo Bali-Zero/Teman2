@@ -42,6 +42,15 @@ def openrouter_provider(mock_openrouter_client):
 class TestOpenRouterProvider:
     """Tests for OpenRouterProvider"""
 
+    @pytest.fixture(autouse=True)
+    def _enable_openrouter(self, monkeypatch):
+        """These tests cover provider mechanics, not the COS-LAW-013 kill
+        switch (see test_openrouter_kill_switch.py) — is_available reads
+        settings.openrouter_enabled at call time, OFF by default."""
+        monkeypatch.setattr(
+            "backend.app.core.config.settings.openrouter_enabled", True, raising=False
+        )
+
     def test_init(self):
         """Test initialization"""
         with patch(_OPENROUTER_CLIENT_PATH) as mock_client_class:
