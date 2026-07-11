@@ -250,7 +250,18 @@ def _hero_bg_to_img(html: str, hero_filename: str) -> str:
         "object-fit:cover;z-index:0;}\n"
         ".hero-scrim{position:absolute;inset:0;"
         "background:rgba(10,10,10,0.55);z-index:0;}\n"
-        "body > *:not(.hero-img):not(.hero-scrim){position:relative;z-index:1;}\n"
+        # :where(...) wraps the WHOLE selector so it carries 0 specificity and
+        # NEVER overrides a child's own `position` declaration (e.g.
+        # evidence-carved's `.content{position:absolute;left:...;right:...}`,
+        # which sets the slide's text-box width). Before this fix, the blanket
+        # `position:relative` here beat `.content`'s `position:absolute` on
+        # specificity+cascade order, silently dropping the left/right width
+        # constraint and letting long fact/body text overflow off-canvas
+        # (found 2026-07-11, evidence-carved slide overflow). NOTE: :where(*)
+        # alone (zeroing only the `*`) does NOT work — the :not() clauses
+        # outside :where() still count; the fix is to wrap the entire
+        # selector, verified via Playwright computed-style probe.
+        ":where(body > *:not(.hero-img):not(.hero-scrim)){position:relative;z-index:1;}\n"
     )
     html = html.replace("</style>", hero_img_css + "</style>", 1)
     img_tag = (
@@ -1106,6 +1117,13 @@ def _fill_placeholders(
         "{{regulation_code}}": reg,
         "{{statement}}": statement,
         "{{statement_html_with_emphasis_span}}": statement_emphasis_html,
+        # evidence-carved "take" block scalars. Previously UNBOUND → the raw
+        # mustache ({{take_label}}/{{take_line}}) shipped to the renderer and
+        # leaked as literal text at the bottom of every evidence-carved slide
+        # that supplied a take (critic FAIL, 2026-07-11 revise-run S7). Default
+        # to empty so a slide with no take never leaks a placeholder either.
+        "{{take_label}}": _html_escape((slide.get("take_label") or "").strip()),
+        "{{take_line}}": _html_escape((slide.get("take_line") or "").strip()),
     }
     # qa-dialogue: map qa_pairs → the template's flat voice_a/voice_b fields.
     for fk, fv in _qa_dialogue_fields(slide).items():
