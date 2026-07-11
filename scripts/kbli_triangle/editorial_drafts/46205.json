@@ -1,0 +1,27 @@
+{
+  "code": "46205",
+  "editorial": {
+    "headline": "The Live-Animal Wholesale Trade That Stops at Bali’s PMA Gate",
+    "standfirst": "This wholesale activity is nationally open to full foreign ownership, yet Bali’s permanent moratorium prevents PMA registration for it today.",
+    "body": "This activity covers wholesale trade in live animals other than fish, including poultry, animals for slaughter and breeding stock. Its practical centre of gravity is the movement of living animals through trade channels rather than the farming, processing or retailing of them. The scope is specific enough to matter: the animals are live, fish are excluded, and the examples point to commercial livestock and breeding supply.\n\nIt is open across the full business-scale range stated in the record: Mikro, Kecil, Menengah and Besar. Nationally, its PMA status is TERBUKA, with foreign ownership permitted up to 100%. That is a clear national ownership position, not a partial foreign-capital allowance. For a founder assessing the activity at the national level, the record therefore supports a fully foreign-owned structure within this activity’s stated scope.\n\nBali changes the conclusion decisively. A foreigner cannot register this activity in Bali today. At the Besar scale, OSS risk is classified as Rendah or Menengah-Rendah across every stated scope, bringing it within Bali’s island-wide, permanent moratorium on PMA registration for all Low and Medium-Low risk KBLI activities. The resulting Bali status is BLOCCATO_CLASSE_RISCHIO: blocked because of its risk class, not because the national foreign-ownership ceiling has narrowed.\n\nThat distinction is the essential planning fact. A nationally open ownership rule does not overcome Bali’s separate registration block. The national position remains full foreign ownership up to 100%; Bali’s position is that PMA registration is blocked under the provincial moratorium. Anyone considering this trade should therefore treat national eligibility and Bali registration as two different questions, with the latter currently determining whether a PMA structure can be registered on the island.",
+    "pullQuote": "A nationally open ownership rule does not overcome Bali’s separate registration block.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

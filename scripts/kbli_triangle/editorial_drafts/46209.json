@@ -1,0 +1,27 @@
+{
+  "code": "46209",
+  "editorial": {
+    "headline": "When an Open Wholesale Trade Meets Bali’s PMA Moratorium",
+    "standfirst": "This wholesale activity is open to full foreign ownership nationally, yet Bali’s permanent PMA moratorium blocks registration there today.",
+    "body": "KBLI 46209 covers wholesale trade in other agricultural products and live animals not classified elsewhere. Its stated terrain includes agricultural residues and waste, agricultural by-products used for animal feed, and other plants and plant seedlings. It is a deliberately broad wholesale category: the common thread is the trading of these agricultural goods, rather than a single named commodity.\n\nThe activity is open across the full scale range recorded for it: Mikro, Kecil, Menengah, and Besar. That matters because the category is not confined to one business size. A wholesale operator working with the agricultural materials, feed-related by-products, plants, seedlings, or live animals within this scope can place the activity at any of those listed scales.\n\nNationally, the position is straightforward. The PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. In practical terms, the national record permits full foreign ownership for this activity. The cited basis is Perpres 10/2021, 49/2021. A 100% national ceiling does not overcome Bali’s block on PMA registration.\n\nBali reaches a different conclusion. The Bali status is BLOCCATO_CLASSE_RISCHIO: a PMA applicant cannot register this activity in Bali today. The record says that, at the Besar scale, every scope carries an OSS risk classification of Rendah or Menengah-Rendah, placing it within Bali’s moratorium noted as May 13, 2026. That provincial rule blocks PMA registration island-wide and permanently for all Low and Medium-Low risk KBLI. This is not a reduction of the national foreign-ownership ceiling; it is a Bali-specific bar on PMA registration for the activity.",
+    "pullQuote": "A 100% national ceiling does not overcome Bali’s block on PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

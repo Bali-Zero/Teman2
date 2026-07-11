@@ -1,0 +1,27 @@
+{
+  "code": "46312",
+  "editorial": {
+    "headline": "Fruit Wholesale: Open Nationally, Blocked for PMA in Bali",
+    "standfirst": "Fruit wholesale can be fully foreign-owned nationally and operates at every listed scale, yet Bali’s permanent PMA moratorium blocks registration for this activity.",
+    "body": "This activity is the wholesale trade in fruit, expressly including oranges, apples, pears and mangoes. Its scope is deliberately commodity-led: the record defines a commercial fruit category through wholesale trade and names those fruits as examples within it. For a business using the registration, the central proposition is clear—its stated line of activity is the wholesale market for fruit, with a scope broad enough to embrace several familiar varieties. The record places the named fruits together in the same wholesale activity.\n\nThe activity is available at Mikro, Kecil, Menengah and Besar scale. That is significant because the record puts the same activity in reach across the complete range of scales it lists, rather than reserving it for a single size of enterprise. The national PMA position is just as direct: the status is TERBUKA and the maximum foreign ownership is 100%. In practical ownership terms, the national record permits full foreign ownership. The cited national basis is Perpres 10/2021, 49/2021.\n\nThat national answer is not the Bali answer. A foreign investor cannot register this activity in Bali today. The local status is BLOCCATO_CLASSE_RISCHIO, and its stated reason is precise: at the Besar scale, the OSS risk outcome is Rendah or Menengah-Rendah across every scope. That brings the activity within Bali’s moratorium, recorded here in May 2026. The provincial rule blocks all Low and Medium-Low risk KBLI from PMA registration, island-wide and permanently. The governing local fact is an outright PMA registration block for Bali.\n\nThe distinction is simple, but it should decide the reading of the entry. Nationally, fruit wholesale is fully open to foreign ownership up to the stated 100% ceiling and is available at every listed scale. In Bali, the proposed PMA registration stops at the moratorium because of the activity’s recorded risk-classification position. Both statements are true at once: the national ceiling is real, and it does not displace the Bali block. For a Bali-focused proposal, the local registration status is the decisive fact in this record.",
+    "pullQuote": "A foreign investor cannot register this activity in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
