@@ -32,6 +32,15 @@ session (remote `git pull` on the Pro x3). Fix, in order:
      the git op runs off-box → ALLOW (this checkout is untouched). Innocence-tested:
      a LOCAL `git pull` must still block; only the ssh-wrapped one is exempt.
 
+W92 (5th over-match, 2026-07-11, superscar #3): the FILE-WRITE channel
+(`_write_hits_main`) had no remote-dispatch awareness at all — only the
+git-verb channel consulted `_is_remote_dispatch` (W83). An ssh/scp/rsync-
+dispatched command with a RELATIVE write destination (`ssh mini cp /tmp/x
+scripts/f.py`) resolved that destination against the LOCAL session cwd,
+producing a phantom write-target into the main checkout for a write that
+actually lands on the remote host. Fix: the same `_is_remote_dispatch` check,
+reused, applied upstream of `_extract_write_targets` in `_write_hits_main`.
+
 Blocked (only when effective target resolves INTO main checkout, NOT a worktree):
 - git checkout / switch / stash / reset / merge / rebase / pull / commit -a / add -A / add .
 - shell writes: `> file`, `>> file`, `tee file`, `sed -i ... file`, `cp/mv ... dest`, `dd of=`
@@ -40,6 +49,7 @@ Allow (defense conservative — a global L1 hook on 3 machines must NOT false-po
 - git read-only; git -C <worktree>; git add <file>; git commit -m; git push
 - ANY write whose target is a worktree, /tmp, $HOME outside the repo, or unclassifiable
 - a git op carried by a remote ssh/scp/rsync dispatch (runs on another host) [W83]
+- a shell WRITE carried by a remote ssh/scp/rsync dispatch (same reasoning) [W92]
 - a git verb appearing only inside a quoted string / heredoc body (not a real command) [W83]
 
 Escape: AGENT_WORKTREE_ENFORCEMENT=false (env var set in session, NOT inline cmd prefix).
@@ -47,7 +57,7 @@ Escape: AGENT_WORKTREE_ENFORCEMENT=false (env var set in session, NOT inline cmd
 Exit code 2 + stderr = block tool call.
 Exit code 0 + no stderr = allow.
 
-Reference cicatrix: 2026-04-29 #1+#2, W50/W51/W52, 32+ sibling-orphan-2026-05-25, W79, W83 (this).
+Reference cicatrix: 2026-04-29 #1+#2, W50/W51/W52, 32+ sibling-orphan-2026-05-25, W79, W83, W92 (this).
 """
 from __future__ import annotations
 
@@ -55,6 +65,7 @@ import json
 import os
 import pathlib
 import re
+import socket
 import subprocess
 import sys
 
@@ -408,8 +419,25 @@ def _resolve_target(path_str: str, cwd: str) -> pathlib.Path | None:
 
 def _write_hits_main(cmd: str, cwd: str) -> pathlib.Path | None:
     """Return the offending path if a shell write lands INSIDE main checkout
-    (and NOT inside an allowed worktree). None = no main-write detected → allow."""
+    (and NOT inside an allowed worktree). None = no main-write detected → allow.
+
+    W92 (5th over-match of this hook, 2026-07-11): an ssh/scp/rsync-dispatched
+    command carries its write to ANOTHER host — this checkout is never
+    touched — but a RELATIVE destination inside that payload (e.g.
+    `ssh mini cp /tmp/x scripts/f.py`) used to be resolved against the LOCAL
+    session cwd, producing a phantom write-target into the main checkout.
+    This channel had no remote-dispatch awareness at all (the W83 fix only
+    wired `_is_remote_dispatch` into the git-verb path at the bottom of
+    main()); the fix here is the SAME check, reused, applied upstream of
+    target extraction. Word-boundary/segment-anchored (not bare substring),
+    so `echo ssh && cp x apps/f.py` (ssh mentioned, write is REAL and local)
+    must still block — guilt+innocence in guard_fuzz_harness.py write_target
+    channel + test_w92_remote_write_dispatch.py.
+    """
     if not WRITE_HINT_RE.search(cmd):
+        return None
+    cmd_stripped = _strip_noise(cmd)
+    if _is_remote_dispatch(cmd_stripped):
         return None
     repo_real = pathlib.Path(REPO_ROOT).resolve()
     for raw in _extract_write_targets(cmd):
@@ -591,9 +619,77 @@ def _only_ffonly_pull(cmd_scan: str) -> bool:
     return True
 
 
+# --- runtime-state allowlist (PENDING-ARMS "Pro main self-align strutturalmente
+# chiuso", opened 2026-07-06, iteration 5) ---------------------------------
+# Pro carries 3 tracked files that are CONTINUOUSLY rewritten by live runtime
+# processes (cron escalation log, publish-state index, generated doc). Under
+# the plain tracked-clean probe, that permanent dirt shut the ff-only
+# exception forever on Pro — every fleet self-align needed the operator
+# fence the exception exists to remove. The allowlist declares those SPECIFIC
+# paths (config file, not hardcoded in this function) as expected residue;
+# any OTHER tracked-dirty file still gates the exception exactly as before
+# (W91 lesson applied to this exception itself: it needs its OWN guilt+
+# innocence proof, not just a new way to say yes).
+RUNTIME_STATE_ALLOWLIST_PATH = pathlib.Path(__file__).resolve().parent / "runtime_state_allowlist.json"
+
+
+def _machine_label(hostname: str | None = None) -> str:
+    """m5 | mini | pro | <bare hostname> — mirrors scripts/lint_home_fork.py's
+    machine_label() so machine-scoping stays consistent repo-wide."""
+    host = (hostname or socket.gethostname()).split(".")[0].lower()
+    if "air-m5" in host:
+        return "m5"
+    if "mini" in host:
+        return "mini"
+    if host == "nuzantara":
+        return "pro"
+    return host
+
+
+def _load_runtime_state_allowlist(path: pathlib.Path | None = None) -> set[str]:
+    """Repo-relative paths allowlisted for the CURRENT machine. Any read/parse
+    failure returns an EMPTY set (fail-closed: a broken config file must not
+    silently widen the exception — same fail-closed posture as the tree-clean
+    probe itself).
+
+    `path` is resolved from the MODULE ATTRIBUTE at call time (not a default
+    parameter value) so a caller reassigning `RUNTIME_STATE_ALLOWLIST_PATH`
+    (tests, or any future runtime override) is actually honored — a default
+    parameter would freeze the value at function-definition time instead."""
+    if path is None:
+        path = RUNTIME_STATE_ALLOWLIST_PATH
+    try:
+        data = json.loads(path.read_text())
+    except Exception:
+        return set()
+    label = _machine_label()
+    allowed: set[str] = set()
+    for entry in data.get("entries", []):
+        try:
+            machines = entry.get("machines", [])
+            rel = entry.get("path", "")
+        except AttributeError:
+            continue
+        if not rel:
+            continue
+        if "all" in machines or label in machines:
+            allowed.add(rel)
+    return allowed
+
+
 def _main_tree_tracked_clean() -> bool:
-    """Tracked-files-clean probe of the MAIN checkout (untracked ignored).
-    Any probe failure returns False → the ff-only exception stays shut."""
+    """Tracked-files-clean probe of the MAIN checkout (untracked ignored),
+    EXCEPT for paths declared in runtime_state_allowlist.json for the current
+    machine. Any probe failure, or any tracked-dirty file NOT on the
+    allowlist, returns False → the ff-only exception stays shut.
+
+    Parsing is deliberately narrow: only a clean `XY path` porcelain line
+    (no rename arrow ` -> `, since a rename status line names TWO paths and
+    is never one of these plain runtime-rewrite files) can match an
+    allowlist entry; anything else — including a rename that happens to
+    touch an allowlisted name — falls through to "still gates" (fail-closed,
+    consistent with the exception's own stated philosophy: "loosening a
+    guard on uncertainty would invert its point")."""
     try:
         r = subprocess.run(
             ["git", "-C", REPO_ROOT, "status", "--porcelain", "--untracked-files=no"],
@@ -601,7 +697,22 @@ def _main_tree_tracked_clean() -> bool:
         )
     except Exception:
         return False
-    return r.returncode == 0 and r.stdout.strip() == ""
+    if r.returncode != 0:
+        return False
+    lines = [ln for ln in r.stdout.splitlines() if ln.strip()]
+    if not lines:
+        return True
+    allowlist = _load_runtime_state_allowlist()
+    if not allowlist:
+        return False  # dirty tree, nothing declared → unchanged historical behavior
+    for line in lines:
+        if " -> " in line:
+            return False  # rename status line — never allowlist-eligible, fail-closed
+        # porcelain format: 2-char status code + 1 space + path (rest of line)
+        path = line[3:]
+        if path not in allowlist:
+            return False
+    return True
 
 
 def _n_alive_cached() -> int:

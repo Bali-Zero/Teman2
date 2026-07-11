@@ -11,9 +11,7 @@
       "test_file": "apps/backend-rag/backend/tests/unit/scripts/test_openclaw_whatsapp_bridge_script.py",
       "guards": {
         "_guard_document_status_reply": {
-          "scar": [
-            "F37"
-          ],
+          "scar": ["F37"],
           "guilt": [
             "test_document_status_guard_f37_affirmative_approved_clobbers"
           ],
@@ -22,32 +20,20 @@
           ]
         },
         "_guard_legacy_b211_reply": {
-          "scar": [
-            "W72"
-          ],
-          "guilt": [
-            "test_b211_guard_still_clobbers_unsafe_current_claim"
-          ],
-          "innocence": [
-            "test_b211_guard_allows_correct_definitional_answer"
-          ]
+          "scar": ["W72"],
+          "guilt": ["test_b211_guard_still_clobbers_unsafe_current_claim"],
+          "innocence": ["test_b211_guard_allows_correct_definitional_answer"]
         },
         "_guard_hak_milik_reply": {
-          "scar": [
-            "W73-family"
-          ],
-          "guilt": [
-            "test_hak_milik_guard_clobbers_short_wrong_claim"
-          ],
+          "scar": ["W73-family"],
+          "guilt": ["test_hak_milik_guard_clobbers_short_wrong_claim"],
           "innocence": [
             "test_hak_milik_guard_passes_correct_short_answer",
             "test_hak_milik_guard_passes_correct_indonesian_answer"
           ]
         },
         "_guard_lkpm_reply": {
-          "scar": [
-            "W73#2"
-          ],
+          "scar": ["W73#2"],
           "guilt": [
             "test_lkpm_guard_still_clobbers_stale_deadline",
             "test_lkpm_guard_clobbers_wrong_window_while_valid"
@@ -58,10 +44,7 @@
           ]
         },
         "_guard_property_zoning_reply": {
-          "scar": [
-            "W68",
-            "W68b"
-          ],
+          "scar": ["W68", "W68b"],
           "guilt": [
             "test_property_zoning_guard_still_fires_on_airbnb_operation"
           ],
@@ -73,55 +56,32 @@
           ]
         },
         "_guard_tax_compliance_reply": {
-          "scar": [
-            "W73#3"
-          ],
-          "guilt": [
-            "test_tax_guard_still_appends_on_penalty_intent"
-          ],
-          "innocence": [
-            "test_tax_guard_does_not_append_on_stable_rate_fact"
-          ]
+          "scar": ["W73#3"],
+          "guilt": ["test_tax_guard_still_appends_on_penalty_intent"],
+          "innocence": ["test_tax_guard_does_not_append_on_stable_rate_fact"]
         },
         "_guard_villa_kbli_reply": {
-          "scar": [
-            "W68",
-            "W73#1"
-          ],
-          "guilt": [
-            "test_bridge_guard_corrects_bad_villa_55193_reply"
-          ],
+          "scar": ["W68", "W73#1"],
+          "guilt": ["test_bridge_guard_corrects_bad_villa_55193_reply"],
           "innocence": [
             "test_bridge_guard_keeps_grounded_villa_mapping_reply",
             "test_villa_terms_no_longer_carry_substring_traps"
           ]
         },
         "_guard_kbli_label_reply": {
-          "scar": [
-            "F38"
-          ],
-          "guilt": [
-            "test_kbli_label_guard_f38_kbli_context_still_fires"
-          ],
-          "innocence": [
-            "test_kbli_label_guard_f38_postcode_does_not_fire"
-          ]
+          "scar": ["F38"],
+          "guilt": ["test_kbli_label_guard_f38_kbli_context_still_fires"],
+          "innocence": ["test_kbli_label_guard_f38_postcode_does_not_fire"]
         },
         "_guard_cafe_pma_reply": {
-          "scar": [
-            "W73#4"
-          ],
-          "guilt": [
-            "test_cafe_guard_still_fires_on_real_cafe_question"
-          ],
+          "scar": ["W73#4"],
+          "guilt": ["test_cafe_guard_still_fires_on_real_cafe_question"],
           "innocence": [
             "test_cafe_guard_does_not_clobber_definitional_pt_pma_answer"
           ]
         },
         "_guard_nominee_reply": {
-          "scar": [
-            "W73#5"
-          ],
+          "scar": ["W73#5"],
           "guilt": [
             "test_nominee_guard_fires_on_natural_phrasing",
             "test_nominee_guard_clobbers_short_risky_only_answer",
@@ -137,20 +97,11 @@
       }
     },
     "command_hooks": {
-      "hooks_dirs": [
-        "infra/claude-hooks",
-        "scripts/hooks"
-      ],
+      "hooks_dirs": ["infra/claude-hooks", "scripts/hooks"],
       "vaccine": "infra/claude-hooks/test_hook_innocence.py",
       "entries": {
         "infra/claude-hooks/worktree_isolation.py": {
-          "scar": [
-            "W79",
-            "W83",
-            "W84",
-            "W85",
-            "W91"
-          ],
+          "scar": ["W79", "W83", "W84", "W85", "W91", "W92"],
           "symbols": {
             "BLOCKED_SUBCMD_RE": {
               "tests": [
@@ -160,9 +111,8 @@
               "note": "W85 stash over-match FIXED 2026-07-06 (negative lookahead: read-only `stash list|show` pass, bare/mutating stash still blocked) — test_w85_stash_readonly.py converted from tripwire-pin to plain guilt+innocence per the pin's own instructions"
             },
             "_is_remote_dispatch": {
-              "tests": [
-                "infra/claude-hooks/test_w83_remote_dispatch.py"
-              ]
+              "tests": ["infra/claude-hooks/test_w83_remote_dispatch.py"],
+              "note": "W92 (2026-07-11): the SAME function, previously wired only into the git-verb channel (W83), is now ALSO consulted by _write_hits_main — a 5th over-match of this guard was the file-write channel having zero remote-dispatch awareness at all. Direct unit coverage of _is_remote_dispatch itself stays owned by test_w83_remote_dispatch.py; the NEW call site's outcome is proven by test_w92_remote_write_dispatch.py under the _write_hits_main entry below."
             },
             "_strip_noise": {
               "tests": [
@@ -172,76 +122,68 @@
             },
             "_write_hits_main": {
               "tests": [
-                "infra/claude-hooks/test_w79_shell_write.py"
-              ]
+                "infra/claude-hooks/test_w79_shell_write.py",
+                "infra/claude-hooks/test_w92_remote_write_dispatch.py",
+                "infra/claude-hooks/guard_fuzz_harness.py"
+              ],
+              "note": "W92 fix 2026-07-11: an ssh/scp/rsync-dispatched write with a RELATIVE destination used to resolve against the LOCAL session cwd, producing a phantom write-target into the main checkout for a write that never touches this machine. Fixed by consulting _is_remote_dispatch upstream of target extraction (same reuse discipline as the git-verb channel)."
             },
             "_effective_git_target": {
-              "tests": [
-                "infra/claude-hooks/test_tilde_target_resolver.py"
-              ],
+              "tests": ["infra/claude-hooks/test_tilde_target_resolver.py"],
               "note": "tilde/env blind-spot fixed 2026-07-06 (expanduser+expandvars at the single choke point; found by the W85 live guilt-probe — the resolver sits UPSTREAM of BLOCKED_SUBCMD_RE)"
             },
             "_only_ffonly_pull": {
-              "tests": [
-                "infra/claude-hooks/test_ffonly_pull_exception.py"
-              ],
+              "tests": ["infra/claude-hooks/test_ffonly_pull_exception.py"],
               "note": "ff-only pull exception (2026-07-06, Zero directive). W91 fixed same day: the first version did a bare substring check and a shell COMMENT mentioning --ff-only opened the exception for a bare pull (4th over-match of this guard) — now FFONLY_PULL_SEGMENT_RE anchors the flag to the pull segment. 15 guilt + 7 innocence + 4 probe cases."
+            },
+            "_main_tree_tracked_clean": {
+              "tests": [
+                "infra/claude-hooks/test_ffonly_pull_exception.py",
+                "infra/claude-hooks/test_runtime_state_allowlist.py"
+              ],
+              "note": "PENDING-ARMS 'Pro main self-align strutturalmente chiuso' iteration 5 (2026-07-11): a runtime_state_allowlist.json (machine-scoped, mirrors scripts/lint_home_fork.py machine_label() convention) exempts 3 Pro-only continuously-rewritten tracked files from gating the ff-only exception. W91 lesson applied to the allowlist ITSELF: guilt (any other tracked-dirty file, a rename touching an allowlisted name, wrong machine, missing allowlist file all still gate) + innocence (exactly the 3 declared paths, or a subset, still opens) both proven."
             }
           },
-          "also_covered_by": [
-            "vaccine"
-          ]
+          "also_covered_by": ["vaccine"]
+        },
+        "infra/claude-hooks/guard_fuzz_harness.py": {
+          "scar": ["W83", "W84", "W85", "W91", "W92"],
+          "symbols": {},
+          "tests": ["infra/claude-hooks/guard_fuzz_harness.py"],
+          "note": "Reusable property/fuzz corpus runner for worktree_isolation.py's two decision channels (git_verb + write_target) — 382 generated command shapes (quotes, comments, newlines, heredocs, pipes, ssh-wrapping, git-verbs-inside-strings) classified against a fixture, not a hand-picked example list. Self-executing: `python3 infra/claude-hooks/guard_fuzz_harness.py` exits 1 on any unexplained mismatch. Guard-agnostic design (Case/run_corpus) intended for reuse by a future guard's own corpus generator."
         },
         "infra/claude-hooks/worktree_file_write_check.py": {
-          "scar": [
-            "W80"
-          ],
+          "scar": ["W80"],
           "symbols": {},
-          "tests": [
-            "infra/claude-hooks/test_arm_keep_hook.py"
-          ],
-          "also_covered_by": [
-            "vaccine"
-          ]
+          "tests": ["infra/claude-hooks/test_arm_keep_hook.py"],
+          "also_covered_by": ["vaccine"]
         },
         "infra/claude-hooks/host_boundary.py": {
           "symbols": {},
-          "tests": [
-            "infra/claude-hooks/test_host_boundary.py"
-          ]
+          "tests": ["infra/claude-hooks/test_host_boundary.py"]
         },
         "infra/claude-hooks/_phase.py": {
           "symbols": {},
-          "tests": [
-            "infra/claude-hooks/test_phase.py"
-          ]
+          "tests": ["infra/claude-hooks/test_phase.py"]
         },
         "infra/claude-hooks/premise_gate.py": {
           "symbols": {},
-          "tests": [
-            "infra/claude-hooks/test_premise_gate.py"
-          ]
+          "tests": ["infra/claude-hooks/test_premise_gate.py"]
         },
         "infra/claude-hooks/orchestrate_gate.py": {
           "symbols": {},
           "tests": [],
-          "also_covered_by": [
-            "vaccine"
-          ]
+          "also_covered_by": ["vaccine"]
         },
         "infra/claude-hooks/stadio_zero_nudge.py": {
           "symbols": {},
           "tests": [],
-          "also_covered_by": [
-            "vaccine"
-          ]
+          "also_covered_by": ["vaccine"]
         },
         "scripts/hooks/seam_verify.py": {
           "symbols": {},
           "tests": [],
-          "also_covered_by": [
-            "vaccine"
-          ]
+          "also_covered_by": ["vaccine"]
         }
       },
       "exempt": {
@@ -264,9 +206,7 @@
     },
     "under_match_sentinels": {
       "content-freshness-sentinel": {
-        "scar": [
-          "W82"
-        ],
+        "scar": ["W82"],
         "delegated_to": "infra/scar-gates/test_W82_content_freshness_undermatch.py",
         "note": "guilt+innocence live in the scar gate; the fact-based cure is a declared operator firebreak (2026-06-16)"
       }
@@ -283,16 +223,9 @@
       "test_file": "scripts/tests/test_tg_gateway.py",
       "guards": {
         "_guard_new_direct_sender": {
-          "scar": [
-            "W81",
-            "#2-esiste-non-armato"
-          ],
-          "guilt": [
-            "test_tg_lint_guilt_new_direct_sender_flagged"
-          ],
-          "innocence": [
-            "test_tg_lint_innocence_grandfathered_and_gateway_pass"
-          ]
+          "scar": ["W81", "#2-esiste-non-armato"],
+          "guilt": ["test_tg_lint_guilt_new_direct_sender_flagged"],
+          "innocence": ["test_tg_lint_innocence_grandfathered_and_gateway_pass"]
         }
       }
     }
