@@ -123,6 +123,11 @@ class Settings(BaseSettings):
     zantara_ai_cost_input: float = 0.00  # Preview is free? Or check updated pricing.
     zantara_ai_cost_output: float = 0.00  # Preview is free? Or check updated pricing.
     openrouter_api_key: str | None = None  # Set via OPENROUTER_API_KEY env var (free AI fallback)
+    # COS-LAW-013 (ratified 2026-07-11): OpenRouter egress is OFF by default.
+    # Client-channel content (WhatsApp/IG/webchat) reaches OpenRouter only as
+    # quota fallback — a third-party endpoint with no DPA = PII hole. Flip via
+    # OPENROUTER_ENABLED=true only with Zero's explicit authorization.
+    openrouter_enabled: bool = False
     deepseek_api_key: str | None = Field(default=None, description="DeepSeek API Key")
     ollama_url: str = Field(
         default="http://localhost:11434",

@@ -92,6 +92,29 @@ class CompletionResult:
     cost: float = 0.0  # Always 0 for free models
 
 
+class OpenRouterDisabledError(RuntimeError):
+    """Raised when OpenRouter egress is attempted while disabled."""
+
+
+def _ensure_enabled() -> None:
+    """Hard gate: OpenRouter egress is OFF by default (COS-LAW-013).
+
+    Every completion path (llm_gateway cascade, gemini_service fallback,
+    provider registry) funnels through OpenRouterClient.complete/
+    complete_stream — this is the single choke point. Disabled behaves
+    exactly like a missing API key: an already-handled failure path in
+    every caller.
+    """
+    if not settings.openrouter_enabled:
+        logger.warning(
+            "OpenRouter egress blocked: disabled by default (COS-LAW-013 PII boundary)",
+        )
+        raise OpenRouterDisabledError(
+            "OpenRouter is disabled (COS-LAW-013 PII boundary). "
+            "Set OPENROUTER_ENABLED=true only with Zero's explicit authorization.",
+        )
+
+
 class OpenRouterClient:
     """
     Smart AI Client using OpenRouter's native fallback system.
@@ -182,6 +205,7 @@ class OpenRouterClient:
         Returns:
             CompletionResult with content and metadata
         """
+        _ensure_enabled()
         if not self.api_key:
             raise ValueError("OpenRouter API key not configured")
 
@@ -261,6 +285,7 @@ class OpenRouterClient:
 
         Yields text chunks as they arrive.
         """
+        _ensure_enabled()
         if not self.api_key:
             raise ValueError("OpenRouter API key not configured")
 
@@ -308,6 +333,9 @@ class OpenRouterClient:
 
     async def check_credits(self) -> dict:
         """Check remaining credits and usage stats"""
+        if not settings.openrouter_enabled:
+            # OFF means OFF: even the billing probe must not exercise the key.
+            return {"error": "OpenRouter disabled (COS-LAW-013)"}
         if not self.api_key:
             return {"error": "API key not configured"}
 
