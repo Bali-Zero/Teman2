@@ -47,8 +47,12 @@ DATASET = ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
 DRAFTS = Path(__file__).resolve().parent / "editorial_drafts"  # TRACKED, not _out/
 LOG = Path(__file__).resolve().parent / "editorial_writer.log"
 
+# NOTE the digit guards around 429: KBLI codes 42911-42919 appear verbatim in the
+# prompt echo AND in valid completions ({"code": "42911", ...}); a bare `429` pattern
+# classified every call on that block as quota — infinite backoff (scar family #3,
+# caught live 2026-07-11).
 QUOTA_RE = re.compile(
-    r"out of extra usage|usage limit|quota exceeded|rate.?limit|429|exhausted|"
+    r"out of extra usage|usage limit|quota exceeded|rate.?limit|(?<![\d/])429(?![\d/])|exhausted|"
     r"too many requests|token_revoked|refresh_token_reused",
     re.I,
 )
@@ -188,11 +192,13 @@ def codex_write(s: dict) -> tuple[dict | None, str]:
         return None, "error"
     except Exception:
         return None, "error"
-    out = (p.stdout or "") + "\n" + (p.stderr or "")
-    if QUOTA_RE.search(out):
-        return None, "quota"
+    # Parse FIRST: a quota-dead call never yields valid JSON, while valid output
+    # for 429xx codes (or prose mentioning limits) can false-match QUOTA_RE.
     ed = _extract_json(p.stdout)
     if ed is None:
+        out = (p.stdout or "") + "\n" + (p.stderr or "")
+        if QUOTA_RE.search(out):
+            return None, "quota"
         return None, "parse"
     bad = _shape_ok(ed)
     if bad:
