@@ -1,0 +1,27 @@
+{
+  "code": "43212",
+  "editorial": {
+    "headline": "Installing Telecom Networks: Open Nationally, Not Barred in Bali",
+    "standfirst": "A code for the physical installation, repair and maintenance of telecommunications networks, from building antennas to satellite and transmission facilities.",
+    "body": "Telecommunications network installation is a building and civil-works activity, not merely the fitting of an antenna. It covers installing telecommunications networks in residential and non-residential buildings, including antennas, as well as installing transmission and telecommunications networks in buildings and civil structures. The defined work also reaches the facilities behind a network: telephone and telegraph exchanges, microwave-radar transmitting stations, small earth stations or satellite stations, and similar sites. Installation, repair and maintenance are all within its stated scope.\n\nThe registration door is broad across business scale. Micro, small, medium and large enterprises are open to this activity. Nationally, it is open to foreign investment, with foreign ownership permitted up to 100%. That is the full national ceiling recorded for this activity; there is no lower foreign-share cap in the record. The relevant policy source is Perpres 10/2021, 49/2021. The practical identity of the code remains specific: it is for the physical deployment and ongoing technical upkeep of telecommunications networks and their associated facilities.\n\nBali adds a different operational reading, but not a prohibition. The provincial moratorium blocks PMA registration for low- and medium-low-risk activities across the island on a permanent basis. This activity is not blocked by that moratorium. At the large scale, the record identifies its OSS risk as medium-high/high, and records its Bali status as OK_or_HIGHER_RISK. That distinction matters: the national 100% ceiling describes foreign ownership nationally, while Bali’s record confirms that this activity is not barred from PMA registration by the provincial moratorium.\n\nFor founders, the honest conclusion is straightforward. This is a defined network-installation activity available from micro through large scale, nationally open to full foreign ownership, and not blocked for PMA registration in Bali under the stated moratorium rule.",
+    "pullQuote": "This activity is not blocked by Bali’s moratorium on PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
