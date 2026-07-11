@@ -1,0 +1,27 @@
+{
+  "code": "46332",
+  "editorial": {
+    "headline": "Wholesale Bakery Products: Nationally Open, Blocked for PMA in Bali",
+    "standfirst": "This activity covers wholesale trade in bread, cakes and other bakery products, open across every listed business scale nationally but blocked for PMA registration in Bali.",
+    "body": "Wholesale bakery-products trading is the business of supplying bread, cakes and other bakery goods on a wholesale basis. Its scope is commercial distribution: bringing bakery products into the wholesale trade rather than defining how they are made, served or sold in another setting. For a founder, that distinction matters because the activity is framed around the movement of finished bakery goods through wholesale channels.\n\nThe code is open to businesses at the **Mikro**, **Kecil**, **Menengah** and **Besar** scales. Nationally, it is marked **TERBUKA** for PMA, with a maximum foreign ownership ceiling of **100%**. In plain terms, the national position permits full foreign ownership for this wholesale activity. The stated national basis is *Perpres 10/2021, 49/2021*.\n\nBali presents a materially different registration picture. A foreign investor cannot register this activity for PMA in Bali today. The Bali status is **BLOCCATO_CLASSE_RISCHIO**: at the **Besar** scale, every stated scope is classified by OSS as Low or Medium-Low risk, placing the activity within Bali’s island-wide, permanent moratorium on PMA for all Low and Medium-Low risk KBLI activities. The recorded reason specifically identifies that moratorium as taking effect in May 2026.\n\nThat does not alter the national foreign-ownership ceiling; it changes the practical answer for a PMA intending to establish this activity in Bali. Nationally, the activity is open and may be wholly foreign-owned. In Bali, however, the applicable risk-based moratorium blocks PMA registration. The relevant Bali source is the Governor’s letter *B.27.000/642/PM/DPMPTSP*.",
+    "pullQuote": "Nationally this wholesale activity may be wholly foreign-owned, but PMA registration for it is blocked in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

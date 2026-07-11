@@ -1,0 +1,27 @@
+{
+  "code": "46323",
+  "editorial": {
+    "headline": "Wholesale Meat Trade Is Open Nationally, but Not for PMA in Bali",
+    "standfirst": "Wholesale trade in meat and processed meat is nationally open across all listed scales, yet PMA registration for the activity is blocked in Bali.",
+    "body": "For foreign investors, the defining fact is immediate: this activity cannot be registered for PMA in Bali today. That Bali result does not erase the national classification. Nationally, it is open to PMA and carries a 100% foreign-ownership ceiling. The activity itself is wholesale trade in meat and other processed meat, including other preserved meat. The record defines the activity through that wholesale trade in those goods.\n\nA business registering this classification is one undertaking that wholesale trade. The record makes the classification available at Mikro, Kecil, Menengah, and Besar scales. The same activity is therefore stated across the full listed scale range, rather than being confined in the record to a single category. This gives the national picture its proper breadth: the classification reaches from Mikro through Besar, while remaining tied to the stated trade in meat, processed meat, and other preserved meat.\n\nAt national level, TERBUKA should be taken at face value: PMA is open and the recorded foreign-ownership ceiling is 100%. That is a national ownership position, not a guarantee of a Bali registration outcome. The distinction is the heart of this entry. National openness, expressed through the 100% ceiling, is real; yet it sits alongside a separate Bali status that must be read on the local record. The national PMA source cited for this position is Perpres 10/2021, 49/2021.\n\nBali is not an ordinary footnote. Its status is blocked by risk class. The stated reason is that, at the Besar scale, the OSS risk is Low/Medium-Low across every scope. Bali’s stated rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently; the record ties this block to the Bali moratorium recorded in May 2026. National openness is real, but it does not override Bali’s permanent, island-wide moratorium for the risk class recorded here. For an investor considering Bali, the local answer is unequivocal: PMA registration for this activity is blocked today.",
+    "pullQuote": "National openness is real, but it does not override Bali’s permanent, island-wide moratorium for the risk class recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

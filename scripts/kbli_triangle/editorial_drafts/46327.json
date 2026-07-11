@@ -1,0 +1,27 @@
+{
+  "code": "46327",
+  "editorial": {
+    "headline": "Wholesale Animal Oils and Fats: Nationally Open, Blocked for Bali PMA",
+    "standfirst": "Wholesale trade in animal oils and fats is nationally open to PMA at every recorded scale, yet Bali blocks its PMA registration under the island-wide risk moratorium.",
+    "body": "National openness does not decide the Bali outcome. A foreign investor cannot register this activity in Bali today, even though it is nationally **TERBUKA** for PMA and carries a foreign-ownership ceiling of 100%. That is the fact to hold in view from the outset: national access remains real, but it does not override Bali’s recorded island-wide restriction.\n\nKBLI 46327 is the wholesale trade of animal oils and fats. Its scope is restrained and clear, defining both the goods at issue—animal oils and fats—and the commercial level at which they are traded: wholesale. The slim record offers no broader operational catalogue, and it need not. A precise reading stays with what is stated: this classification concerns the wholesale trade in those specified goods. The scope tells us exactly what is named, and nothing in this record supports a broader account.\n\nNationally, the activity is available at each scale named in the record: Mikro, Kecil, Menengah and Besar. In other words, the scale field does not limit the activity to one size of enterprise. For founders, this identifies the range of businesses that may register the activity at the national level, from Mikro through Besar. It does not, however, answer the separate question of whether a PMA registration may be made in Bali. The record answers those questions in different fields, and they lead to different conclusions.\n\nIn Bali, the local answer is decisive for PMA: the status is **BLOCCATO_CLASSE_RISCHIO**. The stated reason is that, at the Besar scale, OSS risk is Rendah/Menengah-Rendah on every scope, bringing the activity within Bali’s moratorium of 13 May 2026. Under the provincial rule recorded here, Bali blocks PMA for all KBLI with Low or Medium-Low risk; the restriction is island-wide and permanent. There is no Bali-side foreign-ownership percentage stated for this activity, so the Bali result is a block, not a separate stake calculation. The honest conclusion is simple: a 100% national PMA ceiling does not make this activity registrable to a foreign investor in Bali.",
+    "pullQuote": "National access remains real, but it does not override Bali’s recorded island-wide restriction.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
