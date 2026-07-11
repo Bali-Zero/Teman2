@@ -31,7 +31,6 @@ class TestImportChain:
             get_ai_client,
             get_cache,
             get_channel_router,
-            get_current_portal_client,
             get_current_user,
             get_current_user_email,
             get_current_user_optional,
@@ -58,7 +57,6 @@ class TestImportChain:
             get_cache,
             get_orchestrator,
             get_optional_database_pool,
-            get_current_portal_client,
             get_channel_router,
         ]:
             assert callable(fn), f"{fn.__name__} is not callable"
@@ -266,7 +264,6 @@ class TestAllDepsTypingGuards:
             "get_current_user_email",
             "require_team_member",
             "security",
-            "get_current_portal_client",
             # From deps/database.py
             "get_database_pool",
             "get_database",

@@ -276,6 +276,7 @@ class VectorSearchTool(BaseTool):
                         "score": chunk.get("score", 0.0) if isinstance(chunk, dict) else 0.0,
                         "collection": source_col,
                         "doc_id": doc_id,
+                        "snippet": text[:500],
                     },
                 )
 

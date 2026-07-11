@@ -358,7 +358,9 @@ async def delete_old_points(qdrant_url: str, api_key: str | None):
 
 
 async def upsert_to_qdrant(points: list[dict], qdrant_url: str, api_key: str | None):
-    """Upsert points to Qdrant in batches."""
+    """Upsert points to Qdrant in batches, with retry+backoff per batch (network flap resilience)."""
+    import asyncio
+
     import httpx
 
     headers = {"Content-Type": "application/json"}
@@ -368,15 +370,29 @@ async def upsert_to_qdrant(points: list[dict], qdrant_url: str, api_key: str | N
     async with httpx.AsyncClient(timeout=120) as http:
         for i in range(0, len(points), UPSERT_BATCH_SIZE):
             batch = points[i : i + UPSERT_BATCH_SIZE]
-            resp = await http.put(
-                f"{qdrant_url}/collections/{COLLECTION_NAME}/points",
-                json={"points": batch},
-                headers=headers,
-            )
-            if resp.status_code != 200:
-                logger.error(f"  Upsert batch {i} failed: {resp.status_code} {resp.text[:300]}")
-            else:
-                logger.info(f"  Upserted batch {i}-{i + len(batch)} ({len(batch)} points)")
+            for attempt in range(1, 5):
+                try:
+                    resp = await http.put(
+                        f"{qdrant_url}/collections/{COLLECTION_NAME}/points",
+                        json={"points": batch},
+                        headers=headers,
+                    )
+                    if resp.status_code != 200:
+                        logger.error(
+                            f"  Upsert batch {i} failed: {resp.status_code} {resp.text[:300]}"
+                        )
+                    else:
+                        logger.info(f"  Upserted batch {i}-{i + len(batch)} ({len(batch)} points)")
+                    break
+                except httpx.TimeoutException:
+                    if attempt == 4:
+                        logger.error(f"  Upsert batch {i} timed out after 4 attempts, giving up")
+                        raise
+                    wait = 2**attempt
+                    logger.warning(
+                        f"  Upsert batch {i} timeout (attempt {attempt}/4), retrying in {wait}s"
+                    )
+                    await asyncio.sleep(wait)
 
 
 async def verify_collection(qdrant_url: str, api_key: str | None):
