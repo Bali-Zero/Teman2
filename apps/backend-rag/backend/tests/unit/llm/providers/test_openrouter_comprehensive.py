@@ -3,6 +3,7 @@ Comprehensive tests for OpenRouterProvider
 Target: 100% coverage
 """
 
+import importlib
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -46,10 +47,15 @@ class TestOpenRouterProvider:
     def _enable_openrouter(self, monkeypatch):
         """These tests cover provider mechanics, not the COS-LAW-013 kill
         switch (see test_openrouter_kill_switch.py) — is_available reads
-        settings.openrouter_enabled at call time, OFF by default."""
-        monkeypatch.setattr(
-            "backend.app.core.config.settings.openrouter_enabled", True, raising=False
-        )
+        settings.openrouter_enabled at call time, OFF by default.
+
+        Patch the sys.modules object, not the dotted string: string targets
+        resolve through the parent package's attribute chain, which can point
+        at an orphan module after another suite's pop-and-reimport, while the
+        runtime `from ... import settings` always resolves through sys.modules.
+        """
+        config_mod = importlib.import_module("backend.app.core.config")
+        monkeypatch.setattr(config_mod.settings, "openrouter_enabled", True, raising=False)
 
     def test_init(self):
         """Test initialization"""

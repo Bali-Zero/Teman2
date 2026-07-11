@@ -1,3 +1,4 @@
+import importlib
 from types import SimpleNamespace
 
 import pytest
@@ -113,9 +114,8 @@ async def test_health_check_uses_injected_clients(monkeypatch) -> None:
     gateway.model_name_fallback = "fallback-model"
     gateway._genai_client = FakeGenAIClient()
     monkeypatch.setattr(gateway, "_get_openrouter_client", object)
-    monkeypatch.setattr(
-        "backend.app.core.config.settings.openrouter_enabled", True, raising=False
-    )
+    config_mod = importlib.import_module("backend.app.core.config")
+    monkeypatch.setattr(config_mod.settings, "openrouter_enabled", True, raising=False)
 
     status = await gateway.health_check()
 
@@ -138,9 +138,8 @@ async def test_health_check_openrouter_false_when_disabled(monkeypatch) -> None:
     gateway.model_name_fallback = "fallback-model"
     gateway._genai_client = FakeGenAIClient()
     monkeypatch.setattr(gateway, "_get_openrouter_client", object)
-    monkeypatch.setattr(
-        "backend.app.core.config.settings.openrouter_enabled", False, raising=False
-    )
+    config_mod = importlib.import_module("backend.app.core.config")
+    monkeypatch.setattr(config_mod.settings, "openrouter_enabled", False, raising=False)
 
     status = await gateway.health_check()
 
