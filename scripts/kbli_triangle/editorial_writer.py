@@ -169,12 +169,19 @@ def _shape_ok(ed: dict) -> str | None:
     return None
 
 
+MODEL = ""  # optional codex model override (e.g. gpt-5.6-terra); "" = CLI default
+
+
 def codex_write(s: dict) -> tuple[dict | None, str]:
     """Return (editorial|None, status). status in {ok, quota, parse, error, shape}."""
     prompt = PROMPT_HEAD + json.dumps(s, ensure_ascii=False)
+    cmd = ["codex", "exec", "--sandbox", "read-only", "--skip-git-repo-check"]
+    if MODEL:
+        cmd += ["-m", MODEL]
+    cmd.append(prompt)
     try:
         p = subprocess.run(
-            ["codex", "exec", "--sandbox", "read-only", "--skip-git-repo-check", prompt],
+            cmd,
             capture_output=True, text=True, timeout=300,
         )
     except subprocess.TimeoutExpired:
@@ -237,7 +244,12 @@ def main() -> None:
     ap.add_argument("--only", default="")
     ap.add_argument("--codes-file", default="")
     ap.add_argument("--workers", type=int, default=3)
+    ap.add_argument("--model", default="",
+                    help="codex model override (e.g. gpt-5.6-terra); empty = CLI default")
     args = ap.parse_args()
+
+    global MODEL
+    MODEL = args.model
 
     DRAFTS.mkdir(exist_ok=True)
     rows = load_rows()
