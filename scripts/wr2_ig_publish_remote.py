@@ -34,6 +34,8 @@ If WR2_PUBLISH_PIN is unset, the PIN is read from the macOS Keychain item
 USAGE
     python scripts/wr2_ig_publish_remote.py <slug>            # DRY-RUN (default)
     python scripts/wr2_ig_publish_remote.py <slug> --confirm  # PUBLISH (operator click)
+    python scripts/wr2_ig_publish_remote.py <slug> --print-caption
+    python scripts/wr2_ig_publish_remote.py <slug> --caption-file /path/to/caption.txt
 
 EXIT 0 = dry-run validated OR publish succeeded. EXIT 1 = failure (reason printed).
 """
@@ -106,6 +108,23 @@ def _build_caption(slug: str) -> str:
     from wr2_ig_caption import build_caption  # noqa: PLC0415
 
     return build_caption(slug, base_dir=_CAROUSEL_ROOT)
+
+
+def _resolve_caption(slug: str, caption_file: Path | None) -> str:
+    """Return the generated caption or the exact UTF-8 operator override."""
+    if caption_file is None:
+        caption = _build_caption(slug)
+        source = "generated caption"
+    else:
+        try:
+            caption = caption_file.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise PublishAborted(f"cannot read caption file {caption_file}: {exc}") from exc
+        source = "caption file"
+
+    if not caption.strip():
+        raise PublishAborted(f"{source} is empty")
+    return caption
 
 
 # ── Credentials (never printed, never persisted) ───────────────────────────────
@@ -206,10 +225,14 @@ async def _run(args: argparse.Namespace) -> int:
     base = os.environ.get("WR2_BACKEND_URL", _DEFAULT_BACKEND).rstrip("/")
     email = os.environ.get("WR2_PUBLISH_EMAIL", _DEFAULT_EMAIL)
     slug = args.slug.strip()
+    caption = _resolve_caption(slug, args.caption_file)
+
+    if args.print_caption:
+        sys.stdout.write(caption)
+        return 0
 
     slug_dir = _slug_dir(slug)
     pngs = _discover_slide_pngs(slug_dir)
-    caption = _build_caption(slug)
     pin = _resolve_pin(email)
 
     logger.info(
@@ -256,6 +279,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--confirm",
         action="store_true",
         help="LEGGE 5 operator gate. Without it = dry-run (no post). With it = PUBLISH.",
+    )
+    parser.add_argument(
+        "--caption-file",
+        type=Path,
+        help="UTF-8 file containing the exact operator-approved Instagram caption.",
+    )
+    parser.add_argument(
+        "--print-caption",
+        action="store_true",
+        help="Print the resolved caption and exit without credentials, upload, or publish.",
     )
     return parser.parse_args(argv)
 
