@@ -20,9 +20,19 @@ Ledger format (documented in the ledger's own header):
 
     - opened YYYY-MM-DD | artifact | missing arming step | owner (me|operator[<category>]) | proof-of-armed
 
-Entries live as markdown list items BEFORE a line starting with `## closed`; closed
-entries (after that heading, starting with `- closed `) are proof-of-armed history and
-are never read by this script.
+The parser also accepts "- open YYYY-MM-DD" (dropped "-ed") — a verb-tense drift found
+live in the real ledger that a bare "- opened " prefix check silently discarded as an
+unrelated list item instead of parsing it as debt.
+
+Entries are recognized ANYWHERE in the file by their own "- opened "/"- open " + date
+prefix — never gated by position relative to a `## closed` heading. `- closed ` lines
+(proof-of-armed history) are excluded by that same prefix check regardless of where
+they live, so no positional cutoff is needed to keep them out. This matters in
+practice: a strict "stop scanning at the first `## closed` heading" cutoff was found
+2026-07-11 to silently swallow 14 real open-debt lines that had been appended BELOW
+that heading over several sessions (mixed in with genuine closed history) — a
+positional guard is itself a family #3 under-match the moment reality stops matching
+the assumed document shape.
 
 PHANTOM-OPERATOR rule (Zero, 2026-07-06: "io sono te — non c'è nessun operatore"):
 sessions ARE the operator for all repo/infra work. An owner may say `operator` ONLY
@@ -63,8 +73,12 @@ from typing import Any, Dict, List, Optional, Sequence
 # in every report header so nobody mistakes it for hour-precision).
 OVERDUE_AGE_DAYS = 2
 
-OPENED_RE = re.compile(r"-\s*opened\s+(\d{4}-\d{2}-\d{2})")
-CLOSED_HEADING_PREFIX = "## closed"
+# Tolerates the 'opened'/'open' verb-tense drift seen in the real ledger (14 lines
+# written "- open YYYY-MM-DD" instead of "- opened YYYY-MM-DD") — a bare-prefix
+# entry-start check silently dropped every one of them (family #3 under-match: the
+# guard watched one literal spelling and let the real debt through unclassified).
+OPENED_RE = re.compile(r"-\s*open(?:ed)?\s+(\d{4}-\d{2}-\d{2})")
+ENTRY_START_RE = re.compile(r"^-\s*open(?:ed)?\s+\d{4}-\d{2}-\d{2}")
 
 CLASS_MALFORMED = "MALFORMED"
 CLASS_FIREBREAK = "FIREBREAK"
@@ -165,23 +179,26 @@ def _truncate(text: str, limit: int = 120) -> str:
 
 
 def extract_open_entries(ledger_text: str) -> List[str]:
-    """Return the raw (continuation-concatenated) text of every open-section entry.
+    """Return the raw (continuation-concatenated) text of every open-ledger entry.
 
-    Only lines BEFORE the first line starting with '## closed' are considered. Within
-    that open section, an entry starts at a line starting with '- opened '; any
-    following line that is non-blank, doesn't start a new '- ' list item, and isn't a
-    heading/blockquote is treated as a wrapped continuation and appended (space-joined)
-    to the current entry. A blank line, a new '- ' item, or a heading/blockquote line
-    ends the current entry.
+    The WHOLE file is scanned — no positional cutoff at a '## closed' heading. An
+    entry starts at a line matching ENTRY_START_RE ('- opened ' or '- open '
+    immediately followed by a YYYY-MM-DD date; both verb forms are accepted, and the
+    date anchor keeps unrelated '- open ...' prose from being mistaken for a ledger
+    entry). '- closed ' lines (proof-of-armed history) never match that prefix, so
+    they're excluded wherever they live — no section boundary needed to keep them
+    out. Any line following an entry-start that is non-blank, doesn't start a new
+    '- ' list item, and isn't a heading/blockquote is treated as a wrapped
+    continuation and appended (space-joined) to the current entry. A blank line, a
+    new '- ' item, or a heading/blockquote line ends the current entry.
+
+    A positional cutoff was tried and dropped 2026-07-11: it silently discarded 14
+    real open-debt lines that sessions had appended below the '## closed' heading
+    (mixed in with genuine closed history) — verified as the same under-match
+    disease (family #3) as the 'opened' vs 'open' spelling drift this same fix
+    addresses, just expressed structurally instead of lexically.
     """
     lines = ledger_text.splitlines()
-
-    cutoff = len(lines)
-    for i, line in enumerate(lines):
-        if line.strip().startswith(CLOSED_HEADING_PREFIX):
-            cutoff = i
-            break
-    open_lines = lines[:cutoff]
 
     entries: List[str] = []
     current: Optional[str] = None
@@ -192,9 +209,9 @@ def extract_open_entries(ledger_text: str) -> List[str]:
             entries.append(current)
         current = None
 
-    for line in open_lines:
+    for line in lines:
         stripped = line.strip()
-        if stripped.startswith("- opened "):
+        if ENTRY_START_RE.match(stripped):
             finalize()
             current = stripped
         elif stripped.startswith("- "):
