@@ -427,3 +427,15 @@ _Discovered: 2026-07-08 · Severity: P1 · Status: OPEN (verifica operatore pend
 **GOTCHA**: il sintomo (blocco W84) e la "cura" tentata condividono la stessa superficie (TCC) ma scope opposti — un fix scoped-corretto esiste (ri-concedere Full Disk Access a Terminal/Claude Code via System Settings, operator-only) mentre `tccutil reset All` è la versione "nuke it from orbit" che sistema il sintomo locale (per coincidenza) rompendo potenzialmente N altre app. Nessun modo per la sessione di enumerare "quali app avevano grant TCC prima del reset" — serve verifica manuale operatore in System Settings → Privacy & Security.
 
 **Reference**: sessione KBLI audit 2026-07-08 · scar madre W84 (#2 Esiste≠Armato, TCC come principal separato) · nessun PR/fix — richiede verifica manuale Zero, non codice.
+
+### ⚠️ P1: W92 — QUOTA_RE bare `429` matcha i codici KBLI 42911-42919: writer in backoff infinito su successi VALIDI (2026-07-11)
+
+_Discovered: 2026-07-11 21:03 WITA · Severity: P1 · Status: FIXED (11a8abdf2e, branch agent/air-m5/mouth/kbli-editorials)_
+
+**TRAUMA**: al resume KBLIREGEN su GPT-5.6 Terra, entrambi i worker di `editorial_writer.py` loggavano `quota — backoff` a oltranza mentre le chiamate manuali identiche passavano (rc=0, editoriale valido). Causa: `QUOTA_RE` conteneva il pattern nudo `429` e la coda dei todo riparte esattamente da 42911 — il numero del codice KBLI, echato nel prompt E presente nel completion valido (`{"code": "42913", ...}`), matcha `429` → OGNI chiamata sul blocco 429xx (anche riuscita) classificata quota → backoff infinito, 0 draft scritti. Retro-lettura: parte della diagnosi 2026-07-10 "Codex quota genuinely exhausted, fails even at --workers 1" era QUESTO over-match, non esaurimento — la pausa campagna è iniziata proprio sul bordo del blocco 429xx.
+
+**ANTIBODY**: (1) guardie di contesto sul pattern numerico: `(?<![\d/])429(?![\d/])` — un HTTP 429 vero non è mai adiacente a cifre o slash; (2) ordering parse-first in `codex_write`: se l'output contiene JSON valido NON è mai quota — QUOTA_RE si scansiona solo su parse-failure; (3) guilt+innocence test inline prima del commit (innocenti: `"code": "42911"`, `progress 429/871`; colpevoli: `HTTP 429 Too Many Requests`, `usage limit`). Fix: commit 11a8abdf2e.
+
+**GOTCHA**: il cascade-detection pattern `429|rate.?limit|quota…` è COPIATO in N wrapper (`~/scripts/regulatory-watcher-run.sh`, CLAUDE.md §cascade, memory). Ovunque il payload possa contenere "429" come dato (codici KBLI, ID, importi), il bare `429` è una mina. Il segnale-precoce della famiglia #3 vale per i matcher di INFRASTRUTTURA, non solo per le guardie di contenuto: "quota — backoff" ripetuto CON chiamate manuali che passano = quasi certamente over-match, non quota. Sonda sempre con l'output RAW di una chiamata reale prima di credere alla label.
+
+**Reference**: `scripts/kbli_triangle/editorial_writer.py` QUOTA_RE + `codex_write` (commit 11a8abdf2e) · RESUME-HERE.md STATUS 2026-07-11 · famiglia #3 cicatrix-superscar.md
