@@ -73,7 +73,7 @@ class MessagingIdentityService:
 
                 return None
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error getting user by phone %s: %s", normalized_phone, e)
             return None
 
@@ -104,7 +104,7 @@ class MessagingIdentityService:
 
                 return None
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error getting user by telegram %s: %s", chat_id, e)
             return None
 
@@ -179,7 +179,7 @@ class MessagingIdentityService:
         except asyncpg.UniqueViolationError:
             logger.warning(f"Mapping already exists for {channel} ({phone or telegram_chat_id})")
             return False
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error creating mapping: %s", e)
             return False
 
@@ -225,7 +225,7 @@ class MessagingIdentityService:
 
                 return True
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Error updating last_message timestamp: %s", e)
             return False
 
@@ -254,7 +254,7 @@ class MessagingIdentityService:
 
                 return [dict(row) for row in rows]
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Error getting mappings for user %s: %s", user_id, e)
             return []
 
@@ -301,7 +301,7 @@ class MessagingIdentityService:
                 logger.info(f"Deactivated mapping for {phone or telegram_chat_id}")
                 return True
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Error deactivating mapping: %s", e)
             return False
 

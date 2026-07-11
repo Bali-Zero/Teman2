@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -42,7 +42,13 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y ripgrep
           python -m pip install --upgrade pip
-          python -m pip install pytest "pydantic>=2.12.5"
+          # pytest-asyncio is required even though test_no_httpx_violators.py is
+          # sync: apps/backend-rag/pytest.ini declares asyncio_default_fixture_loop_scope,
+          # an ini option only the pytest-asyncio plugin registers. Without the plugin
+          # installed, pytest aborts at config load with "Unknown config option" (exit 4)
+          # before any test runs — turning this lint red on every PR. Pin mirrors
+          # apps/backend-rag/requirements.txt.
+          python -m pip install pytest "pytest-asyncio>=1.3.0" "pydantic>=2.12.5"
 
       - name: Run regression test (single source of truth)
         working-directory: apps/backend-rag

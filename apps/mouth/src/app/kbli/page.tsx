@@ -10,11 +10,11 @@ import { FunnelFrame } from "@balizero/core";
 export const metadata: Metadata = {
   title: "KBLI 2025 Navigator — Indonesia Business Classification Guide",
   description:
-    "Navigate Indonesia's 1,563 KBLI 2025 business codes. PMA investment rules, licensing requirements, and 2020→2025 transition mapping. Powered by Zantara AI.",
+    "Navigate Indonesia's 1,559 KBLI 2025 business codes. PMA investment rules, licensing requirements, and 2020→2025 transition mapping. Powered by Zantara AI.",
   openGraph: {
     title: "KBLI 2025 Navigator — Zantara by Bali Zero",
     description:
-      "The definitive guide to Indonesia's KBLI 2025 business classification. 1,563 codes, PMA rules, and AI-powered analysis.",
+      "The definitive guide to Indonesia's KBLI 2025 business classification. 1,559 codes, PMA rules, and AI-powered analysis.",
     type: "website",
   },
   alternates: {
@@ -112,7 +112,7 @@ export default async function KBLIHomePage({
 
               {/* Inline stats */}
               <p className="mt-3 text-sm text-zinc-500 tracking-wide">
-                1,563 codes&ensp;&middot;&ensp;22 sectors&ensp;&middot;&ensp;PMA
+                1,559 codes&ensp;&middot;&ensp;22 sectors&ensp;&middot;&ensp;PMA
                 rules
               </p>
 
@@ -181,13 +181,18 @@ export default async function KBLIHomePage({
         {/* ── TRUST BAR ── */}
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 -mt-4">
           {[
-            { num: "1,563", label: "KBLI Codes" },
+            { num: "1,559", label: "KBLI Codes" },
             { num: "22", label: "Industry Sectors" },
-            { num: "100%", label: "PMA Coverage" },
+            {
+              num: "~30%",
+              label: "Blocked in Bali",
+              hint: "Bali blocks low and medium-low-risk activities for foreign-owned companies (PT PMA) under the 13 May 2026 provincial moratorium — every code page shows its Bali verdict.",
+            },
             { num: "AI", label: "Powered by Zantara" },
           ].map((t) => (
             <div
               key={t.label}
+              title={"hint" in t ? t.hint : undefined}
               className="text-center px-6 py-4 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.25),inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:bg-white/[0.05] hover:border-white/[0.1] hover:shadow-[0_8px_32px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)]"
             >
               <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">

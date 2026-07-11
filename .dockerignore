@@ -58,3 +58,11 @@ packages/cell-core/tests/
 **/*.gif
 **/*.mp4
 **/*.mov
+
+# Re-include runtime-required brand assets excluded by the **/*.png rule above
+# (Antonello 2026-06-17: invoice PDF logo was blank in prod because the logo
+# PNG was never shipped into the Docker image). A `!` re-include after an
+# exclude pattern wins in Docker build context.
+!apps/backend-rag/backend/services/invoicing/balizero_logo_circle.png
+!apps/backend-rag/backend/services/invoicing/balizero_logo.png
+!apps/backend-rag/backend/services/notifications/balizero_logo_email.png

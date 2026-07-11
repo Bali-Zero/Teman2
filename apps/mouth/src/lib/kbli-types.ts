@@ -32,7 +32,9 @@ export type KBLIPmaRawStatus = "TERBUKA" | "TERTUTUP" | "TERBATAS";
 export interface KBLIScaleEntry {
   skala_usaha: KBLIBusinessScale[];
   kategori_risiko: KBLIRiskCategory;
-  perizinan: string;
+  // Real data: an array on ~99.5% of scales (often empty []), a bare string on ~20 legacy
+  // records. resolveLicenseType() in kbli-derive.ts handles both forms.
+  perizinan: string | string[];
   persyaratan: string[];
   jangka_waktu: string;
   kewajiban: string[];
@@ -56,11 +58,15 @@ export interface KBLIRawCode {
   status_mapping: KBLIMappingStatus;
   pp28_sources: string[];
   pma_status: KBLIPmaRawStatus;
-  pma_max_asing: number;
+  pma_max_asing: number | "special"; // "special" = open-with-special-conditions (47221-class), no clean %
   pma_kondisi: string | null;
   pma_prioritas: boolean;
   pma_nota: string | null;
   pma_source: string | null;
+  // PMA cap provenance (synced from the native app dataset, 2026-06-27)
+  pma_cap_special?: boolean; // true => special-distribution condition, render "special conditions" not "Closed 0%"
+  pma_cap_verified?: boolean; // false => TERBATAS cap % not source-backed, render "≈N% unverified"
+  pma_route_to?: string; // sibling private code when a govt code is closed to PMA
   _source: string;
   // Optional fields (present on some records)
   aggregation_note?: string;
@@ -75,10 +81,26 @@ export interface KBLIRawCode {
     zantaraOpener?: string;
     baliContext?: string;
     youllAlsoNeed?: string;
+    whoThisIsFor?: string;
     coverImage?: string | null;
     // Legacy field names (older enrichment batches)
     legacy_bridge?: string;
     bali_nuance?: string;
+  };
+  // L4 Bali sovereign-local layer (injected from schema-v2: OSS L0 + Perpres L2 + Bali moratorium)
+  l4_bali?: {
+    status: string;
+    reason?: string;
+    confidence?: "HIGH" | "MEDIUM" | "LOW";
+    needs_review?: boolean;
+    blocked?: boolean;
+    from_2020?: string | null;
+    moratorium?: {
+      rule?: string;
+      effective?: string;
+      source?: string;
+      virtual_office?: string;
+    };
   };
 }
 
@@ -117,11 +139,15 @@ export type KBLIMatchType =
 /** PMA (foreign investment) details — processed */
 export interface KBLIPmaInfo {
   status: KBLIPmaStatus;
-  maxForeign: number;
+  maxForeign: number | "special";
   condition: string | null;
   isPriority: boolean;
   note: string | null;
   source: string | null;
+  // Synced from native app (2026-06-27): provenance flags that change the label.
+  capSpecial: boolean; // special-distribution (47221) → "special conditions", not "Closed 0%"
+  capVerified: boolean; // false → TERBATAS % not source-backed → "≈N% unverified"
+  routeTo: string | null; // sibling private code when a govt code is closed to PMA (86101→86103)
 }
 
 /** Processed licensing entry for a specific business scale */
@@ -150,6 +176,10 @@ export interface KBLICode {
   code: string;
   titleId: string;
   titleEn: string;
+  /** true when titleEn is a real English title (curated or generated), not the Indonesian fallback */
+  titleEnIsReal?: boolean;
+  /** English title for <title>/meta — frozen to the curated-legacy map (SEO firebreak PR #1967) */
+  titleEnMeta?: string;
   description: string;
   section: string | null;
   sectionName: string | null;
@@ -174,7 +204,26 @@ export interface KBLICode {
     zantaraOpener?: string;
     baliContext?: string;
     youllAlsoNeed?: string;
+    whoThisIsFor?: string;
     coverImage?: string | null;
+  };
+  /** L4 — Bali sovereign-local status (moratorium 2026-05-13). National PMA openness != Bali registrability. */
+  baliL4?: KBLIBaliL4;
+}
+
+/** L4 Bali status — the sovereign-local layer (moratorium B.27.000/642, 2026-05-13). */
+export interface KBLIBaliL4 {
+  status: string;
+  reason: string;
+  confidence: "HIGH" | "MEDIUM" | "LOW";
+  needsReview: boolean;
+  blocked: boolean;
+  from2020?: string | null;
+  moratorium?: {
+    rule?: string;
+    effective?: string;
+    source?: string;
+    virtualOffice?: string;
   };
 }
 

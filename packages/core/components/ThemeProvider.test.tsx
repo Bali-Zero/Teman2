@@ -53,6 +53,32 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.dataset.theme).toBe("light");
   });
 
+  it("respects the pre-paint data-theme (persona-aware) over defaultTheme", () => {
+    // Simulates the pre-paint themeInitScript on my.balizero.com: it set
+    // data-theme=operative-light by hostname BEFORE React hydrated. The
+    // provider must NOT clobber it with defaultTheme=editorial.
+    document.documentElement.dataset.theme = "operative-light";
+    const { getByTestId } = render(
+      <ThemeProvider defaultTheme="editorial">
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(document.documentElement.dataset.theme).toBe("operative-light");
+    expect(getByTestId("theme").textContent).toBe("operative-light");
+  });
+
+  it("localStorage('theme') still wins over the pre-paint value", () => {
+    // Explicit user choice beats the hostname default.
+    document.documentElement.dataset.theme = "operative-light";
+    localStorage.setItem("theme", "dark");
+    render(
+      <ThemeProvider defaultTheme="editorial">
+        <Probe />
+      </ThemeProvider>,
+    );
+    expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
   it("useTheme exposes funnel state and setter", () => {
     const { getByTestId } = render(
       <ThemeProvider defaultTheme="dark">

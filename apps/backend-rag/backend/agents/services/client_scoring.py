@@ -75,7 +75,7 @@ class ClientScoringService:
 
                 return self._calculate_scores_from_row(row, client_id)
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error(
                 "Database error calculating score for client %s: %s",
                 client_id,
@@ -141,7 +141,7 @@ class ClientScoringService:
 
                 return results
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error in batch score calculation: %s", e, exc_info=True)
             return {}
         except Exception as e:

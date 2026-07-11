@@ -399,6 +399,16 @@ async def run_manual_topic(
         "score_detail": {"score": None, "rules": {"manual_override": True}},
     }
 
+    # Same regulatory grounding as the cron path (line ~626) — manual drafts
+    # must not bypass the KB blood. Graceful-degrade: failure leaves brief_json
+    # unchanged (wr2_grounding contract).
+    try:
+        from wr2_grounding import ground_enrichment
+
+        brief_json = await ground_enrichment(brief_json, title)
+    except Exception as exc:  # noqa: BLE001 - grounding must never block the run
+        logger.warning("WR2 grounding skipped on manual draft (degrading): %s", exc)
+
     if dry_run:
         logger.info("[DRY-RUN] Would create manual draft:\n%s", json.dumps({
             "topic": title[:120],
@@ -616,6 +626,19 @@ async def run(*, dry_run: bool = False, force: bool = False) -> int:
             "picked_at": datetime.now(timezone.utc).isoformat(),
             "score_detail": top_detail,
         }
+
+        # Regulatory grounding (WR2_RESEARCH_STEP_ENABLED, default OFF). When the
+        # staging item ships an empty `enrichment` (verified 2026-06-24: {} on
+        # 12/12 drafts), query the Fly RAG for the topic law citations and inject
+        # them into enrichment.the_facts, the exact text the fact-checker scans.
+        # Graceful-degrade: any failure leaves brief_json UNCHANGED. See wr2_grounding.
+        try:
+            from wr2_grounding import ground_enrichment
+
+            brief_json = await ground_enrichment(brief_json, title)
+        except Exception as exc:  # noqa: BLE001 - grounding must never block the run
+            logger.warning("WR2 grounding skipped (degrading): %s", exc)
+
         async with pool.acquire() as conn:
             draft_id = await conn.fetchval(
                 """

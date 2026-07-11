@@ -29,7 +29,7 @@ class ZantaraTools:
         self,
         tool_name: str,
         tool_input: dict[str, Any],
-        _user_id: str = "system",
+        user_id: str = "system",
     ) -> dict[str, Any]:
         """
         Execute a Zantara tool
@@ -44,6 +44,7 @@ class ZantaraTools:
         """
         try:
             logger.info("🔧 Executing ZantaraTool: %s", tool_name)
+            logger.debug("ZantaraTool user context: %s", user_id)
 
             if tool_name == "get_pricing":
                 return await self._get_pricing(tool_input)
@@ -86,7 +87,7 @@ class ZantaraTools:
                     "error": "Official prices not loaded",
                     "fallback_contact": {
                         "email": "info@balizero.com",
-                        "whatsapp": "+62 822 6459 9868",
+                        "whatsapp": "+62 821 3465 159",
                     },
                 }
 

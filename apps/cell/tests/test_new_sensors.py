@@ -167,6 +167,81 @@ def test_cron_sensor_unknown_no_file():
         assert reading.jobs[0].status == "unknown"
 
 
+def test_cron_sensor_reads_job_alias_path(monkeypatch):
+    import time
+
+    from cell.sensors import cron_sensor as cron_sensor_module
+    from cell.sensors.cron_sensor import CronSensor
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        alias_dir = os.path.join(tmpdir, "cron-agent-python")
+        os.makedirs(alias_dir)
+        alias_file = os.path.join(alias_dir, "system-doctor.state.json")
+        with open(alias_file, "w") as f:
+            json.dump({"job": "system-doctor", "ts": int(time.time()), "status": "ok"}, f)
+
+        monkeypatch.setattr(
+            cron_sensor_module,
+            "_JOB_STATE_ALIASES",
+            {"system_doctor": [alias_file]},
+        )
+
+        sensor = CronSensor(state_dir=tmpdir, job_periods={"system_doctor": 24.0})
+        reading = sensor.read()
+        job = next(j for j in reading.jobs if j.name == "system_doctor")
+
+    assert job.status == "green"
+    assert reading.status == "green"
+
+
+def test_cron_sensor_reads_t4_monitor_current_job_name():
+    import time
+
+    from cell.sensors.cron_sensor import CronSensor
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_file = os.path.join(tmpdir, "t4_monitor.last.json")
+        with open(state_file, "w") as f:
+            json.dump({"job": "t4_monitor", "ts": int(time.time()), "status": "ok"}, f)
+
+        sensor = CronSensor(state_dir=tmpdir, job_periods={"t4_monitor": 6.0})
+        reading = sensor.read()
+        job = next(j for j in reading.jobs if j.name == "t4_monitor")
+
+    assert job.status == "green"
+    assert reading.status == "green"
+
+
+def test_cron_sensor_default_uses_t4_monitor_current_job_name():
+    from cell.sensors.cron_sensor import CronSensor
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sensor = CronSensor(state_dir=tmpdir)
+        reading = sensor.read()
+
+    names = [job.name for job in reading.jobs]
+    assert "t4_monitor" in names
+    assert "t4_monitor_daily" not in names
+
+
+def test_cron_sensor_marks_error_status_as_failed_metadata():
+    import time
+
+    from cell.sensors.cron_sensor import CronSensor
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        state_file = os.path.join(tmpdir, "system_doctor.last.json")
+        with open(state_file, "w") as f:
+            json.dump({"job": "system-doctor", "ts": int(time.time()), "status": "error"}, f)
+
+        sensor = CronSensor(state_dir=tmpdir, job_periods={"system_doctor": 24.0})
+        reading = sensor.read()
+        job = next(j for j in reading.jobs if j.name == "system_doctor")
+
+    assert job.status == "yellow"
+    assert reading.metadata["failed_jobs"] == ["system_doctor"]
+
+
 # ── TrendDetector ─────────────────────────────────────────────────────────────
 
 def test_trend_detector_monotonic_drift():

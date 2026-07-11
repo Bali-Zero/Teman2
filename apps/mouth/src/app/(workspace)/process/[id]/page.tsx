@@ -33,8 +33,11 @@ import {
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
+import { formatIDR } from "@balizero/core/utils";
 import { RequiredDocumentsCard } from "./RequiredDocumentsCard";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
+import { initialsOf } from "@/data/team-roster";
+import { AvatarWithFallback } from "@/components/ui/avatar-with-fallback";
 
 // Status mapping for display — use static classes for Tailwind JIT compatibility
 const STATUS_INFO: Record<
@@ -254,12 +257,7 @@ export default function CaseDetailPage() {
 
   const formatCurrency = (amount?: number) => {
     if (amount === undefined || amount === null) return "Not set";
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+    return formatIDR(amount);
   };
 
   const saveNotes = async () => {
@@ -1192,24 +1190,47 @@ export default function CaseDetailPage() {
                 </div>
               )}
 
-              {practice.assigned_to && (
-                <div>
-                  <label
-                    className="text-sm mb-1 block"
-                    style={{ color: "var(--bz-text-2)" }}
-                  >
-                    Assigned To
-                  </label>
-                  <p
-                    className="font-medium"
-                    style={{ color: "var(--bz-text-1)" }}
-                  >
-                    {teamMemberOptions.find(
-                      (m) => m.value === practice.assigned_to,
-                    )?.label || practice.assigned_to?.split("@")[0]}
-                  </p>
-                </div>
-              )}
+              {practice.assigned_to &&
+                (() => {
+                  const assignedMember = teamMemberOptions.find(
+                    (m) => m.value === practice.assigned_to,
+                  );
+                  const assignedName =
+                    assignedMember?.label ||
+                    practice.assigned_to?.split("@")[0] ||
+                    "";
+                  const assignedAvatar = assignedMember?.avatar ?? null;
+                  return (
+                    <div>
+                      <label
+                        className="text-sm mb-1 block"
+                        style={{ color: "var(--bz-text-2)" }}
+                      >
+                        Assigned To
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <AvatarWithFallback
+                          src={assignedAvatar}
+                          alt={assignedName}
+                          className="w-7 h-7 rounded-full object-cover ring-1 ring-[rgba(255,255,255,0.15)]"
+                          fallback={
+                            <div className="w-7 h-7 rounded-full bg-[rgba(255,255,255,0.08)] ring-1 ring-[rgba(255,255,255,0.15)] flex items-center justify-center">
+                              <span className="text-[9px] font-bold uppercase text-[var(--bz-text-2)]">
+                                {initialsOf(assignedName)}
+                              </span>
+                            </div>
+                          }
+                        />
+                        <p
+                          className="font-medium"
+                          style={{ color: "var(--bz-text-1)" }}
+                        >
+                          {assignedName}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
             </div>
           </div>
 
@@ -1320,7 +1341,7 @@ export default function CaseDetailPage() {
                       autoFocus
                       type="number"
                       min="0"
-                      step="100000"
+                      step="1"
                       value={priceValue}
                       onChange={(e) => setPriceValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -1374,7 +1395,7 @@ export default function CaseDetailPage() {
                       autoFocus
                       type="number"
                       min="0"
-                      step="100000"
+                      step="1"
                       value={priceValue}
                       onChange={(e) => setPriceValue(e.target.value)}
                       onKeyDown={(e) => {

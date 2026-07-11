@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<!--
+  WA Meta Inbox — viewer (Section 5 of 2026-06-03-wa-meta-inbox-design)
+  Single-file vanilla JS. Talks ONLY to the local thin proxy (server.cjs) on
+  the same origin. The proxy attaches the Fly X-API-Key; the key is never here.
+  The CSRF token is injected server-side into the placeholder below and sent
+  on every POST via the X-Local-CSRF header (fail-closed at the proxy).
+  UI language: Italian (operator: Antonello).
+-->
+<html lang="it">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WA Meta Inbox — BALI ZERO</title>
+<style>
+  :root {
+    --bg: #f4f2ee;
+    --panel: #ffffff;
+    --line: #e3ddd4;
+    --line-strong: #d6cdbe;
+    --ink: #2a2620;
+    --ink-soft: #4a4438;
+    --muted: #786f60;
+    --accent: #c4622d;       /* terracotta */
+    --accent-soft: #f3e2d6;
+    --bot: #0891b2;          /* cyan, darkened for AA contrast on white */
+    --bot-bg: #e0f6fa;
+    --human: #92660a;        /* gold, darkened for AA contrast on white */
+    --human-bg: #fdf1d4;
+    --in-bg: #ffffff;
+    --in-border: #d6cdbe;
+    --out-bg: #cdeeb0;       /* deeper light green, better contrast than before */
+    --out-border: #a9d685;
+    --pending: #f0ead8;
+    --failed-bg: #fbdad6;
+    --failed-border: #e8a79e;
+    --unread: #c4622d;
+    --shadow: 0 1px 2px rgba(0,0,0,0.07);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.08);
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.4;
+    display: flex; flex-direction: column; height: 100vh;
+  }
+
+  header {
+    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow); z-index: 2;
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  header .conn { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  header .conn::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #2f9e44; }
+  header .conn.bad { color: #b42318; }
+  header .conn.bad::before { background: #b42318; }
+
+  .layout { flex: 1; display: flex; min-height: 0; }
+
+  /* ---- Left: thread list ------------------------------------------------ */
+  .threads {
+    width: 340px; min-width: 260px; max-width: 420px; border-right: 1px solid var(--line);
+    background: var(--panel); overflow-y: auto; flex-shrink: 0;
+  }
+  .thread {
+    padding: 12px 14px; border-bottom: 1px solid var(--line); cursor: pointer;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .thread:hover { background: #faf8f4; }
+  .thread.active { background: var(--accent-soft); border-left: 3px solid var(--accent); padding-left: 11px; }
+  .thread.unread .name { font-weight: 800; }
+  .thread.unread .preview { color: var(--ink-soft); font-weight: 500; }
+
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #fff; background: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .avatar.a1 { background: #c4622d; } .avatar.a2 { background: #0891b2; }
+  .avatar.a3 { background: #7c6ee0; } .avatar.a4 { background: #2f9e44; }
+  .avatar.a5 { background: #d6455c; } .avatar.a6 { background: #92660a; }
+
+  .thread-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .thread .top { display: flex; align-items: baseline; gap: 6px; }
+  .thread .name {
+    font-weight: 650; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 13.5px; color: var(--ink);
+  }
+  .thread .time { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+  .thread .bottom-row { display: flex; align-items: center; gap: 6px; }
+  .thread .preview {
+    color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; flex: 1;
+  }
+  .unread-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--unread); flex-shrink: 0;
+  }
+
+  .badge {
+    font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 9px;
+    text-transform: uppercase; letter-spacing: 0.4px; flex-shrink: 0;
+  }
+  .badge.bot { background: var(--bot-bg); color: var(--bot); }
+  .badge.human { background: var(--human-bg); color: var(--human); }
+  .badge.closed { background: #ece8e0; color: var(--muted); }
+
+  /* ---- Right: conversation ---------------------------------------------- */
+  .conv { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #efece4; }
+  .conv-head {
+    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow);
+  }
+  .conv-head .avatar { width: 34px; height: 34px; font-size: 12px; }
+  .conv-head .title-wrap { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .conv-head .title { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .conv-head .subtitle { font-size: 11.5px; color: var(--muted); }
+  .conv-head .actions { margin-left: auto; display: flex; gap: 8px; flex-shrink: 0; }
+
+  button {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 8px;
+    border: 1px solid var(--line-strong); background: var(--panel); cursor: pointer; color: var(--ink-soft);
+    display: inline-flex; align-items: center; gap: 6px; transition: background 0.12s;
+  }
+  button:hover:not(:disabled) { background: #f1ebe1; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.primary:hover:not(:disabled) { background: #ad5526; }
+  button.warn { color: var(--human); border-color: #e6cd8f; }
+  button.warn:hover:not(:disabled) { background: var(--human-bg); }
+
+  /* ---- Message list ------------------------------------------------------ */
+  .messages { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 3px; }
+  .empty { margin: auto; color: var(--muted); text-align: center; font-size: 13.5px; }
+
+  .day-sep {
+    align-self: center; margin: 14px 0 10px; padding: 4px 12px; background: #ffffffcc;
+    border-radius: 20px; font-size: 11px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.4px; box-shadow: var(--shadow);
+  }
+
+  .msg-row { display: flex; flex-direction: column; margin-top: 10px; max-width: 100%; }
+  .msg-row.outbound { align-items: flex-end; }
+  .msg-row.inbound { align-items: flex-start; }
+  .msg-row .sender-label {
+    font-size: 11px; font-weight: 700; margin-bottom: 2px; padding: 0 4px;
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .msg-row .sender-label.bot { color: var(--bot); }
+  .msg-row .sender-label.human { color: var(--human); }
+
+  .msg {
+    max-width: 68%; padding: 9px 13px; border-radius: var(--radius); box-shadow: var(--shadow);
+    white-space: pre-wrap; word-wrap: break-word; font-size: 14px; line-height: 1.48;
+  }
+  .msg.inbound { background: var(--in-bg); border: 1px solid var(--in-border); border-top-left-radius: 3px; }
+  .msg.outbound { background: var(--out-bg); border: 1px solid var(--out-border); border-top-right-radius: 3px; }
+  .msg.outbound.pending { background: var(--pending); border-color: #e1d6ba; opacity: 0.9; }
+  .msg.outbound.failed { background: var(--failed-bg); border-color: var(--failed-border); }
+
+  .msg .meta {
+    font-size: 10.5px; color: var(--muted); margin-top: 5px; display: flex; gap: 6px;
+    align-items: center; justify-content: flex-end; opacity: 0.85;
+  }
+  .msg.inbound .meta { justify-content: flex-start; }
+  .msg .meta .status-icon { font-size: 12px; line-height: 1; }
+  .msg .meta .status-icon.read { color: #0b7dda; }
+  .msg .meta .status-icon.failed { color: #c0392b; font-weight: 700; }
+
+  /* ---- Banner + composer -------------------------------------------------- */
+  .banner {
+    background: #fff4e5; color: #8a5a00; border-top: 1px solid #f0d9b0;
+    padding: 9px 16px; font-size: 12.5px; text-align: center; font-weight: 600;
+  }
+  .composer { display: flex; gap: 10px; padding: 12px 16px; background: var(--panel); border-top: 1px solid var(--line); align-items: flex-end; }
+  .composer textarea {
+    flex: 1; resize: none; font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line-strong);
+    border-radius: var(--radius); height: 42px; max-height: 140px; line-height: 1.4;
+  }
+  .composer textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .composer textarea:disabled { background: #f2efe9; color: var(--muted); }
+  .composer button.primary { height: 42px; padding: 0 18px; }
+  .footnote { font-size: 10.5px; color: var(--muted); padding: 5px 16px 9px; background: var(--panel); }
+
+  /* ---- Responsive: narrow window collapses to list-or-conversation ------- */
+  @media (max-width: 760px) {
+    .threads { width: 100%; max-width: none; border-right: none; }
+    .threads.hide-on-mobile { display: none; }
+    .conv.hide-on-mobile { display: none; }
+    .msg { max-width: 85%; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>WA Meta Inbox</h1>
+  <span class="sub">BALI ZERO · +62 821-3465-159</span>
+  <span class="conn" id="conn">—</span>
+</header>
+
+<div class="layout">
+  <div class="threads" id="threads"><div class="empty" style="padding:20px">Caricamento…</div></div>
+  <div class="conv" id="convPane">
+    <div class="conv-head">
+      <span class="title" id="convTitle">Seleziona una conversazione</span>
+      <span id="convBadge"></span>
+      <div class="actions">
+        <button id="btnTakeover" disabled>👤 Prendi controllo</button>
+        <button class="warn" id="btnRelease" disabled>🤖 Rilascia al bot</button>
+      </div>
+    </div>
+    <div class="messages" id="messages"><div class="empty">Nessuna conversazione aperta.</div></div>
+    <div id="bannerSlot"></div>
+    <div class="composer">
+      <textarea id="reply" placeholder="Scrivi un messaggio…" disabled></textarea>
+      <button class="primary" id="btnSend" disabled>Invia</button>
+    </div>
+    <div class="footnote">UI locale (127.0.0.1). Il bot risponde di default; prendi il controllo per rispondere a mano.</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// CSRF token injected server-side. If still the placeholder, the page was not
+// served by server.cjs (e.g. opened from disk) → POSTs will be rejected (403).
+const CSRF_TOKEN = "__WA_INBOX_CSRF_TOKEN__";
+
+const state = {
+  threads: [],
+  activeId: null,
+  activeWindowOpen: true,
+  activeHumanHandling: false,
+  // optimistic outbound messages keyed by idempotency_key, merged into the
+  // server view until the next poll reconciles them.
+  pending: new Map(),
+};
+
+const els = {
+  threads: document.getElementById("threads"),
+  messages: document.getElementById("messages"),
+  convTitle: document.getElementById("convTitle"),
+  convBadge: document.getElementById("convBadge"),
+  reply: document.getElementById("reply"),
+  btnSend: document.getElementById("btnSend"),
+  btnTakeover: document.getElementById("btnTakeover"),
+  btnRelease: document.getElementById("btnRelease"),
+  bannerSlot: document.getElementById("bannerSlot"),
+  conn: document.getElementById("conn"),
+};
+
+function setConn(ok, label) {
+  els.conn.textContent = label;
+  els.conn.classList.toggle("bad", !ok);
+}
+
+function fmtTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (isNaN(d)) return "";
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }) +
+        " " + d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+}
+
+// Human-readable day separator: "Oggi", "Ieri", or "lun 07 lug".
+function fmtDaySeparator(ts) {
+  const d = new Date(ts);
+  if (isNaN(d)) return "";
+  const today = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return "Oggi";
+  if (d.toDateString() === yesterday.toDateString()) return "Ieri";
+  return d.toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "short" });
+}
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Deterministic avatar color bucket (1-6) + initials from a name/phone string.
+function avatarClass(key) {
+  let h = 0;
+  const s = String(key || "");
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return "a" + ((h % 6) + 1);
+}
+function initials(name) {
+  const s = String(name || "").trim();
+  if (!s) return "?";
+  if (/^\+?\d[\d\s-]*$/.test(s)) return s.replace(/\D/g, "").slice(-2) || "#";
+  const parts = s.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+// ---- POST helper: always carries the CSRF header (fail-closed at proxy) -----
+async function postJson(url, body) {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Local-CSRF": CSRF_TOKEN },
+    body: JSON.stringify(body),
+  });
+  let data = null;
+  try { data = await r.json(); } catch { /* non-json error body */ }
+  return { ok: r.ok, status: r.status, data };
+}
+
+// ===========================================================================
+// Thread list polling (every 5s)
+// ===========================================================================
+async function pollThreads() {
+  try {
+    const r = await fetch("/api/threads?limit=50", { headers: { Accept: "application/json" } });
+    if (!r.ok) { setConn(false, "backend " + r.status); return; }
+    const data = await r.json();
+    state.threads = Array.isArray(data) ? data : (data.threads || data.items || []);
+    setConn(true, "connesso");
+    renderThreads();
+  } catch (err) {
+    setConn(false, "offline");
+  }
+}
+
+function threadName(t) {
+  return t.counterpart_name || t.counterpart_phone || ("Thread " + t.thread_id);
+}
+
+function renderThreads() {
+  if (!state.threads.length) {
+    els.threads.innerHTML = '<div class="empty" style="padding:20px">Nessuna conversazione.</div>';
+    return;
+  }
+  els.threads.innerHTML = "";
+  for (const t of state.threads) {
+    const name = threadName(t);
+    const unread = !!(t.unread_count > 0 || t.unread);
+    const div = document.createElement("div");
+    div.className = "thread"
+      + (String(t.thread_id) === String(state.activeId) ? " active" : "")
+      + (unread ? " unread" : "");
+    const human = !!t.human_handling;
+    const badge = human
+      ? '<span class="badge human">human</span>'
+      : '<span class="badge bot">bot</span>';
+    div.innerHTML =
+      '<div class="avatar ' + avatarClass(name) + '">' + esc(initials(name)) + "</div>" +
+      '<div class="thread-body">' +
+        '<div class="top">' +
+          '<span class="name">' + esc(name) + "</span>" +
+          '<span class="time">' + esc(fmtTime(t.last_message_at)) + "</span>" +
+        "</div>" +
+        '<div class="bottom-row">' +
+          '<span class="preview">' + esc(t.last_body || "") + "</span>" +
+          (unread ? '<span class="unread-dot"></span>' : "") +
+          badge +
+        "</div>" +
+      "</div>";
+    div.addEventListener("click", () => openThread(t.thread_id));
+    els.threads.appendChild(div);
+  }
+}
+
+// ===========================================================================
+// Conversation polling (every 3s, ONLY while a thread is open)
+// AbortController cancels stale polls on thread-switch; the no-overlap guard
+// prevents a new poll from starting while the previous is still in flight.
+// ===========================================================================
+let convTimer = null;
+let convAbort = null;
+let convInFlight = false;
+
+function stopConvPolling() {
+  if (convTimer) { clearTimeout(convTimer); convTimer = null; }
+  if (convAbort) { convAbort.abort(); convAbort = null; }
+  convInFlight = false;
+}
+
+async function openThread(id) {
+  if (String(id) === String(state.activeId)) return;
+  stopConvPolling();
+  state.activeId = id;
+  state.pending.clear();
+  els.messages.innerHTML = '<div class="empty">Caricamento…</div>';
+  renderThreads();
+  await pollConv(true);
+  scheduleConvPoll();
+}
+
+function scheduleConvPoll() {
+  convTimer = setTimeout(async () => {
+    await pollConv(false);
+    if (state.activeId != null) scheduleConvPoll();
+  }, 3000);
+}
+
+async function pollConv(initial) {
+  if (state.activeId == null) return;
+  // No-overlap guard: skip this tick if the previous request is still running.
+  if (convInFlight) return;
+  convInFlight = true;
+  const id = state.activeId;
+  convAbort = new AbortController();
+  try {
+    const r = await fetch("/api/threads/" + encodeURIComponent(id), {
+      headers: { Accept: "application/json" },
+      signal: convAbort.signal,
+    });
+    // Thread switched while in flight → discard stale response.
+    if (String(state.activeId) !== String(id)) return;
+    if (!r.ok) { if (initial) els.messages.innerHTML = '<div class="empty">Errore caricamento (' + r.status + ").</div>"; return; }
+    const data = await r.json();
+    renderConv(data);
+  } catch (err) {
+    if (err.name === "AbortError") return; // expected on switch
+    if (initial) els.messages.innerHTML = '<div class="empty">Errore di rete.</div>';
+  } finally {
+    convInFlight = false;
+  }
+}
+
+function renderConv(data) {
+  const thread = data.thread || data;
+  const messages = data.messages || data.items || [];
+  state.activeWindowOpen = thread.window_open !== false;
+  state.activeHumanHandling = !!thread.human_handling;
+
+  const name = thread.counterpart_name || thread.counterpart_phone || ("Thread " + state.activeId);
+  els.convTitle.textContent = name;
+  // Rebuild header with avatar (title element only holds text; wrap it).
+  const headEl = els.convTitle.parentElement;
+  if (headEl && !headEl.querySelector(".avatar")) {
+    const av = document.createElement("div");
+    av.className = "avatar " + avatarClass(name);
+    av.textContent = initials(name);
+    const wrap = document.createElement("div");
+    wrap.className = "title-wrap";
+    els.convTitle.parentElement.insertBefore(av, els.convTitle);
+    els.convTitle.parentElement.insertBefore(wrap, els.convTitle);
+    wrap.appendChild(els.convTitle);
+    const sub = document.createElement("div");
+    sub.className = "subtitle";
+    sub.id = "convSubtitle";
+    sub.textContent = thread.counterpart_phone && thread.counterpart_name ? thread.counterpart_phone : "";
+    wrap.appendChild(sub);
+  } else {
+    const sub = document.getElementById("convSubtitle");
+    if (sub) sub.textContent = thread.counterpart_phone && thread.counterpart_name ? thread.counterpart_phone : "";
+  }
+
+  els.convBadge.innerHTML = state.activeHumanHandling
+    ? '<span class="badge human">human</span>'
+    : '<span class="badge bot">bot</span>';
+
+  // Reconcile optimistic pending: drop any whose idempotency_key now appears
+  // in the server ledger (backend is authoritative).
+  const serverKeys = new Set(messages.map((mm) => mm.idempotency_key).filter(Boolean));
+  for (const k of [...state.pending.keys()]) {
+    if (serverKeys.has(k)) state.pending.delete(k);
+  }
+
+  const all = messages.slice();
+  for (const p of state.pending.values()) all.push(p);
+
+  if (!all.length) {
+    els.messages.innerHTML = '<div class="empty">Nessun messaggio.</div>';
+  } else {
+    els.messages.innerHTML = "";
+    let lastDay = null;
+    for (const mm of all) {
+      const ts = mm.created_at || mm.sent_at;
+      const dayKey = ts ? new Date(ts).toDateString() : null;
+      if (dayKey && dayKey !== lastDay) {
+        const sep = document.createElement("div");
+        sep.className = "day-sep";
+        sep.textContent = fmtDaySeparator(ts);
+        els.messages.appendChild(sep);
+        lastDay = dayKey;
+      }
+      renderMsg(mm);
+    }
+    els.messages.scrollTop = els.messages.scrollHeight;
+  }
+
+  // Window 24h + handling drive composer + buttons.
+  applyComposerState();
+}
+
+function renderMsg(mm) {
+  const dir = mm.direction === "outbound" ? "outbound" : "inbound";
+  const status = mm.status || (dir === "outbound" ? "sent" : "received");
+  const role = mm.sender_role || (dir === "inbound" ? "customer" : "bot");
+
+  const row = document.createElement("div");
+  row.className = "msg-row " + dir;
+
+  // Sender label only for outbound bot/human replies — inbound is always the client.
+  if (dir === "outbound" && (role === "bot" || role === "human")) {
+    const label = document.createElement("div");
+    label.className = "sender-label " + role;
+    label.textContent = role === "bot" ? "🤖 Zantara" : "👤 Operatore";
+    row.appendChild(label);
+  }
+
+  const div = document.createElement("div");
+  div.className = "msg " + dir + (status === "pending" ? " pending" : status === "failed" ? " failed" : "");
+
+  let statusIcon = "";
+  if (dir === "outbound") {
+    const iconMap = {
+      pending: '<span class="status-icon">🕓</span>',
+      queued: '<span class="status-icon">🕓</span>',
+      generating: '<span class="status-icon">✍️</span>',
+      sending: '<span class="status-icon">↗</span>',
+      sent: '<span class="status-icon">✓</span>',
+      delivered: '<span class="status-icon">✓✓</span>',
+      read: '<span class="status-icon read">✓✓</span>',
+      failed: '<span class="status-icon failed">⚠</span>',
+    };
+    statusIcon = iconMap[status] || "";
+  }
+
+  div.innerHTML =
+    esc(mm.body || "") +
+    '<div class="meta">' +
+      "<span>" + esc(fmtTime(mm.created_at || mm.sent_at)) + "</span>" +
+      statusIcon +
+    "</div>";
+  row.appendChild(div);
+  els.messages.appendChild(row);
+}
+
+function applyComposerState() {
+  els.bannerSlot.innerHTML = "";
+  els.btnTakeover.disabled = state.activeId == null || state.activeHumanHandling;
+  els.btnRelease.disabled = state.activeId == null || !state.activeHumanHandling;
+
+  if (state.activeId == null) {
+    els.reply.disabled = true; els.btnSend.disabled = true;
+    return;
+  }
+  if (!state.activeWindowOpen) {
+    els.reply.disabled = true; els.btnSend.disabled = true;
+    els.bannerSlot.innerHTML =
+      '<div class="banner">⏱ Finestra 24h chiusa — template non supportato</div>';
+    return;
+  }
+  els.reply.disabled = false;
+  els.btnSend.disabled = false;
+}
+
+// ===========================================================================
+// Send (optimistic: only ever 'pending'; backend is authoritative)
+// ===========================================================================
+async function sendReply() {
+  const text = els.reply.value.trim();
+  if (!text || state.activeId == null) return;
+  const idempotencyKey = crypto.randomUUID();
+  const id = state.activeId;
+
+  // Optimistic insert as PENDING (never 'delivered').
+  const optimistic = {
+    direction: "outbound", sender_role: "human", body: text,
+    status: "pending", idempotency_key: idempotencyKey, created_at: new Date().toISOString(),
+  };
+  state.pending.set(idempotencyKey, optimistic);
+  els.reply.value = "";
+  // Re-render current view immediately (cheap re-fetch not needed).
+  renderMsg(optimistic);
+  els.messages.scrollTop = els.messages.scrollHeight;
+
+  const { ok, status } = await postJson("/api/send", {
+    thread_id: id, text, idempotency_key: idempotencyKey,
+  });
+  if (String(state.activeId) !== String(id)) return; // switched away; next poll reconciles
+  if (!ok) {
+    // Mark failed immediately; the next poll will reconcile from the ledger.
+    optimistic.status = "failed";
+    optimistic._err = status;
+    rerenderPendingOnly();
+  }
+  // On success we leave it 'pending' until the poll shows the real status.
+}
+
+function rerenderPendingOnly() {
+  // Cheap path: re-render the whole conv from current DOM is complex; instead
+  // trigger an immediate poll which rebuilds messages + merges pending.
+  pollConv(false);
+}
+
+els.btnSend.addEventListener("click", sendReply);
+els.reply.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); }
+});
+
+els.btnTakeover.addEventListener("click", async () => {
+  if (state.activeId == null) return;
+  const { ok } = await postJson("/api/takeover", { thread_id: state.activeId });
+  if (ok) { state.activeHumanHandling = true; applyComposerState(); pollConv(false); pollThreads(); }
+});
+els.btnRelease.addEventListener("click", async () => {
+  if (state.activeId == null) return;
+  const { ok } = await postJson("/api/release", { thread_id: state.activeId });
+  if (ok) { state.activeHumanHandling = false; applyComposerState(); pollConv(false); pollThreads(); }
+});
+
+// ---- Boot ------------------------------------------------------------------
+pollThreads();
+setInterval(pollThreads, 5000);
+</script>
+</body>
+</html>

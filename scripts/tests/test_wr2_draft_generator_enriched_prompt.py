@@ -24,7 +24,12 @@ import pytest
 SCRIPTS_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from wr2_draft_generator import _build_draft_prompt, _build_enriched_brief  # noqa: E402
+from wr2_draft_generator import (  # noqa: E402
+    _build_draft_prompt,
+    _build_enriched_brief,
+    _cap_subhead,
+    _normalise_slides,
+)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -311,3 +316,68 @@ def test_topic_and_source_appear_in_both_paths(monkeypatch: pytest.MonkeyPatch) 
         )
         assert "My Topic" in prompt
         assert "https://example.com/article" in prompt
+
+
+# ---------------------------------------------------------------------------
+# _cap_subhead -- template contract (1-6 words) backstop
+# ---------------------------------------------------------------------------
+
+SENTENCE_SUBHEAD = "KPK is investigating Indonesia's Deputy Minister of Immigration"
+
+
+def test_cap_subhead_truncates_full_sentence() -> None:
+    """A full-sentence subhead is capped to <=6 words AND <=32 chars,
+    never cutting a word in half."""
+    out = _cap_subhead(SENTENCE_SUBHEAD)
+    words = out.split()
+    assert len(words) <= 6, f"too many words: {out!r}"
+    assert len(out) <= 32, f"too long: {out!r} ({len(out)} chars)"
+    assert "..." not in out
+    original = SENTENCE_SUBHEAD.split()
+    assert words == original[: len(words)]
+
+
+def test_cap_subhead_passes_conforming_kicker() -> None:
+    """An already-conforming kicker is returned unchanged."""
+    assert _cap_subhead("VISA UPDATE") == "VISA UPDATE"
+
+
+def test_cap_subhead_empty_is_empty() -> None:
+    """Empty / whitespace input does not crash and returns ''."""
+    assert _cap_subhead("") == ""
+    assert _cap_subhead("   ") == ""
+
+
+def test_cap_subhead_word_cap_only_when_short() -> None:
+    """6 short words under the char cap survive intact; a 7th is dropped."""
+    assert _cap_subhead("ONE TWO THREE FOUR FIVE SIX") == "ONE TWO THREE FOUR FIVE SIX"
+    assert _cap_subhead("ONE TWO THREE FOUR FIVE SIX SEVEN") == "ONE TWO THREE FOUR FIVE SIX"
+
+
+def test_cap_subhead_single_long_word_not_split() -> None:
+    """A single word longer than max_chars is returned whole (never cut)."""
+    long_word = "Superlongunbreakablekickerwordthatexceedslimit"
+    assert _cap_subhead(long_word) == long_word
+
+
+def test_normalise_slides_caps_subhead_field() -> None:
+    """End-to-end through _normalise_slides: a long cover subhead is capped
+    on the 'subhead' field of the persisted slide dict."""
+    slides_in = []
+    for i in range(1, 9):
+        slides_in.append({
+            "slide_number": i,
+            "slide_type": "cover" if i == 1 else "body",
+            "is_cover": i == 1,
+            "is_hero_image": i == 1,
+            "headline": f"Headline {i}",
+            "subhead": SENTENCE_SUBHEAD if i == 1 else "",
+            "body": f"Body text for slide {i}.",
+            "image_prompt": "editorial scene",
+        })
+    parsed = {"register": "analitico", "slides": slides_in}
+    _register, slides = _normalise_slides(parsed)
+    cover_subhead = slides[0]["subhead"]
+    assert len(cover_subhead.split()) <= 6
+    assert len(cover_subhead) <= 32
+    assert "..." not in cover_subhead

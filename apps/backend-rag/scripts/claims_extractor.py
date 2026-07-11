@@ -16,13 +16,13 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import re
-import sys
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+
+from backend.llm.claude_oauth_client import complete_async
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
@@ -125,21 +125,22 @@ async def extract_claims_from_file(
     source_path: Path,
     instrument_id: str,
     domain: str,
-    anthropic_api_key: str,
 ) -> list[dict[str, Any]]:
-    """Extract claims from a source file using Claude Haiku 4.5."""
-    import anthropic
+    """Extract claims from a source file using Claude Haiku 4.5 (OAuth/CLI).
 
+    Uses the Max-plan OAuth path (``claude`` CLI via
+    ``backend.llm.claude_oauth_client``) — never ``ANTHROPIC_API_KEY``
+    (CLAUDE.md §5 / Golden Rule #13).
+    """
     source_text = source_path.read_text(encoding="utf-8")
     prompt = build_extraction_prompt(source_text, instrument_id, domain)
 
-    client = anthropic.AsyncAnthropic(api_key=anthropic_api_key)
-    response = await client.messages.create(
+    response = await complete_async(
+        prompt,
         model="claude-haiku-4-5-20251001",
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
+        endpoint="claims_extractor",
     )
-    raw = response.content[0].text
+    raw = response.text
     claims = parse_claims_response(raw)
     logger.info("Extracted %d raw claims from %s", len(claims), instrument_id)
     return claims
@@ -153,11 +154,6 @@ def main() -> None:
     parser.add_argument("--instrument-id", required=True, help="e.g. UU-6-2011")
     args = parser.parse_args()
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY not set", file=sys.stderr)  # noqa: T201
-        sys.exit(1)
-
     import asyncio
     source_path = Path(args.source)
     output_path = Path(__file__).parent / "claims_db" / f"{args.domain}_claims_db.json"
@@ -165,12 +161,12 @@ def main() -> None:
     start_idx = len(existing) + 1
 
     new_claims = asyncio.run(
-        extract_claims_from_file(source_path, args.instrument_id, args.domain, api_key)
+        extract_claims_from_file(source_path, args.instrument_id, args.domain)
     )
     stamped = stamp_claims(new_claims, args.domain, start_idx)
     all_claims = existing + stamped
     save_claims_db(all_claims, output_path)
-    print(f"Added {len(stamped)} new claims. Total: {len(all_claims)}")  # noqa: T201
+    print(f"Added {len(stamped)} new claims. Total: {len(all_claims)}")
 
 
 if __name__ == "__main__":

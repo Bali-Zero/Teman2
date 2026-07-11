@@ -16,6 +16,7 @@ import ServicePricing from "@/components/services/ServicePricing";
 import { logger } from "@/lib/logger";
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo";
+import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 
 export async function generateMetadata({
   params,
@@ -52,10 +53,9 @@ export async function generateMetadata({
       ],
     },
     company: {
-      title:
-        "Company Registration Bali 2026 | PT PMA, Business License Indonesia | Bali Zero",
+      title: "Business License in Indonesia (2026 Guide) | Bali Zero",
       description:
-        "Register your company in Bali — PT PMA setup, business license Indonesia, KBLI classification, NIB & OSS permits. Transparent pricing from IDR 20M. 5000+ businesses established.",
+        "Need a business license in Indonesia? We handle PT PMA setup, OSS licensing, and NIB permits end-to-end. 5,000+ businesses registered since 2019.",
       keywords: [
         "company registration bali",
         "business license indonesia",
@@ -158,7 +158,15 @@ export default async function ServiceDetailPage({
       {/* Server-side JSON-LD — included in static HTML for Googlebot */}
       <BreadcrumbJsonLd items={breadcrumbItems} />
       {service.faqs?.length > 0 && <FAQJsonLd items={service.faqs} />}
-      <div className="min-h-screen bg-[#051C2C]">
+      {/* MYTHOS Stage-B Batch 2: Rumah Putih light, scoped per-page. The
+          .rumah-putih class hooks the scoped re-tint in globals.css for this
+          page's hardcoded-dark surfaces (bg-[#051C2C]/bg-[#0a2540], text-white,
+          serif headings, ServicePricing client cards). NavShell + Footer stay
+          navy (they read --nav-bg / --footer-bg, not --surface-base). */}
+      <div
+        className={`min-h-screen ${RUMAH_CLASS}`}
+        style={{ ...RUMAH_VARS, background: "var(--surface-base)" }}
+      >
         {/* Breadcrumb */}
         <div className="border-b border-white/10">
           <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-4">
@@ -271,7 +279,7 @@ export default async function ServiceDetailPage({
 
               {/* Sidebar - CTA */}
               <div className="lg:col-span-1">
-                <div className="sticky top-24 bg-gradient-to-br from-[#e85c41] to-[#d14832] rounded-xl p-6">
+                <div className="rp-dark-island sticky top-24 bg-gradient-to-br from-[#e85c41] to-[#d14832] rounded-xl p-6">
                   {/* BALI ZERO Logo */}
                   <div className="flex justify-center mb-4">
                     <Image

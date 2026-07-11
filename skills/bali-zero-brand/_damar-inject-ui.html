@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WR2 — Manual Topic Injection</title>
+<style>
+  :root {
+    --color-bg-antracite: #373D42;
+    --color-bg-black: #000000;
+    --color-text-white: #FFFFFF;
+    --color-text-muted: #9CA3AF;
+    --color-accent-yellow: #F4C430;
+    --color-status-red: #C8102E;
+    --color-status-green: #4ADE80;
+    --color-card-bg: #1C1F26;
+    --font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--color-bg-antracite);
+    color: var(--color-text-white);
+    font-family: var(--font-family);
+    padding: 24px;
+    min-height: 100vh;
+  }
+  header {
+    margin-bottom: 24px; padding-bottom: 16px;
+    border-bottom: 2px solid var(--color-accent-yellow);
+  }
+  h1 { font-size: 28px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; }
+  h1 .accent { color: var(--color-accent-yellow); }
+  .nav-link {
+    display: inline-block; margin-top: 8px;
+    color: var(--color-text-muted); text-decoration: none;
+    font-size: 13px;
+  }
+  .nav-link:hover { color: var(--color-accent-yellow); }
+  .nav-link + .nav-link { margin-left: 12px; }
+  .layout {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    margin-top: 24px;
+  }
+  .form-panel, .obs-panel {
+    background: var(--color-card-bg); border-radius: 8px; padding: 24px;
+  }
+  .panel-title {
+    font-size: 14px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--color-accent-yellow);
+    margin-bottom: 16px; padding-bottom: 8px;
+    border-bottom: 1px solid rgba(244,196,48,0.3);
+  }
+  label {
+    display: block; font-size: 12px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--color-text-muted); margin-bottom: 6px; margin-top: 16px;
+  }
+  label:first-of-type { margin-top: 0; }
+  input, select, textarea {
+    width: 100%; background: var(--color-bg-black);
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 4px;
+    color: var(--color-text-white); padding: 10px 12px;
+    font-family: var(--font-family); font-size: 14px;
+  }
+  textarea { font-family: 'IBM Plex Mono', monospace; min-height: 280px; resize: vertical; }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--color-accent-yellow);
+  }
+  .charcount {
+    text-align: right; font-size: 11px; color: var(--color-text-muted);
+    margin-top: 4px;
+  }
+  .charcount.warn { color: var(--color-status-red); }
+  button.primary {
+    margin-top: 20px; width: 100%;
+    background: var(--color-accent-yellow); color: var(--color-bg-black);
+    border: none; padding: 14px 20px; border-radius: 4px;
+    font-family: var(--font-family); font-weight: 800;
+    font-size: 14px; letter-spacing: 0.06em;
+    text-transform: uppercase; cursor: pointer;
+  }
+  button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .obs-list {
+    display: flex; flex-direction: column; gap: 8px;
+    max-height: 600px; overflow-y: auto;
+  }
+  .obs-item {
+    background: var(--color-bg-black); padding: 10px 14px;
+    border-left: 3px solid var(--color-accent-yellow);
+    border-radius: 3px; cursor: pointer;
+    transition: all 0.1s;
+  }
+  .obs-item:hover { border-left-color: var(--color-text-white); }
+  .obs-item .name {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+    color: var(--color-text-white); word-break: break-all;
+  }
+  .obs-item .meta {
+    font-size: 10px; color: var(--color-text-muted);
+    margin-top: 4px;
+  }
+  .obs-viewer {
+    margin-top: 16px; background: var(--color-bg-black);
+    padding: 16px; border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--color-text-white);
+    max-height: 480px; overflow: auto;
+    white-space: pre-wrap; line-height: 1.5;
+    display: none;
+  }
+  .obs-viewer.show { display: block; }
+  .row-2col {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .feedback {
+    margin-top: 16px; padding: 12px;
+    border-radius: 4px; font-size: 13px;
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.ok {
+    background: rgba(74,222,128,0.1); border-left: 3px solid var(--color-status-green);
+  }
+  .feedback.err {
+    background: rgba(200,16,46,0.1); border-left: 3px solid var(--color-status-red);
+  }
+  .feedback code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    color: var(--color-accent-yellow);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>WR2 <span class="accent">MANUAL INJECTION</span></h1>
+  <a class="nav-link" href="/">← Queue</a>
+  <a class="nav-link" href="/tag">Tag past</a>
+  <a class="nav-link" href="/anchors">Anchors</a>
+</header>
+
+<div class="layout">
+  <div class="form-panel">
+    <div class="panel-title">Inject topic + report</div>
+    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 20px;">
+      Skip autonomous topic selection. Give wr2-design-architect a topic and
+      a research report; it will produce a complete carousel package.
+    </p>
+
+    <label for="topic">Topic</label>
+    <input id="topic" type="text" placeholder="e.g. KEP-71/PJ/2026 SPT extension to 31 May 2026" />
+
+    <label for="report">Research report (markdown OK)</label>
+    <textarea id="report" placeholder="Paste research with verifiable facts, regulatory citations verbatim, dates, numbers, sources. Min 200 chars. Pipeline will NOT invent facts not present here."></textarea>
+    <div class="charcount" id="charcount">0 chars</div>
+
+    <div class="row-2col">
+      <div>
+        <label for="archetype">Archetype</label>
+        <select id="archetype">
+          <option value="regulatory-explainer">regulatory-explainer (default)</option>
+          <option value="news-flash">news-flash</option>
+          <option value="quote-led">quote-led</option>
+          <option value="anti-cliche">anti-cliche</option>
+          <option value="story-driven">story-driven</option>
+          <option value="comparison">comparison</option>
+          <option value="calendar-tracker">calendar-tracker</option>
+          <option value="testimonial-data">testimonial-data</option>
+          <option value="cultural-insight">cultural-insight</option>
+        </select>
+      </div>
+      <div>
+        <label for="audience">Audience hint</label>
+        <select id="audience">
+          <option value="">— auto —</option>
+          <option value="founder">founder</option>
+          <option value="investor">investor</option>
+          <option value="digital-nomad">digital-nomad</option>
+          <option value="retiree">retiree</option>
+          <option value="mass-tourist">mass-tourist</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="register">Register hint</label>
+    <select id="register">
+      <option value="">— auto —</option>
+      <option value="rituale">rituale</option>
+      <option value="analitico">analitico</option>
+      <option value="ironico">ironico</option>
+      <option value="militante">militante</option>
+      <option value="pedagogico">pedagogico</option>
+      <option value="poetico">poetico</option>
+      <option value="tecnico">tecnico</option>
+    </select>
+
+    <!-- Article 14 SOTA fields (added 2026-05-12) -->
+    <details style="margin-top:16px;border:1px solid var(--color-text-muted);border-radius:4px;padding:12px;">
+      <summary style="cursor:pointer;font-weight:600;font-size:14px;color:var(--color-accent-yellow);">SOTA Article 14 fields (optional, opt-in for regulatory/visa/tax/property)</summary>
+      <div style="margin-top:12px;">
+        <label for="primary_regulation_code">Primary regulation code (Art 14.4 — red badge top-right on cover)</label>
+        <input id="primary_regulation_code" type="text" placeholder="e.g. KEP-71/PJ/2026 — leave empty if topic has no specific code" />
+
+        <label for="primary_source_url" style="margin-top:12px;display:block;">Primary source URL (Art 14.5 DEFERRED — QR target, NOT Bali Zero domain)</label>
+        <input id="primary_source_url" type="url" placeholder="e.g. https://pajak.go.id/... or jdih.kemenkumham.go.id/..." />
+
+        <label for="qr_caption" style="margin-top:12px;display:block;">QR caption (Art 14.5 DEFERRED — text above QR)</label>
+        <input id="qr_caption" type="text" placeholder="default: PRIMARY SOURCE / SUMBER ASLI" />
+      </div>
+    </details>
+
+    <button class="primary" id="submit-btn">INJECT — START PIPELINE</button>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="obs-panel">
+    <div class="panel-title">Observation logs</div>
+    <p style="font-size: 13px; color: var(--color-text-muted); margin-bottom: 20px;">
+      Each injection produces a transcript log. Click to view. Auto-refresh every 10s.
+    </p>
+    <div class="obs-list" id="obs-list"><em>Loading...</em></div>
+    <div class="obs-viewer" id="obs-viewer"></div>
+  </div>
+</div>
+
+<script>
+const topicInput = document.getElementById('topic');
+const reportInput = document.getElementById('report');
+const charCount = document.getElementById('charcount');
+const submitBtn = document.getElementById('submit-btn');
+const feedback = document.getElementById('feedback');
+const obsList = document.getElementById('obs-list');
+const obsViewer = document.getElementById('obs-viewer');
+
+reportInput.addEventListener('input', () => {
+  const n = reportInput.value.length;
+  charCount.textContent = `${n} chars`;
+  charCount.classList.toggle('warn', n < 200);
+});
+
+submitBtn.addEventListener('click', async () => {
+  const topic = topicInput.value.trim();
+  const report = reportInput.value.trim();
+  const archetype = document.getElementById('archetype').value;
+  const audience = document.getElementById('audience').value;
+  const register = document.getElementById('register').value;
+  // Article 14 SOTA fields (added 2026-05-12)
+  const primary_regulation_code = document.getElementById('primary_regulation_code').value.trim();
+  const primary_source_url = document.getElementById('primary_source_url').value.trim();
+  const qr_caption = document.getElementById('qr_caption').value.trim();
+
+  if (!topic) { showFeedback('err', 'Topic required'); return; }
+  if (report.length < 200) { showFeedback('err', `Report too thin (${report.length} chars, need 200+)`); return; }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'INJECTING...';
+
+  try {
+    const res = await fetch('/api/inject-topic', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({topic, report, archetype, audience, register, primary_regulation_code, primary_source_url, qr_caption}),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      showFeedback('err', `Failed: ${data.error}`);
+    } else {
+      showFeedback('ok',
+        `Pipeline running. PID <code>${data.pid}</code>. ` +
+        `Log: <code>${data.observation_log.split('/').pop()}</code>. ` +
+        `Watch the right panel for live transcript.`
+      );
+      setTimeout(loadObservations, 2000);
+    }
+  } catch (e) {
+    showFeedback('err', `Network error: ${e.message}`);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'INJECT — START PIPELINE';
+  }
+});
+
+function showFeedback(kind, html) {
+  feedback.className = `feedback show ${kind}`;
+  feedback.innerHTML = html;
+}
+
+async function loadObservations() {
+  try {
+    const res = await fetch('/api/observations');
+    const items = await res.json();
+    if (!items.length) {
+      obsList.innerHTML = '<em style="color:var(--color-text-muted);">No observations yet.</em>';
+      return;
+    }
+    obsList.innerHTML = items.map(it => {
+      const sizeKb = (it.size_bytes / 1024).toFixed(1);
+      const date = new Date(it.modified).toLocaleString('en-GB', {dateStyle:'short', timeStyle:'short'});
+      return `<div class="obs-item" onclick="loadLog('${escapeAttr(it.filename)}')">
+        <div class="name">${escapeHtml(it.filename)}</div>
+        <div class="meta">${sizeKb} KB · ${date}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    obsList.innerHTML = `<em>Error loading: ${e.message}</em>`;
+  }
+}
+
+async function loadLog(name) {
+  try {
+    const res = await fetch(`/api/observation/${encodeURIComponent(name)}`);
+    const text = await res.text();
+    obsViewer.textContent = text;
+    obsViewer.classList.add('show');
+    obsViewer.scrollTop = obsViewer.scrollHeight;  // jump to bottom
+  } catch (e) {
+    obsViewer.textContent = `Error: ${e.message}`;
+    obsViewer.classList.add('show');
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return String(s).replace(/'/g, '&#39;'); }
+
+loadObservations();
+setInterval(loadObservations, 10000);
+</script>
+
+</body>
+</html>

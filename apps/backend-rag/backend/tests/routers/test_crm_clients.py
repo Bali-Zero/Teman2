@@ -153,8 +153,9 @@ class TestEnsureDriveFolder:
         ))
 
         fake_drive = MagicMock()
-        fake_drive.create_client_folder = AsyncMock(return_value={
+        fake_drive.ensure_client_folder = AsyncMock(return_value={
             "success": True,
+            "created": True,
             "root_folder_id": "NEW_ROOT_123",
             "root_folder_url": "https://drive.example/123",
             "subfolders": {"00_Profile": {"id": "x", "url": "y"}, "01_Immigration": {"id": "a", "url": "b"}},
@@ -257,6 +258,48 @@ class TestListClients:
         assert payload[0]["full_name"] == "Alice Example"
         fetch_args = conn.fetch.await_args.args
         assert "%alice%" in fetch_args
+
+    @pytest.mark.integration
+    def test_list_clients_unnamed_filter_adds_placeholder_predicate(
+        self,
+        client: TestClient,
+        mock_db_pool,
+    ) -> None:
+        """unnamed=true must restrict to placeholder-named phone leads."""
+        _pool, conn = mock_db_pool
+        conn.fetch = AsyncMock(return_value=[_client_row()])
+
+        with (
+            patch("backend.app.routers.crm_clients.get_crm_user_filter", return_value=None),
+            patch("backend.app.routers.crm_clients.is_crm_admin", return_value=True),
+        ):
+            response = client.get("/api/crm/clients/?unnamed=true")
+
+        assert response.status_code == 200
+        sql = conn.fetch.await_args.args[0]
+        # the placeholder predicate (mirrors wa-dashboard JUNK_NAME_PATTERNS)
+        assert "^lead" in sql.lower()
+        assert "btrim(c.full_name) = ''" in sql
+
+    @pytest.mark.integration
+    def test_list_clients_without_unnamed_has_no_placeholder_predicate(
+        self,
+        client: TestClient,
+        mock_db_pool,
+    ) -> None:
+        """Innocence: a normal list must NOT carry the placeholder predicate."""
+        _pool, conn = mock_db_pool
+        conn.fetch = AsyncMock(return_value=[_client_row()])
+
+        with (
+            patch("backend.app.routers.crm_clients.get_crm_user_filter", return_value=None),
+            patch("backend.app.routers.crm_clients.is_crm_admin", return_value=True),
+        ):
+            response = client.get("/api/crm/clients/")
+
+        assert response.status_code == 200
+        sql = conn.fetch.await_args.args[0]
+        assert "^lead" not in sql.lower()
 
     @pytest.mark.integration
     def test_list_clients_requires_authenticated_email(self, mock_db_pool) -> None:

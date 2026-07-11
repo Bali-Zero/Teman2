@@ -3,21 +3,19 @@
 
 Spec: research/wr2/2026-05-27-wr2-autonomous-workflow-spec.md §10
 
-Cleans up `.worktrees/wr2-run-*` directories created by wr2_carousel_dispatcher
-via scripts/agent_start.py. A successful carousel run leaves artifacts in
-~/.claude/carousels/<carousel_id>/ (canonical); the worktree itself is just
-scratch space that should be pruned post-publish.
+Cleans up `.worktrees/wr2-run-*` directories created by the retired Pipeline-A
+dispatcher (deleted in P-1 R1) via scripts/agent_start.py. A successful carousel
+run leaves artifacts in ~/.claude/carousels/<carousel_id>/ (canonical); the
+worktree itself is just scratch space that should be pruned post-publish.
 
-Policy (Spec §10):
+Policy (Spec §10, simplified per P-1 R1):
     - Delete worktrees with name pattern `wr2-run-*` AND age > 24h
-    - Skip worktrees that match an open `wr2_carousel_runs.state IN ('drafted',
-      'brief_done', 'storyboard_done', 'layout_done', 'critic_pass', 'rendered',
-      'awaiting_approval')` — those are in-flight
+    - Pipeline A is retired: no run can be in-flight, so no worktree is
+      protected by A-runs (the old in-flight DB check is gone, P-1 R1)
     - Run `git worktree remove <path>` AND `git branch -D <branch>` (cleanup)
     - Telegram alert if N>5 deleted in single run (catches loop bug)
 
 Env:
-    DATABASE_URL            — to check in-flight carousels
     WR2_WORKTREE_GC_ENABLED — false to disable without removing plist
     WR2_WORKTREE_GC_MAX_AGE_HOURS — default 24
 
@@ -37,11 +35,14 @@ import sys
 import time
 from pathlib import Path
 
-import asyncpg
-
 logger = logging.getLogger("wr2.worktree_gc")
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
+# Make sibling scripts (arm_keep_worktrees) importable regardless of how the cron
+# invokes us (`python scripts/x.py` does NOT put scripts/ on sys.path).
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
 WORKTREES_DIR = _REPO_ROOT / ".worktrees"
 WORKTREE_PREFIX = "wr2-run-"
 DEFAULT_MAX_AGE_HOURS = 24
@@ -83,20 +84,38 @@ def list_wr2_run_worktrees() -> list[dict]:
     return out
 
 
-async def fetch_inflight_carousels(conn: asyncpg.Connection) -> set[str]:
-    """Return set of carousel_ids currently in-flight (not in terminal state)."""
-    rows = await conn.fetch(
-        """
-        SELECT carousel_id::text FROM wr2_carousel_runs
-         WHERE state IN ('drafted','brief_done','storyboard_done',
-                         'layout_done','critic_pass','rendered','awaiting_approval')
-        """
-    )
-    return {r["carousel_id"] for r in rows}
+def _arm_before_remove(path: Path, *, apply: bool) -> None:
+    """Freeze any dirty/untracked work onto a quarantine ref BEFORE removal.
+
+    Scar W80: `git worktree remove --force` silently discards uncommitted +
+    untracked work with NO error. The official reaper (worktree_gc_universal.py)
+    quarantines first; this WR2 reaper used to `--force`-delete blind. Arm here so
+    the WR2 cron — which runs H24 without an operator or Claude hooks present —
+    can never be the thing that loses work. Best-effort: an arm failure is logged
+    but does NOT abort the GC (a stuck quarantine must not wedge the cron); the
+    worst case degrades to today's behavior, never worse.
+    """
+    try:
+        from arm_keep_worktrees import _arm_one, _dirty_count  # local import: optional dep
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("arm-keep unavailable (%s) — proceeding WITHOUT quarantine", exc)
+        return
+    try:
+        if _dirty_count(path) == 0:
+            return  # nothing to freeze
+    except Exception:  # noqa: BLE001
+        pass  # if we can't tell, arm anyway — fail safe toward preserving work
+    ok, msg = _arm_one(path, apply=apply)
+    logger.info("arm-keep: %s", msg)
+    if not ok:
+        logger.warning("arm-keep FAILED for %s — work may be at risk if removed", path.name)
 
 
 def remove_worktree(path: Path, *, apply: bool) -> bool:
-    """Run git worktree remove + cleanup branch."""
+    """Run git worktree remove + cleanup branch (arms dirty work first — W80)."""
+    # ALWAYS arm before any removal path, dry-run included (dry-run is a no-op arm).
+    _arm_before_remove(path, apply=apply)
+
     if not apply:
         logger.info(f"[dry-run] would remove worktree {path.name}")
         return True
@@ -147,32 +166,10 @@ async def main(argv: list[str] | None = None) -> int:
     if not aged:
         return 0
 
-    # Check in-flight via PG
-    dsn = os.environ.get("DATABASE_URL")
-    inflight: set[str] = set()
-    if dsn:
-        try:
-            conn = await asyncpg.connect(dsn, timeout=10)
-            try:
-                inflight = await fetch_inflight_carousels(conn)
-            finally:
-                await conn.close()
-        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError, asyncio.TimeoutError) as exc:
-            logger.warning(f"in-flight check failed ({exc}), CONSERVATIVE skip all")
-            # If we can't check, refuse to delete (avoid clobbering active run)
-            return 0
-    else:
-        logger.warning("DATABASE_URL unset, CONSERVATIVE skip all")
-        return 0
-
-    # Filter out in-flight carousels
-    to_delete = [c for c in aged if c["task_id"] not in inflight]
-    skipped = len(aged) - len(to_delete)
-    if skipped:
-        logger.info(f"skipped {skipped} aged worktrees (in-flight)")
-
+    # P-1 R1: Pipeline A is retired — its state table is gone, no run can
+    # be in-flight, so no aged worktree is protected by A-runs. Delete them all.
     deleted = 0
-    for c in to_delete:
+    for c in aged:
         if remove_worktree(c["path"], apply=args.apply):
             deleted += 1
 
@@ -182,7 +179,7 @@ async def main(argv: list[str] | None = None) -> int:
             f"investigate possible loop bug"
         )
 
-    logger.info(f"done: {deleted} deleted, {skipped} skipped (in-flight), apply={args.apply}")
+    logger.info(f"done: {deleted} deleted, apply={args.apply}")
     return 0
 
 

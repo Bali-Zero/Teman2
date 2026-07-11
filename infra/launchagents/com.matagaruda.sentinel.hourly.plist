@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>CELL_OBSERVATORY_EMIT</key>
+		<string>true</string>
+		<key>GARUDA_CANONICAL_REDIS_HOST</key>
+		<string>127.0.0.1</string>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/shims</string>
+		<key>PYTHONPATH</key>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+	</dict>
+	<key>KeepAlive</key>
+	<false/>
+	<key>Label</key>
+	<string>com.matagaruda.sentinel.hourly</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+		<string>-u</string>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/scripts/run_sentinel_cell.py</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/matagaruda-sentinel.error.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/matagaruda-sentinel.log</string>
+	<key>StartInterval</key>
+	<integer>3600</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+</dict>
+</plist>

@@ -71,7 +71,9 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         Returns:
             Created client record with assigned UUID.
         """
-        payload: dict = {"name": name, "email": email, "nationality": nationality}
+        # Backend POST /api/crm/clients/ requires `full_name` (ClientCreate model,
+        # crm_clients.py). Sending `name` yields HTTP 422 "field required: full_name".
+        payload: dict = {"full_name": name, "email": email, "nationality": nationality}
         if phone:
             payload["phone"] = phone
         if notes:
@@ -161,14 +163,19 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         Create a new practice for a client.
 
         Args:
-            client_id: UUID of the client
-            practice_type: Type of practice (kitas, kitap, pt_pma, pt_perorangan, npwp, imta, rptka)
+            client_id: Numeric ID of the client
+            practice_type: Practice type CODE from the practice_types catalog
+                (e.g. "company_pt_pma", "extension_kitas", "ext_b1_voa").
+                Fetch valid codes via GET /api/crm/practices/types/catalog.
             notes: Internal notes
 
         Returns:
-            Created practice record with assigned UUID.
+            Created practice record with assigned ID.
         """
-        payload: dict = {"client_id": client_id, "type": practice_type}
+        # Backend POST /api/crm/practices/ requires `practice_type_code` (PracticeCreate
+        # model, crm_practices.py) matching a row in the practice_types table. Sending
+        # `type` with a free-text label yields "Practice type '<x>' not found".
+        payload: dict = {"client_id": client_id, "practice_type_code": practice_type}
         if notes:
             payload["notes"] = notes
         return await _call("/api/crm/practices/", method="POST", json=payload)

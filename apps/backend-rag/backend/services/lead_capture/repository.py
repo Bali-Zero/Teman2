@@ -84,8 +84,13 @@ class LeadIntentRepository:
                 """,
                 intent_id,
                 source.value,
-                json.dumps(context),
-                json.dumps(utm) if utm is not None else None,
+                # Pass dicts raw: the app pool registers a jsonb codec with
+                # encoder=json.dumps (PR #494, app/core/database.py). Calling
+                # json.dumps here double-encodes and stores a jsonb STRING
+                # instead of an object (bug found 2026-06-11 by running the
+                # matcher against a live row).
+                context,
+                utm,
                 fingerprint,
                 whatsapp_url,
                 now,

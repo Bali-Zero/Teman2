@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Daily disaster-recovery snapshot of live LaunchAgent plists (Pro).
+Cicatrix lineage: 2026-04-29 "Unknown agent overwrites loaded LaunchAgent plist
+files" (51/54 truncated, no git copy to restore from) + W65 plist-secret leak.
+
+Runs scripts/../infra/launchagents/plist_snapshot_dr.sh:
+  - mirrors loaded com.{nuzantara,balizero,cell,matagaruda}.* plists into
+    infra/launchagents/_snapshot-live/ with all secret-like values REDACTED,
+  - plutil-lints + independently grep-verifies no secret survived,
+  - commits the redacted mirror to branch chore/plist-snapshot-dr,
+  - Telegram delta line per changed plist.
+
+Schedule: daily 03:30 WITA (19:30 UTC prev day) on Pro — 30min after the
+log-prune (03:00) so it snapshots a quiet, settled LaunchAgents dir.
+
+Install (Pro):
+    bash infra/launchagents/install_plist_snapshot.sh
+  (or manually:)
+    cp infra/launchagents/com.nuzantara.plist-snapshot.daily.plist \
+       ~/Library/LaunchAgents/com.nuzantara.plist-snapshot.daily.plist
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.nuzantara.plist-snapshot.daily.plist
+
+Kill switch (without removing plist):
+    launchctl setenv PLIST_SNAPSHOT_ENABLED false
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.plist-snapshot.daily</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/infra/launchagents/plist_snapshot_dr.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>19</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+    <!-- 19:30 UTC = 03:30 WITA (30min after com.nuzantara.log-prune.daily) -->
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PLIST_SNAPSHOT_ENABLED</key>
+        <string>true</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/plist-snapshot.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/plist-snapshot.error.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

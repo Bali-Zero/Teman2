@@ -18,6 +18,9 @@ function makeCode(
       isPriority: false,
       note: null,
       source: null,
+      capSpecial: false,
+      capVerified: true,
+      routeTo: null,
     },
     licensing: [
       {
@@ -71,6 +74,9 @@ const closedHotel = makeCode({
     isPriority: false,
     note: null,
     source: null,
+    capSpecial: false,
+    capVerified: true,
+    routeTo: null,
   },
   licensing: [
     {

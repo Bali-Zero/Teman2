@@ -53,7 +53,7 @@ To create a new agent, use the create_agent tool. Follow this template as refere
 
 CRITICAL RULES (Mata Garuda):
 1. New agents MUST be registered with @register_agent decorator
-2. New agents MUST use CLI runtime (subprocess to claude/gemini/codex), NOT API HTTP
+2. New agents MUST use CLI runtime (subprocess to claude/agy/codex), NOT API HTTP
 3. After creating, ALWAYS run the agent via run_agent to verify it works
 4. If validation fails, iterate: fix the agent, retry
 5. NEVER create agents that touch frontend/clients/team channels (OSINT blindato)

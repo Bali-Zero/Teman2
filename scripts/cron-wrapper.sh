@@ -72,14 +72,16 @@ if [[ -n "${DATABASE_URL_LOCAL:-}" ]]; then
     export DATABASE_URL
 fi
 
-# macOS uses gtimeout from coreutils
-if command -v gtimeout &>/dev/null; then
+# macOS usually needs gtimeout from coreutils, but production Pro may not have
+# it installed. Keep the wrapper functional with a small bash-native fallback.
+if [[ "${CRON_WRAPPER_DISABLE_EXTERNAL_TIMEOUT:-}" == "1" ]]; then
+    TIMEOUT_CMD=""
+elif command -v gtimeout &>/dev/null; then
     TIMEOUT_CMD="gtimeout"
 elif command -v timeout &>/dev/null; then
     TIMEOUT_CMD="timeout"
 else
-    echo "ERROR: neither timeout nor gtimeout found. Install coreutils." >&2
-    exit 1
+    TIMEOUT_CMD=""
 fi
 
 mkdir -p "$LOG_DIR" "$LOCK_DIR" "$SENTINEL_STATE_DIR"
@@ -104,21 +106,58 @@ echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
 # ── Telegram helper ──────────────────────────────────────────────────────────
+# Migrated to the notification gateway (2026-07-06): tier p0 with a per-job
+# dedup key, so a flapping cron collapses to one alert per window instead of
+# one per firing. Token resolution, budget and spool live in the gateway;
+# with no credentials the alert lands in the digest spool instead of vanishing.
 send_telegram() {
     local msg="$1"
-    local token="${TELEGRAM_BOT_TOKEN:-}"
-    local chat_id="${TELEGRAM_ADMIN_CHAT_ID:-${TELEGRAM_OWNER_CHAT_ID:-}}"
+    # Sibling first; HOME-fork copies of this wrapper fall back to the repo
+    # checkout so the alert never dies with the fork (superscar #1).
+    local gateway
+    gateway="$(dirname "$0")/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    python3 "$gateway" \
+        --tier p0 \
+        --source "cron:${JOB_NAME}" \
+        --dedup-key "cron-fail:${JOB_NAME}" \
+        -- "$msg" >> "$LOG_FILE" 2>&1 || true
+}
 
-    if [ -z "$token" ] || [ -z "$chat_id" ]; then
-        echo "$START_ISO [$JOB_NAME] WARN: no Telegram credentials — alert skipped" >> "$LOG_FILE"
-        return 0
+run_command_with_timeout() {
+    if [ -n "$TIMEOUT_CMD" ]; then
+        OUTPUT=$("$TIMEOUT_CMD" "$TIMEOUT" "${COMMAND[@]}" 2>&1) && return 0 || return $?
     fi
 
-    curl -s -X POST "https://api.telegram.org/bot${token}/sendMessage" \
-        -d chat_id="$chat_id" \
-        -d parse_mode="HTML" \
-        -d text="$msg" \
-        > /dev/null 2>&1 || true
+    local output_file timeout_file pid watcher exit_code
+    output_file="$(mktemp "${TMPDIR:-/tmp}/cron-wrapper.${SENTINEL_JOB_KEY}.XXXXXX")"
+    timeout_file="${output_file}.timeout"
+
+    "${COMMAND[@]}" > "$output_file" 2>&1 &
+    pid=$!
+
+    (
+        sleep "$TIMEOUT"
+        if kill -0 "$pid" 2>/dev/null; then
+            : > "$timeout_file"
+            kill "$pid" 2>/dev/null || true
+            sleep 2
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    ) &
+    watcher=$!
+
+    wait "$pid" && exit_code=0 || exit_code=$?
+    kill "$watcher" 2>/dev/null || true
+    wait "$watcher" 2>/dev/null || true
+
+    OUTPUT="$(cat "$output_file" 2>/dev/null || true)"
+    if [ -f "$timeout_file" ]; then
+        exit_code=124
+    fi
+    rm -f "$output_file" "$timeout_file"
+
+    return "$exit_code"
 }
 
 # ── Execute with retry ───────────────────────────────────────────────────────
@@ -129,7 +168,7 @@ OUTPUT=""
 while [ $ATTEMPT -le $MAX_RETRIES ]; do
     ATTEMPT=$((ATTEMPT + 1))
 
-    OUTPUT=$($TIMEOUT_CMD "$TIMEOUT" "${COMMAND[@]}" 2>&1) && EXIT_CODE=0 || EXIT_CODE=$?
+    run_command_with_timeout && EXIT_CODE=0 || EXIT_CODE=$?
 
     if [ $EXIT_CODE -eq 0 ]; then
         break
@@ -166,11 +205,48 @@ printf '{"job":"%s","status":"%s","exit_code":%d,"attempts":%d,"duration_s":%d,"
 # the Cell flags them all as failed (false-positive flood since 2026-04-13).
 LAST_ERROR_PAYLOAD=""
 if [ "$STATUS" = "failed" ]; then
+    # W70 fix 2026-06-12: capture the REAL stderr so the DLQ classifier stops
+    # heal-looping blind. The pre-W70 path (F08 2026-06-11) used
+    #   tr '"' "'" | tr '\n' '|'
+    # which only neutralised double-quotes and newlines — a job whose output
+    # contained a backslash (Windows path, Python traceback repr, regex), a
+    # tab, a carriage return, or any other control char produced INVALID JSON.
+    # That broke the sentinel .last.json parse, which silently zeroes the
+    # classifier signal — the exact blind-loop W70 is about.
+    #
+    # Fix: build a one-line human summary, then JSON-escape the last ~2000
+    # chars of $OUTPUT with python3's json.dumps (handles ", \, \n, \t, \r and
+    # all control chars correctly). json.dumps returns a fully-quoted JSON
+    # string value, so we substitute it verbatim as the field value.
     if [ $EXIT_CODE -eq 124 ]; then
-        LAST_ERROR_PAYLOAD=",\"last_error\":\"timeout after ${TIMEOUT}s\""
+        _err_summary="timeout after ${TIMEOUT}s"
     else
-        LAST_ERROR_PAYLOAD=",\"last_error\":\"exit ${EXIT_CODE} after ${ATTEMPT} attempts\""
+        _err_summary="exit ${EXIT_CODE} after ${ATTEMPT} attempts"
     fi
+
+    # Tail to last 50 lines then cap at 2000 chars — keep the most recent signal.
+    _output_tail=$(printf '%s' "$OUTPUT" | tail -50 | tail -c 2000)
+
+    _last_error_json=""
+    if [ -n "$_output_tail" ]; then
+        # Compose "<summary> | <real stderr>" and let python emit a safe JSON
+        # string (quotes included). SUMMARY and TAIL passed via argv to avoid
+        # any shell re-quoting of the captured output.
+        if command -v python3 &>/dev/null; then
+            _last_error_json=$(SUMMARY="$_err_summary" TAIL="$_output_tail" \
+                python3 -c 'import json,os;print(json.dumps((os.environ["SUMMARY"]+" | "+os.environ["TAIL"])[:2000]))' 2>/dev/null || echo "")
+        fi
+        if [ -z "$_last_error_json" ]; then
+            # python3 absent or failed — degrade to the legacy tr-escape so the
+            # field is still (mostly) JSON-safe. Never leave last_error unset.
+            _legacy_tail=$(printf '%s' "$_output_tail" | tr '"' "'" | tr '\n' '|' | tr -d '\r\t\\')
+            _last_error_json="\"${_err_summary} | ${_legacy_tail}\""
+        fi
+    else
+        # $OUTPUT empty (e.g. job killed before any output) — summary fallback.
+        _last_error_json="\"${_err_summary}\""
+    fi
+    LAST_ERROR_PAYLOAD=",\"last_error\":${_last_error_json}"
 fi
 printf '{"job":"%s","ts":%d,"status":"%s","host":"%s","source":"cron-wrapper","duration_ms":%d%s}\n' \
     "$SENTINEL_JOB_KEY" "$END_TS" "$STATUS" "$HOSTNAME_SHORT" "$((DURATION * 1000))" "$LAST_ERROR_PAYLOAD" \
@@ -185,12 +261,12 @@ printf '{"job":"%s","ts":%d,"status":"%s","host":"%s","source":"cron-wrapper","d
 
 # ── Alert on failure ─────────────────────────────────────────────────────────
 if [ $EXIT_CODE -ne 0 ]; then
-    LAST_LINES=$(echo "$OUTPUT" | tail -5 | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
-    MSG="<b>CRON FAIL</b> $HOSTNAME_SHORT
-<b>Job:</b> $JOB_NAME
-<b>Exit:</b> $EXIT_CODE (after $ATTEMPT attempts)
-<b>Duration:</b> ${DURATION}s
-<pre>$LAST_LINES</pre>"
+    LAST_LINES=$(echo "$OUTPUT" | tail -5)
+    MSG="CRON FAIL $HOSTNAME_SHORT
+Job: $JOB_NAME
+Exit: $EXIT_CODE (after $ATTEMPT attempts)
+Duration: ${DURATION}s
+$LAST_LINES"
     send_telegram "$MSG"
 fi
 

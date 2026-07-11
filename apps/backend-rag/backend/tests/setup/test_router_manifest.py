@@ -38,7 +38,6 @@ NON_ROUTER_FILES: frozenset[str] = frozenset(
         "root_endpoints",  # mounted separately in app_factory
         "audio",  # mounted separately in app_factory
         "system_observability",  # mounted separately in app_factory
-        "crm_migration",  # one-time migration script, not a live router
         "memory_vector",  # orphan router — not registered anywhere (never was)
         # twitter: RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — now in manifest.
         "team_members",  # DISABLED: duplicates team.py (audit 2026-04-03)
@@ -53,6 +52,7 @@ MODULE_ROUTER_NAMES: frozenset[str] = frozenset(
         "identity",
         "knowledge",
         "notifications",
+        "notifications_admin",
     }
 )
 
@@ -177,10 +177,26 @@ class TestRouterGroupQueries:
 
     def test_api_and_rag_union_covers_manifest(self) -> None:
         """Union of api + rag groups covers all manifest entries."""
-        api_set = set(routers_for_group("api"))
-        rag_set = set(routers_for_group("rag"))
+        api_set = set(routers_for_group("api", include_disabled=True))
+        rag_set = set(routers_for_group("rag", include_disabled=True))
         union = api_set | rag_set
         assert set(ROUTER_MANIFEST) == union, "Some manifest entries are not in any process group"
+
+    def test_autonomous_lab_condition_filters_api_group(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Conditional routers are hidden unless enabled or explicitly requested."""
+        from backend.app.core.config import settings
+
+        monkeypatch.setattr(settings, "autonomous_lab_enabled", False)
+        assert "autonomous_lab" not in {r.name for r in routers_for_group("api")}
+        assert "autonomous_lab" in {
+            r.name for r in routers_for_group("api", include_disabled=True)
+        }
+
+        monkeypatch.setattr(settings, "autonomous_lab_enabled", True)
+        assert "autonomous_lab" in {r.name for r in routers_for_group("api")}
 
 
 class TestModuleRouterImports:

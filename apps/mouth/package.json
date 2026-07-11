@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "LLMS_GENERATE_FULL_ONLY=1 tsx scripts/generate-llms-full.ts && next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -82,7 +82,7 @@
     "@types/react-dom": "^19",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/coverage-v8": "^4.0.15",
+    "@vitest/coverage-istanbul": "^4.0.15",
     "chrome-launcher": "^1.2.1",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.4",

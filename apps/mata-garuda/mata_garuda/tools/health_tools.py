@@ -44,17 +44,18 @@ EXPECTED_AGENTS = [
 
 
 def _redis_cmd(*args: str, timeout: int = 5) -> str | None:
-    """Run redis-cli, return stdout or None on error."""
-    try:
-        result = subprocess.run(
-            ["redis-cli", *args],
-            capture_output=True, text=True, timeout=timeout,
-        )
-        if result.returncode != 0:
-            return None
-        return result.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    """Run redis-cli via base_worker (authed SSOT), None on error.
+
+    Was bare redis-cli → NOAUTH under the requirepass cutover, which a health
+    tool MUST NOT read as 'fine' (W89, cicatrix #2). base_worker.redis_cmd
+    carries REDISCLI_AUTH + canonical host + abs-path; its '[ERROR]' sentinel is
+    mapped to None to preserve this module's None-on-error contract.
+    """
+    from mata_garuda.workers.base_worker import redis_cmd as _bw_redis_cmd
+    out = _bw_redis_cmd(*args, timeout=timeout)
+    if out.startswith("[ERROR]"):
         return None
+    return out
 
 
 def stream_length(stream: str) -> int | None:

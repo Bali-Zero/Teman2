@@ -58,6 +58,7 @@ def test_app(mock_db_pool):
     app.dependency_overrides[get_database_pool] = override_get_database_pool
     app.dependency_overrides[get_current_user] = override_get_current_user
 
+    assert app.dependency_overrides[get_database_pool] is override_get_database_pool
     return app
 
 
@@ -115,6 +116,11 @@ class TestCreateClient:
                 "client_type": "individual",
                 "assigned_to": "team@example.com",
                 "tags": ["vip"],
+                # This test asserts CREATE success, not phone-dedup. The shared
+                # fetchrow mock returns an existing row, which the new phone-dedup
+                # gate would read as a duplicate (409) — bypass it explicitly so
+                # the test keeps exercising the create path it was written for.
+                "allow_duplicate_phone": True,
             },
         )
 
@@ -397,6 +403,136 @@ class TestGetClientsStats:
         assert "by_team_member" in response.json()
         assert "new_last_30_days" in response.json()
         assert "by_practice_type" in response.json()
+
+    def test_get_clients_stats_non_admin_is_scoped_to_own_clients(self, mock_db_pool):
+        """Non-admin team member only sees stats scoped to their assigned clients."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.dependencies import get_current_user, get_database_pool
+        from backend.app.routers import crm_clients
+        from backend.core.cache import get_cache_service
+
+        # Deterministic cache miss — clear any prior stats entries.
+        get_cache_service()._memory_cache.clear()
+
+        app = FastAPI()
+        app.include_router(crm_clients.router)
+
+        pool, conn = mock_db_pool
+
+        def override_get_database_pool():
+            return pool
+
+        # Non-admin team member: email not in any admin allowlist, role not admin.
+        team_email = "team@balizero.com"
+
+        def override_get_current_user():
+            return {"email": team_email, "role": "agent"}
+
+        app.dependency_overrides[get_database_pool] = override_get_database_pool
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        mock_status_row = TestCreateClient._create_mock_row({"status": "active", "count": 2})
+        mock_team_row = TestCreateClient._create_mock_row(
+            {"assigned_to": team_email, "count": 2},
+        )
+        mock_practice_type_row = TestCreateClient._create_mock_row(
+            {"practice_type": "KITAS", "count": 1},
+        )
+        mock_count_row = TestCreateClient._create_mock_row({"count": 1})
+        mock_passport_health_row = TestCreateClient._create_mock_row(
+            {"expired": 0, "expiring_soon": 1, "silent_30d": 0},
+        )
+
+        conn.fetch = AsyncMock(
+            side_effect=[[mock_status_row], [mock_team_row], [mock_practice_type_row]],
+        )
+        conn.fetchrow = AsyncMock(side_effect=[mock_count_row, mock_passport_health_row])
+
+        response = TestClient(app).get("/api/crm/clients/stats/overview")
+
+        assert response.status_code == 200, response.text
+
+        # Every aggregate query must be scoped to the caller's assigned clients.
+        fetch_calls = conn.fetch.call_args_list
+        assert len(fetch_calls) == 3
+        fetch_sqls = [c.args[0] for c in fetch_calls]
+        # by_status + by_team_member scoped on clients.assigned_to.
+        assert all("assigned_to = $1" in sql for sql in fetch_sqls[:2]), fetch_sqls[:2]
+        # Practices-by-type is scoped on the practices table alias.
+        assert "p.assigned_to = $1" in fetch_sqls[2], fetch_sqls[2]
+        # The bound param is the caller's lowercased email.
+        assert all(c.args[1:] == (team_email,) for c in fetch_calls)
+
+        fetchrow_calls = conn.fetchrow.call_args_list
+        assert len(fetchrow_calls) == 2
+        fetchrow_sqls = [c.args[0] for c in fetchrow_calls]
+        # new_last_30_days: scoped, STATS_DAYS_RECENT shifts to $2.
+        assert "assigned_to = $1" in fetchrow_sqls[0], fetchrow_sqls[0]
+        assert "$2" in fetchrow_sqls[0], fetchrow_sqls[0]
+        assert fetchrow_calls[0].args[1:] == (team_email, 30)
+        # passport_health: scoped.
+        assert "assigned_to = $1" in fetchrow_sqls[1], fetchrow_sqls[1]
+        assert fetchrow_calls[1].args[1:] == (team_email,)
+
+    def test_get_clients_stats_admin_sees_unfiltered_totals(self, mock_db_pool):
+        """Admin user receives unfiltered global stats (no assigned_to scope)."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.dependencies import get_current_user, get_database_pool
+        from backend.app.routers import crm_clients
+        from backend.core.cache import get_cache_service
+
+        get_cache_service()._memory_cache.clear()
+
+        app = FastAPI()
+        app.include_router(crm_clients.router)
+
+        pool, conn = mock_db_pool
+
+        def override_get_database_pool():
+            return pool
+
+        # Admin via role (email need not be in any allowlist).
+        def override_get_current_user():
+            return {"email": "director@balizero.com", "role": "admin"}
+
+        app.dependency_overrides[get_database_pool] = override_get_database_pool
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        mock_status_row = TestCreateClient._create_mock_row({"status": "active", "count": 10})
+        mock_team_row = TestCreateClient._create_mock_row(
+            {"assigned_to": "someone@balizero.com", "count": 5},
+        )
+        mock_practice_type_row = TestCreateClient._create_mock_row(
+            {"practice_type": "KITAS", "count": 7},
+        )
+        mock_count_row = TestCreateClient._create_mock_row({"count": 3})
+        mock_passport_health_row = TestCreateClient._create_mock_row(
+            {"expired": 2, "expiring_soon": 5, "silent_30d": 1},
+        )
+
+        conn.fetch = AsyncMock(
+            side_effect=[[mock_status_row], [mock_team_row], [mock_practice_type_row]],
+        )
+        conn.fetchrow = AsyncMock(side_effect=[mock_count_row, mock_passport_health_row])
+
+        response = TestClient(app).get("/api/crm/clients/stats/overview")
+
+        assert response.status_code == 200, response.text
+
+        fetch_calls = conn.fetch.call_args_list
+        fetch_sqls = [c.args[0] for c in fetch_calls]
+        # No aggregate query is scoped for admins.
+        assert all("assigned_to = $" not in sql for sql in fetch_sqls), fetch_sqls
+        # Practices-by-type keeps its original WHERE-less form.
+        assert "WHERE p.assigned_to" not in fetch_sqls[2], fetch_sqls[2]
+        # No email param bound to any fetch.
+        assert all(c.args[1:] == () for c in fetch_calls)
+        # new_last_30_days keeps STATS_DAYS_RECENT as the sole $1 param.
+        assert conn.fetchrow.call_args_list[0].args[1:] == (30,)
 
 
 class TestExtractPassportEnhancedRBAC:
@@ -909,3 +1045,91 @@ class TestGetClientAiSummary:
         assert isinstance(body["summary"], dict)
         assert body["summary"]["schema_version"] == "v1.0"
         assert body["summary"]["profile"]["tier"] == "VIP"
+
+
+class TestGetClientWaCaseIntelligence:
+    """Tests for GET /api/crm/clients/{client_id}/wa-case-intelligence."""
+
+    def test_case_intelligence_available(self, client, mock_db_pool):
+        pool, conn = mock_db_pool
+        now = datetime.now(tz=timezone.utc)
+
+        async def mock_fetchrow(sql, *args):
+            return {"id": 70, "assigned_to": None, "created_by": None}
+
+        conn.fetchrow = mock_fetchrow
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": 1,
+                    "conversation_key": "direct|+6281|+3933",
+                    "member_phone": "+6281",
+                    "counterpart_key": "+3933",
+                    "display_name": "Kerrie",
+                    "chat_kind": "direct",
+                    "case_status": "open",
+                    "case_type": "referral lead",
+                    "source_model": "gpt-5.5",
+                    "reasoning_effort": "xhigh",
+                    "analysis_hash": "abc123",
+                    "analysis_id": "0dc5d3f74653-kerrie-adit",
+                    "message_count": 32,
+                    "unread_count": 0,
+                    "last_message_at": now,
+                    "priority_score": 78,
+                    "flags": '[{"id":"crm_collision","label":"CRM/thread collision"}]',
+                    "recap": "Client referred a friend and has a separate admin case.",
+                    "next_action": "Qualify the referral before quoting.",
+                    "ideal_reply": "Hi Kerrie, thanks. Can you confirm the activity and timing?",
+                    "evidence": "Messages 4-8 discuss the referral.",
+                    "crm_packet": "Kerrie has two separate tracks to keep apart.",
+                    "raw_sections": '{"state":"Two cases are merged in the chat."}',
+                    "analysis_output_path": "analyses/0dc5d3f74653-kerrie-adit.md",
+                    "generated_at": now,
+                    "imported_at": now,
+                    "updated_at": now,
+                }
+            ]
+        )
+
+        response = client.get("/api/crm/clients/70/wa-case-intelligence")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "available"
+        assert body["case_count"] == 1
+        assert body["cases"][0]["display_name"] == "Kerrie"
+        assert body["cases"][0]["flags"][0]["id"] == "crm_collision"
+        assert body["cases"][0]["raw_sections"]["state"] == "Two cases are merged in the chat."
+
+    def test_case_intelligence_not_generated(self, client, mock_db_pool):
+        pool, conn = mock_db_pool
+
+        async def mock_fetchrow(sql, *args):
+            return {"id": 70, "assigned_to": None, "created_by": None}
+
+        conn.fetchrow = mock_fetchrow
+        conn.fetch = AsyncMock(return_value=[])
+
+        response = client.get("/api/crm/clients/70/wa-case-intelligence")
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "client_id": 70,
+            "status": "not_generated",
+            "case_count": 0,
+            "cases": [],
+        }
+
+    def test_case_intelligence_client_not_found(self, client, mock_db_pool):
+        pool, conn = mock_db_pool
+
+        async def mock_fetchrow(sql, *args):
+            return None
+
+        conn.fetchrow = mock_fetchrow
+
+        response = client.get("/api/crm/clients/99999/wa-case-intelligence")
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()

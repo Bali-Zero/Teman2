@@ -1822,7 +1822,11 @@ IMPORTANT:
                                 "language": art.get("language") or "id",
                                 "jurisdiction": "ID-bali" if intel_type == "news" else "ID-national",
                                 "topic_tags": [intel_type, "news-room", art.get("category", "general")],
-                                "published_at": art.get("published_at") or art.get("scraped_at"),
+                                # published_at is already normalized to UTC-aware ISO (or None)
+                                # by unified_scraper.normalize_published(). NEVER fall back to
+                                # scraped_at ("when we saw it" != "when it was published") — that
+                                # was the +8h-in-the-future bug (fix 2026-06-06, panel-validated).
+                                "published_at": art.get("published_at"),
                                 "score": art.get("score"),
                                 "raw_payload": {
                                     "intel_type": intel_type,

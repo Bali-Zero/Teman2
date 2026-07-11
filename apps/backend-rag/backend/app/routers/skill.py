@@ -17,6 +17,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user
 from backend.core.cache import invalidate_cache
 from backend.services.skill.models import (
@@ -26,12 +27,14 @@ from backend.services.skill.models import (
     SkillTier,
 )
 from backend.services.skill.service import SkillService
+from backend.services.skill_coach.service import SkillCoachService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/skill", tags=["Skill Registry"])
 
 _service_singleton: SkillService | None = None
+_skill_coach_service_singleton: SkillCoachService | None = None
 
 
 def get_skill_service() -> SkillService:
@@ -40,6 +43,23 @@ def get_skill_service() -> SkillService:
     if _service_singleton is None:
         _service_singleton = SkillService()
     return _service_singleton
+
+
+def get_skill_coach_service() -> SkillCoachService:
+    """FastAPI dependency returning the process-wide SkillCoachService."""
+    global _skill_coach_service_singleton
+    if _skill_coach_service_singleton is None:
+        _skill_coach_service_singleton = SkillCoachService()
+    return _skill_coach_service_singleton
+
+
+def _require_skill_admin(user: dict[str, Any]) -> None:
+    """Guard proposal evidence because it can describe internal agent behavior."""
+    email = (user.get("email") or "").strip().lower()
+    role = (user.get("role") or "").strip().lower()
+    if email in settings.admin_emails_set or role in {"admin", "founder", "owner"}:
+        return
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin only")
 
 
 # ─── POST /record ────────────────────────────────────────────────────
@@ -170,8 +190,30 @@ async def merge_proposals(
     current_user: dict = Depends(get_current_user),
     service: SkillService = Depends(get_skill_service),
 ) -> dict[str, Any]:
-    _ = current_user
+    _require_skill_admin(current_user)
     proposals = service.merge_proposals()
+    return {"count": len(proposals), "proposals": proposals}
+
+
+# ─── GET /creation-proposals ────────────────────────────────────────
+
+
+@router.get(
+    "/creation-proposals",
+    summary="Read redacted skill-creation proposal evidence",
+    description=(
+        "Returns evidence cards written by the Skill Coach dry-run evaluator. "
+        "Read-only: proposals are not activated, approved, or published to HGT."
+    ),
+)
+async def creation_proposals(
+    status_filter: str | None = Query(default=None, alias="status", max_length=32),
+    limit: int = Query(default=100, ge=1, le=100),
+    current_user: dict = Depends(get_current_user),
+    service: SkillCoachService = Depends(get_skill_coach_service),
+) -> dict[str, Any]:
+    _require_skill_admin(current_user)
+    proposals = service.creation_proposals(status=status_filter, limit=limit)
     return {"count": len(proposals), "proposals": proposals}
 
 

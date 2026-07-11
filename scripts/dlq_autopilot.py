@@ -42,6 +42,10 @@ LOCKS_DIR = AGENT_DIR / "locks"
 LOCK_FILE = LOCKS_DIR / "dlq_autopilot.lock"
 CLAUDE_TASKS_DIR = AGENT_DIR / "claude_tasks"
 NUZANTARA_ROOT = HOME / "Desktop" / "nuzantara"
+# Organism heartbeat sidecars (_organism_lib.sh → ~/.organism/last_seen/<node>.<job>.json).
+# Used as an INDEPENDENT corpse-sweep freshness source when the launchagent-state-bridge
+# stops refreshing AGENT_DIR/state/<job>.last.json (see _organism_recovery_signal).
+ORGANISM_DIR = HOME / ".organism" / "last_seen"
 
 # D2.3: Per-machine escalation JSONL — import lazily to avoid circular issues
 import sys as _sys
@@ -77,6 +81,13 @@ LOCK_STALE_AGE_S = 1500          # 25min — if lock older than this, treat as s
 MAX_ATTEMPTS = 10                 # per DLQ entry (default; per-job override via registry max_attempts)
 DLQ_TTL_S = 172800                # 48h — abandon entries older than this with empty error
 MIN_ERROR_LEN = 20                # skip reasoning if error_summary shorter than this
+# Corpse-sweep freshness window: only drain a "recovered" (status==ok) DLQ entry if
+# its state file's "ok" is RECENT. A stale "ok" (job hasn't actually re-run in this
+# window) is NOT proof of recovery — draining it just re-arms the blind loop
+# (drain → sentinel re-adds on next failure → drain → forever; 90 consecutive blind
+# cycles observed 2026-06-20). Genuinely-recovered jobs write a fresh ok on success
+# and drain on the next tick. Fail-closed on missing/old ts.
+CORPSE_SWEEP_FRESH_S = int(os.getenv("DLQ_CORPSE_SWEEP_FRESH_S", str(6 * 3600)))  # 6h
 CONFIDENCE_RETRY = 0.95           # no-code-change retry threshold
 CONFIDENCE_AIDER = 0.90           # code-change aider threshold
 REASONING_TIMEOUT_S = 90          # claude --print timeout
@@ -158,27 +169,106 @@ def load_registry() -> dict:
         return {}
 
 
-# ── Telegram ──────────────────────────────────────────────────────────────────
+def _state_is_fresh(state: dict) -> bool:
+    """True iff the state file's timestamp is within CORPSE_SWEEP_FRESH_S of now.
 
-def send_telegram(message: str) -> None:
-    import urllib.parse
-    import urllib.request
-    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "1125336968")
-    if not token:
-        return
+    A missing / zero / unparseable ts is NOT fresh (fail-closed: never drain on an
+    absent timestamp). Tolerates the legacy ISO-8601 ts format older writers emitted
+    (W54) the same way the sentinel does.
+    """
+    raw = state.get("ts", 0)
     try:
-        data = urllib.parse.urlencode({
-            "chat_id": chat_id,
-            "text": f"🤖 DLQAutopilot | {message}",
-        }).encode()
-        urllib.request.urlopen(
-            urllib.request.Request(
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                data=data,
-            ),
-            timeout=10,
-        )
+        ts = float(raw) if raw not in (None, "") else 0.0
+    except (TypeError, ValueError):
+        try:
+            import datetime as _dt
+            ts = _dt.datetime.strptime(str(raw), "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=_dt.timezone.utc).timestamp()
+        except Exception:
+            return False
+    if ts <= 0:
+        return False
+    return (time.time() - ts) <= CORPSE_SWEEP_FRESH_S
+
+
+def _organism_recovery_signal(job: str) -> bool:
+    """Fallback recovery proof from the organism heartbeat sidecar.
+
+    Root cause (2026-06-21): the launchagent-state-bridge (a HOME-fork edited
+    2026-06-06) silently stopped refreshing AGENT_DIR/state/<job>.last.json for a
+    subset of jobs (zombie_hunter, post_publish_poller, post_publish_webhook). Those
+    files froze at a stale "ok", so the corpse-sweep's fail-closed freshness check
+    parked the jobs DLQ-TERMINAL forever even though they are healthy. Jobs that emit
+    the organism heartbeat (_organism_lib.sh → ~/.organism/last_seen/<node>.<job>.json)
+    write a genuinely-independent fresh "ok" on every run, so consult it as a SECOND
+    freshness source. This never weakens fail-closed: it only ever drains MORE, and
+    only when a live independent heartbeat proves recovery. Returns True iff some
+    matching organism sidecar is status==ok AND fresh.
+    """
+    if not ORGANISM_DIR.is_dir():
+        return False
+    candidates = list(ORGANISM_DIR.glob(f"*.{job}.json")) + [ORGANISM_DIR / f"{job}.json"]
+    for sf in candidates:
+        try:
+            state = json.loads(sf.read_text())
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            continue
+        if state.get("status") == "ok" and _state_is_fresh(state):
+            return True
+    return False
+
+
+def sweep_recovered_corpses(queue: list) -> tuple[list, list]:
+    """Drain DLQ entries whose job has since recovered (state.status == 'ok' AND fresh).
+
+    Root cause this fixes (W81 / blind heal-loop, 2026-06-15): process_entry()'s
+    TERMINAL guard skips TERMINAL entries forever, and the sentinel's W70-resurrect
+    sweep (nuzantara-sentinel.py) only iterates *registry-backed* jobs. Jobs NOT in
+    job_registry.json that have recovered therefore rot in the DLQ as false-positive
+    corpses. This sweep reads each entry's live state file and removes any whose last
+    run succeeded, regardless of DLQ status. If a job regresses, the sentinel re-adds
+    it on the next failure. Returns (kept_entries, cleared_job_names).
+    """
+    state_dir = AGENT_DIR / "state"
+    kept: list = []
+    cleared: list = []
+    for entry in queue:
+        job = entry.get("job", "")
+        state_file = state_dir / f"{job}.last.json"
+        agent_state_ok = False
+        try:
+            state = json.loads(state_file.read_text())
+            agent_state_ok = state.get("status") == "ok" and _state_is_fresh(state)
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            agent_state_ok = False
+        # Primary signal: agent-state .last.json (launchagent-state-bridge). Fallback:
+        # the organism heartbeat sidecar, for jobs the bridge no longer refreshes
+        # (2026-06-21 — see _organism_recovery_signal). Both are fail-closed: a stale
+        # "ok", status != ok, or an absent file is NOT proof of recovery, so the entry
+        # stays parked for audit and the sentinel re-classifies it if it really died.
+        if agent_state_ok or _organism_recovery_signal(job):
+            cleared.append(job)
+        else:
+            kept.append(entry)
+    return kept, cleared
+
+
+# ── Telegram ──────────────────────────────────────────────────────────────────
+# Migrated to the notification gateway (2026-07-06). Tier semantics:
+#   p0     — 🔴 escalations / 🛑 TERMINAL (operator must act)
+#   digest — ✅ auto-fixes, 🧹 corpse-sweeps (informative, grouped 2×/day)
+# The gateway owns token resolution, dedup and the daily P0 budget.
+
+def send_telegram(message: str, tier: str = "digest", dedup_key: str = "") -> None:
+    gateway = Path(__file__).resolve().parent / "tg_notify.py"
+    if not gateway.exists():  # HOME-fork copy: fall back to the repo checkout (#1)
+        gateway = NUZANTARA_ROOT / "scripts" / "tg_notify.py"
+    cmd = [sys.executable, str(gateway), "--tier", tier, "--source", "dlq-autopilot"]
+    if dedup_key:
+        cmd += ["--dedup-key", dedup_key]
+    cmd += ["--", f"🤖 DLQAutopilot | {message}"]
+    try:
+        subprocess.run(cmd, capture_output=True, timeout=30)
     except Exception:
         pass
 
@@ -468,7 +558,9 @@ def escalate_to_claude_code(
     send_telegram(
         f"🔴 Escalated to Claude Code: `{job}`\n"
         f"Error: {entry.get('error_summary', '(empty)')[:80]}\n"
-        f"Task file: {task_file.name}"
+        f"Task file: {task_file.name}",
+        tier="p0",
+        dedup_key=f"dlq-escalation:{job}",
     )
 
     # S3: record the escalation so subsequent ticks within 4h are suppressed.
@@ -539,7 +631,9 @@ def process_entry(entry: dict, registry: dict) -> str:
         send_telegram(
             f"🛑 TERMINAL: `{job}` reached {max_attempts} autopilot attempts with no fix.\n"
             f"Error: {error[:80]}\n"
-            f"Manual intervention required. Run: `dlq clear {job}` after resolving."
+            f"Manual intervention required. Run: `dlq clear {job}` after resolving.",
+            tier="p0",
+            dedup_key=f"dlq-terminal:{job}",
         )
         return "terminal"
 
@@ -678,6 +772,18 @@ def run_autopilot() -> None:
 
     try:
         queue = load_dlq()
+        # W81 (2026-06-15): drain recovered corpses before processing. Closes the
+        # gap where non-registry jobs that recovered (state=ok) sit forever behind
+        # process_entry()'s TERMINAL guard, while the sentinel's W70-resurrect only
+        # iterates registry-backed jobs. See sweep_recovered_corpses().
+        queue, swept = sweep_recovered_corpses(queue)
+        if swept:
+            save_dlq(queue)
+            logger.info(f"corpse-sweep: drained {len(swept)} recovered entries: {swept}")
+            send_telegram(
+                f"🧹 DLQ corpse-sweep: drained {len(swept)} recovered job(s): "
+                f"{', '.join(swept[:8])}"
+            )
         registry = load_registry()
         logger.info(f"DLQ entries: {len(queue)}")
 
@@ -740,6 +846,83 @@ def run_autopilot() -> None:
             "_writer": "dlq_autopilot",  # D1.5: audit trail
         }))
 
+        # UNCONDITIONAL organism heartbeat sidecar (2026-06-28): this script READ
+        # ~/.organism/last_seen/ for recovery signals but never WROTE its own, so
+        # pro.dlq_autopilot.json froze for 28 days while the cron ran green. The
+        # bridge used to refresh it and stopped; now the organ breathes for itself.
+        try:
+            ORGANISM_DIR.mkdir(parents=True, exist_ok=True)
+            organ_path = ORGANISM_DIR / "pro.dlq_autopilot.json"
+            organ_tmp = organ_path.with_suffix(f".json.tmp.{os.getpid()}")
+            organ_tmp.write_text(json.dumps({
+                "ts": time.time(),
+                "status": "ok",
+                "organ_id": "pro.dlq_autopilot",
+                "metadata": {
+                    "queue_size": len(queue),
+                    "fixed": fixed,
+                    "escalated": escalated,
+                    "skipped": skipped,
+                    "duration_s": round(duration, 1),
+                },
+            }))
+            organ_tmp.replace(organ_path)
+        except Exception as exc:  # noqa: BLE001 — heartbeat must never break the run
+            logger.warning(f"organ heartbeat emit failed: {exc}")
+
+    finally:
+        release_lock(fd)
+
+
+def requeue_terminal(job_id: str) -> int:
+    """W70 (2026-06-12): re-arm a TERMINAL DLQ entry for one more diagnostic pass.
+
+    Twin of `clear`, but instead of removing the entry it resets it to a
+    non-terminal, fresh state so process_entry() will actually reason about it
+    again on the next autopilot tick:
+      - status: TERMINAL -> active (key removed; absence == active)
+      - autopilot_attempts: -> 0 (so the max-attempts guard doesn't re-TERMINAL it)
+      - first_abandoned_at: -> removed (clean re-entry timestamp on next abandon)
+
+    This is the manual companion to Fix #1 (cron-wrapper now captures real
+    stderr): requeue lets a job that went TERMINAL while error_summary was BLIND
+    get a real diagnostic pass now that the signal is meaningful.
+
+    Does NOT touch the W61 preserve-terminal logic on the add/process path —
+    this is an explicit operator-driven requeue only. Same atomic tmp+replace
+    (save_dlq) and the same dlq_autopilot.lock as the autopilot itself, so a
+    concurrent autopilot tick can't interleave a half-written queue.
+
+    Returns 0 on success, 1 if no matching TERMINAL entry, 2 if lock busy.
+    """
+    fd = acquire_lock()
+    if fd is None:
+        print("Could not acquire lock (autopilot running?) — try again shortly")
+        return 2
+    try:
+        queue = load_dlq()
+        matched = 0
+        for entry in queue:
+            if entry.get("job") == job_id and entry.get("status") == "TERMINAL":
+                entry.pop("status", None)          # absence == active (non-terminal)
+                entry["autopilot_attempts"] = 0    # fresh attempt budget
+                entry.pop("first_abandoned_at", None)
+                entry["requeued_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                entry["requeued_by"] = "operator"
+                matched += 1
+        if matched == 0:
+            print(f"No TERMINAL entry found for '{job_id}' in DLQ")
+            return 1
+        save_dlq(queue)
+        print(
+            f"Requeued {matched} TERMINAL entry/entries for '{job_id}' "
+            f"(status cleared, autopilot_attempts=0) — will get a diagnostic pass next tick"
+        )
+        logger.info(
+            f"dlq_requeue_manual: {job_id} re-armed from TERMINAL by operator "
+            f"({matched} entry/entries)"
+        )
+        return 0
     finally:
         release_lock(fd)
 
@@ -758,5 +941,14 @@ if __name__ == "__main__":
             save_dlq(queue)
             print(f"Cleared TERMINAL entry for '{job_id}' from DLQ ({before - after} removed)")
             logger.info(f"dlq_clear_manual: {job_id} removed from DLQ by operator")
+    elif len(sys.argv) >= 3 and sys.argv[1] == "requeue":
+        sys.exit(requeue_terminal(sys.argv[2]))
+    elif len(sys.argv) >= 2 and sys.argv[1] == "sweep":
+        _q = load_dlq()
+        _kept, _cleared = sweep_recovered_corpses(_q)
+        if _cleared:
+            save_dlq(_kept)
+        print(f"corpse-sweep: cleared {len(_cleared)} recovered entries: {_cleared}")
+        print(f"remaining: {len(_kept)}")
     else:
         run_autopilot()

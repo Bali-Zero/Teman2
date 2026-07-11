@@ -83,16 +83,22 @@ class AlertFeedback:
 
     # ── Public API ──────────────────────────────────────────────────────
 
-    async def retrain(self, *, category: str | None = None) -> dict[str, Any]:
+    async def retrain(
+        self,
+        *,
+        category: str | None = None,
+        dry_run: bool = False,
+    ) -> dict[str, Any]:
         """Run one autotune cycle.
 
         Args:
             category: If given, only retrain this category; else all.
+            dry_run: If True, compute proposed changes without persisting them.
 
         Returns:
             Dict with keys:
               changed: list of {category, old, new, precision, sample_size}
-              reason:  "applied" | "no_change" | "autotune_disabled"
+              reason:  "applied" | "dry_run" | "no_change" | "autotune_disabled"
         """
         enabled = await self._exec(
             "fetchval",
@@ -140,7 +146,8 @@ class AlertFeedback:
                 new_threshold = max(THRESHOLD_MIN, current - 1)
 
             if new_threshold != current:
-                await self._apply_change(cat, current, new_threshold, p, denom)
+                if not dry_run:
+                    await self._apply_change(cat, current, new_threshold, p, denom)
                 changes.append(
                     ThresholdChange(
                         category=cat,
@@ -151,7 +158,11 @@ class AlertFeedback:
                     )
                 )
 
-        return {
+        reason = "no_change"
+        if changes:
+            reason = "dry_run" if dry_run else "applied"
+
+        result: dict[str, Any] = {
             "changed": [
                 {
                     "category": c.category,
@@ -162,8 +173,11 @@ class AlertFeedback:
                 }
                 for c in changes
             ],
-            "reason": "applied" if changes else "no_change",
+            "reason": reason,
         }
+        if dry_run:
+            result["dry_run"] = True
+        return result
 
     async def _apply_change(
         self,
@@ -209,7 +223,7 @@ class AlertFeedback:
                         str(new),
                         f'{{"precision":{precision},"sample_size":{sample_size}}}',
                     )
-            except asyncpg.PostgresError as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
                 logger.warning("guardian_decisions insert failed (non-fatal): %s", exc)
         else:
             # connection / tx mode (tests) — use a savepoint to protect the outer tx
@@ -228,7 +242,7 @@ class AlertFeedback:
                         str(new),
                         f'{{"precision":{precision},"sample_size":{sample_size}}}',
                     )
-            except asyncpg.PostgresError as exc:
+            except (asyncpg.PostgresError, asyncpg.InterfaceError) as exc:
                 logger.warning("guardian_decisions insert failed (non-fatal): %s", exc)
 
 

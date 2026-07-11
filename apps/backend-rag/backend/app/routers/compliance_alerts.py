@@ -53,7 +53,11 @@ def _require_admin(user: dict[str, Any]) -> None:
 
 
 class OutcomeBody(BaseModel):
-    outcome: Literal["acted", "dismissed"]
+    # "acknowledged" added for the login gate (spec §3.3): "I've got this" on a
+    # client deadline = acknowledge, distinct from "dismissed" (irrelevant) and
+    # "acted" (resolved). All three are explicit so the gate's intent is recorded
+    # in alert_outcomes, not collapsed onto "dismissed".
+    outcome: Literal["acted", "dismissed", "acknowledged"]
     note: str | None = None
 
 
@@ -119,24 +123,20 @@ async def post_retrain(
     """Manually trigger threshold autotune (admin only, honors kill-switch).
 
     Args:
-        body: {dry_run, category?}. dry_run is accepted but not yet enforced
-              at the service layer (reserved for future).
+        body: {dry_run, category?}. dry_run previews threshold changes without
+              persisting them.
         user: Authenticated user dict.
         pool: DB connection pool.
 
     Returns:
-        {changed: [...], reason: "applied"|"no_change"|"autotune_disabled"}
+        {changed: [...], reason: "applied"|"dry_run"|"no_change"|"autotune_disabled"}
     """
     _require_admin(user)
     fb = AlertFeedback(db_pool=pool)
-    result: dict[str, Any] = await fb.retrain(category=body.category if body.category else None)
-    if body.dry_run:
-        logger.warning(
-            "dry_run=true requested but not implemented at service layer; "
-            "thresholds were actually updated",
-        )
-        result["dry_run_not_implemented"] = True
-    return result
+    return await fb.retrain(
+        category=body.category if body.category else None,
+        dry_run=body.dry_run,
+    )
 
 
 @router.get("")
@@ -251,6 +251,9 @@ async def post_outcome(
         if not assigned or assigned.lower() != user_email:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not your client")
 
+    # acted → resolved; acknowledged / dismissed → acknowledged (both leave the
+    # pending set so the gate clears). The distinct outcome value is preserved in
+    # alert_outcomes below for audit / metrics.
     new_status = "resolved" if body.outcome == "acted" else "acknowledged"
 
     async with pool.acquire() as conn:

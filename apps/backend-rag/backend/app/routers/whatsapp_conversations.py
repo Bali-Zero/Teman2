@@ -3,12 +3,15 @@ WhatsApp Conversations API - Final Stabilized Version
 
 Outbound /send endpoint re-enabled 2026-03-15 with safety gates:
 - Rate limit: max 20 outbound messages per phone per hour
-- CRM validation: recipient must exist in clients table
+- Recipient validation: must be a known CRM client OR a Bali Zero team member
+  (team_members.whatsapp). Team/staff numbers in WHATSAPP_TEAM_ALLOWLIST also
+  bypass the check via env config, without polluting the CRM.
 - Auth required: only authenticated users can send
 """
 
 import json
 import logging
+import re
 import time
 from collections import defaultdict
 from typing import Any
@@ -17,6 +20,7 @@ from asyncpg import Pool
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_optional_database_pool
 from backend.services.integrations.whatsapp_service import whatsapp_service
 
@@ -41,6 +45,27 @@ def _check_rate_limit(phone: str) -> bool:
     # Clean old entries
     _outbound_rate[phone] = [t for t in _outbound_rate[phone] if now - t < _RATE_LIMIT_WINDOW]
     return len(_outbound_rate[phone]) < _RATE_LIMIT_MAX
+
+
+def _normalize_phone(phone: str) -> str:
+    """Strip every non-digit character so formatting variants compare equal."""
+    return re.sub(r"\D", "", phone)
+
+
+def _team_allowlist() -> frozenset[str]:
+    """Parse WHATSAPP_TEAM_ALLOWLIST into normalized (digits-only) phone numbers."""
+    raw = getattr(settings, "whatsapp_team_allowlist", "")
+    if not isinstance(raw, str):
+        return frozenset()
+    return frozenset(
+        normalized for entry in raw.split(",") if (normalized := _normalize_phone(entry))
+    )
+
+
+def _is_team_number(phone: str) -> bool:
+    """True if the phone matches a team-allowlisted number (digits-only comparison)."""
+    normalized = _normalize_phone(phone)
+    return bool(normalized) and normalized in _team_allowlist()
 
 
 router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
@@ -216,7 +241,9 @@ async def send_whatsapp_message(
     Safety gates:
     - Auth required (JWT)
     - Rate limit: 20 msgs/phone/hour
-    - CRM validation: recipient must exist in clients table
+    - Recipient validation: must be a known CRM client (clients.phone) OR a
+      Bali Zero team member (team_members.whatsapp). Numbers in
+      WHATSAPP_TEAM_ALLOWLIST also bypass via env config (staff stay out of CRM)
     """
     phone = body.phone.lstrip("+")
 
@@ -227,17 +254,40 @@ async def send_whatsapp_message(
             detail=f"Rate limit exceeded: max {_RATE_LIMIT_MAX} messages per phone per hour",
         )
 
-    # Gate 2: CRM validation — recipient must be a known client
-    if db:
+    # Gate 2: team allowlist — staff numbers are sendable without a CRM record
+    if _is_team_number(phone):
+        logger.info(
+            "whatsapp send to team-allowlisted number (****%s)",
+            _normalize_phone(phone)[-4:],
+        )
+    # Gate 2b: recipient validation — accept a known CRM client OR a Bali Zero
+    # team member. Team-member numbers live in team_members.whatsapp (the HR
+    # source of truth) and are NOT mirrored into the clients table, so a
+    # clients-only check rejected staff as "unknown contacts" (e.g. Surya,
+    # whose number sits in team_members.whatsapp but not in clients). This DB
+    # check is the durable backstop to the env-var allowlist above: it works
+    # even when WHATSAPP_TEAM_ALLOWLIST is empty or stale.
+    elif db:
         async with db.acquire() as conn:
-            client_exists = await conn.fetchval(
-                "SELECT EXISTS(SELECT 1 FROM clients WHERE phone LIKE $1 AND deleted_at IS NULL)",
+            recipient_known = await conn.fetchval(
+                """
+                SELECT EXISTS(
+                    SELECT 1 FROM clients
+                    WHERE phone LIKE $1 AND deleted_at IS NULL
+                    UNION ALL
+                    SELECT 1 FROM team_members
+                    WHERE whatsapp LIKE $1 AND COALESCE(active, true) = true
+                )
+                """,
                 f"%{phone[-10:]}%",
             )
-            if not client_exists:
+            if not recipient_known:
                 raise HTTPException(
                     status_code=403,
-                    detail=f"Phone {body.phone} not found in CRM. Cannot send to unknown contacts.",
+                    detail=(
+                        f"Phone {body.phone} not found in CRM or team directory. "
+                        "Cannot send to unknown contacts."
+                    ),
                 )
 
     # Send via Meta WhatsApp Cloud API

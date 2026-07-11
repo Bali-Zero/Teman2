@@ -1,6 +1,6 @@
 {
   "_version": "2.0",
-  "_updated": "2026-05-06",
+  "_updated": "2026-06-16 (agy swarm commander roles)",
   "_doc": "Single source of truth for active Pro/Mini LLM model assignments. Air was decommissioned on 2026-05-05 and is not an active Ollama node.",
   "nodes": {
     "pro": {
@@ -30,11 +30,17 @@
   "roles": {
     "cron_primary": "qwen3.5:9b",
     "cron_primary_tool_calling": "qwen3:8b",
-    "cron_fallback": "gemma4:e4b",
+    "cron_fallback": "gemma3:27b",
     "cloud_fallback": "google-gemini-cli/gemini-3-flash-preview",
-    "translation": "gemma4:e4b",
+    "agy_gemini_flash_high": "agy/Gemini 3.5 Flash (High)",
+    "agy_gemini_pro_high": "agy/Gemini 3.1 Pro (High)",
+    "swarm_fast_review": "agy_gemini_flash_high",
+    "swarm_deep_review": "agy_gemini_pro_high",
+    "translation": "gemma3:27b",
     "kg_json": "gemma4:26b",
     "vision": "qwen2.5vl:7b",
+    "ocr_vision": "qwen2.5vl:7b",
+    "intake_extraction": "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m",
     "reasoning": "deepseek-r1:32b",
     "fast": "qwen3.5:9b",
     "sentry": "qwen3:4b",
@@ -61,6 +67,12 @@
     ],
     "ollama_mini": ["sentry"],
     "gemini_cloud": ["cloud_fallback"],
+    "antigravity_cli": [
+      "agy_gemini_flash_high",
+      "agy_gemini_pro_high",
+      "swarm_fast_review",
+      "swarm_deep_review"
+    ],
     "claude_cli": ["sentinel_classifier", "dlq_reasoning"],
     "openrouter": ["aider_fix"],
     "codex_cli": ["codex_fix"]
@@ -76,6 +88,7 @@
     "qwen3.5_tool_calling": "BROKEN in Ollama (XML/JSON mismatch #14493). Use qwen3:8b for native tool calling. Our OpenClaw cron does NOT use tools parameter so qwen3.5 is safe.",
     "mini_ram_policy": "Mini has 24GB RAM: keep only qwen2.5:7b warm by default. Load qwen3:8b, qwen3.5:9b, or qwen2.5vl:7b cold only for explicit jobs and do not install/use gemma4:26b on Mini.",
     "think_false": "Always set think:false for qwen3/3.5 API calls, otherwise content is empty and response goes to thinking field",
-    "keep_alive_bug": "Always send explicit keep_alive in every API request to prevent timer reset (GitHub #5272)"
+    "keep_alive_bug": "Always send explicit keep_alive in every API request to prevent timer reset (GitHub #5272)",
+    "agy_swarm_commander": "Agy Gemini 3.5 Flash High and Gemini 3.1 Pro High are cloud adjunct reviewers only. They run through scripts/agy_swarm_commander.py with hard timeouts, prompt-hash audit, and candidate-only output. They must not write KG nodes, merge identities, request credentials, or scrape private accounts."
   }
 }

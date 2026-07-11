@@ -310,6 +310,95 @@
   --bz-sidebar-width: 216px;
   --bz-header-height: 48px;
   --bz-batik-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M0 10 L10 0 L20 10 L10 20 Z' fill='none' stroke='%23c9a96e' stroke-width='0.5'/%3E%3C/svg%3E");
+  /* Header surface — dark default; overridden under operative-light */
+  --portal-header-bg: rgba(29, 39, 59, 0.7);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   PORTAL LIGHT SURFACE — "Rumah Putih / Lounge" (2026-06-21)
+
+   The pre-paint themeInitScript in layout.tsx already routes `my.` (and
+   `zantara.`) → data-theme="operative-light", while `kita.`/`prime.` →
+   operative-dark. BUT the operative-light shell variables were never defined
+   (superscar #2 "Esiste ≠ Armato": routing wired, theme unarmed) — so the
+   client portal received the dark `:root` values. This block ARMS the light
+   surface by overriding the GARUDA shell tokens under [data-theme="operative-light"].
+
+   Scoped to data-theme on <html>, set per-DOMAIN — so it CANNOT leak into kita
+   (operative-dark) or the editorial site. The client gets a calm warm-paper
+   lounge; the team backoffice stays dark. Accent copper is kept for brand
+   continuity; only base/text/border/elevated invert. WCAG AA verified:
+   ink #16213a on paper #f4f1ea ≈ 12.8:1; soft-ink #475372 ≈ 6.4:1.
+   ─────────────────────────────────────────────────────────────────────────── */
+[data-theme="operative-light"] {
+  color-scheme: light;
+
+  /* Shell base surfaces — warm paper, not glaring white */
+  --bz-base: #f4f1ea;
+  --bz-elevated: #ffffff;
+  --bz-surface: #ffffff;
+  --bz-card: #ffffff;
+  --bz-card-hover: #faf8f3;
+
+  /* Generic background/foreground mappings (body + ui components) */
+  --background: #f4f1ea;
+  --background-secondary: #ffffff;
+  --background-elevated: #ffffff;
+  --background-hover: #faf8f3;
+  --foreground: #16213a;
+  --foreground-secondary: #475372;
+  --foreground-muted: #7a8aa6;
+  --border: rgba(9, 9, 11, 0.08);
+  --border-hover: rgba(9, 9, 11, 0.14);
+  --accent: #d4845a;
+  --accent-hover: #bf7350;
+
+  /* Typography on light */
+  --tx-pure: #16213a;
+  --tx-primary: #16213a;
+  --tx-secondary: #475372;
+  --tx-tertiary: #7a8aa6;
+  --bz-text-1: #16213a;
+  --bz-text-2: #475372;
+  --bz-text-3: #7a8aa6;
+
+  /* Borders / glass on light (dark hairlines, not white) */
+  --bz-border: rgba(9, 9, 11, 0.08);
+  --bz-border-hover: rgba(9, 9, 11, 0.14);
+  --bz-border-accent: rgba(201, 169, 110, 0.35);
+  --glass-highlight: rgba(9, 9, 11, 0.05);
+  --glass-rim: rgba(9, 9, 11, 0.06);
+
+  /* Header surface (consumed by PortalHeader, was hardcoded dark navy) */
+  --portal-header-bg: rgba(244, 241, 234, 0.72);
+
+  /* Status colors deepened for AA contrast on light paper */
+  --bz-green: #0f9d63;
+  --bz-red: #c2453f;
+  --bz-amber: #b67519;
+  --success: #0f9d63;
+  --warning: #b67519;
+  --error: #c2453f;
+
+  /* KBLI base tokens — the ROOT layer body + several shell utilities derive
+     from (body bg = var(--kbli-bg-base); --background = var(--kbli-bg-base)).
+     Without these the <body> stayed dark navy #1d273b even with the portal
+     surface light. Remap them to the paper palette so the whole client
+     surface — not just the GARUDA-token components — turns light. */
+  --kbli-bg-base: #f4f1ea;
+  --kbli-bg-primary: #f4f1ea;
+  --kbli-bg-secondary: #ffffff;
+  --kbli-bg-elevated: #ffffff;
+  --kbli-bg-surface: #ffffff;
+  --kbli-bg-surface-hover: #faf8f3;
+  --kbli-bg-card: #ffffff;
+  --kbli-bg-card-hover: #faf8f3;
+  --kbli-bg-input: #ffffff;
+  --kbli-text-primary: #16213a;
+  --kbli-text-secondary: #475372;
+  --kbli-text-muted: #7a8aa6;
+  --kbli-border: rgba(9, 9, 11, 0.08);
+  --kbli-border-hover: rgba(9, 9, 11, 0.14);
 }
 
 html {
@@ -740,7 +829,7 @@ main,
 
 .fab-whatsapp,
 .fab-zantara {
-  bottom: 20px;
+  bottom: 88px;
   height: 56px;
   padding-left: 8px;
   padding-right: 8px;
@@ -793,4 +882,268 @@ main,
     grid-template-columns: 1.5fr repeat(4, 1fr) !important;
     gap: 3rem !important;
   }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   MYTHOS Stage-B Batch 1 — "Rumah Putih" route-scoped LIGHT overrides.
+
+   These rules are scoped to `.rumah-putih` (set per-page alongside RUMAH_VARS,
+   see lib/theme/rumahVars.ts) so they re-tint ONLY the long-form blog reader
+   and the category index — the pages whose source uses hardcoded-dark Tailwind
+   utilities (text-white, bg-white/5, prose-invert, …) that do NOT read tokens.
+   Touching those shared components' source would leak the light theme to pages
+   not in this batch (/services, /property, the /v2/news + dashboard widget);
+   scoping by class keeps the blast radius to the converted wrappers only.
+
+   The cover hero photo and any text painted ON an image overlay (FeaturedCard,
+   the article cover) stay light-on-dark — see the `.absolute` exclusions — the
+   FT "dark island" pattern. Accent buttons (WhatsApp green, etc.) keep their
+   own backgrounds + white text; we never recolor text inside an element with
+   its own non-transparent background.
+   WCAG AA: ink #16213a ≈ 13.5:1, soft-ink #475372 ≈ 7.1:1 on paper #f7f6f2.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Long-form body: MDX renderer (.mdx-content) + markdown fallback (.prose).
+      The `prose prose-invert` classes are NO-OPS here (no typography plugin) —
+      the real colors come from the explicit per-element classes below. ── */
+.rumah-putih .mdx-content,
+.rumah-putih .prose {
+  color: #16213a;
+}
+.rumah-putih .mdx-content h1,
+.rumah-putih .mdx-content h2,
+.rumah-putih .mdx-content h3,
+.rumah-putih .mdx-content h4,
+.rumah-putih .prose h1,
+.rumah-putih .prose h2,
+.rumah-putih .prose h3,
+.rumah-putih .prose h4 {
+  color: #1e3863 !important; /* navy headings */
+}
+.rumah-putih .mdx-content p,
+.rumah-putih .mdx-content li,
+.rumah-putih .mdx-content ul,
+.rumah-putih .mdx-content ol,
+.rumah-putih .prose p,
+.rumah-putih .prose li,
+.rumah-putih .prose ul,
+.rumah-putih .prose ol {
+  color: #1f2a44 !important; /* near-ink body */
+}
+.rumah-putih .mdx-content strong,
+.rumah-putih .prose strong {
+  color: #16213a !important;
+}
+.rumah-putih .mdx-content em,
+.rumah-putih .prose em {
+  color: #1f2a44 !important;
+}
+/* Blockquote — hairline-navy rule on a faint navy wash */
+.rumah-putih .mdx-content blockquote,
+.rumah-putih .prose blockquote {
+  color: #475372 !important;
+  background: rgba(30, 56, 99, 0.045) !important;
+  border-left-color: #1e3863 !important;
+}
+/* Inline code — ink on a faint navy chip (keep the red token for keywords) */
+.rumah-putih .mdx-content :not(pre) > code,
+.rumah-putih .prose :not(pre) > code {
+  background: rgba(30, 56, 99, 0.08) !important;
+  color: #b3261e !important; /* legible red on light */
+}
+/* Code block — keep a dark slab (code reads best dark; FT-style island) */
+.rumah-putih .mdx-content pre,
+.rumah-putih .prose pre {
+  background: #0f1f33 !important;
+  border-color: rgba(30, 56, 99, 0.25) !important;
+}
+.rumah-putih .mdx-content pre code,
+.rumah-putih .prose pre code {
+  color: #e8edf6 !important;
+}
+/* Tables — hairline navy borders, ink text, faint navy header */
+.rumah-putih .mdx-content table,
+.rumah-putih .mdx-content thead,
+.rumah-putih .mdx-content th,
+.rumah-putih .mdx-content td,
+.rumah-putih .mdx-content tr,
+.rumah-putih .prose table,
+.rumah-putih .prose thead,
+.rumah-putih .prose th,
+.rumah-putih .prose td,
+.rumah-putih .prose tr {
+  border-color: #e3e1da !important;
+}
+.rumah-putih .mdx-content thead,
+.rumah-putih .prose thead {
+  background: rgba(30, 56, 99, 0.05) !important;
+}
+.rumah-putih .mdx-content th,
+.rumah-putih .prose th {
+  color: #475372 !important;
+}
+.rumah-putih .mdx-content td,
+.rumah-putih .prose td {
+  color: #1f2a44 !important;
+}
+.rumah-putih .mdx-content hr,
+.rumah-putih .prose hr {
+  border-color: #e3e1da !important;
+}
+.rumah-putih .mdx-content tr:hover,
+.rumah-putih .prose tr:hover {
+  background: rgba(30, 56, 99, 0.04) !important;
+}
+/* Image caption under figures */
+.rumah-putih .mdx-content span.block.text-center,
+.rumah-putih .prose span.block.text-center {
+  color: #475372 !important;
+}
+
+/* ── Article + category chrome: re-tint hardcoded white text that sits ON
+      PAPER. Exclude anything inside an `.absolute` block — that's image-overlay
+      text (cover hero, FeaturedCard) which must stay white. ── */
+.rumah-putih .text-white:not(.absolute *),
+.rumah-putih .text-white\/90:not(.absolute *) {
+  color: #16213a !important;
+}
+.rumah-putih .text-white\/80:not(.absolute *),
+.rumah-putih .text-white\/70:not(.absolute *) {
+  color: #1f2a44 !important;
+}
+.rumah-putih .text-white\/60:not(.absolute *),
+.rumah-putih .text-white\/50:not(.absolute *),
+.rumah-putih .text-white\/40:not(.absolute *) {
+  color: #475372 !important;
+}
+
+/* Hairline rules + faint surfaces that used white-on-dark (on paper). Skip
+   image overlays (`.absolute`). */
+.rumah-putih .border-white\/10:not(.absolute *),
+.rumah-putih .border-white\/5:not(.absolute *) {
+  border-color: #e3e1da !important;
+}
+.rumah-putih .bg-white\/5:not(.absolute *),
+.rumah-putih .bg-white\/10:not(.absolute *) {
+  background-color: #ffffff !important;
+}
+
+/* Article author card + tag chips + engagement border (dark-glass → white card)
+   — these used inline rgba(255,255,255,…) so target them structurally. */
+.rumah-putih article > div.mt-12.p-6.rounded-2xl {
+  background: #ffffff !important;
+  border: 1px solid #e3e1da !important;
+  box-shadow: 0 1px 2px rgba(22, 33, 58, 0.05) !important;
+}
+/* Tag pills */
+.rumah-putih article a[href^="/insights?tag="] {
+  background: rgba(30, 56, 99, 0.06) !important;
+  color: #475372 !important;
+}
+/* Related-articles band (dark wash → paper-raised) */
+.rumah-putih section.bg-\[rgba\(3\,18\,25\,0\.5\)\] {
+  background: #ffffff !important;
+  border-top-color: #e3e1da !important;
+}
+
+/* Category index "Popular in …" sidebar card + icon chip */
+.rumah-putih .bg-white\/5.border.border-white\/10:not(.absolute *) {
+  background: #ffffff !important;
+  border-color: #e3e1da !important;
+}
+
+/* Article markdown inline-code red token used by the ReactMarkdown fallback */
+.rumah-putih .text-\[\#ff6b6b\] {
+  color: #b3261e !important;
+}
+.rumah-putih .bg-\[\#0a1929\] {
+  background: #0f1f33 !important;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   MYTHOS Stage-B Batch 2 — "Rumah Putih" route-scoped LIGHT overrides for the
+   SERVICE pages (services/[slug] detail + the contact channel cards).
+
+   The detail page (services/[slug]/page.tsx + ServicePricing.tsx) is written
+   with hardcoded-dark Tailwind utilities (bg-[#051C2C], bg-[#0a2540], text-white,
+   serif headings) that do NOT read tokens. Scoping by `.rumah-putih` (set on the
+   page wrapper alongside RUMAH_VARS) re-tints ONLY this page family — touching
+   the component source would leak the light theme to /property, /visa, etc.
+
+   The hard-accent islands (orange Free-Consultation sidebar, green WhatsApp CTA,
+   solid accent badges/buttons) are tagged `.rp-dark-island` and KEEP their own
+   accent background + white text — the FT "dark island" pattern. The text-white
+   re-tint from Batch 1 (`.text-white:not(.absolute *)`) must NOT touch them, so
+   the rules below re-assert white inside `.rp-dark-island` at equal/higher
+   specificity, placed AFTER Batch 1's block (later source order wins on ties).
+   WCAG AA: ink #16213a ≈ 13.5:1, soft-ink #475372 ≈ 7.1:1 on paper #f7f6f2;
+   navy headings #1e3863 ≈ 10.8:1; white on orange #d14832 ≈ 4.8:1.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Hardcoded-dark hex surfaces → paper-raised white card + hairline. ── */
+.rumah-putih .bg-\[\#0a2540\]:not(.rp-dark-island):not(.rp-dark-island *),
+.rumah-putih .bg-\[\#051C2C\]:not(.rp-dark-island):not(.rp-dark-island *) {
+  background-color: #ffffff !important;
+  border: 1px solid #e3e1da !important;
+}
+/* The page root paints paper via RUMAH_VARS inline; the Tailwind bg-[#051C2C]
+   class on that same root would otherwise win — neutralize it to paper. */
+.rumah-putih.bg-\[\#051C2C\] {
+  background-color: #f7f6f2 !important;
+}
+
+/* ── Serif section headings + h1/h3 hardcoded text-white → navy (not ink). ── */
+.rumah-putih h1.text-white:not(.rp-dark-island *),
+.rumah-putih h2.text-white:not(.rp-dark-island *),
+.rumah-putih h3.text-white:not(.rp-dark-island *),
+.rumah-putih .font-serif.text-white:not(.rp-dark-island *) {
+  color: #1e3863 !important;
+}
+
+/* ── Accent-blue-editorial popular card wash (dark-glass → faint navy). ── */
+.rumah-putih
+  .bg-accent-blue-editorial\/10:not(.rp-dark-island):not(.rp-dark-island *) {
+  background-color: rgba(30, 56, 99, 0.05) !important;
+}
+
+/* ── Accent tinted package cards (visa orange/sky at /20) → white + accent
+      hairline. These are NOT islands (their text is ink, not white). ── */
+.rumah-putih .bg-orange-500\/20:not(.rp-dark-island),
+.rumah-putih .bg-sky-500\/20:not(.rp-dark-island) {
+  background-color: #ffffff !important;
+}
+.rumah-putih .border-orange-500\/40 {
+  border-color: color-mix(in srgb, #f97316 36%, #e3e1da) !important;
+}
+.rumah-putih .border-sky-500\/40 {
+  border-color: color-mix(in srgb, #0ea5e9 36%, #e3e1da) !important;
+}
+
+/* ── Secondary "outline" buttons used dark border-white/20 + white text →
+      navy hairline + navy ink (they sit on paper, NOT on an island). ── */
+.rumah-putih button.border-white\/20:not(.rp-dark-island *),
+.rumah-putih a.border-white\/20:not(.rp-dark-island *) {
+  border-color: #cfccc2 !important;
+  color: #1e3863 !important;
+}
+.rumah-putih .border-white\/20:not(.rp-dark-island *):hover {
+  background-color: rgba(30, 56, 99, 0.06) !important;
+}
+
+/* ── DARK-ISLAND re-assert: anything tagged .rp-dark-island keeps its accent
+      background and forces its text/icons back to white, overriding Batch 1's
+      text-white re-tint and the ink defaults. ── */
+.rumah-putih .rp-dark-island,
+.rumah-putih .rp-dark-island * {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.rumah-putih .rp-dark-island .text-white,
+.rumah-putih .rp-dark-island.text-white,
+.rumah-putih .rp-dark-island h3,
+.rumah-putih .rp-dark-island span:not([class*="text-"]) {
+  color: #ffffff !important;
+}
+.rumah-putih .rp-dark-island .text-white\/80,
+.rumah-putih .rp-dark-island .text-white\/90 {
+  color: rgba(255, 255, 255, 0.88) !important;
 }

@@ -235,7 +235,7 @@ export default function PortalLayout({
             />
 
             {/* Page Content */}
-            <main className="flex-1 p-4 md:p-6 lg:p-8">
+            <main className="flex-1 p-4 pb-28 md:p-6 lg:p-8">
               <PortalErrorBoundary section="Portal">
                 {children}
               </PortalErrorBoundary>

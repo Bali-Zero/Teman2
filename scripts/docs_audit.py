@@ -13,9 +13,11 @@ CI `actions/checkout`. Untracked files fall back to stat.
 
 See docs/superpowers/specs/2026-04-24-docs-hygiene-design.md for the full spec.
 """
+
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import re
 import subprocess
@@ -79,11 +81,38 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help="Override DOCSYNC key expected value: KEY:value. Repeatable.",
     )
-    p.add_argument("--check", action="store_true", help="Compare with committed inventory; exit 1 on drift.")
-    p.add_argument("--apply", action="store_true", help="Physically git mv orphans to docs/archive/. Default: dry-run.")
+    p.add_argument(
+        "--check",
+        action="store_true",
+        help="Compare with committed inventory; exit 1 on drift.",
+    )
+    p.add_argument(
+        "--apply",
+        action="store_true",
+        help="Physically git mv orphans to docs/archive/. Default: dry-run.",
+    )
+    p.add_argument(
+        "--regen-only",
+        action="store_true",
+        help=(
+            "Explicit, self-documenting alias for the default (no --apply) "
+            "inventory-regeneration mode: rewrites docs/DOCS_INVENTORY.md "
+            "content only, never touches docs/archive/. Mutually exclusive "
+            "with --apply and --check. Use this when you only want the "
+            "table refreshed and do NOT want orphan git-mv side effects."
+        ),
+    )
     p.add_argument("--quiet", action="store_true", help="No stdout on success.")
     p.add_argument("--json", action="store_true", help="Emit stats JSON on stdout.")
-    return p.parse_args()
+    args = p.parse_args()
+    if args.regen_only and args.apply:
+        raise SystemExit("--regen-only and --apply are mutually exclusive.")
+    if args.regen_only and args.check:
+        raise SystemExit(
+            "--regen-only and --check are mutually exclusive "
+            "(--check never writes; --regen-only always writes)."
+        )
+    return args
 
 
 def parse_clusters(raw: List[str]) -> List[ClusterDef]:
@@ -91,11 +120,15 @@ def parse_clusters(raw: List[str]) -> List[ClusterDef]:
     for r in raw:
         parts = r.split(":")
         if len(parts) != 3:
-            raise SystemExit(f"Invalid --cluster spec (need key:members:canonical): {r}")
+            raise SystemExit(
+                f"Invalid --cluster spec (need key:members:canonical): {r}"
+            )
         key, members_csv, canonical = parts
         members = [m.strip() for m in members_csv.split(",") if m.strip()]
         if canonical not in members:
-            raise SystemExit(f"Cluster {key}: canonical {canonical} not in members {members}")
+            raise SystemExit(
+                f"Cluster {key}: canonical {canonical} not in members {members}"
+            )
         clusters.append(ClusterDef(key=key, members=members, canonical=canonical))
     return clusters
 
@@ -108,6 +141,35 @@ def parse_docsync_keys(raw: List[str]) -> Dict[str, str]:
         k, v = r.split(":", 1)
         out[k] = v
     return out
+
+
+def print_check_delta(
+    inventory_path: Path,
+    old_content: str,
+    new_content: str,
+    *,
+    diff_limit: int = 200,
+) -> None:
+    """Emit a compact diff when --check finds inventory drift."""
+    print(
+        "docs_audit: docs/DOCS_INVENTORY.md is out of date; "
+        f"regenerate with python {Path(__file__).as_posix()}",
+        file=sys.stderr,
+    )
+    diff = list(
+        difflib.unified_diff(
+            old_content.splitlines(),
+            new_content.splitlines(),
+            fromfile=f"committed/{inventory_path.as_posix()}",
+            tofile=f"generated/{inventory_path.as_posix()}",
+            lineterm="",
+        )
+    )
+    if len(diff) > diff_limit:
+        diff = diff[:diff_limit]
+        diff.append(f"... diff truncated after {diff_limit} lines ...")
+    for line in diff:
+        print(line, file=sys.stderr)
 
 
 def walk_docs(repo: Path) -> List[Path]:
@@ -124,19 +186,32 @@ def walk_docs(repo: Path) -> List[Path]:
     try:
         tracked = subprocess.run(
             ["git", "ls-files", "docs/"],
-            cwd=repo, check=True, capture_output=True, text=True,
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout
         untracked = subprocess.run(
             ["git", "ls-files", "--others", "--exclude-standard", "docs/"],
-            cwd=repo, check=True, capture_output=True, text=True,
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return sorted(p for p in docs_root.rglob("*.md") if p.name != "DOCS_INVENTORY.md")
+        return sorted(
+            p for p in docs_root.rglob("*.md") if p.name != "DOCS_INVENTORY.md"
+        )
     seen: set[str] = set()
     paths: List[Path] = []
     for line in (tracked + untracked).splitlines():
         rel = line.strip()
-        if not rel or not rel.endswith(".md") or rel.endswith("DOCS_INVENTORY.md") or rel in seen:
+        if (
+            not rel
+            or not rel.endswith(".md")
+            or rel.endswith("DOCS_INVENTORY.md")
+            or rel in seen
+        ):
             continue
         seen.add(rel)
         paths.append(repo / rel)
@@ -149,7 +224,15 @@ def compute_refs_in(repo: Path, target: Path) -> int:
     # Scan roots: docs/** and a handful of root files. Skip the file itself + archive dest.
     # Use walk_docs() (git-aware) so candidates match local↔CI exactly.
     candidates: List[Path] = [p for p in walk_docs(repo) if p != target]
-    for root_name in ("CLAUDE.md", "INDEX.md", "SYMBIOSIS.md", "VADEMECUM.md", "AGENTS.md", "GEMINI.md", "AUTONOMOUS_OPS.md"):
+    for root_name in (
+        "CLAUDE.md",
+        "INDEX.md",
+        "SYMBIOSIS.md",
+        "VADEMECUM.md",
+        "AGENTS.md",
+        "GEMINI.md",
+        "AUTONOMOUS_OPS.md",
+    ):
         rp = repo / root_name
         if rp.is_file() and rp != target:
             candidates.append(rp)
@@ -218,6 +301,34 @@ def compute_broken_links(repo: Path, doc: Path) -> int:
     return broken
 
 
+def ensure_full_git_history(repo: Path) -> None:
+    """Expand shallow clones before deriving semantic mtimes from git history."""
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "--is-shallow-repository"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return
+    if result.returncode != 0 or result.stdout.strip() != "true":
+        return
+    fetch = subprocess.run(
+        ["git", "-C", str(repo), "fetch", "--unshallow", "--quiet", "--no-tags"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if fetch.returncode != 0:
+        details = fetch.stderr.strip() or fetch.stdout.strip() or "unknown error"
+        raise SystemExit(
+            "docs_audit: repository has shallow git history, so path mtimes "
+            "are unreliable. Run `git fetch --unshallow --no-tags` before "
+            f"`scripts/docs_audit.py`. git fetch said: {details}"
+        )
+
+
 def compute_mtime_days(repo: Path, doc: Path) -> int:
     """Age of `doc` in days, preferring git history over os.stat().
 
@@ -229,7 +340,16 @@ def compute_mtime_days(repo: Path, doc: Path) -> int:
     """
     try:
         result = subprocess.run(
-            ["git", "-C", str(repo), "log", "-1", "--format=%ct", "--", str(doc.relative_to(repo))],
+            [
+                "git",
+                "-C",
+                str(repo),
+                "log",
+                "-1",
+                "--format=%ct",
+                "--",
+                str(doc.relative_to(repo)),
+            ],
             capture_output=True,
             text=True,
             check=False,
@@ -300,11 +420,7 @@ def classify(
             return row
 
     # Rule 2: orphan
-    if (
-        row.mtime_days > orphan_days
-        and row.refs_in == 0
-        and rel not in whitelist
-    ):
+    if row.mtime_days > orphan_days and row.refs_in == 0 and rel not in whitelist:
         row.status = "ARCHIVED"
         row.action = f"archive: orphan, mtime={row.mtime_days}d, refs=0"
         return row
@@ -353,12 +469,18 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
         pct = (100 * cnt / total) if total else 0
         out.append(f"| {st:<8} | {cnt:>5} | {pct:.0f}% |")
     out.append("")
-    out.append(f"**Drift:** {drift_n} · **Broken links:** {broken_n} · **Orphans:** {orphan_n}")
+    out.append(
+        f"**Drift:** {drift_n} · **Broken links:** {broken_n} · **Orphans:** {orphan_n}"
+    )
     out.append("")
     out.append("## Files")
     out.append("")
-    out.append("| File | Status | mtime_days | refs_in | broken | drift | cluster | action |")
-    out.append("|------|--------|-----------:|--------:|-------:|-------|---------|--------|")
+    out.append(
+        "| File | Status | mtime_days | refs_in | broken | drift | cluster | action |"
+    )
+    out.append(
+        "|------|--------|-----------:|--------:|-------:|-------|---------|--------|"
+    )
     for r in rows:
         drift_s = "yes" if r.drift else "no"
         cluster_s = r.cluster or "—"
@@ -384,7 +506,9 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
             out.append(f"Canonical: `{cl.canonical}`")
             archive_candidates = [m for m in cl.members if m != cl.canonical]
             if archive_candidates:
-                out.append(f"Archive candidates: {', '.join('`' + a + '`' for a in archive_candidates)}")
+                out.append(
+                    f"Archive candidates: {', '.join('`' + a + '`' for a in archive_candidates)}"
+                )
             out.append("")
 
     broken_rows = [r for r in rows if r.broken > 0]
@@ -401,43 +525,72 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
             out.append(f"- `{r.path}` (mtime={r.mtime_days}d, zero inbound refs)")
         out.append("")
 
+    while out and out[-1] == "":
+        out.pop()
     return "\n".join(out) + "\n"
 
 
 def apply_moves(repo: Path, rows: List[DocRow], use_git: bool = True) -> int:
-    """Move files whose action starts with 'archive' into docs/archive/YYYY-MM-<slug>/. Return moved count."""
-    moved = 0
+    """Move files whose action starts with 'archive' into docs/archive/YYYY-MM-<slug>/. Return moved count.
+
+    All moves are issued as ONE batched `git mv` call (git supports multiple
+    sources + a destination directory in a single invocation) rather than one
+    subprocess per file. This closes the interruption window that produced
+    the 2026-07-07 near-miss: a mid-loop timeout on a per-file subprocess
+    left some `git mv` calls applied and others not, and — because the
+    working tree was already dirty from earlier moves — a subsequent partial
+    `git add` staged byte-duplicate copies under docs/archive/ instead of
+    clean renames (fixed in commit e6c5526696). Batching means the operation
+    is all-or-nothing at the git-mv step: either every listed file moves, or
+    the subprocess call fails/is killed before ANY of them are staged as
+    duplicates outside a single atomic git operation.
+    """
     slug = time.strftime("%Y-%m-orphans")
     dest = repo / "docs" / "archive" / slug
     dest.mkdir(parents=True, exist_ok=True)
+
+    sources: List[Path] = []
     for r in rows:
         if not r.action.startswith("archive: orphan"):
             continue
         src = repo / r.path
         if not src.exists():
             continue
-        target = dest / src.name
-        if use_git:
-            subprocess.run(["git", "-C", str(repo), "mv", str(src), str(target)], check=True)
-        else:
-            src.rename(target)
-        moved += 1
-    return moved
+        sources.append(src)
+
+    if not sources:
+        return 0
+
+    if use_git:
+        subprocess.run(
+            ["git", "-C", str(repo), "mv", *[str(s) for s in sources], str(dest)],
+            check=True,
+        )
+    else:
+        for src in sources:
+            src.rename(dest / src.name)
+    return len(sources)
 
 
 def main() -> int:
     args = parse_args()
     repo = Path(args.repo).resolve()
+    ensure_full_git_history(repo)
     whitelist = args.whitelist
     clusters = parse_clusters(args.cluster)
     expected_keys = parse_docsync_keys(args.docsync_key)
 
     docs = walk_docs(repo)
-    rows = [classify(d, repo, args.orphan_days, whitelist, clusters, expected_keys) for d in docs]
+    rows = [
+        classify(d, repo, args.orphan_days, whitelist, clusters, expected_keys)
+        for d in docs
+    ]
 
     new_content = render_inventory(rows, clusters)
     inventory_path = repo / "docs" / "DOCS_INVENTORY.md"
-    old_content = inventory_path.read_text(encoding="utf-8") if inventory_path.exists() else ""
+    old_content = (
+        inventory_path.read_text(encoding="utf-8") if inventory_path.exists() else ""
+    )
 
     # Normalise volatile fields before comparing committed vs. rendered:
     #   * "Last run: …" — wall-clock timestamp, changes every run
@@ -468,7 +621,9 @@ def main() -> int:
             out.append(line)
         return "\n".join(out)
 
-    stale_delta = strip_volatile(new_content) != strip_volatile(old_content)
+    old_normalized = strip_volatile(old_content)
+    new_normalized = strip_volatile(new_content)
+    stale_delta = new_normalized != old_normalized
 
     if args.json:
         payload = {
@@ -496,6 +651,8 @@ def main() -> int:
         print(json.dumps(payload, indent=2))
 
     if args.check:
+        if stale_delta and not args.quiet:
+            print_check_delta(inventory_path, old_normalized, new_normalized)
         return 1 if stale_delta else 0
 
     inventory_path.parent.mkdir(parents=True, exist_ok=True)

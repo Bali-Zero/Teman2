@@ -2,6 +2,12 @@
 // Single source of truth for all book content.
 // EVERY fact here is sourced from verified codebase data or founder confirmation.
 // DO NOT add invented content.
+//
+// NOTE: TEAM_MEMBERS is now DERIVED from the team roster SSOT
+// (apps/mouth/src/data/team-roster.ts). Do NOT hardcode team photos/roles here —
+// edit the roster instead.
+
+import { PUBLIC_ROSTER } from "@/data/team-roster";
 
 export interface Chapter {
   id: string;
@@ -116,122 +122,14 @@ export const CHAPTERS: Chapter[] = [
   },
 ];
 
-// Source: apps/mouth/src/app/(blog)/team/page.tsx — verified
-export const TEAM_MEMBERS: TeamMember[] = [
-  // Leadership
-  {
-    name: "Zainal Abidin",
-    role: "Chief Executive Officer",
-    department: "leadership",
-    photo: "/static/team/batik_butterfly.jpg",
-  },
-  {
-    name: "Ruslana",
-    role: "Board Member",
-    department: "leadership",
-    photo: "/static/team/ruslana.jpg",
-  },
-  // Setup
-  {
-    name: "Adit",
-    role: "Supervisor (Lead Setup)",
-    department: "setup",
-    photo: "/static/team/adit.png",
-  },
-  {
-    name: "Krisna",
-    role: "Executive Consultant",
-    department: "setup",
-    photo: "/static/team/krisna.png",
-  },
-  {
-    name: "Dea",
-    role: "Executive Consultant",
-    department: "setup",
-    photo: "/static/team/dea.png",
-  },
-  {
-    name: "Ari",
-    role: "Specialist Consultant",
-    department: "setup",
-    photo: "/static/team/ari.png",
-  },
-  {
-    name: "Surya",
-    role: "Specialist Consultant",
-    department: "setup",
-    photo: "/static/team/batik_kawung_organic.jpg",
-  },
-  {
-    name: "Vino",
-    role: "Junior Consultant",
-    department: "setup",
-    photo: "/static/team/batik_geometric_1.jpg",
-  },
-  {
-    name: "Damar",
-    role: "Junior Consultant",
-    department: "setup",
-    photo: "/static/team/batik_geometric_2.jpg",
-  },
-  // Tax
-  {
-    name: "Veronika",
-    role: "Tax Manager",
-    department: "tax",
-    photo: "/static/team/batik_minimalist_1.jpg",
-  },
-  {
-    name: "Angel",
-    role: "Tax Expert",
-    department: "tax",
-    photo: "/static/team/batik_minimalist_2.jpg",
-  },
-  {
-    name: "Kadek",
-    role: "Tax Consultant",
-    department: "tax",
-    photo: "/static/team/batik_kawung.jpg",
-  },
-  {
-    name: "Dewa Ayu",
-    role: "Tax Consultant",
-    department: "tax",
-    photo: "/static/team/batik_truntum.jpg",
-  },
-  {
-    name: "Faisha",
-    role: "Tax Care",
-    department: "tax",
-    photo: "/static/team/batik_kawung_diamond.jpg",
-  },
-  // Accounting
-  {
-    name: "Asya Nadia",
-    role: "Accounting",
-    department: "accounting",
-    photo: "/static/team/asya.jpg",
-  },
-  // Support
-  {
-    name: "Rina",
-    role: "Reception",
-    department: "support",
-    photo: "/static/team/batik_geometric_1.jpg",
-  },
-  {
-    name: "Sahira",
-    role: "Marketing Specialist",
-    department: "support",
-    photo: "/static/team/sahira.png",
-  },
-  {
-    name: "Nina",
-    role: "Marketing Advisory",
-    department: "support",
-    photo: "/static/team/batik_minimalist_1.jpg",
-  },
-];
+// DERIVED from the team roster SSOT (apps/mouth/src/data/team-roster.ts).
+// To change a member/photo/role → edit the roster, NOT this file.
+export const TEAM_MEMBERS: TeamMember[] = PUBLIC_ROSTER.map((m) => ({
+  name: m.name,
+  role: m.role,
+  department: m.dept,
+  photo: m.photo,
+}));
 
 // Source: competitor intelligence report — verified March 2026
 export const COMPETITORS: CompetitorStat[] = [
@@ -255,8 +153,8 @@ export const STATS = {
 
 // Source: verified from codebase / WhatsApp
 export const CONTACTS = {
-  whatsapp: "+62 822 6459 9868",
-  whatsappUrl: "https://wa.me/6282264599868",
+  whatsapp: "+62 822 1030 2328",
+  whatsappUrl: "https://wa.me/6282210302328",
   email: "info@balizero.com",
   web: "balizero.com",
 };

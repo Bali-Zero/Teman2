@@ -4,7 +4,12 @@ export {
   type ExpiryStatus,
   type ExpiryResult,
 } from "./expiry";
-export { formatIDR, formatUSD, formatCurrency } from "./currency";
+export {
+  formatIDR,
+  formatIDRCompact,
+  formatUSD,
+  formatCurrency,
+} from "./currency";
 export { formatDate, formatTime, formatRelative } from "./date";
 export {
   buildWaDeeplink,

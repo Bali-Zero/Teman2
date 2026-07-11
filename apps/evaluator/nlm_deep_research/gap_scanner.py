@@ -32,13 +32,13 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
+# ── Paths ────────────────────────────────────────────────────────────────────
 
 _DIR = Path(__file__).parent
 COVERAGE_MATRIX_FILE = _DIR / "coverage_matrix.json"
 GAP_STATE_FILE = _DIR / "gap_scanner_state.json"
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Config ─────────────────────────────────────────────────────────────────
 
 _BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 _CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
@@ -54,7 +54,7 @@ AGING_DAYS = 90
 # Per-domain topic checklists for Layer B coverage matrix
 DOMAIN_TOPICS: dict[str, dict[str, list[str]]] = {
     "immigration": {
-        "notebook_id": "271c7159-0c32-49a1-bda8-803c8e0993a6",
+        "notebook_id": "cff93ab0-813a-42f2-a8de-36987e724271",
         "label": "Immigration & Visa",
         "topics": [
             "KITAS requirements and process 2025",
@@ -68,7 +68,7 @@ DOMAIN_TOPICS: dict[str, dict[str, list[str]]] = {
         ],
     },
     "company": {
-        "notebook_id": "045f3cdb-ef62-488c-90ba-82594928b671",
+        "notebook_id": "933509f9-1561-403d-bd44-4a7a67a36df2",
         "label": "Company Setup & KBLI",
         "topics": [
             "PT PMA setup requirements 2025",
@@ -96,7 +96,7 @@ DOMAIN_TOPICS: dict[str, dict[str, list[str]]] = {
         ],
     },
     "property": {
-        "notebook_id": "93314ad3-177e-4d2f-956b-fe4be3e47697",
+        "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
         "label": "Property & Real Estate",
         "topics": [
             "HGB title for foreigners in Indonesia",
@@ -110,7 +110,7 @@ DOMAIN_TOPICS: dict[str, dict[str, list[str]]] = {
         ],
     },
     "operations": {
-        "notebook_id": "7fbf37ed-e290-491a-98f5-677d6371ad62",
+        "notebook_id": "85207af3-352f-4554-8d2a-18f42cc541ba",
         "label": "Operations & Compliance",
         "topics": [
             "UMR/UMK Bali minimum wage 2025",
@@ -124,7 +124,7 @@ DOMAIN_TOPICS: dict[str, dict[str, list[str]]] = {
         ],
     },
     "editorial": {
-        "notebook_id": "42687fcb-87fc-40b1-8af8-8a2ff91f9c4c",
+        "notebook_id": "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8",
         "label": "Editorial & Content",
         "topics": [
             "Google Helpful Content Update 2024",
@@ -138,7 +138,7 @@ DOMAIN_TOPICS: dict[str, dict[str, list[str]]] = {
         ],
     },
     "lifestyle": {
-        "notebook_id": "aa9ac5d7-5090-46c7-9d09-89cec4ba13de",
+        "notebook_id": "4fd8cd0f-93f1-4e43-9c9e-86c0d581852c",
         "label": "Expat Life & Bali",
         "topics": [
             "International health insurance Bali 2025",
@@ -168,7 +168,7 @@ FRESHNESS_QUERY_TEMPLATE = (
 )
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────
 
 def _query_notebook(notebook_id: str, query: str, timeout: int = NLM_QUERY_TIMEOUT) -> str | None:
     if not notebook_id:
@@ -312,7 +312,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-# ── State management ──────────────────────────────────────────────────────────
+# ── State management ───────────────────────────────────────────────────────
 
 def _load_matrix() -> dict[str, Any]:
     if COVERAGE_MATRIX_FILE.exists():
@@ -340,7 +340,7 @@ def _save_gap_state(state: dict[str, Any]) -> None:
     GAP_STATE_FILE.write_text(json.dumps(state, indent=2, default=str))
 
 
-# ── Layer A: Essential Questions (Gap Discovery) ───────────────────────────────
+# ── Layer A: Essential Questions (Gap Discovery) ──────────────────────────────
 
 def run_layer_a(dry_run: bool = False) -> dict[str, Any]:
     """Layer A: Query each notebook for unanswerable questions → gap topics.
@@ -408,7 +408,7 @@ def run_layer_a(dry_run: bool = False) -> dict[str, Any]:
     return result
 
 
-# ── Layer B: Coverage Matrix (Freshness Assessment) ───────────────────────────
+# ── Layer B: Coverage Matrix (Freshness Assessment) ──────────────────────────
 
 def run_layer_b(dry_run: bool = False) -> dict[str, Any]:
     """Layer B: Test freshness of each topic checklist per domain.
@@ -549,7 +549,7 @@ def run_layer_b(dry_run: bool = False) -> dict[str, Any]:
     return result
 
 
-# ── Layer C: Gap Remediation Loop ────────────────────────────────────────────
+# ── Layer C: Gap Remediation Loop ────────────────────────────────────────
 
 # Max remediation targets per run (NLM rate limiting)
 MAX_REMEDIATIONS_PER_RUN = 3
@@ -722,7 +722,7 @@ def run_remediation(dry_run: bool = False) -> dict[str, Any]:
     return result
 
 
-# ── Status report ─────────────────────────────────────────────────────────────
+# ── Status report ───────────────────────────────────────────────────────────
 
 def get_status() -> dict[str, Any]:
     """Return current gap scanner state and coverage matrix summary."""
@@ -760,7 +760,7 @@ def get_status() -> dict[str, Any]:
     }
 
 
-# ── CLI ───────────────────────────────────────────────────────────────────────
+# ── CLI ─────────────────────────────────────────────────────────────────
 
 def main() -> None:
     logging.basicConfig(

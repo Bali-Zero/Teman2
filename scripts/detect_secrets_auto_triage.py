@@ -97,6 +97,13 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         "__tests__/** tree: test fixtures",
     ),
     (
+        # pytest/unittest convention: test_*.py / *_test.py files outside a
+        # tests/ dir (e.g. agent-library/scar_replay/test_*.py,
+        # scripts/test_*.py). Fake credentials in these are fixtures.
+        re.compile(r"(^|/)(test_[^/]+|[^/]+_test)\.(py|ts|tsx|js|jsx)$"),
+        "test_*/_test file: unit-test fixture, not a production secret",
+    ),
+    (
         re.compile(r"\.test\.(py|ts|tsx|js|jsx)$"),
         "*.test.* file: unit test fixture",
     ),
@@ -569,6 +576,17 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(r"(^|/)vendor/[^/]+/notebooks/.*\.ipynb$"),
         "vendor third-party notebooks: base64 PNG cell outputs from matplotlib, not secrets",
+    ),
+    # .husky/ git hooks: the pre-push CI-parity test gate echoes the dummy
+    # DATABASE_URL=postgresql://test:test@localhost:5432/<db> inside its
+    # "how to bootstrap the local test DB" help text. `test:test@` is the
+    # same throwaway CI-parity credential used in .github/workflows/tests.yml
+    # and the db conftest default — a local-test dummy, never production.
+    # Same class as the root docker-compose.yml + graph-engine localhost
+    # dev-default DSN rules above.
+    (
+        re.compile(r"(^|/)\.husky/.*"),
+        ".husky git hooks: pre-push CI-parity test:test@localhost dummy DSN, not a production credential",
     ),
 ]
 

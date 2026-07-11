@@ -1,0 +1,30 @@
+# DESC: S7 — CRM yield: 11.699 clienti → revenue signals (ONDA 2, Pro obbligatorio, Ollama)
+ORCHESTRATORE sessione S7 "crm-yield-mining" — DEVE girare sul Pro (PII, Law 2 + UU PDP).
+Autonomia piena in loop, no conferme.
+
+PASSO 0:
+  python scripts/agent_start.py --lane backend-rag --task-id s7-crm-yield
+  cd .worktrees/backend-rag-s7-crm-yield
+  export BRANCH_EXPECTED=$(git branch --show-current)
+
+LE 3 LEGGI. + LEGGE PII: ZERO dato cliente verso cloud LLM. Reasoning/drafting su PII SOLO
+con Ollama LOCALE (qwen3.5:9b Pro/Mini).
+
+MISSIONE: 11.699 clienti, 440 pratiche. L'agent yield-optimizer esiste
+(~/.claude/agents/yield-optimizer.md, gira Sunday 04:00). Estendi: segnali di revenue
+(KITAS in scadenza, business pivot, no-contact-recente, alto engagement) → pipeline pitch.
+
+TOPOLOGIA:
+- ASSALITORI (query CRM via postgres-nuzantara MCP read-only o nuzantara-mcp
+  list_clients/get_expiry_alerts/get_compliance_alerts, fan-out): (a) segmentazione — chi
+  scade nei prossimi 60-90gg; (b) engagement-score; (c) business-pivot signal.
+- ANALISTI (Ollama locale): valida i segmenti, niente falsi positivi.
+- DRAFTING (Ollama locale, WhatsApp template via bali-zero-brand): pitch per segmento.
+- MECCANICO (1, serial): research/crm/S7-yield-FROZEN.json (segmenti + COUNT aggregati,
+  SENZA nomi/PII nel file) + draft pitch in staging locale. commit → push → PR draft → STOP.
+
+VINCOLI: NON inviare nulla (Legge 5, draft only). PII mai nei file committati, mai cloud.
+OUTPUT: segmenti aggregati + draft. --release.
+
+Quando hai aperto la PR draft, scrivi come ULTIMA riga del tuo output esattamente:
+ARMY_DONE S7 <numero-PR-o-url>

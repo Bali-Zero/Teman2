@@ -8,9 +8,16 @@ import React, {
   useCallback,
 } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { formatIDRCompact } from "@balizero/core/utils";
+import {
+  FilterBar,
+  FilterSelect,
+  ListPageHeader,
+  SearchBox,
+  StatChips,
+} from "@balizero/core";
 import {
   FolderKanban,
-  Search,
   Filter,
   Plus,
   LayoutGrid,
@@ -30,6 +37,7 @@ import {
   ArrowUp,
   ArrowDown,
   Download,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -57,6 +65,11 @@ import {
   initializeAnalytics,
 } from "@/lib/analytics";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
+import {
+  PROCESS_VIEW_MODE_KEY,
+  loadViewMode,
+  saveViewMode,
+} from "@/lib/utils/view-mode-storage";
 
 // SIMPLIFIED WORKFLOW (Feb 2026) - 5 Steps:
 // inquiry → waiting_documents → sending_invoice → on_process → completed
@@ -139,6 +152,56 @@ interface FilterState {
   stale: boolean;
 }
 
+const FILTER_SELECT_CLASS =
+  "border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:ring-2 focus:ring-[var(--bz-accent)]/50";
+
+// Status dot per kanban column — shared by list-view table + context menu.
+const STATUS_DOT_COLOR: Record<CaseStatus, string> = {
+  inquiry: "bg-gray-400",
+  waiting_documents: "bg-orange-400",
+  sending_invoice: "bg-yellow-400",
+  on_process: "bg-blue-500",
+  completed: "bg-green-500",
+};
+
+/** WhatsApp + Email quick actions — identical on kanban cards and table rows. */
+function ContactQuickActions({ practice }: { practice: Practice }) {
+  return (
+    <>
+      {practice.client_phone && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            const phone = practice.client_phone?.replace(/\D/g, "");
+            window.open(
+              `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
+              "_blank",
+            );
+          }}
+          className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
+          title="WhatsApp"
+          aria-label="Contact via WhatsApp"
+        >
+          <MessageCircle className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {practice.client_email && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            window.open(`mailto:${practice.client_email}`, "_blank");
+          }}
+          className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
+          title="Email"
+          aria-label="Send email"
+        >
+          <Mail className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </>
+  );
+}
+
 export default function PratichePage() {
   const router = useRouter();
   const toast = useToast();
@@ -146,7 +209,10 @@ export default function PratichePage() {
   const [practices, setPractices] = useState<Practice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  // P2.2: persist the view toggle across navigations (lazy-init + write-through)
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    loadViewMode(PROCESS_VIEW_MODE_KEY, ["kanban", "list"], "kanban"),
+  );
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     status: "",
@@ -171,7 +237,6 @@ export default function PratichePage() {
   } | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const previousFiltersRef = useRef<FilterState>(filters);
 
   // Pagination for large datasets
@@ -252,32 +317,10 @@ export default function PratichePage() {
     loadPractices();
   }, [selectedMonth]);
 
-  // Keyboard shortcut: '/' or Cmd+F to focus search
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      const isEditing =
-        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
-      if (e.key === "/" && !isEditing) {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      }
-      if (
-        e.key === "Escape" &&
-        document.activeElement === searchInputRef.current
-      ) {
-        searchInputRef.current?.blur();
-        setSearchQuery("");
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
-  // Track view mode changes
+  // Track + persist view mode changes
   useEffect(() => {
     trackViewModeChange(viewMode);
+    saveViewMode(PROCESS_VIEW_MODE_KEY, viewMode);
   }, [viewMode]);
 
   // Track filter changes
@@ -716,24 +759,19 @@ export default function PratichePage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--bz-text-1)]">
-            Process
-          </h1>
-          <p className="text-sm text-[var(--bz-text-2)]">
-            Manage KITAS, Visa, PT PMA, Tax and other processes
-          </p>
-        </div>
-        <Button
-          className="gap-2 bg-[var(--bz-accent)] hover:bg-[var(--bz-accent)]/90 text-white"
-          onClick={handleNewCase}
-        >
-          <Plus className="w-4 h-4" />
-          New Process
-        </Button>
-      </div>
+      <ListPageHeader
+        title="Process"
+        subtitle="Manage KITAS, Visa, PT PMA, Tax and other processes"
+        actions={
+          <Button
+            className="gap-2 bg-[var(--bz-accent)] hover:bg-[var(--bz-accent)]/90 text-white"
+            onClick={handleNewCase}
+          >
+            <Plus className="w-4 h-4" />
+            New Process
+          </Button>
+        }
+      />
 
       {/* Month Navigation */}
       <MonthPillTabs
@@ -801,13 +839,7 @@ export default function PratichePage() {
                   title="Click to filter paid practices"
                   aria-label="Filter paid practices"
                 >
-                  {new Intl.NumberFormat("id-ID", {
-                    notation: "compact",
-                    currency: "IDR",
-                    style: "currency",
-                    maximumFractionDigits: 0,
-                  }).format(totalRevenue)}{" "}
-                  paid
+                  {formatIDRCompact(totalRevenue)} paid
                 </button>
               )}
               {unpaidRevenue > 0 && (
@@ -827,13 +859,7 @@ export default function PratichePage() {
                   title="Click to filter unpaid practices"
                   aria-label="Filter unpaid practices"
                 >
-                  {new Intl.NumberFormat("id-ID", {
-                    notation: "compact",
-                    currency: "IDR",
-                    style: "currency",
-                    maximumFractionDigits: 0,
-                  }).format(unpaidRevenue)}{" "}
-                  unpaid
+                  {formatIDRCompact(unpaidRevenue)} unpaid
                 </button>
               )}
               {expiringCount > 0 && (
@@ -857,19 +883,14 @@ export default function PratichePage() {
       {/* Search & Filter Bar */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--bz-text-2)]" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search process… (press / to focus)"
-              aria-label="Search process"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              title="Press / to focus search, Escape to clear"
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50 transition-all"
-            />
-          </div>
+          <SearchBox
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+            placeholder="Search process… (press / to focus)"
+            ariaLabel="Search process"
+            title="Press / to focus search, Escape to clear"
+            className="border border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md text-[var(--bz-text-1)] placeholder:text-[var(--bz-text-2)] focus:ring-2 focus:ring-[var(--bz-accent)]/50 transition-all"
+          />
           <div className="flex gap-2">
             <Button
               variant={showFilters ? "default" : "outline"}
@@ -895,250 +916,189 @@ export default function PratichePage() {
               <span className="hidden sm:inline">Export</span>
             </Button>
             <div className="flex rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(35,35,40,0.6)] backdrop-blur-md overflow-hidden">
-              <button
-                onClick={() => setViewMode("kanban")}
-                className={`p-2 transition-all ${
-                  viewMode === "kanban"
-                    ? "bg-[var(--bz-accent)]/10 text-[var(--bz-accent)]"
-                    : "text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]"
-                }`}
-                title="Kanban Board"
-                aria-label="Kanban Board"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-2 transition-all ${
-                  viewMode === "list"
-                    ? "bg-[var(--bz-accent)]/10 text-[var(--bz-accent)]"
-                    : "text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]"
-                }`}
-                title="List View"
-                aria-label="List View"
-              >
-                <List className="w-4 h-4" />
-              </button>
+              {(
+                [
+                  { mode: "kanban", icon: LayoutGrid, label: "Kanban Board" },
+                  { mode: "list", icon: List, label: "List View" },
+                ] as const
+              ).map(({ mode, icon: Icon, label }) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`p-2 transition-all ${
+                    viewMode === mode
+                      ? "bg-[var(--bz-accent)]/10 text-[var(--bz-accent)]"
+                      : "text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]"
+                  }`}
+                  title={label}
+                  aria-label={label}
+                >
+                  <Icon className="w-4 h-4" />
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Quick Filter Chips */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {currentUserEmail && (
-            <button
-              onClick={() =>
+        <StatChips
+          className="flex items-center gap-2 flex-wrap"
+          chipClassName="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border"
+          items={[
+            Boolean(currentUserEmail) && {
+              key: "my-work",
+              onClick: () =>
                 setFilters((f) => ({
                   ...f,
                   assigned_to:
                     f.assigned_to === currentUserEmail ? "" : currentUserEmail,
-                }))
-              }
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                })),
+              className:
                 filters.assigned_to === currentUserEmail
                   ? "bg-[var(--bz-accent)]/20 text-[var(--bz-accent)] border-[var(--bz-accent)]/40"
-                  : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-[var(--bz-accent)]/30 hover:text-[var(--bz-accent)]"
-              }`}
-            >
-              <User className="w-3 h-3" />
-              My Work
-            </button>
-          )}
-          <button
-            onClick={() =>
-              setFilters((f) => ({
-                ...f,
-                payment_filter: f.payment_filter === "unpaid" ? "" : "unpaid",
-              }))
-            }
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-              filters.payment_filter === "unpaid"
-                ? "bg-red-500/20 text-red-400 border-red-500/40"
-                : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-red-500/30 hover:text-red-400"
-            }`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-current" />
-            Unpaid
-          </button>
-          <button
-            onClick={() =>
-              setFilters((f) => ({
-                ...f,
-                priority: f.priority === "urgent" ? "" : "urgent",
-              }))
-            }
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-              filters.priority === "urgent"
-                ? "bg-red-500/20 text-red-400 border-red-500/40"
-                : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-red-500/30 hover:text-red-400"
-            }`}
-          >
-            🔥 Urgent
-          </button>
-          <button
-            onClick={() =>
-              setFilters((f) => ({
-                ...f,
-                priority: f.priority === "high" ? "" : "high",
-              }))
-            }
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-              filters.priority === "high"
-                ? "bg-orange-500/20 text-orange-400 border-orange-500/40"
-                : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-orange-500/30 hover:text-orange-400"
-            }`}
-          >
-            ↑ High
-          </button>
-          <button
-            onClick={() => setFilters((f) => ({ ...f, expiring: !f.expiring }))}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-              filters.expiring
+                  : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-[var(--bz-accent)]/30 hover:text-[var(--bz-accent)]",
+              content: (
+                <>
+                  <User className="w-3 h-3" />
+                  My Work
+                </>
+              ),
+            },
+            {
+              key: "unpaid",
+              onClick: () =>
+                setFilters((f) => ({
+                  ...f,
+                  payment_filter: f.payment_filter === "unpaid" ? "" : "unpaid",
+                })),
+              className:
+                filters.payment_filter === "unpaid"
+                  ? "bg-red-500/20 text-red-400 border-red-500/40"
+                  : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-red-500/30 hover:text-red-400",
+              content: (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                  Unpaid
+                </>
+              ),
+            },
+            {
+              key: "urgent",
+              onClick: () =>
+                setFilters((f) => ({
+                  ...f,
+                  priority: f.priority === "urgent" ? "" : "urgent",
+                })),
+              className:
+                filters.priority === "urgent"
+                  ? "bg-red-500/20 text-red-400 border-red-500/40"
+                  : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-red-500/30 hover:text-red-400",
+              content: <>🔥 Urgent</>,
+            },
+            {
+              key: "high",
+              onClick: () =>
+                setFilters((f) => ({
+                  ...f,
+                  priority: f.priority === "high" ? "" : "high",
+                })),
+              className:
+                filters.priority === "high"
+                  ? "bg-orange-500/20 text-orange-400 border-orange-500/40"
+                  : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-orange-500/30 hover:text-orange-400",
+              content: <>↑ High</>,
+            },
+            {
+              key: "expiring",
+              onClick: () =>
+                setFilters((f) => ({ ...f, expiring: !f.expiring })),
+              className: filters.expiring
                 ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/40"
-                : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-yellow-500/30 hover:text-yellow-400"
-            }`}
-          >
-            ⏰ Expiring 30d
-          </button>
-          <button
-            onClick={() => setFilters((f) => ({ ...f, stale: !f.stale }))}
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-              filters.stale
+                : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-yellow-500/30 hover:text-yellow-400",
+              content: <>⏰ Expiring 30d</>,
+            },
+            {
+              key: "stale",
+              onClick: () => setFilters((f) => ({ ...f, stale: !f.stale })),
+              className: filters.stale
                 ? "bg-purple-500/20 text-purple-400 border-purple-500/40"
-                : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-purple-500/30 hover:text-purple-400"
-            }`}
-            title="Show processes not updated in >14 days"
-            aria-label="Show stale processes (not updated in 14+ days)"
-          >
-            🕰 Stale 14d+
-          </button>
-        </div>
+                : "bg-[rgba(255,255,255,0.04)] text-[var(--bz-text-2)] border-[rgba(255,255,255,0.06)] hover:border-purple-500/30 hover:text-purple-400",
+              title: "Show processes not updated in >14 days",
+              ariaLabel: "Show stale processes (not updated in 14+ days)",
+              content: <>🕰 Stale 14d+</>,
+            },
+          ]}
+        />
 
-        {/* Filters Panel */}
         {showFilters && (
-          <div className="p-4 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(32,32,36,0.7)] backdrop-blur-xl shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-[var(--bz-text-1)]">Filters</h3>
-              {activeFiltersCount > 0 && (
-                <button
-                  onClick={clearFilters}
-                  className="text-sm text-[var(--bz-accent)] hover:underline flex items-center gap-1"
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Status Filter */}
-              <div>
-                <label
-                  htmlFor="status-filter"
-                  className="block text-sm font-medium text-[var(--bz-text-2)] mb-1.5"
-                >
-                  Status
-                </label>
-                <select
-                  id="status-filter"
-                  value={filters.status}
-                  onChange={(e) =>
-                    setFilters({ ...filters, status: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50"
-                >
-                  <option value="">All statuses</option>
-                  <option value="inquiry">Inquiry</option>
-                  <option value="waiting_documents">Waiting Documents</option>
-                  <option value="sending_invoice">Sending Invoice</option>
-                  <option value="waiting_payment">Waiting Payment</option>
-                  <option value="on_process">On Process</option>
-                  <option value="submitted_to_gov">Submitted to Gov</option>
-                  <option value="approved">Approved</option>
-                  <option value="completed">Completed</option>
-                </select>
-              </div>
-
-              {/* Type Filter */}
-              <div>
-                <label
-                  htmlFor="type-filter"
-                  className="block text-sm font-medium text-[var(--bz-text-2)] mb-1.5"
-                >
-                  Process Type
-                </label>
-                <select
-                  id="type-filter"
-                  value={filters.type}
-                  onChange={(e) =>
-                    setFilters({ ...filters, type: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50"
-                >
-                  <option value="">All types</option>
-                  <option value="kitas">KITAS Work Permit</option>
-                  <option value="extension_kitas">KITAS Extension</option>
-                  <option value="visa">Visa</option>
-                  <option value="extension_visa">Visa Extension</option>
-                  <option value="new_pt">PT PMA Setup</option>
-                  <option value="revision_pt">PT Revision</option>
-                  <option value="tax">Tax Consulting</option>
-                  <option value="accessories">Accessories</option>
-                </select>
-              </div>
-
-              {/* Assigned To Filter */}
-              <div>
-                <label
-                  htmlFor="assigned-to-filter"
-                  className="block text-sm font-medium text-[var(--bz-text-2)] mb-1.5"
-                >
-                  Assigned To
-                </label>
-                <select
-                  id="assigned-to-filter"
-                  value={filters.assigned_to}
-                  onChange={(e) =>
-                    setFilters({ ...filters, assigned_to: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50"
-                >
-                  <option value="">All team members</option>
-                  {Array.from(
-                    new Set(
-                      practices.map((p) => p.client_lead).filter(Boolean),
-                    ),
-                  ).map((lead) => (
-                    <option key={lead} value={lead || ""}>
-                      {lead?.split("@")[0]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Priority Filter */}
-              <div>
-                <label
-                  htmlFor="priority-filter"
-                  className="block text-sm font-medium text-[var(--bz-text-2)] mb-1.5"
-                >
-                  Priority
-                </label>
-                <select
-                  id="priority-filter"
-                  value={filters.priority}
-                  onChange={(e) =>
-                    setFilters({ ...filters, priority: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-[var(--bz-text-1)] focus:outline-none focus:ring-2 focus:ring-[var(--bz-accent)]/50"
-                >
-                  <option value="">All priorities</option>
-                  <option value="urgent">🔥 Urgent</option>
-                  <option value="high">↑ High</option>
-                  <option value="normal">Normal</option>
-                </select>
-              </div>
-            </div>
-          </div>
+          <FilterBar
+            activeCount={activeFiltersCount}
+            onClearAll={clearFilters}
+            className="rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(32,32,36,0.7)] backdrop-blur-xl shadow-2xl"
+            gridClassName="grid grid-cols-1 sm:grid-cols-3 gap-4"
+          >
+            <FilterSelect
+              id="status-filter"
+              label="Status"
+              value={filters.status}
+              onChange={(v) => setFilters({ ...filters, status: v })}
+              selectClassName={FILTER_SELECT_CLASS}
+            >
+              <option value="">All statuses</option>
+              <option value="inquiry">Inquiry</option>
+              <option value="waiting_documents">Waiting Documents</option>
+              <option value="sending_invoice">Sending Invoice</option>
+              <option value="waiting_payment">Waiting Payment</option>
+              <option value="on_process">On Process</option>
+              <option value="submitted_to_gov">Submitted to Gov</option>
+              <option value="approved">Approved</option>
+              <option value="completed">Completed</option>
+            </FilterSelect>
+            <FilterSelect
+              id="type-filter"
+              label="Process Type"
+              value={filters.type}
+              onChange={(v) => setFilters({ ...filters, type: v })}
+              selectClassName={FILTER_SELECT_CLASS}
+            >
+              <option value="">All types</option>
+              <option value="kitas">KITAS Work Permit</option>
+              <option value="extension_kitas">KITAS Extension</option>
+              <option value="visa">Visa</option>
+              <option value="extension_visa">Visa Extension</option>
+              <option value="new_pt">PT PMA Setup</option>
+              <option value="revision_pt">PT Revision</option>
+              <option value="tax">Tax Consulting</option>
+              <option value="accessories">Accessories</option>
+            </FilterSelect>
+            <FilterSelect
+              id="assigned-to-filter"
+              label="Assigned To"
+              value={filters.assigned_to}
+              onChange={(v) => setFilters({ ...filters, assigned_to: v })}
+              selectClassName={FILTER_SELECT_CLASS}
+            >
+              <option value="">All team members</option>
+              {Array.from(
+                new Set(practices.map((p) => p.client_lead).filter(Boolean)),
+              ).map((lead) => (
+                <option key={lead} value={lead || ""}>
+                  {lead?.split("@")[0]}
+                </option>
+              ))}
+            </FilterSelect>
+            <FilterSelect
+              id="priority-filter"
+              label="Priority"
+              value={filters.priority}
+              onChange={(v) => setFilters({ ...filters, priority: v })}
+              selectClassName={FILTER_SELECT_CLASS}
+            >
+              <option value="">All priorities</option>
+              <option value="urgent">🔥 Urgent</option>
+              <option value="high">↑ High</option>
+              <option value="normal">Normal</option>
+            </FilterSelect>
+          </FilterBar>
         )}
       </div>
 
@@ -1182,7 +1142,9 @@ export default function PratichePage() {
                         : undefined
                     }
                     role={isCompleted ? "button" : undefined}
-                    aria-expanded={isCompleted ? !completedCollapsed : undefined}
+                    aria-expanded={
+                      isCompleted ? !completedCollapsed : undefined
+                    }
                     aria-label={
                       isCompleted
                         ? completedCollapsed
@@ -1237,12 +1199,7 @@ export default function PratichePage() {
                           className="mb-3 text-[10px] font-medium tabular-nums opacity-70"
                           style={{ color: colors.textColor }}
                         >
-                          {new Intl.NumberFormat("id-ID", {
-                            notation: "compact",
-                            currency: "IDR",
-                            style: "currency",
-                            maximumFractionDigits: 1,
-                          }).format(colRevenue)}
+                          {formatIDRCompact(colRevenue)}
                         </div>
                       );
                     })()}
@@ -1295,19 +1252,13 @@ export default function PratichePage() {
                           const teamLeaderLabel = practice.client_lead
                             ? teamMemberOptions.find(
                                 (m) => m.value === practice.client_lead,
-                              )?.label ||
-                              practice.client_lead.split("@")[0]
+                              )?.label || practice.client_lead.split("@")[0]
                             : null;
 
                           const priceValue =
                             practice.actual_price ?? practice.quoted_price ?? 0;
                           const priceStr = priceValue
-                            ? new Intl.NumberFormat("id-ID", {
-                                notation: "compact",
-                                currency: "IDR",
-                                style: "currency",
-                                maximumFractionDigits: 0,
-                              }).format(priceValue)
+                            ? formatIDRCompact(priceValue)
                             : null;
 
                           return (
@@ -1406,7 +1357,11 @@ export default function PratichePage() {
 
                                   <button
                                     className="absolute top-3 right-3 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[rgba(255,255,255,0.08)] opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={(e) => handleMenuClick(e, practice)}
+                                    onClick={(e) =>
+                                      handleMenuClick(e, practice)
+                                    }
+                                    title="More options"
+                                    aria-label="More options"
                                   >
                                     <MoreVertical className="w-4 h-4" />
                                   </button>
@@ -1454,7 +1409,8 @@ export default function PratichePage() {
                                 )}
 
                                 {/* Meta row: expiry + age chips */}
-                                {(practice.expiry_date || practice.updated_at) && (
+                                {(practice.expiry_date ||
+                                  practice.updated_at) && (
                                   <div className="flex items-center gap-1.5 mt-3">
                                     {practice.expiry_date &&
                                       (() => {
@@ -1526,43 +1482,7 @@ export default function PratichePage() {
 
                                 {/* Quick actions — hidden until hover */}
                                 <div className="flex items-center gap-1 mt-3 pt-2 border-t border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  {practice.client_phone && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const phone =
-                                          practice.client_phone?.replace(
-                                            /\D/g,
-                                            "",
-                                          );
-                                        window.open(
-                                          `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
-                                          "_blank",
-                                        );
-                                      }}
-                                      className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
-                                      title="WhatsApp"
-                                      aria-label="Contact via WhatsApp"
-                                    >
-                                      <MessageCircle className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                  {practice.client_email && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        window.open(
-                                          `mailto:${practice.client_email}`,
-                                          "_blank",
-                                        );
-                                      }}
-                                      className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
-                                      title="Email"
-                                      aria-label="Send email"
-                                    >
-                                      <Mail className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
+                                  <ContactQuickActions practice={practice} />
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -1640,143 +1560,90 @@ export default function PratichePage() {
               <h3 className="text-lg font-semibold text-[var(--bz-text-1)] mb-2">
                 No process found
               </h3>
-              <p className="text-sm text-[var(--bz-text-2)] max-w-md">
-                Try adjusting your search or filters to find process.
+              <p className="text-sm text-[var(--bz-text-2)] max-w-md mb-6">
+                {activeFiltersCount > 0
+                  ? "No processes match the selected filters."
+                  : searchQuery
+                    ? "No processes match your search. Try different keywords."
+                    : "Get started by creating your first process."}
               </p>
+              {/* P2.3: empty state offers a way out (mirrors clients page) */}
+              {activeFiltersCount > 0 ? (
+                <Button
+                  variant="outline"
+                  onClick={clearFilters}
+                  className="gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Clear Filters
+                </Button>
+              ) : (
+                <Button onClick={handleNewCase} className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  New Process
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-[rgba(35,35,40,0.8)] border-b border-[rgba(255,255,255,0.05)] backdrop-blur-lg">
                   <tr>
-                    <th
-                      onClick={() => toggleSort("id")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        ID
-                        {sortField === "id" &&
-                          (sortOrder === "asc" ? (
-                            <ArrowUp className="w-4 h-4" />
-                          ) : (
-                            <ArrowDown className="w-4 h-4" />
-                          ))}
-                        {sortField !== "id" && (
-                          <ArrowUpDown className="w-4 h-4 opacity-30" />
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      onClick={() => toggleSort("practice_type_code")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        Process Type
-                        {sortField === "practice_type_code" &&
-                          (sortOrder === "asc" ? (
-                            <ArrowUp className="w-4 h-4" />
-                          ) : (
-                            <ArrowDown className="w-4 h-4" />
-                          ))}
-                        {sortField !== "practice_type_code" && (
-                          <ArrowUpDown className="w-4 h-4 opacity-30" />
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      onClick={() => toggleSort("client_name")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        Client
-                        {sortField === "client_name" &&
-                          (sortOrder === "asc" ? (
-                            <ArrowUp className="w-4 h-4" />
-                          ) : (
-                            <ArrowDown className="w-4 h-4" />
-                          ))}
-                        {sortField !== "client_name" && (
-                          <ArrowUpDown className="w-4 h-4 opacity-30" />
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      onClick={() => toggleSort("client_lead")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        Assigned To
-                        {sortField === "client_lead" &&
-                          (sortOrder === "asc" ? (
-                            <ArrowUp className="w-4 h-4" />
-                          ) : (
-                            <ArrowDown className="w-4 h-4" />
-                          ))}
-                        {sortField !== "client_lead" && (
-                          <ArrowUpDown className="w-4 h-4 opacity-30" />
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      onClick={() => toggleSort("status")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        Status
-                        {sortField === "status" &&
-                          (sortOrder === "asc" ? (
-                            <ArrowUp className="w-4 h-4" />
-                          ) : (
-                            <ArrowDown className="w-4 h-4" />
-                          ))}
-                        {sortField !== "status" && (
-                          <ArrowUpDown className="w-4 h-4 opacity-30" />
-                        )}
-                      </div>
-                    </th>
-                    <th
-                      onClick={() => toggleSort("priority")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        Priority
-                        {sortField === "priority" &&
-                          (sortOrder === "asc" ? (
-                            <ArrowUp className="w-4 h-4" />
-                          ) : (
-                            <ArrowDown className="w-4 h-4" />
-                          ))}
-                        {sortField !== "priority" && (
-                          <ArrowUpDown className="w-4 h-4 opacity-30" />
-                        )}
-                      </div>
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)]">
-                      Payment
-                    </th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-[var(--bz-text-1)]">
-                      Price
-                    </th>
-                    <th
-                      onClick={() => toggleSort("updated_at")}
-                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        Updated
-                        {sortField === "updated_at" &&
-                          (sortOrder === "asc" ? (
-                            <ArrowUp className="w-4 h-4" />
-                          ) : (
-                            <ArrowDown className="w-4 h-4" />
-                          ))}
-                        {sortField !== "updated_at" && (
-                          <ArrowUpDown className="w-4 h-4 opacity-30" />
-                        )}
-                      </div>
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)]">
-                      Actions
-                    </th>
+                    {(
+                      [
+                        { key: "id", label: "ID", sort: true },
+                        {
+                          key: "practice_type_code",
+                          label: "Process Type",
+                          sort: true,
+                        },
+                        { key: "client_name", label: "Client", sort: true },
+                        {
+                          key: "client_lead",
+                          label: "Assigned To",
+                          sort: true,
+                        },
+                        { key: "status", label: "Status", sort: true },
+                        { key: "priority", label: "Priority", sort: true },
+                        { key: "payment", label: "Payment" },
+                        { key: "price", label: "Price", right: true },
+                        { key: "updated_at", label: "Updated", sort: true },
+                        { key: "actions", label: "Actions" },
+                      ] as {
+                        key: string;
+                        label: string;
+                        sort?: boolean;
+                        right?: boolean;
+                      }[]
+                    ).map((col) =>
+                      col.sort ? (
+                        <th
+                          key={col.key}
+                          onClick={() => toggleSort(col.key as SortField)}
+                          className="px-4 py-3 text-left text-sm font-semibold text-[var(--bz-text-1)] cursor-pointer hover:bg-[var(--bz-base)]/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            {col.label}
+                            {sortField === col.key &&
+                              (sortOrder === "asc" ? (
+                                <ArrowUp className="w-4 h-4" />
+                              ) : (
+                                <ArrowDown className="w-4 h-4" />
+                              ))}
+                            {sortField !== col.key && (
+                              <ArrowUpDown className="w-4 h-4 opacity-30" />
+                            )}
+                          </div>
+                        </th>
+                      ) : (
+                        <th
+                          key={col.key}
+                          className={`px-4 py-3 ${col.right ? "text-right" : "text-left"} text-sm font-semibold text-[var(--bz-text-1)]`}
+                        >
+                          {col.label}
+                        </th>
+                      ),
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[rgba(255,255,255,0.05)]">
@@ -1836,19 +1703,9 @@ export default function PratichePage() {
                         <div className="inline-flex items-center gap-1.5">
                           <span
                             className={`w-2 h-2 rounded-full shrink-0 ${
-                              {
-                                inquiry: "bg-gray-400",
-                                waiting_documents: "bg-orange-400",
-                                sending_invoice: "bg-yellow-400",
-                                // Legacy states mapped to sending_invoice
-                                waiting_payment: "bg-yellow-400",
-                                on_process: "bg-blue-500",
-                                // Legacy states mapped to on_process
-                                submitted_to_gov: "bg-blue-500",
-                                approved: "bg-blue-500",
-                                completed: "bg-green-500",
-                              }[getStatusColumn(practice.status)] ||
-                              "bg-gray-400"
+                              STATUS_DOT_COLOR[
+                                getStatusColumn(practice.status)
+                              ] || "bg-gray-400"
                             }`}
                           />
                           <span className="text-[var(--bz-text-1)]">
@@ -1910,12 +1767,7 @@ export default function PratichePage() {
                             className="font-medium tabular-nums"
                             style={{ color: "var(--bz-accent)" }}
                           >
-                            {new Intl.NumberFormat("id-ID", {
-                              notation: "compact",
-                              currency: "IDR",
-                              style: "currency",
-                              maximumFractionDigits: 0,
-                            }).format(
+                            {formatIDRCompact(
                               practice.actual_price ||
                                 practice.quoted_price ||
                                 0,
@@ -1955,9 +1807,9 @@ export default function PratichePage() {
                                         : "transparent",
                                   color:
                                     ageDays > 14
-                                      ? "#f87171"
+                                      ? "var(--bz-error)"
                                       : ageDays > 7
-                                        ? "#fbbf24"
+                                        ? "var(--bz-warning)"
                                         : "var(--bz-text-2)",
                                 }}
                                 title={`Last updated: ${new Date(practice.updated_at).toLocaleDateString("en-US")}`}
@@ -1978,42 +1830,7 @@ export default function PratichePage() {
                           className="flex items-center gap-1"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {practice.client_phone && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const phone = practice.client_phone?.replace(
-                                  /\D/g,
-                                  "",
-                                );
-                                window.open(
-                                  `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
-                                  "_blank",
-                                );
-                              }}
-                              className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
-                              title="WhatsApp"
-                              aria-label="Contact via WhatsApp"
-                            >
-                              <MessageCircle className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {practice.client_email && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(
-                                  `mailto:${practice.client_email}`,
-                                  "_blank",
-                                );
-                              }}
-                              className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
-                              title="Email"
-                              aria-label="Send email"
-                            >
-                              <Mail className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <ContactQuickActions practice={practice} />
                           <button
                             className="p-1.5 rounded text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[rgba(255,255,255,0.1)] transition-colors"
                             onClick={(e) => handleMenuClick(e, practice)}
@@ -2166,13 +1983,7 @@ export default function PratichePage() {
                 <div className="flex items-center gap-2">
                   <span
                     className={`w-2 h-2 rounded-full ${
-                      {
-                        inquiry: "bg-gray-400",
-                        waiting_documents: "bg-orange-400",
-                        sending_invoice: "bg-yellow-400",
-                        on_process: "bg-blue-500",
-                        completed: "bg-green-500",
-                      }[option.column] || "bg-gray-400"
+                      STATUS_DOT_COLOR[option.column] || "bg-gray-400"
                     }`}
                   />
                   {option.label}
@@ -2210,10 +2021,10 @@ export default function PratichePage() {
                     color:
                       selectedPractice.payment_status === ps
                         ? ps === "paid"
-                          ? "#4ade80"
+                          ? "var(--bz-success)"
                           : ps === "partial"
-                            ? "#fbbf24"
-                            : "#f87171"
+                            ? "var(--bz-warning)"
+                            : "var(--bz-error)"
                         : "var(--bz-text-2)",
                     border:
                       selectedPractice.payment_status === ps
@@ -2241,21 +2052,21 @@ export default function PratichePage() {
                   {
                     value: "normal",
                     label: "Normal",
-                    color: "#9ca3af",
+                    color: "var(--bz-text-secondary)",
                     active: "rgba(156,163,175,0.25)",
                     border: "rgba(156,163,175,0.4)",
                   },
                   {
                     value: "high",
                     label: "High",
-                    color: "#fb923c",
+                    color: "var(--bz-warning)",
                     active: "rgba(249,115,22,0.25)",
                     border: "rgba(249,115,22,0.4)",
                   },
                   {
                     value: "urgent",
                     label: "Urgent",
-                    color: "#f87171",
+                    color: "var(--bz-error)",
                     active: "rgba(239,68,68,0.25)",
                     border: "rgba(239,68,68,0.4)",
                   },

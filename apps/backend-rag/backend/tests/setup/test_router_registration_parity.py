@@ -30,6 +30,7 @@ Cicatrix ref: .claude/rules/cicatrix-scars.md "Test infrastructure mock
 
 from __future__ import annotations
 
+import ast
 import inspect
 import re
 
@@ -53,6 +54,40 @@ def _extract_function_body(source: str, fn_name: str) -> str:
     if next_match:
         return source[start : start + 1 + next_match.start()]
     return source[start:]
+
+
+def _included_router_pairs(fn_name: str) -> set[tuple[str, str]]:
+    """Return (module, router_attr) pairs passed to api.include_router()."""
+    tree = ast.parse(_read_registration_source())
+    function = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == fn_name
+    )
+
+    imported_modules: dict[str, str] = {}
+    for node in ast.walk(function):
+        if isinstance(node, ast.ImportFrom) and node.module == "backend.app.routers":
+            for alias in node.names:
+                imported_modules[alias.asname or alias.name] = alias.name
+
+    pairs: set[tuple[str, str]] = set()
+    for node in ast.walk(function):
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+        if not isinstance(node.func, ast.Attribute) or node.func.attr != "include_router":
+            continue
+
+        router_arg = node.args[0]
+        if not isinstance(router_arg, ast.Attribute) or not isinstance(
+            router_arg.value, ast.Name
+        ):
+            continue
+
+        module_name = imported_modules.get(router_arg.value.id, router_arg.value.id)
+        pairs.add((module_name, router_arg.attr))
+
+    return pairs
 
 
 class TestChannelHealthRegression:
@@ -163,4 +198,94 @@ class TestIncludeFunctionsParity:
             f"This is the PRs #54/#55/#60 + #422 scar pattern — endpoints "
             f"would silently 404 in main_api production. Add explicit "
             f"`api.include_router(<name>.router)` in include_light_routers()."
+        )
+
+
+class TestPortalManifestRegistrationParity:
+    """Every `portal_*` manifest entry MUST be registered in BOTH include
+    functions — the exact class of the ONDA-3 S11 P0 scar (#1055 audit).
+
+    Unlike the general "manifest entry implies include_router" check (which
+    is out of scope because some routers mount via app_factory and would
+    false-positive), the portal_* family is fully explicit-registration:
+    all 13 portal routers are wired by hand in include_routers() +
+    include_light_routers(). This test is therefore false-positive-free for
+    that family.
+
+    Scar: portal_dashboard / portal_family / portal_notification_prefs were
+    in ROUTER_MANIFEST but never include_router()'d → 404 in production on
+    the client portal Family page, Notification settings, and dashboard
+    summary + iCal export. Same drift class as channel_health (#422→#424).
+    """
+
+    def _portal_manifest_names(self) -> set[str]:
+        from backend.app.setup.router_manifest import _API, _BOTH
+
+        return {
+            e.name
+            for e in ROUTER_MANIFEST
+            if e.name.startswith("portal_") and e.process_groups in (_API, _BOTH)
+        }
+
+    def test_every_portal_router_in_both_include_functions(self):
+        source = _read_registration_source()
+        body_main = _extract_function_body(source, "include_routers")
+        body_light = _extract_function_body(source, "include_light_routers")
+
+        pat = re.compile(r"include_router\s*\(\s*(\w+)\.router")
+        in_main = set(pat.findall(body_main))
+        in_light = set(pat.findall(body_light))
+
+        portal = self._portal_manifest_names()
+        missing_main = sorted(portal - in_main)
+        missing_light = sorted(portal - in_light)
+
+        assert not missing_main, (
+            f"portal_* routers in manifest but NOT in include_routers(): "
+            f"{missing_main} — would 404 in production. (ONDA-3 S11 P0 scar.)"
+        )
+        assert not missing_light, (
+            f"portal_* routers in manifest but NOT in include_light_routers(): "
+            f"{missing_light} — would 404 in main_api production. (ONDA-3 S11 P0 scar.)"
+        )
+
+
+class TestManifestApiRuntimeCoverage:
+    """Regression guard for manifest-only API routers.
+
+    Manifest entries with process_groups containing `api` are explicitly
+    registered in both runtime functions. Import-path module routers are
+    intentionally excluded because they mount through local aliases. Olympus is
+    the one documented light-process exception: router_registration.py keeps its
+    internal admin surface full-only.
+    """
+
+    LIGHT_PROCESS_EXCEPTIONS: frozenset[tuple[str, str]] = frozenset(
+        {("olympus", "internal_router")}
+    )
+
+    def _api_manifest_pairs(self) -> set[tuple[str, str]]:
+        return {
+            (entry.name, entry.attr)
+            for entry in ROUTER_MANIFEST
+            if "api" in entry.process_groups and entry.import_path is None
+        }
+
+    def test_api_manifest_entries_registered_in_full_and_light(self) -> None:
+        expected_full = self._api_manifest_pairs()
+        expected_light = expected_full - self.LIGHT_PROCESS_EXCEPTIONS
+
+        in_full = _included_router_pairs("include_routers")
+        in_light = _included_router_pairs("include_light_routers")
+
+        missing_full = sorted(expected_full - in_full)
+        missing_light = sorted(expected_light - in_light)
+
+        assert not missing_full, (
+            "_API/_BOTH manifest routers missing from include_routers(): "
+            f"{missing_full}"
+        )
+        assert not missing_light, (
+            "_API/_BOTH manifest routers missing from include_light_routers(): "
+            f"{missing_light}"
         )

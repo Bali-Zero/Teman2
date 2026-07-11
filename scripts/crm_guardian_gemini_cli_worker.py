@@ -27,9 +27,9 @@ Tradeoffs vs Playwright Web App driver:
 
 Flow per client:
   1. Resolve client + linked companies (active links, Drive folder set)
-  2. Aggregate file inventory cross-folder (cliente root + companies)
-  3. Compute fingerprint, skip if unchanged
-  4. Mark queue 'running'
+  2. Mark queue 'running' before Drive/Gemini work (queue mode)
+  3. Aggregate file inventory cross-folder (cliente root + companies)
+  4. Compute fingerprint, skip if unchanged
   5. Build prompt: L1_extraction_v2.md + <CROSS_FOLDER_CONTEXT> +
      <FILE_INVENTORY> table (file id, name, type, size, modifiedTime,
      source_folder_name) — Gemini reasons from metadata, not OCR
@@ -111,6 +111,10 @@ GEMINI_TIMEOUT_SECONDS = int(os.getenv("CRM_GUARDIAN_GEMINI_TIMEOUT_SECONDS", "9
 GEMINI_DEFAULT_MODEL: str | None = None  # agy uses CLI default model — does NOT support `-m` flag (prints help instead)
 STALE_RUNNING_SECONDS = int(os.getenv("CRM_GUARDIAN_STALE_RUNNING_SECONDS", "900"))
 DRIVE_PREFER_USER_OAUTH = _env_bool("CRM_GUARDIAN_DRIVE_PREFER_USER_OAUTH", False)
+DRIVE_API_MAX_ATTEMPTS = int(os.getenv("CRM_GUARDIAN_DRIVE_API_MAX_ATTEMPTS", "3"))
+DRIVE_API_RETRY_BASE_SECONDS = float(
+    os.getenv("CRM_GUARDIAN_DRIVE_API_RETRY_BASE_SECONDS", "1.0")
+)
 
 # Phase 1.5 OCR budget per client. Fresh OCR is capped to the number of
 # snippets we can actually render, with timeboxes to keep huge Drive folders
@@ -219,6 +223,48 @@ def _resolve_db_url() -> str:
     )
 
 
+# DB connect retry: this worker reaches Fly Postgres through a long-running flyctl
+# proxy on localhost:15432. When the WireGuard tunnel briefly flaps, asyncpg's
+# single-shot connect raised ConnectionDoesNotExistError mid-handshake and the whole
+# 5-min tick exited 1 (superscar #8 network flap — ~4 spurious FAILs/2.5h observed
+# 2026-06-21). A short bounded retry rides over the transient flap; a genuinely-down
+# proxy still surfaces after the last attempt.
+DB_CONNECT_MAX_ATTEMPTS = int(os.getenv("CRM_GUARDIAN_DB_CONNECT_ATTEMPTS", "4"))
+DB_CONNECT_BASE_DELAY_S = float(os.getenv("CRM_GUARDIAN_DB_CONNECT_BASE_DELAY", "1.0"))
+
+
+async def _connect_with_retry(asyncpg, db_url: str):
+    """Connect to Postgres with bounded exponential-backoff retry on transient
+    connection failures (proxy/WireGuard flap). Re-raises the last error once the
+    attempt budget is exhausted, so a real outage is NOT masked."""
+    exc = asyncpg.exceptions
+    retryable = tuple(
+        c for c in (
+            getattr(exc, "ConnectionDoesNotExistError", None),
+            getattr(exc, "CannotConnectNowError", None),
+            getattr(exc, "ConnectionFailureError", None),
+            getattr(exc, "InterfaceError", None),
+            getattr(exc, "PostgresConnectionError", None),
+        ) if c is not None
+    ) + (ConnectionError, OSError, asyncio.TimeoutError)
+    last_exc: Exception | None = None
+    for attempt in range(1, DB_CONNECT_MAX_ATTEMPTS + 1):
+        try:
+            return await asyncpg.connect(db_url)
+        except retryable as e:
+            last_exc = e
+            if attempt >= DB_CONNECT_MAX_ATTEMPTS:
+                break
+            delay = DB_CONNECT_BASE_DELAY_S * (2 ** (attempt - 1))
+            LOG.warning(
+                "DB connect transient failure attempt %d/%d: %s — retrying in %.1fs",
+                attempt, DB_CONNECT_MAX_ATTEMPTS, type(e).__name__, delay,
+            )
+            await asyncio.sleep(delay)
+    assert last_exc is not None
+    raise last_exc
+
+
 async def fetch_client(conn, client_id: int) -> dict[str, Any] | None:
     """Fetch a CRM client row. Schema canonical 2026-05-17."""
     row = await conn.fetchrow(
@@ -269,6 +315,54 @@ async def fetch_linked_companies(conn, client_id: int) -> list[dict[str, Any]]:
 # Drive helpers
 # ---------------------------------------------------------------------------
 
+def _is_retryable_drive_error(exc: Exception) -> bool:
+    status = getattr(getattr(exc, "resp", None), "status", None)
+    if status in {429, 500, 502, 503, 504}:
+        return True
+    text = str(exc).lower()
+    return any(
+        marker in text
+        for marker in (
+            "internal_failure",
+            "backenderror",
+            "ratelimitexceeded",
+            "rate limit",
+            "temporarily unavailable",
+            "service unavailable",
+            "timeout",
+        )
+    )
+
+
+def _drive_error_label(exc: Exception) -> str:
+    return str(exc).splitlines()[0][:180]
+
+
+async def _execute_drive_request(request: Any, *, operation: str) -> dict[str, Any]:
+    attempts = max(1, DRIVE_API_MAX_ATTEMPTS)
+    for attempt in range(1, attempts + 1):
+        try:
+            return request.execute(num_retries=1)
+        except TypeError as exc:
+            if "num_retries" not in str(exc):
+                raise
+            return request.execute()
+        except Exception as exc:
+            if attempt >= attempts or not _is_retryable_drive_error(exc):
+                raise
+            delay = DRIVE_API_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+            LOG.warning(
+                "Drive %s transient failure attempt %d/%d: %s",
+                operation,
+                attempt,
+                attempts,
+                _drive_error_label(exc),
+            )
+            await asyncio.sleep(delay)
+
+    raise RuntimeError(f"Drive {operation} failed without response")
+
+
 async def list_drive_files(
     drive_service,
     folder_id: str,
@@ -315,14 +409,17 @@ async def list_drive_files(
 
         page_token: str | None = None
         while True:
-            resp = drive_service.files().list(
-                q=f"'{fid}' in parents and trashed=false",
-                fields="nextPageToken, files(id, name, mimeType, modifiedTime, size)",
-                pageSize=200,
-                pageToken=page_token,
-                supportsAllDrives=True,
-                includeItemsFromAllDrives=True,
-            ).execute()
+            resp = await _execute_drive_request(
+                drive_service.files().list(
+                    q=f"'{fid}' in parents and trashed=false",
+                    fields="nextPageToken, files(id, name, mimeType, modifiedTime, size)",
+                    pageSize=200,
+                    pageToken=page_token,
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True,
+                ),
+                operation="files.list",
+            )
             for f in resp.get("files", []):
                 is_folder = f.get("mimeType") == FOLDER_MIME
                 if is_folder:
@@ -342,9 +439,12 @@ async def list_drive_files(
 
 async def resolve_folder_name(drive_service, folder_id: str) -> str | None:
     try:
-        meta = drive_service.files().get(
-            fileId=folder_id, fields="name", supportsAllDrives=True,
-        ).execute()
+        meta = await _execute_drive_request(
+            drive_service.files().get(
+                fileId=folder_id, fields="name", supportsAllDrives=True,
+            ),
+            operation="files.get",
+        )
         return meta.get("name")
     except Exception as e:
         LOG.warning("resolve_folder_name failed for %s: %s", folder_id, e)
@@ -1187,10 +1287,20 @@ async def run_one_client(
     run_id: str,
     *,
     model: str | None = None,
+    queue_mode: bool = False,
 ) -> dict[str, Any]:
     """Process one cliente Phase 1 cross-folder via gemini CLI."""
     started = datetime.now(timezone.utc)
     queue_id: int | None = None
+
+    if queue_mode:
+        queue_id = await queue_mark_running(conn, client_id, run_id)
+        if queue_id is None:
+            return {
+                "client_id": client_id,
+                "status": "skipped",
+                "error": "queue row not pending",
+            }
 
     client = await fetch_client(conn, client_id)
     if not client:
@@ -1223,6 +1333,23 @@ async def run_one_client(
                                     last_error=f"aggregate cross-folder: {e}")
         return {"client_id": client_id, "status": "error", "error": f"aggregate: {e}"}
 
+    if not flat_files:
+        folder_count = 1 + sum(
+            1
+            for company in linked_companies
+            for folder_key in ("google_drive_folder_id", "tax_dept_folder_id")
+            if company.get(folder_key)
+        )
+        error = f"drive aggregation returned no files across {folder_count} folder(s)"
+        await queue_mark_terminal(conn, queue_id, "error", last_error=error)
+        return {
+            "client_id": client_id,
+            "status": "error",
+            "error": error,
+            "linked_companies": len(linked_companies),
+            "files_total": 0,
+        }
+
     fingerprint = compute_cross_folder_fingerprint(flat_files)
     if client.get("ai_summary_file_hash") == fingerprint:
         await queue_mark_terminal(conn, queue_id, "skipped",
@@ -1233,8 +1360,6 @@ async def run_one_client(
             "linked_companies": len(linked_companies),
             "files_total": len(flat_files),
         }
-
-    queue_id = await queue_mark_running(conn, client_id, run_id)
 
     LOG.info(
         "[client=%d] files_total=%d cliente_root=%s linked=%d → ocr enrichment",
@@ -1434,7 +1559,7 @@ async def main() -> int:
     )
 
     db_url = _resolve_db_url()
-    conn = await asyncpg.connect(db_url)
+    conn = await _connect_with_retry(asyncpg, db_url)
 
     if args.client_id:
         targets = [args.client_id]
@@ -1483,7 +1608,7 @@ async def main() -> int:
         try:
             r = await run_one_client(
                 conn, drive_service, prompt_template,
-                cid, args.dry_run, run_id, model=args.model,
+                cid, args.dry_run, run_id, model=args.model, queue_mode=args.from_queue,
             )
         except Exception as e:
             LOG.exception("client %d crashed", cid)

@@ -33,6 +33,60 @@ import type {
 } from "./portal.types";
 import type { TimelineResponse } from "../types/timeline.types";
 
+type RawPortalMessage = {
+  id: number | string;
+  content: string;
+  direction?: "client_to_team" | "team_to_client";
+  from_team?: boolean;
+  sentBy?: string;
+  sent_by?: string;
+  subject?: string | null;
+  practiceId?: number | null;
+  practice_id?: number | null;
+  practiceName?: string | null;
+  practice_name?: string | null;
+  createdAt?: string;
+  created_at?: string;
+  readAt?: string | null;
+  read_at?: string | null;
+  is_read?: boolean;
+};
+
+type RawMessagesResponse = {
+  messages?: RawPortalMessage[];
+  total?: number;
+  unreadCount?: number;
+  unread_count?: number;
+};
+
+function normalizePortalMessage(message: RawPortalMessage): PortalMessage {
+  return {
+    id: String(message.id),
+    content: message.content,
+    direction:
+      message.direction ??
+      (message.from_team === true ? "team_to_client" : "client_to_team"),
+    sentBy: message.sentBy ?? message.sent_by ?? "",
+    subject: message.subject ?? undefined,
+    practiceId: message.practiceId ?? message.practice_id ?? undefined,
+    practiceName: message.practiceName ?? message.practice_name ?? undefined,
+    createdAt: message.createdAt ?? message.created_at ?? "",
+    readAt:
+      message.readAt ??
+      message.read_at ??
+      (message.is_read === true ? message.createdAt ?? message.created_at : undefined) ??
+      undefined,
+  };
+}
+
+function normalizeMessagesResponse(response: RawMessagesResponse): MessagesResponse {
+  return {
+    messages: (response.messages ?? []).map(normalizePortalMessage),
+    total: response.total ?? 0,
+    unreadCount: response.unreadCount ?? response.unread_count ?? 0,
+  };
+}
+
 export class PortalApi {
   constructor(private client: ApiClientBase) {}
 
@@ -322,21 +376,21 @@ export class PortalApi {
 
   async getMessages(limit = 50, offset = 0): Promise<MessagesResponse> {
     const response = await this.client.request<
-      PortalApiResponse<MessagesResponse>
+      PortalApiResponse<RawMessagesResponse>
     >(`/api/portal/messages?limit=${limit}&offset=${offset}`, {
       method: "GET",
     });
-    return response.data!;
+    return normalizeMessagesResponse(response.data!);
   }
 
   async sendMessage(request: SendMessageRequest): Promise<PortalMessage> {
     const response = await this.client.request<
-      PortalApiResponse<PortalMessage>
+      PortalApiResponse<RawPortalMessage>
     >("/api/portal/messages", {
       method: "POST",
       body: JSON.stringify(request),
     });
-    return response.data!;
+    return normalizePortalMessage(response.data!);
   }
 
   async markMessageRead(messageId: number): Promise<void> {
@@ -396,36 +450,6 @@ export class PortalApi {
       method: "GET",
     });
     return response.draft;
-  }
-
-  async submitLKPMData(data: {
-    client_id: number;
-    quarter: string;
-    year: number;
-    investment: Record<string, number>;
-    employment: { tki: number; tka: number };
-    revenue_quarterly?: number;
-    revenue_annual?: number;
-    obstacles?: string;
-    plans?: string;
-  }): Promise<{
-    draft_id: number;
-    quarter: string;
-    year: number;
-    realized_total: number;
-  }> {
-    const response = await this.client.request<
-      PortalApiResponse<{
-        draft_id: number;
-        quarter: string;
-        year: number;
-        realized_total: number;
-      }>
-    >("/api/v1/lkpm/submit-data", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-    return response.data!;
   }
 
   async approveLKPMDraft(draftId: number): Promise<{ success: boolean }> {

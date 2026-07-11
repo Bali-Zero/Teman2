@@ -9,7 +9,10 @@
 #   2. universal-ctags fallback (json output, parsed to compact form)
 #
 # Filters: apps/, scripts/, packages/
-# Excludes: .venv, node_modules, .worktrees, _archive, _deprecated, dist, build
+# Excludes: .venv, node_modules, .worktrees, _archive, _deprecated, dist, build,
+#           .next, .turbo, .vercel, coverage, *.min.js (build artifacts — 2026-06-13
+#           connectome audit: ctags fallback indexed minified webpack chunks,
+#           188kB of noise injected into every session instead of the 4-20kB target)
 # Target: 4-20kB output (~1-5k tokens)
 #
 # Kill-switch: REPOMAP_ENABLED=false → exit 0 (no-op)
@@ -51,6 +54,9 @@ build_with_aider() {
         aider_bin="$(command -v aider 2>/dev/null || true)"
     fi
     if [[ -z "$aider_bin" ]]; then
+        # Log the degradation: without this line the aider→ctags fallback is
+        # silent and the map quality drop goes unnoticed (W64: esistere ≠ armato).
+        echo "$LOG_PREFIX aider unavailable (pyenv bin missing + not on PATH) — falling back to ctags" >&2
         return 1
     fi
     echo "$LOG_PREFIX strategy=aider ($aider_bin)"
@@ -136,6 +142,17 @@ build_with_ctags() {
             --exclude='_deprecated' \
             --exclude='dist' \
             --exclude='build' \
+            --exclude='.next' \
+            --exclude='.turbo' \
+            --exclude='.vercel' \
+            --exclude='coverage' \
+            --exclude='*.min.js' \
+            --exclude='tests' \
+            --exclude='__tests__' \
+            --exclude='test_*.py' \
+            --exclude='*.test.ts' \
+            --exclude='*.test.tsx' \
+            --exclude='conftest.py' \
             --exclude='.git' \
             apps scripts packages 2>/dev/null \
         | python3 -c "
@@ -155,8 +172,10 @@ for line in sys.stdin:
     name = e.get('name', '')
     files[path].append((kind, name))
 
-# Cap output: top 200 files by entry count
-ranked = sorted(files.items(), key=lambda kv: -len(kv[1]))[:200]
+# Cap output: top 100 files by entry count (tests excluded upstream — a session
+# context map wants source signatures, not test-function rosters). 100 files
+# ≈ 35-40kB; the SessionStart inject pays this on every session, keep it lean.
+ranked = sorted(files.items(), key=lambda kv: -len(kv[1]))[:100]
 for path, entries in ranked:
     print(f'\n{path}:')
     # Group by kind
@@ -164,7 +183,7 @@ for path, entries in ranked:
     for k, n in entries:
         by_kind[k].append(n)
     for k in sorted(by_kind.keys()):
-        names = sorted(set(by_kind[k]))[:20]  # cap per kind
+        names = sorted(set(by_kind[k]))[:15]  # cap per kind
         print(f'  {k}: {\", \".join(names)}')
 "
     } > "$OUTPUT_TMP"

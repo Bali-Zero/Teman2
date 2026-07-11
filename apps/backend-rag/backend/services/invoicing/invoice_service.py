@@ -20,6 +20,7 @@ import httpx
 from googleapiclient.errors import HttpError as GoogleHttpError
 
 from backend.app.utils.logging_utils import get_logger
+from backend.core.cache import invalidate_crm_stats
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 from backend.services.invoicing.invoice_generator import InvoiceGenerator
 from backend.services.notifications.email_audit import (
@@ -28,7 +29,7 @@ from backend.services.notifications.email_audit import (
     notify_email_failure_critical,
     record_email_result,
 )
-from backend.services.notifications.email_branding import logo_header_html, team_email_html
+from backend.services.notifications.email_branding import team_email_html
 from backend.services.notifications.email_http import get_email_client
 
 logger = get_logger(__name__)
@@ -36,8 +37,10 @@ logger = get_logger(__name__)
 # Accounting email for invoice notifications
 ACCOUNTING_EMAIL = "asya@balizero.com"
 
-# CC on all invoice emails: owner + accounting
-INVOICE_CC_EMAILS = ["zero@balizero.com", "asya@balizero.com"]
+# CC on all invoice emails: accounting (Antonello 2026-06-17 — dropped
+# zero@ so the owner inbox no longer receives every single invoice;
+# accounting owns invoices, the assigned lead is appended separately).
+INVOICE_CC_EMAILS = ["asya@balizero.com"]
 
 # Internal email API (sender is always zantara@balizero.com)
 _EMAIL_API_URL = os.getenv(
@@ -271,7 +274,7 @@ class InvoiceAutomationService:
                 "accounting_notified": asya_notified,
             }
 
-        except (asyncpg.PostgresError, OSError) as error:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as error:
             logger.warning(
                 f"Invoice automation failed for practice {practice_id} "
                 f"({type(error).__name__}): {error}",
@@ -294,8 +297,10 @@ class InvoiceAutomationService:
     ) -> bool:
         """Send invoice email to client via internal email API (sender: zantara@balizero.com)."""
         subject = f"Invoice {invoice_number} from Bali Zero"
+        # The Bali Zero logo lives on the invoice PDF attachment (top-right,
+        # rendered by invoice_generator.py), NOT in the email body — Antonello
+        # 2026-06-17: "hai fatto html sul messaggio email, non su allegato".
         body_html = (
-            f"{logo_header_html()}"
             f"<p>Dear {client_name},</p>"
             f"<p>Thank you for choosing Bali Zero for your business in Indonesia.</p>"
             f"<p>Please find your invoice attached to this email.</p>"
@@ -306,7 +311,7 @@ class InvoiceAutomationService:
             f"<p>Payment can be made via bank transfer to the details provided on the invoice.</p>"
             f"<p>We look forward to serving you!</p>"
             f"<p>Best regards,<br>Zantara — Bali Zero Team</p>"
-            f"<hr><small>For support: asya@balizero.com | WhatsApp: +62 822 6459 9868</small>"
+            f"<hr><small>For support: asya@balizero.com | WhatsApp: +62 821 3465 159</small>"
         )
 
         cc_emails = list(INVOICE_CC_EMAILS)
@@ -326,6 +331,10 @@ class InvoiceAutomationService:
             "body": body_html,
             "cc": ", ".join(cc_emails),
             "attachments": [{"name": filename, "content": pdf_b64}],
+            # Context for the endpoint's @balizero.com CC hard rule
+            # (Antonello 2026-06-17): invoice → asya@ accounting.
+            "email_type": "invoice_client",
+            "assigned_to": team_member_email,
         }
         client = await get_email_client()
         response = await client.post(
@@ -485,6 +494,7 @@ class InvoiceAutomationService:
                 documents,
                 practice_id,
             )
+            await invalidate_crm_stats()  # F32
 
             # ── 3. invoices table write (primary going forward) ───────────────
             if practice_row:

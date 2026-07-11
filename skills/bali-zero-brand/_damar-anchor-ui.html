@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WR2 Anchor Picker</title>
+<style>
+  :root {
+    --color-bg-antracite: #373D42;
+    --color-bg-black: #000000;
+    --color-text-white: #FFFFFF;
+    --color-text-muted: #9CA3AF;
+    --color-accent-yellow: #F4C430;
+    --color-status-red: #C8102E;
+    --color-status-green: #4ADE80;
+    --color-card-bg: #1C1F26;
+    --font-family: 'Montserrat', 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--color-bg-antracite);
+    color: var(--color-text-white);
+    font-family: var(--font-family);
+    padding: 24px;
+    min-height: 100vh;
+  }
+  header {
+    margin-bottom: 24px; padding-bottom: 16px;
+    border-bottom: 2px solid var(--color-accent-yellow);
+  }
+  h1 {
+    font-size: 24px; font-weight: 800; letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  h1 .accent { color: var(--color-accent-yellow); }
+  .intro {
+    margin-top: 8px; color: var(--color-text-muted);
+    font-size: 14px; line-height: 1.6; max-width: 820px;
+  }
+
+  .anchors-row {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px;
+    margin-bottom: 32px; padding: 16px;
+    background: var(--color-card-bg); border-radius: 8px;
+  }
+  .anchor-slot {
+    text-align: center; cursor: pointer;
+    border: 2px dashed var(--color-text-muted); border-radius: 4px;
+    padding: 12px 8px; transition: all 0.15s;
+    position: relative;
+  }
+  .anchor-slot:hover { border-color: var(--color-accent-yellow); }
+  .anchor-slot.assigned { border-style: solid; border-color: var(--color-status-green); }
+  .anchor-slot.selected { border-color: var(--color-accent-yellow); border-style: solid; background: rgba(244, 196, 48, 0.1); }
+  .anchor-slot .label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--color-accent-yellow);
+    margin-bottom: 8px;
+  }
+  .anchor-slot .preview {
+    width: 100%; aspect-ratio: 4/5; background: var(--color-bg-black);
+    border-radius: 2px; overflow: hidden; margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--color-text-muted); font-size: 11px;
+  }
+  .anchor-slot .preview img { width: 100%; height: 100%; object-fit: cover; }
+  .anchor-slot .source {
+    font-size: 10px; color: var(--color-text-muted);
+  }
+
+  .filter {
+    display: flex; gap: 8px; margin-bottom: 16px; align-items: center;
+    font-size: 13px;
+  }
+  .filter span { color: var(--color-text-muted); }
+  .filter select {
+    background: var(--color-bg-black); color: var(--color-text-white);
+    border: 1px solid var(--color-text-muted); padding: 6px 10px;
+    border-radius: 4px; font-family: var(--font-family);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .card {
+    background: var(--color-card-bg); border-radius: 4px; overflow: hidden;
+    cursor: pointer; transition: all 0.15s;
+    border: 2px solid transparent;
+  }
+  .card:hover { border-color: var(--color-accent-yellow); }
+  .card.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .card .thumb { width: 100%; aspect-ratio: 4/5; background: var(--color-bg-black); }
+  .card .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .card .meta {
+    padding: 8px 10px; font-size: 11px; color: var(--color-text-muted);
+  }
+  .card .meta b { color: var(--color-text-white); display: block; margin-bottom: 2px; }
+
+  .help-link {
+    margin-top: 24px; padding: 12px 16px; background: var(--color-bg-black);
+    border-left: 3px solid var(--color-accent-yellow); border-radius: 4px;
+    font-size: 13px; color: var(--color-text-muted); line-height: 1.5;
+  }
+  .help-link a { color: var(--color-accent-yellow); text-decoration: none; }
+
+  .modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100;
+  }
+  .modal.open { display: flex; }
+  .modal-card {
+    background: var(--color-card-bg); padding: 32px; border-radius: 8px;
+    max-width: 480px; width: 100%;
+    border: 2px solid var(--color-accent-yellow);
+  }
+  .modal-card h2 { margin-bottom: 16px; font-size: 20px; }
+  .modal-card p { color: var(--color-text-muted); margin-bottom: 16px; line-height: 1.6; }
+  .modal-card .modal-actions {
+    display: flex; gap: 12px; margin-top: 16px;
+  }
+  .modal-card button {
+    flex: 1;
+    background: transparent; color: var(--color-text-white);
+    border: 1px solid var(--color-text-muted); padding: 10px 18px;
+    border-radius: 4px; font-family: var(--font-family); font-weight: 700;
+    text-transform: uppercase; cursor: pointer; font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .modal-card button.primary {
+    background: var(--color-accent-yellow); color: var(--color-bg-black);
+    border-color: var(--color-accent-yellow);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>PICK <span class="accent">5 ANCHOR</span> IMAGES</h1>
+  <div class="intro">
+    Each topic family (visa, tax, property, HR, regulatory) needs ONE photo that defines the
+    look of all future carousels in that family. Pick photos that look like Bali Zero — dark,
+    cinematic, no smiles, no palm trees. The agent uses these as a style reference.
+  </div>
+</header>
+
+<div class="anchors-row" id="anchors-row"></div>
+
+<div class="filter">
+  <span>Filter past carousels by domain:</span>
+  <select id="domain-filter" onchange="renderGrid()">
+    <option value="">All</option>
+    <option value="visa">visa</option>
+    <option value="tax">tax</option>
+    <option value="property">property</option>
+    <option value="regulatory">regulatory</option>
+    <option value="health">health</option>
+    <option value="brand">brand</option>
+    <option value="unknown">untagged</option>
+  </select>
+  <span id="grid-count" style="margin-left: auto;">0 carousels</span>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="help-link">
+  <b>How to use</b>: Click an anchor slot at the top to start picking. Then click any past
+  carousel below to assign it as that anchor. The agent will use the cover slide of that
+  carousel as the visual reference for all future carousels in that domain.
+  <a href="/_damar-anchor-guide-EN.md" target="_blank">Read the simple guide</a> for examples
+  of good vs bad anchor choices.
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <h2 id="modal-title">Confirm anchor</h2>
+    <p id="modal-body"></p>
+    <div class="modal-actions">
+      <button onclick="closeModal()">CANCEL</button>
+      <button class="primary" onclick="confirmAssign()">YES, ASSIGN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DOMAINS = ["visa", "tax", "property", "regulatory", "health"];
+
+let pastItems = [];
+let anchors = {};
+let selectedDomain = null;
+let pendingAssign = null;
+
+async function load() {
+  const [pastRes, anchorRes] = await Promise.all([
+    fetch('/api/past'),
+    fetch('/api/anchors'),
+  ]);
+  pastItems = await pastRes.json();
+  anchors = await anchorRes.json();
+  renderAnchors();
+  renderGrid();
+}
+
+function renderAnchors() {
+  const html = DOMAINS.map(d => {
+    const a = anchors[d];
+    const isSelected = selectedDomain === d;
+    const isAssigned = !!a;
+    const cls = `anchor-slot ${isSelected ? 'selected' : ''} ${isAssigned ? 'assigned' : ''}`;
+    return `
+      <div class="${cls}" onclick="selectDomain('${d}')">
+        <div class="label">${d}</div>
+        <div class="preview">
+          ${a ? `<img src="/${a.path}?t=${Date.now()}" alt="${d}">` : 'no anchor'}
+        </div>
+        <div class="source">
+          ${a ? `from ${a.source_bucket?.slice(0, 24)}...` : 'click to pick →'}
+        </div>
+      </div>
+    `;
+  }).join('');
+  // Add a "all done" tile
+  const done = DOMAINS.every(d => anchors[d]);
+  document.getElementById('anchors-row').innerHTML = html + `
+    <div class="anchor-slot ${done ? 'assigned' : ''}" style="cursor: default;">
+      <div class="label">${done ? '✓ DONE' : 'PROGRESS'}</div>
+      <div class="preview" style="border: none;">
+        ${DOMAINS.filter(d => anchors[d]).length} of ${DOMAINS.length}
+      </div>
+      <div class="source">${done ? 'all anchors set!' : 'pick the rest'}</div>
+    </div>
+  `;
+}
+
+function selectDomain(d) {
+  selectedDomain = d;
+  renderAnchors();
+}
+
+function renderGrid() {
+  const filterDomain = document.getElementById('domain-filter').value;
+  let filtered = pastItems.filter(it => !it.metadata.skipped_by_damar);
+  if (filterDomain === 'unknown') {
+    filtered = filtered.filter(it => !it.is_tagged);
+  } else if (filterDomain) {
+    filtered = filtered.filter(it => it.metadata.domain === filterDomain);
+  }
+  document.getElementById('grid-count').textContent = `${filtered.length} carousels`;
+
+  const html = filtered.map(it => {
+    const cover = it.cover_path ? `/${it.cover_path}` : null;
+    const topic = it.metadata.topic_slug && it.metadata.topic_slug !== 'unknown'
+      ? it.metadata.topic_slug : 'untagged';
+    const domain = it.metadata.domain && it.metadata.domain !== 'unknown'
+      ? it.metadata.domain : '?';
+    return `
+      <div class="card ${selectedDomain ? '' : 'disabled'}" onclick="pickCarousel('${escapeJs(it.bucket)}')">
+        <div class="thumb">${cover ? `<img src="${cover}" alt="">` : ''}</div>
+        <div class="meta">
+          <b>${escapeHtml(topic)}</b>
+          ${escapeHtml(domain)}
+        </div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('grid').innerHTML = html || '<div style="grid-column: 1/-1; text-align: center; color: var(--color-text-muted); padding: 60px;">No carousels match this filter.</div>';
+}
+
+function pickCarousel(bucket) {
+  if (!selectedDomain) {
+    alert('First click an anchor slot at the top to pick which domain you are setting.');
+    return;
+  }
+  pendingAssign = {bucket, domain: selectedDomain};
+  document.getElementById('modal-title').textContent = `Assign as ${selectedDomain.toUpperCase()} anchor?`;
+  const existing = anchors[selectedDomain];
+  document.getElementById('modal-body').innerHTML = `
+    Set this carousel's cover as the reference photo for all <b>${selectedDomain}</b> carousels.
+    ${existing ? '<br><br><b>Note:</b> a previous anchor will be archived (kept for safety).' : ''}
+  `;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  pendingAssign = null;
+}
+
+async function confirmAssign() {
+  if (!pendingAssign) return;
+  try {
+    const res = await fetch('/api/assign-anchor', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        domain: pendingAssign.domain,
+        source_bucket: pendingAssign.bucket,
+        source_slide: 1,
+      }),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      alert(`Assign failed: ${data.error}`);
+      return;
+    }
+    closeModal();
+    selectedDomain = null;
+    await load();
+  } catch (e) {
+    alert(`Assign failed: ${e.message}`);
+  }
+}
+
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeJs(s) { return String(s).replace(/['\\]/g, c => '\\' + c); }
+
+load();
+</script>
+
+</body>
+</html>

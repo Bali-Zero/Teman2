@@ -87,6 +87,7 @@ Never `brew install postgres@17` / `docker run qdrant` on M5. Embedding model is
 ### HARD RULE R4 — OSINT / WhatsApp data NEVER leaves the Pro (Symbiosis Law 2)
 
 The WhatsApp/OSINT mirror lives **only** in the Pro's local Postgres. M5 must **NEVER** copy, replicate, or sync it to disk.
+This is a raw-data movement boundary, not a blanket ban on LLMs processing authorized operational context. For every LLM in the system, Law 2 means: do not transcribe or persist client PII/OSINT in cleartext in outputs, memories, skills, logs, reports, alerts, prompts saved for reuse, or shared artifacts. Use IDs, hashes, placeholders, or redaction.
 
 - View it: dashboard `http://100.107.22.111:7790` (open in M5 browser) — read-only.
 - Raw SQL on OSINT: only via the dev tunnel (`ssh -L 5432:localhost:5432 pro`), querying the Pro's DB — never a local copy.

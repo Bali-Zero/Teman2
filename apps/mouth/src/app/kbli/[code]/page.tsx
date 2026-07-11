@@ -8,11 +8,17 @@ import {
   getSectionMeta,
   getHeroStyle,
 } from "@/lib/kbli-data";
-import { getGoldContent } from "@/lib/kbli-data.server";
+import {
+  getGoldContent,
+  getKbliDatasetLastModified,
+} from "@/lib/kbli-data.server";
+import { formatTimeframe } from "@/lib/kbli-derive";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
 import { TransitionBadge } from "@/components/kbli/TransitionBadge";
+import { BaliStatusBadge } from "@/components/kbli/BaliStatusBadge";
+import { cn } from "@/lib/utils";
 import { KBLICard } from "@/components/kbli/KBLICard";
 import {
   KBLICodeJsonLd,
@@ -20,12 +26,15 @@ import {
   KBLIFaqJsonLd,
 } from "@/components/kbli/KBLIStructuredData";
 import { LicensingSection } from "@/components/kbli/LicensingSection";
+import { KBLIBaliContext } from "@/components/kbli/KBLIBaliContext";
+import { KBLIYoullAlsoNeed } from "@/components/kbli/KBLIYoullAlsoNeed";
 import { getRelatedArticle } from "@/lib/kbli-articles";
 import { GOLD_HERO_IMAGES } from "@/lib/kbli-hero-images";
 import Link from "next/link";
 import { MarkdownClient } from "@/components/kbli/MarkdownClient";
 import { KBLIPageTracker } from "@/components/kbli/KBLIPageTracker";
 import { KBLIConsultationCTA } from "@/components/kbli/KBLIConsultationCTA";
+import { KBLICommonQuestions } from "@/components/kbli/KBLICommonQuestions";
 import { FunnelFrame } from "@balizero/core";
 
 const ZantaraChat = lazy(() =>
@@ -34,13 +43,16 @@ const ZantaraChat = lazy(() =>
   })),
 );
 
-// ISR: Generate pages on-demand, cache for 1 week
-export const dynamicParams = true;
-export const revalidate = 604800;
+// Full SSG: every code is pre-rendered at build time. With ISR-on-demand the
+// Vercel cache reset on each deploy (several/day) served Googlebot cold SSR
+// renders — the TTFB spikes behind the /kbli/* crawl-priority gap (GSC
+// clean-window investigation 2026-07-03). dynamicParams=false also turns
+// invalid codes (e.g. /kbli/10314) into true 404s instead of soft-404 renders.
+export const dynamicParams = false;
 
 export async function generateStaticParams() {
   const codes = getAllCodes();
-  return codes.slice(0, 50).map((c) => ({ code: c.code }));
+  return codes.map((c) => ({ code: c.code }));
 }
 
 export async function generateMetadata({
@@ -56,21 +68,48 @@ export async function generateMetadata({
     kbli.pma.status === "open"
       ? "100% Foreign Ownership"
       : kbli.pma.status === "restricted"
-        ? `Restricted (max ${kbli.pma.maxForeign}% foreign)`
+        ? kbli.pma.capSpecial
+          ? "Restricted (special distribution conditions)"
+          : `Restricted (max ${kbli.pma.maxForeign}% foreign)`
         : "Closed to Foreign Investment";
 
-  const title = `KBLI ${kbli.code} — ${kbli.titleEn} | KBLI 2025 Navigator`;
-  const description = `KBLI 2025: ${kbli.code} — ${kbli.titleEn} (${kbli.titleId}). ${pmaLabel}. Full licensing requirements, PMA rules, and risk level under Indonesian business classification 2025. Expert setup via Bali Zero.`;
+  // Metadata surface uses titleEnMeta (frozen to the curated-legacy EN map —
+  // SEO firebreak PR #1967); the page body below uses the full-coverage titleEn.
+  const metaTitleEn = kbli.titleEnMeta ?? kbli.titleEn;
+  const title = `KBLI ${kbli.code}: ${metaTitleEn} — Indonesia Business Guide 2025`;
+  const description = `${metaTitleEn} (KBLI ${kbli.code}) — ${pmaLabel}. Risk level, licensing requirements, and PMA rules under Indonesian business classification 2026. Setup via Bali Zero.`;
+
+  // Never repeat the Indonesian title twice when no distinct English title exists.
+  const keywordTitles =
+    metaTitleEn === kbli.titleId
+      ? kbli.titleId
+      : `${kbli.titleId}, ${metaTitleEn}`;
 
   return {
     title,
     description,
-    keywords: `KBLI ${kbli.code}, ${kbli.titleId}, ${kbli.titleEn}, KBLI 2025, Indonesian business classification, PT PMA Bali, company registration Indonesia`,
+    keywords: `KBLI ${kbli.code}, ${keywordTitles}, KBLI 2025, Indonesian business classification, PT PMA Bali, company registration Indonesia`,
     openGraph: {
       title,
       description,
       type: "article",
       url: `https://balizero.com/kbli/${kbli.code}`,
+      images: [
+        {
+          // Deterministic editorial cover — kbli-cover-design.ts DNA rendered
+          // at request time by /api/og/kbli/[code] (cached immutable).
+          url: `https://balizero.com/api/og/kbli/${kbli.code}`,
+          width: 1200,
+          height: 630,
+          alt: `KBLI ${kbli.code} — ${metaTitleEn}`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [`https://balizero.com/api/og/kbli/${kbli.code}`],
     },
     alternates: {
       canonical: `https://balizero.com/kbli/${kbli.code}`,
@@ -112,7 +151,7 @@ export default async function KBLICodePage({
   return (
     <>
       <KBLIPageTracker code={kbli.code} tier={kbli.tier} />
-      <KBLICodeJsonLd code={kbli} />
+      <KBLICodeJsonLd code={kbli} dateModified={getKbliDatasetLastModified()} />
       <KBLIFaqJsonLd code={kbli} />
       <KBLIBreadcrumbJsonLd
         items={[
@@ -137,7 +176,7 @@ export default async function KBLICodePage({
         sessionId="SSR"
         trust={{ clientCount: 5000, rating: 4.9, responseMinutes: 15 }}
       >
-        <article className="pb-16">
+        <article className="pb-28">
           {/* BREADCRUMB */}
           <KBLIBreadcrumb items={breadcrumbs} />
 
@@ -237,16 +276,77 @@ export default async function KBLICodePage({
                 </p>
               )}
 
+              {/* PMA verdict banner — the binding answer for a PT PMA, aligned with the native app */}
+              {(() => {
+                const baliBlocked = !!kbli.baliL4?.blocked;
+                const nationallyClosed =
+                  !kbli.pma.capSpecial &&
+                  (kbli.pma.status === "closed" || kbli.pma.maxForeign === 0);
+                const pmaBlocked = baliBlocked || nationallyClosed;
+                return (
+                  <>
+                    <div
+                      className={cn(
+                        "mt-5 rounded-xl border px-4 py-3",
+                        pmaBlocked
+                          ? "border-[var(--kbli-pma-closed)]/30 bg-[var(--kbli-pma-closed-bg)]"
+                          : "border-[var(--kbli-pma-open)]/30 bg-[var(--kbli-pma-open-bg)]",
+                      )}
+                    >
+                      <p
+                        className={cn(
+                          "text-base font-semibold",
+                          pmaBlocked
+                            ? "text-[var(--kbli-pma-closed)]"
+                            : "text-[var(--kbli-pma-open)]",
+                        )}
+                      >
+                        {nationallyClosed
+                          ? `Closed to PMA (national)${kbli.pma.routeTo ? ` — route to the private code ${kbli.pma.routeTo}` : ""}`
+                          : baliBlocked
+                            ? "In Bali: a PT PMA cannot register this code"
+                            : "In Bali: open to a PT PMA"}
+                      </p>
+                    </div>
+                    {baliBlocked && !nationallyClosed && (
+                      <div className="mt-3 rounded-xl border border-[var(--kbli-pma-restricted)]/30 bg-[var(--kbli-pma-restricted-bg)] px-4 py-3">
+                        <p className="text-sm font-semibold text-[var(--kbli-pma-restricted)]">
+                          National procedure — does not apply to a PT PMA in
+                          Bali
+                        </p>
+                        <p className="mt-1 text-sm text-[var(--kbli-text-muted)]">
+                          In Bali this activity is reserved for MSMEs; a PT PMA
+                          (large enterprise) cannot register it. The national
+                          procedure below applies only to non-PMA operators.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
               {/* Badge strip */}
               <div className="mt-5 flex flex-wrap gap-2.5">
                 <PMABadge
                   status={kbli.pma.status}
                   maxForeign={kbli.pma.maxForeign}
+                  capSpecial={kbli.pma.capSpecial}
+                  capVerified={kbli.pma.capVerified}
+                  baliBlocked={!!kbli.baliL4?.blocked}
                 />
                 {kbli.licensing[0] && (
                   <RiskBadge category={kbli.licensing[0].riskCategory} />
                 )}
                 <TransitionBadge status={kbli.transition.mappingStatus} />
+                {kbli.baliL4 && (
+                  <BaliStatusBadge
+                    status={kbli.baliL4.status}
+                    reason={kbli.baliL4.reason}
+                    confidence={kbli.baliL4.confidence}
+                    needsReview={kbli.baliL4.needsReview}
+                    pmaStatus={kbli.pma.status}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -334,68 +434,7 @@ export default async function KBLICodePage({
                     </h2>
                   </div>
 
-                  <div className="space-y-5" style={{ maxWidth: "780px" }}>
-                    {gold.baliContext.split(/\n---\n/).map((block, idx) => {
-                      const trimmed = block.trim();
-                      if (!trimmed) return null;
-
-                      const isMistakes = trimmed
-                        .toLowerCase()
-                        .includes("common client mistakes");
-                      const isNumbers =
-                        trimmed.toLowerCase().includes("governor") ||
-                        trimmed.toLowerCase().includes("numbers");
-                      const isReality =
-                        trimmed.toLowerCase().includes("reality") ||
-                        trimmed.toLowerCase().includes("market");
-
-                      const titleMatch = trimmed.match(/^\*\*([^*]+?):\*\*/);
-                      const cardTitle = titleMatch ? titleMatch[1] : null;
-                      const bodyText = cardTitle
-                        ? trimmed.replace(/^\*\*[^*]+?:\*\*\s*/, "")
-                        : trimmed;
-
-                      const accentColor = isMistakes
-                        ? "var(--kbli-pma-restricted)"
-                        : "var(--kbli-accent)";
-                      const blockIcon = isMistakes
-                        ? "⚠"
-                        : isNumbers
-                          ? "📊"
-                          : isReality
-                            ? "🏝"
-                            : "💡";
-                      const blockBg = isMistakes
-                        ? "rgba(232, 168, 73, 0.03)"
-                        : "rgba(212, 132, 90, 0.02)";
-
-                      return (
-                        <div
-                          key={idx}
-                          className="rounded-xl p-5"
-                          style={{
-                            background: blockBg,
-                            border: `1px solid ${isMistakes ? "rgba(232, 168, 73, 0.1)" : "var(--kbli-border)"}`,
-                          }}
-                        >
-                          {cardTitle && (
-                            <div className="mb-4 flex items-center gap-2.5">
-                              <span className="text-base">{blockIcon}</span>
-                              <span
-                                className="text-sm font-bold tracking-wide"
-                                style={{ color: accentColor }}
-                              >
-                                {cardTitle}
-                              </span>
-                            </div>
-                          )}
-                          <div className="kbli-prose">
-                            <MarkdownClient>{bodyText}</MarkdownClient>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <KBLIBaliContext baliContext={gold.baliContext} />
                 </div>
               </section>
 
@@ -645,6 +684,76 @@ export default async function KBLICodePage({
                       </div>
                     </div>
                   )}
+
+                  {/* BALI CONTEXT — shared rendering with the gold layout */}
+                  {kbli.intel_2026.baliContext && (
+                    <section className="relative -mx-4 mb-6 sm:-mx-6 lg:-mx-8">
+                      <div
+                        className="absolute inset-0 rounded-2xl"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, rgba(212, 132, 90, 0.04), rgba(139, 156, 247, 0.02), transparent 60%)",
+                        }}
+                      />
+                      <div className="relative px-6 py-10 sm:px-8 lg:px-10">
+                        <div className="mb-8 flex items-center gap-3">
+                          <div
+                            className="h-8 w-1 rounded-full"
+                            style={{
+                              background:
+                                "linear-gradient(to bottom, var(--kbli-accent), var(--kbli-accent2))",
+                            }}
+                          />
+                          <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-[var(--kbli-accent)]">
+                            Bali Intelligence
+                          </h2>
+                        </div>
+                        <KBLIBaliContext
+                          baliContext={kbli.intel_2026.baliContext}
+                        />
+                      </div>
+                    </section>
+                  )}
+
+                  {/* WHO THIS IS FOR */}
+                  {kbli.intel_2026.whoThisIsFor && (
+                    <div
+                      className="rounded-xl p-5 mb-6"
+                      style={{
+                        background: "var(--kbli-bg-elevated)",
+                        border: "1px solid var(--kbli-border)",
+                      }}
+                    >
+                      <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-[var(--foreground-muted)]">
+                        Who This Is For
+                      </h3>
+                      <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+                        {kbli.intel_2026.whoThisIsFor}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* YOU'LL ALSO NEED */}
+                  {kbli.intel_2026.youllAlsoNeed && (
+                    <section
+                      className="mb-6 rounded-xl border border-[var(--border)] overflow-hidden"
+                      style={{ background: "var(--kbli-bg-elevated)" }}
+                    >
+                      <div
+                        className="px-5 py-3.5 border-b border-[var(--border)]"
+                        style={{ background: "var(--kbli-bg-surface)" }}
+                      >
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--kbli-accent)]">
+                          You&apos;ll Also Need
+                        </span>
+                      </div>
+                      <div className="px-5 py-4">
+                        <KBLIYoullAlsoNeed
+                          text={kbli.intel_2026.youllAlsoNeed}
+                        />
+                      </div>
+                    </section>
+                  )}
                 </>
               ) : (
                 <section className="pb-10">
@@ -713,11 +822,15 @@ export default async function KBLICodePage({
                             Foreign Ownership
                           </span>
                           <span className="text-sm font-semibold text-[var(--foreground)]">
-                            {kbli.pma.status === "open"
-                              ? `${kbli.pma.maxForeign}% Open`
-                              : kbli.pma.status === "restricted"
-                                ? `Max ${kbli.pma.maxForeign}%`
-                                : "Closed"}
+                            {kbli.pma.capSpecial
+                              ? "Restricted · special conditions"
+                              : kbli.pma.status === "open"
+                                ? `${kbli.pma.maxForeign}% Open`
+                                : kbli.pma.status === "restricted"
+                                  ? kbli.pma.capVerified
+                                    ? `Max ${kbli.pma.maxForeign}%`
+                                    : `≈${kbli.pma.maxForeign}% (unverified)`
+                                  : "Closed"}
                           </span>
                         </div>
                         <div
@@ -728,7 +841,8 @@ export default async function KBLICodePage({
                             Processing
                           </span>
                           <span className="text-sm font-semibold text-[var(--foreground)]">
-                            {kbli.licensing[0].timeframe || "Otomatis"}
+                            {formatTimeframe(kbli.licensing[0].timeframe) ??
+                              "Through OSS"}
                           </span>
                         </div>
                       </div>
@@ -757,15 +871,24 @@ export default async function KBLICodePage({
                     2020 → 2025
                   </span>
                   <div className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
-                    <span>Previous codes: </span>
+                    <span>Previous codes (KBLI 2020): </span>
                     {kbli.transition.previousCodes.map((c, i) => (
                       <span key={c}>
-                        <Link
-                          href={`/kbli/${c}`}
-                          className="font-mono font-bold text-[var(--kbli-accent)] hover:text-[var(--kbli-accent-hover)]"
-                        >
-                          {c}
-                        </Link>
+                        {/* A 2020 code only gets a link when it still exists as a
+                            2025 code — dynamicParams=false turns every other
+                            /kbli/<oldcode> into a hard 404. */}
+                        {getCode(c) ? (
+                          <Link
+                            href={`/kbli/${c}`}
+                            className="font-mono font-bold text-[var(--kbli-accent)] hover:text-[var(--kbli-accent-hover)]"
+                          >
+                            {c}
+                          </Link>
+                        ) : (
+                          <span className="font-mono font-bold text-[var(--foreground-secondary)]">
+                            {c}
+                          </span>
+                        )}
                         {i < kbli.transition.previousCodes.length - 1 && ", "}
                       </span>
                     ))}
@@ -777,97 +900,6 @@ export default async function KBLICodePage({
                   </div>
                 </div>
               )}
-
-              {/* Q&A Section — visible text for AI extractability */}
-              <section className="mt-8">
-                <div className="flex items-center gap-4 py-2 mb-6">
-                  <div
-                    className="h-px flex-1"
-                    style={{ background: "var(--kbli-border)" }}
-                  />
-                  <span className="text-xs font-medium uppercase tracking-[0.15em] text-[var(--foreground-muted)]">
-                    Common Questions
-                  </span>
-                  <div
-                    className="h-px flex-1"
-                    style={{ background: "var(--kbli-border)" }}
-                  />
-                </div>
-                <div className="space-y-4">
-                  <details
-                    className="rounded-xl border border-[var(--border)] overflow-hidden"
-                    open
-                  >
-                    <summary
-                      className="cursor-pointer px-5 py-3.5 text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--kbli-accent)]"
-                      style={{ background: "var(--kbli-bg-elevated)" }}
-                    >
-                      Can foreigners operate a {kbli.titleEn.toLowerCase()}{" "}
-                      business in Indonesia?
-                    </summary>
-                    <div
-                      className="px-5 py-4 text-sm leading-relaxed text-[var(--foreground-secondary)]"
-                      style={{ background: "var(--kbli-bg-surface)" }}
-                    >
-                      {kbli.pma.status === "open"
-                        ? `Yes. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERBUKA — open to 100% foreign ownership through a PT PMA company. You do not need a local Indonesian partner.`
-                        : kbli.pma.status === "restricted"
-                          ? `Partially. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERBATAS — foreign ownership is capped at ${kbli.pma.maxForeign}%. You will need an Indonesian partner for the remaining shares.${kbli.pma.condition ? ` Condition: ${kbli.pma.condition}` : ""}`
-                          : `No. KBLI ${kbli.code} (${kbli.titleId}) is classified as TERTUTUP — closed to foreign investment. This business activity is reserved for Indonesian nationals.`}
-                    </div>
-                  </details>
-                  <details className="rounded-xl border border-[var(--border)] overflow-hidden">
-                    <summary
-                      className="cursor-pointer px-5 py-3.5 text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--kbli-accent)]"
-                      style={{ background: "var(--kbli-bg-elevated)" }}
-                    >
-                      What license do I need for KBLI {kbli.code}?
-                    </summary>
-                    <div
-                      className="px-5 py-4 text-sm leading-relaxed text-[var(--foreground-secondary)]"
-                      style={{ background: "var(--kbli-bg-surface)" }}
-                    >
-                      {kbli.licensing.length > 0
-                        ? `KBLI ${kbli.code} has a ${kbli.licensing[0].riskCategory} risk classification. You need: ${kbli.licensing[0].licenseType || "NIB (Nomor Induk Berusaha)"}. ${kbli.licensing[0].timeframe ? `Processing time: ${kbli.licensing[0].timeframe}.` : "Processing is typically handled through the OSS (Online Single Submission) system."}`
-                        : `KBLI ${kbli.code} requires a NIB (Nomor Induk Berusaha) obtained through the OSS (Online Single Submission) system. Contact a licensed consultant for specific requirements.`}
-                    </div>
-                  </details>
-                  {kbli.transition.previousCodes.length > 0 && (
-                    <details className="rounded-xl border border-[var(--border)] overflow-hidden">
-                      <summary
-                        className="cursor-pointer px-5 py-3.5 text-sm font-semibold text-[var(--foreground)] transition-colors hover:text-[var(--kbli-accent)]"
-                        style={{ background: "var(--kbli-bg-elevated)" }}
-                      >
-                        How did KBLI {kbli.code} change from 2020 to 2025?
-                      </summary>
-                      <div
-                        className="px-5 py-4 text-sm leading-relaxed text-[var(--foreground-secondary)]"
-                        style={{ background: "var(--kbli-bg-surface)" }}
-                      >
-                        KBLI {kbli.code} was mapped from previous code
-                        {kbli.transition.previousCodes.length > 1
-                          ? "s"
-                          : ""}: {kbli.transition.previousCodes.join(", ")}{" "}
-                        (KBLI 2020).
-                        {kbli.transition.mappingNote
-                          ? ` ${kbli.transition.mappingNote}`
-                          : ""}
-                        {kbli.transition.mappingStatus === "MATCH_LANGSUNG"
-                          ? " This is a direct match — the code number and scope remained the same."
-                          : kbli.transition.mappingStatus ===
-                              "CODICE_RINUMERATO"
-                            ? " The code was renumbered but the business activity scope is essentially unchanged."
-                            : kbli.transition.mappingStatus ===
-                                "MATCH_CON_AGGREGAZIONE"
-                              ? " Multiple 2020 codes were merged into this single 2025 code."
-                              : ""}{" "}
-                        All businesses must migrate to KBLI 2025 by June 18,
-                        2026 (BPS Regulation 7/2025).
-                      </div>
-                    </details>
-                  )}
-                </div>
-              </section>
 
               {/* Article card for non-Gold pages */}
               {article && (
@@ -918,6 +950,10 @@ export default async function KBLICodePage({
             </div>
           )}
 
+          {/* COMMON QUESTIONS — visible counterpart of the FAQPage JSON-LD,
+              rendered on gold AND non-gold layouts (markup honesty) */}
+          <KBLICommonQuestions code={kbli} />
+
           {/* RELATED CODES */}
           {related.length > 0 && (
             <section className="mt-12">
@@ -960,10 +996,21 @@ export default async function KBLICodePage({
                   title: kbli.titleEn,
                   section: kbli.section ?? "",
                 }}
-                opener={
-                  gold?.zantaraOpener ??
-                  `Ask me anything about KBLI ${kbli.code} — ${kbli.titleEn}. Licensing, PMA rules, what changed in 2025, or how it works in Bali.`
-                }
+                opener={(() => {
+                  const fallback = `Ask me anything about KBLI ${kbli.code} — ${kbli.titleEn}. Licensing, PMA rules, what changed in 2025, or how it works in Bali.`;
+                  const op = gold?.zantaraOpener ?? fallback;
+                  // The gold/intel openers were written before the 2026 Bali moratorium
+                  // and cheerfully promise a "PT PMA setup" on codes now blocked for a
+                  // PT PMA in Bali. Don't greet a blocked code with a PMA go-ahead — use
+                  // a neutral Bali-aware opener instead.
+                  if (
+                    kbli.baliL4?.blocked &&
+                    /\b(PT PMA|100% foreign|foreign-owned)\b/i.test(op)
+                  ) {
+                    return `Looking at KBLI ${kbli.code} — ${kbli.titleEn}? Note this code is currently blocked for a PT PMA in Bali (reserved UMKM / 2026 moratorium). Ask me about the national procedure, the Bali restriction, or alternatives.`;
+                  }
+                  return op;
+                })()}
                 suggestions={[
                   `What do I need to start a ${kbli.titleEn.toLowerCase()} business?`,
                   `Can foreigners own this business?`,

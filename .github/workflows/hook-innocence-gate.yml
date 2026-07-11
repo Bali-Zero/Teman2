@@ -1,0 +1,123 @@
+name: Hook innocence gate (vaccine)
+
+# THE VACCINE'S TEETH. opus-mythos hooks TAC 2026-06-16: a 3-part census found
+# that all 7 command-matching Claude Code hooks shipped with ZERO innocence
+# tests, violating the superscar #3 antidote — "nessuna _guard_* mergiata senza
+# un test di innocenza". The over-match cancer (guardrail patterns using `.*`
+# greedy that clobber legitimate commands) is the symptom. This gate is the
+# structural cure: no edit to a hook merges unless it PROVES it does not bite an
+# innocent (false positive) AND still catches real danger (no blindness).
+#
+# Runs:
+#   - infra/claude-hooks/test_hook_innocence.py   (the vaccine — all command hooks)
+#   - infra/claude-hooks/test_block_regex.py      (worktree_isolation BLOCKED_SUBCMD_RE)
+#   - infra/claude-hooks/test_host_boundary.py    (host_boundary carve-out)
+#   - infra/claude-hooks/test_phase.py            (plan-phase detection)
+#   - infra/claude-hooks/test_w79_shell_write.py  (W79 shell-write detection)
+#   - scripts/test_guardrails_core_overmatch.py   (guardrails python-c over-match)
+#
+# SENTINEL PATTERN (W69, copied from verify-the-verifiers.yml): NO top-level
+# pull_request `paths:` filter — the workflow ALWAYS triggers on PR so it can be
+# a REQUIRED status check without the pending-forever trap (a paths-filtered
+# required check never reports on a path-miss PR and blocks merge). The
+# relevant-paths decision lives in the "Did hooks change?" step; the work is
+# gated on its output. On a path-miss PR the job ENDS success (sentinel). The
+# push trigger keeps a paths filter (push only fires when work is needed).
+
+on:
+  pull_request: # NO top-level paths: — always trigger (sentinel gates the work)
+  push:
+    branches: [main]
+    paths:
+      - "infra/claude-hooks/**"
+      - "scripts/hooks/**"
+      - "scripts/guardrails_static_core.py"
+      - "scripts/test_guardrails_overmatch.py"
+      - "scripts/test_guardrails_core_overmatch.py"
+      - "scripts/guardrails_sync_check.py"
+      - ".github/workflows/hook-innocence-gate.yml"
+
+concurrency:
+  group: hook-innocence-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  innocence:
+    name: Prove hooks bite only the guilty
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history so the path-diff sees the PR base
+
+      # W69 sentinel: decide whether hook-relevant paths changed in this PR.
+      # Dependency-free git diff (no third-party action). On push (already
+      # paths-filtered at the trigger) or any non-PR event, run=true.
+      - name: Did hooks change?
+        id: relevant
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::non-PR event (${{ github.event_name }}) — running full vaccine"
+            exit 0
+          fi
+          base="${{ github.event.pull_request.base.sha }}"
+          if git diff --name-only "$base"...HEAD | grep -qE \
+            '^(infra/claude-hooks/|scripts/hooks/|scripts/guardrails_static_core\.py|scripts/test_guardrails_overmatch\.py|scripts/test_guardrails_core_overmatch\.py|scripts/guardrails_sync_check\.py|\.github/workflows/hook-innocence-gate\.yml)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::no hook paths changed — sentinel success"
+          fi
+
+      - name: Set up Python
+        if: steps.relevant.outputs.run == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Innocence vaccine — all command-matching hooks
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          echo "::group::test_hook_innocence.py (THE VACCINE)"
+          python3 infra/claude-hooks/test_hook_innocence.py
+          echo "::endgroup::"
+
+      - name: Guardrails drift sentinel self-check
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          echo "::group::guardrails_sync_check.py (drift sentinel — CI has no live hook, validates core block is extractable)"
+          # On a CI runner there is no ~/.claude/hooks/guardrails-static.py, so the
+          # sentinel exits 0 with "nothing to compare". This still proves the core's
+          # BLOCK_PATTERNS literal is parseable and the sentinel itself runs clean.
+          python3 scripts/guardrails_sync_check.py --hook /nonexistent/hook.py
+          echo "::endgroup::"
+
+      - name: Existing hook regression tests
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          fail=0
+          for t in \
+            infra/claude-hooks/test_block_regex.py \
+            infra/claude-hooks/test_host_boundary.py \
+            infra/claude-hooks/test_phase.py \
+            infra/claude-hooks/test_w79_shell_write.py \
+            scripts/test_guardrails_overmatch.py \
+            scripts/test_guardrails_core_overmatch.py ; do
+            if [ -f "$t" ]; then
+              echo "::group::$t"
+              if python3 "$t"; then echo "PASS $t"; else echo "::error::FAIL $t"; fail=1; fi
+              echo "::endgroup::"
+            else
+              echo "::notice::skip (absent) $t"
+            fi
+          done
+          exit $fail
+
+      - name: Sentinel success (no hook paths changed)
+        if: steps.relevant.outputs.run != 'true'
+        run: echo "No hook files changed in this PR — vaccine not required. Sentinel pass."

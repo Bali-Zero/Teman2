@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-07-01",
+  "sources": [
+    {
+      "instrument": "PP 34/2021",
+      "title": "Penggunaan Tenaga Kerja Asing",
+      "local_path": "data/kb_sources/tka/pp_34_2021_penggunaan_tka.pdf",
+      "status": "local_pdf_available"
+    },
+    {
+      "instrument": "Article 17 local draft",
+      "title": "TKA: Can You Hire (or Be) the Foreign Worker?",
+      "local_path": "research/content/articles/17-tka-can-you-hire-or-be-the-foreign-worker.md",
+      "status": "local_markdown_available; regulatory model only; not used as jabatan source"
+    },
+    {
+      "instrument": "Kepmenaker 228/2019",
+      "title": "Jabatan Tertentu yang dapat di Duduki oleh Tenaga Kerja Asing",
+      "official_detail_url": "https://jdih.kemnaker.go.id/peraturan/detail/1609/keputusan-menteri-ketenagakerjaan-nomor-228-tahun-2019",
+      "official_download_url": "https://jdih.kemnaker.go.id/download.php?id=1609",
+      "reported_pdf_redirect": "http://jdih.kemnaker.go.id/asset/data_puu/Kepmen_228_2019_OK.pdf",
+      "official_document_label": "Kepmen_228_2019_OK.pdf",
+      "local_path": null,
+      "status": "official_page_verified; source-hunt sidecar found no later replacement positive-list instrument; PDF download blocked in this sandbox; lampiran not extracted"
+    },
+    {
+      "instrument": "Kepmenaker 349/2019",
+      "title": "Jabatan Tertentu yang Dilarang Diduduki oleh Tenaga Kerja Asing",
+      "official_detail_url": "https://jdih.kemnaker.go.id/peraturan/detail/1636/keputusan-menteri-ketenagakerjaan-nomor-349-tahun-2019",
+      "official_pdf_url": "https://jdih.kemnaker.go.id/asset/data_puu/Kepmen_349_2019.pdf",
+      "local_path": null,
+      "status": "official_pdf_text_read via web tool; local download blocked in this sandbox"
+    }
+  ]
+}

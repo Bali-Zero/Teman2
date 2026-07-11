@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 import asyncpg
 
 from backend.services.olympus.models import PulseAction
+from backend.services.olympus.safety import PulseBudget, action_timeouts
 
 if TYPE_CHECKING:
     from backend.services.olympus.rules_engine import RulesEngine
@@ -90,7 +91,11 @@ class Pulse:
 
             t0 = time.monotonic()
             try:
-                async with self._pool.acquire() as conn:
+                # P0.1 — bound how long the VACUUM may run / wait for locks so a
+                # single maintenance statement can never stall the shared pool.
+                st = int(self._rules.get_threshold("action_statement_timeout_s", default=300))
+                lk = int(self._rules.get_threshold("action_lock_timeout_s", default=5))
+                async with action_timeouts(self._pool, st, lk) as conn:
                     await conn.execute(f"VACUUM ANALYZE {table}")
                 duration_ms = int((time.monotonic() - t0) * 1000)
                 actions.append(
@@ -264,9 +269,31 @@ class Pulse:
         actions: list[PulseAction] = []
         for row in rows:
             table, column, seq = row["table_name"], row["column_name"], row["seq"]
-            async with self._pool.acquire() as conn:
-                max_val = await conn.fetchval(f"SELECT COALESCE(MAX({column}), 0) FROM {table}")
-                last_val = await conn.fetchval(f"SELECT last_value FROM {seq}")
+            try:
+                async with self._pool.acquire() as conn:
+                    max_val = await conn.fetchval(f"SELECT COALESCE(MAX({column}), 0) FROM {table}")
+                    last_val = await conn.fetchval(f"SELECT last_value FROM {seq}")
+            except Exception as exc:
+                actions.append(
+                    PulseAction(
+                        action_type="repair_sequence",
+                        target=seq,
+                        detail={
+                            "table": table,
+                            "column": column,
+                            "reason": str(exc),
+                        },
+                        outcome="skipped",
+                        reflection="sequence read failed; check runtime grants",
+                    )
+                )
+                logger.warning(
+                    "Skipping sequence repair check for %s: %s",
+                    seq,
+                    exc,
+                    exc_info=True,
+                )
+                continue
 
             if max_val is not None and last_val is not None and max_val > last_val:
                 t0 = time.monotonic()
@@ -320,7 +347,12 @@ class Pulse:
             idx, table = row["index_name"], row["table_name"]
             t0 = time.monotonic()
             try:
-                async with self._pool.acquire() as conn:
+                # P0.1 — bound REINDEX (2 table scans + waits for txns; can run
+                # for hours on a large index). lock_timeout keeps it from
+                # blocking writers indefinitely.
+                st = int(self._rules.get_threshold("action_statement_timeout_s", default=300))
+                lk = int(self._rules.get_threshold("action_lock_timeout_s", default=5))
+                async with action_timeouts(self._pool, st, lk) as conn:
                     await conn.execute(f"REINDEX INDEX CONCURRENTLY {idx}")
                 duration_ms = int((time.monotonic() - t0) * 1000)
                 actions.append(
@@ -477,17 +509,159 @@ class Pulse:
                 reflection="CREATE TABLE partition failed",
             )
 
-    async def run_full_pulse(self) -> list[PulseAction]:
+    async def cleanup_olympus_self(self) -> list[PulseAction]:
+        """P0.5 — Olympus applies its own retention medicine.
+
+        The guardian creates monthly olympus_heartbeats partitions but never
+        dropped old ones, and never pruned olympus_actions/olympus_insights →
+        unbounded growth. This drops heartbeat partitions older than
+        olympus_hb_retention_months and prunes aged actions + superseded/aged
+        insights. Mirrors the cleanup_audit_trail DETACH/DROP pattern.
+        """
         actions: list[PulseAction] = []
-        actions.extend(await self.vacuum_bloated_tables())
-        actions.append(await self.cleanup_audit_trail())
-        actions.extend(await self.repair_sequences())
-        actions.extend(await self.rebuild_invalid_indexes())
-        actions.extend(await self.refresh_materialized_views())
-        actions.append(await self.cleanup_expired_sessions())
-        partition = await self.ensure_next_partition()
-        if partition is not None:
-            actions.append(partition)
-        actions.extend(await self.autovacuum_advisor())
-        logger.info("Full pulse: %d actions", len(actions))
+        hb_months = int(self._rules.get_threshold("olympus_hb_retention_months", default=6))
+        act_days = int(self._rules.get_threshold("olympus_actions_retention_days", default=90))
+        ins_days = int(self._rules.get_threshold("olympus_insights_retention_days", default=90))
+
+        # 1. Drop old olympus_heartbeats partitions (DETACH + DROP).
+        t0 = time.monotonic()
+        try:
+            async with self._pool.acquire() as conn:
+                old_parts = await conn.fetch(
+                    "SELECT c.relname AS child_name "
+                    "FROM pg_inherits i "
+                    "JOIN pg_class c ON c.oid = i.inhrelid "
+                    "JOIN pg_class p ON p.oid = i.inhparent "
+                    "WHERE p.relname = 'olympus_heartbeats' "
+                    "AND c.relname ~ '^olympus_heartbeats_[0-9]{4}_[0-9]{2}$' "
+                    "AND to_date(right(c.relname, 7), 'YYYY_MM') < "
+                    "    date_trunc('month', NOW() - make_interval(months => $1))",
+                    hb_months,
+                )
+                dropped: list[str] = []
+                for part in old_parts:
+                    name = part["child_name"]
+                    await conn.execute(f"ALTER TABLE olympus_heartbeats DETACH PARTITION {name}")
+                    await conn.execute(f"DROP TABLE {name}")
+                    dropped.append(name)
+            actions.append(
+                PulseAction(
+                    action_type="cleanup_olympus_self",
+                    target="olympus_heartbeats",
+                    detail={"retention_months": hb_months, "partitions_dropped": dropped},
+                    outcome="success",
+                    duration_ms=int((time.monotonic() - t0) * 1000),
+                    rule_applied="olympus_hb_retention_months",
+                )
+            )
+        except Exception:
+            logger.exception("cleanup_olympus_self: heartbeat partition drop failed")
+            actions.append(
+                PulseAction(
+                    action_type="cleanup_olympus_self",
+                    target="olympus_heartbeats",
+                    detail={"retention_months": hb_months},
+                    outcome="failure",
+                    duration_ms=int((time.monotonic() - t0) * 1000),
+                    rule_applied="olympus_hb_retention_months",
+                    reflection="partition drop failed",
+                )
+            )
+
+        # 2. Prune aged olympus_actions + superseded/aged olympus_insights.
+        for table, rule, days, where in (
+            (
+                "olympus_actions",
+                "olympus_actions_retention_days",
+                act_days,
+                "executed_at < NOW() - make_interval(days => $1)",
+            ),
+            (
+                "olympus_insights",
+                "olympus_insights_retention_days",
+                ins_days,
+                "(superseded_by IS NOT NULL OR created_at < NOW() - make_interval(days => $1))",
+            ),
+        ):
+            t0 = time.monotonic()
+            try:
+                async with self._pool.acquire() as conn:
+                    # table/where are constant literals from the loop tuple above
+                    # (no user input) — not a SQL-injection surface.
+                    result = await conn.execute(f"DELETE FROM {table} WHERE {where}", days)
+                deleted = int(result.split()[-1]) if result else 0
+                actions.append(
+                    PulseAction(
+                        action_type="cleanup_olympus_self",
+                        target=table,
+                        detail={"retention_days": days, "rows_deleted": deleted},
+                        outcome="success",
+                        duration_ms=int((time.monotonic() - t0) * 1000),
+                        rule_applied=rule,
+                    )
+                )
+            except Exception:
+                logger.exception("cleanup_olympus_self: prune %s failed", table)
+                actions.append(
+                    PulseAction(
+                        action_type="cleanup_olympus_self",
+                        target=table,
+                        detail={"retention_days": days},
+                        outcome="failure",
+                        duration_ms=int((time.monotonic() - t0) * 1000),
+                        rule_applied=rule,
+                        reflection="prune failed",
+                    )
+                )
+        return actions
+
+    async def run_full_pulse(self) -> list[PulseAction]:
+        """Run all maintenance groups, bounded by a per-pulse budget (P0.2).
+
+        Each group is gated on the budget so a runaway pulse (e.g. hundreds of
+        bloated tables) cannot exhaust the shared asyncpg pool / wall-clock on a
+        small machine. When the budget trips, remaining groups are skipped and a
+        single `budget_exceeded` action records why.
+        """
+        max_actions = int(self._rules.get_threshold("max_actions_per_pulse", default=50))
+        max_runtime = int(self._rules.get_threshold("max_pulse_runtime_s", default=600))
+        budget = PulseBudget(max_actions, max_runtime)
+
+        actions: list[PulseAction] = []
+        groups = (
+            self.vacuum_bloated_tables,
+            self.cleanup_audit_trail,
+            self.repair_sequences,
+            self.rebuild_invalid_indexes,
+            self.refresh_materialized_views,
+            self.cleanup_expired_sessions,
+            self.ensure_next_partition,
+            self.cleanup_olympus_self,
+            self.autovacuum_advisor,
+        )
+        for group in groups:
+            if budget.exceeded():
+                actions.append(
+                    PulseAction(
+                        action_type="budget_exceeded",
+                        target=group.__name__,
+                        detail={"actions_so_far": budget.count},
+                        outcome="skipped",
+                        reflection=budget.reason(),
+                    )
+                )
+                logger.warning(
+                    "Pulse budget tripped before %s: %s", group.__name__, budget.reason()
+                )
+                break
+            result = await group()
+            if result is None:
+                continue
+            new_actions = result if isinstance(result, list) else [result]
+            actions.extend(new_actions)
+            budget.record(len(new_actions))
+
+        logger.info(
+            "Full pulse: %d actions (budget %d/%ds)", len(actions), max_actions, max_runtime
+        )
         return actions

@@ -275,6 +275,30 @@ class TestRepairSequences:
         assert len(actions) == 1
         assert actions[0].outcome == "failure"
 
+    @pytest.mark.asyncio
+    async def test_sequence_read_failure_is_skipped(self, pulse, mock_pool):
+        _, conn = mock_pool
+        conn.fetch.return_value = [
+            {
+                "table_name": "conversations",
+                "column_name": "id",
+                "seq": "conversations_id_seq",
+            }
+        ]
+        conn.fetchval.side_effect = Exception("permission denied for sequence conversations_id_seq")
+
+        actions = await pulse.repair_sequences()
+
+        assert len(actions) == 1
+        assert actions[0].action_type == "repair_sequence"
+        assert actions[0].target == "conversations_id_seq"
+        assert actions[0].outcome == "skipped"
+        assert actions[0].detail["table"] == "conversations"
+        assert actions[0].detail["column"] == "id"
+        assert "permission denied" in actions[0].detail["reason"]
+        assert "runtime grants" in (actions[0].reflection or "")
+        conn.execute.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # rebuild_invalid_indexes
@@ -455,6 +479,7 @@ class TestRunFullPulse:
             patch.object(pulse, "cleanup_expired_sessions", new_callable=AsyncMock) as s,
             patch.object(pulse, "ensure_next_partition", new_callable=AsyncMock) as p,
             patch.object(pulse, "autovacuum_advisor", new_callable=AsyncMock) as a,
+            patch.object(pulse, "cleanup_olympus_self", new_callable=AsyncMock) as co,
         ):
             from backend.services.olympus.models import PulseAction
 
@@ -466,6 +491,7 @@ class TestRunFullPulse:
             s.return_value = PulseAction(action_type="cleanup_expired_sessions", outcome="success")
             p.return_value = None
             a.return_value = []
+            co.return_value = []
 
             actions = await pulse.run_full_pulse()
 

@@ -310,6 +310,9 @@ export interface Client {
   assigned_to?: string;
   tax_consultant?: string | null;
   avatar_url?: string;
+  /** True when the client has an avatar the list omitted for size;
+   *  fetch the image from GET /api/crm/clients/{id}/avatar. */
+  has_avatar?: boolean;
   company_name?: string;
   first_contact_date?: string;
   last_interaction_date?: string;
@@ -1041,6 +1044,48 @@ export interface AiSummaryResponse {
   schema_version: string | null;
   fingerprint: string | null;
   status: "available" | "not_generated" | "pending";
+}
+
+export interface WaCaseIntelligenceFlag {
+  id?: string;
+  label: string;
+}
+
+export interface WaCaseIntelligenceCard {
+  id: number;
+  conversation_key: string;
+  member_phone?: string | null;
+  counterpart_key?: string | null;
+  display_name?: string | null;
+  chat_kind: "direct" | "group" | "unknown" | string;
+  case_status: "open" | "waiting" | "blocked" | "done" | "archived" | string;
+  case_type?: string | null;
+  source_model: string;
+  reasoning_effort?: string | null;
+  analysis_hash: string;
+  analysis_id?: string | null;
+  message_count: number;
+  unread_count: number;
+  last_message_at?: string | null;
+  priority_score: number;
+  flags: WaCaseIntelligenceFlag[];
+  recap?: string | null;
+  next_action?: string | null;
+  ideal_reply?: string | null;
+  evidence?: string | null;
+  crm_packet?: string | null;
+  raw_sections: Record<string, unknown>;
+  analysis_output_path?: string | null;
+  generated_at?: string | null;
+  imported_at: string;
+  updated_at: string;
+}
+
+export interface WaCaseIntelligenceResponse {
+  client_id: number;
+  status: "available" | "not_generated";
+  case_count: number;
+  cases: WaCaseIntelligenceCard[];
 }
 
 export interface L1ClientSummary {

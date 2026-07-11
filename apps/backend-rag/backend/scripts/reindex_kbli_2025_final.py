@@ -31,7 +31,19 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from backend.core.collection_registry import resolve_collection_name
+
+# Load apps/backend-rag/.env so QDRANT_URL / QDRANT_API_KEY / OPENAI_API_KEY are present
+# even when this script is invoked directly (not via the FastAPI app). Path is derived
+# from __file__ — backend/scripts/<this> → parents[2] == apps/backend-rag — so it works
+# from any cwd. Without this the script silently fell back to localhost:6333 and aborted
+# on a missing OPENAI_API_KEY (env had to be exported by hand). Existing env vars win
+# (load_dotenv does not override), so CI / explicit exports still take precedence.
+_BACKEND_RAG_ENV = Path(__file__).resolve().parents[2] / ".env"
+if _BACKEND_RAG_ENV.exists():
+    load_dotenv(_BACKEND_RAG_ENV)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -100,10 +112,18 @@ def build_embedding_text(entry: dict) -> str:
         parts.append("")
 
     # PP28/2025 licensing (per_skala)
+    # CAP: some codes (e.g. 61108 telecom) carry 60+ per_skala entries whose verbatim
+    # persyaratan/kewajiban blow the embedding text past the 8192-token limit of
+    # text-embedding-3-small (observed 539k chars). The licensing detail is repetitive
+    # across scale combinations; for SEMANTIC SEARCH the first N distinct entries carry
+    # the signal. We cap to PER_SKALA_MAX entries and note the omission, so the embedding
+    # stays under the model limit without losing the discriminating content.
+    PER_SKALA_MAX = 12
     per_skala = entry.get("per_skala", [])
     if per_skala:
         parts.append("## Perizinan per Skala Usaha (PP 28/2025)")
-        for skala in per_skala:
+        omitted = len(per_skala) - PER_SKALA_MAX
+        for skala in per_skala[:PER_SKALA_MAX]:
             skala_names = ", ".join(skala.get("skala_usaha", []))
             risiko = skala.get("kategori_risiko", "")
             perizinan = skala.get("perizinan", "")
@@ -136,6 +156,12 @@ def build_embedding_text(entry: dict) -> str:
                 parts.append("- Fiktif positif: Ya (otomatis jika tidak ditolak)")
 
             parts.append("")
+        if omitted > 0:
+            parts.append(
+                f"(... {omitted} kombinasi skala/ruang-lingkup tambahan dengan pola "
+                "perizinan serupa tidak ditampilkan di sini.)",
+            )
+            parts.append("")
 
     # Intel 2026 (Bali-specific intelligence)
     intel = entry.get("intel_2026")
@@ -149,7 +175,34 @@ def build_embedding_text(entry: dict) -> str:
             parts.append(intel)
         parts.append("")
 
-    return "\n".join(parts)
+    # L4 Bali sovereign-local status (moratorium 2026-05-13) — embed it so semantic
+    # search surfaces the Bali block, not just the national PMA status.
+    l4 = entry.get("l4_bali") or {}
+    if l4.get("status"):
+        parts.append("## Status PMA di Bali (L4 — moratorium provinsi)")
+        if l4.get("blocked"):
+            parts.append(
+                "- DIBLOKIR untuk PMA di Bali: kegiatan risiko Rendah/Menengah-Rendah "
+                "tidak dapat didaftarkan PT PMA di Provinsi Bali (moratorium 2026-05-13).",
+            )
+        parts.append(f"- Status Bali: {l4['status']}")
+        if l4.get("reason"):
+            parts.append(f"- Alasan: {l4['reason']}")
+        parts.append(
+            "- Catatan: status nasional (Perpres 10/2021) bisa TERBUKA 100% "
+            "sementara di Bali diblokir — keduanya benar bersamaan.",
+        )
+        parts.append("")
+
+    text = "\n".join(parts)
+    # Final safety cap: text-embedding-3-small rejects inputs over 8192 tokens.
+    # ~24000 chars is a conservative ceiling (mixed ID/EN ≈ 3 chars/token); the
+    # PER_SKALA_MAX cap above keeps virtually every code well under this, but a
+    # pathological uraian or ruang_lingkup must never abort the whole re-index.
+    MAX_EMBED_CHARS = 20000
+    if len(text) > MAX_EMBED_CHARS:
+        text = text[:MAX_EMBED_CHARS].rsplit("\n", 1)[0] + "\n(... dipotong untuk batas panjang.)"
+    return text
 
 
 def build_payload(entry: dict, embedding_text: str) -> dict:
@@ -168,6 +221,11 @@ def build_payload(entry: dict, embedding_text: str) -> dict:
     description = entry.get("uraian", "")
     risk_category = next(iter(risk_levels), "")
 
+    # L4 Bali sovereign-local layer (flat fields — KBLI flat-payload golden rule).
+    # National PMA openness (pma_status) != Bali registrability (bali_status).
+    l4 = entry.get("l4_bali") or {}
+    bali_status = l4.get("status", "")
+
     return {
         "text": embedding_text,
         "content": embedding_text,
@@ -181,7 +239,7 @@ def build_payload(entry: dict, embedding_text: str) -> dict:
         "digit_count": len(code),
         "sources": ["BPS_7_2025", "PP_28_2025"],
         "doc_type": "kbli_bps",
-        "version": "v8.0-final-complete",
+        "version": "v8.1-final-l4-bali",
         "sektor": entry.get("sektor_id", ""),
         "section": entry.get("sektor_id", ""),
         "pma_status": entry.get("pma_status", ""),
@@ -193,6 +251,11 @@ def build_payload(entry: dict, embedding_text: str) -> dict:
         "has_intel_2026": bool(entry.get("intel_2026")),
         "has_gold_content": False,
         "status_mapping": entry.get("status_mapping", ""),
+        # L4 Bali (flat) — sovereign-local status, moratorium 2026-05-13
+        "bali_status": bali_status,
+        "bali_blocked": bool(l4.get("blocked")),
+        "bali_reason": l4.get("reason", ""),
+        "has_bali_l4": bool(bali_status),
         "indexed_at": "",  # filled at upsert time
     }
 
@@ -206,6 +269,38 @@ async def embed_texts(texts: list[str], client) -> list[list[float]]:
         all_embeddings.extend([d.embedding for d in response.data])
         logger.info(f"  Embedded batch {i}-{i + len(batch)} ({len(batch)} texts)")
     return all_embeddings
+
+
+async def ensure_payload_indexes(qdrant_url: str, api_key: str | None):
+    """Ensure the keyword payload indexes this script's filters depend on exist.
+
+    delete_old_points() and verify_collection() filter/count on doc_type and
+    metadata.doc_type; the kode_kbli index lets callers fetch a single code. Qdrant
+    rejects a filtered count/delete on an UNINDEXED keyword field with
+    'Index required but not found' — which silently aborted the delete step on a
+    collection that had never been indexed. Creating an index is idempotent (a no-op
+    if it already exists), so this is safe to run on every re-index.
+    """
+    import httpx
+
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["api-key"] = api_key
+
+    fields = ["doc_type", "metadata.doc_type", "kode_kbli"]
+    async with httpx.AsyncClient(timeout=60) as http:
+        for field in fields:
+            resp = await http.put(
+                f"{qdrant_url}/collections/{COLLECTION_NAME}/index",
+                params={"wait": "true"},
+                json={"field_name": field, "field_schema": "keyword"},
+                headers=headers,
+            )
+            if resp.status_code == 200:
+                logger.info(f"  Payload index ready: {field}")
+            else:
+                # Already-exists or benign errors should not abort the re-index.
+                logger.warning(f"  Index ensure for {field}: {resp.status_code} {resp.text[:120]}")
 
 
 async def delete_old_points(qdrant_url: str, api_key: str | None):
@@ -263,7 +358,9 @@ async def delete_old_points(qdrant_url: str, api_key: str | None):
 
 
 async def upsert_to_qdrant(points: list[dict], qdrant_url: str, api_key: str | None):
-    """Upsert points to Qdrant in batches."""
+    """Upsert points to Qdrant in batches, with retry+backoff per batch (network flap resilience)."""
+    import asyncio
+
     import httpx
 
     headers = {"Content-Type": "application/json"}
@@ -273,15 +370,29 @@ async def upsert_to_qdrant(points: list[dict], qdrant_url: str, api_key: str | N
     async with httpx.AsyncClient(timeout=120) as http:
         for i in range(0, len(points), UPSERT_BATCH_SIZE):
             batch = points[i : i + UPSERT_BATCH_SIZE]
-            resp = await http.put(
-                f"{qdrant_url}/collections/{COLLECTION_NAME}/points",
-                json={"points": batch},
-                headers=headers,
-            )
-            if resp.status_code != 200:
-                logger.error(f"  Upsert batch {i} failed: {resp.status_code} {resp.text[:300]}")
-            else:
-                logger.info(f"  Upserted batch {i}-{i + len(batch)} ({len(batch)} points)")
+            for attempt in range(1, 5):
+                try:
+                    resp = await http.put(
+                        f"{qdrant_url}/collections/{COLLECTION_NAME}/points",
+                        json={"points": batch},
+                        headers=headers,
+                    )
+                    if resp.status_code != 200:
+                        logger.error(
+                            f"  Upsert batch {i} failed: {resp.status_code} {resp.text[:300]}"
+                        )
+                    else:
+                        logger.info(f"  Upserted batch {i}-{i + len(batch)} ({len(batch)} points)")
+                    break
+                except httpx.TimeoutException:
+                    if attempt == 4:
+                        logger.error(f"  Upsert batch {i} timed out after 4 attempts, giving up")
+                        raise
+                    wait = 2**attempt
+                    logger.warning(
+                        f"  Upsert batch {i} timeout (attempt {attempt}/4), retrying in {wait}s"
+                    )
+                    await asyncio.sleep(wait)
 
 
 async def verify_collection(qdrant_url: str, api_key: str | None):
@@ -300,13 +411,20 @@ async def verify_collection(qdrant_url: str, api_key: str | None):
             indexed = info["indexed_vectors_count"]
             logger.info(f"  Collection: {total} points, {indexed} indexed vectors")
 
-        # Count by doc_type
+        # Count by doc_type.
+        # Payloads are written FLAT (build_payload puts doc_type at top level, per the KBLI
+        # flat-payload golden rule), but legacy points may still carry it nested under
+        # `metadata.doc_type`. Match either, mirroring delete_old_points' dual-key filter —
+        # otherwise this verify count returns 0 on a successful flat re-index (green-that-lies).
         for doc_type in ["kbli_bps", "kbli_gold"]:
             cr = await http.post(
                 f"{qdrant_url}/collections/{COLLECTION_NAME}/points/count",
                 json={
                     "filter": {
-                        "must": [{"key": "metadata.doc_type", "match": {"value": doc_type}}],
+                        "should": [
+                            {"key": "doc_type", "match": {"value": doc_type}},
+                            {"key": "metadata.doc_type", "match": {"value": doc_type}},
+                        ],
                     },
                     "exact": True,
                 },
@@ -375,7 +493,7 @@ async def main():
         code = entry["kode_kbli_2025"]
         embedding_text = build_embedding_text(entry)
         payload = build_payload(entry, embedding_text)
-        payload["metadata"]["indexed_at"] = indexed_at
+        payload["indexed_at"] = indexed_at  # flat payload (KBLI flat-payload golden rule)
 
         all_points.append(
             {
@@ -408,13 +526,18 @@ async def main():
     if args.dry_run:
         logger.info("\nDRY RUN - sample points:")
         for p in all_points[:2]:
-            logger.info(f"  Code: {p['payload']['metadata']['kode']}")
-            logger.info(f"  Judul: {p['payload']['metadata']['judul'][:80]}")
-            logger.info(f"  Sektor: {p['payload']['metadata']['sektor']}")
-            logger.info(f"  PMA: {p['payload']['metadata']['pma_status']}")
-            logger.info(f"  Scales: {p['payload']['metadata']['scales']}")
+            pl = p["payload"]  # flat payload
+            logger.info(f"  Code: {pl['kode']}")
+            logger.info(f"  Judul: {pl['judul'][:80]}")
+            logger.info(f"  Sektor: {pl['sektor']}")
+            logger.info(f"  PMA (national): {pl['pma_status']}")
+            logger.info(f"  Bali (L4): {pl['bali_status']} (blocked={pl['bali_blocked']})")
+            logger.info(f"  Scales: {pl['scales']}")
             logger.info(f"  Text preview: {p['_text_to_embed'][:300]}...")
             logger.info("")
+        bali_blocked = sum(1 for p in all_points if p["payload"]["bali_blocked"])
+        bali_l4 = sum(1 for p in all_points if p["payload"]["has_bali_l4"])
+        logger.info(f"L4 coverage: {bali_l4}/{len(all_points)} have Bali status, {bali_blocked} blocked in Bali")
         logger.info(f"Would delete old OSS_RBA_API points and upsert {len(all_points)} new points")
         return
 
@@ -449,12 +572,14 @@ async def main():
     sparse_vectors = [bm25.generate_sparse_vector(t) for t in texts]
     logger.info(f"Generated {len(sparse_vectors)} sparse vectors")
 
-    # Step 3: Delete old points
+    # Step 3: Ensure payload indexes (delete/verify filters depend on them), then delete old points
+    logger.info(f"\nStep 3: Ensuring payload indexes on {COLLECTION_NAME}...")
+    await ensure_payload_indexes(qdrant_url, qdrant_api_key)
     if not args.skip_delete:
-        logger.info(f"\nStep 3: Deleting old OSS_RBA_API points from {COLLECTION_NAME}...")
+        logger.info(f"Step 3: Deleting old OSS_RBA_API points from {COLLECTION_NAME}...")
         await delete_old_points(qdrant_url, qdrant_api_key)
     else:
-        logger.info("\nStep 3: Skipped (--skip-delete)")
+        logger.info("Step 3: Delete skipped (--skip-delete)")
 
     # Step 4: Build final Qdrant points and upsert
     logger.info(f"\nStep 4: Upserting {len(all_points)} points...")

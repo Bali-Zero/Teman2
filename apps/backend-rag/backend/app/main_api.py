@@ -22,6 +22,66 @@ init_sentry()
 logger = logging.getLogger("zantara.backend")
 
 
+def _wa_outbox_scheduler_enabled() -> bool:
+    return os.getenv("WA_OUTBOX_SCHEDULER_ENABLED", "true").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def _make_wa_bot_generate(app: FastAPI):
+    """Build the bot_generate_fn for the wa_outbox scheduler.
+
+    v1.1 (Option B): wires the RAG orchestrator so the Meta-inbox bot actually
+    auto-replies. Gated behind the WA_INBOX_BOT_AUTOREPLY flag inside
+    generate_bot_reply — when off, it raises and the worker marks the row
+    failed/retry (never a wrong send), preserving v1 behaviour by default.
+
+    The pool is bound here via closure because process_outbox_once passes only
+    the thread row to bot_generate_fn.
+    """
+    from backend.services.integrations.wa_inbox_bot import generate_bot_reply
+
+    async def _bot_generate(thread: object) -> str:
+        return await generate_bot_reply(app.state.db_pool, thread)
+
+    return _bot_generate
+
+
+async def _run_wa_outbox_scheduler(app: FastAPI) -> None:
+    """Drain the wa_outbox send-queue by calling process_outbox_once in a loop.
+
+    Hosted on the 'api' process group (always-on, single-worker) so exactly one
+    scheduler runs. Tight-loops while draining (status == 'sent'), backs off to
+    WA_OUTBOX_POLL_SECONDS when idle. Never crashes the app: per-tick exceptions
+    are logged and the loop continues after a backoff.
+    """
+    from backend.services.integrations.wa_outbox_worker import process_outbox_once
+    from backend.services.integrations.whatsapp_service import whatsapp_service
+
+    interval = float(os.getenv("WA_OUTBOX_POLL_SECONDS", "3"))
+    pool = app.state.db_pool
+    bot_generate_fn = _make_wa_bot_generate(app)
+    logger.info("✅ WA outbox scheduler started (poll=%ss)", interval)
+    while True:
+        try:
+            status = await process_outbox_once(
+                pool, whatsapp_service, bot_generate_fn
+            )
+            # Drain fast while sending, but always yield the loop (sleep(0)
+            # would not starve asyncio, but a tiny throttle is safer under a
+            # full queue per panel 2026-06-04). Back off fully when idle.
+            await asyncio.sleep(0.1 if status == "sent" else interval)
+        except asyncio.CancelledError:
+            logger.info("🛑 WA outbox scheduler cancelled")
+            raise
+        except Exception:
+            logger.exception("WA outbox scheduler tick failed; backing off")
+            await asyncio.sleep(interval)
+
+
 @asynccontextmanager
 async def lifespan_light(app: FastAPI):
     """
@@ -44,9 +104,11 @@ async def lifespan_light(app: FastAPI):
         # Background workers kill switch — see service_initializer.py note (2026-04-12 incident)
         if os.getenv("DISABLE_BACKGROUND_WORKERS") == "1":
             logger.warning(
-                "⚠️ DISABLE_BACKGROUND_WORKERS=1 — skipping Notification Scheduler",
+                "⚠️ DISABLE_BACKGROUND_WORKERS=1 — skipping Notification Scheduler "
+                "+ WA outbox scheduler",
             )
             app.state.notification_scheduler = None
+            app.state._wa_outbox_scheduler_task = None
         else:
             try:
                 from backend.app.modules.notifications.scheduler import init_scheduler
@@ -56,13 +118,40 @@ async def lifespan_light(app: FastAPI):
             except Exception as e:
                 logger.warning("⚠️ Notification Scheduler failed: %s", e)
 
+            # WA Meta inbox outbox scheduler — spawned HERE (not in the outer
+            # lifespan) because app.state.db_pool is only set above, inside this
+            # background init task; an outer-lifespan task could start with
+            # db_pool=None (panel race-fix 2026-06-04). Guard on a real pool.
+            if not _wa_outbox_scheduler_enabled():
+                app.state._wa_outbox_scheduler_task = None
+                logger.warning(
+                    "⚠️ WA outbox scheduler disabled by WA_OUTBOX_SCHEDULER_ENABLED",
+                )
+            elif getattr(app.state, "db_pool", None) is not None:
+                app.state._wa_outbox_scheduler_task = asyncio.create_task(
+                    _run_wa_outbox_scheduler(app)
+                )
+            else:
+                app.state._wa_outbox_scheduler_task = None
+                logger.warning(
+                    "⚠️ WA outbox scheduler NOT started — db_pool unavailable",
+                )
+
     init_task = asyncio.create_task(_background_light_init())
     app.state._init_task = init_task
 
     yield
 
-    # Shutdown: close DB pool and proxy client
+    # Shutdown: cancel the WA outbox scheduler BEFORE closing the pool it uses.
     logger.info("🛑 [API PROCESS] Shutting down...")
+    wa_task = getattr(app.state, "_wa_outbox_scheduler_task", None)
+    if wa_task is not None:
+        wa_task.cancel()
+        try:
+            await wa_task
+        except (asyncio.CancelledError, Exception):
+            pass
+
     db_pool = getattr(app.state, "db_pool", None)
     if db_pool:
         await db_pool.close()
@@ -70,6 +159,9 @@ async def lifespan_light(app: FastAPI):
     from backend.app.rag_proxy import close_proxy_client
 
     await close_proxy_client()
+    from backend.services.integrations.wa_inbox_bot import close_rag_client
+
+    await close_rag_client()
 
 
 def create_api_app() -> FastAPI:

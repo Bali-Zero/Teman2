@@ -11,7 +11,7 @@ For every Indonesian regulation in the Google Sheet 'list peraturan':
 
 Sheet: 1Je7eAK3ya_P5yY9L_JtnwRzkTDrucnzgZ4PvvWlb2us
 PERATURAN folder: 1jcLQ6slWAeQupE8jQjp4EFjAfwlNfteM
-NB-6 notebook: 7fbf37ed-e290-491a-98f5-677d6371ad62
+NB-6 notebook: 85207af3-352f-4554-8d2a-18f42cc541ba
 
 Auth:
   - Google: GOOGLE_SERVICE_ACCOUNT_JSON env var (SA credentials)
@@ -45,9 +45,32 @@ logger = logging.getLogger(__name__)
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
-SHEET_ID = "1Je7eAK3ya_P5yY9L_JtnwRzkTDrucnzgZ4PvvWlb2us"
-PERATURAN_FOLDER_ID = "1jcLQ6slWAeQupE8jQjp4EFjAfwlNfteM"
-NB6_NOTEBOOK_ID = "7fbf37ed-e290-491a-98f5-677d6371ad62"
+# ── Index + archive IDs ───────────────────────────────────────────────────────
+# ID-drift cleanup 2026-06-21: the hard-coded SHEET_ID + PERATURAN_FOLDER_ID below
+# had both gone stale (Sheet → 404; folder 1jcLQ… → 404), which is why this cron
+# failed silently for ~145h. The corpus is NOT lost: it lives in the curated
+# "INDEX PERATURAN" archive (Google Doc 1PuGh-nEiK4FACYL17baPoWbJOFSAvexpvWl7-jwuywI,
+# updated 2026-06-10), whose documented root folder is the new default below.
+# All three are env-overridable so a future move never needs a code edit again.
+#
+# ⚠️ OPERATOR: the canonical root (1eiSeyND…) and its sub-folders are NOT reachable
+# from the SA this cron uses (drive scope un-delegated) nor from the audit session
+# (404). Before the cron can write, share that folder tree with the SA
+# nuzantara-google-drive-sa@nuzantara.iam.gserviceaccount.com (Editor).
+#
+# ⚠️ SHEET_ID has NO valid live target: the index migrated from a Sheet to the
+# INDEX Doc (+ an Excel). _read_sheet_rows still needs an 11-col Sheet (A-K). To
+# resurrect ingestion, EITHER recreate that Sheet (export the Excel) and set
+# PERATURAN_SHEET_ID, OR re-architect the reader for the Doc. Until then the legacy
+# ID is kept only so --dry-run can run; a live run will fail preflight, by design.
+SHEET_ID = os.getenv(
+    "PERATURAN_SHEET_ID", "1Je7eAK3ya_P5yY9L_JtnwRzkTDrucnzgZ4PvvWlb2us"  # STALE (404)
+)
+# Canonical archive root per INDEX PERATURAN 2026-06-10 (was stale 1jcLQ…).
+PERATURAN_FOLDER_ID = os.getenv(
+    "PERATURAN_FOLDER_ID", "1eiSeyNDgYwCooq9WdMbmtt6xTu6x6zo6"
+)
+NB6_NOTEBOOK_ID = os.getenv("PERATURAN_NB6_NOTEBOOK_ID", "85207af3-352f-4554-8d2a-18f42cc541ba")
 
 BACKEND_URL = os.getenv("BACKEND_URL", "https://nuzantara-rag.fly.dev")
 SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "internal-scraper-key")
@@ -147,15 +170,22 @@ def _get_google_credentials() -> service_account.Credentials:
     """Load SA credentials from GOOGLE_SERVICE_ACCOUNT_JSON env var."""
     raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
     if not raw:
-        # Try file path fallback
-        path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
-        if path and Path(path).exists():
-            return service_account.Credentials.from_service_account_file(
-                path, scopes=GOOGLE_SCOPES
-            )
+        # File-path fallbacks, in order: explicit env, then the known SA on disk.
+        # The SA moved from ~/.nuzantara-drive-sa.json (gone) to the path below
+        # (ID-drift 2026-06-21); try it last so the cron self-heals without an env.
+        candidates = [
+            os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", ""),
+            str(Path.home() / ".config" / "nuzantara" / "service-accounts"
+                / "nuzantara-google-drive-sa-20260530.json"),
+        ]
+        for path in candidates:
+            if path and Path(path).exists():
+                return service_account.Credentials.from_service_account_file(
+                    path, scopes=GOOGLE_SCOPES
+                )
         raise RuntimeError(
-            "GOOGLE_SERVICE_ACCOUNT_JSON env var missing. "
-            "Set it to the SA JSON credentials string."
+            "No SA credentials found. Set GOOGLE_SERVICE_ACCOUNT_JSON (JSON string) "
+            "or GOOGLE_APPLICATION_CREDENTIALS (path to SA JSON)."
         )
 
     # Handle base64-encoded JSON

@@ -68,6 +68,13 @@ def _is_debug_enabled() -> bool:
     return settings.environment.lower() != "production" or bool(settings.admin_api_key)
 
 
+def _is_autonomous_lab_enabled() -> bool:
+    """Condition for the internal autonomous lab draft API."""
+    from backend.app.core.config import settings
+
+    return settings.autonomous_lab_enabled
+
+
 def _get_api_v1_prefix() -> str:
     from backend.app.core.config import settings
 
@@ -85,6 +92,8 @@ def _get_api_v1_prefix() -> str:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
+    # ── Accounting (cash-control for Asya) ──
+    RouterEntry(name="accounting", process_groups=_API, tags=("crm-accounting",)),
     # ── Admin ──
     RouterEntry(name="admin_conversation_cleanup", process_groups=_API, tags=("admin",)),
     RouterEntry(name="admin_crm_kg", process_groups=_API, tags=("admin", "crm-kg")),
@@ -108,6 +117,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="agentic_rag", process_groups=_RAG, tags=("agent", "rag")),
     RouterEntry(name="autonomous_agents", process_groups=_RAG, tags=("agent",)),
     RouterEntry(name="autonomous_execution", process_groups=_RAG, tags=("agent",)),
+    RouterEntry(
+        name="autonomous_lab",
+        process_groups=_API,
+        condition=_is_autonomous_lab_enabled,
+        tags=("autonomous-lab", "internal"),
+    ),
     # ── Analytics ──
     RouterEntry(name="analytics", process_groups=_API, tags=("analytics",)),
     RouterEntry(name="article_composer", process_groups=_API, tags=("blog",)),
@@ -177,6 +192,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Federation / Feedback ──
     RouterEntry(name="federation", process_groups=_API, tags=("agent",)),
     RouterEntry(name="feedback", process_groups=_API, tags=("core",)),
+    RouterEntry(name="frontend_metrics", process_groups=_API, tags=("observability", "frontend")),
     # ── Funnel (cross-funnel lead tracking, pre-auth) ──
     RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
     # ── Google Drive / Integrations ──
@@ -189,6 +205,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── HR ──
     RouterEntry(name="hr", process_groups=_API, tags=("hr",)),
     RouterEntry(name="hr_late_reply", process_groups=_API, tags=("hr",)),
+    RouterEntry(name="hr_my_late_incident", process_groups=_API, tags=("hr", "gate")),
     RouterEntry(name="hr_owner_cashout", process_groups=_API, tags=("hr",)),
     # ── Image Generation ──
     RouterEntry(name="image_generation", process_groups=_API, tags=("media",)),
@@ -201,6 +218,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(
         name="instagram_chat", attr="webhook_router", process_groups=_API, tags=("channels",)
     ),
+    # ── Document-intake HITL review (FASE 5A, RAG process — LOCAL Pro DB only) ──
+    RouterEntry(name="intake_review", process_groups=_RAG, tags=("intake", "crm", "hitl")),
+    # ── Intake login gate status probe (API process — frontend-facing on Fly).
+    #    Evaluator queries the local pool; on Fly intake tables are empty so the
+    #    documents count is 0 (graceful) until the Pro→Fly count-mirror lands. ──
+    RouterEntry(name="intake_gate", process_groups=_API, tags=("intake", "gate")),
     # ── Intel (RAG process only — needs /data volume) ──
     RouterEntry(name="intel", process_groups=_RAG, tags=("intel",)),
     RouterEntry(name="intel_analytics", process_groups=_RAG, tags=("intel",)),
@@ -276,8 +299,6 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="portal_notifications", process_groups=_API, tags=("portal",)),
     RouterEntry(name="portal_notification_prefs", process_groups=_API, tags=("portal",)),
     RouterEntry(name="portal_process_timeline", process_groups=_API, tags=("portal",)),
-    RouterEntry(name="portal_taxes", process_groups=_API, tags=("portal",)),
-    RouterEntry(name="portal_visa", process_groups=_API, tags=("portal",)),
     # ── Preview ──
     RouterEntry(name="preview", process_groups=_API, tags=("blog",)),
     # ── Prime ──
@@ -319,6 +340,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         process_groups=_API,
         tags=("war-room", "admin"),
     ),
+    # ── WR2 IG Publish (server-side operator-gated carousel publish, Legge 5) ──
+    RouterEntry(
+        name="wr2_publish",
+        process_groups=_API,
+        tags=("war-room", "wr2", "publish", "admin"),
+    ),
     # ── Webhooks ──
     RouterEntry(name="webhooks", process_groups=_API, tags=("channels",)),
     # ── WebSocket ──
@@ -333,6 +360,11 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         name="wa_dashboard_stream",
         process_groups=_API,
         tags=("channels", "crm", "wa-dashboard", "sse"),
+    ),
+    RouterEntry(
+        name="wa_inbox",
+        process_groups=_API,
+        tags=("channels", "wa-meta-inbox"),
     ),
     RouterEntry(
         name="wa_mirror_messages", process_groups=_API, tags=("channels", "crm", "wa-mirror")
@@ -368,6 +400,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
         tags=("module",),
     ),
     RouterEntry(
+        name="notifications_admin",
+        process_groups=_API,
+        import_path="backend.app.modules.notifications.admin_router",
+        tags=("module",),
+    ),
+    RouterEntry(
         name="cron_notifiers",
         process_groups=_API,
         import_path="backend.app.routers.cron_notifiers",
@@ -388,18 +426,24 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
 # audio — included separately in app_factory.py
 
 
-def routers_for_group(group: str) -> tuple[RouterEntry, ...]:
+def routers_for_group(group: str, *, include_disabled: bool = False) -> tuple[RouterEntry, ...]:
     """Return all routers declared for a given process group.
 
     Args:
         group: Process group name ("api" or "rag")
+        include_disabled: When True, return entries even if their condition is false.
 
     Returns:
         Tuple of RouterEntry instances for the group
     """
     if group not in PROCESS_GROUPS:
         raise ValueError(f"Unknown process group '{group}'. Valid: {sorted(PROCESS_GROUPS)}")
-    return tuple(r for r in ROUTER_MANIFEST if group in r.process_groups)
+    return tuple(
+        entry
+        for entry in ROUTER_MANIFEST
+        if group in entry.process_groups
+        and (include_disabled or entry.condition is None or entry.condition())
+    )
 
 
 def all_router_names() -> frozenset[str]:

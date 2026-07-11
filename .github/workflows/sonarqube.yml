@@ -1,12 +1,29 @@
 name: SonarQube Analysis
 
+# Path-scoped (2026-06-12 CI fan-out reduction): advisory code-quality scan
+# (continue-on-error) — no value on docs/content-only PRs. NON-REQUIRED, so a
+# non-matching PR just skips it.
 on:
   push:
     branches:
       - main
       - develop
+    paths:
+      - "**.py"
+      - "**.js"
+      - "**.jsx"
+      - "**.ts"
+      - "**.tsx"
+      - ".github/workflows/sonarqube.yml"
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - "**.py"
+      - "**.js"
+      - "**.jsx"
+      - "**.ts"
+      - "**.tsx"
+      - ".github/workflows/sonarqube.yml"
   workflow_dispatch:
 
 concurrency:
@@ -29,7 +46,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # Full history for better analysis
 
@@ -44,13 +61,13 @@ jobs:
           node-version: "22"
 
       - name: Cache Python dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('apps/backend-rag/requirements.txt') }}
 
       - name: Cache Node dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             **/node_modules
@@ -103,7 +120,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           files: apps/backend-rag/coverage.xml
           flags: backend

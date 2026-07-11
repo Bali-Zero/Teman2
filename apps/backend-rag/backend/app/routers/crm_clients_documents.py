@@ -194,7 +194,7 @@ async def extract_passport_enhanced(
             async with db_pool.acquire() as conn:
                 # RBAC: verify user has access to this specific client
                 await verify_client_access(
-                    request.client_id, current_user, conn, allow_assigned=True
+                    request.client_id, current_user, conn, allow_assigned=True, write=True
                 )
 
                 client = await conn.fetchrow(
@@ -274,6 +274,23 @@ Use null for unclear fields. Return ONLY JSON."""
 
         # Fallback: Gemini API Vision
         if not ollama_ok:
+            # PII sovereignty gate (SYMBIOSIS Law 2 / UU PDP Art. 56): the passport
+            # image must NOT be sent to Google unless OCR_ALLOW_CLOUD_VISION=true.
+            from backend.services.multimodal.cloud_vision_gate import (
+                cloud_vision_allowed,
+                note_cloud_ocr_blocked,
+            )
+
+            if not cloud_vision_allowed():
+                note_cloud_ocr_blocked("crm_clients_documents.extract_passport_enhanced")
+                return PassportPreviewResponse(
+                    success=False,
+                    message=(
+                        "Vision OCR unavailable: local Ollama down and cloud fallback "
+                        "blocked for PII sovereignty (OCR_ALLOW_CLOUD_VISION=false)"
+                    ),
+                )
+
             from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
 
             if not GENAI_AVAILABLE:
@@ -529,7 +546,9 @@ async def delete_client_document(
                 raise HTTPException(status_code=404, detail="Document not found")
 
             # RBAC: verify caller has access to the client this document belongs to
-            await verify_client_access(doc["client_id"], current_user, conn, allow_assigned=True)
+            await verify_client_access(
+                doc["client_id"], current_user, conn, allow_assigned=True, write=True
+            )
 
             if doc["status"] == "deleted":
                 return {
@@ -605,7 +624,9 @@ async def extract_npwp(
     try:
         # RBAC check: verify caller has access to this client
         async with db_pool.acquire() as conn:
-            await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
+            await verify_client_access(
+                request.client_id, current_user, conn, allow_assigned=True, write=True
+            )
 
         # Validate base64 before decoding
         raw = request.file.split(",")[-1] if "," in request.file else request.file
@@ -740,7 +761,9 @@ async def extract_nib(
     try:
         # RBAC check: verify caller has access to this client
         async with db_pool.acquire() as conn:
-            await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
+            await verify_client_access(
+                request.client_id, current_user, conn, allow_assigned=True, write=True
+            )
 
         # Validate base64 before decoding
         raw = request.file.split(",")[-1] if "," in request.file else request.file

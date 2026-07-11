@@ -260,6 +260,10 @@ class ZohoEmailService:
 
         if response.status_code >= 400:
             error_data = response.json() if response.content else {}
+            # Zoho (or an intermediary proxy/gateway) can return a non-dict JSON
+            # body on error (e.g. a bare list or string) — never trust the shape.
+            if not isinstance(error_data, dict):
+                error_data = {}
             logger.warning(
                 f"[Email API] Error: {method} {endpoint} user={user_id} "
                 f"status={response.status_code} error={error_data}",
@@ -267,7 +271,14 @@ class ZohoEmailService:
             raise ValueError(f"API error: {error_data.get('data', {}).get('errorCode', 'unknown')}")
 
         logger.debug(f"[Email API] Success: {method} {endpoint} status={response.status_code}")
-        return response.json()
+        response_data = response.json()
+        if not isinstance(response_data, dict):
+            logger.warning(
+                f"[Email API] Unexpected non-dict response: {method} {endpoint} "
+                f"user={user_id} type={type(response_data).__name__}",
+            )
+            raise ValueError("Unexpected response format from Zoho Mail API")
+        return response_data
 
     # ═══════════════════════════════════════════
     # FOLDER OPERATIONS

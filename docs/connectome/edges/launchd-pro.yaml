@@ -1,0 +1,1324 @@
+# Connectome — LaunchAgent fleet on Pro (nuzantara@Nuzantara)
+# Census: 2026-06-13 00:30 WITA · 180 plists on disk, 173 loaded, 0 lint failures.
+# kind=launchd edges get an automatic liveness probe (launchctl label check via ssh:pro-lan).
+# Statuses are census-time. LOOPING = W67 signature (KeepAlive + crash respawn).
+domain: launchd-pro
+census_date: "2026-06-13"
+edges:
+  # ── LOOPING (P1 at census: redis-timeout crash-loop, ~1 respawn/31s) ──
+  - {
+      id: com.balizero.meta-dispatcher,
+      kind: launchd,
+      machine: pro,
+      status: LOOPING,
+      consumer: "~/scripts/eventbus/meta_dispatcher.py",
+      notes: "834 runs/7h, redis TimeoutError — ROOT CAUSE (sibling TAC 2026-06-13): they target the MINI's redis 100.93.236.6:6379 and Mini is off. Fix = wake Mini, not touch daemons",
+    }
+  - {
+      id: com.balizero.intel-dedup-gateway,
+      kind: launchd,
+      machine: pro,
+      status: LOOPING,
+      consumer: "~/scripts/eventbus/intel_dedup_gateway.py",
+      notes: "same redis-timeout loop",
+    }
+  - {
+      id: com.balizero.research-sentinel,
+      kind: launchd,
+      machine: pro,
+      status: LOOPING,
+      consumer: "~/scripts/eventbus/research_sentinel.py",
+      notes: "same",
+    }
+  - {
+      id: com.balizero.observatory,
+      kind: launchd,
+      machine: pro,
+      status: LOOPING,
+      consumer: "~/agents/.observatory/observatory.py",
+      notes: "same",
+    }
+  # ── DEAD (persistent bad exit on schedule) ──
+  - {
+      id: com.balizero.wr2.deploy-puller,
+      kind: launchd,
+      machine: pro,
+      status: DEAD,
+      consumer: "~/scripts/wr2-deploy-pull.sh (hourly)",
+      notes: "worktree dirty → refuses pull; alerts cooldown-suppressed (W55 replay); healing in flight 2026-06-13",
+    }
+  - {
+      id: com.nuzantara.codex-spark-alarm,
+      kind: launchd,
+      machine: pro,
+      status: DEAD,
+      consumer: "codex/spark-alarm.sh (120s)",
+      notes: "208 failed runs",
+    }
+  - {
+      id: com.balizero.wr2.plist-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: DEAD,
+      consumer: "wr2_plist_watchdog.sh (900s)",
+      notes: "the WR2 plist guardian itself failing every 15min",
+    }
+  - {
+      id: com.balizero.wr2.sla-worker,
+      kind: launchd,
+      machine: pro,
+      status: DEAD,
+      consumer: "wr2-cron-wrapper.sh sla_worker_cli (1800s)",
+    }
+  - {
+      id: com.nuzantara.codex-autofix-ci,
+      kind: launchd,
+      machine: pro,
+      status: DEAD,
+      consumer: "codex/nightly-autofix-ci.sh (hourly :15)",
+    }
+  # ── UNKNOWN (failed only run since boot — recheck after next fire) ──
+  - {
+      id: com.balizero.wr2.hardening,
+      kind: launchd,
+      machine: pro,
+      status: UNKNOWN,
+      consumer: "wr2-hardening-chain.sh (6h)",
+      notes: "exit 1 on only run",
+    }
+  - {
+      id: com.balizero.wr2.measurer,
+      kind: launchd,
+      machine: pro,
+      status: UNKNOWN,
+      consumer: "wr2-cron-wrapper.sh measurer (6h)",
+      notes: "exit 2 on only run",
+    }
+  - {
+      id: com.balizero.intel-radar-daily-digest,
+      kind: launchd,
+      machine: pro,
+      status: UNKNOWN,
+      consumer: "intel_radar_daily_digest.py (18:00)",
+    }
+  - {
+      id: com.nuzantara.agent-worktree-cleanup.daily,
+      kind: launchd,
+      machine: pro,
+      status: UNKNOWN,
+      consumer: "agent_worktree_cleanup_cron.sh (00:15)",
+      notes: "W62 antibody — exit 1 tonight; M5 twin DEAD on TCC → reaper green on ZERO machines",
+    }
+  # ── LYING_BY_PRESENCE (on disk, NOT loaded, no disable-override) ──
+  - {
+      id: com.nuzantara.pg-organism-bridge-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: LYING_BY_PRESENCE,
+      consumer: "pg-organism-bridge-watchdog.sh",
+      notes: "unarmed watchdog while watched daemon IS live",
+      probe:
+        {
+          type: cmd,
+          via: "ssh:pro-lan",
+          cmd: "launchctl list | grep -F com.nuzantara.pg-organism-bridge-watchdog || true; test -f ~/Library/LaunchAgents/com.nuzantara.pg-organism-bridge-watchdog.plist",
+        },
+    }
+  - {
+      id: com.balizero.agent-library-evolver.daily,
+      kind: launchd,
+      machine: pro,
+      status: LYING_BY_PRESENCE,
+      consumer: "scar-replay-run.sh",
+      notes: "unloaded; matches W74-F18 suspend reco but no recorded decision",
+    }
+  - {
+      id: com.balizero.agent-library-evolver.weekly,
+      kind: launchd,
+      machine: pro,
+      status: LYING_BY_PRESENCE,
+      consumer: "agent-library-evolver-run.sh",
+    }
+  - {
+      id: com.balizero.wr3.reflexion.weekly,
+      kind: launchd,
+      machine: pro,
+      status: LYING_BY_PRESENCE,
+      consumer: "wr3/_reflexion-synthesis.py (816B stub)",
+      notes: "the W74-F21 cron-theater is now UNLOADED — stub still on disk",
+    }
+  # ── BY_DESIGN_OFF (unloaded deliberately — documented decisions) ──
+  - {
+      id: com.balizero.wr2.queue-server,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      notes: "Damar standby 2026-06-12",
+    }
+  - {
+      id: com.balizero.wr2.canva-renderer,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      notes: "HTML cutover PR #1236",
+    }
+  - {
+      id: com.balizero.wr2.canva-apply,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      notes: "HTML cutover",
+    }
+  - {
+      id: com.balizero.skill-coach.daily,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      consumer: "scripts/skill-coach-daily.sh",
+      notes: "launchctl disable + bootout + plist renamed .disabled-W84-2026-06-22 (W84 TCC: launchd lacks Full-Disk-Access for ~/Desktop on Pro -> exit 127 can't open input file). Migrated to crontab (see pro-crontab-skill-coach-daily)",
+    }
+  - id: pro-crontab-skill-coach-daily
+    kind: cron
+    machine: pro
+    status: SCHEDULED_ALIVE
+    consumer: "scripts/skill-coach-daily.sh via scripts/cron-runner.sh (02:20 daily WITA)"
+    notes: "migrated from launchd com.balizero.skill-coach.daily (W84 TCC firebreak). Verified live exit 0 status=ok 2026-06-21"
+    probe:
+      {
+        type: cmd,
+        via: "ssh:pro-lan",
+        cmd: "crontab -l | grep -F skill-coach-daily.sh",
+      }
+  # ── DISARMED (loaded, no trigger — on-demand kickstart targets) ──
+  - {
+      id: com.balizero.sota.m13-collect,
+      kind: launchd,
+      machine: pro,
+      status: DISARMED,
+      notes: "no interval/calendar/KA/WatchPaths",
+    }
+  - {
+      id: com.balizero.wr2.draft-generator,
+      kind: launchd,
+      machine: pro,
+      status: DISARMED,
+      notes: "kickstart target of WR2 pipeline (by design)",
+    }
+  - {
+      id: com.balizero.wr2.fact-checker,
+      kind: launchd,
+      machine: pro,
+      status: DISARMED,
+    }
+  - {
+      id: com.balizero.wr2.fact-extractor,
+      kind: launchd,
+      machine: pro,
+      status: DISARMED,
+    }
+  - {
+      id: com.balizero.wr2.image-generator,
+      kind: launchd,
+      machine: pro,
+      status: DISARMED,
+      notes: "no fallback schedule if supervisor dead (audit F50)",
+    }
+  # ── ALIVE: long-lived daemons (KeepAlive, PID stable at census) ──
+  - {
+      id: com.balizero.guardrails-daemon,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      consumer: "~/.claude/daemons/guardrails.py",
+    }
+  - {
+      id: com.balizero.nlm-bridge,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      consumer: "uvicorn :18790",
+    }
+  - {
+      id: com.nuzantara.pg-organism-bridge,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      consumer: "scripts/pg-to-organism-bridge.py",
+    }
+  - {
+      id: com.nuzantara.intake-review-reader,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.balizero.post-publish-webhook,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.nuzantara.organism.supervisor,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.balizero.wa-mirror-launcher,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      notes: "post-W67 real supervisor",
+    }
+  - {
+      id: com.nuzantara.intake-worker,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.nuzantara.openclaw-whatsapp-bridge,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      notes: "prior instance SIGTERM (restart), current healthy",
+    }
+  - {
+      id: com.nuzantara.openclaw-whatsapp-tunnel,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.balizero.cron-log-sentinel,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      notes: "only eventbus daemon NOT redis-looping — verify not internally wedged",
+    }
+  - {
+      id: com.nuzantara.automap-server,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.nuzantara.automap-telegram,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.balizero.wa-meta-inbox,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.nuzantara.codex-spark-loop,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      notes: "disabled W81 firebreak 2026-06-15 (.plist.disabled-W81)",
+    }
+  - { id: com.balizero.wa-viewer, kind: launchd, machine: pro, status: ALIVE }
+  - {
+      id: com.balizero.wa-dashboard-m1,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.nuzantara.heartbeat-bridge,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.nuzantara.prime-tunnel,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.nuzantara.cloudflared-intake-review,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.balizero.observatory-server,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.balizero.qdrant.daemon,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.balizero.profile-monitor-wrapper,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.balizero.wr2.pg-proxy,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.nuzantara.organism.control-panel,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      consumer: "uvicorn organism.control_panel :1819",
+    }
+  - {
+      id: com.cell.organism,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      notes: "2 restarts since boot on exit 1 — slow-churn watch",
+    }
+  - {
+      id: com.nuzantara.federation-alert-dispatcher,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+    }
+  - {
+      id: com.balizero.wr2.supervisor,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      notes: "exit-74 history (EX_IOERR = missing DATABASE_URL_LOCAL at boot)",
+    }
+  - {
+      id: com.balizero.wr2.supervisor-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      notes: "same exit-74 history",
+    }
+  - {
+      id: com.balizero.wr3.supervisor,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      notes: "process alive ≠ episodes produced (0 in 14d, W74)",
+    }
+  # ── ALIVE: interval crons ──
+  - {
+      id: com.nuzantara.zombie-hunter,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "60s",
+    }
+  - {
+      id: com.balizero.intel-lake.outbox-drain.minute,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "60s",
+    }
+  - {
+      id: com.balizero.observatory-export,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "60s",
+    }
+  - {
+      id: com.nuzantara.codex-spark-harvester,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      producer: "180s",
+      notes: "disabled W81 firebreak 2026-06-15 (.plist.disabled-W81)",
+    }
+  - {
+      id: com.nuzantara.merge-train,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "180s",
+    }
+  - {
+      id: com.balizero.crm-guardian-cli-worker,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.balizero.intel-lake-router.5min,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.balizero.wa-mirror-attention-classifier,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.balizero.wa-mirror-auto-promote,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.balizero.post-publish-poller,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+      notes: "loaded+green BUT its queue has 79 failed undrained (see queues.yaml)",
+    }
+  - {
+      id: com.nuzantara.wa-media-pull,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.nuzantara.wa-mirror-intake-sweeper,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.nuzantara.wa-mirror-session-janitor,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.nuzantara.sentinel-aggregate,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.nuzantara.launchagent-state-bridge,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+      notes: "was LOOPING in 2026-06-11 guardian audit — now interval-based, healed",
+    }
+  - {
+      id: com.nuzantara.lead-intent-matcher,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.nuzantara.login-healthcheck,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.nuzantara.intake-gate-count-pusher,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.nuzantara.openclaw-children-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+    }
+  - {
+      id: com.nuzantara.memory-sync-bidirectional,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "300s",
+      notes: "daemon green but BOTH spokes skipped 100/100 runs (M5 IP drift + Mini down) — see sync-forks.yaml",
+    }
+  - {
+      id: com.balizero.wa-mirror-attention-realtime,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+    }
+  - {
+      id: com.balizero.dropbox-intake,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+      notes: "527GiB backfill in flight",
+    }
+  - {
+      id: com.nuzantara.cost-breaker-deadman,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+      notes: "W71 governance",
+    }
+  - {
+      id: com.nuzantara.review-gate,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+    }
+  - {
+      id: com.nuzantara.sentinel,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+      notes: "W70 #4 one-shot-vs-daemon RESOLVED (StartInterval=600)",
+    }
+  - {
+      id: com.nuzantara.sentinel-meta-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+    }
+  - {
+      id: com.nuzantara.supervisor-liveness-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+    }
+  - {
+      id: com.nuzantara.verify-the-verifiers,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+      notes: "W71 meta-verifier H24",
+    }
+  - {
+      id: com.nuzantara.cpu-monitor,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+    }
+  - {
+      id: com.nuzantara.disk-monitor,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+    }
+  - {
+      id: com.nuzantara.automap-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+    }
+  - {
+      id: com.balizero.wr2.canva-lease-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+      notes: "W64 lint target — runtime green",
+    }
+  - {
+      id: com.balizero.wr2.pg-queue-sync,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+    }
+  - {
+      id: com.balizero.wr2.html-apply,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+      notes: "the LIVE HTML renderer lane",
+    }
+  - {
+      id: com.balizero.mos-plus.compression,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "600s",
+    }
+  - {
+      id: com.nuzantara.fly-restart-loop-detector,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "900s",
+    }
+  - {
+      id: com.nuzantara.repomap.15min,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "900s",
+    }
+  - {
+      id: com.nuzantara.mcp-integrity,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "900s",
+      notes: "W71 glyph fix live",
+    }
+  - {
+      id: com.balizero.intel-lake-nb-pusher.15min,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "900s",
+    }
+  - {
+      id: com.balizero.mos-plus.qdrant-indexer,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "1800s",
+    }
+  - {
+      id: com.nuzantara.cost-ledger-export,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "1800s",
+    }
+  - {
+      id: com.nuzantara.dlq-autopilot,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "1800s",
+    }
+  - {
+      id: com.nuzantara.claude-config-sync,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "3600s",
+    }
+  - {
+      id: com.nuzantara.claude-max-usage-watcher,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "3600s",
+    }
+  - {
+      id: com.nuzantara.nb-intel-delta-watcher.hourly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "3600s",
+    }
+  - {
+      id: com.balizero.nuzantara.log-size-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "3600s",
+    }
+  - {
+      id: com.nuzantara.cost-breaker,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "3600s",
+      notes: "W69 BUCO#2 closed",
+    }
+  - {
+      id: com.balizero.wa-mirror-strategic-recap,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "10800s",
+    }
+  - {
+      id: com.balizero.wr2.trend-hunter,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "7200s",
+    }
+  - {
+      id: com.balizero.intel-lake.shadow-validate.6h,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "21600s",
+    }
+  - {
+      id: com.balizero.wr2.canva-oauth-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "21600s",
+    }
+  - {
+      id: com.nuzantara.launchd-env-loader,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "43200s",
+    }
+  # ── ALIVE: calendar crons (WITA schedule in producer) ──
+  - {
+      id: com.balizero.intel.nightly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 1:00",
+    }
+  - {
+      id: com.nuzantara.daily-indexing-sweep,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 1:00",
+      notes: "guardian-audit 10.7k-runs crash-loop NO LONGER present (calendar-only now)",
+    }
+  - {
+      id: com.balizero.audit-launchd.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 2:00",
+    }
+  - {
+      id: com.nuzantara.nb-mitochondrial-monitor.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 2:30",
+    }
+  - {
+      id: com.balizero.wr2.reflexion.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Sun 2:30",
+      notes: "the REAL 314-line impl (WR3 twin unloaded)",
+    }
+  - {
+      id: com.balizero.wr2.voyager.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Sun 2:00",
+      notes: "_voyager-curriculum.py NOW EXISTS — do not confuse with the 2026-06-05 phantom-citation scar",
+    }
+  - {
+      id: com.nuzantara.openclaw-logrotate,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 3:00",
+    }
+  - {
+      id: com.balizero.wr2.learner-nightly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 3:00",
+    }
+  - {
+      id: com.balizero.wr2.ig-scraper.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 3:00",
+    }
+  - {
+      id: com.nuzantara.codex-coverage-improver,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 3:00",
+    }
+  - {
+      id: com.balizero.wa-lid-refresh,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 3:15",
+      notes: "depends on wa-mirror :7790 up",
+    }
+  - {
+      id: com.nuzantara.outbox-prune.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 3:15",
+    }
+  - {
+      id: com.balizero.domain-mesh.foundations.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 4:00",
+    }
+  - {
+      id: com.balizero.nb-curator.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 4:00",
+    }
+  - {
+      id: com.nuzantara.archive-empty-sessions.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 4:00",
+    }
+  - {
+      id: com.balizero.wr2.e2e-probe.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 4:00",
+    }
+  - {
+      id: com.balizero.wr2.connector,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 4:00",
+    }
+  - {
+      id: com.balizero.wr2.dossier-compiler,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 4:30",
+    }
+  - {
+      id: com.nuzantara.secrets-sync-mini,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 4:30",
+      notes: "Mini down at census — verify behavior on Mini return",
+    }
+  - {
+      id: com.balizero.wr2.topic-selector,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 5:10",
+    }
+  - {
+      id: com.balizero.bz-daily-visual-pipeline,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 5:30",
+    }
+  - {
+      id: com.balizero.setup-team.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 6:00",
+    }
+  - {
+      id: com.balizero.wr2.daily-metrics,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 6:00",
+    }
+  - {
+      id: com.balizero.nuzantara-drive-sync,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "6:00+18:00",
+    }
+  - {
+      id: com.nuzantara.codex-research-actor,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 6:00",
+    }
+  - {
+      id: com.balizero.regulatory-watcher.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 7:00",
+    }
+  - {
+      id: com.nuzantara.codex-openclaw-analysis,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 7:15",
+    }
+  - {
+      id: com.balizero.renewal-alerts,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 8:00",
+    }
+  - {
+      id: com.nuzantara.cost-advisor-daily-cap,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 8:00",
+    }
+  - {
+      id: com.nuzantara.openclaw.guardian-board,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 8:30",
+    }
+  - {
+      id: com.balizero.client-value-predictor,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 9:00",
+    }
+  - {
+      id: com.balizero.l5-2-phase2b-trigger,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      producer: "daily 9:00",
+      notes: "unloaded; target l5_2_phase2b_auto_analyzer.py removed from repo — retired 2026-06-20, restore script before re-arming",
+      oneshot_sentinel: "~/.agent/l5-2-phase2b-fired.sentinel",
+    }
+  - {
+      id: com.balizero.sota.m13-checkpoint,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 9:00",
+    }
+  - {
+      id: com.balizero.wr2.canva-token-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 9:00",
+    }
+  - {
+      id: com.balizero.nuzantara.disk-watchdog,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 9:00",
+    }
+  - {
+      id: com.balizero.wa-mirror-attention-digest,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 18:00",
+    }
+  - {
+      id: com.balizero.seo-cell.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 19:30",
+    }
+  - {
+      id: com.nuzantara.plist-snapshot.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 19:30",
+    }
+  - {
+      id: com.nuzantara.codex-overnight-feeder,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      producer: "daily 21:30",
+      notes: "disabled W81 firebreak 2026-06-15 (.plist.disabled-W81)",
+    }
+  - {
+      id: com.nuzantara.codex-overnight-runner,
+      kind: launchd,
+      machine: pro,
+      status: BY_DESIGN_OFF,
+      producer: "daily 22:00",
+      notes: "disabled W81 firebreak 2026-06-15 (.plist.disabled-W81)",
+    }
+  - {
+      id: com.nuzantara.automations-reference,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 23:15",
+    }
+  - {
+      id: com.cell.metabolic-rollup,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 23:45",
+    }
+  - {
+      id: com.balizero.translate.hourly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "hourly :30",
+      notes: "translate-hourly.log 83MB — rotation candidate",
+    }
+  - {
+      id: com.nuzantara.organism.scheduled-tick,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "hourly :00",
+    }
+  - {
+      id: com.nuzantara.skills-bridge-consumer,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "192-entry calendar 06:00-21:55/5min",
+      notes: "W65 family",
+    }
+  - {
+      id: com.balizero.intel-lake.e2e-probe.6h,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "0:30/6:30/12:30/18:30",
+    }
+  - {
+      id: com.balizero.cicatrix-rotation.monthly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "d1 4:00",
+    }
+  - {
+      id: com.balizero.sota.m13-monthly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "d1 4:30",
+    }
+  - {
+      id: com.balizero.wr3.editorial-bench.monthly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "d1 7:00",
+    }
+  - {
+      id: com.balizero.competitor-monitor.monthly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "d1 9:00",
+    }
+  - {
+      id: com.balizero.seo-cell.28d-check,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "d29 4:00",
+      notes: "skips February",
+    }
+  - {
+      id: com.balizero.wr2.worktree-gc.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 0:00",
+      notes: "plistlib strict-parse fails, plutil OK — bites python plist tooling",
+    }
+  - {
+      id: com.nuzantara.worktree-gc-universal.daily,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "daily 0:30",
+      notes: "same plistlib edge",
+    }
+  - {
+      id: com.nuzantara.branch-cleanup.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 8:00",
+    }
+  - {
+      id: com.balizero.curiosity.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Sun 20:00",
+    }
+  - {
+      id: com.balizero.wr2.oracle,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Sun 22:30",
+    }
+  - {
+      id: com.balizero.wr2.strategos,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Sun 22:00",
+    }
+  - {
+      id: com.balizero.sota.m13-weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Sun 6:00",
+    }
+  - {
+      id: com.balizero.yield-optimizer.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Sun 4:00",
+    }
+  - {
+      id: com.balizero.codex-spalla-calibrate,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Sun 6:00",
+    }
+  - {
+      id: com.balizero.nextdns-tamper-detect.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 1:00",
+    }
+  - {
+      id: com.balizero.competitor-signal-router.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 6:30",
+    }
+  - {
+      id: com.balizero.wr2.ig-metrics-analyst.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 6:07",
+    }
+  - {
+      id: com.nuzantara.cost-advisor-weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 7:00",
+    }
+  - {
+      id: com.nuzantara.gh-auth-healthcheck.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 7:00",
+    }
+  - {
+      id: com.nuzantara.chronic-failure-digest.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 8:30",
+    }
+  - {
+      id: com.balizero.fly-cost-alert.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 9:00",
+    }
+  - {
+      id: com.nuzantara.vector-reindex-check,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 9:00",
+    }
+  - {
+      id: com.balizero.wr2.canva-gc.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 4:30",
+      notes: "Canva GC scheduled though renderer unloaded — harmless residue",
+    }
+  - {
+      id: com.nuzantara.outbox-prune.weekly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Sun 4:30",
+    }
+  - {
+      id: com.balizero.wr2.external-bench.monthly,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 7:00 (weekday=1 — runs WEEKLY despite name)",
+    }
+  - {
+      id: com.balizero.wr2.newsletter,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "Mon 9:00",
+    }
+  - {
+      id: com.balizero.claude-settings-watcher,
+      kind: launchd,
+      machine: pro,
+      status: ALIVE,
+      producer: "WatchPaths ~/.claude/settings.json",
+    }
+anomalies:
+  - "P1: 4 eventbus daemons crash-looping on redis TimeoutError ~7h (meta-dispatcher, intel-dedup-gateway, research-sentinel, observatory) — redis-cli on localhost WORKS, so their connection target/env is wrong"
+  - "P1: wr2.deploy-puller DEAD + alert-suppressed (W55 replay) — remediation dispatched 2026-06-13"
+  - "P2: wr2.plist-watchdog DEAD 28×15min — WR2 self-heal layer dark while deploy-puller also dark"
+  - "P2: pg-organism-bridge-watchdog LYING_BY_PRESENCE — unarmed watchdog over a live daemon"
+  - "P3: supervisors wr2/wr2-watchdog/wr3 exit-74 churn (DATABASE_URL_LOCAL transient at boot)"
+  - "P4: external-bench 'monthly' actually weekly; 4 plists fail strict plistlib; translate log 83MB"

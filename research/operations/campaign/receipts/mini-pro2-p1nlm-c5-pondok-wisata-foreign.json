@@ -1,0 +1,28 @@
+{
+  "host": "mini-pro2",
+  "lane": "L-P1NLM",
+  "cycle": "c5-nlm-live",
+  "claim_id": "PONDOK-WISATA-FOREIGN",
+  "domain": "property",
+  "account": "antonellosiano@",
+  "nb_queried": { "id": "d9438180-5e63-4e2a-a473-6061101f6a8d", "name": "NB-5 Property & Real Estate (curated, ledger ground-truth source)" },
+  "nb_query": "Can a foreigner or a foreign-owned PT PMA legally hold a Pondok Wisata license in Bali/Indonesia, or is it reserved for Indonesian citizens (WNI) as individual businesses? What is the compliant licensing route for a foreigner who wants to operate tourist villa accommodation?",
+  "ledger_current_fact_candidate": "Pondok Wisata is reserved for Indonesian citizens (WNI) as individuals; a foreigner / PT PMA CANNOT hold it. Foreigner route = PT PMA + Villa KBLI in a Pink tourism zone via OSS-RBA. Nominee = criminal under Perda Bali 4/2026.",
+  "nb_citation_verbatim": "Foreign nationals and foreign-owned companies (PT PMA) are strictly prohibited from holding a Pondok Wisata (homestay) license ... Permenpar No. 18/2016, Pasal 4(3): 'Perseorangan sebagaimana dimaksud pada ayat (2) merupakan warga negara Indonesia' ... Permenparekraf 9/2014 defines it as 'usaha perseorangan' (blocks corporate entities incl. PT PMA). The only compliant route is a PT PMA registered under the Villa KBLI in a Pink (Tourism) zone. Nominee = void + criminalized under Perda Bali No. 4/2026 (up to 5 yrs / IDR 1B).",
+  "verdict": "CONFIRM",
+  "verdict_rationale": "Live NB-5 confirms the core ledger fact verbatim (WNI-only via Permenpar 18/2016 Pasal 4(3) + Permenparekraf 9/2014; foreigner route = PT PMA + Villa). NOTE a cross-NB code divergence: NB-5 (property) labels the Villa code '55193' (calls it current 'Investment Gold Standard'), whereas NB-3/BPS authoritatively recodes it 55193 -> 55203. This is the SEPARATE P1 claim KBLI-VILLA-55193-CURRENT (out of the 6 P0-NLM scope) and does NOT weaken the WNI-only verdict. Fix text uses the authoritative 55203.",
+  "fix_applied": {
+    "files": [
+      "apps/mouth/src/content/articles/property/rental-property-investment.mdx",
+      "apps/mouth/src/content/articles/property/villa-investment-guide.mdx"
+    ],
+    "change": "FAQ answers that advised a foreigner to use 'Hak Pakai/leasehold with a Pondok Wisata license' corrected: Pondok Wisata cannot be held by a foreigner or PT PMA (reserved for WNI individuals, Permenpar 18/2016 Pasal 4(3)); commercial rental requires PT PMA + Villa license (KBLI 55203).",
+    "cause_command": "grep -c 'reserved for Indonesian citizens (WNI)' rental-property-investment.mdx villa-investment-guide.mdx",
+    "cause_before": "0 (both advised Pondok Wisata as a foreigner option)",
+    "cause_after": "1 each (WNI-only correction present)"
+  },
+  "scope_note": "Broader Pondok-Wisata-foreigner surface is multi-article (tourism-hospitality-guide.mdx 'foreign ownership varies by location' soft-wrong; villa-investment-guide.mdx:371/384 license-list). Two cleanest advice-offenders fixed; soft-wrong 'varies by location' framings flagged for operator (categorical WNI-only vs location-dependent).",
+  "refuter_note": "NB-5 quotes the regulation articles verbatim; reasoning-refuter cannot override Pasal 4(3) text. Father's grep is the gate.",
+  "ground_truth_source": "NB-5 d9438180 LIVE query 2026-06-16 (Permenpar 18/2016 Pasal 4(3), Permenparekraf 9/2014, Perda Bali 4/2026)",
+  "ts": "2026-06-16T04:15:55Z"
+}

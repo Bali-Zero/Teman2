@@ -21,6 +21,7 @@ on:
     paths:
       - "scripts/agent_start.py"
       - "scripts/agent_worktree_cleanup_cron.sh"
+      - "scripts/tests/test_agent_worktree_cleanup_cron.py"
       - "scripts/tests/test_agent_start.py"
       - "tests/integration/test_no_stale_worktrees.py"
       - "infra/launchagents/com.nuzantara.agent-worktree-cleanup.daily.plist.example"
@@ -43,7 +44,7 @@ jobs:
   broker-hygiene:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -55,6 +56,9 @@ jobs:
 
       - name: Broker unit tests
         run: python -m pytest scripts/tests/test_agent_start.py -q
+
+      - name: Cleanup cron wrapper tests
+        run: python -m pytest scripts/tests/test_agent_worktree_cleanup_cron.py -q
 
       - name: No stale worktrees (24h orphan guard)
         run: python -m pytest tests/integration/test_no_stale_worktrees.py -q

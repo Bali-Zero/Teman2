@@ -14,8 +14,8 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.deps.crm_service_write import verify_crm_write_key
 from backend.app.routers.crm_enhanced import (
     DocumentCreate,
     DocumentUpdate,
@@ -30,6 +30,10 @@ from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_c
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
 logger = get_logger(__name__)
+
+
+def _access_not_preverified() -> bool:
+    return False
 
 
 def _parse_date_or_none(date_str: str | None) -> date | None:
@@ -116,7 +120,7 @@ async def create_document(
     Add a document to a client. Auto-triggers OCR for passport documents.
     """
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
         # Sanitize date field - convert string to date object for asyncpg
         expiry_date = None
         if data.expiry_date:
@@ -249,7 +253,7 @@ async def create_documents_bulk(
         raise HTTPException(status_code=400, detail="No documents provided")
 
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
 
         inserted_ids = []
         ocr_count = 0
@@ -383,7 +387,7 @@ async def update_document(
     values.extend([doc_id, client_id])
 
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
         result = await conn.execute(
             f"""
             UPDATE documents
@@ -412,7 +416,7 @@ async def archive_document(
     Archive or delete a document.
     """
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
         if permanent:
             result = await conn.execute(
                 "DELETE FROM documents WHERE id = $1 AND client_id = $2",
@@ -513,7 +517,7 @@ async def extract_visa_data(
     Body: {"file_id": "...", "doc_id": 123}
     """
     async with pool.acquire() as conn:
-        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True, write=True)
     file_id = body.get("file_id")
     doc_id = body.get("doc_id")
     if not file_id:
@@ -552,14 +556,18 @@ async def upload_document_base64(
     pool: Any = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
     background_tasks: BackgroundTasks = BackgroundTasks(),
+    access_already_verified: bool = Depends(_access_not_preverified),
 ) -> dict[str, Any]:
     """
     Upload a document via Base64 (for frontend integration).
     Handles Google Drive upload and document creation.
     """
     # RBAC check before processing upload
-    async with pool.acquire() as _conn:
-        await verify_client_access(client_id, current_user, _conn, allow_assigned=True)
+    if access_already_verified is not True:
+        async with pool.acquire() as _conn:
+            await verify_client_access(
+                client_id, current_user, _conn, allow_assigned=True, write=True
+            )
 
     try:
         # Decode Base64
@@ -606,38 +614,22 @@ async def upload_document_base64(
 
             drive_service = ServiceAccountDriveService()
 
-            # Ensure Root Folder Exists
+            # Ensure Root Folder Exists — MUST go through the idempotent
+            # chokepoint. The old inline create raced against the POST
+            # /api/clients background task (passport upload lands ~15-25s
+            # after creation, while the 16 subfolders are still being built)
+            # and produced a twin "{id}_{name}" root folder on every new
+            # client created with a passport scan.
             root_folder_id = client["google_drive_folder_id"]
             if not root_folder_id:
-                # Create root folder logic
-                parent_id = settings.google_drive_root_folder_id
-
-                # If specific settings exist for types, use them (simplified from crm_drive_folders)
-                # But to avoid circular imports or config issues, we fall back to root or simple logic
-                if client["client_type"] == "individual" and hasattr(
-                    settings,
-                    "gdrive_individuals_folder_id",
-                ):
-                    parent_id = settings.gdrive_individuals_folder_id or parent_id
-                elif client["client_type"] == "company" and hasattr(
-                    settings,
-                    "gdrive_companies_folder_id",
-                ):
-                    parent_id = settings.gdrive_companies_folder_id or parent_id
-
                 try:
-                    folder_data = await drive_service.create_folder(
-                        name=f"{client['id']}_{client['full_name']}",
-                        parent_id=parent_id,
+                    ensure_result = await drive_service.ensure_client_folder(
+                        client_id=client["id"],
+                        client_name=client["full_name"],
+                        client_type=client["client_type"] or "individual",
+                        db_pool=pool,
                     )
-                    root_folder_id = folder_data["id"]
-
-                    # Update client
-                    await conn.execute(
-                        "UPDATE clients SET google_drive_folder_id = $1 WHERE id = $2",
-                        root_folder_id,
-                        client_id,
-                    )
+                    root_folder_id = ensure_result["root_folder_id"]
                 except Exception as e:
                     logger.error("Failed to create root folder: %s", e)
                     raise HTTPException(
@@ -743,9 +735,10 @@ async def upload_document_base64(
                         if prev_folder_id:
                             try:
                                 await drive_service.move_file(
+                                    user_email=current_user.get("email", ""),
                                     file_id=existing_actual["file_id"],
-                                    from_parent_id=target_subfolder_id,
-                                    to_parent_id=prev_folder_id,
+                                    new_parent_id=prev_folder_id,
+                                    old_parent_id=target_subfolder_id,
                                 )
                                 await conn.execute(
                                     "UPDATE documents SET subfolder = 'Previous Visa', updated_at = NOW() WHERE id = $1",
@@ -868,6 +861,36 @@ async def upload_document_base64(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+@router.post("/internal/clients/{client_id}/documents/upload")
+async def upload_document_base64_internal(
+    client_id: int,
+    data: DocumentUploadBase64 = Body(...),
+    pool: Any = Depends(get_database_pool),
+    actor: str = Depends(verify_crm_write_key),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+) -> dict[str, Any]:
+    """Service-to-service intake upload path.
+
+    Authenticated by ``X-CRM-Write-Key`` and hard-gated by
+    ``WA_MIRROR_CRM_WRITE_ENABLED``. The actual upload implementation is the same
+    path used by the frontend/manual reviewer; only the RBAC pre-check is skipped
+    because Pro-side intake already resolved and gate-checked the target client.
+    """
+    return await upload_document_base64(
+        client_id=client_id,
+        data=data,
+        pool=pool,
+        current_user={
+            "email": actor,
+            "user_id": actor,
+            "role": "service",
+            "permissions": ["crm:write"],
+        },
+        background_tasks=background_tasks,
+        access_already_verified=True,
+    )
+
+
 @router.delete("/documents/{doc_id}")
 async def delete_document(
     doc_id: int,
@@ -883,7 +906,7 @@ async def delete_document(
         doc_row = await conn.fetchrow("SELECT client_id FROM documents WHERE id = $1", doc_id)
         if doc_row:
             await verify_client_access(
-                doc_row["client_id"], current_user, conn, allow_assigned=True
+                doc_row["client_id"], current_user, conn, allow_assigned=True, write=True
             )
         if permanent:
             result = await conn.execute("DELETE FROM documents WHERE id = $1", doc_id)

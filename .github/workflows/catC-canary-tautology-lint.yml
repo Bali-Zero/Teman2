@@ -1,0 +1,90 @@
+name: catC — canary tautology lint (non-required, observability)
+
+# Category-C guardian audit (#24), 2026-06-11.
+#
+# WHAT THIS CATCHES
+#   verify_the_verifiers.py:run_canary() is supposed to PROVE the disarm lever
+#   works by injecting the disarm substring and asserting the gate flips to
+#   DISARMED. The shipped check is a TAUTOLOGY:
+#
+#       if disarm in f"{disarm} python3 hook.py":   # <- always True
+#           return ... ARMED
+#
+#   A string is always a substring of itself-plus-suffix, so the canary returns
+#   ARMED *by construction* and validates nothing about whether the disarm lever
+#   actually flips check_claude_hook to DISARMED. A tautological canary is WORSE
+#   than no canary: it reports a false ARMED, eroding trust in the meta-verifier.
+#
+# WHY A SEPARATE, NON-REQUIRED WORKFLOW (not an edit to verify_the_verifiers.py)
+#   The real fix is a 1-line change inside run_canary() — but that file is
+#   load-bearing TIER-1 meta-verifier logic (sha256-pinned + CODEOWNERS-guarded
+#   by verify-the-verifiers.yml). Changing the logic is an operator decision, not
+#   a safe-class touch. This lint makes the drift OBSERVABLE without touching the
+#   logic: it FAILS only if the tautological pattern is STILL present, so once the
+#   operator ships the real fix this lint goes green and then guards against a
+#   regression to the tautology. It is intentionally NOT a required check (it is
+#   a flashlight, not a gate) — promote to required only after the fix lands.
+#
+# This is the "esiste-ma-non-armato" (W64) class made observable: the canary
+# exists, runs, and lies. See cicatrix W64 + the guardian-of-guardians audit.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/verify_the_verifiers.py"
+      - ".github/workflows/catC-canary-tautology-lint.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify_the_verifiers.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catC-canary-tautology-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  canary-tautology:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Dependency-free: a tiny stdlib-Python scan over the source. (NOT grep --
+      # the pattern needs a BACKREFERENCE `\1` to assert the membership variable
+      # equals the f-string's first interpolation, and POSIX grep/ugrep reject
+      # `\1` in ERE inconsistently; Python's `re` is portable + ships on the
+      # runner.) The pattern targets the SHAPE of the tautology
+      # (`X in f"{X} ...suffix..."`), not a literal line, so it survives
+      # reformatting. If the operator rewrites run_canary() to actually set the
+      # env + re-run check_claude_hook with the disarm substring (the real fix),
+      # this `X in f"{X} ..."` construct disappears and the lint passes.
+      - name: Detect tautological self-substring canary
+        run: |
+          python3 - <<'PY'
+          import re, sys
+          from pathlib import Path
+          FILE = Path("scripts/verify_the_verifiers.py")
+          if not FILE.exists():
+              print(f"::notice::{FILE} absent on this ref — nothing to lint")
+              sys.exit(0)
+          # `<name> in f"{<name>} ...` : a value tested for membership in an
+          # f-string that opens by interpolating that SAME value -> always True.
+          pat = re.compile(r'\b([A-Za-z_]\w*)\s+in\s+f"\{\1\}')
+          hits = [(i, ln.rstrip()) for i, ln in
+                  enumerate(FILE.read_text(encoding="utf-8").splitlines(), 1)
+                  if pat.search(ln)]
+          if hits:
+              for i, ln in hits:
+                  print(f"::error file={FILE},line={i}::Tautological canary: "
+                        f"a value is tested for membership in an f-string that "
+                        f"starts with that same value (always True) -> {ln}")
+              print("::error::The disarm-lever canary validates nothing and "
+                    "reports a false ARMED. Rewrite run_canary() to set the env "
+                    "+ re-run check_claude_hook with the disarm substring "
+                    "injected and assert the verdict flips to DISARMED. "
+                    "See guardian audit #24 + cicatrix W64.")
+              sys.exit(1)
+          print(f"OK: no tautological self-substring canary in {FILE}")
+          PY

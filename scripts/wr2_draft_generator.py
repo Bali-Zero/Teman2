@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""WR2 Draft Generator — Claude writes 11 English slides, Imagen generates cover only.
+"""WR2 Draft Generator — Claude writes 6-11 English slides with SMART hero selection.
 
 Daily cron (05:15 WITA): picks drafts with status='briefed', calls Claude
-OAuth to compose the 11-slide JSON (English content, register in the 7
-Council tones), runs Imagen 4 Ultra for the cover only (body slides keep
-image_url=None and carry image_prompt for manual generation by the team),
-uploads the cover to Tigris, persists slides_json to the draft and flips
-status to 'drafts'.
+OAuth to compose the slide JSON (English content, register in the 7
+Council tones). Slide count is FLEXIBLE (6-11) and the model decides which
+slides deserve a full-bleed photo (is_hero_image=true) based on the story —
+the cover is always hero; text-heavy slides (dense lists, citations, pure
+editorial takes) stay text-only and render as clean text-on-color (decision
+2026-06-13, superseding the 2026-06-12 "every slide hero" rule). Runs Imagen 4
+Ultra for the cover only (other hero slides keep image_url=None and carry
+image_prompt for downstream generation), uploads the cover to Tigris, persists
+slides_json to the draft and flips status to 'drafts'.
 
 Env:
     DATABASE_URL           — localhost form
@@ -32,9 +36,13 @@ from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
+# scripts/ on path so the pure topic-type helpers (sibling module) import
+# regardless of cwd (launchd runs with an arbitrary working directory).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import asyncpg  # noqa: E402
 
+import wr2_topic_type as tt  # noqa: E402  (pure, side-effect-free)
 from backend.llm.claude_oauth_client import (  # noqa: E402
     ClaudeOAuthError,
     ClaudeOAuthNotAvailable,
@@ -54,6 +62,152 @@ VALID_TONES = {
     "tecnico",
 }
 
+# ── A1 keystone: liveness_tier propagation (cicatrix #9 schema-drift) ──────────
+# The topic selector already computes a liveness_tier and persists it inside
+# brief_json (wr2_topic_selector.py: "liveness_tier": top_item.get(...)), but the
+# drafter used to read enrichment + live_reasons and DROP this field on the floor.
+# A1 wires it end-to-end: read it here, hand Claude a one-line editorial framing so
+# the narrative matches the story's timeliness. A1 is framing ONLY — it deliberately
+# does NOT constrain slide count (that's A2) or tone (that's A3); those hang off the
+# SAME injection point in later PRs. Mirrors selector's LIVENESS_TIER_VALID (SSOT).
+LIVENESS_TIER_VALID = {"breaking", "developing", "evergreen"}
+
+# One-line editorial framing per tier. Neutral on length/tone — pure "how timely is
+# this" context. "manual" (operator-inserted topics) and anything unknown → no line.
+_LIVENESS_FRAMING = {
+    "breaking": (
+        "EDITORIAL CONTEXT — liveness: BREAKING. This is fast-moving, just-happened news; "
+        "write with urgency and a clear 'what changed / what to do now' spine."
+    ),
+    "developing": (
+        "EDITORIAL CONTEXT — liveness: DEVELOPING. This story is still unfolding; frame it as "
+        "an evolving situation readers should track, not a settled conclusion."
+    ),
+    "evergreen": (
+        "EDITORIAL CONTEXT — liveness: EVERGREEN. This is durable, reference-grade material; "
+        "write it to stay useful for months, explanatory rather than time-pegged."
+    ),
+}
+
+
+def _normalise_liveness_tier(raw: Any) -> str:
+    """Lower-case + validate against the selector's SSOT set. Unknown / missing /
+    'manual' collapse to '' (→ no framing line injected). Never raises."""
+    tier = str(raw or "").strip().lower()
+    return tier if tier in LIVENESS_TIER_VALID else ""
+
+
+# ── A2: length-per-story-type (D1×D2) ─────────────────────────────────────────
+# Deep-research (Socialinsider ~3M carousels) put the engagement TROUGH at 7 slides
+# — the exact default the model drifted to — and the peak near 10. So instead of a
+# flat "6-8", steer the count by liveness: breaking news is punchier (fewer, faster
+# slides), evergreen reference material rewards depth (more). This is a PROMPT steer,
+# not a Python clamp: distinct_claims isn't a structured field (it's prose in
+# the_facts/in_practice), so the model — which is reading that prose — is better
+# placed to pick the count than a brittle regex would be.
+#
+# Targets live INSIDE the existing hard guard (_normalise_slides rejects <6 or >11),
+# so A2 never produces a count the guard would reject. The plan's clamp(5,10) floor of
+# 5 is deliberately raised to 6 here: dropping the guard to 5 is a separate, riskier
+# change, out of scope for A2. Ranges: breaking→6-7, developing→7-8, evergreen→9-10.
+#
+# SCOMMESSA-ESTERNA (honest): our own corpus is all-7 → zero internal length signal.
+# This bets on Socialinsider's audience generalising to ours. We instrument slide_count
+# + tier (council_meta) so it's measurable after 4-6 weeks, not optimised blind.
+_LENGTH_GUIDANCE = {
+    "breaking": (
+        "LENGTH — this is breaking news: keep it TIGHT, 6-7 slides. Lead with what "
+        "changed, cut anything that isn't the news or the immediate action."
+    ),
+    "developing": (
+        "LENGTH — this is a developing story: 7-8 slides. Enough to frame the moving "
+        "parts without padding."
+    ),
+    "evergreen": (
+        "LENGTH — this is evergreen reference material: go deeper, 9-10 slides. Use the "
+        "room to explain thoroughly; depth is the point for durable content."
+    ),
+}
+
+
+def _length_guidance(liveness_tier: str) -> str:
+    """The per-tier slide-count steer, or '' for unknown/manual (model keeps 6-8)."""
+    return _LENGTH_GUIDANCE.get(liveness_tier, "")
+
+
+# ── A3: tone-per-story-type (D2 × the most mature organ) ───────────────────────
+# The model already picks ONE of the 7 Council tones from the prompt's TONE
+# REGISTERS block. A3 nudges that pick by liveness_tier so timeliness and voice
+# agree: breaking news reads best as procedural/analytic ("what changed, what to
+# do"), an unfolding story as analytic/militant, durable reference as pedagogic/
+# ritual (explain thoroughly, lasting significance).
+#
+# PREFERENCE, not a hard constraint — deliberately (cicatrix #3 over-match): the
+# downstream validator (_normalise_slides) only rejects a tone that isn't in
+# VALID_TONES, NOT one that's "wrong for the tier". If A3 hard-forced a tone we'd
+# get spurious mismatches when the content genuinely wants another register. So the
+# line says "PREFER x/y; pick another only if the content clearly demands it" and
+# Legge 5 (human publishes) is the final backstop against over-constraint.
+#
+# Preferred tones are a SUBSET of VALID_TONES (asserted by a test) — a preference
+# the validator can never reject.
+_TONE_PREFERENCE = {
+    "breaking": ("tecnico", "analitico"),
+    "developing": ("analitico", "militante"),
+    "evergreen": ("pedagogico", "rituale"),
+}
+
+
+def _tone_guidance(liveness_tier: str) -> str:
+    """Per-tier register preference line, or '' for unknown/manual (model free)."""
+    prefs = _TONE_PREFERENCE.get(liveness_tier)
+    if not prefs:
+        return ""
+    joined = " or ".join(prefs)
+    return (
+        f"TONE — for this {liveness_tier} story, PREFER the {joined} register; pick "
+        "another of the 7 only if the content clearly demands it."
+    )
+
+
+# ── A4: closer single-line guard (D4 — the slide-8 class) ─────────────────────
+# Constitution 6.6 / 9.5: the closing slide is a statement-bomb — a SINGLE-LINE
+# bold centered statement, not a paragraph. A long closer body wraps into a
+# text-brick and the layout breaks (the recurring slide-8 defect). A4 guards the
+# CLASS: a preventive prompt line + a post-hoc WARN + a targeted regen ask.
+#
+# We count WORDS, not characters (cicatrix #3 over-match: a char cap would trip on
+# one long word or a URL). The drafter has no rendered LINE count — lines are born
+# from CSS wrapping at render time — so word-count of the closer body is the
+# correct proxy the drafter actually has. 12 is generous: single-line bold centered
+# at statement-bomb sizing (~110px) fits ~10-12 words before it must wrap; the
+# constitution's ≤8-word statement-bomb ideal sits comfortably under it.
+#
+# WARN + regen, NOT a hard reject (operator choice 2026-07-01): a slightly long
+# closer asks the model to compress in the existing regen loop; it never sends an
+# otherwise-good draft to render_failed. Legge 5 (human publishes) is the backstop.
+CLOSER_MAX_WORDS = 12
+
+_CLOSER_STEER = (
+    "CLOSER — the LAST slide is the closing statement-bomb: it MUST be a single-line "
+    f"bold statement, at most {CLOSER_MAX_WORDS} words. No paragraph, no multi-sentence "
+    "sign-off — one punch."
+)
+
+
+def _closer_word_count(slides: list[dict[str, Any]]) -> int:
+    """Word count of the last slide's body (0 if no slides). The closer is always
+    the last slide (constitution 9.5: closing slide = statement-bomb)."""
+    if not slides:
+        return 0
+    return len((slides[-1].get("body") or "").split())
+
+
+def _closer_too_long(slides: list[dict[str, Any]]) -> bool:
+    """True when the closer body exceeds CLOSER_MAX_WORDS → wraps into a brick."""
+    return _closer_word_count(slides) > CLOSER_MAX_WORDS
+
+
 TIGRIS_ENDPOINT = "https://fly.storage.tigris.dev"
 TIGRIS_BUCKET = "nuzantara-warroom-images"
 TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
@@ -63,7 +217,9 @@ TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
 # Settings() which requires JWT_SECRET_KEY etc. — unacceptable for a cron entry.
 BRAND_SUFFIX: str = (
     "Editorial style, high resolution, no stock imagery, "
-    "no handshakes, no generic passports, cinematic lighting"
+    "no handshakes, no generic passports, "
+    "NO documents or pens on a desk, NO paperwork close-ups, "
+    "cinematic lighting"
 )
 _DEFAULT_STYLE_MODIFIERS: tuple[str, ...] = (
     "macrografia editoriale",
@@ -74,7 +230,13 @@ _DEFAULT_STYLE_MODIFIERS: tuple[str, ...] = (
 NEGATIVE_PROMPT: str = (
     "hands holding objects, passport close-ups, generic handshake, "
     "stock photo aesthetic, text overlays, watermark, logo, "
-    "deformed hands, extra fingers, distorted faces, illegible text"
+    "deformed hands, extra fingers, distorted faces, illegible text, "
+    # 2026-06-13 (Antonello): the document-and-pen-on-a-desk cliché is the
+    # single most off-brand image WR2 keeps producing. Ban it explicitly.
+    "document on a desk, contract on a table, land deed on a desk, "
+    "fountain pen, signing pen, pen resting on paper, hand signing, "
+    "official seal close-up, stack of papers, paperwork on a desk, "
+    "notary scene, clipboard, ballpoint pen, desk with documents"
 )
 
 
@@ -135,7 +297,7 @@ SYSTEM_INSTRUCTIONS = """You are the Draft Composer of War Room 2.0 for Bali Zer
 
 Bali Zero is an Indonesian business-services agency serving international expats, foreign investors, digital nomads and retirees — primarily English-speaking, from ~50 countries. The Italian community is one slice among many; never default to Italian.
 
-GOAL: produce the 11-slide structure of an Instagram carousel that reads like a NARRATIVE (Wired/The Atlantic editorial), not a legal brief.
+GOAL: produce the 6-8 slide structure (flexible: pick the count the story needs) of an Instagram carousel that reads like a NARRATIVE (Wired/The Atlantic editorial), not a legal brief.
 
 TONE REGISTERS (pick ONE of the 7 based on content):
 - rituale (ritual): symbolic events, cultural anniversaries, turning points
@@ -152,24 +314,75 @@ HARD RULES:
 - NEVER use tones "cinico" or "istituzionale_severo" (legacy WR1, FORBIDDEN)
 - Language: ENGLISH (international expat audience)
 - Headlines max 60 characters
-- Body max 280 characters
+- Body max 280 characters AND ~40 words (whichever first; ~25-35 words ideal)
 - Slide 1 = cover (is_cover: true, is_hero_image: true ALWAYS)
-- Slide 11 = CTA to Bali Zero
-- Every slide must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups
+- LAST slide = CTA to Bali Zero
+- HERO slides must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups (text-only slides do NOT need image_prompt)
+- BANNED IMAGE CLICHÉ (HARD — Antonello 2026-06-13): NEVER a document / deed /
+  contract / form lying on a desk or table with a pen (especially a fountain
+  pen) resting on or beside it, NEVER paperwork close-ups, NEVER a hand signing,
+  NEVER an official seal close-up. This "papers + pen on a desk" image is the
+  single most off-brand stock cliché — the brand rejects it outright. Show the
+  HUMAN and PLACE reality behind the rule instead: people in a real moment, a
+  Balinese/Indonesian place or building, an architectural detail, a tense
+  street/landscape scene — never the lawyer's-desk still life.
 
-HERO IMAGE SELECTION (MANDATORY):
-You MUST mark exactly 4 slides as `is_hero_image: true`:
-- Slide 1 (cover) — ALWAYS hero
-- Slide 11 (CTA closer "What This Means For You") — ALWAYS hero
-- 2 mid-carousel slides at NARRATIVE TURNING POINTS — pick the slides that
-  open a new beat (e.g. "the shift", "the stakes", "fiction vs substance"),
-  not the ones that list facts or numbers.
+TONAL PALETTE (per HERO slide — drives the photographic look, fights monotony):
+Each HERO slide MUST include a `tonal_palette` field. Pick ONE
+that fits the slide's mood; do NOT use the same palette for every hero slide,
+and vary it across carousels on the same topic (the brand forbids two
+same-domain carousels looking identical):
+- "warm-ochre": warm, intimate, lived-in interior/place mood
+- "cool-teal": detached, analytical, institutional, data-heavy
+- "monochrome": stark, archival, historical, high-gravity
+- "high-contrast": tense, confrontational, urgent
+- "bleached-daylight": open, hopeful, resolution, "the way out"
 
-The remaining 7 slides have `is_hero_image: false` — they keep the
-template's tipografia layout without an image. Hero slides get a
-full-bleed photo as background; non-hero slides are clean text-on-color.
+IMAGE MODE (per HERO slide — the SCENE TYPE, drives anti-sameness):
+Each HERO slide MUST include an `image_mode` field naming the
+KIND of scene. Pick the ONE mode that matches what the photo depicts, and VARY
+it across the hero slides (two same-domain carousels must not repeat the same
+dominant mode — the brand forbids monotony). Choose from EXACTLY these 9 modes:
+- "desk-document": USE SPARINGLY and only for a genuinely novel documentary
+  detail — NEVER the banned "document + pen on a desk" still life (see HARD
+  rule above). Prefer a different mode whenever possible.
+- "event-photo": a real moment/scene with people doing something
+- "architecture-or-texture": buildings, surfaces, materials, no people
+- "provocation-photo": a tense or confrontational image that unsettles
+- "human-silhouette": a person shown as shape/shadow, anonymous, no face
+- "object-comparison": two or more objects set against each other
+- "calendar-photo": dates, deadlines, time made visible
+- "data-visualization": a chart, graph, map, or numbers as the image
+- "cultural-photo": Indonesian/Balinese culture, ritual, place, daily life
+Use the slug verbatim (e.g. "cultural-photo").
 
-Output exactly 4 slides with `is_hero_image: true`. Not 3, not 5.
+HERO IMAGE SELECTION (SMART + ANTI-BANALITY — decision 2026-06-13):
+An image must EARN its place. The enemy is the banal filler photo — an image
+generated "tanto per", just so the slide has a picture. A decorative or
+generic image is WORSE than no image: it cheapens the whole carousel.
+
+DEFAULT = TEXT-ONLY (`is_hero_image: false`). Mark `is_hero_image: true` ONLY
+when a photograph adds meaning the words cannot — a specific real SCENE, a
+human face of the story, a charged place, a turning point, a provocation. The
+cover is ALWAYS hero. Beyond that, be STINGY: usually only 1-3 mid slides plus
+(optionally) the CTA truly deserve a photo. If the best image you can imagine
+for a slide is a GENERIC illustration of the topic — a nondescript office, a
+generic building, a stock chart, a calendar, a desk, "a person looking at a
+laptop", anything that just visualises the concept rather than telling THIS
+story — then it is filler: mark the slide text-only instead. When in doubt,
+text-only.
+
+The image_prompt for a hero slide must describe a SPECIFIC, concrete,
+photographable moment ("a half-built villa fenced off at dusk, one security
+lamp on") — never a generic concept ("real estate in Bali", "tax compliance",
+"a business meeting"). If you cannot name a specific scene, the slide is
+text-only.
+
+Each HERO slide MUST carry `image_prompt`, `tonal_palette` AND `image_mode`
+(vary the modes — never let one dominate, and never reach for the generic
+"data-visualization"/"calendar-photo"/"object-comparison" modes just to
+justify an image; those are the usual filler traps). Non-hero slides do NOT
+need `image_prompt`, `tonal_palette` or `image_mode`.
 
 STORYTELLING DIRECTIVES (overrides any default factual mode):
 
@@ -178,16 +391,21 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
    END of the body in the form "[Source: <law-or-doc>]" — never at the
    beginning, never as the entire body.
 
-2. Body length: TARGET ~50-70 words (≈350-450 characters). Hard cap 280
-   characters per the format constraint above. If you cannot fit the story
-   in 280 chars, cut the citation, not the story. The skill that paints
-   these onto Canva slides has fixed text boxes; longer copy will overflow
-   and look bad.
+2. Body length: TARGET ~25-35 words (≈180-250 characters). HARD cap 280
+   characters AND ~40 words — whichever is hit first. Editorial reference
+   bodies (NYT/FT carousels) cap at ~25 words / 2-3 short sentences; past
+   ~40 words a slide reads as a dense legal-fine-print "text brick" the
+   vision critic rejects, ESPECIALLY on photo slides where the body renders
+   over an image. If you cannot fit the story, cut the citation, not the
+   story. Fixed text boxes overflow and look bad with longer copy.
 
 3. Headline is the HOOK, not the topic title. "Sham Investor KITAS: The
    Clock Is Ticking" is good (urgency, stakes). "Field Inspections Are
    Legal" is bad (sounds like a Wikipedia heading). Make headlines READ
-   like a magazine cover line.
+   like a magazine cover line. Write headlines that BALANCE well on two
+   lines: keep them short (≤6 words is ideal) and avoid phrasings that
+   would leave one tiny orphan word alone on the last wrapped line — two
+   even halves or two balanced clauses read best on a slide.
 
 4. Citations: a slide can name ONE law/article, not three. "PP 31/2013
    authorises field inspections" is fine. "Permenkumham 11/2024 Art.
@@ -207,12 +425,18 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
    quoted phrase, or a concrete scene. Then introduce the law later if
    needed.
 
-7. Bali Zero "take" slides (typically slide 2 and slide 11): write as
+7. Bali Zero "take" slides (typically slide 2 and the last slide): write as
    first-person editorial voice ("Our read:", "What we are seeing:"),
    NOT as a third-party legal summary.
 
-8. The "What This Means For You" type closer (slide 11): SHORT, DIRECT,
+8. The "What This Means For You" type closer (the last slide): SHORT, DIRECT,
    action-oriented. Two sentences max. Ends with the Bali Zero CTA.
+
+9. The cover "subhead" MUST be 1-6 words maximum — a short tag/category/
+   kicker (e.g. "VISA UPDATE", "IMMIGRATION", "TAX ALERT"), NOT a full
+   sentence. UPPERCASE. It sits below the headline as a yellow accent
+   label. NEVER write a complete sentence in subhead; if you need to
+   explain, that goes in the body, not the subhead.
 
 OUTPUT FORMAT: valid JSON, no text outside the JSON object, no markdown fences.
 
@@ -227,9 +451,10 @@ Structure:
       "is_cover": true,
       "is_hero_image": true,
       "headline": "...",
-      "subhead": "...",
+      "subhead": "1-6 WORD KICKER",
       "body": "...",
-      "image_prompt": "editorial scene, 1-2 sentences"
+      "image_prompt": "editorial scene, 1-2 sentences",
+      "image_mode": "architecture-or-texture"
     },
     {
       "slide_number": 2,
@@ -237,25 +462,52 @@ Structure:
       "is_cover": false,
       "is_hero_image": false,
       "headline": "Our read: ...",
-      "body": "...",
-      "image_prompt": "editorial scene, 1-2 sentences"
+      "body": "First-person editorial take — reads as clean text-on-color, no photo needed."
     },
-    // ... 7 more slides — 2 of them at narrative turning points must have is_hero_image: true ...
     {
-      "slide_number": 11,
+      "slide_number": 3,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "The turning point",
+      "body": "A scene worth a photo — a moment, a place, a provocation.",
+      "image_prompt": "editorial scene, 1-2 sentences",
+      "tonal_palette": "cool-teal",
+      "image_mode": "event-photo"
+    },
+    {
+      "slide_number": 4,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": false,
+      "headline": "What changes",
+      "body": "A dense list or stacked facts — lives on text, NO image_prompt."
+    },
+    // ... more slides; mix hero (with image_prompt/tonal_palette/image_mode)
+    //     and non-hero (text-only) as the story needs ...
+    {
+      "slide_number": 7,
       "slide_type": "cta",
       "is_cover": false,
       "is_hero_image": true,
-      "headline": "What This Means For You",
-      "body": "Two-sentence call to action. Bali Zero — Link in bio for a consultation."
+      "headline": "Where this leaves you",
+      "body": "One clear consequence, then one concrete next step. Reach Bali Zero when the deadline is yours, not theirs.",
+      "image_prompt": "editorial scene, 1-2 sentences",
+      "tonal_palette": "bleached-daylight",
+      "image_mode": "human-silhouette"
     }
   ]
 }
 
-REPEAT (MUST OBEY): every slide object MUST include the `is_hero_image` field
-(true or false). Slide 1 hero=true, slide 11 hero=true, plus exactly 2 more
-slides hero=true at narrative turning points = 4 hero slides total per
-carousel. The other 7 slides have is_hero_image=false. THIS IS NON-NEGOTIABLE.
+REPEAT (MUST OBEY): the cover (slide 1) MUST have `is_hero_image: true`. For
+every OTHER slide, set `is_hero_image` SMARTLY based on whether it carries real
+visual value (true) or lives on text (false). EVERY hero slide MUST carry
+`image_prompt`, `tonal_palette` and `image_mode`; non-hero slides need none of
+those. Typically 4-8 of N slides are hero — never all, never just the cover.
+
+ALSO MANDATORY: vary the `image_mode` (one of the 9 slugs above) across the
+HERO slides — use at least 4 DISTINCT modes per carousel; never let one scene
+type dominate the whole carousel.
 """
 
 
@@ -350,20 +602,23 @@ def _build_draft_prompt(
     source_url: str,
     enrichment: dict[str, Any] | None = None,
     live_reasons: list[str] | None = None,
+    avoid_steer: str = "",
+    liveness_tier: str = "",
 ) -> str:
     """Build the slide-composition prompt.
 
     PR-1 §C: when an enrichment object is available we hand Claude the full
     structured brief (1400-2000 words across the_facts, bali_zero_take,
-    in_practice, next_steps, faq) instead of a truncated paragraph. This
-    is gated by WR2_USE_FULL_ENRICHED_PROMPT so the legacy path stays
-    available for back-compat / rollback.
+    in_practice, next_steps, faq) instead of a truncated paragraph. This is
+    the default path (WR2_USE_FULL_ENRICHED_PROMPT defaults to "true"); set
+    WR2_USE_FULL_ENRICHED_PROMPT=false to opt out and force the legacy path
+    for back-compat / rollback.
 
     Falls back to summary[:3500] when:
-      - WR2_USE_FULL_ENRICHED_PROMPT != "true" (legacy mode), OR
+      - WR2_USE_FULL_ENRICHED_PROMPT == "false" (legacy opt-out), OR
       - enrichment dict is empty / missing all expected fields.
     """
-    use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "false").lower() == "true"
+    use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "true").lower() == "true"
 
     body = ""
     if use_full_enriched and enrichment:
@@ -373,7 +628,24 @@ def _build_draft_prompt(
         # Legacy path: truncated summary. Always available as fallback.
         body = summary[:3500]
 
-    return f"""{SYSTEM_INSTRUCTIONS}
+    # A1 framing + A2 length + A3 tone steer (all empty for unknown/manual tier).
+    # A4 closer steer is tier-INDEPENDENT — the closing statement must be single-line
+    # regardless of timeliness — so it's always on.
+    steer_lines = [
+        _LIVENESS_FRAMING.get(liveness_tier, ""),
+        _length_guidance(liveness_tier),
+        _tone_guidance(liveness_tier),
+        _CLOSER_STEER,
+    ]
+    steer_block = "".join(f"\n\n{line}" for line in steer_lines if line)
+
+    # A2: the closing count must not contradict the length steer ("evergreen → 9-10"
+    # while the footer still barks "6-8"). Derive the closing range from the tier.
+    closing_range = {
+        "breaking": "6-7", "developing": "7-8", "evergreen": "9-10",
+    }.get(liveness_tier, "6-8")
+
+    return f"""{SYSTEM_INSTRUCTIONS}{avoid_steer}{steer_block}
 
 ---
 
@@ -388,7 +660,7 @@ Content:
 
 ---
 
-Produce the full 11-slide JSON NOW. English content. No text outside the JSON object.
+Produce the full {closing_range} slide JSON NOW. English content. No text outside the JSON object.
 """
 
 
@@ -413,10 +685,13 @@ async def claude_compose_slides(
     source_url: str,
     enrichment: dict[str, Any] | None = None,
     live_reasons: list[str] | None = None,
+    avoid_steer: str = "",
+    liveness_tier: str = "",
 ) -> dict[str, Any]:
     prompt = _build_draft_prompt(
         topic, summary, source_url,
         enrichment=enrichment, live_reasons=live_reasons,
+        avoid_steer=avoid_steer, liveness_tier=liveness_tier,
     )
     logger.info("Calling Claude OAuth for slide composition (prompt %d chars)", len(prompt))
     t0 = time.perf_counter()
@@ -696,6 +971,37 @@ async def generate_cover_image(scene_core: str, draft_id: str) -> tuple[str | No
 # ─────────────────────────────────────────────────────────────────────────
 
 
+def _cap_subhead(text: str, max_words: int = 6, max_chars: int = 32) -> str:
+    """Hard-cap the cover subhead to the template contract (1-6 words).
+
+    The cover-photo.md template declares subheading = "1-6 words, UPPERCASE,
+    yellow accent, often a tag/category". A long subhead overflows the
+    rendered box once grow_font enlarges it, so this is the deterministic
+    backstop behind the prompt guidance: take at most ``max_words`` words,
+    then if still longer than ``max_chars`` trim to a word boundary. No
+    ellipsis is appended — a clean shorter kicker beats a truncated one.
+    """
+    words = text.strip().split()
+    if not words:
+        return ""
+    capped = " ".join(words[:max_words])
+    if len(capped) <= max_chars:
+        return capped
+    # Still too long: trim to max_chars on a word boundary (no mid-word cut).
+    trimmed: list[str] = []
+    length = 0
+    for w in capped.split():
+        extra = len(w) + (1 if trimmed else 0)
+        if length + extra > max_chars:
+            break
+        trimmed.append(w)
+        length += extra
+    # Guarantee at least the first word even if it alone exceeds max_chars.
+    if not trimmed:
+        trimmed = [capped.split()[0]]
+    return " ".join(trimmed)
+
+
 def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
     register = (parsed.get("register") or "").strip().lower()
     if register not in VALID_TONES:
@@ -709,42 +1015,48 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
 
     normalised: list[dict[str, Any]] = []
     for i, raw in enumerate(slides, start=1):
+        # tonal_palette (2026-06-05): per-hero look selector consumed by
+        # wr2_image_generator._resolve_tonal. Passthrough as a lowercase hint;
+        # unknown/missing values resolve to the default look downstream, so we
+        # store whatever the model gave (or None) without hard-validating here.
+        tonal = raw.get("tonal_palette")
+        tonal = tonal.strip().lower() if isinstance(tonal, str) and tonal.strip() else None
+        # image_mode (2026-06-05, P-4): per-hero scene-mode (constitution Art 5.8,
+        # 9 modes) consumed by topic_type_log.derive_dominant_mode for the
+        # anti-sameness ledger. Whitelisted here like tonal_palette — without
+        # this line the field is stripped at persistence. Lowercased hint; no
+        # hard validation (unknown values just don't constrain downstream).
         slide = {
             "slide_number": i,
             "slide_type": raw.get("slide_type", "body"),
             "is_cover": bool(raw.get("is_cover", i == 1)),
             "is_hero_image": bool(raw.get("is_hero_image", False)),
             "headline": (raw.get("headline") or "").strip()[:80],
-            "subhead": (raw.get("subhead") or "").strip()[:120],
+            "subhead": _cap_subhead(raw.get("subhead") or ""),
             "body": (raw.get("body") or "").strip()[:500],
             "image_prompt": (raw.get("image_prompt") or "").strip()[:600],
+            "tonal_palette": tonal,
+            "image_mode": (raw.get("image_mode") or "").strip().lower() or None,
             "image_url": None,  # filled later for cover only
         }
         normalised.append(slide)
 
     if normalised:
         normalised[0]["is_cover"] = True
-        # Slide 1 is ALWAYS hero (cover image). Force-set even if Claude omitted it.
-        normalised[0]["is_hero_image"] = True
         for s in normalised[1:]:
             s["is_cover"] = False
-        # Slide 11 (last, the CTA closer) is ALWAYS hero too.
-        if len(normalised) >= 11:
-            normalised[10]["is_hero_image"] = True
-
-    # Defensive: if Claude produced 0 hero slides (ignoring the prompt),
-    # auto-promote a sensible mid-carousel default so image-generator has
-    # work to do. Pick slides at narrative-turning-point positions.
-    hero_count = sum(1 for s in normalised if s.get("is_hero_image"))
-    if hero_count < 2 and len(normalised) >= 11:
-        # Force-promote slides 3 and 6 (typical turning points) if no
-        # other hero was selected. This is a fallback, not the desired path.
-        normalised[2]["is_hero_image"] = True   # slide 3
-        normalised[5]["is_hero_image"] = True   # slide 6
-        logger.warning(
-            "Claude returned %d hero slides (need >=2 mid). Auto-promoted slides 3 and 6.",
-            hero_count,
-        )
+        # SMART hero (decision Antonello 2026-06-13, supersedes 2026-06-12
+        # option A): the MODEL decides which slides deserve a photo. Minimal
+        # defensive rules only:
+        #   - the cover (slide 1) is ALWAYS hero (a carousel needs at least one
+        #     hero image; the cover is the natural minimum);
+        #   - every other slide PRESERVES the model's is_hero_image flag verbatim
+        #     (already set above from raw.get(...)) — we do NOT force-promote.
+        # If the model marked zero heroes beyond the cover, that is left as-is:
+        # the cover alone is hero enough, and text-only slides route to a
+        # text-only layout family downstream (composer.map_slide_to_family),
+        # never to a photo layout with an empty hero.
+        normalised[0]["is_hero_image"] = True
 
     return register, normalised
 
@@ -764,6 +1076,56 @@ async def _fetch_briefed_drafts(conn: asyncpg.Connection, limit: int) -> list[as
          LIMIT $1
         """,
         limit,
+    )
+
+
+async def fetch_recent_same_domain(
+    conn: asyncpg.Connection, domain: str, limit: int = 2
+) -> list[dict[str, Any]]:
+    """Last-N rendered carousels in this domain, newest first (P-4, Art 10.6).
+
+    Returns a list of {"register", "dominant_mode"} dicts for the anti-sameness
+    steer/reject. Best-effort: any error (e.g. the topic_type_log table not yet
+    migrated on this DB) returns [] so generation is never blocked. The "unknown"
+    domain bucket is never queried (it must not cross-constrain unrelated topics).
+    """
+    if not domain or domain == tt.UNKNOWN:
+        return []
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT register, dominant_mode
+              FROM topic_type_log
+             WHERE domain = $1
+               AND deleted_at IS NULL
+             ORDER BY rendered_at DESC
+             LIMIT $2
+            """,
+            domain,
+            limit,
+        )
+    except Exception as exc:  # noqa: BLE001 — table may not exist yet; never block
+        logger.warning("fetch_recent_same_domain(%s) failed: %s", domain, exc)
+        return []
+    return [{"register": r["register"], "dominant_mode": r["dominant_mode"]} for r in rows]
+
+
+def _build_avoid_steer(recent: list[dict[str, Any]]) -> str:
+    """Render the recent same-domain (register, mode) combos as a soft-steer
+    block to append to the generation prompt. Empty list -> empty string."""
+    if not recent:
+        return ""
+    combos = ", ".join(
+        f"(register={r.get('register') or '?'}, image-mode={r.get('dominant_mode') or '?'})"
+        for r in recent
+    )
+    return (
+        "\n\nANTI-SAMENESS (constitution Art 10.6 — MUST OBEY): the last "
+        "same-domain carousels we published used these (register, image-mode) "
+        f"combinations: {combos}. Your carousel MUST DIFFER in EITHER the "
+        "register OR the dominant image-mode from each of them — do not reuse "
+        "the same pairing. Prefer a fresh register and a different dominant "
+        "scene-mode so two same-domain carousels never look alike."
     )
 
 
@@ -825,39 +1187,127 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     live_reasons = brief.get("live_news_reasons") or []
     if not isinstance(live_reasons, list):
         live_reasons = []
+    # A1 keystone: the selector already put this in brief_json — read it (was dropped).
+    liveness_tier = _normalise_liveness_tier(brief.get("liveness_tier"))
 
     logger.info(
-        "─── processing draft %s ─── topic=%r enrichment=%s live_score=%s",
+        "─── processing draft %s ─── topic=%r enrichment=%s live_score=%s liveness_tier=%s",
         draft_id, topic[:80],
         bool(enrichment), brief.get("live_news_score"),
+        liveness_tier or "(none)",
     )
 
-    try:
-        parsed = await claude_compose_slides(
-            topic=topic, summary=summary, source_url=source_url,
-            enrichment=enrichment, live_reasons=live_reasons,
-        )
-    except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
-        logger.error("Claude OAuth failed: %s", e)
-        await _mark_rejected(conn, draft_id, f"claude_failed: {e}")
-        _send_telegram(f"WR2 draft_generator Claude failed\ndraft {draft_id}\n{str(e)[:200]}")
-        return False
-    except (json.JSONDecodeError, ValueError) as e:
-        logger.error("Claude output parse failed: %s", e)
-        await _mark_rejected(conn, draft_id, f"parse_error: {e}")
-        return False
+    # ── P-4 anti-sameness (constitution Art 10.6) ──────────────────────────
+    # Soft steer (ALWAYS ON): derive the prospective domain from the topic,
+    # look up the last-2 rendered same-domain carousels, and tell the model to
+    # vary register/image-mode away from them. The HARD reject loop below only
+    # engages when WR2_ANTIMONOTONE_ENFORCE=true (default OFF) — it ships
+    # dormant-but-safe so it can be turned on after topic_type_log fills with
+    # real data. The "unknown" domain bucket is never constrained.
+    prospective_domain = tt.derive_domain(topic)
+    recent = await fetch_recent_same_domain(conn, prospective_domain, limit=2)
+    avoid_steer = _build_avoid_steer(recent)
+    enforce = os.environ.get("WR2_ANTIMONOTONE_ENFORCE", "false").lower() == "true"
+    max_regen = 2  # => up to 3 total generation attempts
 
-    try:
-        register, slides = _normalise_slides(parsed)
-    except ValueError as e:
-        logger.error("Normalisation failed: %s", e)
-        await _mark_rejected(conn, draft_id, f"normalise_error: {e}")
-        return False
+    parsed: dict[str, Any] | None = None
+    register = ""
+    slides: list[dict[str, Any]] = []
+    for attempt in range(max_regen + 1):
+        try:
+            parsed = await claude_compose_slides(
+                topic=topic, summary=summary, source_url=source_url,
+                enrichment=enrichment, live_reasons=live_reasons,
+                avoid_steer=avoid_steer, liveness_tier=liveness_tier,
+            )
+        except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
+            logger.error("Claude OAuth failed: %s", e)
+            await _mark_rejected(conn, draft_id, f"claude_failed: {e}")
+            _send_telegram(f"WR2 draft_generator Claude failed\ndraft {draft_id}\n{str(e)[:200]}")
+            return False
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.error("Claude output parse failed: %s", e)
+            await _mark_rejected(conn, draft_id, f"parse_error: {e}")
+            return False
+
+        try:
+            register, slides = _normalise_slides(parsed)
+        except ValueError as e:
+            logger.error("Normalisation failed: %s", e)
+            await _mark_rejected(conn, draft_id, f"normalise_error: {e}")
+            return False
+
+        # A4 closer guard (tier-independent, flag-independent): if the closing
+        # statement-bomb body is too long it wraps into a text-brick. WARN + a
+        # targeted regen asking the model to compress it — never a hard reject.
+        # Checked BEFORE anti-sameness so it works even with WR2_ANTIMONOTONE off.
+        if _closer_too_long(slides):
+            if attempt < max_regen:
+                logger.warning(
+                    "Draft %s closer too long (%d words > %d) — regenerating for a "
+                    "single-line closer (attempt %d/%d).",
+                    draft_id, _closer_word_count(slides), CLOSER_MAX_WORDS,
+                    attempt + 1, max_regen,
+                )
+                avoid_steer = avoid_steer + (
+                    "\n\nYour PREVIOUS attempt's LAST slide (the closer) was too long "
+                    f"({_closer_word_count(slides)} words). Rewrite ONLY the closer as a "
+                    f"single-line bold statement of at most {CLOSER_MAX_WORDS} words."
+                )
+                continue  # regenerate
+            logger.warning(
+                "Draft %s closer still too long (%d words) after %d retries — "
+                "proceeding anyway (WARN); Legge 5 backstop at the review gate.",
+                draft_id, _closer_word_count(slides), max_regen,
+            )
+
+        # Derived signature of THIS draft for the anti-sameness check.
+        slides_envelope = {"slides": slides}
+        dominant_mode = tt.derive_dominant_mode(slides_envelope)
+
+        if (
+            not enforce
+            or prospective_domain == tt.UNKNOWN
+            or not tt.collides_with_recent(register, dominant_mode, recent)
+        ):
+            break  # accepted (enforcement off, unknown domain, or no collision)
+
+        if attempt < max_regen:
+            logger.warning(
+                "Anti-sameness collision (domain=%s register=%s mode=%s) vs recent "
+                "%s — regenerating (attempt %d/%d).",
+                prospective_domain, register, dominant_mode, recent,
+                attempt + 1, max_regen,
+            )
+            # Strengthen the steer on retry so the model does not repeat itself.
+            avoid_steer = _build_avoid_steer(recent) + (
+                "\n\nYour PREVIOUS attempt repeated a forbidden combination. "
+                f"Do NOT use register={register!r} with image-mode={dominant_mode!r} "
+                "again. Change at least one of them."
+            )
+        else:
+            logger.warning(
+                "Anti-sameness collision persisted after %d retries "
+                "(domain=%s register=%s mode=%s) — proceeding anyway (WARN).",
+                max_regen, prospective_domain, register, dominant_mode,
+            )
+
+    assert parsed is not None  # loop always sets parsed or returns
+
+    # Intra-carousel variety WARN (autopsy): a single carousel should use >=3
+    # distinct image-modes. Becomes meaningful now that §3.0 emits image_mode.
+    n_distinct = tt.distinct_mode_count({"slides": slides})
+    if n_distinct < 3:
+        logger.warning(
+            "Draft %s has only %d distinct image-modes (<3) — monotone carousel.",
+            draft_id, n_distinct,
+        )
 
     logger.info(
-        "Slides composed: register=%s count=%d cover_prompt=%r",
+        "Slides composed: register=%s count=%d liveness_tier=%s cover_prompt=%r",
         register,
         len(slides),
+        liveness_tier or "(none)",
         slides[0]["image_prompt"][:80],
     )
 
@@ -877,11 +1327,16 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         "cover_url": cover_url,
         "cover_error": cover_err,
         "composed_at": datetime.now(timezone.utc).isoformat(),
+        # A2 instrumentation: the length bet is on EXTERNAL data (Socialinsider), our
+        # corpus has zero internal length signal. Persist tier + count so after 4-6
+        # weeks we can query whether breaking→6-7 / evergreen→9-10 actually paid off.
+        "liveness_tier": liveness_tier or None,
+        "slide_count": len(slides),
     }
     await _persist_ready(conn, draft_id, register, slides, council_meta)
     logger.info("Draft %s → status=drafts", draft_id)
 
-    cover_status = "OK (Imagen Ultra)" if cover_url else f"FAILED: {(cover_err or '')[:60]}"
+    cover_status = "OK" if cover_url else f"FAILED: {(cover_err or '')[:60]}"
     body_count = len(slides) - 1
     _send_telegram(
         "WR2 draft pronto per Canva\n"
@@ -902,40 +1357,55 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
         return 2
 
     pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=2, command_timeout=300)
+    # R4.2 drain-loop (P-1): re-fetch until the briefed queue is empty so a
+    # supervisor kickstart swallowed while we are busy still gets its draft
+    # processed this run. Capped against pathological re-queue loops.
+    max_loops = int(os.environ.get("WR2_DRAFT_DRAIN_MAX_LOOPS", "10"))
     try:
         async with pool.acquire() as conn:
-            if draft_id:
-                rows = await conn.fetch(
-                    "SELECT id, topic, brief_json FROM war_room_drafts WHERE id = $1::uuid",
-                    draft_id,
-                )
-            else:
-                rows = await _fetch_briefed_drafts(conn, MAX_DRAFTS_PER_RUN)
-
-            if not rows:
-                logger.info("No briefed drafts to process")
-                return 1
-
-            if dry_run:
-                logger.info("[DRY-RUN] would process %d drafts:", len(rows))
-                for r in rows:
-                    logger.info("  %s — %s", r["id"], r["topic"][:80])
-                return 0
-
             successes = 0
-            for row in rows:
-                try:
-                    ok = await _process_one(conn, row)
-                    if ok:
-                        successes += 1
-                except Exception as e:
-                    logger.exception("Unhandled error on draft %s: %s", row["id"], e)
-                    try:
-                        await _mark_rejected(conn, row["id"], f"unhandled: {e}")
-                    except Exception:
-                        pass
+            attempted = 0
+            for loop_n in range(max_loops):
+                if draft_id:
+                    rows = (
+                        await conn.fetch(
+                            "SELECT id, topic, brief_json FROM war_room_drafts WHERE id = $1::uuid",
+                            draft_id,
+                        )
+                        if loop_n == 0
+                        else []
+                    )
+                else:
+                    rows = await _fetch_briefed_drafts(conn, MAX_DRAFTS_PER_RUN)
 
-            logger.info("Done: %d/%d drafts promoted to 'drafts'", successes, len(rows))
+                if not rows:
+                    if attempted == 0:
+                        logger.info("No briefed drafts to process")
+                        return 1
+                    break
+
+                if dry_run:
+                    logger.info("[DRY-RUN] would process %d drafts:", len(rows))
+                    for r in rows:
+                        logger.info("  %s — %s", r["id"], r["topic"][:80])
+                    return 0
+
+                for row in rows:
+                    attempted += 1
+                    try:
+                        ok = await _process_one(conn, row)
+                        if ok:
+                            successes += 1
+                    except Exception as e:
+                        logger.exception("Unhandled error on draft %s: %s", row["id"], e)
+                        try:
+                            await _mark_rejected(conn, row["id"], f"unhandled: {e}")
+                        except Exception:
+                            pass
+                if draft_id:
+                    break
+
+            logger.info("Done: %d/%d drafts promoted to 'drafts'", successes, attempted)
             return 0 if successes > 0 else 2
     finally:
         await pool.close()

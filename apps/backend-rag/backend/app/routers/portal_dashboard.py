@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends
 from backend.app.dependencies import get_database_pool
 from backend.app.routers.portal import get_current_client
 from backend.app.utils.logging_utils import get_logger
+from backend.services.portal.recap_service import build_recap
 
 logger = get_logger(__name__)
 
@@ -150,15 +151,30 @@ async def summary(
     client: dict = Depends(get_current_client),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Return 3-hero-card data in a single round-trip."""
+    """Return 3-hero-card data + AI recap in a single round-trip."""
     client_id = client["client_id"]
     async with pool.acquire() as conn:
         open_actions = await _fetch_open_actions(conn, client_id)
         deadlines = await _fetch_deadlines(conn, client_id)
         unread = await _fetch_unread_count(conn, client_id)
 
+    # FASE 3 — AI recap: facts-locked (deterministic from the audited fields
+    # above) + optional local-Ollama prose polish that cannot alter any number.
+    # Never 500 the dashboard if the recap fails — degrade to no recap.
+    recap: dict[str, Any] | None = None
+    try:
+        recap = await build_recap(
+            open_actions=open_actions,
+            upcoming_deadlines=deadlines,
+            unread_messages=unread,
+            client_name=client.get("name"),
+        )
+    except Exception as e:  # defensive: recap is additive, never load-bearing
+        logger.warning("recap build failed: %s", e)
+
     return {
         "open_actions": open_actions,
         "upcoming_deadlines": deadlines,
         "unread_messages": unread,
+        "recap": recap,
     }

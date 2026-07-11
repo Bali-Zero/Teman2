@@ -1,40 +1,65 @@
-import { ApiClientBase } from './client';
-import { AuthApi } from './auth/auth.api';
-import { ChatApi } from './chat/chat.api';
-import { KnowledgeApi } from './knowledge/knowledge.api';
-import { ConversationsApi } from './conversations/conversations.api';
-import { TeamApi } from './team/team.api';
-import { AdminApi } from './admin/admin.api';
-import { UploadApi } from './media/upload.api';
-import { AudioApi } from './media/audio.api';
-import { ImageApi } from './media/image.api';
-import { CrmApi } from './crm/crm.api';
-import { DriveApi } from './drive/drive.api';
-import { PortalApi } from './portal/portal.api';
-import { WhatsAppApi } from './whatsapp/whatsapp.api';
-import { TelegramApi } from './telegram/telegram.api';
-import { InstagramApi } from './instagram/instagram.api';
-import { TwitterApi } from './twitter/twitter.api';
-import { WorkflowApi } from './workflow';
-import { WebSocketUtils } from './websocket/websocket.utils';
-import { AnalyticsApi } from './analytics/analytics.api';
-import { OmnichannelApi } from './omnichannel/omnichannel.api';
-import { BlogApi } from './blog/blog.api';
-import { PrimeApi } from './prime/prime.api';
-import { UserProfile, UserMemoryContext, AgentStep } from '@/types';
-import type { LoginResponse } from './auth/auth.types';
+import { ApiClientBase } from "./client";
+import { AuthApi } from "./auth/auth.api";
+import { ChatApi } from "./chat/chat.api";
+import { KnowledgeApi } from "./knowledge/knowledge.api";
+import { ConversationsApi } from "./conversations/conversations.api";
+import { TeamApi } from "./team/team.api";
+import { AdminApi } from "./admin/admin.api";
+import { UploadApi } from "./media/upload.api";
+import { AudioApi } from "./media/audio.api";
+import { ImageApi } from "./media/image.api";
+import { CrmApi } from "./crm/crm.api";
+import { DriveApi } from "./drive/drive.api";
+import { PortalApi } from "./portal/portal.api";
+import { WhatsAppApi } from "./whatsapp/whatsapp.api";
+import { TelegramApi } from "./telegram/telegram.api";
+import { InstagramApi } from "./instagram/instagram.api";
+import { TwitterApi } from "./twitter/twitter.api";
+import { WorkflowApi } from "./workflow";
+import { WebSocketUtils } from "./websocket/websocket.utils";
+import { AnalyticsApi } from "./analytics/analytics.api";
+import { OmnichannelApi } from "./omnichannel/omnichannel.api";
+import { BlogApi } from "./blog/blog.api";
+import { PrimeApi } from "./prime/prime.api";
+import { UserProfile, UserMemoryContext, AgentStep } from "@/types";
+import type { LoginResponse } from "./auth/auth.types";
 import type {
   KnowledgeSearchResponse,
   KnowledgeSearchResult,
   TierLevel,
-} from './knowledge/knowledge.types';
+} from "./knowledge/knowledge.types";
 import type {
   ConversationHistoryResponse,
   ConversationListItem,
   ConversationListResponse,
   SingleConversationResponse,
-} from './conversations/conversations.types';
-import type { ClockResponse } from './team/team.types';
+} from "./conversations/conversations.types";
+import type { ClockResponse } from "./team/team.types";
+
+/**
+ * INTAKE login-gate clearance status (GET /api/intake/gate/status).
+ * Count-only probe — never returns the items themselves (PII stays server-side).
+ * Identity is derived from the JWT server-side, NOT from the frontend profile.
+ * Spec: research/operations/2026-06-06-intake-login-gate-spec.md §3.1.
+ */
+export interface GateSection {
+  count: number;
+  blocking: boolean;
+}
+
+export interface GateStatus {
+  /** true if ANY blocking section has count > 0 */
+  blocked: boolean;
+  sections: {
+    documents: GateSection;
+    late_note: GateSection;
+    deadlines: GateSection;
+  };
+  /** ISO timestamp the probe was computed at */
+  as_of: string;
+  /** true when the backend served a degraded/best-effort answer (fail-open, §8 Q4) */
+  degraded?: boolean;
+}
 
 /**
  * Unified API Client that composes all domain-specific API modules.
@@ -99,7 +124,7 @@ export class ApiClient extends ApiClientBase {
    * Simple GET request for endpoints that don't need domain-specific logic.
    */
   async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'GET' });
+    return this.request<T>(endpoint, { method: "GET" });
   }
 
   /**
@@ -107,7 +132,7 @@ export class ApiClient extends ApiClientBase {
    */
   async post<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'POST',
+      method: "POST",
       body: data ? JSON.stringify(data) : undefined,
     });
   }
@@ -117,7 +142,7 @@ export class ApiClient extends ApiClientBase {
    */
   async patch<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'PATCH',
+      method: "PATCH",
       body: data ? JSON.stringify(data) : undefined,
     });
   }
@@ -127,7 +152,7 @@ export class ApiClient extends ApiClientBase {
    */
   async put<T>(endpoint: string, data?: unknown): Promise<T> {
     return this.request<T>(endpoint, {
-      method: 'PUT',
+      method: "PUT",
       body: data ? JSON.stringify(data) : undefined,
     });
   }
@@ -136,7 +161,46 @@ export class ApiClient extends ApiClientBase {
    * Simple DELETE request for endpoints that don't need domain-specific logic.
    */
   async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+    return this.request<T>(endpoint, { method: "DELETE" });
+  }
+
+  // ============================================================================
+  // INTAKE Login Gate (mandatory pre-workspace clearance — spec §3)
+  // ============================================================================
+
+  /**
+   * Fetch the current user's gate clearance status. Cheap count-only probe;
+   * called on every workspace mount + route change (spec §3.1, fix F5).
+   */
+  async getGateStatus(): Promise<GateStatus> {
+    return this.get<GateStatus>("/api/intake/gate/status");
+  }
+
+  /**
+   * Resolve today's late-clock-in incident for the authenticated user by
+   * submitting a reason (spec §3.3, §4.2). Idempotent server-side.
+   */
+  async resolveMyLateIncident(
+    reason: string,
+  ): Promise<{ success: boolean; state: string }> {
+    return this.post<{ success: boolean; state: string }>(
+      "/api/hr/my-late-incident/resolve",
+      { reason },
+    );
+  }
+
+  /**
+   * Acknowledge a compliance deadline alert (outcome="acknowledged"), clearing
+   * it from the deadlines gate section (spec §3.3).
+   */
+  async acknowledgeComplianceAlert(
+    alertId: string,
+    note?: string,
+  ): Promise<{ success?: boolean; status?: string }> {
+    return this.post<{ success?: boolean; status?: string }>(
+      `/api/compliance/alerts/${alertId}/outcome`,
+      { outcome: "acknowledged", note },
+    );
   }
 
   // ============================================================================
@@ -251,6 +315,10 @@ export class ApiClient extends ApiClientBase {
     return this.authApi.login(email, pin);
   }
 
+  async verifyMagicLink(token: string): Promise<LoginResponse> {
+    return this.authApi.verifyMagicLink(token);
+  }
+
   async logout(): Promise<void> {
     return this.authApi.logout();
   }
@@ -265,7 +333,7 @@ export class ApiClient extends ApiClientBase {
 
   async sendMessage(
     message: string,
-    userId?: string
+    userId?: string,
   ): Promise<{
     response: string;
     sources: Array<{ title?: string; content?: string }>;
@@ -286,7 +354,7 @@ export class ApiClient extends ApiClientBase {
         context_length?: number;
         emotional_state?: string;
         status?: string;
-      }
+      },
     ) => void,
     onError: (error: Error) => void,
     onStep?: (step: AgentStep) => void,
@@ -296,7 +364,7 @@ export class ApiClient extends ApiClientBase {
     correlationId?: string,
     idleTimeoutMs: number = 60000,
     maxTotalTimeMs: number = 600000,
-    images?: Array<{ base64: string; name: string }> // Vision images
+    images?: Array<{ base64: string; name: string }>, // Vision images
   ): Promise<void> {
     return this.chatApi.sendMessageStreaming(
       message,
@@ -311,7 +379,7 @@ export class ApiClient extends ApiClientBase {
       correlationId,
       idleTimeoutMs,
       maxTotalTimeMs,
-      images
+      images,
     );
   }
 
@@ -333,7 +401,9 @@ export class ApiClient extends ApiClientBase {
   // Conversations (delegated to ConversationsApi)
   // ============================================================================
 
-  async getConversationHistory(sessionId?: string): Promise<ConversationHistoryResponse> {
+  async getConversationHistory(
+    sessionId?: string,
+  ): Promise<ConversationHistoryResponse> {
     return this.conversationsApi.getConversationHistory(sessionId);
   }
 
@@ -345,17 +415,21 @@ export class ApiClient extends ApiClientBase {
       imageUrl?: string;
     }>,
     sessionId?: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): Promise<{
     success: boolean;
     conversation_id: number;
     messages_saved: number;
   }> {
-    return this.conversationsApi.saveConversation(messages, sessionId, metadata);
+    return this.conversationsApi.saveConversation(
+      messages,
+      sessionId,
+      metadata,
+    );
   }
 
   async clearConversations(
-    sessionId?: string
+    sessionId?: string,
   ): Promise<{ success: boolean; deleted_count: number }> {
     return this.conversationsApi.clearConversations(sessionId);
   }
@@ -372,17 +446,19 @@ export class ApiClient extends ApiClientBase {
 
   async listConversations(
     limit: number = 20,
-    offset: number = 0
+    offset: number = 0,
   ): Promise<ConversationListResponse> {
     return this.conversationsApi.listConversations(limit, offset);
   }
 
-  async getConversation(conversationId: number): Promise<SingleConversationResponse> {
+  async getConversation(
+    conversationId: number,
+  ): Promise<SingleConversationResponse> {
     return this.conversationsApi.getConversation(conversationId);
   }
 
   async deleteConversation(
-    conversationId: number
+    conversationId: number,
   ): Promise<{ success: boolean; deleted_id: number }> {
     return this.conversationsApi.deleteConversation(conversationId);
   }
@@ -470,7 +546,9 @@ export class ApiClient extends ApiClientBase {
     return this.adminApi.exportTimesheet(startDate, endDate);
   }
 
-  async getSystemHealth(): Promise<import('./admin/admin.types').SystemHealthReport> {
+  async getSystemHealth(): Promise<
+    import("./admin/admin.types").SystemHealthReport
+  > {
     return this.adminApi.getSystemHealth();
   }
 
@@ -481,20 +559,22 @@ export class ApiClient extends ApiClientBase {
   async getTableData(
     table: string,
     limit = 50,
-    offset = 0
-  ): Promise<import('./admin/admin.types').TableDataResponse> {
+    offset = 0,
+  ): Promise<import("./admin/admin.types").TableDataResponse> {
     return this.adminApi.getTableData(table, limit, offset);
   }
 
-  async getQdrantCollections(): Promise<import('./admin/admin.types').QdrantCollectionsResponse> {
+  async getQdrantCollections(): Promise<
+    import("./admin/admin.types").QdrantCollectionsResponse
+  > {
     return this.adminApi.getQdrantCollections();
   }
 
   async getQdrantPoints(
     collection: string,
     limit = 20,
-    offset?: string
-  ): Promise<import('./admin/admin.types').QdrantPointsResponse> {
+    offset?: string,
+  ): Promise<import("./admin/admin.types").QdrantPointsResponse> {
     return this.adminApi.getQdrantPoints(collection, limit, offset);
   }
 
@@ -511,13 +591,16 @@ export class ApiClient extends ApiClientBase {
     return this.uploadApi.uploadFile(file);
   }
 
-  async transcribeAudio(audioBlob: Blob, mimeType: string = 'audio/webm'): Promise<string> {
+  async transcribeAudio(
+    audioBlob: Blob,
+    mimeType: string = "audio/webm",
+  ): Promise<string> {
     return this.audioApi.transcribeAudio(audioBlob, mimeType);
   }
 
   async generateSpeech(
     text: string,
-    voice: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer' = 'alloy'
+    voice: "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer" = "alloy",
   ): Promise<Blob> {
     return this.audioApi.generateSpeech(text, voice);
   }

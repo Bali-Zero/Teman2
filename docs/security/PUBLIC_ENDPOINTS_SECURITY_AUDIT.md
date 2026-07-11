@@ -61,7 +61,7 @@ These endpoints **MUST** remain public for legitimate functionality:
 
 ---
 
-### ⚠️ RISKY (Should Be Protected) - 8 endpoints
+### ⚠️ RISKY (Should Be Protected) - 7 endpoints
 
 These endpoints expose sensitive operations or data without proper protection:
 
@@ -72,7 +72,6 @@ These endpoints expose sensitive operations or data without proper protection:
 | `/api/intel/scraper/submit`   | 🟡 MEDIUM  | No verification token       | Add secret token verification               |
 | `/api/intel/staging/approve/` | 🔴 HIGH    | Auto-approve without auth   | Require authentication or secret token      |
 | `/api/audio/`                 | 🟡 MEDIUM  | TTS/STT endpoints, no auth  | Add rate limiting + API key                 |
-| `/api/voice/elevenlabs`       | 🟡 MEDIUM  | Webhook, no verification    | Add signature verification                  |
 | `/api/knowledge/visa`         | 🟢 LOW     | Public knowledge base       | Add rate limiting                           |
 | `/preview/`                   | 🟢 LOW     | Article previews            | Add rate limiting                           |
 
@@ -113,21 +112,14 @@ These endpoints expose sensitive operations or data without proper protection:
 - **Impact:** High API costs, service degradation
 - **Fix:** Add rate limiting (strict) + API key authentication
 
-#### 6. `/api/voice/elevenlabs` - 🟡 MEDIUM RISK
-
-- **Issue:** Webhook without signature verification
-- **Risk:** Spoofed webhook calls
-- **Impact:** Unauthorized voice processing
-- **Fix:** Add ElevenLabs signature verification
-
-#### 7. `/api/knowledge/visa` - 🟢 LOW RISK
+#### 6. `/api/knowledge/visa` - 🟢 LOW RISK
 
 - **Issue:** Public knowledge base without rate limiting
 - **Risk:** Potential abuse for scraping
 - **Impact:** Resource consumption
 - **Fix:** Add rate limiting (moderate: 100/min)
 
-#### 8. `/preview/` - 🟢 LOW RISK
+#### 7. `/preview/` - 🟢 LOW RISK
 
 - **Issue:** Article previews without rate limiting
 - **Risk:** Potential scraping
@@ -216,7 +208,6 @@ Webhook endpoints have verification mechanisms but some are optional:
 - `/api/intel/scraper/submit` - Should have strict limit (10/min)
 - `/api/intel/staging/approve/` - Should have strict limit (20/min)
 - `/api/audio/` - Should have strict limit (30/min)
-- `/api/voice/elevenlabs` - Should have moderate limit (60/min)
 - `/api/knowledge/visa` - Should have moderate limit (100/min)
 - `/preview/` - Should have moderate limit (60/min)
 - `/preview/upload` - Should have strict limit (10/min)
@@ -229,7 +220,6 @@ RATE_LIMITS = {
     "/api/intel/scraper/submit": (10, 60),  # 10 per minute
     "/api/intel/staging/approve/": (20, 60),  # 20 per minute
     "/api/audio/": (30, 60),  # 30 per minute
-    "/api/voice/elevenlabs": (60, 60),  # 60 per minute
     "/api/knowledge/visa": (100, 60),  # 100 per minute
     "/preview/": (60, 60),  # 60 per minute
     "/preview/upload": (10, 60),  # 10 per minute
@@ -345,7 +335,7 @@ logger.info(
        raise HTTPException(403, "Invalid scraper secret")
    ```
 
-7. **Add signature verification** to `/api/voice/elevenlabs` webhook
+7. **Retired** `/api/voice/elevenlabs/kbli-audit` with HTTP 410; no signature work remains for the legacy vendor path
 
 8. **Add IP whitelisting** for `/metrics` endpoints
 
@@ -386,7 +376,7 @@ logger.info(
 - [ ] Add secret token to `/api/intel/scraper/submit`
 - [ ] Add authentication to `/api/intel/staging/approve/`
 - [ ] Add authentication to `/preview/upload`
-- [ ] Add signature verification to `/api/voice/elevenlabs`
+- [x] Retire `/api/voice/elevenlabs/kbli-audit`
 - [ ] Update scraper to include secret token
 - [ ] Test all changes
 

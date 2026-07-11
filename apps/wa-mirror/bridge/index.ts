@@ -20,7 +20,7 @@ import pino from "pino";
 
 import { closePool } from "./pg.js";
 import { normalizePhone } from "./phone.js";
-import { startSession } from "./session.js";
+import { SessionLoggedOutError, startSession } from "./session.js";
 import { sendTelegramAlert } from "./telegram.js";
 
 const logger = pino({
@@ -119,8 +119,15 @@ async function main(): Promise<void> {
     "wa-mirror all sessions launched; reconnect loops own their lifecycle",
   );
 
-  // Keep the process up forever — Baileys event handlers and the reconnect
-  // setTimeout callbacks fire async. SIGINT/SIGTERM handle shutdown.
+  // Keep the process up forever — even if EVERY account terminates (e.g. all
+  // logged out). A bare unresolved Promise is NOT an event-loop handle, so once
+  // the last Baileys socket/timer drains, Node would exit 0 and start-all would
+  // relaunch the process into a fast re-login loop (one logout alert PER
+  // relaunch). An explicit, ref'd heartbeat keeps the process alive and idle so
+  // start-all sees it "already running" and skips it; a re-onboard
+  // (start-one.sh <name> --qr) kills+restarts it cleanly. SIGINT/SIGTERM still
+  // drive graceful shutdown.
+  setInterval(() => undefined, 1 << 30);
   await new Promise<void>(() => undefined);
 }
 
@@ -141,15 +148,40 @@ async function runAccountForever(account: AccountConfig): Promise<void> {
         "wa-mirror session promise resolved unexpectedly (daemon mode)",
       );
       attempt = 0;
-    } catch {
+    } catch (err) {
+      if (err instanceof SessionLoggedOutError) {
+        // Terminal: the device was removed/invalidated on the WhatsApp side.
+        // Retrying cannot recover it — it only spams Telegram every 60s and
+        // hammers WhatsApp with dead credentials (raising the anti-automation
+        // flag risk). Stop this account's loop and alert ONCE; a re-onboard
+        // (start-one.sh <name> --qr) + daemon restart picks it back up. The
+        // process stays alive (main() awaits forever) so other accounts in a
+        // multi-account process keep mirroring.
+        logger.error(
+          { attempt },
+          "wa-mirror session logged out (terminal) — stopping retries, needs QR re-link",
+        );
+        await sendTelegramAlert(
+          `wa-mirror LOGGED OUT: ${account.name} — device unlinked on WhatsApp side. ` +
+            `Needs QR re-link (start-one.sh <name> --qr). Retries stopped at attempt ${attempt}.`,
+          logger,
+          { tier: "p0", dedupKey: `wa-bridge:loggedout:${account.name}` },
+        );
+        return;
+      }
       const delayMs = Math.min(2_000 * 2 ** Math.min(attempt - 1, 5), 60_000);
       logger.error(
-        { attempt, delayMs },
+        {
+          attempt,
+          delayMs,
+          err: err instanceof Error ? (err.stack ?? err.message) : String(err),
+        },
         "wa-mirror session crashed; restarting with backoff",
       );
       await sendTelegramAlert(
         `wa-mirror disconnected: ${account.name}; reconnect_attempt=${attempt}`,
         logger,
+        { tier: "digest", dedupKey: `wa-bridge:reconnect:${account.name}` },
       );
       await sleep(delayMs);
     }

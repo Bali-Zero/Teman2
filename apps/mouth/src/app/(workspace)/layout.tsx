@@ -6,6 +6,8 @@ import { AppSidebar } from "@/components/workspace/AppSidebar";
 import { Header } from "@/components/workspace/Header";
 import { ToastProvider } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import type { GateStatus } from "@/lib/api";
+import GateScreen from "./GateScreen";
 // useTeamStatus removed — PANOPTICON auto-clock-in from login (2026-04-14)
 import { logger } from "@/lib/logger";
 import { ErrorBoundary } from "@/components/optimization";
@@ -47,6 +49,13 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     isOnline: false,
     hoursToday: undefined as string | undefined,
   });
+
+  // INTAKE login gate (spec §3/§5). `gateChecked` stays false until the first
+  // status probe resolves so we never flash the workspace then yank it (§5).
+  // `gateBypassed` is set by admin override / after the all-clear "Enter" CTA.
+  const [gateStatus, setGateStatus] = useState<GateStatus | null>(null);
+  const [gateChecked, setGateChecked] = useState(false);
+  const [gateBypassed, setGateBypassed] = useState(false);
 
   // Clock-in is now automatic on login (PANOPTICON Phase 0)
 
@@ -104,6 +113,25 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     }
   }, []);
 
+  // Fetch the INTAKE gate status (cheap count probe). Fail OPEN on error
+  // (spec §8 Q4: a status outage must not lock everyone out) — clearing
+  // gateStatus so the workspace renders, but still marking it checked.
+  const refetchGate = useCallback(async () => {
+    try {
+      const status = await api.getGateStatus();
+      setGateStatus(status);
+    } catch (error) {
+      logger.warn("Gate status probe failed — failing open", {
+        component: "WorkspaceLayout",
+        action: "gateStatus",
+        metadata: { error: String(error) },
+      });
+      setGateStatus(null);
+    } finally {
+      setGateChecked(true);
+    }
+  }, []);
+
   // Check authentication and load data
   useEffect(() => {
     const checkAuth = () => {
@@ -129,6 +157,11 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             router.push("/dashboard");
             return;
           }
+
+          // INTAKE gate probe alongside the profile load (spec §5). Awaited so
+          // the loading state stays up until clearance is known — never flash
+          // the workspace before the gate decision.
+          await refetchGate();
         } catch (error) {
           const currentUrl =
             typeof window !== "undefined" ? window.location.href : "";
@@ -155,6 +188,9 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
               isOnline: true,
               hoursToday: undefined,
             });
+            // No backend in local dev — treat the gate as cleared so the
+            // workspace is inspectable.
+            setGateChecked(true);
             setIsLoading(false);
             return;
           }
@@ -173,6 +209,31 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // ← Run only once on mount to avoid infinite loop
+
+  // F5 — re-fetch the gate on every workspace route change (not just mount),
+  // so obligations that arrive mid-session re-engage the gate. The mount probe
+  // already covered the first render, so skip the initial pathname run.
+  // Re-engagement choice: if the gate flips back to `blocked`, we clear
+  // `gateBypassed` so a freshly-blocked state always shows the gate again —
+  // an admin override / all-clear entry is point-in-time, not a day pass.
+  const didInitialGateFetch = useRef(false);
+  useEffect(() => {
+    if (!gateChecked) return; // wait for the mount probe to land first
+    if (!didInitialGateFetch.current) {
+      didInitialGateFetch.current = true;
+      return; // mount effect already fetched for the initial pathname
+    }
+    void refetchGate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, gateChecked]);
+
+  // Drop the bypass whenever the gate is (re-)reported as blocked, so a new
+  // obligation re-engages the screen even after a prior override/entry.
+  useEffect(() => {
+    if (gateStatus?.blocked) {
+      setGateBypassed(false);
+    }
+  }, [gateStatus]);
 
   // Handle logout
   const handleLogout = async () => {
@@ -237,8 +298,9 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     };
   }, [isMobileMenuOpen]);
 
-  // Show loading state
-  if (isLoading) {
+  // Show loading state — also hold here until the gate decision is known so we
+  // never flash the workspace before clearance is determined (spec §5).
+  if (isLoading || !gateChecked) {
     return (
       <main
         id="main-content"
@@ -259,6 +321,36 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     );
   }
 
+  // Admin override visibility (F6). The backend lock is the real gate; the
+  // frontend only needs to know whether to SHOW the override button — mirror
+  // the role set used by ApiClientBase.isAdmin().
+  const isAdmin = ["admin", "founder", "owner", "board"].includes(
+    (user.role || "").toLowerCase(),
+  );
+
+  // INTAKE gate interception (spec §3.2/§5): render the gate INSTEAD of the
+  // workspace while blocked and not bypassed. ToastProvider wraps it because
+  // GateScreen's action feedback uses useToast.
+  // The /review page is the ONE workspace route that must remain reachable
+  // while the gate is blocking — it is HOW the reviewer clears the document
+  // queue. Without this exception the gate would loop the reviewer back to
+  // the wall (the original /process deep-link bug).
+  if (gateStatus?.blocked && !gateBypassed && pathname !== "/review") {
+    return (
+      <I18nProvider>
+        <ToastProvider>
+          <GateScreen
+            status={gateStatus}
+            userEmail={user.email}
+            isAdmin={isAdmin}
+            onRefresh={refetchGate}
+            onEnter={() => setGateBypassed(true)}
+          />
+        </ToastProvider>
+      </I18nProvider>
+    );
+  }
+
   return (
     <I18nProvider>
       <ToastProvider>
@@ -274,6 +366,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             <AppSidebar
               user={user}
               unreadWhatsApp={0}
+              reviewCount={gateStatus?.sections?.documents?.count ?? 0}
               onLogout={handleLogout}
               onZantaraToggle={() => setIsZantaraOpen((prev) => !prev)}
               isZantaraOpen={isZantaraOpen}
@@ -299,6 +392,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
                 <AppSidebar
                   user={user}
                   unreadWhatsApp={0}
+                  reviewCount={gateStatus?.sections?.documents?.count ?? 0}
                   onLogout={handleLogout}
                   onZantaraToggle={() => setIsZantaraOpen((prev) => !prev)}
                   isZantaraOpen={isZantaraOpen}

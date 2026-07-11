@@ -15,14 +15,22 @@
 # location (parents[1]). It MUST run from the MAIN checkout, never a worktree
 # copy, or it would scan .worktrees/<wt>/.worktrees/ (nonexistent) and no-op.
 #
-# Exit codes: 0 = clean (or live-session skips only); 1 = a WIP worktree was
-# skipped (operator must commit/stash); 2 = broker disabled / env missing.
+# Exit codes (Antibody Debt ledger #2, 2026-06-13): 0 = clean OR expected
+# skips (live-session / WIP — the broker is doing its job, not failing);
+# 2 = broker disabled / env missing; other = real broker error.
+# RATIONALE: the broker's RC=1 on WIP-skip is BY DESIGN (W62 WIP-safe guard),
+# but propagating it from an unattended nightly cron made launchd count a
+# permanent "failure" every night (observed 2026-06-12: 3 WIP skips → exit 1
+# → failed-jobs noise, DLQ-classification surface). The operator signal is
+# preserved through the heartbeat status=warn AND the WARN lines in the log —
+# a non-zero exit adds no information there, only noise.
 
 set -euo pipefail
 
 # Hardcoded MAIN checkout — do NOT derive from $0 (this wrapper may itself be
 # invoked from a worktree copy). The broker path below is the canonical one.
-REPO_ROOT="${HOME}/Desktop/nuzantara"
+# Env override exists for the test harness ONLY (point at a stub repo).
+REPO_ROOT="${AGENT_WORKTREE_CLEANUP_REPO_ROOT:-${HOME}/Desktop/nuzantara}"
 BROKER="${REPO_ROOT}/scripts/agent_start.py"
 
 LOG_DIR="${HOME}/logs"
@@ -34,21 +42,39 @@ log() {
 }
 
 # Heartbeat helper (no-op fallback if not present).
-# shellcheck disable=SC1091
-if ! source "${REPO_ROOT}/scripts/lib/heartbeat.sh" 2>/dev/null; then
+# LATENT-BUG fix (found by the stub harness, 2026-06-13): bash 3.2 EXITS the
+# whole non-interactive script when `source` cannot find the file — even
+# inside `if !` under set -e. Guard with an existence check instead.
+if [ -f "${REPO_ROOT}/scripts/lib/heartbeat.sh" ]; then
+    # shellcheck disable=SC1091
+    source "${REPO_ROOT}/scripts/lib/heartbeat.sh" || true
+fi
+if ! declare -F organism_heartbeat >/dev/null 2>&1; then
     organism_heartbeat() { :; }
 fi
 
+# Machine-aware organ id (TAC-2 A2, 2026-07-05): this cron runs on all three
+# machines but hardcoded "pro." — an M5/Mini run forged a Pro-resident heartbeat
+# (boundary repo<->machine; proprioception flagged the wrong-prefix sidecar).
+# Env override exists for the test harness ONLY.
+case "$(hostname -s | tr '[:upper:]' '[:lower:]')" in
+    nuzantara)  _ORGAN_MACHINE="pro" ;;
+    mini-pro2)  _ORGAN_MACHINE="mini" ;;
+    air-m5)     _ORGAN_MACHINE="m5" ;;
+    *)          _ORGAN_MACHINE="$(hostname -s | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '_')" ;;
+esac
+ORGAN_ID="${AGENT_WORKTREE_CLEANUP_ORGAN_ID:-${_ORGAN_MACHINE}.agent_worktree_cleanup}"
+
 if [ ! -f "$BROKER" ]; then
     log "ERROR: broker not found at $BROKER"
-    organism_heartbeat "pro.agent_worktree_cleanup" "fail" "broker missing"
+    organism_heartbeat "$ORGAN_ID" "fail" "broker missing"
     exit 2
 fi
 
 PYTHON="$(command -v python3 || true)"
 if [ -z "$PYTHON" ]; then
     log "ERROR: python3 not on PATH ($PATH)"
-    organism_heartbeat "pro.agent_worktree_cleanup" "fail" "python3 missing"
+    organism_heartbeat "$ORGAN_ID" "fail" "python3 missing"
     exit 2
 fi
 
@@ -61,12 +87,26 @@ set -e
 echo "$OUTPUT" | tee -a "$LOG"
 
 # Heartbeat must never mask the broker's real RC under set -e (codex P3):
-# guard every call with || true and exit on the captured $RC.
+# guard every call with || true.
+# RC=1 (WIP skipped) maps to exit 0: expected guard behavior in cron context,
+# signal carried by heartbeat=warn + WARN log lines (ledger #2, 2026-06-13).
 case "$RC" in
-    0) organism_heartbeat "pro.agent_worktree_cleanup" "ok" "clean" || true ;;
-    1) organism_heartbeat "pro.agent_worktree_cleanup" "warn" "WIP worktree skipped" || true ;;
-    *) organism_heartbeat "pro.agent_worktree_cleanup" "fail" "exit $RC" || true ;;
+    0)
+        organism_heartbeat "$ORGAN_ID" "ok" "clean" || true
+        EXIT_RC=0
+        ;;
+    1)
+        WIP_COUNT="$(printf '%s\n' "$OUTPUT" | grep -c 'WARN: skip' || true)"
+        organism_heartbeat "$ORGAN_ID" "warn" \
+            "WIP worktree skipped (${WIP_COUNT}x) — commit/stash to let the reaper through" || true
+        log "WARN: ${WIP_COUNT} WIP worktree(s) skipped — expected guard, not a failure"
+        EXIT_RC=0
+        ;;
+    *)
+        organism_heartbeat "$ORGAN_ID" "fail" "exit $RC" || true
+        EXIT_RC="$RC"
+        ;;
 esac
 
-log "done (exit $RC)"
-exit "$RC"
+log "done (broker rc=$RC, exit $EXIT_RC)"
+exit "$EXIT_RC"

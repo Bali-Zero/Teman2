@@ -134,12 +134,6 @@ class TestHarvesterAgents:
 
         assert "GitHub Trending Harvester" in registry.agents_info
 
-    def test_twitter_agent_registered(self):
-        import mata_garuda.agents  # noqa: F401
-        from mata_garuda.registry import registry
-
-        assert "AI Twitter Harvester" in registry.agents_info
-
     def test_newsletter_agent_registered(self):
         import mata_garuda.agents  # noqa: F401
         from mata_garuda.registry import registry
@@ -154,7 +148,6 @@ class TestHarvesterAgents:
             "arxiv_harvester",
             "youtube_intel_harvester",
             "github_trending_harvester",
-            "ai_twitter_harvester",
             "ai_newsletter_harvester",
         ]
         for name in harvesters:

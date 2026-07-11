@@ -2,16 +2,15 @@
 
 import Image from "next/image";
 import { Star, MapPin, ArrowUpRight, BadgeCheck } from "lucide-react";
+import { rosterBySlug, initialsOf } from "@/data/team-roster";
 
 // Google reviews link — the public Maps URL you shared.
-// When you have the Google Place API key wired, we can swap the static
-// stats + placeholder reviews for a live fetch. For now this is a
-// hand-curated snapshot.
 const GOOGLE_MAPS_URL = "https://maps.app.goo.gl/whiMUTNchcDR5naz8";
 
-// Top 5 team members selected from /team (see team-scrape result).
-// Photos live at /static/team/*.{png,jpg}
-// When a face isn't available we show initials on a gradient disc.
+// Top team members for the homepage. name/role/photo come from the roster SSOT
+// (apps/mouth/src/data/team-roster.ts); this component keeps only the editorial
+// `department` caption + accent + role overrides. `department` here is a marketing
+// caption, NOT the SSOT dept.
 interface TeamMember {
   name: string;
   role: string;
@@ -21,59 +20,71 @@ interface TeamMember {
   accent: string;
 }
 
+interface SPEntry {
+  slug: string;
+  department: string;
+  accent: string;
+  roleOverride?: string;
+}
+
+function resolveSP(e: SPEntry): TeamMember {
+  const r = rosterBySlug(e.slug);
+  const name = r?.name ?? e.slug;
+  return {
+    name,
+    role: e.roleOverride ?? r?.role ?? "",
+    department: e.department,
+    photo: r?.photo,
+    initials: initialsOf(name),
+    accent: e.accent,
+  };
+}
+
 // Founders — shown first and larger. The two men who started Bali Zero
 // and still run it. Friends for 30 years, partners in the business.
-const FOUNDERS: TeamMember[] = [
+const FOUNDERS_SPEC: SPEntry[] = [
   {
-    name: "Zainal Abidin",
-    role: "CEO",
+    slug: "zainal",
+    roleOverride: "CEO",
     department: "Founder · Since the beginning",
-    photo: "/static/team/heru-komisaris.jpg",
-    initials: "ZA",
     accent: "#ff2d4c",
   },
   {
-    name: "Pak Heru",
-    role: "Komisaris",
+    slug: "heru",
+    roleOverride: "Komisaris",
     department: "Founder · Partner for 30 years",
-    photo: "/static/team/zainal-ceo.jpg",
-    initials: "PH",
     accent: "#a78bfa",
   },
 ];
+const FOUNDERS: TeamMember[] = FOUNDERS_SPEC.map(resolveSP);
 
-const TEAM: TeamMember[] = [
+const TEAM_SPEC: SPEntry[] = [
   {
-    name: "Ruslana",
-    role: "Special Advisory",
+    slug: "ruslana",
+    roleOverride: "Special Advisory",
     department: "Leadership",
-    photo: "/static/team/ruslana.jpg",
-    initials: "RU",
     accent: "#a78bfa",
   },
   {
-    name: "Veronika",
-    role: "Manager",
+    slug: "veronika",
+    roleOverride: "Manager",
     department: "Leadership",
-    initials: "VE",
     accent: "#06b6d4",
   },
   {
-    name: "Adit",
-    role: "Supervisor Lead",
+    slug: "adit",
+    roleOverride: "Supervisor Lead",
     department: "Setup",
-    photo: "/static/team/adit.png",
-    initials: "AD",
     accent: "#f59e0b",
   },
   {
-    name: "Angel",
-    role: "Supervisor",
+    slug: "angel",
+    roleOverride: "Supervisor",
     department: "Tax",
-    initials: "AN",
     accent: "#22c55e",
   },
 ];
+const TEAM: TeamMember[] = TEAM_SPEC.map(resolveSP);
 
 // Curated review snippets — canonical across homepage + (blog)/_components/GoogleReviewsBlock.
 const REVIEWS = [
@@ -121,23 +132,28 @@ export function SocialProof() {
       style={{ background: "var(--surface-base)" }}
     >
       <div className="max-w-[1400px] mx-auto">
-        {/* Header */}
+        {/* Header — MYTHOS B2R: navy serif display on light, chromatic-calm
+            badge (the green chip was decoration; trust reads through type). */}
         <div className="text-center mb-12">
           <div
             className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.15em] mb-5"
             style={{
-              color: "#22c55e",
-              background: "color-mix(in srgb, #22c55e 12%, transparent)",
-              border: "1px solid color-mix(in srgb, #22c55e 30%, transparent)",
+              color: "var(--rp-accent, #22c55e)",
+              background:
+                "var(--rp-badge-bg, color-mix(in srgb, #22c55e 12%, transparent))",
+              border:
+                "1px solid var(--rp-card-border, color-mix(in srgb, #22c55e 30%, transparent))",
             }}
           >
             <BadgeCheck size={12} strokeWidth={2} />
             5,000+ expats and founders · since 2019
           </div>
           <h2
-            className="font-black tracking-tight mb-4"
+            className="tracking-tight mb-4"
             style={{
-              color: "var(--text-primary)",
+              color: "var(--rp-heading, var(--text-primary))",
+              fontFamily: "var(--font-serif)",
+              fontWeight: 600,
               fontSize: "clamp(32px, 3.2vw, 48px)",
               lineHeight: 1.05,
             }}
@@ -159,15 +175,25 @@ export function SocialProof() {
 
         {/* 2-column split — left: Google reviews · right: team faces */}
         <div className="socialproof-grid grid gap-4 md:gap-6 mb-12">
-          {/* Google Reviews block */}
+          {/* Google Reviews block — MYTHOS B2R: flat card, hairline border
+              (was bz-glass--strong + data-funnel accent glow — killed in the
+              chromatic-calm pass; authority via absence, pack rule 7). */}
           <div
-            className="bz-glass bz-glass--strong p-8 flex flex-col"
-            data-funnel="visa"
+            className="rounded-[20px] p-8 flex flex-col"
+            style={{
+              background: "var(--rp-card-bg, rgba(255, 255, 255, 0.04))",
+              border:
+                "1px solid var(--rp-card-border, rgba(255, 255, 255, 0.10))",
+              boxShadow: "var(--rp-card-shadow, none)",
+            }}
           >
             <div className="flex items-center gap-3 mb-6">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: "#ffffff" }}
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid var(--rp-card-border, transparent)",
+                }}
               >
                 {/* Google G logo — 4-color official brand mark */}
                 <svg
@@ -231,7 +257,7 @@ export function SocialProof() {
                   className="pl-4"
                   style={{
                     borderLeft:
-                      "2px solid color-mix(in srgb, var(--accent-funnel) 40%, transparent)",
+                      "2px solid var(--rp-card-border, rgba(255, 255, 255, 0.14))",
                   }}
                 >
                   <p
@@ -255,7 +281,7 @@ export function SocialProof() {
               target="_blank"
               rel="noopener noreferrer"
               className="mt-6 inline-flex items-center gap-2 text-[12px] font-semibold self-start transition-colors"
-              style={{ color: "var(--accent-funnel-text)" }}
+              style={{ color: "var(--rp-accent, #5c8aff)" }}
             >
               <MapPin size={13} strokeWidth={2} />
               See all reviews on Google Maps
@@ -263,10 +289,16 @@ export function SocialProof() {
             </a>
           </div>
 
-          {/* Team block — founders on top, then team list */}
+          {/* Team block — founders on top, then team list. Same flat
+              Rumah Putih card as the reviews block (gradient glass killed). */}
           <div
-            className="bz-glass bz-glass--strong p-8 flex flex-col"
-            data-funnel="kbli"
+            className="rounded-[20px] p-8 flex flex-col"
+            style={{
+              background: "var(--rp-card-bg, rgba(255, 255, 255, 0.04))",
+              border:
+                "1px solid var(--rp-card-border, rgba(255, 255, 255, 0.10))",
+              boxShadow: "var(--rp-card-shadow, none)",
+            }}
           >
             <div className="flex items-center justify-between gap-3 mb-5">
               <div>
@@ -286,7 +318,7 @@ export function SocialProof() {
               <a
                 href="/team"
                 className="inline-flex items-center gap-1.5 text-[12px] font-semibold"
-                style={{ color: "var(--accent-funnel-text)" }}
+                style={{ color: "var(--rp-accent, #5c8aff)" }}
               >
                 All 18+
                 <ArrowUpRight size={13} strokeWidth={2} />
@@ -352,10 +384,9 @@ export function SocialProof() {
                   key={m.name}
                   className="flex items-center gap-4 rounded-xl px-3 py-2.5 transition-colors"
                   style={{
-                    background:
-                      "color-mix(in srgb, var(--accent-funnel) 5%, transparent)",
+                    background: "var(--rp-row-bg, rgba(255, 255, 255, 0.03))",
                     border:
-                      "1px solid color-mix(in srgb, var(--accent-funnel) 14%, transparent)",
+                      "1px solid var(--rp-card-border, rgba(255, 255, 255, 0.08))",
                   }}
                 >
                   {/* Photo or initials disc */}
@@ -407,8 +438,9 @@ export function SocialProof() {
         <div
           className="flex items-center justify-center gap-10 flex-wrap py-5 rounded-2xl"
           style={{
-            background: "rgba(255,255,255,0.02)",
+            background: "var(--rp-card-bg, rgba(255,255,255,0.02))",
             border: "1px solid var(--border-default)",
+            boxShadow: "var(--rp-card-shadow, none)",
           }}
         >
           <TrustItem
@@ -439,7 +471,9 @@ function TrustItem({ icon, label }: { icon: React.ReactNode; label: string }) {
       className="inline-flex items-center gap-2 text-[12px] font-semibold"
       style={{ color: "var(--text-secondary)" }}
     >
-      <span style={{ color: "var(--accent-zantara)" }}>{icon}</span>
+      <span style={{ color: "var(--rp-accent, var(--accent-zantara))" }}>
+        {icon}
+      </span>
       {label}
     </div>
   );

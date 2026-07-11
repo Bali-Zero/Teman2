@@ -6,12 +6,12 @@ Scans all garuda:*, bridge:*, nexus:* Redis streams. For each consumer group:
     the youngest alive consumer in the group (lowest idle_ms). If no alive
     consumer exists, leave alone (manual decision needed).
   - GHOST_CONSUMER (consumer pending=0 AND idle>30d): XGROUP DELCONSUMER.
-  - DEEP_STALE_PEL (W13: any pending msg with msg_idle_ms > 7d): XACK directly.
+  - DEEP_STALE_PEL (W13: any pending msg with msg_idle_ms > 24h): XACK directly.
     Workers in this codebase use XREADGROUP STREAMS > semantic (only NEW
     messages, never re-process PEL), so XCLAIM alone is insufficient — the
-    new owner never re-reads. Messages >7d are dropped because:
+    new owner never re-reads. Messages >24h are dropped because:
       (a) already-fed pipelines (nlm_fed dedup table) would skip them anyway
-      (b) not-yet-fed >7d content is stale (cf 18d arxiv → NB noise > value)
+      (b) not-yet-fed >24h content is stale (cf 18d arxiv → NB noise > value)
       (c) re-injection would fan-out cascade through normalizer + ner + classifier
 
 Outputs JSON report to stdout. Exits 0 if no actions OR all actions succeeded,
@@ -158,8 +158,9 @@ def cleanup() -> dict[str, Any]:
         for group in list_groups(stream):
             # W13: deep-stale message ACK pass (per-message, not per-consumer).
             # XPENDING - + 1000 returns msg_id, owner, msg_idle_ms, deliveries.
-            # ACK any message whose msg_idle_ms > 7d regardless of which
-            # consumer owns it — workers use > semantic, never re-read PEL.
+            # ACK any message whose msg_idle_ms > 24h (DEEP_STALE_MSG_IDLE_MS)
+            # regardless of which consumer owns it — workers use > semantic,
+            # never re-read PEL.
             deep_acked = _xack_deep_stale(stream, group)
             if deep_acked:
                 report["deep_acks"].append({

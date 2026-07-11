@@ -334,13 +334,28 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
     "dc5d01cd-e99f-4c8f-aae4-75060b43d0de": {
         "name": "NB-INTEL-AIResearch",
         "family": "NB-INTEL",
+        # SENESCENT 2026-06-30: at NLM source cap (500/500), no longer writable.
+        # legacy_key handed to the overflow NB-2 (069f009c) so feeders route there.
+        # Kept ACTIVE-for-read in NLM; here it is no longer a write target.
+        "legacy_key": None,
+        "status": "SENESCENT",
+        "cluster": None,
+        "created_at": None,
+        "last_audited": "2026-06-30",
+        "action_pending": "full (500/500) — reads still served; writes go to overflow 069f009c",
+        "peer_uuids": ["069f009c-ce74-42e5-b75c-e584aa18feb1"],
+    },
+    "069f009c-ce74-42e5-b75c-e584aa18feb1": {
+        "name": "NB-INTEL-AIResearch-2 (Overflow)",
+        "family": "NB-INTEL",
+        # 2026-06-30: took over ai_research routing when dc5d01cd hit the 500 cap.
         "legacy_key": "ai_research",
         "status": "ACTIVE",
         "cluster": None,
-        "created_at": None,
-        "last_audited": "2026-05-07",
+        "created_at": "2026-06-30",
+        "last_audited": "2026-06-30",
         "action_pending": None,
-        "peer_uuids": [],
+        "peer_uuids": ["dc5d01cd-e99f-4c8f-aae4-75060b43d0de"],
     },
     "dd8ad7fe-7ad2-4b42-bb02-1d8c7039a349": {
         "name": "Guida alla Costituzione di una PT PMA in Indonesia 2026",

@@ -51,7 +51,8 @@ refuses with a Telegram alert, requiring human triage (typically
 | Tracked symlink ↔ local dir/file mismatch | Telegram alert + exit 1 |
 | Stash list > 5 entries (sign of repeated pop conflict) | Telegram alert (warning, continue) |
 | Tracked dirty files only | Stash → fast-forward merge → pop |
-| Untracked files | Left alone (ff-only doesn't touch them) |
+| Untracked files, no path overlap with incoming commits | Left alone (ff-only doesn't touch them) |
+| Untracked file occupies a path the incoming commits also touch | Telegram alert + exit 1 (likely sibling WIP not yet committed — retries once resolved) |
 | Stash pop conflict after pull | Telegram alert, stash retained, exit 0 (pull succeeded) |
 
 ### Telegram alerts (per-key cooldown)
@@ -59,8 +60,8 @@ refuses with a Telegram alert, requiring human triage (typically
 Each alert key has a 1-hour cooldown to avoid notification storms when
 the same condition persists across many cron ticks.
 
-Alert keys: `type-mismatch`, `diverged`, `stash-bloat`, `stash-failed`,
-`pull-failed`, `stash-pop-conflict`. State stored at
+Alert keys: `type-mismatch`, `untracked-collision`, `diverged`, `stash-bloat`,
+`stash-failed`, `pull-failed`, `stash-pop-conflict`. State stored at
 `~/.agent/decisions/state/mini-git-pull-alert-<key>.ts`.
 
 Requires `$TELEGRAM_BOT_TOKEN` in `~/.nuzantara-secrets.env`. Falls back

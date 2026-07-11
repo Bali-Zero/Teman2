@@ -8,8 +8,8 @@ general-purpose event system.  Three layers:
    Used for database-triggered events (row changes via triggers).
 2. **In-process pub/sub** — zero-latency, any payload size.
    Used for application-level events (chain results, service signals).
-3. **Redis pub/sub** (optional) — cross-node (Pro ↔ Air ↔ Fly).
-   Only initialized if Redis is available.
+3. **Redis pub/sub** (optional) — cross-node (Pro ↔ Mini-Pro2 ↔ Fly;
+   Air decommissioned 2026-05-05). Only initialized if Redis is available.
 
 Usage:
     bus = EventBus(db_dsn=DATABASE_URL, db_pool=pool)
@@ -103,6 +103,15 @@ PG_CHANNEL_MAP: dict[str, str] = {
     #  metadata{host,machine_role,...}, _outbox_id}.
     # Consumer: apps/cell-observatory-collector (PR-3, Pro local SQLite).
     "cell_pulse_observed": "cell.pulse.observed",
+    # Emitted by cell_core.observatory.emit_sustained_red() +
+    # emit_enrichment_repair_request() (W57) when a cell reports N consecutive
+    # red pulses. Payload: {classifier_self, consecutive, pulse_id, app,
+    # process_group, _outbox_id}. The pg-to-organism bridge already forwards
+    # this channel to organism:events; this map entry is what makes the in-app
+    # EventBus LISTEN + replay-ack the outbox rows. Without it the rows stay
+    # unconsumed forever (twin of cell_pulse_observed, which IS in the map) —
+    # 52 orphan rows as of 2026-06-05. See loop-repair dossier 2026-06-04.
+    "cell_pulse_sustained_red": "cell.pulse.sustained_red",
     # Emitted by post_metrics_history + m13_retrain_log AFTER INSERT triggers
     # (migration 152, Sprint 2 measurer event-driven compliance — Symbiosis
     # Law 4). Payload: {metric_id|retrain_id, post_id|trigger_type,
@@ -145,6 +154,44 @@ PG_CHANNEL_MAP: dict[str, str] = {
     # LLM), downstream blog/wr2/nb-intel feeders.
     # See: research/symbiosis/2026-05-12-intel-lake-design.md
     "intel_lake_event": "intel_lake.event",
+}
+
+# ── Normative consumer declarations (Antibody #7, 2026-06-13) ────────────────
+# Every PG channel MUST declare who consumes it. The inline comments above are
+# descriptive (and partially aspirational); THIS map is normative and enforced
+# by tests/services/events/test_channel_consumer_parity.py. A channel with no
+# declaration is an orphan: its events would be produced durably (outbox) and
+# then dropped silently until prune. Connectome TAC 2026-06-13 found 5 channels
+# believed orphan that were actually bridge-consumed — this map makes the
+# distinction explicit and machine-checkable.
+#
+# Consumer kinds:
+#   "in_app"  — a handler subscribes to the mapped event_type inside this
+#               backend process (handlers/_core.py, compliance_handlers,
+#               crm_hgt_handlers, partners/events, app_factory SSE,
+#               intel_lake_router, ...).
+#   "bridge"  — scripts/pg-to-organism-bridge.py (Pro daemon) LISTENs the raw
+#               PG channel and forwards to the organism Redis stream.
+#   "external:federation_alerts_daemon" — backend/services/federation_alerts/
+#               daemon.py runs as a dedicated process and LISTENs directly.
+CHANNEL_CONSUMERS: dict[str, frozenset[str]] = {
+    "practice_changed": frozenset({"in_app", "bridge"}),
+    "client_changed": frozenset({"in_app", "bridge"}),
+    "compliance_alert": frozenset({"in_app", "bridge"}),
+    "lkpm_ingest_completed": frozenset({"in_app", "bridge"}),
+    "war_room_event": frozenset({"bridge"}),
+    "wa_message_inserted": frozenset({"in_app"}),
+    "intel_event": frozenset({"in_app", "bridge"}),
+    "cognitive_event": frozenset({"bridge"}),
+    "partner_commission_changed": frozenset({"bridge"}),
+    "federation_alert": frozenset({"bridge", "external:federation_alerts_daemon"}),
+    "cell_pulse_observed": frozenset({"bridge"}),
+    "cell_pulse_sustained_red": frozenset({"bridge"}),
+    "measurer_event": frozenset({"bridge"}),
+    "crm_welcome_completed": frozenset({"bridge"}),
+    "whatsapp_message_received": frozenset({"in_app"}),
+    "asset_provenance": frozenset({"in_app", "bridge"}),
+    "intel_lake_event": frozenset({"in_app"}),
 }
 
 _RECONNECT_DELAY_S = 5

@@ -26,6 +26,7 @@ import type {
   TaxCompanyPilotKey,
   TaxCompanyPilotMap,
   AiSummaryResponse,
+  WaCaseIntelligenceResponse,
   WorkspaceAiAutoApproveResult,
   WorkspaceAiSnapshotReviewItem,
   WorkspaceAiSnapshotReviewStatus,
@@ -325,6 +326,7 @@ export class CrmApi {
       assigned_to?: string;
       nationality?: string;
       passport_expiring_days?: number;
+      unnamed?: boolean;
       limit?: number;
       offset?: number;
     } = {},
@@ -334,6 +336,7 @@ export class CrmApi {
     if (params.status) queryParams.append("status", params.status);
     if (params.assigned_to)
       queryParams.append("assigned_to", params.assigned_to);
+    if (params.unnamed) queryParams.append("unnamed", "true");
     if (params.nationality)
       queryParams.append("nationality", params.nationality);
     if (params.passport_expiring_days !== undefined)
@@ -529,6 +532,20 @@ export class CrmApi {
   async getClientAiSummary(clientId: number): Promise<AiSummaryResponse> {
     return this.client.request<AiSummaryResponse>(
       `/api/crm/clients/${clientId}/ai-summary`,
+      undefined,
+      10000,
+    );
+  }
+
+  /**
+   * Get Zantara Captain WhatsApp case cards for a client.
+   */
+  async getClientWaCaseIntelligence(
+    clientId: number,
+    limit: number = 12,
+  ): Promise<WaCaseIntelligenceResponse> {
+    return this.client.request<WaCaseIntelligenceResponse>(
+      `/api/crm/clients/${clientId}/wa-case-intelligence?limit=${limit}`,
       undefined,
       10000,
     );
@@ -1026,6 +1043,23 @@ export class CrmApi {
   /**
    * Upload file to a subfolder
    */
+  /**
+   * Upload a client avatar image to storage (Tigris) and set avatar_url to the
+   * returned public URL. Replaces the legacy base64-into-avatar_url path that
+   * bloated the clients list. Backend: POST /api/crm/clients/{id}/avatar.
+   */
+  async uploadClientAvatar(
+    clientId: number,
+    file: File,
+  ): Promise<{ success: boolean; avatar_url: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    return this.client.request(`/api/crm/clients/${clientId}/avatar`, {
+      method: "POST",
+      body: formData,
+    });
+  }
+
   async uploadFileToFolder(
     clientId: number,
     folderName: string,

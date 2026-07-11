@@ -8,6 +8,7 @@ import {
   AggregateRatingJsonLd,
   DynamicJsonLd,
 } from "@/components/seo";
+import { RouteChangeTracker } from "@/components/analytics/RouteChangeTracker";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ErrorBoundary } from "@/components/optimization";
 import { WebVitalsMonitor } from "@/components/providers/WebVitalsMonitor";
@@ -29,6 +30,8 @@ const themeInitScript = `(function(){try{var stored=localStorage.getItem('bz-the
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // FASE 6 PWA: status-bar / address-bar tint. Matches the portal "paper" ink.
+  themeColor: "#16213a",
 };
 
 // Production URL - uses environment variable or falls back to production domain
@@ -76,6 +79,12 @@ export const metadata: Metadata = {
   creator: "Bali Zero",
   publisher: "Bali Zero",
   category: "Business Services",
+  // FASE 6 PWA: iOS standalone web-app shell (manifest alone doesn't cover iOS).
+  appleWebApp: {
+    capable: true,
+    title: "Bali Zero",
+    statusBarStyle: "default",
+  },
   // Icons are auto-detected by Next.js from app/icon.png and app/apple-icon.png
   // No explicit configuration needed - Next.js 13+ App Router handles this automatically
   openGraph: {
@@ -272,7 +281,10 @@ export default function RootLayout({
           }}
         />
         {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
-          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+          <>
+            <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+            <RouteChangeTracker />
+          </>
         )}
       </body>
     </html>

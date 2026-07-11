@@ -297,7 +297,7 @@ class KnowledgeGraphRepository:
                     "generated_at": datetime.now(tz=timezone.utc).isoformat(),
                 }
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error getting insights: %s", e, exc_info=True)
             return {
                 "top_entities": [],
@@ -492,7 +492,7 @@ class KnowledgeGraphRepository:
                     for row in rows
                 ]
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error in semantic search: %s", e, exc_info=True)
             return []
         except Exception as e:

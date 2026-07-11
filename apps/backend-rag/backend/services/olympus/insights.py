@@ -218,23 +218,59 @@ class InsightsCollector:
         return actions
 
     async def _persist_insight(self, insight: InsightRecord) -> None:
-        query = """
-            INSERT INTO olympus_insights (
-                insight_type, title, content, evidence, source,
-                confidence, applicable_to
-            ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7)
+        """Persist an insight with dedup/supersede (P1.1 / M6).
+
+        Before 2026-06: every pulse re-inserted the same recommendation →
+        8,242 duplicate rows, `superseded_by` never used. Now:
+          - same (source, title) active row + SAME evidence  → touch it (no new row)
+          - same (source, title) active row + DIFFERENT evidence → insert new,
+            mark old superseded_by = new id
+          - no active row → plain insert
+        Keeps olympus_insights to one live row per distinct recommendation.
         """
+        evidence_json = json.dumps(insight.evidence, sort_keys=True)
         try:
             async with self._pool.acquire() as conn:
-                await conn.execute(
-                    query,
+                existing = await conn.fetchrow(
+                    "SELECT id, evidence FROM olympus_insights "
+                    "WHERE source = $1 AND title = $2 AND superseded_by IS NULL "
+                    "ORDER BY created_at DESC LIMIT 1",
+                    insight.source,
+                    insight.title,
+                )
+
+                if existing is not None:
+                    ev = existing["evidence"]
+                    ev_str = json.dumps(
+                        ev if isinstance(ev, dict) else json.loads(ev), sort_keys=True
+                    )
+                    if ev_str == evidence_json:
+                        # Unchanged recommendation → bump access counters, no new row.
+                        await conn.execute(
+                            "UPDATE olympus_insights "
+                            "SET accessed_count = accessed_count + 1, last_accessed = NOW() "
+                            "WHERE id = $1",
+                            existing["id"],
+                        )
+                        return
+
+                new_id = await conn.fetchval(
+                    "INSERT INTO olympus_insights ("
+                    "insight_type, title, content, evidence, source, confidence, applicable_to"
+                    ") VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7) RETURNING id",
                     insight.insight_type,
                     insight.title,
                     insight.content,
-                    json.dumps(insight.evidence),
+                    evidence_json,
                     insight.source,
                     insight.confidence,
                     insight.applicable_to,
                 )
+                if existing is not None and new_id is not None:
+                    await conn.execute(
+                        "UPDATE olympus_insights SET superseded_by = $1 WHERE id = $2",
+                        new_id,
+                        existing["id"],
+                    )
         except Exception:
             logger.exception("Failed to persist insight: %s", insight.title)

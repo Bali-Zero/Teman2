@@ -18,7 +18,10 @@ import type {
 } from "./kbli-types";
 
 import { ENGLISH_TITLES } from "./kbli-english";
+import { ENGLISH_TITLES_GENERATED } from "./kbli-english-generated";
+import { resolveLicenseType } from "./kbli-derive";
 import { GOLD_CODES } from "./kbli-gold-codes";
+import { getSectionVisual } from "./kbli-cover-design";
 
 // =============================================================================
 // Constants: Section metadata
@@ -359,10 +362,16 @@ function extractKeywords(title: string, description: string): string[] {
 
 function assignTier(code: string): KBLITier {
   if (GOLD_CODES.has(code)) return "gold";
-  // Silver tier: codes with English titles available
-  if (ENGLISH_TITLES[code]) return "silver";
+  // Silver tier: codes with English titles available (curated or generated)
+  if (ENGLISH_TITLES[code] || ENGLISH_TITLES_GENERATED[code]) return "silver";
   return "bronze";
 }
+
+// SEO firebreak (PR #1967): metadata (<title>/description/keywords) stays pinned
+// to the curated-legacy English map until the GSC crawl window recovers. Flip
+// NEXT_PUBLIC_KBLI_META_EN=1 (operator decision) to let metadata consume the
+// full-coverage titles. Page BODY always uses the full map.
+const META_USES_FULL_EN = process.env.NEXT_PUBLIC_KBLI_META_EN === "1";
 
 // =============================================================================
 // Transform a single raw record
@@ -374,7 +383,13 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
   const sectionMeta = section ? SECTION_META[section] : null;
 
   const titleId = toTitleCase(raw.judul);
-  const titleEn = ENGLISH_TITLES[code] ?? titleId; // Fallback to Indonesian title
+  // Body display: curated wins, then generated, then Indonesian fallback.
+  const titleEnReal = ENGLISH_TITLES[code] ?? ENGLISH_TITLES_GENERATED[code] ?? null;
+  const titleEn = titleEnReal ?? titleId;
+  // Metadata surface (frozen to curated-legacy until NEXT_PUBLIC_KBLI_META_EN=1).
+  const titleEnMeta = META_USES_FULL_EN
+    ? titleEn
+    : (ENGLISH_TITLES[code] ?? titleId);
 
   const pma = {
     status: mapPmaStatus(raw.pma_status),
@@ -383,13 +398,18 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     isPriority: raw.pma_prioritas,
     note: raw.pma_nota,
     source: raw.pma_source,
+    capSpecial: raw.pma_cap_special === true,
+    capVerified: raw.pma_cap_verified !== false, // default true unless explicitly flagged unverified
+    routeTo: raw.pma_route_to ?? null,
   };
 
   const licensing: KBLILicenseByScale[] = (raw.per_skala ?? []).map(
     (entry) => ({
       scales: entry.skala_usaha,
       riskCategory: entry.kategori_risiko,
-      licenseType: entry.perizinan,
+      // Derive the license from the risk tier when `perizinan` is empty (Pasal 124(4)) —
+      // a flat "NIB" understated the 937 high-risk codes. Parity with the Swift app.
+      licenseType: resolveLicenseType(entry.perizinan, entry.kategori_risiko),
       requirements: entry.persyaratan,
       timeframe: entry.jangka_waktu,
       obligations: entry.kewajiban,
@@ -410,6 +430,8 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     code,
     titleId,
     titleEn,
+    titleEnIsReal: titleEnReal !== null,
+    titleEnMeta,
     description: raw.uraian,
     section,
     sectionName: sectionMeta?.nameEn ?? null,
@@ -419,6 +441,27 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
     tier: assignTier(code),
     keywords: extractKeywords(raw.judul, raw.uraian),
     intel_2026: raw.intel_2026,
+    // L4 — Bali sovereign-local status (national PMA openness != Bali registrability).
+    // Mirrors the transform in kbli-data.server.ts; this is the module the
+    // /kbli/[code] page actually consumes via getCode()/getAllCodes().
+    baliL4: raw.l4_bali?.status
+      ? {
+          status: raw.l4_bali.status,
+          reason: raw.l4_bali.reason || "",
+          confidence: raw.l4_bali.confidence || "MEDIUM",
+          needsReview: !!raw.l4_bali.needs_review,
+          blocked: !!raw.l4_bali.blocked,
+          from2020: raw.l4_bali.from_2020 ?? null,
+          moratorium: raw.l4_bali.moratorium
+            ? {
+                rule: raw.l4_bali.moratorium.rule || "",
+                effective: raw.l4_bali.moratorium.effective || "",
+                source: raw.l4_bali.moratorium.source || "",
+                virtualOffice: raw.l4_bali.moratorium.virtual_office || "",
+              }
+            : undefined,
+        }
+      : undefined,
   };
 }
 
@@ -537,8 +580,52 @@ export function getSections(): KBLISection[] {
 }
 
 /**
+ * Walk a code list outward from the target's position, alternating
+ * after/before, feeding each candidate to `push` until it reports full.
+ * Deterministic for a given dataset order.
+ */
+function pickNeighbors(
+  list: KBLICode[],
+  code: string,
+  push: (item: KBLICode) => boolean,
+): void {
+  if (list.length === 0) return;
+
+  const found = list.findIndex((c) => c.code === code);
+  let lo: number;
+  let hi: number;
+  if (found >= 0) {
+    lo = found - 1;
+    hi = found + 1;
+  } else {
+    // Target absent from this list: anchor to where it would sit by code
+    // order so the window stays deterministic.
+    let insertion = list.findIndex((c) => c.code > code);
+    if (insertion === -1) insertion = list.length;
+    lo = insertion - 1;
+    hi = insertion;
+  }
+  let wantMore = true;
+  while (wantMore && (lo >= 0 || hi < list.length)) {
+    if (hi < list.length) {
+      wantMore = push(list[hi]);
+      hi += 1;
+    }
+    if (wantMore && lo >= 0) {
+      wantMore = push(list[lo]);
+      lo -= 1;
+    }
+  }
+}
+
+/**
  * Find related KBLI codes for a given code.
- * Strategy: same 3-digit prefix first, then same section, excluding self.
+ * Strategy: same 3-digit prefix first, then same section, excluding self —
+ * in both phases picking the NEIGHBORS of the target rather than the head
+ * of the list. The previous head-of-list fill gave a handful of head codes
+ * every inbound link while long-tail codes got none; a crawl-starved
+ * cluster needs inbound links distributed across all 1,559 pages
+ * (GSC clean-window investigation 2026-07-03).
  * Returns up to `limit` results (default 6).
  */
 export function getRelatedCodes(code: string, limit: number = 6): KBLICode[] {
@@ -549,28 +636,20 @@ export function getRelatedCodes(code: string, limit: number = 6): KBLICode[] {
 
   const result: KBLICode[] = [];
   const seen = new Set<string>([code]);
+  const push = (item: KBLICode): boolean => {
+    if (result.length < limit && !seen.has(item.code)) {
+      result.push(item);
+      seen.add(item.code);
+    }
+    return result.length < limit;
+  };
 
   // Phase 1: Same 3-digit prefix (most closely related)
-  const prefix3 = code.substring(0, 3);
-  const prefixSiblings = _prefixMap!.get(prefix3) ?? [];
-  for (const sibling of prefixSiblings) {
-    if (result.length >= limit) break;
-    if (!seen.has(sibling.code)) {
-      result.push(sibling);
-      seen.add(sibling.code);
-    }
-  }
+  pickNeighbors(_prefixMap!.get(code.substring(0, 3)) ?? [], code, push);
 
   // Phase 2: Same section (broader relation)
   if (result.length < limit && target.section) {
-    const sectionCodes = _sectionMap!.get(target.section) ?? [];
-    for (const item of sectionCodes) {
-      if (result.length >= limit) break;
-      if (!seen.has(item.code)) {
-        result.push(item);
-        seen.add(item.code);
-      }
-    }
+    pickNeighbors(_sectionMap!.get(target.section) ?? [], code, push);
   }
 
   return result;
@@ -589,91 +668,26 @@ export function getSectionMeta(sectionId: string): {
 }
 
 // =============================================================================
-// Hero gradient — unique per sector, abstract and coherent
+// Hero gradient — unique per sector, deterministic, editorial (no photo hotlink)
 // =============================================================================
-
-const SECTOR_HERO: Record<string, { gradient: string; pattern: string }> = {
-  I: {
-    gradient: "135deg, #e85d04, #f48c06, #dc2f02",
-    pattern:
-      "radial-gradient(circle at 20% 80%, rgba(255,255,255,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.05) 0%, transparent 40%)",
-  },
-  L: {
-    gradient: "135deg, #0077b6, #00b4d8, #0096c7",
-    pattern:
-      "radial-gradient(circle at 75% 75%, rgba(255,255,255,0.07) 0%, transparent 50%), radial-gradient(circle at 15% 30%, rgba(255,255,255,0.04) 0%, transparent 40%)",
-  },
-  G: {
-    gradient: "135deg, #d00000, #e85d04, #dc2f02",
-    pattern:
-      "radial-gradient(circle at 30% 70%, rgba(255,255,255,0.06) 0%, transparent 45%), radial-gradient(circle at 85% 25%, rgba(255,255,255,0.04) 0%, transparent 35%)",
-  },
-  J: {
-    gradient: "135deg, #3a0ca3, #7209b7, #560bad",
-    pattern:
-      "radial-gradient(circle at 60% 80%, rgba(255,255,255,0.06) 0%, transparent 50%), radial-gradient(circle at 20% 20%, rgba(255,255,255,0.04) 0%, transparent 40%)",
-  },
-  N: {
-    gradient: "135deg, #006d77, #83c5be, #0a9396",
-    pattern:
-      "radial-gradient(circle at 50% 70%, rgba(255,255,255,0.06) 0%, transparent 45%)",
-  },
-  A: {
-    gradient: "135deg, #2d6a4f, #52b788, #40916c",
-    pattern:
-      "radial-gradient(circle at 40% 80%, rgba(255,255,255,0.06) 0%, transparent 50%)",
-  },
-  F: {
-    gradient: "135deg, #774936, #c6893e, #a67c52",
-    pattern:
-      "radial-gradient(circle at 70% 70%, rgba(255,255,255,0.06) 0%, transparent 45%)",
-  },
-  M: {
-    gradient: "135deg, #1d3557, #457b9d, #2a6f97",
-    pattern:
-      "radial-gradient(circle at 25% 75%, rgba(255,255,255,0.06) 0%, transparent 50%)",
-  },
-  R: {
-    gradient: "135deg, #f72585, #b5179e, #7209b7",
-    pattern:
-      "radial-gradient(circle at 65% 80%, rgba(255,255,255,0.07) 0%, transparent 45%)",
-  },
-  P: {
-    gradient: "135deg, #0466c8, #4cc9f0, #4895ef",
-    pattern:
-      "radial-gradient(circle at 35% 70%, rgba(255,255,255,0.06) 0%, transparent 50%)",
-  },
-  Q: {
-    gradient: "135deg, #38b000, #70e000, #55a630",
-    pattern:
-      "radial-gradient(circle at 55% 75%, rgba(255,255,255,0.06) 0%, transparent 45%)",
-  },
-  C: {
-    gradient: "135deg, #495057, #adb5bd, #6c757d",
-    pattern:
-      "radial-gradient(circle at 45% 65%, rgba(255,255,255,0.05) 0%, transparent 45%)",
-  },
-  E: {
-    gradient: "135deg, #1b4332, #40916c, #2d6a4f",
-    pattern:
-      "radial-gradient(circle at 60% 80%, rgba(255,255,255,0.06) 0%, transparent 50%)",
-  },
-  S: {
-    gradient: "135deg, #7b2cbf, #c77dff, #9d4edd",
-    pattern:
-      "radial-gradient(circle at 30% 75%, rgba(255,255,255,0.06) 0%, transparent 45%)",
-  },
-};
-
-const DEFAULT_HERO = {
-  gradient: "135deg, #343434, #4a4a4a, #3d3d3d",
-  pattern:
-    "radial-gradient(circle at 50% 70%, rgba(212,132,90,0.08) 0%, transparent 50%)",
-};
+//
+// Superseded 2026-07-07: the old SECTOR_HERO map (Unsplash-era, saturated/neon
+// per-sector gradients, only 14 of 22 sections covered) is replaced by the
+// kbli-cover-design.ts design DNA — the same muted, dark-editorial palette
+// that drives the OG cover generator and KBLIHeroCanvas, now covering all
+// 22 sections (A-U + V). Signature kept identical ({gradient, pattern}) so
+// existing call sites (src/app/kbli/[code]/page.tsx) keep compiling unchanged.
 
 export function getHeroStyle(section: string | null): {
   gradient: string;
   pattern: string;
 } {
-  return (section && SECTOR_HERO[section]) || DEFAULT_HERO;
+  const visual = getSectionVisual(section);
+  return {
+    // NOTE: callers (src/app/kbli/[code]/page.tsx) wrap this in
+    // `linear-gradient(${gradient})` themselves — return the args, not a
+    // pre-wrapped CSS value.
+    gradient: `135deg, ${visual.hueA} 0%, ${visual.hueB} 100%`,
+    pattern: `radial-gradient(circle at 70% 70%, ${visual.accent}22 0%, transparent 50%)`,
+  };
 }

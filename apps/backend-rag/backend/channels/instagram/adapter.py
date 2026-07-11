@@ -12,6 +12,11 @@ from backend.channels.instagram.formatter import InstagramMessageFormatter
 
 logger = logging.getLogger(__name__)
 
+# Single source of truth for the Meta Graph API version used by this adapter.
+# F07 follow-up: send and mark-seen previously drifted (v22.0 vs v18.0) because
+# the version was inlined per-URL. Bump here, never per-call-site.
+GRAPH_API_VERSION = "v22.0"
+
 
 class InstagramChannelAdapter(BaseChannel):
     """Instagram Business API adapter."""
@@ -98,16 +103,17 @@ class InstagramChannelAdapter(BaseChannel):
             )
 
         account_id = self.instagram_config.instagram_account_id
-        url = f"https://graph.instagram.com/v22.0/{account_id}/messages"
+        url = f"https://graph.instagram.com/{GRAPH_API_VERSION}/{account_id}/messages"
         payload = {"recipient": {"id": channel_id}, "message": {"text": formatted_text}}
         headers = {"Authorization": f"Bearer {self.instagram_config.access_token}"}
 
         try:
-            await self.client.post(url, json=payload, headers=headers)
+            response = await self.client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
             logger.info("✅ Sent Instagram message to %s", channel_id)
 
             # Mark message as seen to prevent read-receipt webhook loops
-            seen_url = "https://graph.facebook.com/v18.0/me/messages"
+            seen_url = f"https://graph.facebook.com/{GRAPH_API_VERSION}/me/messages"
             seen_payload = {
                 "recipient": {"id": channel_id},
                 "sender_action": "mark_seen",
@@ -121,8 +127,27 @@ class InstagramChannelAdapter(BaseChannel):
             raise  # Let send_response_safe() catch and route to DLQ
 
     async def send_status_update(self, channel_id: str, status: str) -> None:
-        """Instagram doesn't support typing indicators."""
-        pass
+        """Send a typing indicator so the user gets an ack during the ~50s
+        RAG round-trip instead of dead silence.
+
+        Instagram's Graph messaging API DOES support sender_action (same
+        endpoint + auth we already use for mark_seen in send_response). Best
+        effort — never raise: a missing typing bubble must not block or fail
+        the actual reply. router.py calls this with status="processing" right
+        before handing the message to the conversation engine.
+        """
+        account_id = self.instagram_config.instagram_account_id
+        url = f"https://graph.instagram.com/{GRAPH_API_VERSION}/{account_id}/messages"
+        payload = {
+            "recipient": {"id": channel_id},
+            "sender_action": "typing_on",
+        }
+        headers = {"Authorization": f"Bearer {self.instagram_config.access_token}"}
+        try:
+            resp = await self.client.post(url, json=payload, headers=headers)
+            resp.raise_for_status()
+        except Exception as e:
+            logger.debug("Instagram typing_on non-critical failure: %s", e)
 
     async def stream_response(
         self,

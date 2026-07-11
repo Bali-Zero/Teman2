@@ -201,7 +201,7 @@ async def submit_clock(
             extension_days=timeline.extension_days,
             client_fp=payload.client_fingerprint,
         )
-    except asyncpg.PostgresError:
+    except (asyncpg.PostgresError, asyncpg.InterfaceError):
         logger.exception("visa_clock: DB insert failed")
         raise HTTPException(status_code=500, detail="Could not save timeline")
 
@@ -256,7 +256,7 @@ async def submit_match(
             estimated_cost_idr=cost,
             client_fp=payload.client_fingerprint,
         )
-    except asyncpg.PostgresError:
+    except (asyncpg.PostgresError, asyncpg.InterfaceError):
         logger.exception("visa_match: DB insert failed")
         raise HTTPException(status_code=500, detail="Could not save match result")
 
