@@ -1039,20 +1039,117 @@ _COLOR_TOKEN_VARS = {
     "white": "var(--color-text-white)",
 }
 
+# Typography micro-rules (Zero, 2026-07-12) — armed centrally in composer.py
+# rather than duplicated per-layout .md file, so the rule holds even when a
+# new layout family forgets to restate it. Always injected (unconditional,
+# unlike the color override above which only fires on a slide's explicit/
+# default color choice) — these are house-style constants, not per-slide
+# editorial choices, so there is nothing to preserve flexibility for.
+#
+# 1. UPPERCASE EVERYWHERE — supersedes the 2026-05-22 "Title Case body for
+#    word-count readability" exception (evidence-carved .fact/.take-text,
+#    editorial-text .body, stat-card-hero .body): Zero's ruling 2026-07-12
+#    is that restraint now comes from layout/color hierarchy, not case: all
+#    rendered text is uppercase, no exceptions.
+# 2. FONT-WEIGHT HIERARCHY — heading/headline always extrabold (800); body
+#    text never at or above that weight (capped at bold/700), so a body
+#    block can never flatten the visual hierarchy against its heading.
+# 3. SIZE FLOOR — checked separately (_check_body_font_size_floor below),
+#    NOT coerced via CSS here: a blanket `font-size: 22px !important` would
+#    fight each layout's own scale (a subhead is deliberately smaller than a
+#    heading, a .fact value deliberately larger than a .fact label) and a
+#    self-referential `max(22px, <inherited>)` can't recover the pre-!important
+#    value once the cascade already applied one !important rule. Floor
+#    violations are logged as a warning instead — visible, not silently
+#    coerced into a possibly-wrong size.
+#
+# Selectors are the common text-role classes shared across layout .md files
+# (grep-verified 2026-07-12): a selector that doesn't exist in a given
+# layout is simply inert there — no risk of breaking a family that doesn't
+# use it.
+_TYPOGRAPHY_GUARD_CSS = (
+    '\n<style data-typography-guard="1">\n'
+    ".heading,.headline,.subheading,.subhead,.body,.body-item,"
+    ".fact .text,.take-text,.item .label,.item .value,"
+    ".voice-a .quote,.voice-b .quote,.row-label,.row-value,"
+    ".label,.value,.text{text-transform:uppercase !important;}\n"
+    ".heading,.headline{font-weight:800 !important;}\n"
+    ".body,.body-item,.fact .text,.take-text,.item .value,"
+    ".voice-a .quote,.voice-b .quote,.text{font-weight:700 !important;}\n"
+    "</style>\n"
+)
+
+# Floor check: warn (never coerce — see comment above) when a layout's own
+# .md skeleton declares a body-role font-size below this px value. Checked
+# once per family at render time from the skeleton's raw CSS text, not
+# per-slide (the size is a template constant, not slide data).
+_BODY_FONT_SIZE_FLOOR_PX = 22
+_BODY_ROLE_SELECTORS_RE = re.compile(
+    r"\.(?:body|body-item|fact \.text|take-text|item \.value|"
+    r"voice-a \.quote|voice-b \.quote)\s*\{[^}]*font-size:\s*(\d+)px",
+)
+
+
+def _check_body_font_size_floor(skeleton_css: str, family: str) -> None:
+    """Warn if a layout's body-role text is authored below the IG-legibility
+    floor. Non-blocking (logger.warning only) — see _TYPOGRAPHY_GUARD_CSS
+    comment for why this isn't a CSS !important coercion.
+    """
+    for m in _BODY_ROLE_SELECTORS_RE.finditer(skeleton_css):
+        px = int(m.group(1))
+        if px < _BODY_FONT_SIZE_FLOOR_PX:
+            logger.warning(
+                "typography guard: %s body-role font-size %dpx is below the "
+                "%dpx IG-legibility floor",
+                family, px, _BODY_FONT_SIZE_FLOOR_PX,
+            )
+
+
+def _default_heading_subhead_colors(slide: dict[str, Any]) -> tuple[str, str]:
+    """Odd/even alternation default for heading_color / subhead_color.
+
+    Micro-rule (Zero, 2026-07-12): odd slide_number -> heading=yellow /
+    subhead=white; even -> inverted. This is a DEFAULT only — it fires
+    exclusively when the slide has NOT declared its own heading_color/
+    subhead_color, so a deliberate per-slide editorial choice (e.g. two
+    consecutive covers both wanting a yellow headline) always wins. The
+    alternation exists so an un-opinionated carousel still gets visual
+    rhythm across its slides instead of every slide defaulting to the same
+    layout-family palette.
+
+    Falls back to slide_number == 1 (odd) when slide_number is missing/
+    unparseable, matching the historical single-carousel default.
+    """
+    try:
+        n = int(slide.get("slide_number") or 1)
+    except (TypeError, ValueError):
+        n = 1
+    return ("yellow", "white") if n % 2 == 1 else ("white", "yellow")
+
 
 def _heading_color_override_css(slide: dict[str, Any]) -> str:
     """Build a scoped !important <style> block for this slide's heading_color
-    / subhead_color, if present and recognized. Each slide renders as its own
-    standalone HTML file, so an !important override here can never leak into
-    another slide or carousel — it only ever wins the cascade within this one
-    document, on top of whatever default the layout family's own <style>
-    block already set.
+    / subhead_color. Each slide renders as its own standalone HTML file, so
+    an !important override here can never leak into another slide or
+    carousel — it only ever wins the cascade within this one document, on
+    top of whatever default the layout family's own <style> block already
+    set.
+
+    Precedence: an explicit heading_color/subhead_color on the slide always
+    wins (editorial flexibility preserved). Only the field(s) NOT explicitly
+    set fall back to the odd/even alternation default above — so a slide
+    that only sets heading_color still gets a sensible subhead_color default
+    instead of silently keeping the layout's hardcoded one.
     """
+    default_heading, default_subhead = _default_heading_subhead_colors(slide)
+    heading_token = str(slide.get("heading_color") or "").strip().lower() or default_heading
+    subhead_token = str(slide.get("subhead_color") or "").strip().lower() or default_subhead
+
     rules = []
-    heading_color = _COLOR_TOKEN_VARS.get(str(slide.get("heading_color") or "").strip().lower())
+    heading_color = _COLOR_TOKEN_VARS.get(heading_token)
     if heading_color:
         rules.append(f".heading,.headline{{color:{heading_color} !important;}}")
-    subhead_color = _COLOR_TOKEN_VARS.get(str(slide.get("subhead_color") or "").strip().lower())
+    subhead_color = _COLOR_TOKEN_VARS.get(subhead_token)
     if subhead_color:
         rules.append(f".subheading,.subhead{{color:{subhead_color} !important;}}")
     if not rules:
@@ -1312,6 +1409,16 @@ def _fill_placeholders(
         else:
             html = html + color_css
 
+    # Typography micro-rules (uppercase everywhere, heading/body weight
+    # hierarchy) — unconditional, every slide gets this, see
+    # _TYPOGRAPHY_GUARD_CSS for the full rationale.
+    if "</head>" in html:
+        html = html.replace("</head>", _TYPOGRAPHY_GUARD_CSS + "</head>", 1)
+    elif "</body>" in html:
+        html = html.replace("</body>", _TYPOGRAPHY_GUARD_CSS + "</body>", 1)
+    else:
+        html = html + _TYPOGRAPHY_GUARD_CSS
+
     # Inject the facts-block styles ONLY when the stack was rendered, so a
     # non-parsing body stays byte-identical to the legacy paragraph output.
     if facts_block:
@@ -1391,6 +1498,7 @@ async def compose_carousel(
                         logger.warning("slide %d hero download failed url=%s", plan.index, url)
 
             skeleton = _extract_skeleton(plan.family)
+            _check_body_font_size_floor(skeleton, plan.family)
             html = _normalize_skeleton(skeleton)
             if plan.expect_hero and hero_filename:
                 html = _hero_bg_to_img(html, hero_filename)
@@ -1449,6 +1557,7 @@ async def materialize_slide_html(
     expect_hero = bool(slide.get("is_hero_image")) or index == 1
 
     skeleton = _extract_skeleton(family)
+    _check_body_font_size_floor(skeleton, family)
     html = _normalize_skeleton(skeleton)
     if expect_hero and hero_filename:
         html = _hero_bg_to_img(html, hero_filename)

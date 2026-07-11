@@ -3115,6 +3115,20 @@ _BODY_SLIDE_HTML = (
 )
 
 
+def _EXPECTED_HOUSE_STYLE_CSS(slide):
+    """The always-on <style> blocks _fill_placeholders injects for every
+    slide (2026-07-12 color-override + typography-guard micro-rules) — reuses
+    the real composer functions so this fixture can never drift from the
+    production injection order/content.
+    """
+    from wr2_html_renderer.composer import (
+        _TYPOGRAPHY_GUARD_CSS,
+        _heading_color_override_css,
+    )
+
+    return _heading_color_override_css(slide) + _TYPOGRAPHY_GUARD_CSS
+
+
 def test_fill_placeholders_facts_body_renders_label_value_stack():
     """A facts body renders as a label/value stack: one row per pair, the
     source line present OUTSIDE the rows, yellow accent on the FIRST value
@@ -3166,19 +3180,29 @@ def test_fill_placeholders_facts_body_without_source_still_stacks():
 def test_fill_placeholders_non_parsing_body_byte_identical():
     """Regression: a body that does NOT parse as fact pairs renders EXACTLY as
     before the change — placeholder substituted verbatim, no facts markup, no
-    injected facts CSS."""
+    injected facts CSS. (2026-07-12: the color-override + typography-guard
+    <style> blocks are now ALWAYS injected — see _heading_color_override_css
+    / _TYPOGRAPHY_GUARD_CSS — so "byte-identical" is scoped to the facts-block
+    markup specifically, not the whole document; those two blocks are
+    unconditional house-style, not part of the facts-block feature this test
+    guards.)"""
     from wr2_html_renderer.composer import _fill_placeholders
 
     prose = "YOUR KITAP STAYS VALID. THE RENEWAL WINDOW MOVED TO MARCH."
+    slide = {"headline": "SHORT TITLE", "body": prose}
     out = _fill_placeholders(
         _BODY_SLIDE_HTML,
-        {"headline": "SHORT TITLE", "body": prose},
+        slide,
         hero_filename=None,
         cover_family=False,
     )
-    # pre-change snapshot semantics: plain placeholder substitution only
-    expected = _BODY_SLIDE_HTML.replace("{{heading}}", "SHORT TITLE").replace(
+    # pre-change snapshot semantics: plain placeholder substitution, PLUS the
+    # always-on color-override/typography-guard style blocks (2026-07-12).
+    expected_body = _BODY_SLIDE_HTML.replace("{{heading}}", "SHORT TITLE").replace(
         "{{body}}", prose
+    )
+    expected = expected_body.replace(
+        "</head>", _EXPECTED_HOUSE_STYLE_CSS(slide) + "</head>"
     )
     assert out == expected
     assert "fact-row" not in out
@@ -3190,16 +3214,20 @@ def test_fill_placeholders_cover_family_facts_body_untouched():
     body that would parse as pairs renders as the legacy paragraph."""
     from wr2_html_renderer.composer import _fill_placeholders
 
+    slide = {"headline": "FEE", "body": _FACTS_BODY}
     out = _fill_placeholders(
         _BODY_SLIDE_HTML,
-        {"headline": "FEE", "body": _FACTS_BODY},
+        slide,
         hero_filename=None,
         cover_family=True,
     )
     assert "fact-row" not in out
     assert "data-facts-block" not in out
-    expected = _BODY_SLIDE_HTML.replace("{{heading}}", "FEE").replace(
+    expected_body = _BODY_SLIDE_HTML.replace("{{heading}}", "FEE").replace(
         "{{body}}", _FACTS_BODY
+    )
+    expected = expected_body.replace(
+        "</head>", _EXPECTED_HOUSE_STYLE_CSS(slide) + "</head>"
     )
     assert out == expected
 
