@@ -48,6 +48,7 @@ import logging
 import os
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -60,12 +61,17 @@ _DEFAULT_BACKEND = "https://nuzantara-rag.fly.dev"
 _DEFAULT_EMAIL = "zero@balizero.com"
 _KEYCHAIN_ITEM = "wr2-publish-pin"
 
-_CAROUSEL_ROOT = Path(
-    os.environ.get(
-        "WR2_CAROUSEL_ROOT",
-        str(Path.home() / "Desktop/nuzantara/apps/war-room/output/carousel"),
-    )
-)
+
+def _carousel_root_from_env(env: Mapping[str, str], home: Path) -> Path:
+    """Resolve the carousel root shared by cockpit and Mini launch environments."""
+    if explicit_root := env.get("WR2_CAROUSEL_ROOT"):
+        return Path(explicit_root)
+    if war_room_root := env.get("WR2_WARROOM_ROOT"):
+        return Path(war_room_root) / "carousel"
+    return home / "Desktop/nuzantara/apps/war-room/output/carousel"
+
+
+_CAROUSEL_ROOT = _carousel_root_from_env(os.environ, Path.home())
 
 
 class PublishAborted(RuntimeError):

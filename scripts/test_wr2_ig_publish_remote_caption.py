@@ -9,6 +9,25 @@ import pytest
 import wr2_ig_publish_remote as publisher
 
 
+def test_carousel_root_uses_synced_war_room_override() -> None:
+    env = {"WR2_WARROOM_ROOT": "/Users/nuzantara/.wr2-warroom-sync/output"}
+
+    assert publisher._carousel_root_from_env(env, Path("/Users/nuzantara")) == Path(
+        "/Users/nuzantara/.wr2-warroom-sync/output/carousel"
+    )
+
+
+def test_explicit_carousel_root_wins_over_war_room_override() -> None:
+    env = {
+        "WR2_CAROUSEL_ROOT": "/tmp/explicit-carousel",
+        "WR2_WARROOM_ROOT": "/tmp/war-room-output",
+    }
+
+    assert publisher._carousel_root_from_env(env, Path("/Users/nuzantara")) == Path(
+        "/tmp/explicit-carousel"
+    )
+
+
 def test_resolve_caption_uses_generated_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(publisher, "_build_caption", lambda slug: f"generated:{slug}")
 
