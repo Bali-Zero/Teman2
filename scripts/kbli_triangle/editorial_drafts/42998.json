@@ -1,0 +1,27 @@
+{
+  "code": "42998",
+  "editorial": {
+    "headline": "Building Indonesia’s Nuclear Reactor Civil Works",
+    "standfirst": "This large-scale construction activity is nationally open to full foreign ownership and is not blocked for PMA registration in Bali.",
+    "body": "This activity covers the civil construction of nuclear reactor facilities: reactors for energy, for research and testing, and for the production of radioisotopes and radiopharmaceuticals. It also encompasses micro power-reactor operations up to 30 MWt (up to 10 MWe), and small power-reactor operations above 30 MWt up to 1,000 MWt (above 10 MWe up to 300 MWe). The subject is therefore a highly specific construction field, defined by the physical reactor infrastructure and the purposes those reactors serve.\n\nThe registration route is open at the Large scale. That matters because the record does not present this as a small or medium-scale activity: its stated scale is Besar, or Large. For a founder or investor assessing the activity, that is the relevant commercial frame supplied by the classification record—civil construction in the nuclear-reactor context, undertaken at Large scale.\n\nNationally, the activity is TERBUKA, or open, to foreign investment, with a maximum foreign ownership of 100%. In plain terms, the record permits full foreign ownership at the national level. The stated basis is Perpres 10/2021, 49/2021. That national position should be read directly, rather than softened into a generic assumption that a specialised infrastructure activity must be closed or partially restricted: the record says it is open, and it gives the foreign-ownership ceiling as 100%.\n\nBali does not change that conclusion into a prohibition for this activity. The province permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities island-wide, but this Large-scale activity is assessed in OSS as Medium-High/High risk. It is therefore not blocked by that moratorium. Bali’s recorded status is OK_or_HIGHER_RISK: the relevant point is not an additional Bali ownership cap or partnership condition, but that the activity sits outside the moratorium’s Low and Medium-Low risk bar. For this code, the national openness and the Bali position align: full foreign ownership is nationally available, and Bali does not block PMA registration on the stated moratorium ground.",
+    "pullQuote": "For this code, full foreign ownership is nationally available, and Bali does not block PMA registration on the stated moratorium ground.",
+    "byTheNumbers": [
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Besar"
+      },
+      {
+        "label": "PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

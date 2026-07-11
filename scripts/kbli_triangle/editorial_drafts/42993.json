@@ -1,0 +1,27 @@
+{
+  "code": "42993",
+  "editorial": {
+    "headline": "Geothermal Civil Works, Without a Bali Moratorium Barrier",
+    "standfirst": "This activity covers the construction and upkeep of geothermal facilities, open nationally to full foreign ownership and not blocked for PMA registration in Bali by the province’s moratorium.",
+    "body": "What this activity captures is the built environment around a geothermal project, not a broad label for anything connected to energy. It is specifically construction services for the development, maintenance, and/or reconstruction of upstream and downstream geothermal facilities. The record names the working components: wells, steam-field facilities, and delivery pipelines. Taken together, these are the elements through which geothermal facilities are built, maintained, or rebuilt when required. The activity’s centre of gravity is durable civil works directed at named geothermal infrastructure.\n\nThe code is available to Besar, Mikro, Kecil, and Menengah businesses. It does not set out a scale-only version of the activity: those categories may register the same defined construction field, provided the work remains within its stated scope. Development, maintenance, and reconstruction are all included, but only when they concern upstream or downstream geothermal facilities such as the wells, steam-field facilities, and pipelines identified in the record. The classification is precise about the infrastructure it embraces, even as it accommodates businesses at every listed scale.\n\nNationally, the investment position is clear. The record classifies the activity as TERBUKA and gives a maximum foreign ownership level of 100%. That is a full foreign-ownership ceiling, not a capped minority or majority share. For an investor assessing the activity on its national terms, there is no foreign-equity restriction below complete ownership stated in this record. The availability of Mikro, Kecil, Menengah, and Besar scales sits beside that national position, presenting a single activity open across the listed business scales.\n\nBali needs a separate reading because the province’s rule blocks PMA registration for every Low and Medium-Low risk KBLI, island-wide and permanently. This activity is not blocked under that moratorium. At the Besar scale, the record gives its OSS risk as Menengah-Tinggi/Tinggi—Medium-High/High—placing it outside the risk bands named in the Bali rule. Its Bali status, OK_or_HIGHER_RISK, captures the distinction: it is not a low- or medium-low-risk route into the province, yet it is not prohibited for PMA registration by the stated moratorium. The straightforward conclusion is that a foreign investor can register this activity in Bali today; nationally the foreign-ownership ceiling is 100%, and Bali’s moratorium is not the barrier.",
+    "pullQuote": "The straightforward conclusion is that a foreign investor can register this activity in Bali today; nationally the foreign-ownership ceiling is 100%, and Bali’s moratorium is not the barrier.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Besar, Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

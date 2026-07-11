@@ -1,0 +1,27 @@
+{
+  "code": "42997",
+  "editorial": {
+    "headline": "Building Indonesia’s Ionising-Radiation Facilities",
+    "standfirst": "This construction and consultancy activity is nationally open to full foreign ownership, with Bali not marked as blocked by its PMA moratorium.",
+    "body": "This activity covers the civil construction of facilities that use ionising-radiation sources: radiotherapy centres, nuclear-medicine facilities, diagnostic and interventional radiology sites, non-destructive testing facilities, particle-accelerator, radioisotope and radiopharmaceutical facilities, irradiation installations, calibration facilities, and radioactive-substance storage. It also includes construction work and/or construction consultancy for such facilities. The subject is therefore not radiation practice itself, but the built environment and construction expertise required for these highly specialised premises.\n\nIt is an activity for businesses delivering the civil works or construction-consultancy element of an ionising-radiation facility. The record makes the activity available at every stated business scale: Mikro, Kecil, Menengah, and Besar. That breadth matters because the code is defined by the kind of facility being built or advised on, rather than by a single project size. A company’s work may sit in the design, advisory, or construction dimension of a radiotherapy, irradiation, calibration, or radioactive-storage facility, provided it remains within that stated scope.\n\nNationally, the position is direct: the activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. In practical editorial terms, the national framework does not reserve a portion of ownership for an Indonesian shareholder under this record. The cited basis is Perpres 10/2021, 49/2021. That national openness should be read alongside, rather than confused with, Bali’s separate PMA screening context.\n\nFor Bali, the record does not mark this activity as blocked. Bali’s permanent, island-wide PMA moratorium blocks all Low and Medium-Low risk KBLI activities, but this record notes that at the Besar scale the OSS risk classification is Menengah-Tinggi/Tinggi. On the information supplied, that places the activity outside the moratorium block: a foreign investor may register it in Bali, rather than being turned away simply because the business is PMA. The important distinction is a narrow one—national ownership openness remains 100%, while Bali’s stated outcome is OK_or_HIGHER_RISK because the relevant Besar-scale risk classification is not within the moratorium’s barred categories.",
+    "pullQuote": "A foreign investor may register this activity in Bali because the record does not place it within the moratorium’s barred risk categories.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
