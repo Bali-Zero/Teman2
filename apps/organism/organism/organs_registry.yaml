@@ -144,6 +144,23 @@ organs:
     path: ~/.agent/decisions/state/login_healthcheck.last.json
     timestamp_field: ts
     status_field: status
+- id: m5.auth_sentinel
+  runtime: m5_launchd
+  type: cron
+  expected_hb_seconds: 25200
+  owner_module: scripts/auth_sentinel_cron.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.auth-sentinel.daily
+  severity_on_silence: warning
+  cicatrix_refs:
+  - 2026-06-16-W84-tcc-green-dead
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/auth-sentinel.json
+    timestamp_field: ts
+    status_field: status
 - id: pro.fly_restart_loop_detector
   runtime: pro_launchd
   type: cron
