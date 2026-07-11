@@ -106,12 +106,16 @@ async def test_send_message_delegates_to_fallback_runner(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_health_check_uses_injected_clients(monkeypatch) -> None:
+    """With egress enabled, an injected OpenRouter client reports healthy."""
     gateway = LLMGateway()
     gateway.model_name_pro = "pro-model"
     gateway.model_name_flash = "flash-model"
     gateway.model_name_fallback = "fallback-model"
     gateway._genai_client = FakeGenAIClient()
     monkeypatch.setattr(gateway, "_get_openrouter_client", object)
+    monkeypatch.setattr(
+        "backend.app.core.config.settings.openrouter_enabled", True, raising=False
+    )
 
     status = await gateway.health_check()
 
@@ -122,3 +126,22 @@ async def test_health_check_uses_injected_clients(monkeypatch) -> None:
         "openrouter": True,
     }
     assert gateway._genai_client.calls == ["flash-model", "pro-model", "fallback-model"]
+
+
+@pytest.mark.asyncio
+async def test_health_check_openrouter_false_when_disabled(monkeypatch) -> None:
+    """COS-LAW-013: a disabled egress must not report healthy even with a
+    working injected client — a green that lies is worse than a red."""
+    gateway = LLMGateway()
+    gateway.model_name_pro = "pro-model"
+    gateway.model_name_flash = "flash-model"
+    gateway.model_name_fallback = "fallback-model"
+    gateway._genai_client = FakeGenAIClient()
+    monkeypatch.setattr(gateway, "_get_openrouter_client", object)
+    monkeypatch.setattr(
+        "backend.app.core.config.settings.openrouter_enabled", False, raising=False
+    )
+
+    status = await gateway.health_check()
+
+    assert status["openrouter"] is False
