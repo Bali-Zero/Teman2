@@ -1,0 +1,27 @@
+{
+  "code": "46611",
+  "editorial": {
+    "headline": "New-Vehicle Wholesale: Nationally Open, Blocked for PMA in Bali",
+    "standfirst": "This activity covers the wholesale trade of new cars and other motorised transport vehicles, but Bali’s permanent risk-based PMA moratorium changes the practical answer on the island.",
+    "body": "New-vehicle wholesale is broader than the showroom image might suggest. It covers wholesale trade in new cars, including specialist vehicles such as ambulances, caravans, minibuses and fire engines. It also reaches lorries, trailers, semi-trailers, goods vehicles and other motorised transport vehicles. The defining feature is the wholesale activity: the commercial movement of new vehicles across this wide transport range.\n\nThe activity is open across every listed business scale: micro, small, medium and large. That matters because the classification does not reserve the activity for a single size of operator. A business may register this wholesale activity at any of those scales, provided its actual work remains within the stated vehicle-wholesale scope. The description is therefore capacious in the kinds of vehicles it includes, while remaining specific about the commercial activity it names.\n\nAt the national level, the PMA position is open, with a foreign-ownership ceiling of 100%. That is the national answer, grounded in Perpres 10/2021 and 49/2021. For a foreign-owned business considering Indonesia generally, it means this activity is not nationally closed to PMA registration and does not carry a foreign-share cap below full ownership.\n\nBali is the decisive exception. A foreigner cannot register this activity as PMA in Bali today. At the large-business scale, OSS risk is classified as Low or Medium-Low across every scope, placing it within Bali’s island-wide, permanent moratorium on PMA registrations for Low and Medium-Low risk KBLI activities. The moratorium is recorded as applying from May 2026. National openness and Bali’s block are not competing interpretations: the former states the national foreign-investment position, while the latter determines the registration outcome for PMA on the island.",
+    "pullQuote": "National openness and Bali’s block are not competing interpretations: they answer different questions about where PMA registration can proceed.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

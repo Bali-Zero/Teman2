@@ -1,22 +1,22 @@
 {
   "code": "01287",
   "editorial": {
-    "headline": "A Closed Category for Prohibited Narcotic and Medicinal Plants",
-    "standfirst": "This activity covers the cultivation cycle for narcotic and prohibited medicinal plants, but it is closed to foreign ownership nationally and blocked for PMA registration in Bali.",
-    "body": "This KBLI activity is not a broad agricultural category. It is a tightly defined classification for the farming of narcotic plants and prohibited medicinal plants. The scope covers the full cultivation chain when handled as one integrated activity: land preparation, planting, maintenance, harvesting, and post-harvest work. In plain English, the code is about growing these restricted plants, not simply trading, researching, or processing them as a separate business line.\n\nThe record says the activity is open across all business scales: Mikro, Kecil, Menengah, and Besar. That means the scale field does not narrow the classification to one size of operator. A small operation and a large operation can both fall inside the same activity description if the underlying work is the farming cycle described in the scope. The important point is that scale openness is not the same as foreign-ownership openness. For founders, those two ideas need to be read separately.\n\nOn foreign ownership, the national position is absolute. The PMA status is TERTUTUP and the foreign-ownership ceiling is 0%. There is no partial foreign stake to structure around in this record. The source cited is Perpres 10/2021, 49/2021, and the practical reading is direct: this is not a foreign-owned setup category at the national level. The code may describe an activity that exists in the classification system, and it may be open across micro through large scale bands, but it is closed for PMA ownership.\n\nBali does not soften that answer. Its L4 Bali status is also TERTUTUP, and the record marks it as blocked. The stated Bali reason is that the activity is closed to foreign ownership at the national level, with a 0% ceiling. On top of that, the Bali moratorium rule in the record says the province blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently. The honest editorial conclusion is therefore simple: a foreigner cannot register this activity as a PMA in Bali. The national rule already closes the door, and the Bali status confirms that the door is closed locally as well.",
-    "pullQuote": "Scale openness does not change the central fact: this activity carries a 0% foreign-ownership ceiling and is blocked for PMA in Bali.",
+    "headline": "Cultivating Prohibited Plants: Closed to Foreign Investment",
+    "standfirst": "This integrated cultivation category is open across four enterprise scales, yet is closed to PMA nationally and blocked for foreign registration in Bali.",
+    "body": "This activity covers the cultivation of narcotic plants and prohibited medicinal plants. Its stated scope takes in the full agricultural chain: land preparation, planting, crop maintenance, harvesting, and post-harvest work when these are carried out as one continuous sequence. That last qualification matters. The activity is framed as an integrated operation, joining work in the ground with the follow-on handling that belongs to the same run of activity. It is therefore not merely a label for planting; it describes the connected agricultural process set out in the record.\n\nThe category is available to businesses at every listed enterprise scale: Micro, Small, Medium and Large. The practical registrant is accordingly a business undertaking that full cultivation-and-post-harvest sequence, at any of those stated scales. Scale availability, however, answers only the size question. It should not be confused with the foreign-investment position. The record places enterprise scale and foreign ownership in separate fields, and they lead to different conclusions: all four scales are listed as open, while PMA is not.\n\nNationally, the foreign-investment status is TERTUTUP, with a maximum foreign ownership figure of 0%. The implication is direct: this activity is closed to PMA registration at national level. There is no partial foreign stake within the stated ceiling; the ceiling itself is zero. For an investor assessing an Indonesian structure, that is the point on which the entry question turns. The availability of Micro through Large scales does not create a foreign-investment route, because the national ownership position remains closed.\n\nBali reaches the same result, rather than offering a regional opening. Its status is TERTUTUP, the record marks it as blocked for PMA, and the stated reason identifies the national closure and 0% position. A foreigner therefore cannot register this activity in Bali today. The Bali record also cites a provincial rule that blocks all Low and Medium-Low risk KBLI from PMA across the island on a permanent basis. That provincial setting is relevant context for Bali registration, but the conclusion here is already unambiguous: national closure and Bali's recorded blocked status point in one direction. This is an activity whose listed business scales remain available, while foreign ownership does not.",
+    "pullQuote": "This is an activity whose listed business scales remain available, while foreign ownership does not.",
     "byTheNumbers": [
       {
-        "label": "Foreign ownership ceiling",
+        "label": "National foreign ownership ceiling",
         "value": "0%"
       },
       {
-        "label": "National PMA status",
-        "value": "TERTUTUP"
+        "label": "Open enterprise scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "Open scales",
-        "value": "Mikro, Kecil, Menengah, Besar"
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
       },
       {
         "label": "Bali status",

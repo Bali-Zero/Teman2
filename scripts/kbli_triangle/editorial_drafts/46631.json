@@ -1,0 +1,27 @@
+{
+  "code": "46631",
+  "editorial": {
+    "headline": "New-Motorcycle Wholesale: Open Nationally, Barred to PMA in Bali",
+    "standfirst": "Wholesale trade in new motorcycles, mopeds and motorised bicycles is nationally open to full foreign ownership—but PMA registration in Bali is blocked.",
+    "body": "New-motorcycle wholesale covers the wholesale trade in new motorcycles, including motorised bicycles and mopeds. The activity is defined by the commercial trade in new vehicles: motorcycles are the subject of the wholesale business, with mopeds and motorised bicycles expressly within its scope. It is a concise classification, but a commercially significant one for businesses whose work is the wholesale distribution of new two-wheeled motor vehicles.\n\nThe record makes this activity available at Mikro, Kecil, Menengah and Besar scales. Nationally, its PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. That is a clear national position: foreign ownership may reach the full 100% ceiling for this activity. The applicable PMA references recorded for it are Perpres 10/2021 and 49/2021.\n\nThat national openness does not carry intact into Bali. A foreigner cannot register this activity under PMA in Bali today. The Bali position is blocked by risk class: at the Besar scale, every scope is recorded by OSS as Rendah or Menengah-Rendah risk. This brings the activity within the Bali moratorium recorded in May 2026, rather than creating a different national foreign-ownership ceiling.\n\nThe provincial rule is broad and permanent: Bali blocks all Low and Medium-Low risk KBLI activities for PMA across the island. For this wholesale activity, the distinction is therefore decisive. Nationally, the foreign stake may be as high as 100%; in Bali, PMA registration is blocked because of the activity’s recorded risk classification at the large scale. The honest reading is not a softened caveat but a genuine split between national foreign-investment openness and Bali’s island-wide moratorium.",
+    "pullQuote": "Nationally, the foreign stake may be as high as 100%; in Bali, PMA registration is blocked by the island-wide moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}
