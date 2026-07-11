@@ -1520,9 +1520,9 @@ langchain-protocol==0.0.18 \
     # via
     #   langchain-core
     #   langgraph-sdk
-langfuse==3.14.6 \
-    --hash=sha256:058f7b7caa9284b964feaee81c223542d78e9fb4daabf312269b9f903471b9c4 \
-    --hash=sha256:5eb22a5ea579ac10f050513e3fedccc3c9a981eeefe44f9014273bc229a56f88
+langfuse==4.13.0 \
+    --hash=sha256:0e0c5af8c8f299d6878c328518ce8414a188d1f6333ad2109aa8208f2e41500a \
+    --hash=sha256:41b6b13e1e4e96f903a24e2bb69a38b83a8a296d12de11a345e33ec2763f10d2
     # via -r requirements-prod.txt
 langgraph==1.2.7 \
     --hash=sha256:249349a5d6a32cb0aa2304a8fb6529bd0cf56db8780d21db9e086e5383668f89 \
