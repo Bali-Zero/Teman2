@@ -45,7 +45,7 @@ async function generate() {
     for (const file of files) {
       const filePath = path.join(categoryPath, file);
       const fileContents = fs.readFileSync(filePath, "utf8");
-      let parsed: matter.GrayMatterFile<string>;
+      let parsed: ReturnType<typeof matter>;
       try {
         parsed = matter(fileContents);
       } catch (error) {

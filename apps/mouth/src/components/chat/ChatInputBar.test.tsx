@@ -99,4 +99,16 @@ describe("ChatInputBar", () => {
     fireEvent.click(attachBtn);
     expect(setShowAttachMenu).toHaveBeenCalledWith(true);
   });
+
+  it("shows stop button and calls onStop when isLoading is true", () => {
+    const onStop = vi.fn();
+    render(<ChatInputBar {...defaultProps} isLoading={true} onStop={onStop} />);
+
+    const stopBtn = screen.getByLabelText(/Stop generating/i);
+    expect(stopBtn).toBeInTheDocument();
+    expect(stopBtn).not.toBeDisabled();
+
+    fireEvent.click(stopBtn);
+    expect(onStop).toHaveBeenCalled();
+  });
 });

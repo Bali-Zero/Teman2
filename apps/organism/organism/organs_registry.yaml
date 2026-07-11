@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 2693b53b89a1df260bf1a26f8ec15bdb221da8552119b7b061b5b5f4bec79f4f
+checksum: 104a14e54a1201b379d174e288e00ae9488977def439652ec81c1043ef810d11
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1743,5 +1743,83 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.healer.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.tg_digest_flush
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 43200
+  owner_module: infra/launchagents/wrappers/pro-tg-digest-flush.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.tg-digest-flush
+  severity_on_silence: warning
+  notes: 'Telegram digest flusher — ONE grouped message per slot for everything tg_notify
+    spooled (notification economy, PR #2067) (born via organ_birth.py, genes imprinted
+    2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.tg_digest_flush.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.tg_digest_flush
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 43200
+  owner_module: infra/launchagents/wrappers/mini-tg-digest-flush.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.mini.tg-digest-flush
+  severity_on_silence: warning
+  notes: 'Telegram digest flusher (Mini) — ONE grouped message per slot for everything
+    tg_notify spooled on this node (notification economy, PR #2067) (born via organ_birth.py,
+    genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.tg_digest_flush.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.wr2_daily_carousel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 64800
+  owner_module: scripts/wr2_daily_reconciler.py
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.wr2.daily-reconciler
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.wr2_daily_carousel.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.fleet_watch
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: infra/launchagents/wrappers/mini-fleet-watch.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.fleet-watch
+  severity_on_silence: warning
+  notes: 'Cross-node liveness sentinel: the H24 Mini watches the Pro (tailscale+ssh
+    2-signal verdict) and raises p0 via tg gateway when a peer goes dark >30min. Genesis
+    2026-07-07: Pro dark 5h, zero alarms (its watchdogs died with it). (born via organ_birth.py,
+    genes imprinted 2026+)'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.fleet_watch.json
     timestamp_field: ts
     status_field: status

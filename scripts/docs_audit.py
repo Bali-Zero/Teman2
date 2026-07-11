@@ -91,9 +91,28 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Physically git mv orphans to docs/archive/. Default: dry-run.",
     )
+    p.add_argument(
+        "--regen-only",
+        action="store_true",
+        help=(
+            "Explicit, self-documenting alias for the default (no --apply) "
+            "inventory-regeneration mode: rewrites docs/DOCS_INVENTORY.md "
+            "content only, never touches docs/archive/. Mutually exclusive "
+            "with --apply and --check. Use this when you only want the "
+            "table refreshed and do NOT want orphan git-mv side effects."
+        ),
+    )
     p.add_argument("--quiet", action="store_true", help="No stdout on success.")
     p.add_argument("--json", action="store_true", help="Emit stats JSON on stdout.")
-    return p.parse_args()
+    args = p.parse_args()
+    if args.regen_only and args.apply:
+        raise SystemExit("--regen-only and --apply are mutually exclusive.")
+    if args.regen_only and args.check:
+        raise SystemExit(
+            "--regen-only and --check are mutually exclusive "
+            "(--check never writes; --regen-only always writes)."
+        )
+    return args
 
 
 def parse_clusters(raw: List[str]) -> List[ClusterDef]:
@@ -512,26 +531,45 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
 
 
 def apply_moves(repo: Path, rows: List[DocRow], use_git: bool = True) -> int:
-    """Move files whose action starts with 'archive' into docs/archive/YYYY-MM-<slug>/. Return moved count."""
-    moved = 0
+    """Move files whose action starts with 'archive' into docs/archive/YYYY-MM-<slug>/. Return moved count.
+
+    All moves are issued as ONE batched `git mv` call (git supports multiple
+    sources + a destination directory in a single invocation) rather than one
+    subprocess per file. This closes the interruption window that produced
+    the 2026-07-07 near-miss: a mid-loop timeout on a per-file subprocess
+    left some `git mv` calls applied and others not, and — because the
+    working tree was already dirty from earlier moves — a subsequent partial
+    `git add` staged byte-duplicate copies under docs/archive/ instead of
+    clean renames (fixed in commit e6c5526696). Batching means the operation
+    is all-or-nothing at the git-mv step: either every listed file moves, or
+    the subprocess call fails/is killed before ANY of them are staged as
+    duplicates outside a single atomic git operation.
+    """
     slug = time.strftime("%Y-%m-orphans")
     dest = repo / "docs" / "archive" / slug
     dest.mkdir(parents=True, exist_ok=True)
+
+    sources: List[Path] = []
     for r in rows:
         if not r.action.startswith("archive: orphan"):
             continue
         src = repo / r.path
         if not src.exists():
             continue
-        target = dest / src.name
-        if use_git:
-            subprocess.run(
-                ["git", "-C", str(repo), "mv", str(src), str(target)], check=True
-            )
-        else:
-            src.rename(target)
-        moved += 1
-    return moved
+        sources.append(src)
+
+    if not sources:
+        return 0
+
+    if use_git:
+        subprocess.run(
+            ["git", "-C", str(repo), "mv", *[str(s) for s in sources], str(dest)],
+            check=True,
+        )
+    else:
+        for src in sources:
+            src.rename(dest / src.name)
+    return len(sources)
 
 
 def main() -> int:

@@ -50,9 +50,13 @@ telegram_alert() {
 log "=== overlap-detector run ==="
 
 # Pull active labels (with PID, not the dash-prefixed inactive ones)
-# from both machines. We exclude "system" prefixes (com.apple, com.google,
-# homebrew.mxcl) — they're allowed to coexist.
-SYSTEM_FILTER='com\.apple|com\.google|com\.openai|com\.openssh|homebrew\.mxcl|com\.adobe|com\.microsoft'
+# from both machines. We exclude "system"/third-party prefixes (com.apple,
+# com.google, homebrew.mxcl) — they're allowed to coexist. Healer tick
+# 2026-07-10: com.anthropic.claudefordesktop.ShipIt (Claude Desktop's Sparkle
+# auto-update helper) recurred as a false-positive overlap 7x since 2026-05-28
+# — it's a one-shot updater helper checking independently on each machine,
+# not a Nuzantara/mata-garuda organ, and shares no state (#10 does not apply).
+SYSTEM_FILTER='com\.apple|com\.google|com\.openai|com\.openssh|homebrew\.mxcl|com\.adobe|com\.microsoft|com\.anthropic\.claudefordesktop'
 
 # NODE-LOCAL dual-run allowlist (2026-07-06, grounded live — NOT split-brain):
 # these bind LOOPBACK (mlx :8080, livekit API :7880) and serve only their own

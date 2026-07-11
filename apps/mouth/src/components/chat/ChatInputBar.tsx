@@ -12,6 +12,7 @@ import {
   Camera,
   Mic,
   X,
+  Square,
 } from "lucide-react";
 import { ChatRecordingOverlay } from "./ChatRecordingOverlay";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,6 +27,7 @@ export interface ChatInputBarProps {
   showImagePrompt: boolean;
   setShowImagePrompt: (value: boolean) => void;
   onSend: () => void;
+  onStop?: () => void;
   onImageGenerate: () => void;
   showAttachMenu: boolean;
   setShowAttachMenu: (value: boolean) => void;
@@ -48,6 +50,7 @@ export function ChatInputBar({
   showImagePrompt,
   setShowImagePrompt,
   onSend,
+  onStop,
   onImageGenerate,
   showAttachMenu,
   setShowAttachMenu,
@@ -179,7 +182,7 @@ export function ChatInputBar({
               title="Upload File"
               aria-label="Upload File"
             >
-              <Upload className="w-3.5 h-3.5" />
+              <Upload className="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
 
             <Button
@@ -196,6 +199,7 @@ export function ChatInputBar({
             >
               <Mic
                 className={`w-3.5 h-3.5 ${isRecording ? "animate-bounce" : ""}`}
+                aria-hidden="true"
               />
             </Button>
 
@@ -213,7 +217,7 @@ export function ChatInputBar({
               title="Generate/Analyze Image"
               aria-label="Generate/Analyze Image"
             >
-              <Camera className="w-3.5 h-3.5" />
+              <Camera className="w-3.5 h-3.5" aria-hidden="true" />
             </Button>
           </div>
 
@@ -229,7 +233,7 @@ export function ChatInputBar({
                 aria-haspopup="true"
                 aria-expanded={showAttachMenu}
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-5 h-5" aria-hidden="true" />
               </Button>
               {showAttachMenu && (
                 <div className="absolute bottom-full left-0 mb-2 bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] shadow-lg overflow-hidden min-w-[160px] animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -241,7 +245,7 @@ export function ChatInputBar({
                     }}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--background-elevated)] transition-colors text-sm focus-ring"
                   >
-                    <Upload className="w-4 h-4" />
+                    <Upload className="w-4 h-4" aria-hidden="true" />
                     Upload file
                   </button>
                   <button
@@ -252,7 +256,7 @@ export function ChatInputBar({
                     }}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--background-elevated)] transition-colors text-sm focus-ring"
                   >
-                    <ImageIcon className="w-4 h-4" />
+                    <ImageIcon className="w-4 h-4" aria-hidden="true" />
                     Generate image
                   </button>
                 </div>
@@ -285,20 +289,26 @@ export function ChatInputBar({
             />
 
             <Button
-              onClick={showImagePrompt ? onImageGenerate : onSend}
-              disabled={!input.trim() || isLoading}
+              onClick={
+                isLoading
+                  ? onStop
+                  : showImagePrompt
+                    ? onImageGenerate
+                    : onSend
+              }
+              disabled={!isLoading && !input.trim()}
               size="icon"
               className="rounded-full flex-shrink-0 w-10 h-10 glow-button border-0 focus-ring"
               aria-label={
                 isLoading
-                  ? "Sending..."
+                  ? "Stop generating"
                   : showImagePrompt
                     ? "Generate image"
                     : "Send message"
               }
             >
               {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Square className="w-4 h-4 fill-current" />
               ) : (
                 <Send className="w-5 h-5" />
               )}

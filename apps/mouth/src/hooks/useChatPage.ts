@@ -83,6 +83,7 @@ export interface UseChatPageReturn {
 
   // Handlers
   handleSend: () => Promise<void>;
+  handleStop: () => void;
   handleNewChat: () => void;
   handleConversationClick: (id: number) => Promise<void>;
   handleDeleteConversation: (id: number, e: React.MouseEvent) => void;
@@ -302,6 +303,16 @@ export function useChatPage(): UseChatPageReturn {
 
     await chatSend.sendMessage(trimmedInput, chatInput.attachedImages);
   }, [chatInput, isPending, chatSend, addOptimisticMessage]);
+
+  // Handle stop generation
+  const handleStop = useCallback(() => {
+    chatSend.abortStream();
+    logger.info("Message generation stopped by user", {
+      component: "useChatPage",
+      action: "handleStop",
+      metadata: { sessionId },
+    });
+  }, [chatSend, sessionId]);
 
   // Load user profile
   const loadUserProfile = useCallback(async () => {
@@ -579,6 +590,7 @@ export function useChatPage(): UseChatPageReturn {
     conversations,
     teamStatus,
     handleSend,
+    handleStop,
     handleNewChat,
     handleConversationClick,
     handleDeleteConversation,

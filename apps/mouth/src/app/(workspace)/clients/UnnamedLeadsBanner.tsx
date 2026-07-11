@@ -48,11 +48,11 @@ export default function UnnamedLeadsBanner() {
       </span>
       <span className="text-sm">
         <span className="font-semibold" style={{ color: "#d4845a" }}>
-          {count} {count === 1 ? "contatto" : "contatti"} da nominare
+          {count} {count === 1 ? "contact" : "contacts"} to name
         </span>
         <span className="ml-2 text-[var(--foreground-muted)]">
-          — nuovi lead WhatsApp senza nome. Dai un nome così i loro documenti si
-          collegano automaticamente.
+          — new WhatsApp leads without a name. Name them so their documents
+          link automatically.
         </span>
       </span>
     </Link>

@@ -55,7 +55,7 @@ export function LiveActivityFeed({ events, isLoading }: LiveActivityFeedProps) {
           LIVE ACTIVITY
         </span>
         <span className="ml-auto text-[9px] text-white/25">
-          {events.length} eventi
+          {events.length} events
         </span>
       </div>
 

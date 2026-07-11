@@ -32,7 +32,6 @@ See: app.setup.service_initializer::initialize_services() for initialization log
 # always get the current value from the source module (not a stale snapshot).
 import backend.app.deps.orchestrator as _orch_mod
 from backend.app.deps.auth import (
-    get_current_portal_client,
     get_current_user,
     get_current_user_email,
     get_current_user_optional,
@@ -81,7 +80,6 @@ __all__ = [
     "get_ai_client",
     "get_cache",
     "get_channel_router",
-    "get_current_portal_client",
     "get_current_user",
     "get_current_user_email",
     "get_current_user_optional",

@@ -37,15 +37,15 @@ import { RefreshCw } from "lucide-react";
 
 // ── Category colors ────────────────────────────────────────
 const CATEGORY_COLOR: Record<string, string> = {
-  visas: "#4a8ec4",
-  business: "#5cb88a",
-  taxes: "#b89a40",
-  property: "#9880d8",
-  living: "#d4845a",
-  emerging_trends: "#4ab8c4",
+  visas: "var(--bz-chart-1)",
+  business: "var(--bz-chart-2)",
+  taxes: "var(--bz-chart-3)",
+  property: "var(--bz-chart-4)",
+  living: "var(--bz-chart-5)",
+  emerging_trends: "var(--bz-chart-6)",
 };
 function getCategoryColor(cat: string): string {
-  return CATEGORY_COLOR[cat] ?? "#9880d8";
+  return CATEGORY_COLOR[cat] ?? "var(--bz-chart-4)";
 }
 
 interface IntelArticle {
@@ -101,7 +101,7 @@ function IntakeReviewBanner() {
         border: "1px solid rgba(212,132,90,0.25)",
       }}
     >
-      <FileText size={14} style={{ color: "#d4845a" }} />
+      <FileText size={14} style={{ color: "var(--bz-chart-5)" }} />
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold text-white/80">
           {count} document{count === 1 ? "" : "s"} waiting for your review
@@ -112,7 +112,10 @@ function IntakeReviewBanner() {
       </div>
       <span
         className="text-[10px] font-bold tabular-nums px-2 py-0.5 rounded-full"
-        style={{ background: "rgba(212,132,90,0.18)", color: "#d4845a" }}
+        style={{
+          background: "rgba(212,132,90,0.18)",
+          color: "var(--bz-chart-5)",
+        }}
       >
         {count}
       </span>
@@ -191,11 +194,11 @@ function useTeamStats(enabled: boolean) {
 
 // ── Status config for practices ───────────────────────────
 const STATUS_CONFIG = {
-  inquiry: { label: "Inquiry", dot: "#9ca3af" },
-  quotation: { label: "Quotation", dot: "#b89a40" },
-  in_progress: { label: "In Progress", dot: "#4a8ec4" },
-  documents: { label: "Documents", dot: "#b89a40" },
-  completed: { label: "Completed", dot: "#5cb88a" },
+  inquiry: { label: "Inquiry", dot: "var(--bz-chart-8)" },
+  quotation: { label: "Quotation", dot: "var(--bz-chart-3)" },
+  in_progress: { label: "In Progress", dot: "var(--bz-chart-1)" },
+  documents: { label: "Documents", dot: "var(--bz-chart-3)" },
+  completed: { label: "Completed", dot: "var(--bz-chart-2)" },
 } as const;
 
 // ── Metric Bar item ────────────────────────────────────────
@@ -280,9 +283,9 @@ function PipelineRow({ p }: { p: CasePreview }) {
         className="text-[9px] font-semibold tabular-nums whitespace-nowrap flex items-center gap-1"
         style={{
           color: isExpired
-            ? "#c45c78"
+            ? "var(--bz-chart-7)"
             : isUrgent
-              ? "#b89a40"
+              ? "var(--bz-chart-3)"
               : "rgba(255,255,255,0.25)",
         }}
       >
@@ -518,7 +521,7 @@ export default function DashboardPage() {
                 formatIDRCompact(revenue.paid_revenue),
               )
             : "—",
-          accent: "#9880d8",
+          accent: "var(--bz-chart-4)",
         },
         {
           label: "Outstanding",
@@ -526,14 +529,14 @@ export default function DashboardPage() {
             ? formatIDRCompact(revenue.outstanding_revenue)
             : "—",
           sub: STRINGS.dashboard.outstandingSub,
-          accent: "#d4845a",
+          accent: "var(--bz-chart-5)",
         },
         {
           label: STRINGS.dashboard.clientsLabel,
           value:
             totalClients != null ? totalClients.toLocaleString("en-US") : "—",
           sub: STRINGS.dashboard.clientsSub,
-          accent: "#4a8ec4",
+          accent: "var(--bz-chart-1)",
           href: "/clients",
         },
         {
@@ -543,7 +546,7 @@ export default function DashboardPage() {
             stats.activeCases,
             stats.criticalDeadlines,
           ),
-          accent: "#5cb88a",
+          accent: "var(--bz-chart-2)",
           href: "/process",
         },
         {
@@ -553,7 +556,7 @@ export default function DashboardPage() {
             stats.pendingInvoices > 0
               ? STRINGS.dashboard.invoicesPendingSub
               : STRINGS.dashboard.invoicesPaidSub,
-          accent: "#b89a40",
+          accent: "var(--bz-chart-3)",
         },
       ]
     : [
@@ -561,26 +564,26 @@ export default function DashboardPage() {
           label: "My Cases",
           value: stats.activeCases,
           sub: "assigned",
-          accent: "#5cb88a",
+          accent: "var(--bz-chart-2)",
           href: "/process",
         },
         {
           label: "Stalled",
           value: stats.criticalDeadlines,
           sub: ">14 days",
-          accent: "#c45c78",
+          accent: "var(--bz-chart-7)",
         },
         {
           label: "Invoices",
           value: stats.pendingInvoices > 0 ? stats.pendingInvoices : "—",
           sub: "pending",
-          accent: "#b89a40",
+          accent: "var(--bz-chart-3)",
         },
         {
           label: "Unread",
           value: stats.whatsappUnread + stats.emailUnread,
           sub: "messages",
-          accent: "#4a8ec4",
+          accent: "var(--bz-chart-1)",
         },
       ];
 
