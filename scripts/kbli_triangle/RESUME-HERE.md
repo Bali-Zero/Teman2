@@ -65,10 +65,12 @@ G2 shape + lint L10/L3 + a fabrication scan that ALLOWS any `%` present in `l4_b
 
 ## STILL TODO (in order)
 
-1. Finish regen: **871 codes left** (incl. ~30 network-window "fail" codes with no draft —
-   resumable writer regenerates them).
-2. **10 bali-cap codes** (`scripts/kbli_triangle/_bali_cap_codes.txt`) → targeted regen with
-   corrected prompt 3b (state the real Bali cap in clean English, don't quote raw reason).
+1. Finish regen: running on Terra since 2026-07-11 21:04 (803+ by 23:00, ~1 draft/min).
+2. **bali-cap codes**: ✅ DONE for the 4 that had drafts — 01287/02102/41011 regenerated clean
+   2026-07-11 (Terra, prompt 3b already in writer; audit: pct stated, no meta-refs, no verbatim),
+   02402 was already clean. The other 6 (52292 59131 69201 86102 86201 86202) get drafts from
+   the MAIN run — re-run the bali-cap audit on them when they land (audit snippet: check
+   l4_bali.reason % appears in body, no 'reason field'/'l4_bali' strings, no verbatim chunks).
 3. **Final independent grading pass** on the full 1559 (Gemini if auth fixed, or Claude at
    cap-reset) — generator≠grader.
 4. **Apply**: `python3 scripts/kbli_apply_editorials.py --drafts-dir scripts/kbli_triangle/editorial_drafts`
@@ -77,5 +79,10 @@ G2 shape + lint L10/L3 + a fabrication scan that ALLOWS any `%` present in `l4_b
 5. **LOOP-3 ship**: lint L11 (post-apply de-boilerplate) → build → PR → prove-live
    `balizero.com/kbli/<code>` → Qdrant `kbli_2025_final_oss` re-ingest (on Pro) → native app
    refresh → team announce. `NEXT_PUBLIC_KBLI_META_EN=1` flip is operator[business], post-GSC.
-6. **Push branch to origin** — failing from M5 (GitHub 15s / Connection reset); branch is
-   LOCAL-only but durable. Retry when M5 network recovers, or push from the Pro.
+6. **Push branch to origin** — PARTIALLY unblocked 2026-07-11: branch transferred to the Pro
+   repo via git bundle (scp /tmp/kbli.bundle → `git fetch`), so it survives M5 teardown on TWO
+   machines now. GitHub push from the Pro is BLOCKED by the husky pre-push pytest gate (full
+   backend suite runs there because local PG is provisioned; failures are pre-existing, not
+   from this branch — the standing 07-08 blocker). Diagnosis run: `/tmp/pytest-prepush.log` on
+   the Pro. NEVER `--no-verify`, never point PRE_PUSH_TEST_DB at a fake db. Fix the red tests
+   (or land the fix that unblocks the gate), then `git push origin` from the Pro.
