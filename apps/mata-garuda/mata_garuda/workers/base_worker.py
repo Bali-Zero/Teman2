@@ -29,6 +29,7 @@ import logging
 import os
 import shutil
 import subprocess
+import time
 
 logger = logging.getLogger("mata_garuda.workers")
 
@@ -102,20 +103,37 @@ def _redis_env() -> dict[str, str] | None:
     return env
 
 
-def redis_cmd(*args: str, timeout: int = 10) -> str:
-    """Execute a redis-cli command and return output."""
+def redis_cmd(*args: str, timeout: int = 10, retries: int = 2) -> str:
+    """Execute a redis-cli command and return output.
+
+    Retries on TimeoutExpired only (transient host-load scheduling delay,
+    not a real network/redis fault — 2026-07-08 intel-bridge investigation
+    found 100% publish failures correlating with Mini load average 25-38,
+    all timing out at the default 10s with zero retry). A short fixed
+    backoff between attempts lets a scheduling spike clear rather than
+    hammering an already-loaded host immediately. retries=2 means up to
+    3 total attempts; set retries=0 to preserve the old single-shot
+    behavior for any caller that wants a strict fail-fast.
+    """
     cmd = [REDIS_CLI] + _redis_host_args() + list(args)
-    try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout, env=_redis_env()
-        )
-        if result.returncode != 0:
-            return f"[ERROR] redis-cli: {result.stderr.strip()}"
-        return result.stdout.strip()
-    except FileNotFoundError:
-        return "[ERROR] redis-cli not found"
-    except subprocess.TimeoutExpired:
-        return f"[ERROR] redis-cli timeout after {timeout}s"
+    attempts = retries + 1
+    last_timeout = timeout
+    for attempt in range(attempts):
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout, env=_redis_env()
+            )
+            if result.returncode != 0:
+                return f"[ERROR] redis-cli: {result.stderr.strip()}"
+            return result.stdout.strip()
+        except FileNotFoundError:
+            return "[ERROR] redis-cli not found"
+        except subprocess.TimeoutExpired:
+            last_timeout = timeout
+            if attempt < attempts - 1:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+    return f"[ERROR] redis-cli timeout after {last_timeout}s ({attempts} attempts)"
 
 
 def stream_read_new(

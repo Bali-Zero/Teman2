@@ -22,6 +22,10 @@ Categories (multi-tag — one file can appear in several):
                       env-specific keys (EnvironmentVariables, *Path, WorkingDirectory).
   home-fork-target    live plist whose payload lives under $HOME outside the repo /
                       deploy clone and is not a symlink into them (superscar #1).
+                      Targets declared or allow-listed in
+                      infra/home-fork/declared-pairs.json are excluded — that file
+                      is the SSOT for "known, not a fork" (lint_home_fork.py already
+                      enforces it; this tool must not re-report what it resolved).
 
 What this tool does NOT do:
   - runtime health (exit codes × log content) → scripts/launchd_liveness_detector.py (W84)
@@ -53,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import filecmp
+import fnmatch
 import json
 import os
 import plistlib
@@ -87,6 +92,37 @@ ENV_SPECIFIC_KEYS = (
 # Interpreters whose argv[1] is the real payload (best-effort, report-only).
 INTERPRETERS = ("bash", "zsh", "sh", "python", "python3", "env", "node")
 
+# Roots that plausibly host launchd wrapper/canon scripts, walked RECURSIVELY
+# (basename match). A flat top-level-only search (pre-2026-07-07) missed real
+# canons living one level deeper — infra/healer/, infra/mini-scripts/,
+# scripts/mini-migration/, apps/backend-rag/scripts/ — and mis-flagged 7 of 15
+# live findings as "no repo canon" while a byte-identical twin existed nearby.
+# apps/*/scripts (not all of apps/) mirrors the top-level scripts/ convention
+# without walking the ~36k-file app source trees.
+CANON_EXCLUDE_DIRNAMES = {
+    "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache",
+    "dist", "build", ".next", ".git", ".worktrees",
+}
+
+
+def _build_canon_index(repo_dir: Path) -> dict:
+    """basename -> sorted candidate repo paths, built once per run (not once
+    per target — the walk cost is paid a single time)."""
+    index: dict = {}
+    roots = [repo_dir / "scripts", repo_dir / "infra"]
+    if (repo_dir / "apps").is_dir():
+        roots.extend(sorted((repo_dir / "apps").glob("*/scripts")))
+    for root in roots:
+        if not root.is_dir():
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in CANON_EXCLUDE_DIRNAMES]
+            for fn in filenames:
+                index.setdefault(fn, []).append(Path(dirpath) / fn)
+    for paths in index.values():
+        paths.sort(key=str)
+    return index
+
 # Path fragments that mark a RUNTIME (venv interpreter, pyenv shim…), not a
 # payload: a `~/venvs/x/bin/python` under $HOME is infrastructure, not a
 # HOME-fork of repo code — the fork signal lives in the script it runs.
@@ -100,6 +136,54 @@ def _is_runtime(path: Path) -> bool:
     return path.parent.name == "bin" and any(
         path.name.startswith(i) for i in (*INTERPRETERS, "uvicorn", "gunicorn")
     )
+
+
+def _load_home_fork_config(repo_dir: Path) -> tuple[set[str], list[str]]:
+    """Best-effort load of infra/home-fork/declared-pairs.json's declared live
+    paths + allow patterns. Read-only import; any failure degrades to empty —
+    that JSON stays the SSOT enforced by lint_home_fork.py, this is only a
+    courtesy de-dupe so this tool does not re-flag what that tool already
+    resolved (superscar #3 lesson: a guard that ignores ground-truth cries
+    wolf on known-benign targets)."""
+    config_path = repo_dir / "infra" / "home-fork" / "declared-pairs.json"
+    try:
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return set(), []
+    declared_lives = {p["live"] for p in data.get("pairs", []) if "live" in p}
+    allow = [str(a) for a in data.get("allow", [])]
+    return declared_lives, allow
+
+
+def _normalize_home_path(path: Path, home: Path) -> Optional[str]:
+    try:
+        return "~/" + str(path.relative_to(home))
+    except ValueError:
+        return None
+
+
+def _expand_home_token(token: str, home: Path) -> Path:
+    if token == "~":
+        return home
+    if token.startswith("~/"):
+        return home / token[2:]
+    return Path(token)
+
+
+def _is_declared_or_allowed(
+    path: Path, home: Path, declared_lives: set[str], allow: list[str]
+) -> bool:
+    norm = _normalize_home_path(path, home)
+    if norm is None:
+        return False
+    if norm in declared_lives:
+        return True
+    expanded = str(path)
+    for pattern in allow:
+        pat_expanded = str(_expand_home_token(pattern, home))
+        if fnmatch.fnmatch(norm, pattern) or fnmatch.fnmatch(expanded, pat_expanded):
+            return True
+    return False
 
 _NAME_STAMP_RE = re.compile(r"(20\d{6})")
 
@@ -263,18 +347,22 @@ def reconcile(
     repo_root = repo_dir.resolve()
     deploy_root = (home / "Desktop" / "nuzantara-deploy").resolve()
 
-    # Canon dirs for wrapper scripts (basename match). A HOME target whose repo
-    # canon is byte-identical is NOT a fork — it is the W84-safe placement
-    # (launchd payloads deliberately live OUTSIDE ~/Desktop because launchd can
-    # lose its TCC grant there). The disease is DRIFT, not location.
-    canon_dirs = (repo_infra / "wrappers", repo_dir / "scripts", repo_dir / "scripts" / "lib", repo_dir / "infra" / "scripts")
+    # Canon index for wrapper scripts (basename match, built once). A HOME
+    # target whose repo canon is byte-identical is NOT a fork — it is the
+    # W84-safe placement (launchd payloads deliberately live OUTSIDE ~/Desktop
+    # because launchd can lose its TCC grant there). The disease is DRIFT,
+    # not location.
+    canon_index = _build_canon_index(repo_dir)
+    declared_lives, home_fork_allow = _load_home_fork_config(repo_dir)
 
     def _repo_canon_for(target: Path) -> Optional[Path]:
-        for d in canon_dirs:
-            cand = d / target.name
-            if cand.is_file():
+        candidates = canon_index.get(target.name)
+        if not candidates:
+            return None
+        for cand in candidates:
+            if filecmp.cmp(str(cand), str(target), shallow=False):
                 return cand
-        return None
+        return candidates[0]
 
     live: dict = {}      # label -> {file, plist}
     junk: list = []
@@ -347,10 +435,19 @@ def reconcile(
             if canon is not None and filecmp.cmp(str(canon), str(rp), shallow=False):
                 canon_paired.append({"label": label, "file": f.name, "target": t,
                                      "canon": str(canon.relative_to(repo_root))})
+            elif canon is None and _is_declared_or_allowed(
+                rp, home, declared_lives, home_fork_allow
+            ):
+                # No repo canon AND declared/allow-listed in declared-pairs.json:
+                # a known-benign HOME-only target (TCC bridge, vendor binary,
+                # separate-repo tool) — not a fork to (re-)report. A DIVERGED
+                # canon (drift) is never suppressed by this branch — that is
+                # the disease this whole tool exists to catch (superscar #1).
+                pass
             else:
                 detail = (
                     f"DIVERGED from canon {canon.relative_to(repo_root)}" if canon is not None
-                    else "no repo canon (basename not in wrappers/ or scripts/)"
+                    else "no repo canon (basename not found under scripts/, infra/, or apps/*/scripts/)"
                 )
                 home_fork_target.append({"label": label, "file": f.name, "target": t,
                                          "detail": detail})

@@ -26,6 +26,8 @@ import {
   KBLIFaqJsonLd,
 } from "@/components/kbli/KBLIStructuredData";
 import { LicensingSection } from "@/components/kbli/LicensingSection";
+import { KBLIBaliContext } from "@/components/kbli/KBLIBaliContext";
+import { KBLIYoullAlsoNeed } from "@/components/kbli/KBLIYoullAlsoNeed";
 import { getRelatedArticle } from "@/lib/kbli-articles";
 import { GOLD_HERO_IMAGES } from "@/lib/kbli-hero-images";
 import Link from "next/link";
@@ -71,18 +73,43 @@ export async function generateMetadata({
           : `Restricted (max ${kbli.pma.maxForeign}% foreign)`
         : "Closed to Foreign Investment";
 
-  const title = `KBLI ${kbli.code}: ${kbli.titleEn} — Indonesia Business Guide 2025`;
-  const description = `${kbli.titleEn} (KBLI ${kbli.code}) — ${pmaLabel}. Risk level, licensing requirements, and PMA rules under Indonesian business classification 2026. Setup via Bali Zero.`;
+  // Metadata surface uses titleEnMeta (frozen to the curated-legacy EN map —
+  // SEO firebreak PR #1967); the page body below uses the full-coverage titleEn.
+  const metaTitleEn = kbli.titleEnMeta ?? kbli.titleEn;
+  const title = `KBLI ${kbli.code}: ${metaTitleEn} — Indonesia Business Guide 2025`;
+  const description = `${metaTitleEn} (KBLI ${kbli.code}) — ${pmaLabel}. Risk level, licensing requirements, and PMA rules under Indonesian business classification 2026. Setup via Bali Zero.`;
+
+  // Never repeat the Indonesian title twice when no distinct English title exists.
+  const keywordTitles =
+    metaTitleEn === kbli.titleId
+      ? kbli.titleId
+      : `${kbli.titleId}, ${metaTitleEn}`;
 
   return {
     title,
     description,
-    keywords: `KBLI ${kbli.code}, ${kbli.titleId}, ${kbli.titleEn}, KBLI 2025, Indonesian business classification, PT PMA Bali, company registration Indonesia`,
+    keywords: `KBLI ${kbli.code}, ${keywordTitles}, KBLI 2025, Indonesian business classification, PT PMA Bali, company registration Indonesia`,
     openGraph: {
       title,
       description,
       type: "article",
       url: `https://balizero.com/kbli/${kbli.code}`,
+      images: [
+        {
+          // Deterministic editorial cover — kbli-cover-design.ts DNA rendered
+          // at request time by /api/og/kbli/[code] (cached immutable).
+          url: `https://balizero.com/api/og/kbli/${kbli.code}`,
+          width: 1200,
+          height: 630,
+          alt: `KBLI ${kbli.code} — ${metaTitleEn}`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [`https://balizero.com/api/og/kbli/${kbli.code}`],
     },
     alternates: {
       canonical: `https://balizero.com/kbli/${kbli.code}`,
@@ -149,7 +176,7 @@ export default async function KBLICodePage({
         sessionId="SSR"
         trust={{ clientCount: 5000, rating: 4.9, responseMinutes: 15 }}
       >
-        <article className="pb-16">
+        <article className="pb-28">
           {/* BREADCRUMB */}
           <KBLIBreadcrumb items={breadcrumbs} />
 
@@ -407,68 +434,7 @@ export default async function KBLICodePage({
                     </h2>
                   </div>
 
-                  <div className="space-y-5" style={{ maxWidth: "780px" }}>
-                    {gold.baliContext.split(/\n---\n/).map((block, idx) => {
-                      const trimmed = block.trim();
-                      if (!trimmed) return null;
-
-                      const isMistakes = trimmed
-                        .toLowerCase()
-                        .includes("common client mistakes");
-                      const isNumbers =
-                        trimmed.toLowerCase().includes("governor") ||
-                        trimmed.toLowerCase().includes("numbers");
-                      const isReality =
-                        trimmed.toLowerCase().includes("reality") ||
-                        trimmed.toLowerCase().includes("market");
-
-                      const titleMatch = trimmed.match(/^\*\*([^*]+?):\*\*/);
-                      const cardTitle = titleMatch ? titleMatch[1] : null;
-                      const bodyText = cardTitle
-                        ? trimmed.replace(/^\*\*[^*]+?:\*\*\s*/, "")
-                        : trimmed;
-
-                      const accentColor = isMistakes
-                        ? "var(--kbli-pma-restricted)"
-                        : "var(--kbli-accent)";
-                      const blockIcon = isMistakes
-                        ? "⚠"
-                        : isNumbers
-                          ? "📊"
-                          : isReality
-                            ? "🏝"
-                            : "💡";
-                      const blockBg = isMistakes
-                        ? "rgba(232, 168, 73, 0.03)"
-                        : "rgba(212, 132, 90, 0.02)";
-
-                      return (
-                        <div
-                          key={idx}
-                          className="rounded-xl p-5"
-                          style={{
-                            background: blockBg,
-                            border: `1px solid ${isMistakes ? "rgba(232, 168, 73, 0.1)" : "var(--kbli-border)"}`,
-                          }}
-                        >
-                          {cardTitle && (
-                            <div className="mb-4 flex items-center gap-2.5">
-                              <span className="text-base">{blockIcon}</span>
-                              <span
-                                className="text-sm font-bold tracking-wide"
-                                style={{ color: accentColor }}
-                              >
-                                {cardTitle}
-                              </span>
-                            </div>
-                          )}
-                          <div className="kbli-prose">
-                            <MarkdownClient>{bodyText}</MarkdownClient>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <KBLIBaliContext baliContext={gold.baliContext} />
                 </div>
               </section>
 
@@ -718,6 +684,76 @@ export default async function KBLICodePage({
                       </div>
                     </div>
                   )}
+
+                  {/* BALI CONTEXT — shared rendering with the gold layout */}
+                  {kbli.intel_2026.baliContext && (
+                    <section className="relative -mx-4 mb-6 sm:-mx-6 lg:-mx-8">
+                      <div
+                        className="absolute inset-0 rounded-2xl"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, rgba(212, 132, 90, 0.04), rgba(139, 156, 247, 0.02), transparent 60%)",
+                        }}
+                      />
+                      <div className="relative px-6 py-10 sm:px-8 lg:px-10">
+                        <div className="mb-8 flex items-center gap-3">
+                          <div
+                            className="h-8 w-1 rounded-full"
+                            style={{
+                              background:
+                                "linear-gradient(to bottom, var(--kbli-accent), var(--kbli-accent2))",
+                            }}
+                          />
+                          <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-[var(--kbli-accent)]">
+                            Bali Intelligence
+                          </h2>
+                        </div>
+                        <KBLIBaliContext
+                          baliContext={kbli.intel_2026.baliContext}
+                        />
+                      </div>
+                    </section>
+                  )}
+
+                  {/* WHO THIS IS FOR */}
+                  {kbli.intel_2026.whoThisIsFor && (
+                    <div
+                      className="rounded-xl p-5 mb-6"
+                      style={{
+                        background: "var(--kbli-bg-elevated)",
+                        border: "1px solid var(--kbli-border)",
+                      }}
+                    >
+                      <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.15em] text-[var(--foreground-muted)]">
+                        Who This Is For
+                      </h3>
+                      <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+                        {kbli.intel_2026.whoThisIsFor}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* YOU'LL ALSO NEED */}
+                  {kbli.intel_2026.youllAlsoNeed && (
+                    <section
+                      className="mb-6 rounded-xl border border-[var(--border)] overflow-hidden"
+                      style={{ background: "var(--kbli-bg-elevated)" }}
+                    >
+                      <div
+                        className="px-5 py-3.5 border-b border-[var(--border)]"
+                        style={{ background: "var(--kbli-bg-surface)" }}
+                      >
+                        <span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--kbli-accent)]">
+                          You&apos;ll Also Need
+                        </span>
+                      </div>
+                      <div className="px-5 py-4">
+                        <KBLIYoullAlsoNeed
+                          text={kbli.intel_2026.youllAlsoNeed}
+                        />
+                      </div>
+                    </section>
+                  )}
                 </>
               ) : (
                 <section className="pb-10">
@@ -835,15 +871,24 @@ export default async function KBLICodePage({
                     2020 → 2025
                   </span>
                   <div className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
-                    <span>Previous codes: </span>
+                    <span>Previous codes (KBLI 2020): </span>
                     {kbli.transition.previousCodes.map((c, i) => (
                       <span key={c}>
-                        <Link
-                          href={`/kbli/${c}`}
-                          className="font-mono font-bold text-[var(--kbli-accent)] hover:text-[var(--kbli-accent-hover)]"
-                        >
-                          {c}
-                        </Link>
+                        {/* A 2020 code only gets a link when it still exists as a
+                            2025 code — dynamicParams=false turns every other
+                            /kbli/<oldcode> into a hard 404. */}
+                        {getCode(c) ? (
+                          <Link
+                            href={`/kbli/${c}`}
+                            className="font-mono font-bold text-[var(--kbli-accent)] hover:text-[var(--kbli-accent-hover)]"
+                          >
+                            {c}
+                          </Link>
+                        ) : (
+                          <span className="font-mono font-bold text-[var(--foreground-secondary)]">
+                            {c}
+                          </span>
+                        )}
                         {i < kbli.transition.previousCodes.length - 1 && ", "}
                       </span>
                     ))}

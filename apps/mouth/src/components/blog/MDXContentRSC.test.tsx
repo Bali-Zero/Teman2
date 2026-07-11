@@ -13,6 +13,14 @@ function stripImports(content: string): string {
     .trim();
 }
 
+const strataTitleArticles = [
+  "src/content/articles/property/strata-title-explained.mdx",
+  "src/content/articles/property/strata-title-explained.fr.mdx",
+  "src/content/articles/property/strata-title-explained.id.mdx",
+  "src/content/articles/property/strata-title-explained.it.mdx",
+  "src/content/articles/property/strata-title-explained.ru.mdx",
+];
+
 describe("renderMDXBody", () => {
   it("server-renders the driving license article interactive MDX body", async () => {
     const articlePath = path.join(
@@ -31,5 +39,57 @@ describe("renderMDXBody", () => {
     expect(html).toContain("Prepare Documents");
     expect(html).not.toContain("Decision tree unavailable");
     expect(html).not.toContain("Journey map unavailable");
+  });
+
+  it.each(strataTitleArticles)(
+    "server-renders the strata title article interactive MDX body: %s",
+    async (article) => {
+      const articlePath = path.join(process.cwd(), article);
+      const articleFile = fs.readFileSync(articlePath, "utf8");
+      const { content } = matter(articleFile);
+
+      const mdxBody = await renderMDXBody(stripImports(content));
+
+      const html = renderToString(<>{mdxBody}</>);
+
+      expect(html).toContain("PPJB vs SHMSRS");
+    },
+  );
+
+  it("server-renders legacy calculator MDX without client function props", async () => {
+    const articlePath = path.join(
+      process.cwd(),
+      "src/content/articles/property/rental-income-tax.mdx",
+    );
+    const articleFile = fs.readFileSync(articlePath, "utf8");
+    const { content } = matter(articleFile);
+
+    const mdxBody = await renderMDXBody(stripImports(content));
+
+    const html = renderToString(<>{mdxBody}</>);
+
+    expect(html).toContain("Rental Income Tax Calculator");
+    expect(html).toContain("Annual Tax (10%)");
+    expect(html).toContain('data-mdx-calculator-rsc="true"');
+    expect(html).not.toContain("calculateResult");
+    expect(html).not.toContain("Functions cannot be passed");
+  });
+
+  it("server-renders tax takeaway MDX that uses KeyTakeaway children", async () => {
+    const articlePath = path.join(
+      process.cwd(),
+      "src/content/articles/tax/ppn-12-percent-increase-2026.mdx",
+    );
+    const articleFile = fs.readFileSync(articlePath, "utf8");
+    const { content } = matter(articleFile);
+
+    const mdxBody = await renderMDXBody(stripImports(content));
+
+    const html = renderToString(<>{mdxBody}</>);
+
+    expect(html).toContain("Indonesia PPN/VAT Rate 2026");
+    expect(html).toContain("Key Takeaways");
+    expect(html).toContain("PPN raised to 12%");
+    expect(html).not.toContain("Cannot read properties of undefined");
   });
 });

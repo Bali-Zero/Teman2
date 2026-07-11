@@ -46,6 +46,7 @@ export default function ChatPage() {
     handleAvatarChange,
     toggleClock,
     showToast,
+    handleStop,
     setShowUserMenu,
     setImageModalOpen
   } = useChatPage();
@@ -116,6 +117,7 @@ export default function ChatPage() {
           showImagePrompt={chatInput.imageGenPrompt !== ""}
           setShowImagePrompt={(val) => chatInput.setImageGenPrompt(val ? " " : "")}
           onSend={handleSend}
+          onStop={handleStop}
           onImageGenerate={() => setImageModalOpen(true)}
           showAttachMenu={showAttachMenu}
           setShowAttachMenu={setShowAttachMenu}

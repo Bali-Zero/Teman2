@@ -101,3 +101,41 @@ class TestMonitoringEndpoints:
         response = client.get("/api/monitoring/health")
         assert response.status_code == 200
         assert response.json()["service"] == "rag-monitoring"
+
+    @pytest.mark.integration
+    def test_latency_percentiles_returns_data(self, client: TestClient) -> None:
+        response = client.get("/api/monitoring/latency?days=7")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["total_queries"] == 10
+        assert body["min"] == 10.0
+        assert body["max"] == 200.0
+        assert body["avg"] == 75.0
+
+    @pytest.mark.integration
+    def test_latency_percentiles_handles_zero_queries(
+        self, client: TestClient, monitor: MagicMock
+    ) -> None:
+        """Regression test: prod 500 when 0 queries in the window.
+
+        The monitor's empty-data branch (and its exception fallback) omits
+        min/max/avg entirely — `LatencyPercentilesResponse` must accept that
+        shape instead of raising a Pydantic response-validation error.
+        """
+        monitor.get_latency_percentiles = AsyncMock(
+            return_value={
+                "period_days": 7,
+                "total_queries": 0,
+                "percentiles": {},
+            }
+        )
+
+        response = client.get("/api/monitoring/latency?days=7")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["total_queries"] == 0
+        assert body["percentiles"] == {}
+        assert body["min"] is None
+        assert body["max"] is None
+        assert body["avg"] is None

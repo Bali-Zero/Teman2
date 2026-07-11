@@ -20,8 +20,8 @@ Flow (mirrors the server-side dry-run that PASSED 2026-06-26):
        - confirm=True  (--confirm): backend publishes the carousel
 
 LEGGE 5 — nothing posts without --confirm. The flag maps 1:1 to the backend's
-``confirm`` gate; a dry run exercises upload + the real Graph carousel assembly
-(child + parent containers) but the backend never calls /media_publish.
+``confirm`` gate; a dry run exercises login, slide upload, request validation,
+and publisher validation, but the backend never calls ``publish()`` or Meta.
 
 CREDENTIALS (no secret ever printed, none persisted by this CLI):
   WR2_PUBLISH_EMAIL  — admin email (default: zero@balizero.com)
@@ -34,6 +34,8 @@ If WR2_PUBLISH_PIN is unset, the PIN is read from the macOS Keychain item
 USAGE
     python scripts/wr2_ig_publish_remote.py <slug>            # DRY-RUN (default)
     python scripts/wr2_ig_publish_remote.py <slug> --confirm  # PUBLISH (operator click)
+    python scripts/wr2_ig_publish_remote.py <slug> --print-caption
+    python scripts/wr2_ig_publish_remote.py <slug> --caption-file /path/to/caption.txt
 
 EXIT 0 = dry-run validated OR publish succeeded. EXIT 1 = failure (reason printed).
 """
@@ -46,6 +48,7 @@ import logging
 import os
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -58,12 +61,17 @@ _DEFAULT_BACKEND = "https://nuzantara-rag.fly.dev"
 _DEFAULT_EMAIL = "zero@balizero.com"
 _KEYCHAIN_ITEM = "wr2-publish-pin"
 
-_CAROUSEL_ROOT = Path(
-    os.environ.get(
-        "WR2_CAROUSEL_ROOT",
-        str(Path.home() / "Desktop/nuzantara/apps/war-room/output/carousel"),
-    )
-)
+
+def _carousel_root_from_env(env: Mapping[str, str], home: Path) -> Path:
+    """Resolve the carousel root shared by cockpit and Mini launch environments."""
+    if explicit_root := env.get("WR2_CAROUSEL_ROOT"):
+        return Path(explicit_root)
+    if war_room_root := env.get("WR2_WARROOM_ROOT"):
+        return Path(war_room_root) / "carousel"
+    return home / "Desktop/nuzantara/apps/war-room/output/carousel"
+
+
+_CAROUSEL_ROOT = _carousel_root_from_env(os.environ, Path.home())
 
 
 class PublishAborted(RuntimeError):
@@ -106,6 +114,23 @@ def _build_caption(slug: str) -> str:
     from wr2_ig_caption import build_caption  # noqa: PLC0415
 
     return build_caption(slug, base_dir=_CAROUSEL_ROOT)
+
+
+def _resolve_caption(slug: str, caption_file: Path | None) -> str:
+    """Return the generated caption or the exact UTF-8 operator override."""
+    if caption_file is None:
+        caption = _build_caption(slug)
+        source = "generated caption"
+    else:
+        try:
+            caption = caption_file.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise PublishAborted(f"cannot read caption file {caption_file}: {exc}") from exc
+        source = "caption file"
+
+    if not caption.strip():
+        raise PublishAborted(f"{source} is empty")
+    return caption
 
 
 # ── Credentials (never printed, never persisted) ───────────────────────────────
@@ -206,10 +231,14 @@ async def _run(args: argparse.Namespace) -> int:
     base = os.environ.get("WR2_BACKEND_URL", _DEFAULT_BACKEND).rstrip("/")
     email = os.environ.get("WR2_PUBLISH_EMAIL", _DEFAULT_EMAIL)
     slug = args.slug.strip()
+    caption = _resolve_caption(slug, args.caption_file)
+
+    if args.print_caption:
+        sys.stdout.write(caption)
+        return 0
 
     slug_dir = _slug_dir(slug)
     pngs = _discover_slide_pngs(slug_dir)
-    caption = _build_caption(slug)
     pin = _resolve_pin(email)
 
     logger.info(
@@ -256,6 +285,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--confirm",
         action="store_true",
         help="LEGGE 5 operator gate. Without it = dry-run (no post). With it = PUBLISH.",
+    )
+    parser.add_argument(
+        "--caption-file",
+        type=Path,
+        help="UTF-8 file containing the exact operator-approved Instagram caption.",
+    )
+    parser.add_argument(
+        "--print-caption",
+        action="store_true",
+        help="Print the resolved caption and exit without credentials, upload, or publish.",
     )
     return parser.parse_args(argv)
 

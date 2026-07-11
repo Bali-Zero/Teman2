@@ -30,7 +30,7 @@ TEST_SLIDE = {
 
 ALLOWED_HEX_IN_CSS = {
     # Palette tokens — these are OK in _base.css :root only
-    "#2C2F38", "#000000", "#FFFFFF", "#9CA3AF",
+    "#373D42", "#000000", "#FFFFFF", "#9CA3AF",
     "#F4C430", "#C8102E",
 }
 

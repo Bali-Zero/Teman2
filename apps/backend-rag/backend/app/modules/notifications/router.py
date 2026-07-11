@@ -13,6 +13,7 @@ Endpoints:
 import logging
 from datetime import datetime, timezone
 
+import asyncpg
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 
@@ -20,6 +21,7 @@ from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.modules.notifications.checker import ExpiryChecker
 from backend.app.modules.notifications.models import ClientInfo
 from backend.app.modules.notifications.service import NotificationService
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.internal_api_auth import verify_internal_api_key
 
 logger = logging.getLogger(__name__)
@@ -163,14 +165,13 @@ async def run_expiry_check(
     request: CheckRequest,
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     Run manual expiry check for all clients or specific client.
     Requires authentication.
     """
     try:
-        pool = await get_database_pool()
-
         # Fetch clients
         clients = await get_clients_from_db(pool, request.client_id)
 
@@ -230,11 +231,10 @@ async def run_expiry_check(
 @router.get("/status", response_model=StatusResponse)
 async def get_notification_status(
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """Get notification system status."""
     try:
-        pool = await get_database_pool()
-
         async with pool.acquire() as conn:
             pending_count = await conn.fetchval(
                 "SELECT COUNT(*) FROM notification_alerts WHERE status = 'pending'",
@@ -256,17 +256,19 @@ async def get_notification_status(
 @router.post("/send-pending")
 async def send_pending_alerts(
     current_user: dict = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     Send all pending alerts.
     Admin only endpoint.
     """
-    # Check admin role
-    if not current_user.get("is_admin"):
+    # Check admin role (canonical is_crm_admin — same gate as the rest of the
+    # CRM; the old `.get("is_admin")` gated on a flag the auth layer never
+    # populates, 403'ing genuine admins. Bug #6 class-fix, W89).
+    if not is_crm_admin(current_user):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     try:
-        pool = await get_database_pool()
         service = NotificationService(pool)
 
         # Get pending alerts
@@ -568,7 +570,9 @@ if os.getenv("ENVIRONMENT", "development").lower() != "production":
 
     router.include_router(test_router)
 
-# Include admin router
-from backend.app.modules.notifications.admin_router import router as admin_router
-
-router.include_router(admin_router)
+# NOTE: admin_router (prefix="/api/admin/notifications") is intentionally NOT
+# nested here. Nesting it under this router (prefix="/api/notifications") gave
+# the double-prefixed path /api/notifications/api/admin/notifications/* — a 404
+# for the frontend, which correctly calls /api/admin/notifications/*. It is
+# mounted at the top level in router_registration.py (its own manifest entry)
+# so its absolute prefix is honored as-is.

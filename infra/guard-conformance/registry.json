@@ -273,6 +273,28 @@
     },
     "exempt_matchers": {
       "scripts/wr2_html_renderer/designer_loop.py::_contains_any_word": "verdict-grading helper on WR2 critic claims (orphan detection), not a reply/command guard boundary; inherits the W73 word-boundary discipline by construction and is exercised by the render-apply lever tests"
+    },
+    "tg-gateway-lint": {
+      "source": "scripts/lint_tg_direct_senders.py",
+      "census": {
+        "method": "ast-def-prefix",
+        "prefix": "_guard_"
+      },
+      "test_file": "scripts/tests/test_tg_gateway.py",
+      "guards": {
+        "_guard_new_direct_sender": {
+          "scar": [
+            "W81",
+            "#2-esiste-non-armato"
+          ],
+          "guilt": [
+            "test_tg_lint_guilt_new_direct_sender_flagged"
+          ],
+          "innocence": [
+            "test_tg_lint_innocence_grandfathered_and_gateway_pass"
+          ]
+        }
+      }
     }
   }
 }

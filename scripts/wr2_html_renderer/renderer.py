@@ -395,7 +395,7 @@ def _hero_visible_in_png(png_path: Path, family: str | None = None) -> bool:
         bs = [s[2] for s in samples]
         spread = (max(rs) - min(rs)) + (max(gs) - min(gs)) + (max(bs) - min(bs))
         # A photo lights up most samples AND has color spread. Thresholds chosen
-        # so a flat antracite (#2C2F38, spread 0) or flat black fails, while a
+        # so a flat antracite (#373D42, spread 0) or flat black fails, while a
         # real cinematic hero passes.
         return bright_frac > 0.4 and spread > 40
 
