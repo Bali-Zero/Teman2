@@ -149,6 +149,42 @@ check_type_mismatch() {
   return 0
 }
 
+# Detect untracked local files that occupy a path the incoming merge also
+# touches. `git stash push` (without --include-untracked, see below) does
+# NOT cover untracked files, so they survive the stash step unchanged —
+# but `git merge --ff-only` still refuses when one of them collides with
+# a path the target ref introduces or modifies. Without this check the
+# script stashes tracked changes, fails the merge on the untracked
+# collision, restores the stash, and repeats the whole cycle every 5 min
+# forever (observed 2026-07-11: 7+ retries over 40 min, same path each
+# time) — wasted churn plus a generic "pull-failed" alert that doesn't
+# name the actual blocker. Detect it BEFORE stashing so we skip cleanly
+# with one targeted alert naming the colliding path(s); this is most
+# often a sibling session's uncommitted WIP (e.g. a new test file),
+# which resolves itself once that work is committed or removed — never
+# something this script should touch (Law 5 / sibling-race discipline).
+#
+# Returns 0 if clean, 1 if a collision is found (caller skips this tick).
+check_untracked_collision() {
+  local changed_paths untracked_paths colliding
+  changed_paths=$(git diff --name-only HEAD "$TARGET_REF" 2>/dev/null)
+  [ -z "$changed_paths" ] && return 0
+  untracked_paths=$(git ls-files --others --exclude-standard 2>/dev/null)
+  [ -z "$untracked_paths" ] && return 0
+  colliding=$(comm -12 <(echo "$changed_paths" | sort) <(echo "$untracked_paths" | sort))
+  if [ -n "$colliding" ]; then
+    local colliding_oneline
+    colliding_oneline=$(echo "$colliding" | tr '\n' ' ' | sed 's/ $//')
+    log "WARN: untracked file(s) collide with incoming $TARGET_REF: $colliding_oneline"
+    log "  HINT: likely a sibling session's uncommitted WIP (new file not yet"
+    log "        committed). Leave it alone — will retry once committed/removed."
+    telegram_alert "untracked-collision" \
+      "Mini pull skipped — untracked file(s) collide with incoming ${TARGET_REMOTE}/main: ${colliding_oneline}. Likely sibling WIP; retries once committed/removed."
+    return 1
+  fi
+  return 0
+}
+
 # ===== MAIN =====
 
 # Single-instance lock
@@ -243,6 +279,12 @@ fi
 # 2026-05-06 hardening: detect symlink↔dir mismatches BEFORE attempting stash.
 # These happened with apps/backend-rag/.venv (origin symlink, Mini real 762MB dir).
 if ! check_type_mismatch; then
+  exit 1
+fi
+
+# 2026-07-11 hardening: detect untracked-file collisions BEFORE attempting
+# stash. See check_untracked_collision() above.
+if ! check_untracked_collision; then
   exit 1
 fi
 
