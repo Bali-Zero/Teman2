@@ -988,9 +988,12 @@ class LLMGateway:
             except Exception as e:
                 logger.warning("⚠️ LLMGateway Health: Gemini Fallback check failed: %s", e)
 
-        # Test OpenRouter (lazy init)
+        # Test OpenRouter (lazy init). A disabled egress must NOT report
+        # healthy — a green that lies is worse than a red (scar #2).
+        from backend.app.core.config import settings as app_settings
+
         client = self._get_openrouter_client()
-        if client:
+        if client and app_settings.openrouter_enabled:
             status["openrouter"] = True
             logger.debug("✅ LLMGateway Health: OpenRouter client initialized")
 
