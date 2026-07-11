@@ -15,8 +15,48 @@ clonare Fable.
 **Method**: Gear-3 Workflow `fable-paywall-expedition` — 12 blind readers × 4 fronts (scaffolding / routing /
 prompt-context-eng / distill-legit), every strong finding adversarially refuted on fresh context, 5 empirical
 analysts on real task shapes, synthesis, **then a cross-vendor-lineage refuter graded the whole report**.
-67 agents, 5.76M tokens, ~28 min. The refuter returned **REWORK** — this document is the corrected version,
-and the correction is the most important content here.
+67 agents, 5.76M tokens, ~28 min. The refuter returned **REWORK** — this document is the corrected version.
+
+**Follow-up (same day, 2026-07-11 22:47): the recommended blind A/B was run** — `fable-vs-opus-ab-blind`
+Workflow, 7 real KBLI codes (from `agent/air-m5/mouth/kbli-editorials`), Fable and Opus-4.8 each wrote the
+editorial from identical fact inputs, blind-judged (model identity hidden) on factual accuracy + house-style.
+Result in **§0.5** — it does not simply confirm the hypothesis, it complicates it, and that's reported honestly.
+
+---
+
+## 0.5. EMPIRICAL FOLLOW-UP — the blind A/B result (KBLI shape)
+
+**12/14 planned judgements completed** (2 failed on judge session-limit, not a design flaw — reported as
+missing, not fabricated). Small sample (7 codes) — this is a signal, not a law, but it's a real measurement
+where before there was none, and the direction is worth stating plainly:
+
+| Metric | Fable | Opus-4.8 |
+|---|---|---|
+| Overall wins (blind) | 5 | **7** |
+| Factual-accuracy wins | 0 | 2 |
+| Ties (factual) | 10 | 10 |
+| Total factual errors | **1** | 0 |
+
+**On this KBLI fact-lookup shape, Opus-4.8 was not worse than Fable — it edged ahead, both on raw wins and
+on the one axis that matters most for this task (factual accuracy).** The single factual error found across
+all 12 judgements was Fable's: on code 01111 it invented a specific crop ("corn farming / Pertanian Jagung")
+that the given facts never specified and that doesn't match the code's real-world referent — a fabrication
+that propagated through headline, standfirst, body and pullQuote. Opus's parallel draft used the correct
+plain-English gloss and committed no such error.
+
+**Second finding, orthogonal to the model question**: both models, independent of which one, sometimes
+invented ungrounded regulatory detail beyond the given facts (zoning apparatus, Hak Milik/HGU land-rights
+mechanics, moratorium mechanics) when trying to *explain* a bare status code — a house-style hard-rule
+violation ("no invented regulations or figures not in the facts") that hit both models at similar rates. This
+is a scaffold gap (the prompt/schema doesn't force "state the fact, don't invent the reason"), not a
+model-tier gap — consistent with §1's meta-pattern, and arguably the more actionable finding of the two.
+
+**What this changes about §3's routing table**: the KBLI row already said "sonnet, measured tie" — the A/B
+makes that MORE true, not less; if anything Opus/Sonnet-tier should be trusted at least as much as Fable on
+this exact shape, given zero errors vs one. It does **not** touch the WR2 lane-3 row (novel/uncatalogued
+brand-voice judgment) — this A/B only tested the fact-lookup shape, not the shape Fable is reserved for.
+**What this changes about §6's recommended experiment**: it's now partially done — extend it to WR2 lane-3
+(the one shape still resting on hypothesis) before fully retiring paid-Fable there too.
 
 ---
 
