@@ -2192,66 +2192,6 @@
   },
   "16291": {
     "baliContext": "Bali's artisan villages, particularly around Bona in Gianyar, are hubs for bamboo and rattan weaving. Setting up a PT PMA for this is fully open to 100% foreign ownership. You will need an Industrial Business License (IUI), and if you plan to export these goods, securing an NIK via the OSS system is critical. A common mistake is underestimating the IDR 10 billion minimum paid-up capital requirement for a PT PMA.",
-    "tkaInfo": {
-      "categoryId": 4,
-      "categoryName": "Industri Furnitur",
-      "insight": "Kepmen 228/2019 lists 13 TKA-eligible positions in this category. Selection optimized using ISCO classification methodology.",
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
-      "keduaNote": "Directors and Commissioners who do NOT manage personalia can work without being listed in the jabatan.",
-      "relevantPositions": [
-        {
-          "isco": "1321",
-          "titleEn": "Machinery Manager",
-          "titleId": "Manajer Mesin"
-        },
-        {
-          "isco": "1321",
-          "titleEn": "General Manager",
-          "titleId": "Manajer Umum"
-        },
-        {
-          "isco": "1321",
-          "titleEn": "Production Manager",
-          "titleId": "Manajer Produksi"
-        },
-        {
-          "isco": "1321",
-          "titleEn": "Quality Control Manager",
-          "titleId": "Manajer Pengendalian Kualitas"
-        },
-        {
-          "isco": "1324",
-          "titleEn": "Purchasing Manager",
-          "titleId": "Manajer Pembelian"
-        },
-        {
-          "isco": "2141",
-          "titleEn": "Research and Development Advisor",
-          "titleId": "Ahli Penelitian dan Pengembangan"
-        },
-        {
-          "isco": "2144",
-          "titleEn": "Mechanical Engineer",
-          "titleId": "Ahli Teknik Mesin"
-        },
-        {
-          "isco": "2163",
-          "titleEn": "Design Engineer",
-          "titleId": "Ahli Teknik Desain"
-        },
-        {
-          "isco": "2141",
-          "titleEn": "Quality Control Engineer",
-          "titleId": "Ahli Teknik Pengendalian Kualitas"
-        }
-      ],
-      "selectedForThisCode": 9,
-      "selectionMethod": "ISCO-based",
-      "totalInCategory": 13
-    },
     "whatChanged": "Unchanged from KBLI 2020 — direct match.",
     "whatItMeans": "This code applies to manufacturing woven products using rattan or bamboo as the primary material. It includes creating items like traditional mats, webbing, hand fans, woven wall panels, and woven bags such as women's purses or laptop sleeves. Note that manufacturing footwear like sandals or shoes is specifically excluded.",
     "whatYouNeed": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **Submit industrial data report every 6 months (Kemenperin)** — post-license obligation\n4. **Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, ses...** — post-license obligation\n5. **Memiliki dokumen legalitas bahan baku, berupa: a) Surat Keterangan Sahnya Hasil Hutan (SKSHH); b) Su...** — post-license obligation\n\n**Authority by scale:**\nSmall: **Bupati/Walikota** (Otomatis) · Medium: **Bupati/Walikota** (Otomatis) · Large: **Gubernur** (Otomatis)\n\n**PMA:** Fully open — 100% foreign ownership allowed.",
@@ -2268,40 +2208,6 @@
   },
   "16293": {
     "baliContext": "Wood carving is deeply rooted in Balinese culture, particularly in villages like Mas in Gianyar. While 100% foreign ownership is allowed, foreign investors usually partner with local master carvers. You will need an IUI (Industrial Business License) to operate your workshop. If you are exporting wooden statues or crafts, you must comply with Indonesia's V-Legal (SVLK) timber legality certification to clear customs.",
-    "tkaInfo": {
-      "categoryId": 4,
-      "categoryName": "Industri Furnitur",
-      "insight": "Kepmen 228/2019 lists 13 TKA-eligible positions in this category. Selection optimized using ISCO classification methodology.",
-      "iscoGroupsSelected": [
-        "21"
-      ],
-      "keduaNote": "Directors and Commissioners who do NOT manage personalia can work without being listed in the jabatan.",
-      "relevantPositions": [
-        {
-          "isco": "2141",
-          "titleEn": "Research and Development Advisor",
-          "titleId": "Ahli Penelitian dan Pengembangan"
-        },
-        {
-          "isco": "2144",
-          "titleEn": "Mechanical Engineer",
-          "titleId": "Ahli Teknik Mesin"
-        },
-        {
-          "isco": "2163",
-          "titleEn": "Design Engineer",
-          "titleId": "Ahli Teknik Desain"
-        },
-        {
-          "isco": "2141",
-          "titleEn": "Quality Control Engineer",
-          "titleId": "Ahli Teknik Pengendalian Kualitas"
-        }
-      ],
-      "selectedForThisCode": 4,
-      "selectionMethod": "ISCO-based",
-      "totalInCategory": 13
-    },
     "whatChanged": "Unchanged from KBLI 2020 — direct match.",
     "whatItMeans": "This code covers the production of wooden crafts and carvings, strictly excluding furniture. It encompasses creating items like wooden reliefs, traditional masks, statues, wayang puppets, flower vases, picture frames, lampshades, souvenirs, jewelry boxes, wall decorations, and wooden nameplates.",
     "whatYouNeed": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **Submit industrial data report every 6 months (Kemenperin)** — post-license obligation\n4. **Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, ses...** — post-license obligation\n5. **Memiliki dokumen legalitas bahan baku, berupa: a) Surat Keterangan Sahnya Hasil Hutan (SKSHH); b) Su...** — post-license obligation\n\n**Authority by scale:**\nSmall: **Bupati/Walikota** (Otomatis) · Medium: **Bupati/Walikota Gubernur** (Otomatis) · Large: **Gubernur Menteri/ Kepala Badan** (Otomatis)\n\n**PMA:** Fully open — 100% foreign ownership allowed.",
@@ -2366,86 +2272,6 @@
   },
   "23961": {
     "baliContext": "Bali has a booming luxury villa construction sector that demands high-end marble finishes. However, heavy stone manufacturing requires strict adherence to spatial planning (KKPR) and must be located in an industrial zone. An insider tip: secure your Environmental Management standard (UKL-UPL) early, as the dust, noise, and water usage involved in cutting marble will invite strict local enforcement.",
-    "tkaInfo": {
-      "categoryId": 4,
-      "categoryName": "Industri Bahan Kimia",
-      "insight": "Kepmen 228/2019 lists 694 TKA-eligible positions in this category. Selection optimized using ISCO classification methodology.",
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
-      "keduaNote": "Directors and Commissioners who do NOT manage personalia can work without being listed in the jabatan.",
-      "relevantPositions": [
-        {
-          "isco": "1321",
-          "titleEn": "Production Manager",
-          "titleId": "Manajer Produksi"
-        },
-        {
-          "isco": "1321",
-          "titleEn": "General Manager",
-          "titleId": "Manajer Umum"
-        },
-        {
-          "isco": "1324",
-          "titleEn": "Logistic Manager",
-          "titleId": "Manajer Logistik"
-        },
-        {
-          "isco": "1321",
-          "titleEn": "Manufacturing Department Manager",
-          "titleId": "Manajer Departemen Manufaktur"
-        },
-        {
-          "isco": "1330",
-          "titleEn": "Information Technology Manager",
-          "titleId": "Manajer Teknologi Informasi"
-        },
-        {
-          "isco": "1321",
-          "titleEn": "Planning Manager",
-          "titleId": "Manajer Perencanaan"
-        },
-        {
-          "isco": "2144",
-          "titleEn": "Maintenance Engineer",
-          "titleId": "Ahli Teknik Perawatan"
-        },
-        {
-          "isco": "2113",
-          "titleEn": "Chemical Engineer",
-          "titleId": "Ahli Kimia"
-        },
-        {
-          "isco": "2163",
-          "titleEn": "Design Advisor",
-          "titleId": "Penasihat Desain"
-        },
-        {
-          "isco": "2149",
-          "titleEn": "Research and Development Advisor",
-          "titleId": "Penasihat Penelitian dan Pengembangan"
-        },
-        {
-          "isco": "2149",
-          "titleEn": "Product Planning Engineer",
-          "titleId": "Ahli Perencanaan Produk"
-        },
-        {
-          "isco": "2144",
-          "titleEn": "Mechanical Engineer",
-          "titleId": "Ahli Teknik Mesin"
-        },
-        {
-          "isco": "2141",
-          "titleEn": "Factory Specialist",
-          "titleId": "Ahli Pabrik"
-        }
-      ],
-      "selectedForThisCode": 13,
-      "selectionMethod": "ISCO-based",
-      "totalInCategory": 694
-    },
     "whatChanged": "This code consolidates multiple KBLI 2020 activities into one. Verify your specific activity maps correctly. Previous KBLI 2020 sources: 23961, 23963.",
     "whatItMeans": "This classification is for the manufacturing of goods made from marble stone—covering both structural and decorative items. It includes producing household displays and ornaments like statues, building materials such as marble tiles and bathtubs, as well as custom marble furniture including tables and chairs.",
     "whatYouNeed": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **NIB + Standard Certificate** (Small, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n4. **NIB + Standard Certificate** (Medium, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n5. **NIB + Standard Certificate** (Large, Medium-High risk) — Authority: Gubernur — 7 Hari\n6. **Submit industrial data report every 6 months (Kemenperin)** — post-license obligation\n7. **Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, ses...** — post-license obligation\n8. **Memiliki: a. Buku panduan penggunaan barang hasil produksi (meliputi perawatan, penanganan troublesh...** — post-license obligation\n\n**Authority by scale:**\nSmall: **Bupati/Walikota** (Otomatis) · Medium: **Bupati/Walikota** (Otomatis) · Large: **Gubernur** (7 Hari) · Small: **Bupati/Walikota** (Otomatis)\n\n**PMA:** Fully open — 100% foreign ownership allowed.",
@@ -2462,86 +2288,6 @@
   },
   "23969": {
     "baliContext": "Batubulan village is THE stone carving center of Bali. Paras stone (soft Balinese limestone) carvings are iconic — temple guardians, garden statues, wall reliefs, water features. The export market is strong for garden and temple decorations shipped to Australia, Europe, and the US. Production is labor-intensive and deeply tied to local artisan communities. PMA entities typically handle design, quality control, and export logistics while local carvers do the actual work.",
-    "tkaInfo": {
-      "categoryId": 4,
-      "categoryName": "Industri Bahan Kimia",
-      "insight": "Kepmen 228/2019 lists 694 TKA-eligible positions in this category. Selection optimized using ISCO classification methodology.",
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
-      "keduaNote": "Directors and Commissioners who do NOT manage personalia can work without being listed in the jabatan.",
-      "relevantPositions": [
-        {
-          "isco": "1321",
-          "titleEn": "Production Manager",
-          "titleId": "Manajer Produksi"
-        },
-        {
-          "isco": "1321",
-          "titleEn": "General Manager",
-          "titleId": "Manajer Umum"
-        },
-        {
-          "isco": "1324",
-          "titleEn": "Logistic Manager",
-          "titleId": "Manajer Logistik"
-        },
-        {
-          "isco": "1321",
-          "titleEn": "Manufacturing Department Manager",
-          "titleId": "Manajer Departemen Manufaktur"
-        },
-        {
-          "isco": "1330",
-          "titleEn": "Information Technology Manager",
-          "titleId": "Manajer Teknologi Informasi"
-        },
-        {
-          "isco": "1321",
-          "titleEn": "Planning Manager",
-          "titleId": "Manajer Perencanaan"
-        },
-        {
-          "isco": "2144",
-          "titleEn": "Maintenance Engineer",
-          "titleId": "Ahli Teknik Perawatan"
-        },
-        {
-          "isco": "2113",
-          "titleEn": "Chemical Engineer",
-          "titleId": "Ahli Kimia"
-        },
-        {
-          "isco": "2163",
-          "titleEn": "Design Advisor",
-          "titleId": "Penasihat Desain"
-        },
-        {
-          "isco": "2149",
-          "titleEn": "Research and Development Advisor",
-          "titleId": "Penasihat Penelitian dan Pengembangan"
-        },
-        {
-          "isco": "2149",
-          "titleEn": "Product Planning Engineer",
-          "titleId": "Ahli Perencanaan Produk"
-        },
-        {
-          "isco": "2144",
-          "titleEn": "Mechanical Engineer",
-          "titleId": "Ahli Teknik Mesin"
-        },
-        {
-          "isco": "2141",
-          "titleEn": "Factory Specialist",
-          "titleId": "Ahli Pabrik"
-        }
-      ],
-      "selectedForThisCode": 13,
-      "selectionMethod": "ISCO-based",
-      "totalInCategory": 694
-    },
     "whatChanged": "Direct match from KBLI 2020 (MATCH_LANGSUNG). No changes.",
     "whatItMeans": "Manufacturing of stone products other than marble or granite — stone statues, reliefs, decorative items for household, garden, and display. If you're carving, shaping, or finishing stone (especially soft limestone) into decorative or artistic products, this is the code.",
     "whatYouNeed": "**Risk: Rendah (Low)** for Small/Medium scales — only NIB required. **Menengah Tinggi (Medium-High)** for Large scale — NIB + Sertifikat Standar required with detailed facility documentation, production plans, QC equipment calibration, and 7-day issuance at Governor level.\n\n**PMA:** Fully open (TERBUKA), 100% foreign ownership allowed. IDR 10B minimum investment. Large-scale operations require ISO 9001 certification.",
@@ -2614,26 +2360,6 @@
   },
   "32111": {
     "baliContext": "Operating a gemstone cutting and polishing business in Bali requires an industrial business license (IUI) and strict adherence to environmental regulations. Facilities must be in designated commercial or industrial zones (KKPR), not residential banjars. As a PT PMA, the minimum paid-up capital is IDR 10 billion. Ensure you have clear sourcing documentation for rough stones to comply with local laws.",
-    "tkaInfo": {
-      "categoryId": 4,
-      "categoryName": "Industri Minuman",
-      "insight": "Kepmen 228/2019 lists 46 TKA-eligible positions in this category. Selection optimized using ISCO classification methodology.",
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
-      "keduaNote": "Directors and Commissioners who do NOT manage personalia can work without being listed in the jabatan.",
-      "relevantPositions": [
-        {
-          "isco": "1321",
-          "titleEn": "General Manager",
-          "titleId": "Manajer Umum"
-        }
-      ],
-      "selectedForThisCode": 1,
-      "selectionMethod": "ISCO-based",
-      "totalInCategory": 46
-    },
     "whatChanged": "This code consolidates multiple KBLI 2020 activities into one. Verify your specific activity maps correctly. Previous KBLI 2020 sources: 32111, 32115.",
     "whatItMeans": "Gemstone industry - This covers cutting, grinding, and polishing gemstones and similar materials. It includes working on jewelry diamonds, agate or chalcedony stones, and artificial diamonds. It also covers activities to enhance or change gemstone colors through irradiation processes.",
     "whatYouNeed": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **NIB + Standard Certificate** (Small, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n4. **NIB + Standard Certificate** (Medium, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n5. **NIB + Standard Certificate** (Large, Medium-High risk) — Authority: Gubernur Menteri/ Kepala Badan — 7 Hari\n6. **NIB + Standard Certificate** (Large, Medium-Low risk) — Authority: Gubernur Menteri/ Kepala Badan — automatic\n7. **Submit industrial data report every 6 months (Kemenperin)** — post-license obligation\n8. **Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, ses...** — post-license obligation\n9. **Memiliki: a) Buku panduan penggunaan barang hasil produksi (meliputi perawatan, penanganan troublesh...** — post-license obligation\n\n**Authority by scale:**\nSmall: **Bupati/Walikota** (Otomatis) · Medium: **Bupati/Walikota** (Otomatis) · Large: **Gubernur Menteri/ Kepala Badan** (7 Hari) · Large: **Gubernur Menteri/ Kepala Badan** (Otomatis)\n\n**PMA:** Fully open — 100% foreign ownership allowed.",
@@ -2642,26 +2368,6 @@
   },
   "32112": {
     "baliContext": "Producing silver or gold jewelry in Bali is popular around Celuk, but as a foreign investor, you must establish a PT PMA with a minimum IDR 10 billion paid-up capital. You will need an Industrial Business License (IUI) and must ensure your workshop complies with spatial planning (KKPR). A common mistake is operating a small workshop in a residential villa, which risks sudden closure by authorities.",
-    "tkaInfo": {
-      "categoryId": 4,
-      "categoryName": "Industri Minuman",
-      "insight": "Kepmen 228/2019 lists 46 TKA-eligible positions in this category. Selection optimized using ISCO classification methodology.",
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
-      "keduaNote": "Directors and Commissioners who do NOT manage personalia can work without being listed in the jabatan.",
-      "relevantPositions": [
-        {
-          "isco": "1321",
-          "titleEn": "General Manager",
-          "titleId": "Manajer Umum"
-        }
-      ],
-      "selectedForThisCode": 1,
-      "selectionMethod": "ISCO-based",
-      "totalInCategory": 46
-    },
     "whatChanged": "Unchanged from KBLI 2020 — direct match.",
     "whatItMeans": "Precious metal jewelry manufacturing - This involves making jewelry primarily from precious metals like gold, platinum, and silver intended to be worn on the body, clothing, or by pets. Examples include rings, necklaces, bracelets, earrings, brooches, belts, and buttons. It explicitly excludes making imitation jewelry.",
     "whatYouNeed": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **NIB + Standard Certificate** (Small, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n4. **NIB + Standard Certificate** (Medium, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n5. **NIB + Standard Certificate** (Large, Medium-Low risk) — Authority: Gubernur Menteri/ Kepala Badan — automatic\n6. **Submit industrial data report every 6 months (Kemenperin)** — post-license obligation\n7. **Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, ses...** — post-license obligation\n8. **Memiliki dokumen hasil kalibrasi peralatan quality control secara periodik atau hasil uji laboratori...** — post-license obligation\n\n**Authority by scale:**\nSmall: **Bupati/Walikota** (Otomatis) · Medium: **Bupati/Walikota** (Otomatis) · Large: **Gubernur Menteri/ Kepala Badan** (Otomatis)\n\n**PMA:** Fully open — 100% foreign ownership allowed.",
@@ -2694,26 +2400,6 @@
   },
   "32120": {
     "baliContext": "This is a popular code for Bali-based fashion and accessory brands producing affordable, high-volume costume jewelry, often collaborating with local artisans in Gianyar or Badung. As a 100% foreign-owned PT PMA, you can legally manufacture and export these goods. You will need an Industrial Business License (IUI) and must ensure your production site complies with local spatial planning (KKPR) to avoid being shut down for operating in a tourism or residential zone.",
-    "tkaInfo": {
-      "categoryId": 4,
-      "categoryName": "Industri Minuman",
-      "insight": "Kepmen 228/2019 lists 46 TKA-eligible positions in this category. Selection optimized using ISCO classification methodology.",
-      "iscoGroupsSelected": [
-        "13",
-        "21"
-      ],
-      "keduaNote": "Directors and Commissioners who do NOT manage personalia can work without being listed in the jabatan.",
-      "relevantPositions": [
-        {
-          "isco": "1321",
-          "titleEn": "General Manager",
-          "titleId": "Manajer Umum"
-        }
-      ],
-      "selectedForThisCode": 1,
-      "selectionMethod": "ISCO-based",
-      "totalInCategory": 46
-    },
     "whatChanged": "Unchanged from KBLI 2020 — direct match.",
     "whatItMeans": "This code applies to the production of imitation or costume jewelry. It includes manufacturing items like rings, bracelets, necklaces, and earrings that do not contain real pearls, precious stones, or solid precious metals. It also covers base metal jewelry plated with precious metals, jewelry featuring imitation stones like rhinestones, and non-precious metal watch straps.",
     "whatYouNeed": "1. **PT PMA incorporation** — notary deed, AHU registration, TDP (~2–4 weeks)\n2. **NIB via OSS** — register on oss.go.id, select this code, issued automatically (1–3 days)\n3. **NIB + Standard Certificate** (Small, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n4. **NIB + Standard Certificate** (Medium, Medium-Low risk) — Authority: Bupati/Walikota — automatic\n5. **NIB + Standard Certificate** (Large, Medium-Low risk) — Authority: Gubernur Menteri/ Kepala Badan — automatic\n6. **Submit industrial data report every 6 months (Kemenperin)** — post-license obligation\n7. **Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpan-an, serta pengangkutan, se...** — post-license obligation\n8. **Memiliki dokumen hasil kalibrasi peralatan quality control secara periodik atau hasil uji laboratori...** — post-license obligation\n\n**Authority by scale:**\nSmall: **Bupati/Walikota** (Otomatis) · Medium: **Bupati/Walikota** (Otomatis) · Large: **Gubernur Menteri/ Kepala Badan** (Otomatis)\n\n**PMA:** Fully open — 100% foreign ownership allowed.",
