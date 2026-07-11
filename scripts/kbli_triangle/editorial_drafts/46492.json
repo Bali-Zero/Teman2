@@ -1,0 +1,27 @@
+{
+  "code": "46492",
+  "editorial": {
+    "headline": "Sports Equipment Wholesale: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "This wholesale activity spans fitness gear, outdoor sports equipment, playground installations and bicycles—open nationally to full foreign ownership, but unavailable for PMA registration in Bali.",
+    "body": "A foreign investor cannot register this wholesale activity as PMA in Bali today. That is the practical starting point, despite the national position: the activity is nationally open to foreign investment, with a foreign-ownership ceiling of 100%. Bali’s island-wide, permanent moratorium blocks PMA registration for KBLI activities assessed as Low or Medium-Low risk.\n\nThe commercial scope is broad but coherent. It covers wholesale trade in sports equipment and supplies: fitness, gymnastics and athletics equipment such as treadmills, dumbbells and resistance bands; outdoor sporting goods including balls, racquets and surfboards; outdoor play equipment such as trampolines, basketball hoops and swings; and bicycles, along with their parts and accessories. In other words, this is a wholesale activity for supplying sporting, exercise, recreation and cycling goods into the market, rather than a narrowly defined single-product trade.\n\nThe code is available across every stated business scale: Mikro, Kecil, Menengah and Besar. That breadth matters nationally because it allows the activity to be registered from micro through large enterprise scale. For PMA planning, however, the Bali result turns on the applicable risk assessment at the Besar scale: every scope is recorded as Rendah or Menengah-Rendah, bringing the activity within the province’s PMA moratorium.\n\nThe distinction is therefore direct rather than technical. Nationally, foreign ownership can reach 100% under the cited investment framework. In Bali, the same activity is blocked for PMA because of the permanent provincial rule covering all Low and Medium-Low risk KBLI activities. The relevant restriction is not a reduced foreign-equity ceiling or a special local partnership condition; it is an outright bar on PMA registration in Bali for this risk-class position, recorded under the moratorium of May 2026.",
+    "pullQuote": "Nationally, foreign ownership can reach 100%, but Bali blocks PMA registration for this activity outright.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
