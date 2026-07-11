@@ -5,6 +5,8 @@ Endpoints for managing client data (anagrafica clienti)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
+import base64
+import binascii
 import json
 import re
 import time
@@ -12,7 +14,19 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Body,
+    Depends,
+    File,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+    UploadFile,
+)
+from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
@@ -306,6 +320,24 @@ class ClientUpdate(BaseModel):
     current_visa_type: str | None = None
     current_visa_sponsor: str | None = None
 
+    @field_validator("avatar_url")
+    @classmethod
+    def reject_data_uri_avatar(cls, v: str | None) -> str | None:
+        """Avatars must be storage URLs, never inline base64.
+
+        Base64 data: URIs stored in avatar_url bloated the clients list to
+        ~10MB (avg 20KB, max 518KB per row). New avatars go through
+        POST /api/crm/clients/{id}/avatar which uploads to Tigris and stores a
+        public URL. Reject data: URIs here so the bloat can never return via a
+        plain client update.
+        """
+        if v and v.startswith("data:"):
+            raise ValueError(
+                "avatar_url must be a storage URL; upload the image via "
+                "POST /api/crm/clients/{id}/avatar instead of an inline data: URI"
+            )
+        return v
+
     @field_validator("status")
     @classmethod
     def validate_status(cls, v: str | None) -> str | None:
@@ -405,6 +437,10 @@ class ClientResponse(BaseModel):
     assigned_to: str | None = None
     tax_consultant: str | None = None
     avatar_url: str | None = None
+    # has_avatar: list views omit the (potentially base64 data-URI) avatar_url
+    # to keep the page lean; the card lazy-loads the image from
+    # GET /api/crm/clients/{id}/avatar when this is true.
+    has_avatar: bool = False
     address: str | None = None
     notes: str | None = None
     strategic_recap: str | None = None
@@ -752,7 +788,13 @@ async def list_clients(
                 """
                 SELECT
                     c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
-                    c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
+                    c.client_type, c.assigned_to,
+                    -- Base64 data-URI avatars (avg 20KB, max 518KB) bloat the list
+                    -- page to ~10MB. Inline only http(s) URLs; the card lazy-loads
+                    -- data-URI images from /{id}/avatar via the has_avatar flag.
+                    CASE WHEN c.avatar_url LIKE 'data:%' THEN NULL ELSE c.avatar_url END AS avatar_url,
+                    (c.avatar_url IS NOT NULL AND length(c.avatar_url) > 0) AS has_avatar,
+                    c.first_contact_date, c.last_interaction_date,
                     c.passport_number, c.passport_expiry, c.date_of_birth, c.gender, c.birthplace, c.company_name,
                     c.custom_fields, c.address, c.notes, c.npwp, c.nib,
                     c.tags, c.created_at, c.updated_at,
@@ -941,6 +983,141 @@ async def get_client(
         raise
     except Exception as e:
         raise handle_database_error(e) from e
+
+
+@router.get("/{client_id}/avatar")
+async def get_client_avatar(
+    client_id: int = Path(..., gt=0),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> Response:
+    """Serve a client's avatar image.
+
+    The list endpoint (`GET /`) omits base64 data-URI avatars to keep the page
+    lean (they average ~20KB, up to 518KB, and would bloat a 200-row page to
+    ~10MB). Cards lazy-load the image here when `has_avatar` is true.
+
+    - Stored as a `data:` URI  -> decoded and streamed as image bytes.
+    - Stored as an http(s) URL  -> 302 redirect to that URL.
+
+    Access Control: admin sees any client; a team member only their assigned
+    ones (same rule as `GET /{client_id}`).
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+            avatar_url = await conn.fetchval(
+                "SELECT avatar_url FROM clients WHERE id = $1 AND deleted_at IS NULL",
+                client_id,
+            )
+
+        if not avatar_url:
+            raise HTTPException(status_code=404, detail="No avatar for this client")
+
+        if avatar_url.startswith("http://") or avatar_url.startswith("https://"):
+            return RedirectResponse(url=avatar_url, status_code=302)
+
+        if avatar_url.startswith("data:"):
+            # data:[<mediatype>][;base64],<data>
+            try:
+                header, b64 = avatar_url.split(",", 1)
+                media_type = "image/jpeg"
+                if header.startswith("data:") and ";" in header:
+                    media_type = header[len("data:"):].split(";", 1)[0] or media_type
+                image_bytes = base64.b64decode(b64)
+            except (ValueError, binascii.Error) as e:
+                raise HTTPException(status_code=422, detail="Malformed avatar data") from e
+            return Response(
+                content=image_bytes,
+                media_type=media_type,
+                headers={"Cache-Control": "private, max-age=86400"},
+            )
+
+        # Unknown scheme -> treat as not found rather than leaking the raw value.
+        raise HTTPException(status_code=404, detail="No servable avatar for this client")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise handle_database_error(e) from e
+
+
+_AVATAR_MAX_BYTES = 5 * 1024 * 1024  # 5MB — generous for a 400px crop, rejects abuse
+_AVATAR_CONTENT_TYPES = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+}
+
+
+@router.post("/{client_id}/avatar", response_model=dict)
+async def upload_client_avatar(
+    client_id: int = Path(..., gt=0),
+    file: UploadFile = File(...),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Upload a client avatar to Tigris S3 and store the public URL.
+
+    Replaces the legacy path where the frontend inlined a base64 data: URI into
+    avatar_url (which bloated the clients list to ~10MB). The image bytes are
+    stored object-side and avatar_url becomes a plain public https URL.
+
+    Access Control: admin any client; team member only their assigned ones.
+    """
+    import hashlib as _hl
+
+    from backend.services.canva_renderer_v2 import _tigris
+
+    content_type = (file.content_type or "").lower()
+    ext = _AVATAR_CONTENT_TYPES.get(content_type)
+    if ext is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported avatar type '{content_type}'. Use JPEG, PNG or WebP.",
+        )
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > _AVATAR_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Avatar too large ({len(data)} bytes); max {_AVATAR_MAX_BYTES}.",
+        )
+
+    async with db_pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+
+    # Content-addressed key so re-uploads get a fresh URL (no stale CDN bytes).
+    sha8 = _hl.sha256(data).hexdigest()[:8]
+    key = f"client-avatar/{client_id}/{sha8}.{ext}"
+    try:
+        s3 = _tigris.get_s3_client()
+        s3.put_object(
+            Bucket=_tigris.BUCKET,
+            Key=key,
+            Body=data,
+            ContentType=content_type,
+            ACL="public-read",
+        )
+    except Exception as e:
+        logger.error("Avatar upload to Tigris failed for client %s: %s", client_id, e)
+        raise HTTPException(status_code=502, detail="Avatar storage failed") from e
+
+    public_url = f"https://{_tigris.PUBLIC_HOST}/{key}"
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET avatar_url = $1, updated_at = NOW() WHERE id = $2",
+            public_url,
+            client_id,
+        )
+    await invalidate_cache("zantara:crm_clients_stats:*")
+
+    logger.info("Avatar uploaded for client %s -> %s", client_id, key)
+    return {"success": True, "avatar_url": public_url}
 
 
 @router.get("/by-email/{email}", response_model=ClientResponse)

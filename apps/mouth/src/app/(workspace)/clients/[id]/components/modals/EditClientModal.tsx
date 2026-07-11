@@ -5,7 +5,7 @@ import { User, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { cropToSquare } from "@/lib/utils/imageResize";
+import { cropToSquareBlob } from "@/lib/utils/imageResize";
 import type { Client } from "@/lib/api/crm/crm.types";
 import { COMMON_NATIONALITIES, CLIENT_STATUSES } from "@/lib/api/crm/crm.types";
 import { Modal } from "../Modal";
@@ -23,6 +23,7 @@ export function EditClientModal({
 }) {
   const { options: teamMemberOptions } = useTeamMemberOptions();
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [formData, setFormData] = useState({
     full_name: client.full_name || "",
     email: client.email || "",
@@ -61,16 +62,26 @@ export function EditClientModal({
     }
 
     try {
-      // Crop to square and resize to 400x400px
-      const resizedImage = await cropToSquare(file, 400, 0.85);
-      setFormData((prev) => ({ ...prev, avatar_url: resizedImage }));
+      // Crop to square and resize to 400x400px, then upload to storage so the
+      // avatar_url is a URL — never an inline base64 blob (the backend rejects
+      // data: URIs on update).
+      const resizedBlob = await cropToSquareBlob(file, 400, 0.85);
+      const uploadFile = new File([resizedBlob], "avatar.jpg", {
+        type: resizedBlob.type || "image/jpeg",
+      });
+      setIsUploadingAvatar(true);
+      const res = await api.crm.uploadClientAvatar(client.id, uploadFile);
+      setFormData((prev) => ({ ...prev, avatar_url: res.avatar_url }));
+      toast.success("Avatar uploaded");
     } catch (error) {
       logger.error(
-        "Failed to process image",
+        "Failed to process/upload image",
         { component: "ClientDetail", action: "processImage" },
         error instanceof Error ? error : new Error(String(error)),
       );
-      toast.error("Failed to process image. Please try again.");
+      toast.error("Failed to upload image. Please try again.");
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -185,13 +196,24 @@ export function EditClientModal({
           <p className="text-xs text-[var(--bz-text-2)] mb-2">
             Upload a profile picture (max 2MB)
           </p>
-          <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bz-accent)] text-white hover:bg-[var(--bz-accent)]/90 transition-colors cursor-pointer">
+          <label
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bz-accent)] text-white transition-colors ${
+              isUploadingAvatar
+                ? "opacity-60 cursor-not-allowed"
+                : "hover:bg-[var(--bz-accent)]/90 cursor-pointer"
+            }`}
+          >
             <Upload className="w-4 h-4" />
-            {formData.avatar_url ? "Change Photo" : "Upload Photo"}
+            {isUploadingAvatar
+              ? "Uploading…"
+              : formData.avatar_url
+                ? "Change Photo"
+                : "Upload Photo"}
             <input
               type="file"
               accept="image/*"
               onChange={handleAvatarUpload}
+              disabled={isUploadingAvatar}
               className="hidden"
             />
           </label>

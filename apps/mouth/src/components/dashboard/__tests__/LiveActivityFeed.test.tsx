@@ -48,7 +48,7 @@ describe("LiveActivityFeed", () => {
 
   it("shows event count", () => {
     render(<LiveActivityFeed events={mockEvents} isLoading={false} />);
-    expect(screen.getByText(/3 eventi/)).toBeInTheDocument();
+    expect(screen.getByText(/3 events/)).toBeInTheDocument();
   });
 
   it("renders skeleton when isLoading", () => {

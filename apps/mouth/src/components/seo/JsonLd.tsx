@@ -305,9 +305,11 @@ export function WebsiteJsonLd() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": `${baseUrl}/#website`,
     name: "Bali Zero",
     alternateName: "Bali Zero - Visa & Business Experts",
     url: baseUrl,
+    publisher: { "@id": `${baseUrl}/#organization` },
     potentialAction: {
       "@type": "SearchAction",
       target: {

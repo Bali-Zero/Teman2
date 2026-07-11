@@ -6,7 +6,10 @@ BUILT but not yet {merged, installed, propagated, armed, committed}. This script
 PURE SIGNALER over that ledger: it parses the open section, ages each entry, and alarms
 on anything TECH-DEBT-classified that has sat unarmed for >48h — while distinguishing
 that from legitimate, pre-declared firebreaks (operator gate / Legge 5 / business
-decision) which are informational only, never an alarm.
+decision) which are informational only, never an alarm, and from NATURAL-WAIT lines
+(owner declares a passive wait on a dated calendar trigger, e.g. `me (passivo —
+verifica 07-12)`): armed work whose proof needs the calendar is not overdue debt,
+and alarming on it starves the healer's idle branch (genome convergence, 2026-07-06).
 
 It NEVER writes, edits, or otherwise mutates anything — ledger, filesystem, or process
 state. It only reads the ledger and prints a report (markdown by default, --json on
@@ -65,6 +68,7 @@ CLOSED_HEADING_PREFIX = "## closed"
 
 CLASS_MALFORMED = "MALFORMED"
 CLASS_FIREBREAK = "FIREBREAK"
+CLASS_NATURAL_WAIT = "NATURAL-WAIT"
 CLASS_OPERATOR_GATED = "OPERATOR-GATED"
 CLASS_TECH_DEBT = "TECH-DEBT"
 CLASS_PHANTOM_OPERATOR = "PHANTOM-OPERATOR"
@@ -88,6 +92,14 @@ TRUE_OPERATOR_CATEGORIES = frozenset(
 # tag itself is structural, while phantom DETECTION below stays substring-based on the
 # owner ("operatore" in Italian prose must not slip through as TECH-DEBT — W82 under-match).
 OPERATOR_TAG_RE = re.compile(r"\boperator\s*\[\s*([a-z0-9-]+)\s*\]", re.IGNORECASE)
+
+# NATURAL-WAIT: the owner declares a PASSIVE wait on a dated natural trigger
+# (`me (passivo — verifica 07-12)`) — the arming is done, only the proof needs the
+# calendar. NOT overdue debt: strict must not fail on it, and the healer's ledger
+# receptor must not fire on it every tick (it starved the genome-convergence idle
+# branch for a week the day it went live). Word-anchored (#3: "impassivo" in prose
+# must not match; a bare `me` owner must stay TECH-DEBT).
+NATURAL_WAIT_RE = re.compile(r"\b(?:passiv[oa]|passive)\b", re.IGNORECASE)
 
 
 @dataclass
@@ -116,6 +128,9 @@ class Entry:
             return CLASS_PHANTOM_OPERATOR
         if self.cls == CLASS_FIREBREAK:
             return CLASS_FIREBREAK
+        if self.cls == CLASS_NATURAL_WAIT:
+            # never -OVERDUE: the wait is on a declared calendar trigger, not on work
+            return CLASS_NATURAL_WAIT
         if self.overdue:
             return f"{self.cls}-OVERDUE"
         return "FRESH"
@@ -229,6 +244,10 @@ def parse_entry(raw: str, now: date) -> Entry:
         cls = CLASS_MALFORMED
     elif "firebreak" in raw.lower():
         cls = CLASS_FIREBREAK
+    elif NATURAL_WAIT_RE.search(owner):
+        # owner-field only: "passivo" in the free-text body (e.g. quoting a log)
+        # must not reclassify a line whose owner is active.
+        cls = CLASS_NATURAL_WAIT
     elif "operator" in owner.lower():
         # Owner claims an operator lane. Legitimate ONLY if every declared tag names a
         # true-operator category; untagged (or unknown-category) = PHANTOM-OPERATOR.
@@ -268,6 +287,7 @@ def compute_counts(entries: List[Entry]) -> Dict[str, int]:
         "tech_debt_overdue": buckets.count(f"{CLASS_TECH_DEBT}-OVERDUE"),
         "operator_gated_overdue": buckets.count(f"{CLASS_OPERATOR_GATED}-OVERDUE"),
         "firebreak": buckets.count(CLASS_FIREBREAK),
+        "natural_wait": buckets.count(CLASS_NATURAL_WAIT),
         "fresh": buckets.count("FRESH"),
         "malformed": buckets.count(CLASS_MALFORMED),
     }
@@ -287,7 +307,7 @@ def render_report(ledger_path: Path, now: date, entries: List[Entry]) -> str:
         "- counts: total={total} phantom_operator={phantom_operator} "
         "tech_debt_overdue={tech_debt_overdue} "
         "operator_gated_overdue={operator_gated_overdue} firebreak={firebreak} "
-        "fresh={fresh} malformed={malformed}".format(**counts)
+        "natural_wait={natural_wait} fresh={fresh} malformed={malformed}".format(**counts)
     )
     lines.append("")
 
@@ -336,6 +356,11 @@ def render_report(ledger_path: Path, now: date, entries: List[Entry]) -> str:
     section(
         "FIREBREAK (legitimate, informational)",
         by_bucket.get(CLASS_FIREBREAK, []),
+        fmt_entry,
+    )
+    section(
+        "NATURAL-WAIT (armed; proof waits on a declared calendar trigger — never overdue)",
+        by_bucket.get(CLASS_NATURAL_WAIT, []),
         fmt_entry,
     )
     section("Fresh (<48h)", by_bucket.get("FRESH", []), fmt_entry)

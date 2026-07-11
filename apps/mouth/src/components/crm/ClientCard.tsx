@@ -61,6 +61,15 @@ export const ClientCard = React.memo(
     // Get country flag for fallback
     const countryFlag = getCountryFlag(client.nationality);
 
+    // Avatar source: inline URL when present (http), else lazy-load the
+    // (base64 data-URI) image the list endpoint omitted for payload size.
+    // Served same-origin via the /api proxy -> cookie-authenticated backend.
+    const avatarSrc = client.avatar_url
+      ? client.avatar_url
+      : client.has_avatar
+        ? `/api/crm/clients/${client.id}/avatar`
+        : null;
+
     // Passport expiry alert
     const passportDaysLeft = client.passport_expiry
       ? Math.ceil(
@@ -127,17 +136,18 @@ export const ClientCard = React.memo(
             <div
               className={`relative w-10 h-10 rounded-full ${ringColor} ring-2 ring-offset-2 ring-offset-[var(--background-secondary)] shrink-0`}
             >
-              {client.avatar_url ? (
+              {avatarSrc ? (
                 <img
-                  src={client.avatar_url}
+                  src={avatarSrc}
                   alt={client.full_name}
+                  loading="lazy"
                   className="w-full h-full rounded-full object-cover"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = "none";
                   }}
                 />
               ) : null}
-              {!client.avatar_url && (
+              {!avatarSrc && (
                 <div className="w-full h-full rounded-full bg-[rgba(255,255,255,0.05)] flex items-center justify-center text-[var(--tx-pure)]">
                   {countryFlag ? (
                     <span className="text-lg leading-none">{countryFlag}</span>

@@ -126,8 +126,6 @@ def include_routers(api: FastAPI) -> None:
         portal_notification_prefs,
         portal_notifications,
         portal_process_timeline,
-        portal_taxes,
-        portal_visa,
         prime,
         prime_v2,  # [PRIME NEXUS] Layered geospatial intelligence API
         query_analytics,
@@ -250,6 +248,13 @@ def include_routers(api: FastAPI) -> None:
 
     api.include_router(notifications_router)
 
+    # Notifications admin router (prefix="/api/admin/notifications"). Mounted at
+    # the top level, NOT nested under notifications_router — nesting double-
+    # prefixed it to /api/notifications/api/admin/notifications/* (404).
+    from backend.app.modules.notifications.admin_router import router as notifications_admin_router
+
+    api.include_router(notifications_admin_router)
+
     # Cron notifiers (visa expiry, unpaid invoices, stale practices)
     from backend.app.routers.cron_notifiers import router as cron_notifiers_router
 
@@ -267,8 +272,6 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(portal_notifications.router)
     api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
-    api.include_router(portal_taxes.router)
-    api.include_router(portal_visa.router)
 
     # Compliance routers
     api.include_router(compliance_alerts.router)
@@ -563,8 +566,6 @@ def include_light_routers(api: FastAPI) -> None:
         portal_notification_prefs,
         portal_notifications,
         portal_process_timeline,
-        portal_taxes,
-        portal_visa,
         prime,
         prime_v2,
         query_analytics,
@@ -673,6 +674,12 @@ def include_light_routers(api: FastAPI) -> None:
 
     api.include_router(notifications_router)
 
+    # Notifications admin router — top-level mount (see include_routers note):
+    # nesting it double-prefixed /api/admin/notifications/* to a 404.
+    from backend.app.modules.notifications.admin_router import router as notifications_admin_router
+
+    api.include_router(notifications_admin_router)
+
     # Cron notifiers (visa expiry, unpaid invoices, stale practices)
     from backend.app.routers.cron_notifiers import router as cron_notifiers_router
 
@@ -690,8 +697,6 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(portal_notifications.router)
     api.include_router(portal_notification_prefs.router)  # P0 fix: was orphaned (manifest-only) → 404
     api.include_router(portal_process_timeline.router)
-    api.include_router(portal_taxes.router)
-    api.include_router(portal_visa.router)
 
     # Compliance routers
     api.include_router(compliance_alerts.router)
