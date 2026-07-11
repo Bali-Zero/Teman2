@@ -169,6 +169,25 @@ _DECEPTIVE_LOCAL_WRAPPERS: list[Callable[[str], str]] = [
     lambda g: f'echo "# --ff-only later" && git {g}',        # W91-shape: flag-looking comment text
 ]
 
+# TRUE-COMPOUND under-match (6th over-match, found at PR-2266 gate 2026-07-11,
+# AFTER this corpus's first version shipped 382/382 green): a REAL
+# ssh/scp/rsync dispatch runs in one segment, but the mutating verb lives in
+# a DIFFERENT, LOCAL segment of the SAME compound command. This is distinct
+# from _DECEPTIVE_LOCAL_WRAPPERS above (where "ssh" is merely a WORD, never a
+# real dispatcher at all) — here ssh genuinely dispatches something off-box,
+# just not the mutating verb. The whole-command `_is_remote_dispatch` check
+# (pre-fix) was fooled by this shape because it only asked "does ANY segment
+# start with ssh/scp/rsync", never "does THIS verb's OWN segment". Corpus gap
+# that let W92's twin ship silently: the only "compound" cases the original
+# corpus had were single-segment (ssh IS the first real token, carrying the
+# WHOLE trailing command remotely) — this class needs TWO+ segments where
+# the FIRST is remote and a LATER one is a real local mutation.
+_TRUE_COMPOUND_REMOTE_PRELUDE_WRAPPERS: list[Callable[[str], str]] = [
+    lambda g: f"ssh mini hostname && git {g}",         # && sibling of the gate's own counter-example
+    lambda g: f"ssh pro hostname; git {g}",             # ; sibling
+    lambda g: f"ssh pro hostname || git {g}",           # || sibling
+]
+
 
 def _git_verb_corpus(main_checkout: str) -> list[Case]:
     cases: list[Case] = []
@@ -186,8 +205,14 @@ def _git_verb_corpus(main_checkout: str) -> list[Case]:
         for wrap in _DECEPTIVE_LOCAL_WRAPPERS:
             cmd = wrap(verb)
             cases.append(Case(f"gitverb/mutating/deceptive-local/{verb.split()[0]}", cmd, "MAIN", "git_verb", True))
+        for wrap in _TRUE_COMPOUND_REMOTE_PRELUDE_WRAPPERS:
+            cmd = wrap(verb)
+            # the mutating verb's OWN segment is LOCAL (only the PRELUDE
+            # segment is remote-dispatched) — must still block. This is the
+            # exact shape the 6th over-match let through before segment-scoping.
+            cases.append(Case(f"gitverb/mutating/true-compound-remote-prelude/{verb.split()[0]}", cmd, "MAIN", "git_verb", True))
     for verb in _GIT_READONLY_VERBS:
-        for wrap in noop_wrappers + _REMOTE_WRAPPERS + _TEXT_ONLY_WRAPPERS:
+        for wrap in noop_wrappers + _REMOTE_WRAPPERS + _TEXT_ONLY_WRAPPERS + _TRUE_COMPOUND_REMOTE_PRELUDE_WRAPPERS:
             cmd = wrap(verb)
             cases.append(Case(f"gitverb/readonly/{verb.split()[0]}", cmd, "MAIN", "git_verb", False))
     # pull with --ff-only on the pull segment: allowed ONLY when the
@@ -249,8 +274,23 @@ def _write_target_corpus(main_checkout: str, worktree: str) -> list[Case]:
         # THE W92 SHAPE: ssh-wrapped, UNQUOTED, relative dest → the actual
         # write happens on the REMOTE host; this checkout is never touched.
         # This is the property W92 violates: guard must ALLOW.
+        #
+        # EXCEPTION (6th over-match correction, 2026-07-11 PR-gate finding):
+        # if the write-verb TEMPLATE itself contains an unquoted `|` (only
+        # `tee` does: "echo x | tee {t}"), wrapping it in `ssh mini <tmpl>`
+        # unquoted does NOT keep the whole thing remote — the pipe SPLITS
+        # into a remote segment (`ssh mini echo x`) and a SEPARATE local
+        # segment (`tee {t}`), because ssh's stdout crosses back to the
+        # local shell before `tee` runs. Empirically verified (piped ssh
+        # output created a local file even when ssh auth itself failed).
+        # This is genuinely different from the OTHER templates (redirect,
+        # sed -i, cp, mv, dd), none of which contain a bare `|` — for those,
+        # `ssh mini <tmpl>` really is ssh's own single implicit remote
+        # command (trailing unquoted args all become the remote command
+        # line), so the write stays off-box. Must block ONLY the tee case.
         remote_unquoted = f"ssh mini {tmpl.format(t=_REL_DEST)}"
-        cases.append(Case(f"write/remote-unquoted-relative/{tag}", remote_unquoted, main_checkout, "write_target", False))
+        expect_block_unquoted = "|" in tmpl
+        cases.append(Case(f"write/remote-unquoted-relative/{tag}", remote_unquoted, main_checkout, "write_target", expect_block_unquoted))
 
         # ssh-wrapped, SINGLE-quoted whole remote payload → same property
         remote_squoted = f"ssh mini '{tmpl.format(t=_REL_DEST)}'"
@@ -275,6 +315,18 @@ def _write_target_corpus(main_checkout: str, worktree: str) -> list[Case]:
         # quoted commit-message noise — must never be a target
         commit_cmd = f'git commit -m "note: {tmpl.format(t=_REL_DEST)}"'
         cases.append(Case(f"write/commit-message-noise/{tag}", commit_cmd, main_checkout, "write_target", False))
+
+        # TRUE-COMPOUND under-match (6th over-match, PR-2266 gate finding
+        # 2026-07-11): a remote ssh PRELUDE segment, then a LOCAL write in a
+        # LATER segment — the exact shape that fooled the whole-command
+        # exemption. The write's OWN segment has no ssh/scp/rsync token, so
+        # it must still block regardless of the earlier remote segment.
+        for sep in ("&&", ";", "||"):
+            compound_cmd = f"ssh mini hostname {sep} {tmpl.format(t=_REL_DEST)}"
+            cases.append(Case(
+                f"write/true-compound-remote-prelude-{sep}/{tag}",
+                compound_cmd, main_checkout, "write_target", True,
+            ))
 
     # sinks / fd-dup / process-substitution — never a real write target
     for cmd in ["python x.py 2>&1 | tail", "echo ok > /dev/null", "diff <(cat a) <(cat b)"]:
@@ -305,30 +357,24 @@ def worktree_isolation_corpus() -> tuple[list[Case], str, str, str]:
 
 def run_corpus(cases: Iterable[Case], mod) -> tuple[int, list[str]]:
     """Classify every case against the loaded module `mod`. Returns
-    (n_mismatches, [failure lines])."""
+    (n_mismatches, [failure lines]).
+
+    STRUCTURAL FIX (6th over-match, 2026-07-11 PR-gate finding): this used to
+    RE-IMPLEMENT the git-verb decision inline (a stale hand-copy that used the
+    pre-segment-scoping whole-command `_is_remote_dispatch` check). That copy
+    drifted from the real fix in `main()` the same day it was written,
+    producing 24 false "mismatches" against cases the ACTUAL guard already
+    handled correctly — a fuzz harness testing its own stale reimplementation
+    instead of the guard is the exact failure mode this tool exists to
+    prevent. Now calls `mod._git_verb_verdict()` directly — the SAME pure
+    function `main()` calls — so the two can never diverge again."""
     fails: list[str] = []
     n = 0
     for c in cases:
         n += 1
         if c.channel == "git_verb":
-            cmd_scan = mod._strip_noise(c.command)
-            if not mod.BLOCKED_SUBCMD_RE.search(cmd_scan):
-                got_block = False
-            elif mod._is_remote_dispatch(cmd_scan):
-                got_block = False
-            else:
-                target = mod._effective_git_target(cmd_scan, c.cwd)
-                if mod._is_path_in_allowed_worktree(target):
-                    got_block = False
-                else:
-                    target_real = pathlib.Path(target).resolve() if target else pathlib.Path(mod.REPO_ROOT)
-                    repo_real = pathlib.Path(mod.REPO_ROOT).resolve()
-                    if target_real != repo_real:
-                        got_block = False
-                    elif mod._only_ffonly_pull(cmd_scan) and _force_clean_probe(mod):
-                        got_block = False
-                    else:
-                        got_block = True
+            verdict = mod._git_verb_verdict(c.command, c.cwd)
+            got_block = verdict.decision == "block"
         elif c.channel == "write_target":
             got_block = mod._write_hits_main(c.command, c.cwd) is not None
         else:
@@ -340,13 +386,6 @@ def run_corpus(cases: Iterable[Case], mod) -> tuple[int, list[str]]:
                 f"got_block={got_block!s:5}  cmd={c.command!r}"
             )
     return len(fails), fails
-
-
-def _force_clean_probe(mod) -> bool:
-    """The corpus's fixture repo has no git history — force the tree-clean
-    probe True so the ff-only PROPERTY (segment/regex logic) is exercised
-    independent of the git-status side effect."""
-    return True
 
 
 def main() -> int:
@@ -385,6 +424,16 @@ def main() -> int:
             return False
 
     mod._is_path_in_allowed_worktree = _fake_allowed
+
+    # The fixture's main_checkout is a plain directory tree, not a real git
+    # repo with committed history — `_main_tree_tracked_clean()`'s live
+    # `git status` subprocess would error or behave unpredictably there.
+    # Force it True so the ff-only PROPERTY (segment/regex logic in
+    # `_only_ffonly_pull` — the thing THIS harness's git_verb corpus is
+    # fuzzing) is exercised independent of the git-status side effect; the
+    # side effect itself has its own dedicated probe-fixture coverage in
+    # test_ffonly_pull_exception.py.
+    mod._main_tree_tracked_clean = lambda: True
 
     n_fail, fail_lines = run_corpus(cases, mod)
     print(f"Ran {len(cases)} generated cases across 2 channels (git_verb + write_target).")

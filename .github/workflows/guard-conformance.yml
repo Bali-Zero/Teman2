@@ -113,13 +113,25 @@ jobs:
           python3 infra/claude-hooks/test_w92_remote_write_dispatch.py
           python3 infra/claude-hooks/test_runtime_state_allowlist.py
 
-      # Property/fuzz corpus (382 generated command shapes across both
+      # 6th over-match (found at THIS PR's own gate, before merge, same
+      # session as W92): the remote-dispatch exemption on BOTH channels was
+      # WHOLE-COMMAND — `ssh pro hostname && git pull` and `ssh mini hostname
+      # && cp /tmp/x scripts/f.py` both got wrongly exempted. Segment-scoped
+      # fix + the pure `_git_verb_verdict` extraction that lets the fuzz
+      # harness call the REAL decision instead of its own stale copy.
+      - name: Segment-scoped remote-dispatch fix (6th over-match, 2026-07-11)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_segment_scoped_dispatch.py
+
+      # Property/fuzz corpus (445 generated command shapes across both
       # decision channels of worktree_isolation.py) — the reusable harness
       # this same superscar #3 family motivated after 5 hand-written
       # regression suites each only covered the shape someone already got
       # burned by. Runs LAST as the broad net; the named suites above stay
       # as fast, specific pins.
-      - name: Guard fuzz/property corpus (worktree_isolation.py, 382 cases)
+      - name: Guard fuzz/property corpus (worktree_isolation.py, 445 cases)
         if: steps.relevant.outputs.run == 'true'
         run: |
           set -euo pipefail

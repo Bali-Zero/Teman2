@@ -101,7 +101,15 @@
       "vaccine": "infra/claude-hooks/test_hook_innocence.py",
       "entries": {
         "infra/claude-hooks/worktree_isolation.py": {
-          "scar": ["W79", "W83", "W84", "W85", "W91", "W92"],
+          "scar": [
+            "W79",
+            "W83",
+            "W84",
+            "W85",
+            "W91",
+            "W92",
+            "segment-scoping-6th"
+          ],
           "symbols": {
             "BLOCKED_SUBCMD_RE": {
               "tests": [
@@ -112,7 +120,18 @@
             },
             "_is_remote_dispatch": {
               "tests": ["infra/claude-hooks/test_w83_remote_dispatch.py"],
-              "note": "W92 (2026-07-11): the SAME function, previously wired only into the git-verb channel (W83), is now ALSO consulted by _write_hits_main — a 5th over-match of this guard was the file-write channel having zero remote-dispatch awareness at all. Direct unit coverage of _is_remote_dispatch itself stays owned by test_w83_remote_dispatch.py; the NEW call site's outcome is proven by test_w92_remote_write_dispatch.py under the _write_hits_main entry below."
+              "note": "W92 (2026-07-11): the SAME function, previously wired only into the git-verb channel (W83), is now ALSO consulted by _write_hits_main — a 5th over-match of this guard was the file-write channel having zero remote-dispatch awareness at all. Direct unit coverage of _is_remote_dispatch itself stays owned by test_w83_remote_dispatch.py; the NEW call site's outcome is proven by test_w92_remote_write_dispatch.py under the _write_hits_main entry below. SUPERSEDED as a whole-command decision (6th over-match, same day, PR-gate finding): both call sites now use the SEGMENT-SCOPED `_is_position_remote_dispatched` instead — see that symbol below."
+            },
+            "_is_position_remote_dispatched": {
+              "tests": ["infra/claude-hooks/test_segment_scoped_dispatch.py"],
+              "note": "6th over-match (2026-07-11, found at PR-2266 gate before merge, same session as W92): `_is_remote_dispatch` was a WHOLE-COMMAND exemption on both channels — `ssh pro hostname && git pull origin main` and `ssh mini hostname && cp /tmp/x scripts/f.py` both got wrongly exempted because SOME segment (the prelude) was remote, even though the mutating verb/write-target lived in a LATER, LOCAL segment. Fix: `_segments()` splits the noise-stripped command on `&& || ; |`; this function answers whether the segment CONTAINING a given character offset is itself remote-dispatched. Both `_git_verb_verdict` and `_write_hits_main` now check every match/target against its OWN segment via `all(...)`/per-target loop, not the whole command. Direct-mention coverage stays owned by test_segment_scoped_dispatch.py's module docstring + `_write_hits_main`'s per-target loop (which mentions it by name); guard_fuzz_harness.py's outcome-level proof lives under `_git_verb_verdict`/`_write_hits_main` below (it never calls this symbol directly, only through those)."
+            },
+            "_git_verb_verdict": {
+              "tests": [
+                "infra/claude-hooks/test_segment_scoped_dispatch.py",
+                "infra/claude-hooks/guard_fuzz_harness.py"
+              ],
+              "note": "Pure decision function extracted from main() during the 6th-over-match fix (2026-07-11) SPECIFICALLY so guard_fuzz_harness.py can call the REAL logic instead of re-implementing it. The harness's ORIGINAL run_corpus() had hand-copied the git-verb decision path inline — that copy used the pre-fix whole-command `_is_remote_dispatch` check and drifted from `main()` the same day it was written, producing 24 false mismatches against cases the real guard already handled correctly. A fuzz harness testing its own stale reimplementation instead of the guard is the exact failure this tool exists to prevent; extracting a single callable source-of-truth closes that structurally, not just for today's drift."
             },
             "_strip_noise": {
               "tests": [
@@ -124,9 +143,10 @@
               "tests": [
                 "infra/claude-hooks/test_w79_shell_write.py",
                 "infra/claude-hooks/test_w92_remote_write_dispatch.py",
+                "infra/claude-hooks/test_segment_scoped_dispatch.py",
                 "infra/claude-hooks/guard_fuzz_harness.py"
               ],
-              "note": "W92 fix 2026-07-11: an ssh/scp/rsync-dispatched write with a RELATIVE destination used to resolve against the LOCAL session cwd, producing a phantom write-target into the main checkout for a write that never touches this machine. Fixed by consulting _is_remote_dispatch upstream of target extraction (same reuse discipline as the git-verb channel)."
+              "note": "W92 fix 2026-07-11: an ssh/scp/rsync-dispatched write with a RELATIVE destination used to resolve against the LOCAL session cwd, producing a phantom write-target into the main checkout for a write that never touches this machine. Fixed by consulting _is_remote_dispatch upstream of target extraction (same reuse discipline as the git-verb channel). 6th over-match (SAME session, PR-gate finding): the exemption was whole-command — now `_extract_write_targets` returns `(path, offset)` and each target is segment-scoped individually via `_is_position_remote_dispatched`."
             },
             "_effective_git_target": {
               "tests": ["infra/claude-hooks/test_tilde_target_resolver.py"],
@@ -147,10 +167,10 @@
           "also_covered_by": ["vaccine"]
         },
         "infra/claude-hooks/guard_fuzz_harness.py": {
-          "scar": ["W83", "W84", "W85", "W91", "W92"],
+          "scar": ["W83", "W84", "W85", "W91", "W92", "segment-scoping-6th"],
           "symbols": {},
           "tests": ["infra/claude-hooks/guard_fuzz_harness.py"],
-          "note": "Reusable property/fuzz corpus runner for worktree_isolation.py's two decision channels (git_verb + write_target) — 382 generated command shapes (quotes, comments, newlines, heredocs, pipes, ssh-wrapping, git-verbs-inside-strings) classified against a fixture, not a hand-picked example list. Self-executing: `python3 infra/claude-hooks/guard_fuzz_harness.py` exits 1 on any unexplained mismatch. Guard-agnostic design (Case/run_corpus) intended for reuse by a future guard's own corpus generator."
+          "note": "Reusable property/fuzz corpus runner for worktree_isolation.py's two decision channels (git_verb + write_target) — 445 generated command shapes (quotes, comments, newlines, heredocs, pipes, ssh-wrapping, git-verbs-inside-strings, true-compound remote-prelude-plus-local-mutation) classified against a fixture, not a hand-picked example list. Self-executing: `python3 infra/claude-hooks/guard_fuzz_harness.py` exits 1 on any unexplained mismatch. Guard-agnostic design (Case/run_corpus) intended for reuse by a future guard's own corpus generator. STRUCTURAL FIX (2026-07-11, 6th over-match): run_corpus's git_verb branch now calls `mod._git_verb_verdict()` directly instead of re-implementing the decision inline — the inline copy had drifted from the real guard the same day it was written (see _git_verb_verdict's registry note)."
         },
         "infra/claude-hooks/worktree_file_write_check.py": {
           "scar": ["W80"],

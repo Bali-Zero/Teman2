@@ -85,7 +85,6 @@ def main() -> int:
     innocent = [
         "ssh mini echo x > apps/f.py",
         "ssh mini echo x >> apps/f.py",
-        "ssh mini echo x | tee apps/f.py",
         "ssh mini sed -i 's/a/b/' apps/f.py",
         "ssh mini cp /tmp/src apps/f.py",
         "ssh mini mv /tmp/src apps/f.py",
@@ -111,6 +110,19 @@ def main() -> int:
         "echo ssh && cp /tmp/src apps/f.py",            # 'ssh' just a word, git runs locally
         "echo 'copy via ssh' ; cp /tmp/src apps/f.py",  # ssh mentioned, write is LOCAL after ;
         "mysshscript && cp /tmp/src apps/f.py",         # 'ssh' substring inside a longer token
+        # ssh-piped-to-LOCAL-tee (2026-07-11 PR-gate correction, this file's
+        # own bug found while fixing the 6th over-match): a `|` after an ssh
+        # segment does NOT keep the write remote — `ssh host cmd | tee f`
+        # runs `cmd` on the remote host but pipes its STDOUT back to a LOCAL
+        # `tee`, which writes `f` on THIS machine. Empirically verified
+        # (piped ssh output DID create a local file even when the ssh auth
+        # itself failed). This was WRONGLY listed as innocence before the
+        # segment-scoping fix — the whole-command exemption masked it.
+        "ssh mini echo x | tee apps/f.py",
+        # 6th over-match — the exact PR-gate counter-examples (segment #1 is
+        # remote, segment #2 after the separator is a genuine LOCAL write).
+        "ssh mini hostname && cp /tmp/x apps/f.py",
+        "ssh pro hostname; tee apps/g.py < /tmp/y",
     ]
     # NOTE: `scp mini:/remote/src <local-abs-dest>` (remote SOURCE, local
     # DEST — direction-reversed scp) is NOT a guilt case here. The existing
