@@ -1,7 +1,23 @@
-# KBLI editorial regen — RESUME HERE (paused 2026-07-10 ~12:15 CST)
+# KBLI editorial regen — RESUME HERE
 
 > **TRIGGER WORD: `KBLIREGEN`** — when Zero types it at session start, this file is the resume
 > command. Count drafts, probe Codex quota on the Pro, and resume (steps in "HOW TO RESUME" below).
+
+## STATUS 2026-07-11 — RESUMED on GPT-5.6 Terra (writer live on the Pro)
+
+- **Engine switched to `gpt-5.6-terra`** (Zero's directive; batch tier, ~2x cheaper than 5.5).
+  Codex CLI on the Pro upgraded 0.142.5 → **0.144.1** (Terra needs ≥0.144.0; npm-managed).
+- `editorial_writer.py` grew a `--model` flag (commit f2fda65974); empty = CLI default.
+- **Pro writer relaunched detached** 2026-07-11 20:56 (Pro clock):
+  `cd /tmp/kbli-regen && nohup python3 scripts/kbli_triangle/editorial_writer.py --workers 2 --model gpt-5.6-terra`
+  — log `/tmp/kbli-regen/scripts/kbli_triangle/_terrarun.out`. Full-size Terra probe passed
+  (400-word call, ~15k tokens); initial 2-worker collision produced a few 429 backoffs, expected
+  to self-heal (single calls pass while workers sleep). If the log shows ONLY quota backoffs and
+  zero new drafts after ~30 min → kill and relaunch `--workers 1`.
+- **M5 reconcile loop is now a durable script**: `scripts/kbli_triangle/reconcile_loop.sh`
+  (rsync-pull Pro→worktree every 15 min, audit = `kbli_apply_editorials.py --dry-run` G0-G6,
+  checkpoint commit). Runs detached on M5, log `scripts/kbli_triangle/_reconcile_loop.log`.
+  It replaces the transcript-only audit command of 2026-07-10 (W81: the grader is on disk now).
 
 **Mandate**: `/goal` — a magazine-grade editorial for every one of the 1559 KBLI 2025 codes
 (`intel_2026.editorial`), then apply → website + native app aligned. Branch
