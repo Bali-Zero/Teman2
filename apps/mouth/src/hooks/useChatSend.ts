@@ -59,6 +59,7 @@ export interface UseChatSendOptions {
 export interface UseChatSendReturn {
   isStreaming: boolean;
   sendMessage: (input: string, attachedImages?: ChatImage[]) => Promise<void>;
+  abortStream: () => void;
   streamingSteps: Array<AgentStep>;
   currentStatus: string;
   setCurrentStatus: (status: string) => void;
@@ -76,12 +77,16 @@ export function useChatSend({
   onStep,
 }: UseChatSendOptions): UseChatSendReturn {
   const { t } = useTranslation();
-  const { isStreaming, setIsStreaming, sendStreamingMessage } =
-    useChatStreaming({
-      sessionId,
-      isMountedRef,
-      isAbortedRef,
-    });
+  const {
+    isStreaming,
+    setIsStreaming,
+    sendStreamingMessage,
+    abortStream,
+  } = useChatStreaming({
+    sessionId,
+    isMountedRef,
+    isAbortedRef,
+  });
 
   const [streamingSteps, setStreamingSteps] = useState<Array<AgentStep>>([]);
   const [currentStatus, setCurrentStatus] = useState("");
@@ -191,6 +196,7 @@ export function useChatSend({
   return {
     isStreaming,
     sendMessage,
+    abortStream,
     streamingSteps,
     currentStatus,
     setCurrentStatus,

@@ -10,13 +10,14 @@ Date: 2026-02-05
 
 import json
 import logging
+import re
 import time
 from inspect import isawaitable
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
 from backend.app.dependencies import (
@@ -24,6 +25,14 @@ from backend.app.dependencies import (
     get_search_service,
 )
 from backend.core.collection_registry import resolve_collection_name
+
+logger = logging.getLogger(__name__)
+
+KBLI_QUERY_MAX_LENGTH = 1024
+KBLI_SESSION_ID_MAX_LENGTH = 128
+KBLI_PUBLIC_LIMIT_MAX = 25
+KBLISearchQuery = Annotated[str, Query(min_length=1, max_length=KBLI_QUERY_MAX_LENGTH)]
+KBLIPublicLimit = Annotated[int, Query(ge=1, le=KBLI_PUBLIC_LIMIT_MAX)]
 
 # Persistent KBLI HTTP client (Golden Rule 10: never create AsyncClient per-request)
 _kbli_http_client: httpx.AsyncClient | None = None
@@ -40,7 +49,13 @@ def _get_kbli_client() -> httpx.AsyncClient:
     return _kbli_http_client
 
 
-logger = logging.getLogger(__name__)
+async def close_kbli_http_client() -> None:
+    """Close persistent KBLI Qdrant HTTP client during app shutdown."""
+    global _kbli_http_client
+    if _kbli_http_client is None:
+        return
+    await _kbli_http_client.aclose()
+    _kbli_http_client = None
 
 router = APIRouter(prefix="/kbli-notebook", tags=["KBLI Notebook"])
 
@@ -81,8 +96,8 @@ class KBLISearchResult(BaseModel):
 
 
 class KBLINotebookChatRequest(BaseModel):
-    query: str
-    session_id: str | None = None
+    query: str = Field(..., min_length=1, max_length=KBLI_QUERY_MAX_LENGTH)
+    session_id: str | None = Field(default=None, max_length=KBLI_SESSION_ID_MAX_LENGTH)
 
 
 class KBLINotebookChatResponse(BaseModel):
@@ -110,6 +125,35 @@ def _payload_value(payload: dict[str, Any], *keys: str, default: Any = None) -> 
         if metadata.get(key) not in (None, ""):
             return metadata[key]
     return default
+
+
+# The ingestion script (reindex_kbli_2025_final.py) stores the embedding text —
+# which opens with an internal "[CONTEXT: ...]" grounding header — as the payload
+# `content` field. That header exists for the embedding model, not for humans:
+# strip it before content is used as a user-facing snippet.
+_CONTEXT_HEADER_RE = re.compile(r"^\s*\[CONTEXT:[^\]]*\]\s*")
+
+_KBLI_CODE_RE = re.compile(r"^\d{4,5}$")
+
+
+def _clean_snippet(text: str | None) -> str:
+    """Strip the internal [CONTEXT: ...] embedding header from payload content."""
+    return _CONTEXT_HEADER_RE.sub("", text or "").lstrip()
+
+
+def _result_from_payload(payload: dict[str, Any], score: float) -> "KBLISearchResult":
+    """Build a KBLISearchResult from a flat/legacy Qdrant KBLI payload."""
+    return KBLISearchResult(
+        code=_payload_value(payload, "kode_kbli", "kode", "kode_kbli_2025", default="N/A"),
+        title=_payload_value(payload, "judul", "title_id", default="N/A"),
+        description=_clean_snippet(
+            _payload_value(payload, "content", "text", "description", default="") or "",
+        )[:200]
+        + "...",
+        score=round(score, 4),
+        pma_status=_payload_value(payload, "pma_status", default="UNKNOWN"),
+        risk_category=_payload_value(payload, "kategori_risiko", default="Unknown"),
+    )
 
 
 async def _resolve_embedding(search_service: Any, query: str) -> list[float]:
@@ -237,8 +281,8 @@ def get_kbli_ttl(code: str) -> int:
 
 @router.get("/search", response_model=list[KBLISearchResult])
 async def search_kbli(
-    query: str,
-    limit: int = 10,
+    query: KBLISearchQuery,
+    limit: KBLIPublicLimit = 10,
     search_service=Depends(get_search_service),
 ) -> Any:
     """Search for KBLI codes using semantic search (Qdrant)."""
@@ -246,25 +290,29 @@ async def search_kbli(
     logger.info("🔍 KBLI Search Request: '%s' (limit: %s)", query, limit)
 
     try:
+        # Exact-code fast-path: a bare 4/5-digit query is a code lookup, not a
+        # semantic search — embedding a bare number ranks by noise (observed live
+        # 2026-07-08: "68111" did not surface 68111 in the top 5). Unknown codes
+        # fall through to semantic search so non-canonical forms (e.g. 68100)
+        # still get neighborly suggestions.
+        exact_result: KBLISearchResult | None = None
+        code_query = query.strip()
+        if _KBLI_CODE_RE.fullmatch(code_query):
+            exact_payload = await _get_kbli_payload_from_qdrant(code_query)
+            if exact_payload:
+                exact_result = _result_from_payload(exact_payload, score=1.0)
+
         embedding = await _resolve_embedding(search_service, query)
         results = await _search_kbli_qdrant(embedding, limit)
 
-        search_results = []
+        search_results: list[KBLISearchResult] = [exact_result] if exact_result else []
         for r in results:
-            p = r.get("payload", {})
-            search_results.append(
-                KBLISearchResult(
-                    code=_payload_value(p, "kode_kbli", "kode", "kode_kbli_2025", default="N/A"),
-                    title=_payload_value(p, "judul", "title_id", default="N/A"),
-                    description=(
-                        _payload_value(p, "content", "text", "description", default="") or ""
-                    )[:200]
-                    + "...",
-                    score=round(r.get("score", 0.0), 4),
-                    pma_status=_payload_value(p, "pma_status", default="UNKNOWN"),
-                    risk_category=_payload_value(p, "kategori_risiko", default="Unknown"),
-                ),
-            )
+            if len(search_results) >= limit:
+                break
+            candidate = _result_from_payload(r.get("payload", {}), score=r.get("score", 0.0))
+            if exact_result and candidate.code == exact_result.code:
+                continue
+            search_results.append(candidate)
 
         duration = (time.time() - start_time) * 1000
         logger.info(

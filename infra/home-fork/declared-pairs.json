@@ -39,6 +39,14 @@
       ]
     },
     {
+      "live": "~/scripts/codex/nightly-autofix-ci.sh",
+      "repo": "scripts/codex/codex-nightly-autofix-ci.sh",
+      "_note": "Hourly codex auto-fix generator (plist com.nuzantara.codex-autofix-ci, StartCalendarInterval Minute=15, via cron-runner.sh). Declared 2026-07-06 together with the recursion-brake fix — was an UNDECLARED live payload (family #1); basenames differ by history.",
+      "machines": [
+        "pro"
+      ]
+    },
+    {
       "live": "~/scripts/wr2-ig-metrics-analyst-run.sh",
       "repo": "infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh",
       "_note": "Promoted to repo canon 2026-07-06 (healer tick) to close the sonnet-5 runtime-proof gap (PENDING-ARMS 2026-07-03): live copy called `claude` directly with no 'used: <tier>' log line. Repo canon adds explicit provenance logging only — same invocation, same model. Live HOME copy on Pro still needs manual sync (healer is read-only on Pro).",
@@ -90,6 +98,22 @@
       ]
     },
     {
+      "live": "~/Library/Application Support/Nuzantara/local-livekit/scripts/run_local_livekit_server.sh",
+      "repo": "apps/backend-rag/scripts/run_local_livekit_server.sh",
+      "_note": "Was UNDECLARED (part of the 2026-07-05 13-payload finding). Confirmed byte-identical 2026-07-07 (healer tick).",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/Library/Application Support/Nuzantara/local-livekit/scripts/run_local_livekit_worker.sh",
+      "repo": "apps/backend-rag/scripts/run_local_livekit_worker.sh",
+      "_note": "Was UNDECLARED (part of the 2026-07-05 13-payload finding). Confirmed byte-identical 2026-07-07 (healer tick).",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
       "live": "~/scripts/healer-run.sh",
       "repo": "infra/healer/healer-run.sh",
       "machines": [
@@ -132,15 +156,126 @@
       ]
     },
     {
-      "live": "~/scripts/mini-codex-access-watch.sh",
-      "repo": "infra/launchagents/wrappers/mini-codex-access-watch.sh",
+      "live": "~/bin/wa-mirror-runner.sh",
+      "repo": "infra/launchagents/wrappers/wa-mirror-runner.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding. Promoted to canon 2026-07-07 (healer tick), byte-identical.",
       "machines": [
         "mini"
       ]
     },
     {
-      "live": "~/Library/LaunchAgents/com.nuzantara.codex-access-watch.plist",
-      "repo": "infra/launchagents/com.nuzantara.codex-access-watch.plist",
+      "live": "~/bin/wr2-warroom-sync.sh",
+      "repo": "infra/launchagents/wrappers/wr2-warroom-sync.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding. Promoted to canon 2026-07-07 (healer tick), byte-identical.",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/ollama-warm-pin.sh",
+      "repo": "infra/launchagents/wrappers/ollama-warm-pin.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding. Promoted to canon 2026-07-07 (healer tick), byte-identical.",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/openclaw-cron/drive-poll.sh",
+      "repo": "infra/launchagents/wrappers/openclaw-cron/drive-poll.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding (openclaw-cron x3, crontab-executed not plist). Promoted to canon 2026-07-07 (healer tick), byte-identical.",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/openclaw-cron/crm-kg-build-mediated.sh",
+      "repo": "infra/launchagents/wrappers/openclaw-cron/crm-kg-build-mediated.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding (openclaw-cron x3, crontab-executed not plist). Promoted to canon 2026-07-07 (healer tick), byte-identical.",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/openclaw-cron/crm-kg-garbage-collect.sh",
+      "repo": "infra/launchagents/wrappers/openclaw-cron/crm-kg-garbage-collect.sh",
+      "_note": "Part of the 2026-07-05 13-payload finding (openclaw-cron x3, crontab-executed not plist). Promoted to canon 2026-07-07 (healer tick), byte-identical.",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/pro-tg-digest-flush.sh",
+      "repo": "infra/launchagents/wrappers/pro-tg-digest-flush.sh",
+      "machines": [
+        "pro"
+      ]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.tg-digest-flush.plist",
+      "repo": "infra/launchagents/com.nuzantara.tg-digest-flush.plist",
+      "machines": [
+        "pro"
+      ]
+    },
+    {
+      "live": "~/scripts/mini-tg-digest-flush.sh",
+      "repo": "infra/launchagents/wrappers/mini-tg-digest-flush.sh",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.mini.tg-digest-flush.plist",
+      "repo": "infra/launchagents/com.nuzantara.mini.tg-digest-flush.plist",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/scripts/sentinel_lib/alerter.py",
+      "repo": "scripts/sentinel_lib/alerter.py",
+      "machines": [
+        "pro"
+      ]
+    },
+    {
+      "live": "~/scripts/wa-mirror-attention-telegram.py",
+      "repo": "scripts/wa-mirror-attention-telegram.py",
+      "machines": [
+        "pro"
+      ]
+    },
+    {
+      "live": "~/scripts/fly-restart-loop-detector.sh",
+      "repo": "scripts/fly-restart-loop-detector.sh",
+      "machines": [
+        "pro"
+      ]
+    },
+    {
+      "live": "~/scripts/fly-qdrant-backup.sh",
+      "repo": "scripts/fly-qdrant-backup.sh",
+      "machines": [
+        "pro"
+      ]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.balizero.wr2.daily-reconciler.plist",
+      "repo": "infra/launchagents/com.balizero.wr2.daily-reconciler.plist",
+      "machines": [
+        "pro"
+      ]
+    },
+    {
+      "live": "~/scripts/mini-fleet-watch.sh",
+      "repo": "infra/launchagents/wrappers/mini-fleet-watch.sh",
+      "machines": [
+        "mini"
+      ]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.fleet-watch.plist",
+      "repo": "infra/launchagents/com.nuzantara.fleet-watch.plist",
       "machines": [
         "mini"
       ]
@@ -148,6 +283,9 @@
   ],
   "allow": [
     "~/Library/Application Support/Google/GoogleUpdater/*",
-    "~/Library/Google/GoogleSoftwareUpdate/*"
+    "~/Library/Google/GoogleSoftwareUpdate/*",
+    "~/scripts/mini-git-pull-bridge.sh",
+    "~/Applications/WR2 Control.app/*",
+    "~/.local/bin/zero-design/*"
   ]
 }

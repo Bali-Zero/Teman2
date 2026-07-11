@@ -107,7 +107,8 @@ async def ingest_documents(
 
     try:
         # Validate collection exists
-        if request.collection not in service.collections:
+        vector_db = service.collection_manager.get_collection(request.collection)
+        if vector_db is None:
             # Auto-create collection if legal_intelligence
             if request.collection == "legal_intelligence":
                 logger.info(
@@ -116,7 +117,7 @@ async def ingest_documents(
                     target_collection,
                 )
                 vector_db = QdrantClient(collection_name=target_collection)
-                service.collections[request.collection] = vector_db
+                service.collection_manager._collections_cache[request.collection] = vector_db
             else:
                 return IngestResponse(
                     success=False,
@@ -124,10 +125,11 @@ async def ingest_documents(
                     documents_ingested=0,
                     execution_time_ms=0,
                     message="Collection not found",
-                    error=f"Collection '{request.collection}' not found. Available: {list(service.collections.keys())}",
+                    error=(
+                        f"Collection '{request.collection}' not found. "
+                        f"Available: {service.collection_manager.list_collections()}"
+                    ),
                 )
-
-        vector_db = service.collections[request.collection]
 
         # Generate embeddings for all documents
         embedder = create_embeddings_generator()
@@ -204,9 +206,9 @@ async def list_collections(service: SearchService = Depends(get_search_service))
     try:
         collections_info = {}
 
-        for name, vector_db in service.collections.items():
+        for name, vector_db in service.collection_manager.get_all_collections().items():
             try:
-                stats = vector_db.get_collection_stats()
+                stats = await vector_db.get_stats()
                 count = stats.get("total_documents", 0)
                 collections_info[name] = {"name": name, "document_count": count}
             except Exception as e:

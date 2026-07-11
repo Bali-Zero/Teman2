@@ -22,10 +22,8 @@ import asyncio
 import argparse
 import json
 import os
-import re
+import subprocess
 import sys
-import urllib.request
-import urllib.parse
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -61,18 +59,6 @@ if not DB_URL:
 # Post-cutover 2026-05-24 wa-mirror is LOCAL-ONLY → honor URL as written.
 DB_URL = DB_URL.replace("postgres://","postgresql://")
 
-TOKEN = first_nonempty(
-    os.environ.get("TELEGRAM_BOT_TOKEN"),
-    os.environ.get("BALIZEROBOT_TOKEN"),
-    ENV_VALUES.get("TELEGRAM_BOT_TOKEN"),
-    ENV_VALUES.get("BALIZEROBOT_TOKEN"),
-)
-CHAT_ID = first_nonempty(
-    os.environ.get("TELEGRAM_OWNER_CHAT_ID"),
-    os.environ.get("TELEGRAM_CHAT_ID"),
-    ENV_VALUES.get("TELEGRAM_OWNER_CHAT_ID"),
-    ENV_VALUES.get("TELEGRAM_CHAT_ID"),
-)
 DASHBOARD_URL = first_nonempty(os.environ.get("WA_DASHBOARD_URL"), ENV_VALUES.get("WA_DASHBOARD_URL")) or "http://localhost:8767"
 STATE_PATH = Path.home() / ".cache" / "wa-mirror-attention-state.json"
 STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -88,25 +74,32 @@ def mask_phone(phone: str) -> str:
     return f"+{phone[:4]}****{phone[-4:]}"
 
 
-def send_telegram(text: str) -> bool:
-    if not TOKEN or not CHAT_ID:
-        print(f"ERR: TELEGRAM_BOT_TOKEN / TELEGRAM_OWNER_CHAT_ID missing", file=sys.stderr)
-        return False
-    data = urllib.parse.urlencode({
-        "chat_id": CHAT_ID,
-        "text": text,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": "true",
-    }).encode()
-    req = urllib.request.Request(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        data=data, method="POST"
-    )
+def send_telegram(text: str, tier: str = "p0", dedup_key: str = "") -> bool:
+    """Route through the notification gateway (cohort-2, 2026-07-07).
+
+    Realtime criticals → tier p0 (immediate, daily budget); daily summary →
+    tier digest (merged into the ONE grouped gateway digest). Gateway owns
+    token resolution + 6h dedup; plain text only (no parse_mode).
+    Returns True if the gateway accepted (sent or spooled).
+    """
+    gateway = Path(__file__).resolve().parent / "tg_notify.py"
+    if not gateway.is_file():
+        root = Path(os.environ.get("NUZANTARA_ROOT", str(Path.home() / "Desktop" / "nuzantara")))
+        gateway = root / "scripts" / "tg_notify.py"
+    cmd = [sys.executable, str(gateway), "--tier", tier, "--source", "wa-attention"]
+    if dedup_key:
+        cmd += ["--dedup-key", dedup_key]
+    cmd += ["--", text]
     try:
-        with urllib.request.urlopen(req, timeout=10) as r:
-            return r.status == 200
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+        raw = (proc.stderr or "") + "\n" + (proc.stdout or "")
+        outcome = ""
+        for line in raw.splitlines():
+            if line.startswith("tg_notify:"):
+                outcome = line.split(":", 1)[1].strip().split(" ")[0]
+        return outcome in ("sent", "spooled", "logged", "p0_overflow_spooled", "p0_unsent_spooled")
     except Exception as e:
-        print(f"ERR: telegram send: {e}", file=sys.stderr)
+        print(f"ERR: gateway send: {e}", file=sys.stderr)
         return False
 
 
@@ -206,16 +199,15 @@ async def cmd_realtime(force: bool = False):
 
         display = it.get("crm_name") or f"+{phone}"
         crm_tag = f"CRM #{it['crm_id']}" if it["crm_id"] else "new lead"
-        reason_chips = " ".join(f"<code>{r}</code>" for r in critical)
         n_high = it["n_high"]
         msg = (
-            "🚨 <b>HIGH attention</b>\n"
-            f"<b>{display}</b> — {mask_phone(phone)}\n"
-            f"<i>{crm_tag}</i> · {n_high} unresolved msg\n"
-            f"Reasons: {reason_chips}\n"
-            f"→ <a href='{DASHBOARD_URL}'>Open dashboard</a>"
+            "🚨 HIGH attention\n"
+            f"{display} — {mask_phone(phone)}\n"
+            f"{crm_tag} · {n_high} unresolved msg\n"
+            f"Reasons: {', '.join(sorted(critical))}\n"
+            f"→ {DASHBOARD_URL}"
         )
-        if send_telegram(msg):
+        if send_telegram(msg, tier="p0", dedup_key=f"wa-attention:{key}"):
             last_alerted[key] = now.isoformat()
             alerted += 1
 
@@ -235,27 +227,27 @@ async def cmd_digest():
 
     now_iso = datetime.now(timezone.utc).isoformat()
     lines = [
-        "📊 <b>WA mirror daily digest</b>",
-        f"<i>{datetime.now().strftime('%a %d %b %Y, %H:%M WITA')}</i>",
+        "📊 WA mirror daily digest",
+        datetime.now().strftime("%a %d %b %Y, %H:%M WITA"),
         "",
-        "<b>Last 24h:</b>",
+        "Last 24h:",
         f"  • {metrics['inbound_24h']} inbound msgs from {metrics['distinct_phones_24h']} contacts",
-        f"  • <b>{metrics['high_open']}</b> HIGH unresolved · {metrics['high_resolved']} resolved",
+        f"  • {metrics['high_open']} HIGH unresolved · {metrics['high_resolved']} resolved",
         f"  • {metrics['medium']} MEDIUM",
         f"  • {metrics['new_leads_24h']} new leads auto-promoted to CRM",
     ]
     if items:
         lines.append("")
-        lines.append("<b>🚨 Needs your attention:</b>")
+        lines.append("🚨 Needs your attention:")
         for it in items[:8]:  # cap to 8 to keep msg readable
             name = it.get("crm_name") or f"+{it['phone']}"
-            crm_marker = "" if it["crm_id"] else " <i>(new lead)</i>"
+            crm_marker = "" if it["crm_id"] else " (new lead)"
             crit = [r for r in (it["reasons"] or []) if r in CRITICAL_REASONS]
             unanswered = "unanswered_thread_3plus" in (it["reasons"] or [])
-            tags = [f"<code>{r}</code>" for r in crit[:3]]
+            tags = crit[:3]
             if unanswered:
-                tags.append("<code>⏰thread</code>")
-            lines.append(f"  • <b>{name}</b>{crm_marker} — {it['n_high']} msg · {' '.join(tags)}")
+                tags.append("⏰thread")
+            lines.append(f"  • {name}{crm_marker} — {it['n_high']} msg · {' '.join(tags)}")
         if len(items) > 8:
             lines.append(f"  …and {len(items)-8} more")
     else:
@@ -263,9 +255,13 @@ async def cmd_digest():
         lines.append("🟢 Everything is acknowledged.")
 
     lines.append("")
-    lines.append(f"→ <a href='{DASHBOARD_URL}'>Open dashboard</a>")
+    lines.append(f"→ {DASHBOARD_URL}")
     msg = "\n".join(lines)
-    ok = send_telegram(msg)
+    # tier digest: merged into the gateway's grouped digest (2×/day slots align
+    # with the historical 08:00/18:00 cron). Dedup key varies by day+hour so a
+    # morning and an evening digest both pass the 6h gateway window.
+    ok = send_telegram(msg, tier="digest",
+                       dedup_key=f"wa-daily-digest:{datetime.now().strftime('%Y%m%d%H')}")
     print(json.dumps({"sent": ok, "high_open": len(items), "ts": now_iso}))
 
 

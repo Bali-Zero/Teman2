@@ -74,6 +74,7 @@ DOCUMENT_CATEGORY_MAP = {
     "bank_statement": "other",
     "medical_insurance": "other",
     "npwp": "tax",
+    "skt": "tax",
     "nib": "pma",
     "oss": "pma",
     "akta_pendirian": "pma",

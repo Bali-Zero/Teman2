@@ -11,6 +11,8 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 import httpx
@@ -27,6 +29,24 @@ def _load():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
+
+
+def test_script_help_does_not_require_app_settings() -> None:
+    env = {
+        "PATH": os.environ.get("PATH", ""),
+        "PYTHONPATH": str(_REPO_ROOT / "apps" / "backend-rag"),
+    }
+    result = subprocess.run(
+        [sys.executable, str(_SCRIPT_PATH), "--help"],
+        cwd=_REPO_ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "--retry-unschematised-supported" in result.stdout
+    assert "--retry-typed-missing-fields" in result.stdout
 
 
 # ---------------------------------------------------------------------------
@@ -265,6 +285,10 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.scrub_group_phone is True
     assert args.backfill_source_context is False
     assert args.reprocess is False
+    assert args.retry_empty_pdf_ocr is False
+    assert args.retry_unschematised_supported is False
+    assert args.retry_typed_missing_fields is False
+    assert args.quality_sample is False
     assert args.autocatalog_direct_unknown_text is False
     assert args.autocatalog_preclassify_saved_ocr is False
     assert args.autocatalog_preclassify_vision is False
@@ -272,6 +296,14 @@ def test_parser_defaults_are_dry_run() -> None:
     assert args.auto_attach_direct_phone is False
     assert args.delivery_readiness_report is False
     assert args.pipeline_version == irb.DEFAULT_PIPELINE_VERSION
+    assert args.empty_pdf_ocr_version == irb.DEFAULT_EMPTY_PDF_OCR_VERSION
+    assert args.unschematised_pipeline_version == irb.DEFAULT_UNSCHEMATISED_RECOVERY_VERSION
+    assert args.typed_missing_fields_version == irb.DEFAULT_TYPED_MISSING_FIELDS_VERSION
+    assert args.quality_sample_size == 100
+    assert args.quality_source == "whatsapp"
+    assert args.quality_pipeline_version is None
+    assert args.quality_statuses is None
+    assert args.quality_exclude_stub is False
     assert args.autocatalog_pipeline_version == irb.DEFAULT_AUTOCATALOG_PIPELINE_VERSION
     assert args.watermark is None
 
@@ -291,6 +323,77 @@ def test_parser_pipeline_version_override() -> None:
     assert args.apply is True
     assert args.pipeline_version == "v9-test"
 
+
+def test_parser_quality_sample_options_are_read_only() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        [
+            "--quality-sample",
+            "--quality-sample-size",
+            "25",
+            "--quality-source",
+            "drive",
+            "--quality-pipeline-version",
+            "v9-quality",
+            "--quality-statuses",
+            "done,dead",
+            "--quality-exclude-stub",
+        ]
+    )
+    assert args.apply is False
+    assert args.quality_sample is True
+    assert args.quality_sample_size == 25
+    assert args.quality_source == "drive"
+    assert args.quality_pipeline_version == "v9-quality"
+    assert args.quality_statuses == "done,dead"
+    assert args.quality_exclude_stub is True
+
+
+def test_parser_retry_unschematised_supported_options_are_dry_run() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        [
+            "--retry-unschematised-supported",
+            "--unschematised-pipeline-version",
+            "v9-unschematised",
+        ]
+    )
+    assert args.apply is False
+    assert args.retry_unschematised_supported is True
+    assert args.unschematised_pipeline_version == "v9-unschematised"
+
+
+def test_parser_retry_typed_missing_fields_options_are_dry_run() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        [
+            "--retry-typed-missing-fields",
+            "--typed-missing-fields-version",
+            "v9-typed-fields",
+        ]
+    )
+    assert args.apply is False
+    assert args.retry_typed_missing_fields is True
+    assert args.typed_missing_fields_version == "v9-typed-fields"
+
+
+def test_quality_statuses_default_and_custom() -> None:
+    irb = _load()
+    assert irb._quality_statuses(None) is None
+    assert irb._quality_statuses("  ") is None
+    assert irb._quality_statuses("done, dead ") == ("done", "dead")
+
+
+def test_recoverable_unschematised_doc_types_follow_current_extract_schemas() -> None:
+    irb = _load()
+    doc_types = irb._recoverable_unschematised_doc_types()
+    assert "itap" in doc_types
+    assert "ktp" in doc_types
+    assert "sk_kemenkumham" in doc_types
+    assert "oss" in doc_types  # classifier emits oss, extract canonicalizes to nib
+    assert "itas" in doc_types  # classifier emits itas, extract canonicalizes to kitas
+    assert "skt" in doc_types
+    assert "unknown" not in doc_types
 
 def test_parser_autocatalog_direct_unknown_text_defaults() -> None:
     irb = _load()
@@ -618,7 +721,24 @@ def test_reset_sql_matches_v2_worker_contract() -> None:
     assert "attempts         = 0" in sql
     assert "next_visible_at  = now()" in sql
     assert "'{}'::jsonb" in sql
+    assert "last_error      = NULL" in sql
     assert "pipeline_version = $2" in sql  # the bump that mints fresh routing keys
+
+
+def test_priority_retry_reset_frontloads_historical_rows() -> None:
+    irb = _load()
+    sql = irb.PRIORITY_RETRY_RESET_SQL
+    # Same reset shape, but targeted OCR retry must not sit behind newer pending
+    # WhatsApp backlog; created_at preserves FIFO urgency for historical rows.
+    assert "status           = 'pending'" in sql
+    assert "stage            = NULL" in sql
+    assert "lease_owner      = NULL" in sql
+    assert "lease_expires_at = NULL" in sql
+    assert "attempts         = 0" in sql
+    assert "next_visible_at  = LEAST(COALESCE(created_at, now()), now())" in sql
+    assert "'{}'::jsonb" in sql
+    assert "last_error      = NULL" in sql
+    assert "pipeline_version = $2" in sql
 
 
 def test_backfill_select_is_anti_join_below_watermark() -> None:
@@ -680,6 +800,93 @@ def test_revive_stub_select_guards_are_all_present() -> None:
     assert "/groups/" in sql  # the group-chat opt-out predicate
     assert "$1::bool" in sql  # include_groups toggle
 
+
+def test_empty_pdf_ocr_select_guards_are_all_present() -> None:
+    irb = _load()
+    sql = irb.EMPTY_PDF_OCR_SELECT_SQL
+    assert "q.source = 'whatsapp'" in sql
+    assert "doc_type" in sql and "'unknown'" in sql
+    assert "rasterize_failed" in sql
+    assert "raw_pdf_fallback" in sql
+    assert "ocr_text_per_page" in sql
+    assert "SUM(length" in sql
+    assert "= 0" in sql
+    assert "NOT EXISTS" in sql
+    assert "NOT IN ('review_pending', 'quarantine', 'superseded')" in sql
+
+
+def test_empty_pdf_ocr_supersede_only_touches_review_or_quarantine() -> None:
+    irb = _load()
+    sql = irb.EMPTY_PDF_OCR_SUPERSEDE_SQL
+    assert "status = 'superseded'" in sql
+    assert "queue_id = ANY($1::bigint[])" in sql
+    assert "status IN ('review_pending', 'quarantine')" in sql
+
+
+def test_unschematised_supported_select_guards_are_all_present() -> None:
+    irb = _load()
+    sql = irb.UNSCHEMATISED_SUPPORTED_SELECT_SQL
+    assert "q.source = 'whatsapp'" in sql
+    assert "unschematised_doc_type" in sql
+    assert "doc_type = ANY($1::text[])" in sql
+    assert "NOT EXISTS" in sql
+    assert "NOT IN ('review_pending', 'quarantine', 'superseded')" in sql
+
+
+def test_unschematised_supported_supersede_only_review_or_quarantine() -> None:
+    irb = _load()
+    sql = irb.UNSCHEMATISED_SUPPORTED_SUPERSEDE_SQL
+    assert "status = 'superseded'" in sql
+    assert "queue_id = ANY($1::bigint[])" in sql
+    assert "status IN ('review_pending', 'quarantine')" in sql
+
+
+def test_typed_missing_fields_select_guards_are_all_present() -> None:
+    irb = _load()
+    sql = irb.TYPED_MISSING_FIELDS_SELECT_SQL
+    assert "q.source = 'whatsapp'" in sql
+    assert "status IN ('extracted', 'validated', 'done')" in sql
+    assert "doc_type = ANY($1::text[])" in sql
+    assert "NOT IN ('unknown', 'missing')" in sql
+    assert "jsonb_each" in sql
+    assert "filled_fields = 0" in sql
+    assert "NOT EXISTS" in sql
+    assert "NOT IN ('review_pending', 'quarantine', 'superseded')" in sql
+
+
+def test_typed_missing_fields_supersede_only_review_or_quarantine() -> None:
+    irb = _load()
+    sql = irb.TYPED_MISSING_FIELDS_SUPERSEDE_SQL
+    assert "status = 'superseded'" in sql
+    assert "queue_id = ANY($1::bigint[])" in sql
+    assert "status IN ('review_pending', 'quarantine')" in sql
+
+
+def test_quality_sample_sql_is_bounded_and_redacted() -> None:
+    irb = _load()
+    sql = irb.QUALITY_SAMPLE_SQL
+    assert "LIMIT $3" in sql
+    assert "q.source = $1" in sql
+    assert "q.pipeline_version = $2" in sql
+    assert "q.status = ANY($4::text[])" in sql
+    assert "$5::bool IS FALSE" in sql
+    assert "ocr_text_per_page" in sql
+    assert "SUM(length" in sql
+    assert "jsonb_object_agg" in sql
+    assert "empty_ocr_unknown" in sql
+    assert "legible_unknown" in sql
+    assert "stub_stage" in sql
+    assert "unsupported_doc_type" in sql
+    assert "typed_missing_fields" in sql
+    assert "by_extract_skipped" in sql
+    assert "quality_issue_by_doc_type" in sql
+    assert "extract_skipped_by_doc_type" in sql
+    assert "routed_no_match" in sql
+    assert "last_error_category" in sql
+    assert "sender_phone" not in sql
+    assert "blob_path" not in sql
+    assert "source_ref" not in sql
+    assert "media_stored_path" not in sql
 
 def test_direct_unknown_text_autocatalog_select_guards_are_all_present() -> None:
     irb = _load()

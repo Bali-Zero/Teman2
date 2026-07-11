@@ -19,7 +19,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from backend.app.dependencies import get_current_user_email, get_database
+from backend.app.dependencies import get_current_user, get_database
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.core.cache import invalidate_cache
 from backend.services.integrations.messaging_identity_service import (
     get_messaging_identity_service,
@@ -67,47 +68,39 @@ class DeactivateMappingRequest(BaseModel):
 
 # Dependency: Check admin role
 async def require_admin(
-    email: Annotated[str, Depends(get_current_user_email)],
-    request: Request,
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> str:
     """
-    Verify that the current user is an admin or founder.
+    Verify that the current user is a CRM admin (canonical is_crm_admin gate —
+    email in admin allowlist OR role in {admin, board member, ceo, founder}).
+
+    Same gate as the rest of the CRM (crm_clients.py, team_activity.py) and
+    the notifications module (Bug #6, W89). The previous implementation
+    queried a separate `team_access` table and restricted the role check to
+    the literal strings "admin"/"founder" only, rejecting genuine Founders
+    whose role is e.g. "founder" cased/spaced differently or admins granted
+    via the email allowlist (zero@balizero.com) with a non-admin role — and
+    wrapped the whole check in a bare `try/except Exception` that caught the
+    deliberate `HTTPException(403)` and re-raised it as a 500, masking the
+    real reason for every rejection in prod logs.
 
     Args:
-        email: User email from JWT
-        request: FastAPI request
+        current_user: Authenticated user dict from get_current_user
+            ({email, user_id, role, permissions})
 
     Returns:
         User email if authorized
 
     Raises:
-        HTTPException: If user is not authorized
+        HTTPException: 403 if user is not authorized
     """
-    db_pool = get_database(request)
+    if not is_crm_admin(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins and founders can manage messaging identity mappings",
+        )
 
-    try:
-        async with db_pool.acquire() as conn:
-            row = await conn.fetchrow(
-                """
-                SELECT ta.role
-                FROM team_access ta
-                JOIN user_profiles up ON up.id = ta.user_id
-                WHERE up.email = $1
-                """,
-                email,
-            )
-
-            if not row or row["role"] not in ("admin", "founder"):
-                raise HTTPException(
-                    status_code=403,
-                    detail="Only admins and founders can manage messaging identity mappings",
-                )
-
-            return email
-
-    except Exception as e:
-        logger.error("Error checking admin role: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error") from e
+    return str(current_user["email"])
 
 
 @router.post("/mappings", status_code=201)

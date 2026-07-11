@@ -108,6 +108,30 @@ def test_innocence_public_key_and_readme_excluded(tmp_path: Path) -> None:
 
 
 # --------------------------------------------------------------------------
+# 4b. INNOCENCE — tmp/jiti cache dirs are pruned (2026-07-05 Pro false-positive
+# cluster: ~34 jiti *.cjs cache files under ~/.openclaw/tmp/jiti/), while a
+# sibling secret-like file OUTSIDE those dirs is still caught (guilt preserved)
+# --------------------------------------------------------------------------
+
+
+def test_innocence_tmp_and_jiti_cache_dirs_are_pruned(tmp_path: Path) -> None:
+    jiti_dir = tmp_path / "tmp" / "jiti"
+    jiti_dir.mkdir(parents=True)
+    cached_token_file = jiti_dir / "some-token-cache.cjs"
+    cached_token_file.write_text("// jiti transpile cache\n")
+    cached_token_file.chmod(0o644)
+
+    real_secret = tmp_path / ".env.master"
+    real_secret.write_text("SECRET=deadbeef\n")
+    real_secret.chmod(0o644)
+
+    findings = audit.scan([tmp_path], max_depth=4)
+
+    assert cached_token_file not in _paths(findings)
+    assert real_secret in _paths(findings)
+
+
+# --------------------------------------------------------------------------
 # 5. Symlink to a 0644 secret is skipped (never followed)
 # --------------------------------------------------------------------------
 

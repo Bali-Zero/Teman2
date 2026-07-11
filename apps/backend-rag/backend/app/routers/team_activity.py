@@ -75,14 +75,21 @@ class TeamMemberStatus(BaseModel):
 
 
 class DailyHours(BaseModel):
-    """Daily work hours"""
+    """Daily work hours.
+
+    date / clock_in / clock_out are Optional because get_daily_hours() emits
+    None for members still clocked in (no clock_out yet) or edge-case rows with
+    a NULL work_date/clock_in. The service guards those NULLs (returning None);
+    the model must accept them or DailyHours(**row) raises ValidationError ->
+    HTTP 400 on GET /api/team/hours (observed live 2026-07-09).
+    """
 
     user_id: str
     email: str
-    date: str
-    clock_in: str
-    clock_out: str
-    hours_worked: float
+    date: str | None = None
+    clock_in: str | None = None
+    clock_out: str | None = None
+    hours_worked: float = 0.0
 
 
 class WeeklySummary(BaseModel):

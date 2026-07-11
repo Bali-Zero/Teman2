@@ -270,6 +270,7 @@ docs/generated/
 coverage.json
 # Auto-generated Playwright extensions
 .playwright-mcp/
+.playwright-cli/
 apps/mouth/coverage/
 lint_*.txt
 
