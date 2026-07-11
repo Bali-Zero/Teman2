@@ -1,0 +1,27 @@
+{
+  "code": "46741",
+  "editorial": {
+    "headline": "The Wholesale Trade Behind Indonesia’s Non-Metallic Minerals",
+    "standfirst": "A broad wholesale activity spanning industrial minerals, stones, clays and chemical inputs, open nationally to full foreign ownership and not barred by Bali’s PMA moratorium.",
+    "body": "This activity is the wholesale trade in non-metallic minerals: the commercial movement of materials ranging from diamonds, corundum and graphite to quartz sand, fluorite, iodine, sulfur and phosphates. Its scope also reaches salt, asbestos, talc, mica, magnesite, kaolin, feldspar, bentonite, gypsum, dolomite, calcite, zircon, quartz stone, perlite, clay and limestone for cement. The common thread is not a single end market, but a wholesale role across a wide mineral catalogue used in industrial, construction and processing supply chains.\n\nThe registration is open at every stated business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the activity is framed as a trading category rather than as a narrowly defined product line. A business operating under it is positioned around wholesale commerce in the listed non-metallic mineral materials, whether the relevant commercial operation sits at a micro, small, medium or large scale.\n\nNationally, the foreign-investment position is direct. The activity is TERBUKA, with a maximum foreign ownership level of 100%. In practical terms, a foreign investor may hold the full ownership stake nationally for this activity. The stated basis is Perpres 10/2021, 49/2021; there is no lower foreign-ownership ceiling in the record to qualify that national position.\n\nBali requires a more exact reading, but not a more pessimistic one. The province permanently blocks PMA registrations for all Low and Medium-Low risk KBLI activities island-wide. This activity is not blocked by that moratorium. At the Besar scale, its OSS risk is recorded as Menengah-Tinggi/Tinggi, placing it outside the risk categories caught by the Bali restriction. The Bali status is therefore OK_or_HIGHER_RISK: a signal that the activity is not moratorium-blocked, while the large-scale OSS risk classification remains material to how it is understood locally. For a foreign-owned business considering Bali, the honest conclusion is that this activity is not barred from PMA registration there under the stated moratorium rule.",
+    "pullQuote": "This activity is not blocked by Bali’s PMA moratorium, because its large-scale OSS risk sits outside the Low and Medium-Low categories the province blocks.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "46743",
+  "editorial": {
+    "headline": "Wholesale Trade in Radioactive Substances: Open Nationally and in Bali",
+    "standfirst": "This wholesale activity includes radioactive substances and ionising-radiation generators, including their import, with foreign investment open nationally and not blocked in Bali.",
+    "body": "This activity covers the wholesale trade of radioactive substances and ionising-radiation generators. Its stated scope also includes importing ionising-radiation generators and importing radioactive substances. The classification is therefore defined by the wholesale activity itself, with import expressly included in that scope.\n\nIt is open to businesses at every listed scale: Mikro, Kecil, Menengah and Besar. Nationally, its PMA status is TERBUKA, with a maximum foreign ownership ceiling of 100%. In plain terms, foreign investment is open for this activity nationally, including full foreign ownership within that stated ceiling.\n\nBali does not impose a PMA-registration block on this activity. The province’s permanent moratorium blocks PMA for Low and Medium-Low risk activities across the island, but this activity is recorded as not blocked by that moratorium. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, which is the stated reason it falls outside the moratorium block.\n\nThat distinction is the useful one for founders: national foreign-investment openness is not undermined here by a Bali moratorium block. Bali’s recorded position is OK_or_HIGHER_RISK, rather than a prohibition on PMA registration. The activity remains one concerned specifically with wholesale trade and the stated imports of radioactive substances and ionising-radiation generators.",
+    "pullQuote": "National foreign-investment openness is not undermined here by a Bali moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

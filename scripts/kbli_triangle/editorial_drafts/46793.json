@@ -1,0 +1,27 @@
+{
+  "code": "46793",
+  "editorial": {
+    "headline": "Rubber and Plastics Wholesale: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "Wholesale trade in basic-form rubber and plastics is fully foreign-open nationally, but Bali’s permanent, island-wide PMA moratorium blocks registration there.",
+    "body": "This activity is wholesale trade in rubber and plastic materials in their basic forms. The formulation matters because it identifies the commercial activity by the form of the materials and by wholesale trade, not by an added claim about a particular finished product, client, or production step. The record therefore supplies a clean perimeter: rubber and plastic in basic form, sold at wholesale. For a registration decision, that restraint is useful. It keeps attention on the activity actually described and avoids turning a broad materials-trading description into promises the reference does not make. The defining phrase should be treated as the whole stated scope.\n\nThe national position is equally direct. Its status is TERBUKA, and foreign ownership can reach 100%. In practical ownership terms, the national ceiling permits full foreign ownership. The activity is open at the Mikro, Kecil, Menengah and Besar scales, so the scale field does not reserve the listed wholesale activity for a single business size. For someone mapping a proposed business against the reference, this provides two clear national markers: the activity is open to PMA and the foreign-ownership ceiling is 100%. These are national attributes, grounded in the listed Perpres source.\n\nBali changes the outcome completely. The local status is BLOCCATO_CLASSE_RISCHIO and the record explicitly marks it blocked. A foreigner cannot register this activity as PMA in Bali today. The given reason is risk classification: at the Besar scale, OSS places every scope at Low or Medium-Low risk. Bali’s rule blocks PMA for activities in those risk classes across the island, on a permanent basis. The condition applies to the risk classification recorded for every scope at that scale, rather than to an ownership percentage. This is not a partial ownership adjustment; it is a registration block.\n\nThe two geographic readings must be held at once. Nationally, this is an open wholesale-trade activity with a 100% foreign-ownership ceiling and scope across all named scales. In Bali, the class-risk moratorium governs the present PMA result, so national openness cannot produce a Bali PMA registration. A national 100% ceiling does not overcome Bali’s island-wide PMA moratorium. That distinction is why a national answer alone would be incomplete: the Bali result is recorded directly as a block, with its reason stated in the record.",
+    "pullQuote": "A national 100% ceiling does not overcome Bali’s island-wide PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

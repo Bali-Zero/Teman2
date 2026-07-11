@@ -1,0 +1,27 @@
+{
+  "code": "46795",
+  "editorial": {
+    "headline": "Paper and Cardboard Wholesale: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "This activity covers wholesale trade in paper and cardboard goods, from paper bags to disposable care products, open across all business scales nationally but unavailable for PMA registration in Bali.",
+    "body": "This activity is the wholesale trade in goods made from paper and cardboard. Its scope includes paper bags, toilet tissue, disposable diapers and disposable sanitary pads: products that move through commercial distribution as paper- and cardboard-based goods. The emphasis is on wholesale trade itself, giving the code a clear place in the supply chain between goods and their commercial buyers.\n\nThe activity is open to businesses at every listed scale: Mikro, Kecil, Menengah and Besar. Nationally, its PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. In national terms, then, the code is available for foreign investment without a stated foreign-equity cap below full ownership.\n\nBali changes that conclusion decisively. At the Besar scale, OSS risk is Low or Medium-Low across every scope of this activity. Bali’s island-wide, permanent moratorium blocks all Low and Medium-Low risk KBLI from PMA registration. For PMA, a foreigner therefore cannot register this activity in Bali today, despite its nationally open status and 100% foreign-ownership ceiling.\n\nThat distinction is the essential planning fact. The national position defines the activity as open to PMA; the Bali position prevents PMA registration because of its risk classification under the provincial moratorium. A founder considering this wholesale activity must treat those as two separate realities, not as competing interpretations of the same rule.",
+    "pullQuote": "Nationally the activity is open to PMA, but Bali’s moratorium means a foreigner cannot register it there today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
