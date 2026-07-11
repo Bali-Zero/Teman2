@@ -15,7 +15,9 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from backend.channels.base import ChannelMessage
+    from collections.abc import AsyncIterator
+
+    from backend.channels.base import ChannelMessage, ChannelResponse
     from backend.conversation.engine import ConversationEngine
     from backend.services.communication.thread_manager import ThreadManager
 
@@ -165,14 +167,49 @@ class ChannelRouter:
                 channel_config=channel_config,
             )
 
-            # 8. Stream response via adapter
-            await adapter.stream_response(channel_id, response_stream)
+            # 8. Stream response via adapter, teeing the outbound text so the
+            # bot's reply lands in the same audit trail as the inbound message
+            # (COS-LAW-013: a reply that cannot be replayed is a reply that
+            # never happened, audit-wise).
+            outbound_tracker: dict[str, str] = {"final": "", "tokens": ""}
+            tracked_stream = self._track_outbound(response_stream, outbound_tracker)
+            await adapter.stream_response(channel_id, tracked_stream)
+
+            # 8.5 Persist outbound reply (parity with step 3 inbound persist)
+            final_text = outbound_tracker["final"] or outbound_tracker["tokens"]
+            if final_text:
+                await self._persist_message(
+                    channel=channel,
+                    direction="outbound",
+                    sender_id="zantara",
+                    content=final_text,
+                    metadata=message.metadata,
+                )
 
             logger.info("✅ Successfully routed and processed message from %s", channel)
 
         except Exception as e:
             logger.error("❌ Error routing message from %s: %s", channel, e, exc_info=True)
             raise
+
+    @staticmethod
+    async def _track_outbound(
+        response_stream: AsyncIterator[ChannelResponse],
+        tracker: dict[str, str],
+    ) -> AsyncIterator[ChannelResponse]:
+        """Yield responses unchanged while capturing the outbound text.
+
+        The engine emits token deltas plus a final ``answer`` event carrying
+        the complete text; the ``error`` event carries the apology actually
+        sent. Token concat is the fallback when no final event arrives.
+        """
+        async for response in response_stream:
+            event_type = (response.metadata or {}).get("event_type")
+            if event_type in ("answer", "error") and response.text:
+                tracker["final"] = response.text
+            elif event_type == "token" and response.text:
+                tracker["tokens"] += response.text
+            yield response
 
     def _extract_channel_id(self, metadata: dict[str, Any]) -> str:
         """
