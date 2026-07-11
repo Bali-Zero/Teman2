@@ -92,6 +92,8 @@ take_label: string
         min-width: 36px;
       }
       .fact .text {
+        flex: 1;
+        min-width: 0;
         font-weight: var(--font-weight-bold);
         font-size: 26px;
         line-height: 1.3;
