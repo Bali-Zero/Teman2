@@ -1,0 +1,27 @@
+{
+  "code": "46413",
+  "editorial": {
+    "headline": "Wholesale Footwear: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "This wholesale footwear activity is nationally open to full foreign ownership, but a foreign investor cannot register it as PMA in Bali under the island-wide risk moratorium.",
+    "body": "For a foreign investor, the decisive fact comes first: this activity cannot be registered as a PMA business in Bali at present. That does not alter its national standing; it clarifies the practical divide between a nationally open activity and Bali’s separate, island-wide restriction on PMA registrations in Low and Medium-Low risk classes. For a founder considering Bali as the operating base, that distinction is not a footnote—it is the starting point.\n\nThe activity itself is wholesale trade in footwear: shoes, sandals and slippers. It sits in the commercial layer that moves finished footwear through the market in volume, rather than defining the making of the product or its sale in a retail setting. The scope is therefore direct and recognisable: businesses dealing in footwear at wholesale, with the category expressly encompassing those principal forms of footwear.\n\nRegistration is open across the full range of listed business scales: Mikro, Kecil, Menengah and Besar. Nationally, the PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. In plain terms, the national framework permits full foreign ownership for this activity. The cited national basis is Perpres 10/2021, 49/2021. That position matters because it confirms that the foreign-investment question is not closed at the national level; the constraint arises from the Bali-specific treatment of the activity.\n\nIn Bali, the record classifies the activity as BLOCCATO_CLASSE_RISCHIO. At the Besar scale, its OSS risk classification is Low or Medium-Low across every stated scope, bringing it within Bali’s permanent moratorium on PMA registration for all Low and Medium-Low risk KBLI activities. The stated reason records that block as applying under the Bali moratorium in May 2026. The result is unequivocal: national openness and a 100% foreign-ownership ceiling do not create a route for PMA registration in Bali for this activity. A founder may read the national position as permissive, but must treat the Bali restriction as controlling for a Bali-based PMA registration.",
+    "pullQuote": "National openness and a 100% foreign-ownership ceiling do not create a route for PMA registration in Bali for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

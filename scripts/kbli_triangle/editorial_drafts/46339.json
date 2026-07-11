@@ -1,0 +1,27 @@
+{
+  "code": "46339",
+  "editorial": {
+    "headline": "Other Food and Beverage Wholesale: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "A broad wholesale category open to full foreign ownership nationally, but unavailable for PMA registration in Bali under its permanent risk-based moratorium.",
+    "body": "KBLI 46339 covers the wholesale trade of food and beverage products that sit outside the most narrowly defined grocery categories. Its scope is deliberately broad: rice flour, tapioca flour, bakery premixes, caramel, processed honey and shrimp crackers all appear here, alongside snacks, cereals and cereal-based products, whether processed or unprocessed. It also includes soy-based drinks, ready-to-eat food and pet food. The category reaches further into specialised supply, covering nutritional food for babies, children and adults, as well as food additives and processing aids.\n\nThat breadth matters because the activity is defined by its wholesale role across a varied food system, from production inputs to prepared consumer goods. A business operating under this classification may therefore be dealing in products intended for baking, specialised nutrition, packaged consumption or animal care, provided they fall within the stated scope. The registration is open at every listed business scale: Mikro, Kecil, Menengah and Besar.\n\nNationally, the PMA position is straightforward. The activity is marked TERBUKA, with a maximum foreign ownership level of 100%. In practical terms, the national record permits full foreign ownership for this wholesale activity; it does not impose a foreign-share ceiling below full ownership. That openness is grounded in Perpres 10/2021 and 49/2021, and it applies to an activity whose commercial range is considerably wider than its short title might suggest.\n\nBali is the decisive exception. Despite national openness, a foreign investor cannot register this activity for PMA in Bali today. At the Besar scale, OSS risk is classified as Rendah or Menengah-Rendah across every scope, placing the activity within Bali’s permanent, island-wide block on PMA registration for all Low and Medium-Low risk KBLI. The record identifies the Bali moratorium of May 2026 as the immediate basis for the block. National foreign-ownership permission remains real, but it does not create a PMA registration route in Bali for this activity.",
+    "pullQuote": "National foreign-ownership permission remains real, but it does not create a PMA registration route in Bali for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

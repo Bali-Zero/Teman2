@@ -1,0 +1,27 @@
+{
+  "code": "46412",
+  "editorial": {
+    "headline": "Wholesale Clothing: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "This wholesale clothing activity is nationally open to full foreign ownership, but Bali’s permanent PMA moratorium prevents its registration on the island.",
+    "body": "Wholesale clothing is a commercial activity centred on the supply of garments, including sportswear, together with clothing accessories such as gloves, ties, clips and socks. Its scope is therefore broad enough to encompass the apparel trade as a wholesale business, while remaining specific about the goods being handled. The defining question is not the style of the clothing, but whether the registered activity is the wholesale trade in those products.\n\nThe activity is open across every listed business scale: Mikro, Kecil, Menengah and Besar. Nationally, it is marked TERBUKA, with a maximum foreign ownership level of 100%. That is a clear national position: foreign investment is permitted up to full ownership for this activity. The underlying PMA reference is Perpres 10/2021, 49/2021.\n\nBali changes the practical answer for a foreign applicant. The Bali record is BLOCCATO_CLASSE_RISCHIO: blocked on risk classification. At the Besar scale, every scope is classified in OSS as Rendah or Menengah-Rendah. Bali’s moratorium blocks all Low and Medium-Low risk KBLI activities from PMA registration across the province, on a permanent island-wide basis. For this activity, that means a foreigner cannot register it in Bali today.\n\nThis is not a contradiction between the national and Bali positions; it is the essential distinction to understand before treating national openness as a local registration outcome. The national ceiling remains 100%, but Bali’s risk-based moratorium controls the island-side result. The block is tied to the stated risk treatment at the Besar scale and to the moratorium in force from May 2026, rather than to any reduction in the national foreign-ownership ceiling.",
+    "pullQuote": "National openness remains real, but Bali’s risk-based moratorium means a foreigner cannot register this activity on the island today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

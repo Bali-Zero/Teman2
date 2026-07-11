@@ -1,0 +1,27 @@
+{
+  "code": "46334",
+  "editorial": {
+    "headline": "Non-Dairy Soft Drinks Wholesale: Nationally Open, Closed to PMA in Bali",
+    "standfirst": "This wholesale activity is nationally open to full foreign ownership, but Bali’s permanent PMA moratorium prevents registration there.",
+    "body": "KBLI 46334 covers the wholesale trade of non-alcoholic beverages other than milk. Its scope includes fruit nectars and juices, soft drinks, mineral water and packaged water. In practical terms, the activity is defined by supplying these beverage products on a wholesale basis, rather than by any one drink category alone.\n\nThe classification is open across the full stated business-scale range: Mikro, Kecil, Menengah and Besar. That breadth matters because the activity can be registered at each of those scales under the national classification. The scope is specific about the goods involved—non-dairy, non-alcoholic beverages—and broad enough to include both prepared drinks such as juices and soft drinks, and water products such as mineral and packaged water.\n\nNationally, the PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. The national position is therefore clear: full foreign ownership is permitted within the stated ceiling. The applicable source is Perpres 10/2021, 49/2021. For a foreign-owned company considering this activity at the national level, there is no lower foreign-equity cap stated in the record.\n\nBali is the decisive exception. A foreign investor cannot register this activity as PMA in Bali today. At the Besar scale, OSS assigns Low or Medium-Low risk across every scope of the activity; Bali’s permanent, island-wide moratorium blocks PMA registration for all KBLI in those risk classes. The Bali status is BLOCCATO_CLASSE_RISCHIO, and the block has applied under the moratorium since May 2026. This is not a reduced foreign-ownership allowance or a procedural condition: for PMA registration in Bali, the activity is blocked.",
+    "pullQuote": "A foreign investor cannot register this activity as PMA in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
