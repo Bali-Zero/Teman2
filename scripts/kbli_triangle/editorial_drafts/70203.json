@@ -1,0 +1,27 @@
+{
+  "code": "70203",
+  "editorial": {
+    "headline": "Marketing Counsel, but a Bali PMA Roadblock",
+    "standfirst": "This marketing and business-management consultancy is nationally open to full foreign ownership, yet PMA registration in Bali is blocked by the province’s risk-based moratorium.",
+    "body": "KBLI 70203 covers marketing consultancy within the management and trade-business sphere. Its substance is advisory work: offering views, recommendations and studies for developing marketing strategy; analysing that strategy; building and developing brands; and strengthening sales value and other marketing-management functions. In clear terms, it is the activity for businesses whose work is to improve how a client understands, shapes and manages its market presence.\n\nThe registration scope is broad in business scale. It is open to Mikro, Kecil, Menengah and Besar enterprises, so the code is not confined to a particular size of operator. What matters is the character of the work described by the code: marketing counsel and analysis, brand development, service improvement, sales-value enhancement, and related management functions in marketing. The activity is therefore defined by its advisory and management content, rather than by a single type of client or commercial channel.\n\nAt the national level, the foreign-investment position is direct: the activity is TERBUKA, with a maximum foreign ownership ceiling of 100%. A foreign investor can therefore hold the full permitted stake nationally under the cited framework. That national openness is important, but it is not the whole registration picture for a business intending to locate the activity in Bali.\n\nIn Bali, a foreigner cannot register this activity through PMA today. Its Bali status is BLOCCATO_CLASSE_RISCHIO because, at the Besar scale, the OSS risk classification is Rendah or Menengah-Rendah across every scope. Bali’s island-wide, permanent moratorium blocks PMA for all Low and Medium-Low risk KBLI activities; for this code, that rule creates a complete Bali registration stop despite the national 100% foreign-ownership ceiling. The distinction is not a reduced Bali ownership percentage. Nationally, full foreign ownership is allowed; in Bali, PMA registration for this activity is blocked under the risk-based moratorium introduced in May 2026.",
+    "pullQuote": "Nationally, full foreign ownership is allowed; in Bali, PMA registration for this activity is blocked.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

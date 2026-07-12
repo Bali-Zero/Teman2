@@ -1,0 +1,27 @@
+{
+  "code": "70201",
+  "editorial": {
+    "headline": "Tourism Management Advice, Open Nationally but Closed to PMA in Bali",
+    "standfirst": "Professional tourism consultancy is nationally open to full foreign ownership, yet a foreign-owned company cannot register this activity in Bali today.",
+    "body": "A foreign-owned company cannot register this activity in Bali today. That is the practical starting point for **KBLI 70201**, despite its national PMA position being open. The activity covers professional tourism-consulting services: providing views, advice and studies on feasibility, planning, organisation, direction, coordination, supervision, reporting, budgeting and other management functions in the tourism field. It is an advisory and management discipline for tourism, not a catch-all label for operating a tourism business itself.\n\nThe code is available at the **Mikro**, **Kecil** and **Menengah** scales. Its subject matter is broad enough to follow a tourism project through the management questions that shape it: whether an idea is viable, how work should be planned and organised, how functions should be coordinated, and how oversight, reporting and budgets should be handled. The common thread is professional counsel applied to tourism management. The record therefore places the activity with providers delivering informed analysis and direction rather than merely supplying a discrete operational service.\n\nNationally, foreign ownership may reach **100%** under the cited PMA source. In Bali, however, the registration outcome is different. The Bali record marks the activity **CHIUSO_PMA_NO_BESAR** because the OSS system has no **Usaha Besar** scale row for it; it is reserved for UMKM. A PT PMA is treated by law as **Usaha Besar**, so it cannot register this activity there. The issue is structural: national foreign-ownership openness does not create a Bali registration path where the applicable scale row is absent.\n\nBali also has a permanent, island-wide rule blocking PMA registration for all low- and medium-low-risk KBLI activities, recorded under the Governor’s letter B.27.000/642/PM/DPMPTSP. For this code, the immediate conclusion remains clear: national openness up to full foreign ownership is real, but Bali does not permit PMA registration today because the activity is reserved for UMKM and lacks the required large-scale OSS row.",
+    "pullQuote": "National openness up to full foreign ownership is real, but Bali does not permit PMA registration today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Eligible scales",
+        "value": "Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}

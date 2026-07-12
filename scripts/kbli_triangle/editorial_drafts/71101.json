@@ -1,0 +1,27 @@
+{
+  "code": "71101",
+  "editorial": {
+    "headline": "Architecture as a Full-Spectrum Planning Practice",
+    "standfirst": "This activity covers architectural advice, design and planning from early studies to construction oversight, with national foreign ownership open to 100% and no Bali moratorium block.",
+    "body": "Architectural activity here is not confined to drawing a building. It begins with early architectural studies, advice and pre-design, then extends through architectural design and other specialist architectural services. Its field of work reaches from individual buildings to the built environment around them: spatial, regional, urban and landscape development; building and environmental design; conservation design; and the ordering of buildings within their setting.\n\nThe practical scope is correspondingly broad. It includes preparing technical planning documents and overseeing architectural aspects during construction, alongside city planning, land-use planning, project and construction management, community assistance, and other construction-related work. The activity also covers design across the stated building classifications, including places of assembly, business premises, educational facilities, factories and industrial buildings, high-hazard buildings, institutional and government buildings, commercial premises, homes, storage buildings, and utility or miscellaneous buildings. Building inspection services are outside this activity’s scope.\n\nRegistration is open at Mikro, Kecil, Menengah, and Besar scale. Nationally, the activity is classified as TERBUKA for PMA, with foreign ownership permitted up to 100%. That is a clear national position: foreign investment may hold the full ownership ceiling stated for this activity. The applicable source recorded for that position is Perpres 10/2021, 49/2021.\n\nBali does not reverse that national opening. The provincial moratorium blocks PMA registration for all Low and Medium-Low risk KBLI activities, island-wide and permanently. This activity is not blocked under that rule: at Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, placing it outside the moratorium’s blocked risk bands. Its Bali status is therefore recorded as OK_or_HIGHER_RISK. For a foreign-owned architectural practice considering Bali, the essential reading is straightforward: the activity remains available for PMA registration there, while the relevant large-scale risk classification is Medium-High or High rather than a moratorium-barred category.",
+    "pullQuote": "In Bali, architectural activity remains available for PMA registration because its large-scale risk classification falls outside the moratorium’s blocked bands.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
