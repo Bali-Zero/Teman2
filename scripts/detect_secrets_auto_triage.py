@@ -138,6 +138,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)\.claude/rules/.*\.md$"),
         ".claude/rules markdown: operator scar notes and guardrail docs, not secrets",
     ),
+    # Claude skills markdown (modus PENDING-ARMS ledger, skill docs): proof
+    # lines quote curl commands with rotated/revoked key literals and
+    # placeholder env assignments (e.g. API_KEY_ROLES=<K1>:admin). Same
+    # illustrative-credentials nature as infra/skills and .claude/rules above.
+    (
+        re.compile(r"(^|/)\.claude/skills/.*\.md$"),
+        ".claude/skills markdown: ledger/skill docs, credentials are illustrative or revoked",
+    ),
     # Fake-Gemini cleanup audit backup: CSV snapshot from the deleted
     # `drive_autowatcher` producer. The high-entropy hits are serialized
     # source/fact snapshot payloads preserved for the cleanup audit trail,
