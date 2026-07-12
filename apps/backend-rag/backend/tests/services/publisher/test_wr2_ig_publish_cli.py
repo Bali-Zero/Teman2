@@ -16,8 +16,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 # Load scripts/wr2_ig_publish.py as a module without polluting global sys.path
 # beyond the scripts dir. Repo root = 6 parents up from this test file:
 # publisher(0) services(1) tests(2) backend(3) backend-rag(4) apps(5) repo(6).

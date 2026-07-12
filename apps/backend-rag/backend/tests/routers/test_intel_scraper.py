@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 import backend.app.routers.intel_scraper as intel_scraper_module
+from backend.app.setup.route_walk import iter_leaf_routes
 
 
 def _submission_payload() -> dict[str, object]:
@@ -39,7 +40,7 @@ def client(app: FastAPI) -> TestClient:
 class TestRouterStructure:
     @pytest.mark.unit
     def test_router_has_submit_endpoint(self) -> None:
-        paths = {route.path for route in intel_scraper_module.router.routes}
+        paths = {route.path for route in iter_leaf_routes(intel_scraper_module.router)}
         assert "/api/intel/scraper/submit" in paths
 
 

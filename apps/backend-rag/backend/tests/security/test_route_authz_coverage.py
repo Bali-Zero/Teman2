@@ -26,6 +26,7 @@ import pytest
 from fastapi import FastAPI
 
 from backend.app.auth.route_risk_registry import ROUTE_RISKS, risk_for
+from backend.app.setup.route_walk import iter_leaf_routes
 from backend.app.setup.router_registration import include_routers
 
 MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
@@ -130,7 +131,7 @@ def _handlers_with_body_verifier() -> set[str]:
 
 
 def _mutating_routes(app: FastAPI):
-    for route in app.routes:
+    for route in iter_leaf_routes(app):
         methods = getattr(route, "methods", None)
         path = getattr(route, "path", None)
         if not methods or not path:

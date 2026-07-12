@@ -27,6 +27,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.setup.route_walk import iter_leaf_routes
 
 DSN = os.environ.get("INTAKE_TEST_DSN", "postgresql://localhost:5432/nuzantara_dev")
 PIPELINE = "test-5a"
@@ -773,7 +774,7 @@ async def test_router_registered_in_full_app(pool):
     from backend.app.setup.router_registration import include_routers
     app = FastAPI()
     include_routers(app)
-    paths = {r.path for r in app.routes if hasattr(r, "path")}
+    paths = {r.path for r in iter_leaf_routes(app) if hasattr(r, "path")}
     assert "/api/intake/review/queue" in paths
     assert "/api/intake/review/{proposal_id}/claim" in paths
 

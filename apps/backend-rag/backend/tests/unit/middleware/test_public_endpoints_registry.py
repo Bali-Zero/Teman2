@@ -21,6 +21,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from backend.app.auth.public_endpoints import PUBLIC_ENDPOINTS, find_entry, is_public_path
+from backend.app.setup.route_walk import iter_leaf_routes
 
 
 class TestRegistryInvariants:
@@ -160,7 +161,7 @@ class TestB2_RegistryEntriesResolveToRoutes:
             pytest.skip(f"include_routers failed in this env: {exc}")
 
         paths: set[str] = set()
-        for route in app.routes:
+        for route in iter_leaf_routes(app):
             route_path = getattr(route, "path", None)
             if route_path:
                 paths.add(route_path)
