@@ -3,14 +3,19 @@ date: 2026-07-11
 domain: ops
 client_case: n/a
 sources: PENDING-ARMS ledger lines ~47/~56/~61/~68/~75-78, live SSH probes on Pro+Mini, PR #2263
+adversarial_review: gpt-5.5
 ---
 
 # Lane S5 (FLEET-LEDGER) burndown — 2026-07-11
 
 Session ran under `.worktrees/ops-fleet-ledger` (branch `agent/air-m5/ops/fleet-ledger`), M5-based,
-`ssh pro`/`ssh mini` both live, `pro-lan` dead per mandate. Six ledger items assigned; all six
-closed-or-decided this session with fresh evidence (no line taken on the ledger's word alone —
-every claim re-probed).
+`ssh pro`/`ssh mini` both live, `pro-lan` dead per mandate. Six ledger items assigned; per-item outcome
+is mixed, not uniformly closed — 3 fully closed with live proof (exit-127 crons retirement, Mini
+fly-pg-tunnel retire, boot-report false-alarms), 1 shipped to repo canon but pending live HOME sync on
+Pro (W89 wrapper reverse-promotion), and 2 remain open by design: the NER worker is an
+operator[business] ARM/RETIRE call, and the Canva lane stays an evidence-only matrix for
+operator[business] lane-scope. No line was taken on the ledger's word alone — every claim was
+re-probed this session.
 
 ## 1. Ledger line ~61 — 3 exit-127 crons on Pro
 
@@ -38,10 +43,13 @@ unloaded, not just failing.
   - **Live finding, not yet acted on**: the surviving `~/logs/intake-proposal-health-sentinel.out`
     (last write 2026-06-26, before the plist died) shows the sentinel DID detect a real invariant
     violation before dying: `"3436 done-rows with only superseded proposals (dead in /review)"` —
-    i.e. up to 3436 client documents (KTP/passport/akta candidates per the sentinel's own header
-    comment) potentially silently lost in the intake pipeline, unmonitored for 15+ days because
-    (a) the sentinel died and (b) its Telegram alerting was ALSO broken (DNS/network errors in the
-    same log, so even while alive it likely never reached anyone). **This needs operator[business]
+    the log proves 3436 superseded-proposal rows in the intake pipeline, NOT that 3436 client
+    documents were lost (superseded ≠ lost; a superseded proposal row can mean a later, corrected
+    proposal exists for the same document). Whether this represents actual data loss, and which
+    document types are affected, is unverified and needs to be checked against current
+    `intake_queue` state before drawing conclusions. Unmonitored for 15+ days because (a) the
+    sentinel died and (b) its Telegram alerting was ALSO broken (DNS/network errors in the same
+    log, so even while alive it likely never reached anyone). **This needs operator[business]
     visibility** — it's PII-adjacent client-document data, not something I fix mid-mandate.
 
 **Verdict**: 2 of 3 plists correctly stay retired (Lab is a deliberate firebreak); the 3rd genuinely
@@ -52,7 +60,7 @@ current `intake_queue` state before either path.
 
 ## 2. Ledger line ~68 (W89 class-audit) — 5 HOME-only wrapper reverse-promotion
 
-**DONE — PR #2263, auto-merge armed, CI running (no failures at write-time).**
+**Canon promoted (PR #2263) — HOME sync + run-log proof pending (PENDING-ALIGN:Pro).**
 
 Read all 5 HOME wrappers on Pro fresh; discovered 2 of them (`competitor-monitor-run.sh`,
 `yield-optimizer-run.sh`) don't call `claude` directly at all — they route through
@@ -128,8 +136,12 @@ as "genuinely unloaded, decide ARM/RETIRE" but hadn't gathered the fuller eviden
   test suite (`test_ner_worker.py`, entity-extraction + coercion tests). This is not orphaned debt.
 - Its downstream consumer, `run_kg_linker.py`, has an error path that explicitly anticipates NER
   being dead: `"Upstream entity extractor missing or broken — investigate ner_worker pipeline."` —
-  BUT `kg-linker`'s own plist was archived back in May (`.archive-2026-05-09/`), predating
-  ner-worker's June 29 disable — so nothing is CURRENTLY consuming NER output, softening urgency.
+  the copy of that consumer's plist checked this session (`.archive-2026-05-09/`) was archived
+  back in May, predating ner-worker's June 29 disable. This is NOT an exhaustive consumer
+  inventory: repo canon still carries `infra/launchagents/com.matagaruda.kg-linker.plist` and
+  `com.matagaruda.ner.adaptive.plist` as live-looking files, neither of which was checked this
+  session for active `launchctl` status — so whether something currently consumes NER output
+  remains unverified, not confirmed-absent.
 - Historical run stats (before disable): 1126 total runs logged, mostly `processed:0` (empty
   upstream stream) with occasional real extraction (`processed:50, extracted:13`).
 
@@ -173,13 +185,16 @@ operator[business] to decide lane scope, not an action.**
 | `canva-gc.weekly` | **HEALTHY**, working as designed | Weekly Monday 04:30, last fired 2026-07-06. Its "error log" content is actually its own dry-run report format (writes findings to stderr by design) — correctly identified 5 orphan + 10 unpublished-30d+ Canva designs, `[DRY-RUN] pass --apply to actually trash the candidates` — awaiting an operator `--apply` decision (separate matter, not broken). |
 | `canva-lease-watchdog` | **HEALTHY** | 299 runs, exit 0 — not part of the "zombie" family the ledger described at all. |
 
-**Matrix for operator decision**: 2 of 5 labels are genuinely healthy zombies-in-name-only
-(oauth-watchdog, lease-watchdog); 1 is healthy-and-working-as-designed (gc.weekly, separate
-`--apply` decision pending); 1 has a precise, low-risk, single-line fix identified but withheld
-per lane-scope fence (renderer); 1 has an undetermined trigger mechanism worth a follow-up look
-(apply). The lane is NOT uniformly dead — the ledger's framing ("legacy Canva lane zombies") was
-accurate for only 1 of 5 labels at write time (renderer), and even that one is a known, fixable
-1-liner, not architectural debt.
+**Matrix for operator decision**: of the 5 labels found this session, 2 (`canva-gc.weekly`,
+`canva-lease-watchdog`) were NOT named in the original ledger line ~47 — the ledger's own
+denominator was 3 labels (`canva-oauth-watchdog`, `canva-renderer`, `canva-apply`), not 5; these 2
+extra labels surfaced only from this session's broader sweep and don't count as the ledger's claim
+being partially wrong. Against the original 3: `canva-oauth-watchdog` is now HEALTHY (fixed
+2026-07-07, per the ledger's own note); `canva-renderer` is ACTIVELY FAILING with a known 1-line
+fix (withheld per lane-scope fence); `canva-apply` has an undetermined trigger mechanism, not
+confirmed dead or alive. The lane is NOT uniformly dead, but it is also not resolved — 1 of the
+original 3 is a live, unfixed failure (renderer) and 1 is unverified (apply); only 1 of 3
+(oauth-watchdog) is confirmed healthy.
 
 ## Fleet alignment status
 
@@ -293,3 +308,23 @@ Ledger line ~47 (Canva) stays OPEN as an evidence-only update — replace with t
 - Live on Mini: `~/Library/LaunchAgents/com.nuzantara.fly-pg-tunnel.plist` +
   `.local.plist` moved to `~/Library/LaunchAgents/.retired-20260711/`
 - PR: https://github.com/Balizero1987/Teman2/pull/2263 (auto-merge armed)
+
+## Adversarial review
+
+Seat gpt-5.5 (Codex CLI, fresh context) — 2026-07-12. Verdict as returned: **REFUTED** (5 findings).
+
+- "All six closed-or-decided" → **CONFIRMED**. Fixed: the opening summary now states the mixed
+  per-item outcome (3 closed, 1 canon-shipped-pending-sync, 2 open by design) instead of a blanket claim.
+- "W89 DONE/closed" → **CONFIRMED**. Fixed: §2 header reworded to "canon promoted (PR #2263) — HOME
+  sync + run-log proof pending (PENDING-ALIGN:Pro)", matching the section's own PENDING-ALIGN note.
+- "3436 client documents silently lost" → **CONFIRMED**. Fixed: reworded to state the log proves
+  3436 superseded-proposal rows, not document loss or document type, with verification against
+  current `intake_queue` state flagged as the open question.
+- "Nothing currently consumes NER output" → **CONFIRMED**. Fixed: narrowed to name exactly what was
+  checked (one archived `kg-linker` plist copy) and flagged that `com.matagaruda.kg-linker.plist`
+  and `com.matagaruda.ner.adaptive.plist` remain in repo canon unchecked this session — status
+  now "unverified", not "confirmed-absent".
+- "Canva zombie framing accurate for only 1 of 5" → **CONFIRMED**. Fixed: the original ledger line
+  ~47 named 3 labels, not 5 — the 2 extra healthy labels were discovered by this session's own
+  broader sweep. Denominator corrected to the original 3 (oauth-watchdog fixed, renderer failing,
+  apply undetermined).
