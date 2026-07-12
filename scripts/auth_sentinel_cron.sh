@@ -36,9 +36,12 @@ heartbeat() {
 # unset ANTHROPIC_API_KEY: il probe claude usa il CLI OAuth, mai la key a pagamento
 unset ANTHROPIC_API_KEY 2>/dev/null || true
 
-# PATH esteso: i CLI (agy/codex/nlm/fly) vivono in ~/.local/bin e homebrew — in
-# env launchd il PATH è minimale, senza questo i probe darebbero SKIP/NOT_FOUND.
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+# PATH esteso: i CLI (agy/codex/nlm/fly/claude/node) vivono in ~/.local/bin,
+# ~/.local/share/mise/shims (mise = version-manager Node/Python, i binari REALI
+# come `claude`/`node`/`npm` sono link lì dentro) e homebrew — in env launchd il
+# PATH è minimale, senza questo i probe darebbero SKIP/NOT_FOUND (verificato in
+# prod 2026-07-12: claude-oauth→NOT_FOUND, codex→"node: No such file").
+export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 echo "[$(ts)] auth-sentinel tick start" >> "$LOG"
 if [ ! -f "$REPO/scripts/auth_sentinel.py" ]; then
