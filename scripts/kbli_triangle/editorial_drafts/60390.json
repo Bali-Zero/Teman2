@@ -1,0 +1,27 @@
+{
+  "code": "60390",
+  "editorial": {
+    "headline": "KBLI 60390: Open Nationally, Closed to PMA Registration in Bali",
+    "standfirst": "Indonesia permits full foreign ownership of this platform activity nationally, but Bali’s permanent moratorium blocks PMA registration for it today.",
+    "body": "A foreign investor cannot register this activity in Bali today. That is the practical starting point for KBLI 60390, even though the activity is nationally open to foreign investment with a 100% foreign-ownership ceiling. Bali blocks it because, at the large-business scale, its OSS risk classification is Low or Medium-Low across the activity’s scope, placing it inside the province-wide, permanent moratorium on PMA registration for those risk categories.\n\nThe activity itself concerns the operation of social-networking sites and other platforms for distributing or sharing content and information. Its scope includes blog and wiki sites, online-game sites, and the provision of downloadable e-books where that provision is not connected to publishing activity. It also reaches intermediary services for the trade of digital goods used in video games when those services are not related to publishing: a platform or digital marketplace may facilitate the sale of vouchers, credits, in-game items, or premium access. The common thread is the platform’s role in distributing content, information, access, or digital game goods.\n\nThis is an activity open to businesses at every stated scale: Mikro, Kecil, Menengah, and Besar. Nationally, that openness is clear: the PMA status is TERBUKA, and the permitted foreign stake is 100%. A founder assessing the code at the national level can therefore read it as fully foreign-open, with the source recorded as Perpres 10/2021, 49/2021. But that national position does not settle the Bali question. The provincial rule applies island-wide and permanently to PMA registration for all Low and Medium-Low risk KBLI activities.\n\nFor Bali, the decisive fact is not a lower foreign-ownership percentage or a partnership condition. It is a registration block. The record identifies the Bali status as BLOCCATO_CLASSE_RISCHIO and ties it directly to the moratorium, dated May 2026, because the relevant OSS risk at the Besar scale is Low or Medium-Low throughout the scope. The result is stark but precise: full foreign ownership is available nationally for this activity, while PMA registration in Bali is blocked today. Founders should keep those two truths separate rather than treating a nationally open status as an automatic route to a Bali registration.",
+    "pullQuote": "Full foreign ownership is available nationally for this activity, while PMA registration in Bali is blocked today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

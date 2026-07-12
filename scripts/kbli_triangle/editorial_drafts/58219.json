@@ -1,0 +1,27 @@
+{
+  "code": "58219",
+  "editorial": {
+    "headline": "Publishing Video Games: Open Nationally, Scope-Dependent in Bali",
+    "standfirst": "KBLI 58219 covers the publishing and related intermediation of ready-to-run video-game software, with full national foreign ownership—but a Bali PMA registration depends on the exact risk scope declared.",
+    "body": "KBLI 58219 is for publishing other video-game software that is ready to operate across operating-system platforms and devices. Its remit also includes intermediary services for that publishing activity, including games designed to be played offline. In practical terms, this is a publishing classification: it concerns bringing game software to market, as well as the stated intermediation surrounding its publication.\n\nThe activity is open at every listed business scale: micro, small, medium and large. Nationally, it is classified as open to foreign investment, with a foreign-ownership ceiling of 100%. That is a clear national position, grounded in the cited presidential regulations. It means the ownership question is not, at the national level, a partial-stake equation for this activity.\n\nBali requires a more exact reading. The provincial rule permanently blocks PMA registration for all low- and medium-low-risk KBLI activities across the island. Yet this record does not treat the activity as simply blocked: its Bali status depends on scope. Some scopes at the large-business scale carry low OSS risk, while others carry a higher risk. PMA registration in Bali is available only where the higher-risk scope is declared.\n\nThat distinction is the central compliance fact. A national 100% foreign-ownership ceiling does not by itself settle a Bali filing. The proposed activity must be matched to its precise scope and checked in the live OSS system before registration, because the applicable result turns on the declared scope’s risk classification. For founders, the disciplined reading is neither automatic permission nor a blanket prohibition: national openness remains real, while Bali registration is contingent on the exact higher-risk scope being declared.",
+    "pullQuote": "National openness remains real, while Bali registration is contingent on the exact higher-risk scope being declared.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

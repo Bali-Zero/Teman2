@@ -1,0 +1,27 @@
+{
+  "code": "60103",
+  "editorial": {
+    "headline": "On-Demand Audio Has a Clear Place in Indonesia’s Business Map",
+    "standfirst": "KBLI 60103 covers the businesses bringing music, podcasts, audiobooks and other digital audio to listeners on demand.",
+    "body": "Audio on demand is now a distribution business in its own right, and KBLI 60103 gives it a precise home. It covers the operation of services that deliver audio when the listener chooses: music streaming, audio podcasts, audiobooks, digital downloads and digital audio distribution. The catalogue may belong to third parties or be original material produced by the operator. The commercial model is equally broad within the stated scope, accommodating subscription-based delivery as well as advertising-funded services. The defining feature is the organised provision of digital audio on demand.\n\nThe activity is open at every stated business scale: Mikro, Kecil, Menengah and Besar. That breadth is significant because the code does not reserve this field for a particular size of operator. A small team curating a focused audio catalogue and a larger platform managing extensive distribution can each sit within the same activity description, provided the business being registered is the delivery and distribution of on-demand digital audio. The code recognises both the service layer and the commercial infrastructure behind it.\n\nNationally, the position for foreign investment is direct. The activity is listed as TERBUKA, with a foreign-ownership ceiling of 100%. In plain terms, the national record permits full foreign ownership for this activity. That openness is grounded in the stated PMA source, rather than an informal reading of the market. For founders considering a foreign-owned structure, this is the central national fact: the activity is open, and the recorded ceiling is complete foreign ownership.\n\nBali requires a more local reading, but the record does not present a moratorium block here. Bali’s standing moratorium blocks PMA registration for Low and Medium-Low risk activities across the province on a permanent, island-wide basis. This activity is recorded in the medium-high/high risk range and is therefore not blocked by that moratorium. Its Bali status is `OK_or_HIGHER_RISK`; the remaining caution is practical and specific rather than a general prohibition: the address must be verified. The honest conclusion is that this activity remains open for PMA in Bali on the record provided, with address-level verification still part of the Bali picture.",
+    "pullQuote": "Nationally, KBLI 60103 permits full foreign ownership, while Bali does not block it under its PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
