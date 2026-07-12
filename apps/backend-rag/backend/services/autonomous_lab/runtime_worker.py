@@ -212,6 +212,22 @@ async def run_worker_once(
             message=commands,
         )
 
+    # The execution kill-switch is a worker-level gate, so refuse before any
+    # per-command planning. Planning resolves the verification binaries
+    # (pytest/npm) against the host; if it ran first, a disabled-execution
+    # invocation on a host that cannot resolve those binaries would be
+    # misreported as a command-policy refusal instead of "execution disabled".
+    if not config.execute_verification:
+        return await _fail_claimed_run(
+            conn,
+            state_store=state_store,
+            config=config,
+            run=run,
+            status=LabWorkerStatus.REFUSED,
+            commands=(),
+            message="verification execution disabled for runtime worker invocation",
+        )
+
     planned = _plan_commands(commands, config)
     if any(not result.allowed for result in planned):
         return await _fail_claimed_run(
@@ -222,17 +238,6 @@ async def run_worker_once(
             status=LabWorkerStatus.REFUSED,
             commands=tuple(planned),
             message="verification command refused by Autonomous Lab command policy",
-        )
-
-    if not config.execute_verification:
-        return await _fail_claimed_run(
-            conn,
-            state_store=state_store,
-            config=config,
-            run=run,
-            status=LabWorkerStatus.REFUSED,
-            commands=tuple(planned),
-            message="verification execution disabled for runtime worker invocation",
         )
 
     command_executor = executor or (
