@@ -10,7 +10,9 @@ Scope: ONLY @balizero0 own account. Competitor posts are scraped manually
 (see docs/runbooks/competitor-scrape-manual.md) because Graph API requires
 Business Manager linkage to each target.
 
-Token renewal: Meta long-lived tokens expire ~60 days. Watchdog TBD Task 30.
+Token renewal: Meta long-lived tokens expire ~60 days. Watchdog: Task 30,
+see `backend.services.measurer.ig_token_watchdog` (refresh gate + runbook
+`docs/runbooks/ig-token-watchdog.md`).
 """
 
 from __future__ import annotations
