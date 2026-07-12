@@ -1,15 +1,27 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import {
   ChatRecordingOverlay,
   ChatRecordingOverlayProps,
 } from "./ChatRecordingOverlay";
 
+// Mock useChatLocale
+vi.mock("@/hooks/useChatLocale", () => ({
+  useChatLocale: vi.fn(),
+}));
+
+import { useChatLocale } from "@/hooks/useChatLocale";
+
 describe("ChatRecordingOverlay", () => {
   const defaultProps: ChatRecordingOverlayProps = {
     isRecording: false,
     recordingTime: 0,
   };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useChatLocale).mockReturnValue("en");
+  });
 
   describe("Visibility", () => {
     it("should not render when not recording", () => {
@@ -22,6 +34,26 @@ describe("ChatRecordingOverlay", () => {
     it("should render when recording", () => {
       render(<ChatRecordingOverlay {...defaultProps} isRecording={true} />);
       expect(screen.getByText("Release to send")).toBeInTheDocument();
+    });
+  });
+
+  describe("Localization", () => {
+    it("renders in English", () => {
+      vi.mocked(useChatLocale).mockReturnValue("en");
+      render(<ChatRecordingOverlay isRecording={true} recordingTime={0} />);
+      expect(screen.getByText("Release to send")).toBeInTheDocument();
+    });
+
+    it("renders in Italian", () => {
+      vi.mocked(useChatLocale).mockReturnValue("it");
+      render(<ChatRecordingOverlay isRecording={true} recordingTime={0} />);
+      expect(screen.getByText("Rilascia per inviare")).toBeInTheDocument();
+    });
+
+    it("renders in Indonesian", () => {
+      vi.mocked(useChatLocale).mockReturnValue("id");
+      render(<ChatRecordingOverlay isRecording={true} recordingTime={0} />);
+      expect(screen.getByText("Lepaskan untuk mengirim")).toBeInTheDocument();
     });
   });
 

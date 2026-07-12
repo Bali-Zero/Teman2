@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
 import { HeaderWhatsAppCTA } from "@/components/funnel/HeaderWhatsAppCTA";
+import { MobileNav } from "@/app/v2/_components/MobileNav";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 
 export const metadata: Metadata = {
@@ -14,11 +15,14 @@ export default function TaxCalendarLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const navItems = getFunnelNavItems("tax");
+
   return (
     <div className="min-h-screen flex flex-col">
       <NavShell
         logo={<BZLogo variant="full" />}
-        items={getFunnelNavItems("tax")}
+        items={navItems}
+        slotAfter={<MobileNav items={navItems} />}
         actions={<HeaderWhatsAppCTA funnel="tax" />}
       />
       <SessionInit funnel="tax" />
