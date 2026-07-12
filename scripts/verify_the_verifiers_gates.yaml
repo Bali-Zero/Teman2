@@ -212,6 +212,22 @@ gates:
       files. Wired into .husky/pre-commit (so NOT a consumer-less W64 lint). First-
       level heuristic, easily evaded — value is raising the cost of the lazy cheat,
       NOT proving tests honest (the reliable layer is STRATO-5 human gate).
+      W95 (2026-07-13): async def tests are scanned too; async RH005 is warn-mode
+      (declared firebreak, 211-finding backlog in PENDING-ARMS) until triaged —
+      RH_ASYNC_STRICT=1 enforces.
+
+  - id: scar_W95_rh_linter_async
+    kind: scar_test
+    w_number: W95
+    target: scripts/test_lint_test_reward_hacking.py
+    note: >
+      Superscar #3, W95 (the guard-of-the-guards was itself over+under-matched):
+      guilt+innocence corpus for the anti-reward-hacking linter — async tests ARE
+      scanned (guilt: async assertless test fires RH005; innocence: async
+      pytest_asyncio fixture named test_* does not; warn-vs-strict severity
+      semantics; sync behavior untouched). Runs as a plain-python scar gate via
+      the pytest __main__ shim at file bottom; ALSO executed per-PR by
+      immune-enforcement.yml when linter paths change.
 
   # ----- FASE-4 gates (3-worker parallel fan-out, registry-serialized here) -----
   # The 3 worker PRs (#1175 guardrails_static, #1176 federation_parallelize,

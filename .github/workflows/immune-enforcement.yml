@@ -56,6 +56,8 @@ jobs:
               scripts/arsenal_probe.py|\
               scripts/check_adversarial_review.py|\
               scripts/jules_dispatch.py|\
+              scripts/lint_test_reward_hacking.py|\
+              scripts/test_lint_test_reward_hacking.py|\
               scripts/codex/codex-nightly-autofix-ci.sh|\
               scripts/tests/test_lint_home_fork.py|\
               scripts/tests/test_secrets_permissions_audit.py|\
@@ -93,7 +95,8 @@ jobs:
             scripts/tests/test_arsenal_probe.py \
             scripts/tests/test_adversarial_review_gate.py \
             scripts/tests/test_jules_dispatch.py \
-            scripts/tests/test_codex_autofix_selector.py ; do
+            scripts/tests/test_codex_autofix_selector.py \
+            scripts/test_lint_test_reward_hacking.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
               python -m pytest "$t" -q || fail=1
