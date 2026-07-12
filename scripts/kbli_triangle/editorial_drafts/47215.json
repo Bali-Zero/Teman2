@@ -1,0 +1,27 @@
+{
+  "code": "47215",
+  "editorial": {
+    "headline": "Fresh Fisheries Retail: Nationally Open, Blocked for PMA in Bali",
+    "standfirst": "Specialist retail of fresh shrimp, fish and squid, and seaweed is nationally open to PMA, but Bali’s permanent risk-based moratorium blocks PMA registration.",
+    "body": "A foreign investor cannot register this activity in Bali today. Nationally, however, it is marked open to PMA and carries a foreign-ownership ceiling of 100%. Those national fields establish the starting position, not the final Bali result. Bali’s island-wide, permanent moratorium blocks PMA registration for activities assessed Low or Medium-Low risk. In this case, OSS assesses every scope at the Large scale as Low or Medium-Low risk. The reason cites a Bali moratorium of May 2026, and the activity is classified BLOCCATO_CLASSE_RISCHIO. The Bali position is therefore a registration block, not a reduced local ownership ceiling.\n\nThe commercial subject is specialist retail trade in fishery products. The record gives the category a practical edge by naming fresh shrimp, fresh fish, fresh squid and seaweed. The distinction in its wording is useful: shrimp, fish and squid are identified as fresh, while seaweed is named separately. These examples explain the goods around which the retail activity is framed. The mode of business is equally clear: it is retail, and specialised retail. Read plainly, this is a focused trading activity for the stated fishery products.\n\nRegistration is open at Micro, Small, Medium and Large scale. This is a meaningful breadth: the activity is recognised across the complete range of scales listed in the record, from Mikro through Besar. The Bali reason, though, specifically identifies the Large-scale OSS assessment. It says that every scope there falls into the Low or Medium-Low risk category. That link between scale, risk and the provincial rule is the record’s explanation for the Bali block.\n\nFor a founder assessing a foreign-owned structure, the order of reading matters. First, the national entry is open and permits up to 100% foreign ownership. Then comes the Bali-specific constraint: the permanent moratorium applies island-wide to all activities within the recorded Low and Medium-Low risk condition for PMA. The figures do not conflict; they operate at different levels. National ownership may reach 100%, but a PMA applicant cannot register this activity in Bali while that permanent moratorium applies.",
+    "pullQuote": "National ownership may reach 100%, but a PMA applicant cannot register this activity in Bali while that permanent moratorium applies.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

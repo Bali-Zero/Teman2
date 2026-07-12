@@ -1,0 +1,27 @@
+{
+  "code": "47192",
+  "editorial": {
+    "headline": "Nationally Open Retail, but Off-Limits to PMA Registration in Bali",
+    "standfirst": "A mixed non-food retail activity open to all scales and 100% foreign ownership nationally—but unavailable for PMA registration in Bali.",
+    "body": "At its core, this is retail of a varied assortment of goods that are principally neither food, beverages nor tobacco, conducted other than through a self-service system. The stated scope names clothing, household furnishings, jewellery, children’s toys and cosmetics among the merchandise that may be brought together. These goods sit under a single management, which gives the activity its character: a mixed, integrated non-food retail offer rather than a shop defined by one narrow product line. The record also evokes a general-goods shop as an example, but the operative idea is the managed assortment of varied merchandise.\n\nWho can use the activity? The record opens it to Mikro, Kecil, Menengah and Besar enterprises. That is a complete scale range, from micro through large. It does not convert the classification into a different activity at each size: the subject remains the same integrated retail of varied, primarily non-food goods. The scale field establishes where registration is open; the scope sets the practical boundary, centred on the mixture of goods and the single management that brings it together.\n\nAt national level, the foreign-investment position is unusually straightforward. The activity is marked TERBUKA for PMA, and its maximum foreign ownership is 100%. In plain terms, national treatment allows a fully foreign-owned PMA registration for this activity. The record assigns that position to Perpres 10/2021, 49/2021. There is no lower national foreign-ownership cap to interpret: the stated national ceiling is 100%.\n\nBali is the decisive qualification—and it is not a softer local ownership limit. A foreign investor cannot register this activity as PMA in Bali today. At the Besar scale, the OSS risk is Low or Medium-Low across every scope, and the record says that this triggers Bali’s moratorium. The provincial rule blocks all Low and Medium-Low risk activities from PMA island-wide and permanently; the activity is therefore marked BLOCCATO_CLASSE_RISCHIO. The reason records the block in May 2026. The honest reading is that the national 100% ceiling remains the national position, while Bali’s PMA registration block governs the Bali outcome.",
+    "pullQuote": "Nationally open to 100% foreign ownership, the activity is nonetheless unavailable for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "47191",
+  "editorial": {
+    "headline": "A Self-Service Retail Format Open Nationally, but Blocked for PMA in Bali",
+    "standfirst": "This self-service, non-food retail activity is nationally open to full foreign ownership, yet Bali’s permanent risk-based PMA moratorium blocks registration there.",
+    "body": "This activity covers self-service retailing of a wide mix of goods that are principally not food, beverages or tobacco. Its natural setting is the department-store format: a customer moves through a broad assortment rather than a single specialised line. Clothing, furniture, jewellery, children’s toys, sporting equipment and cosmetics are among the goods identified in the scope. The defining feature is both the breadth of the merchandise and the self-service system through which it is sold.\n\nThe category is available across the stated business scales, from Mikro and Kecil through Menengah and Besar. In practical terms, it is the activity classification for a retailer operating that broad, self-service general-merchandise model. The scope does not narrow the business to one product family; it describes a retail operation whose main offer is a varied non-food assortment, with the department store offered as its clearest example.\n\nNationally, the PMA position is open, with a foreign-ownership ceiling of 100%. That is a clear national setting for foreign investment in the activity. Bali is the decisive exception. A foreigner cannot register this activity for PMA in Bali today, because its Bali status is blocked by risk class. At the Besar scale, every scope is assessed as Low or Medium-Low risk, bringing the activity within Bali’s island-wide, permanent moratorium on PMA registrations for Low and Medium-Low risk KBLI activities.\n\nThe distinction matters because the national foreign-ownership ceiling does not override the Bali restriction. The national record permits full foreign ownership; the Bali rule blocks PMA registration for this activity on the island. The moratorium identified in the record is dated May 13, 2026, and its stated reach is permanent. For a founder assessing this retail format, the honest conclusion is therefore twofold: the activity is nationally open to full foreign ownership, but unavailable for PMA registration in Bali under the recorded risk-based moratorium.",
+    "pullQuote": "The national record permits full foreign ownership; the Bali rule blocks PMA registration for this activity on the island.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

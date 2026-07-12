@@ -1,0 +1,27 @@
+{
+  "code": "47214",
+  "editorial": {
+    "headline": "Specialist Livestock-Product Retail: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "Specialist retail of milk, eggs, livestock meat and poultry is open to full foreign ownership nationally, but unavailable for PMA registration in Bali.",
+    "body": "KBLI 47214 covers specialised retail trade in livestock products: milk, eggs, livestock meat and poultry meat. Its focus is the sale of those products in a dedicated retail activity, not a broad claim over the wider food economy. The code therefore gives a clear commercial identity to a business built around these particular animal-derived goods, whether its offering centres on dairy, eggs, meat, poultry, or a combination of them.\n\nThe activity is open at every stated business scale: micro, small, medium and large. That breadth matters because the code does not reserve this retail activity for a single size of operator. The registrant is the business carrying out specialised retail sales of the listed livestock products, with the scale selected from the four available categories according to its own registration position.\n\nNationally, the PMA position is open. The maximum foreign ownership shown in the record is 100%, meaning the national framework permits full foreign ownership for this activity. The record cites Perpres 10/2021 and 49/2021 as the PMA source. For a founder assessing the national position alone, this is an activity whose foreign-ownership ceiling does not require a local shareholding.\n\nBali produces a different answer. A foreign investor cannot register this activity as PMA in Bali today. At the large-business scale, the OSS risk classification is Low or Medium-Low across every scope, and Bali's island-wide, permanent moratorium blocks all Low and Medium-Low risk KBLI activities from PMA registration. The Bali status is therefore a risk-class block: national openness and a 100% foreign-ownership ceiling do not override the province's PMA moratorium.",
+    "pullQuote": "National openness and a 100% foreign-ownership ceiling do not override Bali's PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      },
+      {
+        "label": "Bali PMA rule",
+        "value": "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)"
+      }
+    ]
+  }
+}

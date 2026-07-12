@@ -1,0 +1,27 @@
+{
+  "code": "46902",
+  "editorial": {
+    "headline": "Traditional Wholesale Is Open Nationally but Blocked for PMA in Bali",
+    "standfirst": "A traditional, negotiation-led general wholesale activity open nationally to PMA at 100%, yet blocked for PMA registration across Bali under its permanent risk-based moratorium.",
+    "body": "KBLI 46902 is the general, non-specialist wholesale activity for a broad assortment of goods when the business does not use a self-service system. The operative picture is traditional wholesale, where prices are generally settled through negotiation. That is the centre of gravity of the activity: wholesale trade in varied goods, rather than a format defined by a particular specialism or by self-service. The scope expressly points to traditional wholesalers and traditional wholesale warehouses, grounding the activity in a conventional bargaining-led wholesale setting.\n\nEligibility is broad by business scale. The record opens the activity to Mikro, Kecil, Menengah, and Besar operators, so its formal scale coverage runs from micro through large business. Its goods description remains equally broad: various goods may be traded wholesale without a specified specialisation, provided the system is not self-service. Taken together, those points make the activity legible: it is defined by the general character of its wholesale trade and its traditional transaction format, while remaining available at every listed scale.\n\nNationally, the PMA position is TERBUKA, with a foreign-ownership ceiling of 100% under Perpres 10/2021, 49/2021. That national position should be read exactly as recorded: foreign investment is open at the national level. Bali produces a different practical conclusion. A foreigner cannot register this activity through PMA in Bali today. The Bali status is BLOCCATO_CLASSE_RISCHIO, and the stated reason is that, at Besar scale, OSS risk is Low or Medium-Low across every scope. The Bali moratorium dated 13 May 2026 blocks all Low and Medium-Low risk KBLI from PMA, island-wide and permanently.\n\nThe result is a clean jurisdictional split, not a partial Bali ownership cap. The only foreign-ownership figure in the record is the national ceiling of 100%; Bali’s conclusion is instead a block on PMA registration based on the stated moratorium. The national ceiling therefore does not create a Bali registration route for this activity.",
+    "pullQuote": "The national 100% ceiling is not a Bali permission: for this code, the Bali PMA route is blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
