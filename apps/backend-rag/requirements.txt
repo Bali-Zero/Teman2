@@ -149,7 +149,7 @@ pdfminer.six>=20251107  # Match pdfplumber requirement
 python-docx>=1.1.0
 
 # Protocol Buffers - Pin to 5.x (compatible with OTEL + Google packages)
-protobuf>=5.27.0,<6.0.0
+protobuf>=7.35.1,<8.0.0
 
 # XML/HTML Processing - UPGRADED
 lxml>=6.1.1  # Required by trafilatura, htmldate
