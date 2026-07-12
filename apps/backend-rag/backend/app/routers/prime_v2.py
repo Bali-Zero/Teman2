@@ -9,14 +9,26 @@ Layer 3: GET  /intelligence — CRM overlay in bounding box (< 3s)   [Sprint 4]
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from backend.app.dependencies import get_current_user
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.core.cache import invalidate_cache
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/prime/v2", tags=["prime-nexus"])
+
+
+def _require_proposal_admin(user: dict[str, Any]) -> None:
+    """Gate proposal creation to admins. Raises 403 otherwise.
+
+    Proposals are shareable investment deal-flow tokens (Case OS R3) — an
+    authenticated team member is not a sufficient principal.
+    """
+    if not is_crm_admin(user):
+        raise HTTPException(status_code=403, detail="admin required")
 
 
 # ── Request/Response Models ──────────────────────────────────────────
@@ -260,12 +272,17 @@ class CreateProposalRequest(BaseModel):
 
 
 @router.post("/proposal")
-async def create_proposal(req: CreateProposalRequest, request: Request) -> dict[str, Any]:
+async def create_proposal(
+    req: CreateProposalRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
     """
     Create a shareable investment proposal from Prime analysis.
 
     Requires admin authentication. Returns a token for public sharing.
     """
+    _require_proposal_admin(current_user)
     service = _get_service(request)
     result = await service.create_proposal(
         lat=req.lat,

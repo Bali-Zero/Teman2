@@ -9,7 +9,10 @@ import os
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+
+from backend.app.dependencies import get_current_user
+from backend.app.utils.crm_utils import is_crm_admin
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +141,17 @@ def _infer_type(filename: str) -> str:
 
 
 router = APIRouter(prefix="/api/admin/drive", tags=["admin"])
+
+
+def _require_backfill_admin(user: dict[str, Any]) -> None:
+    """Gate the Drive backfill trigger to admins. Raises 403 otherwise.
+
+    Backfill writes new rows into the shared `documents` table for every
+    client Drive folder scanned; it is a bulk mutation, not a read-only
+    status check, so it must not be reachable by any authenticated caller.
+    """
+    if not is_crm_admin(user):
+        raise HTTPException(status_code=403, detail="admin required")
 
 
 def _env_flag(name: str, *, default: bool = False) -> bool:
@@ -460,12 +474,15 @@ async def trigger_drive_poll(request: Request) -> dict[str, Any]:
 async def backfill_drive_documents(
     request: Request,
     background_tasks: BackgroundTasks,
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """One-time backfill: scan all client Drive folders and register schema-compliant files.
 
     Runs in background. Only adds files NOT already in the documents table.
     Skips generic files (surat kuasa, WhatsApp images, agus.pdf, etc.).
     """
+    _require_backfill_admin(current_user)
+
     import asyncpg
 
     from backend.services.integrations.service_account_drive_service import (
