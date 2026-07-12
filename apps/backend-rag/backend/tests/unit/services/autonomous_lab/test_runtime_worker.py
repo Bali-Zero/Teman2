@@ -112,14 +112,28 @@ def _run_record(target_paths: tuple[str, ...]) -> LabRunRecord:
     )
 
 
-def _config(*, execute_verification: bool = True) -> LabWorkerConfig:
+def _config(
+    *, execute_verification: bool = True, backend_root: Path | None = None
+) -> LabWorkerConfig:
     repo_root = Path(__file__).resolve().parents[7]
     return LabWorkerConfig(
         worker_id="worker-test",
         repo_root=repo_root,
-        backend_root=repo_root / "apps" / "backend-rag",
+        backend_root=backend_root or (repo_root / "apps" / "backend-rag"),
         execute_verification=execute_verification,
     )
+
+
+def _backend_root_with_stub_pytest(tmp_path: Path) -> Path:
+    """A backend_root whose `.venv/bin/pytest` exists so `plan_for_allowlisted_command`
+    can resolve the pytest verification command hermetically — independent of whether
+    the host running the tests has a project `.venv` (CI runners do not). The stub is
+    never executed: these tests inject a mock command executor."""
+    stub = tmp_path / ".venv" / "bin" / "pytest"
+    stub.parent.mkdir(parents=True, exist_ok=True)
+    stub.write_text("#!/bin/sh\nexit 0\n")
+    stub.chmod(0o755)
+    return tmp_path
 
 
 @pytest.mark.asyncio
@@ -182,7 +196,7 @@ async def test_worker_requires_execution_enabled_after_claim() -> None:
 
 
 @pytest.mark.asyncio
-async def test_worker_executes_allowlisted_commands_and_marks_success() -> None:
+async def test_worker_executes_allowlisted_commands_and_marks_success(tmp_path: Path) -> None:
     store = FakeStore(
         _run_record(("apps/backend-rag/backend/services/autonomous_lab/runtime_worker.py",))
     )
@@ -202,7 +216,7 @@ async def test_worker_executes_allowlisted_commands_and_marks_success() -> None:
 
     result = await run_worker_once(
         FakeConn(),
-        config=_config(),
+        config=_config(backend_root=_backend_root_with_stub_pytest(tmp_path)),
         store=store,
         executor=executor,
     )
@@ -219,7 +233,7 @@ async def test_worker_executes_allowlisted_commands_and_marks_success() -> None:
 
 
 @pytest.mark.asyncio
-async def test_worker_marks_failed_when_allowlisted_command_fails() -> None:
+async def test_worker_marks_failed_when_allowlisted_command_fails(tmp_path: Path) -> None:
     store = FakeStore(
         _run_record(("apps/backend-rag/backend/services/autonomous_lab/runtime_worker.py",))
     )
@@ -236,7 +250,7 @@ async def test_worker_marks_failed_when_allowlisted_command_fails() -> None:
 
     result = await run_worker_once(
         FakeConn(),
-        config=_config(),
+        config=_config(backend_root=_backend_root_with_stub_pytest(tmp_path)),
         store=store,
         executor=executor,
     )
