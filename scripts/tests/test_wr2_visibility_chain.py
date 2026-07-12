@@ -67,7 +67,7 @@ def test_persist_local_artifacts_copies_and_writes_meta(tmp_path):
     assert all(p.exists() for p in pngs)
 
 
-def test_queue_append_and_dedup(tmp_path):
+def test_queue_append_and_exact_id_dedup(tmp_path):
     qp = tmp_path / "queue" / "human-review-queue.json"
     entry = html._make_queue_entry(
         draft_id="d1", topic="A Topic", carousel_dir=tmp_path / "car",
@@ -79,10 +79,97 @@ def test_queue_append_and_dedup(tmp_path):
     assert entry["critic_overall_verdict"] == "pass"
 
     assert html._append_review_queue(entry, queue_path=qp) is True
-    # same draft again (re-render) → dedup skip, still one item
-    assert html._append_review_queue(dict(entry, id="other-id"), queue_path=qp) is False
+    # SAME render batch re-applied (identical id) → pure dup, skip
+    assert html._append_review_queue(dict(entry), queue_path=qp) is False
     queue = json.loads(qp.read_text())
     assert len(queue) == 1 and queue[0]["draft_id"] == "d1"
+
+
+def test_queue_rerender_repoints_drafted_entry_in_place(tmp_path):
+    """GUILT (W82 exist-not-content): before the repoint existed, a re-rendered
+    draft kept its queue entry pointed at the OLD slides_dir forever."""
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    first = html._make_queue_entry(
+        draft_id="d1", topic="A Topic", carousel_dir=tmp_path / "car-old",
+        drive_url="https://drive/old", slide_count=5, weak_count=2,
+        fact_check_status="degraded", drafted_at="2026-07-07T12:00:00Z",
+    )
+    assert html._append_review_queue(first, queue_path=qp) is True
+    # re-render: same draft, NEW batch (new drafted_at → new id), fresh artifacts
+    second = html._make_queue_entry(
+        draft_id="d1", topic="A Topic", carousel_dir=tmp_path / "car-new",
+        drive_url="https://drive/new", slide_count=6, weak_count=0,
+        fact_check_status="pass", drafted_at="2026-07-08T09:00:00Z",
+    )
+    assert second["id"] != first["id"]
+    assert html._append_review_queue(second, queue_path=qp) is True
+    queue = json.loads(qp.read_text())
+    assert len(queue) == 1  # never double-queued
+    item = queue[0]
+    # identity survives (ref_code stability): id + drafted_at are the ORIGINAL ones
+    assert item["id"] == first["id"]
+    assert item["drafted_at"] == "2026-07-07T12:00:00Z"
+    # content repointed to the fresh render
+    assert item["slides_dir"] == str(tmp_path / "car-new" / "slides")
+    assert item["carousel_path"] == str(tmp_path / "car-new")
+    assert item["drive_url"] == "https://drive/new"
+    assert item["slide_count"] == 6
+    assert item["critic_overall_verdict"] == "pass"
+    # breadcrumb: the repoint is visible in state_history
+    assert item["state_history"][-1]["by"] == "wr2-html-apply-rerender"
+    assert item["state_history"][-1]["at"] == "2026-07-08T09:00:00Z"
+    assert len(item["state_history"]) == 2
+
+
+def test_queue_rejected_entry_repoints_and_resets_to_drafted(tmp_path):
+    """GUILT (Codex 2026-07-13): rejected/needs-edit/reviewed are PRE-publish —
+    a re-render after a rejection must repoint AND go back through review;
+    equating them to published would strand the corrected carousel."""
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    rejected = html._make_queue_entry(
+        draft_id="d1", topic="A Topic", carousel_dir=tmp_path / "car-old",
+        drive_url="https://drive/old", slide_count=5, weak_count=0,
+        fact_check_status="pass", drafted_at="2026-07-07T12:00:00Z",
+    )
+    rejected["state"] = "rejected"
+    qp.parent.mkdir(parents=True, exist_ok=True)
+    qp.write_text(json.dumps([rejected]))
+    second = html._make_queue_entry(
+        draft_id="d1", topic="A Topic", carousel_dir=tmp_path / "car-new",
+        drive_url="https://drive/new", slide_count=6, weak_count=0,
+        fact_check_status="pass", drafted_at="2026-07-08T09:00:00Z",
+    )
+    assert html._append_review_queue(second, queue_path=qp) is True
+    queue = json.loads(qp.read_text())
+    assert len(queue) == 1
+    item = queue[0]
+    assert item["state"] == "drafted"  # re-enters review — old verdict is void
+    assert item["slides_dir"] == str(tmp_path / "car-new" / "slides")
+    assert item["id"] == rejected["id"]
+
+
+def test_queue_published_entry_is_never_repointed(tmp_path):
+    """INNOCENCE: published history is immutable — a re-render of an already
+    published draft must not rewrite what went live."""
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    published = html._make_queue_entry(
+        draft_id="d1", topic="A Topic", carousel_dir=tmp_path / "car-old",
+        drive_url="https://drive/old", slide_count=5, weak_count=0,
+        fact_check_status="pass", drafted_at="2026-07-07T12:00:00Z",
+    )
+    published["state"] = "published"
+    qp.parent.mkdir(parents=True, exist_ok=True)
+    qp.write_text(json.dumps([published]))
+    second = html._make_queue_entry(
+        draft_id="d1", topic="A Topic", carousel_dir=tmp_path / "car-new",
+        drive_url="https://drive/new", slide_count=6, weak_count=0,
+        fact_check_status="pass", drafted_at="2026-07-08T09:00:00Z",
+    )
+    assert html._append_review_queue(second, queue_path=qp) is False
+    queue = json.loads(qp.read_text())
+    assert len(queue) == 1
+    assert queue[0]["drive_url"] == "https://drive/old"
+    assert queue[0]["slides_dir"] == str(tmp_path / "car-old" / "slides")
 
 
 def test_queue_appends_preserve_existing_items(tmp_path):
@@ -107,7 +194,7 @@ def test_corrupt_queue_is_refused_not_rebuilt(tmp_path):
         slide_count=1, weak_count=0, fact_check_status="pass",
         drafted_at="2026-07-07T14:00:00Z",
     )
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):  # json.JSONDecodeError is a ValueError
         html._append_review_queue(entry, queue_path=qp)
     # the corrupt file was NOT clobbered
     assert qp.read_text() == "{not json"
