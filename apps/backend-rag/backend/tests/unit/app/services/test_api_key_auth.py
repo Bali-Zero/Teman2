@@ -139,18 +139,22 @@ class TestRoleByIdentityNotSpelling:
         assert auth.valid_keys["ci-deploy-key"]["role"] == "admin"
         assert auth.valid_keys["ci-deploy-key"]["permissions"] == ["*"]
 
-    def test_legacy_admin_keys_preserved_until_rotated(self):
-        """INNOCENCE: the two exposed legacy keys stay admin so deploying this
-        fix does not break the internal services that already send them."""
+    def test_rotated_legacy_keys_are_plain_user_now(self):
+        """GUILT (post-rotation regression): `zantara-secret-2024` and
+        `admin-key-2024` were rotated + revoked in prod 2026-07-12 (#2296) —
+        the exit-ramp allowlist is now empty, so if either string is ever
+        resubmitted (e.g. an old client retrying a cached header) it must
+        resolve to plain user, never admin by leftover identity."""
         auth = self._auth("zantara-secret-2024,admin-key-2024")
-        assert auth.valid_keys["zantara-secret-2024"]["role"] == "admin"
-        assert auth.valid_keys["admin-key-2024"]["role"] == "admin"
+        assert auth.valid_keys["zantara-secret-2024"]["role"] == "user"
+        assert auth.valid_keys["admin-key-2024"]["role"] == "user"
 
-    def test_explicit_map_can_demote_a_legacy_key_post_rotation(self):
-        """The exit ramp: once rotated, the map demotes the old key to user."""
+    def test_explicit_map_still_grants_admin_post_rotation(self):
+        """INNOCENCE: the sanctioned replacement key is still declarable via
+        the map even with the legacy allowlist empty."""
         auth = self._auth(
             "zantara-secret-2024,new-admin",
-            role_map="new-admin:admin,zantara-secret-2024:user",
+            role_map="new-admin:admin",
         )
         assert auth.valid_keys["new-admin"]["role"] == "admin"
         assert auth.valid_keys["zantara-secret-2024"]["role"] == "user"

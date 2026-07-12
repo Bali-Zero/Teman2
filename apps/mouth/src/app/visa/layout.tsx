@@ -2,6 +2,7 @@ import { Montserrat } from "next/font/google";
 import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
 import { HeaderWhatsAppCTA } from "@/components/funnel/HeaderWhatsAppCTA";
+import { MobileNav } from "@/app/v2/_components/MobileNav";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 
 const montserrat = Montserrat({
@@ -16,6 +17,8 @@ export default function VisaLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const navItems = getFunnelNavItems("visa");
+
   return (
     <div
       className={`${montserrat.variable} relative z-1`}
@@ -25,7 +28,8 @@ export default function VisaLayout({
     >
       <NavShell
         logo={<BZLogo variant="full" />}
-        items={getFunnelNavItems("visa")}
+        items={navItems}
+        slotAfter={<MobileNav items={navItems} />}
         actions={<HeaderWhatsAppCTA funnel="visa" />}
       />
       <SessionInit funnel="visa" />
