@@ -2,6 +2,7 @@
 date: 2026-06-28
 domain: backend-rag
 client_case: none
+adversarial_review: exempt-pre-gate-panel-reviewed # salvaged orphan (2026-07-12 harvest); 4-seat panel review predates the R1 gate — see `reviewers:` below
 status: SPEC V2 - panel-reviewed, awaiting implementation
 author: Codex on Air-M5
 reviewers:

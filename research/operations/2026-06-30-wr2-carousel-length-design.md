@@ -2,6 +2,7 @@
 date: 2026-06-30
 domain: operations
 client_case: WR2-pipeline
+adversarial_review: exempt-salvaged-orphan-2026-07-12 # historical artifact preserved by fleet-cleanup harvest, already flagged partial/UNVERIFIED below
 partial: true   # DeepSeek tier unavailable (insufficient balance); named editorial-account lengths UNVERIFIED
 sources:
   - https://www.socialinsider.io/blog/instagram-carousel/
