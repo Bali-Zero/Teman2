@@ -1,7 +1,19 @@
+"use client";
+
+import { useChatLocale } from "@/hooks/useChatLocale";
+
 export interface ChatRecordingOverlayProps {
   isRecording: boolean;
   recordingTime: number;
 }
+
+const LABELS = {
+  en: "Release to send",
+  it: "Rilascia per inviare",
+  id: "Lepaskan untuk mengirim",
+  fr: "Relâcher pour envoyer",
+  ru: "Отпустите для отправки",
+} as const;
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -13,6 +25,9 @@ export function ChatRecordingOverlay({
   isRecording,
   recordingTime,
 }: ChatRecordingOverlayProps) {
+  const locale = useChatLocale();
+  const label = LABELS[locale as keyof typeof LABELS] || LABELS.en;
+
   if (!isRecording) {
     return null;
   }
@@ -25,7 +40,7 @@ export function ChatRecordingOverlay({
     >
       <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
       {formatTime(recordingTime)}
-      <span className="ml-2 opacity-50 text-[10px]">Release to send</span>
+      <span className="ml-2 opacity-50 text-[10px]">{label}</span>
     </div>
   );
 }

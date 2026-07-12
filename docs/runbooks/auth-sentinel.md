@@ -18,16 +18,16 @@ gesto raro con comando pronto; TCC diagnosi + click esatto (mai `tccutil reset`)
 
 ## Le due famiglie + TCC
 
-| Arma | Famiglia | Refresh | Login umano? |
-|---|---|---|---|
-| claude-oauth ×3 | A | ✅ refresh_token (il probe forza il refresh) | solo weekly-cap |
-| fly | A | ✅ token lungo; **serve `-t` esplicito nei wrapper cron** (regression 0.4.49) | no |
-| deepseek | A | ✅ chiave statica | no |
-| drive-oauth | A | ✅ delegato a `drive_token_watchdog.py` | 1×/90gg |
-| codex | B | ⚠️ refresh ok, ma revocabile server-side | solo se `token_revoked` |
-| agy | B | ⚠️ sessione Antigravity/Google | solo se muore |
-| nlm | B | ⚠️ CDP cookies volatili (`--clear` una-tantum) | solo dopo `--clear` |
-| **tcc** | B-hard | ❌ grant OS-level, **non automatizzabile** | sì, System Settings |
+| Arma            | Famiglia | Refresh                                                                       | Login umano?            |
+| --------------- | -------- | ----------------------------------------------------------------------------- | ----------------------- |
+| claude-oauth ×3 | A        | ✅ refresh_token (il probe forza il refresh)                                  | solo weekly-cap         |
+| fly             | A        | ✅ token lungo; **serve `-t` esplicito nei wrapper cron** (regression 0.4.49) | no                      |
+| deepseek        | A        | ✅ chiave statica                                                             | no                      |
+| drive-oauth     | A        | ✅ delegato a `drive_token_watchdog.py`                                       | 1×/90gg                 |
+| codex           | B        | ⚠️ refresh ok, ma revocabile server-side                                      | solo se `token_revoked` |
+| agy             | B        | ⚠️ sessione Antigravity/Google                                                | solo se muore           |
+| nlm             | B        | ⚠️ CDP cookies volatili (`--clear` una-tantum)                                | solo dopo `--clear`     |
+| **tcc**         | B-hard   | ❌ grant OS-level, **non automatizzabile**                                    | sì, System Settings     |
 
 ## Uso
 
@@ -75,6 +75,7 @@ debug di mezz'ora.
 ## Anti-falso-positivo (perché credere agli alert)
 
 Ogni probe è stato tarato contro un caso sano reale il 2026-07-11:
+
 - **fly** OK senza `-t` in shell interattivo → non promuovere ACTION se il probe
   base passa; ACTION solo se il probe base fallisce E `-t` salva (= regression cron).
 - **codex** cold-start >60s → timeout 90s per non falsare TIMEOUT un seat vivo.
@@ -86,6 +87,7 @@ Ogni probe è stato tarato contro un caso sano reale il 2026-07-11:
 Una credenziale nuova = una funzione `probe_<arm>() -> Probe` + una riga in `PROBES`.
 Contratto: ritorna OK/WARN/ACTION/SKIP/UNKNOWN, mai legge/stampa il valore del
 segreto (solo exit-code + stringa d'errore nota), mai un comando distruttivo.
+
 ```
 
 ## Referenze
@@ -94,3 +96,4 @@ segreto (solo exit-code + stringa d'errore nota), mai un comando distruttivo.
 - `lessons_fly_cli_token_regression_cascade` · `runbook_nlm_auth_stability_fix`
 - `decision_max3_oauth_fallback_armed_fleet_2026_06_23` (i 3 token MAX)
 - alerting: `scripts/sentinel_lib/alerter.py` → `scripts/tg_notify.py` (relay ssh)
+```
