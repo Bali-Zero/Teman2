@@ -1,0 +1,27 @@
+{
+  "code": "47779",
+  "editorial": {
+    "headline": "Nationally Open, but Closed to PMA Registration in Bali",
+    "standfirst": "This retail activity may be wholly foreign-owned nationally, yet its risk classification closes it to PMA registration anywhere in Bali.",
+    "body": "Code 47779 is a retail classification for chemical materials, aromatic or freshening goods—including essential oils—and fuel other than motor-vehicle fuel. Its stated scope gives it a deliberately practical shelf: gelatin, thermal-insulation materials other than plastic and rubber, polishing materials, camphor and firewood are named examples. It also admits direct selling. That mixture matters. The activity is best understood through the retail transaction in those stated goods, rather than through a broad claim to every product that might be sold beside them. Its commercial identity comes from retailing the specified materials and articles, not from making, processing or transporting them.\n\nAt national level, the PMA position is unambiguous: it is open, with a 100% foreign-ownership ceiling. Registration is open at Mikro, Kecil, Menengah and Besar scale. For a founder, this is not a minor formatting point; it sets the national starting position. A business organised around the stated retail scope can be treated as a foreign-investment activity nationally without an equity cap below full foreign ownership appearing in this record. The scale list is equally broad: none of the recorded scales is excluded from the national opening. The code is clear on its national face, even though that clarity does not answer the place-specific question of Bali.\n\nBali reverses the practical answer for PMA registration. A foreigner cannot register this activity as PMA in Bali today. The record marks its Bali status as blocked by risk class and states why: at Besar scale, the OSS risk is Low or Medium-Low across every scope. Bali’s permanent, island-wide moratorium blocks PMA for all activities in those Low and Medium-Low risk bands; for this code, that rule is decisive. The moratorium is identified as a May 2026 measure. The distinction is essential: the national ceiling remains 100%, but it does not create a Bali route for PMA registration. The record gives a categorical Bali outcome—national openness, alongside a present Bali block for PMA.",
+    "pullQuote": "The national ceiling remains 100%, but it does not create a Bali route for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

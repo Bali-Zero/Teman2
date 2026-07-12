@@ -1,0 +1,27 @@
+{
+  "code": "47771",
+  "editorial": {
+    "headline": "Retail Kerosene: Nationally Open, but Not Registrable by PMA in Bali",
+    "standfirst": "Retail kerosene trade is nationally open to full foreign ownership, yet Bali’s registration structure closes the activity to PT PMA.",
+    "body": "Retail kerosene trade is exactly what this activity describes: the retail sale of kerosene. It is a retail-facing activity, defined by the product and the act of selling it at retail rather than by a broader supply-chain claim. That narrow definition matters. A registration under this activity should accurately describe a business carrying out retail kerosene trade, keeping the declared operation aligned with the scope recorded for it. The point is neither to stretch the label into a general energy business nor to attach duties that the record does not state; it is to read the activity for what it is: retailing kerosene.\n\nThe available operating scales are Mikro, Kecil, and Menengah. That scale listing gives the clearest view of the intended business population: operators undertaking this retail activity at those three sizes. It does not supply a separate Usaha Besar, or large-enterprise, row. For a founder, that is more consequential than a generic statement that an activity is open or closed, because the registration result is shaped both by the national investment setting and by the scale rows available in the system. The scope and scale need to be read together as one registration picture.\n\nNationally, the investment status is open, with a foreign-ownership ceiling of 100%. In national terms, that is an unambiguous opening: the record allows the maximum foreign stake of 100% for this activity. But that national signal does not translate into a PMA registration route in Bali. Bali’s status is closed to PMA because no large-enterprise scale is available. The stated reason is structural: OSS has no Usaha Besar scale row, and the activity is reserved for UMKM. A PT PMA is, by law, an Usaha Besar, so it cannot register this activity there.\n\nBali’s provincial setting reinforces the need to separate a national ownership ceiling from local registrability. Its permanent, island-wide moratorium blocks all low- and medium-low-risk KBLI for PMA. Whatever the national 100% ceiling conveys, it does not remove the Bali-side structural barrier recorded for this activity. The practical reading is direct: a foreign investor may see a nationally open activity, yet cannot register it through a PT PMA in Bali today. For Bali, the decisive fact is not the national ceiling alone, but the absence of the required large-enterprise registration row.",
+    "pullQuote": "A nationally open activity can still be unavailable for PT PMA registration in Bali when the required large-enterprise row does not exist.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open operating scales",
+        "value": "Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      },
+      {
+        "label": "Bali PMA rule",
+        "value": "Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "47761",
+  "editorial": {
+    "headline": "Cut Flowers, Florists and Bali’s PMA Line",
+    "standfirst": "This retail floristry activity is open nationally to full foreign ownership, but Bali’s permanent risk-based moratorium blocks PMA registration.",
+    "body": "KBLI 47761 covers the retail trade of cut flowers and florist activity, with direct sales also noted in its stated scope. It is a code for the point at which flowers are sold at retail: the commercial activity of offering cut flowers and floristry to customers. Its definition is concise, and that clarity matters. The code is concerned with retail trade in this field, rather than an implied wider chain of cultivation, processing or any other activity not stated in the record.\n\nThe activity is open across the full stated range of business scales: Mikro, Kecil, Menengah and Besar. That makes it a category available from the smallest enterprise scale through to large business. For a founder, this is the practical starting point: the scale of the enterprise does not, at the national level, remove the activity from the listed range open to it. The scope remains retail trade in cut flowers and florist activity; the scale describes the business category through which that activity may be registered.\n\nNationally, the PMA position is unequivocally open. Foreign ownership may reach 100%, under the cited Perpres 10/2021 and 49/2021 basis. There is no national foreign-share cap below full ownership in this record. But that national opening is not the whole registration picture for a business intended for Bali. For PMA, the decisive distinction is simple: national openness does not create a registration route in Bali.\n\nIn Bali, this activity is blocked for PMA registration. At the Besar scale, every scope is assessed in OSS as Rendah or Menengah-Rendah risk, placing the activity within Bali’s island-wide, permanent moratorium on PMA registration for Low and Medium-Low risk KBLI. The record identifies the Bali position as `BLOCCATO_CLASSE_RISCHIO`, and attributes the block to the moratorium of May 13, 2026. This is not a reduction in the national 100% foreign-ownership ceiling; it is a Bali-specific registration barrier. A founder can therefore read the position cleanly: the activity is nationally open to PMA with up to 100% foreign ownership, while a foreigner cannot register it as PMA in Bali today.",
+    "pullQuote": "For PMA, the decisive distinction is simple: national openness does not create a registration route in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "47773",
+  "editorial": {
+    "headline": "Chemical Retail Is Nationally Open, but Closed to PMA in Bali",
+    "standfirst": "This specialist chemical-retail activity is open to foreign investment nationally, yet Bali’s permanent PMA moratorium blocks its registration across the island.",
+    "body": "Retail trade in chemicals is a specialist activity: the sale of products such as caustic soda, soda ash, baking soda, ammonia, colourants and preservatives. Its scope is retail rather than production, and it sits outside direct selling. That distinction matters because the activity is defined by the commercial sale of chemical materials, not by making them or transforming them.\n\nThe activity is open at every listed business scale: Mikro, Kecil, Menengah and Besar. Nationally, it is TERBUKA to PMA registration, with a foreign-ownership ceiling of 100%. In plain terms, the national position permits full foreign ownership for a business registered under this activity, within the scope described.\n\nBali is the decisive exception. A foreigner cannot register this activity as PMA in Bali today. At the Besar scale, OSS risk is classified as Rendah or Menengah-Rendah across every scope, placing the activity within Bali’s island-wide moratorium on all Low and Medium-Low risk KBLI for PMA. The restriction has been in force since May 13, 2026, and the provincial rule describes it as permanent.\n\nThe result is not a contradiction in the national rule; it is a geographic limit on where that national openness can be used. The national framework allows a 100% foreign stake, while Bali’s risk-based PMA moratorium prevents registration of this activity on the island. For founders, the practical reading is direct: chemical retail may be nationally foreign-open, but Bali is not presently a place to establish it through PMA registration.",
+    "pullQuote": "Chemical retail may be nationally foreign-open, but Bali is not presently a place to establish it through PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

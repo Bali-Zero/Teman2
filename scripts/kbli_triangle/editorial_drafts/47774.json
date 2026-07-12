@@ -1,0 +1,27 @@
+{
+  "code": "47774",
+  "editorial": {
+    "headline": "Essential-Oil Retail Is Nationally Open, but Closed to PMA in Bali",
+    "standfirst": "Specialist retail of aromatic and refreshing essential oils spans every listed business scale, but Bali’s permanent moratorium blocks PMA registration despite a nationally open 100% ownership position.",
+    "body": "A foreign investor cannot register this activity in Bali today, despite its nationally open PMA position and a 100% foreign-ownership ceiling. The activity is specialist retail in aromatic and refreshing essential oils: a focused trade in products such as ylang-ylang, citronella, eucalyptus, sandalwood, lawang, tengkawang, wintergreen, castor, cardamom, nutmeg, delas and vetiver oils. The emphasis is on retailing that defined family of oils, rather than on a broader description of the sector.\n\nThe record makes the activity open to businesses at Mikro, Kecil, Menengah and Besar scales. That range matters because the classification is not confined to one size of enterprise: the same specialist-retail activity is available across the full set of listed scales. For a founder or adviser reading the code closely, the practical starting point is therefore the nature of the trade itself—retail sales of the specified aromatic and refreshing essential oils—and the business scale at which it is being registered.\n\nNationally, the PMA status is TERBUKA, with foreign ownership permitted up to 100%, under Perpres 10/2021, 49/2021. But national openness is not the same thing as PMA registrability in Bali. In Bali, the status is blocked at the risk-class level. At the Besar scale, OSS risk is Low or Medium-Low across every scope of this activity; that places it within the Bali moratorium dated May 13, 2026. The provincial rule blocks PMA registration for all Low and Medium-Low risk KBLI activities across the island, permanently.\n\nThis is not a reduced Bali ownership ceiling or a local condition that can be read as a qualification to the national 100% figure. It is a block on PMA registration in Bali for this activity. The national record remains clear about foreign ownership; the Bali position is equally clear about where that national openness cannot presently be used. For anyone assessing this retail activity, both statements must be held together.",
+    "pullQuote": "National openness is not the same thing as PMA registrability in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
