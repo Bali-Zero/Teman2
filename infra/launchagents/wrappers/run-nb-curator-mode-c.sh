@@ -81,12 +81,14 @@ else
     log "[nb-curator-mode-c] agent run FAILED (exit=${EXIT}) model=claude-sonnet-5"
 fi
 
-if [[ "$EXIT" -ne 0 ]] && [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]] && [[ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]]; then
+if [[ "$EXIT" -ne 0 ]]; then
+    # Notification gateway (post-#2263 canon promotion): tg_notify.py owns token
+    # resolution + dedup — no env-token gate, the alert must not vanish silently.
     msg="⚠️ nb-curator Mode C failed (exit=${EXIT}, ${DURATION}s). Log: ${LOG_FILE}"
-    curl -sS --max-time 10 -X POST \
-        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
-        -d "text=${msg}" >/dev/null 2>&1 || true
+    gateway="$(dirname "$0")/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    python3 "$gateway" --tier p0 --source nb-curator-mode-c \
+        --dedup-key "nb-curator-mode-c:$(hostname -s)" -- "$msg" >/dev/null 2>&1 || true
 fi
 
 exit "$EXIT"

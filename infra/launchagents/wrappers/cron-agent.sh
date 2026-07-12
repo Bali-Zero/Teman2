@@ -69,17 +69,17 @@ log() { echo "[$(date '+%Y-%m-%dT%H:%M:%S')] [$JOB_NAME] $*" >> "$LOG_FILE"; }
 
 send_telegram() {
     local msg="$1"
-    [[ -z "$TELEGRAM_BOT_TOKEN" ]] && return
-    # Cooldown: max 1 alert per 30 min per job
+    # Notification gateway (post-#2263 canon promotion): tg_notify.py owns token
+    # resolution + tiering + 6h dedup; this wrapper keeps its own 30-min cooldown.
+    # No env-token gate: an alert must not vanish silently when env lacks the token.
     if [[ -f "$COOLDOWN_FILE" ]]; then
         local age=$(( $(date +%s) - $(stat -f%m "$COOLDOWN_FILE" 2>/dev/null || echo 0) ))
         [[ $age -lt 1800 ]] && { log "Telegram cooldown active (${age}s < 1800s)"; return; }
     fi
-    curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -d "chat_id=${TELEGRAM_CHAT_ID}" \
-        -d "text=${msg}" \
-        -d "parse_mode=HTML" \
-        --max-time 10 >/dev/null 2>&1 || true
+    local gateway="$(dirname "$0")/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    python3 "$gateway" --tier p0 --source cron-agent \
+        --dedup-key "cron-agent:${JOB_NAME}:$(hostname -s)" -- "$msg" >/dev/null 2>&1 || true
     touch "$COOLDOWN_FILE"
 }
 
