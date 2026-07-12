@@ -1,0 +1,27 @@
+{
+  "code": "94122",
+  "editorial": {
+    "headline": "The Professional Home of Natural Science and Technology",
+    "standfirst": "This category covers professional organisations in natural science and technology, open nationally to full foreign ownership and not caught by Bali’s PMA moratorium.",
+    "body": "This activity covers professional organisations working in natural science and technology: the institutional homes through which a field gathers, represents itself and sustains professional exchange. The record points to organisations such as the Indonesian Engineers Association and the Indonesian Surveyors Association, making the category about organised professional life rather than a particular technical service. Its centre of gravity is the association itself—an entity convening a professional community in the natural-science and technology sphere.\n\nThat distinction matters when considering who may register it. The record identifies the activity as nationally open to PMA, with a foreign-ownership ceiling of 100%. In practical terms, the national entry allows full foreign ownership for this activity. At the same time, the record supplies no operating-scale categories under which the activity is open. It would therefore be careless to attach a micro, small, medium or large-business label that the source does not provide; the reliable statement is the national openness and its stated ownership ceiling.\n\nBali’s position is more specific, but not prohibitive. The province’s standing rule blocks all Low and Medium-Low risk KBLI activities from PMA on an island-wide, permanent basis. This activity is recorded instead as Medium-High or High risk, so it is not blocked by that moratorium. Its Bali status is consequently recorded as OK or higher risk, rather than as a closed category. That is a meaningful outcome: the provincial moratorium does not prevent PMA registration here, even though the activity sits outside the lower-risk bands affected by the rule.\n\nThe remaining note is deliberately narrow. The Bali record says the position should be verified for the particular address. That is not a hidden ownership cap, a separate licence condition, or a reason to recast an open activity as closed; none of those claims appears in the source. It is an address-specific verification point alongside a clear overall reading: nationally, the activity is open to PMA up to 100% foreign ownership, and in Bali it is not blocked by the standing moratorium because of its recorded risk classification.",
+    "pullQuote": "Nationally open to full foreign ownership, this activity is also outside Bali’s standing PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

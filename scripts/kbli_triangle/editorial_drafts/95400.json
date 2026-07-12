@@ -1,0 +1,27 @@
+{
+  "code": "95400",
+  "editorial": {
+    "headline": "The Business of Bringing Repairs Together",
+    "standfirst": "A fully foreign-open national activity for matching repair customers with providers, with a more conditional PMA path in Bali.",
+    "body": "KBLI 95400 is for the business of making a repair connection, rather than performing the repair itself. It brings users together with providers for the repair and maintenance of computers, personal and household goods, cars, and motorcycles. The intermediary may operate through a digital platform or through non-digital channels, including face-to-face and door-to-door contact, telephone, post, and other routes. Its role ends at the introduction: it does not provide the repair service being arranged. Income may come from a fee or commission paid by either the user or the repair provider, as well as from sources such as advertising.\n\nThe activity is open at Mikro, Kecil, Menengah, and Besar scale. In practical terms, the registrant is the business that creates the connection between demand for repair and the provider able to fulfil it. That is a distinct commercial position: the value lies in arranging access, whether through a platform or a more traditional channel, while the underlying repair remains with the service provider.\n\nNationally, the PMA position is clear. The activity is TERBUKA, with a maximum foreign ownership ceiling of 100%. A foreign investor may therefore hold the business in full at the national level. That openness applies to the intermediation activity described here, not to an invented set of adjacent services or conditions.\n\nBali requires a more exact reading. The provincial rule blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. For this activity, however, the Bali status is scope-dependent rather than an outright block: at the Besar scale, some OSS scopes are low risk while others are higher risk. Registration as PMA in Bali is available only by declaring the higher-risk scope, and the precise activity must be verified live in OSS. In Bali, the decisive step is the higher-risk scope declared in OSS, which must be verified live against the exact activity.",
+    "pullQuote": "In Bali, the decisive step is the higher-risk scope declared in OSS, which must be verified live against the exact activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

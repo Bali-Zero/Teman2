@@ -1,0 +1,27 @@
+{
+  "code": "95312",
+  "editorial": {
+    "headline": "Car Washing and Detailing: Nationally Open, PMA-Blocked in Bali",
+    "standfirst": "Car washing, polishing and limited non-manufacturing accessory fitting sit inside a nationally open activity—but Bali’s permanent PMA moratorium blocks registration there.",
+    "body": "Car washing and car detailing is the whole frame of this activity. It covers the practical work of washing and polishing vehicles, as well as fitting spare parts and accessories where that fitting is not part of a processing or manufacturing operation. The distinction matters: the code describes a customer-facing vehicle-care activity, with a bounded add-on installation element, rather than a manufacturing process. Its centre of gravity is the condition and presentation of the car—cleaning, finishing and compatible ancillary fitting—as expressed in the recorded scope.\n\nThe registration audience is not confined to a particular business size. The record lists Mikro, Kecil, Menengah and Besar enterprises as open to the activity, which gives the code a broad formal scale range. At national level, the PMA position is TERBUKA, with foreign ownership permitted up to 100%. For a founder looking only at the national setting, that reads as a fully open foreign-ownership ceiling. It is a national position, however, and it cannot be read in isolation where the operating location is Bali.\n\nFor Bali, the conclusion is clear: a foreign investor cannot register this activity there today. The Bali status is blocked for risk class. The record says that, at the Besar scale, OSS risk is Rendah or Menengah-Rendah across every scope; Bali’s permanent, island-wide moratorium blocks all Low and Medium-Low risk KBLI from PMA registration. The stated reason ties the block to the moratorium of May 13, 2026. That is not a reduction of the national 100% ceiling or a local equity cap. It is a Bali-specific prohibition on PMA registration for this activity under the stated risk basis.\n\nThe editorially important point is therefore one of jurisdiction, not commercial appeal. This code can describe the familiar work of a car wash and detailing salon with limited non-manufacturing parts and accessory installation, and it is open across the listed enterprise scales nationally. Yet in Bali the national openness does not translate into an available PMA registration path. A local plan should be evaluated against that exact separation: nationally open, but blocked for PMA in Bali under the permanent island-wide rule.",
+    "pullQuote": "National openness does not translate into an available PMA registration path in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open enterprise scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
