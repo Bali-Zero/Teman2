@@ -1,0 +1,27 @@
+{
+  "code": "47401",
+  "editorial": {
+    "headline": "Computing Retail, With a Clear Bali Boundary",
+    "standfirst": "This activity covers specialist retail sales of computers and related equipment—but foreign-owned registration in Bali is blocked today.",
+    "body": "A foreign investor cannot register this activity as PMA in Bali today. That is the practical starting point, despite an open national position and a national foreign-ownership ceiling of 100%. The Bali constraint is not a reduced ownership allowance: it is a block on PMA registration under the province’s permanent, island-wide moratorium for Low and Medium-Low risk activities.\n\nThe activity itself is specialist retail trade in computers and their equipment. Its recorded scope includes personal computers, laptops, printers, photocopying machines, interactive whiteboards, and video-conferencing equipment. Taken together, these examples describe a retail business centred on the sale of computing hardware and its associated workplace, presentation, copying, and conferencing tools. The breadth matters: the activity reaches from personal devices to equipment used in offices and meeting rooms, while remaining rooted in retail trade.\n\nRegistration is open across every recorded business scale: Mikro, Kecil, Menengah, and Besar. Nationally, the activity is marked TERBUKA, with foreign ownership permitted up to 100% under the cited presidential regulations. For a foreign-owned business operating outside Bali, that is the national setting recorded for this activity: the ownership ceiling is full foreign ownership, rather than a capped minority or majority stake.\n\nBali produces a different result. The OSS risk assessment at the Besar scale is recorded as Rendah or Menengah-Rendah across every scope of this activity, bringing it within Bali’s moratorium. The reason cites the moratorium of May 2026, while the provincial rule applies to all Low and Medium-Low risk KBLI activities on an island-wide, permanent basis. For founders, the distinction is straightforward but consequential: national openness does not translate into a PMA registration route in Bali for this activity. The national ceiling remains 100%; the Bali outcome is a present registration block.",
+    "pullQuote": "National openness does not translate into a PMA registration route in Bali for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro / Kecil / Menengah / Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

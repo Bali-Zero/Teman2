@@ -1,0 +1,27 @@
+{
+  "code": "47243",
+  "editorial": {
+    "headline": "Coffee and Sugar Retail: Open Nationally, Blocked in Bali",
+    "standfirst": "A specialised retail activity for coffee, sugars and tea is nationally open to foreign investment, but blocked for PMA registration in Bali.",
+    "body": "**A foreign investor cannot register this activity in Bali today.** That is the decisive local fact, even though the activity is nationally classified as open to PMA and permits foreign ownership up to 100%. The gap is not a minor local preference: Bali’s stated status is a risk-class block. At the Besar scale, OSS places every scope under Low or Medium-Low risk; Bali’s permanent, island-wide moratorium blocks PMA registration for all KBLI in those risk bands. The record identifies the moratorium as effective from May 13, 2026.\n\nOn its commercial terms, this is specialised retailing of coffee, white sugar, brown or palm sugar, and tea. It concerns a retailer focused on those named products, rather than an undefined general-trade proposition. The activity should be read at that level of specificity: retail trade in coffee, the stated sugars, and tea. The scope does not supply a product hierarchy, operating format, or wider-service claim, so none should be assumed. Its clarity lies in the product set itself and in the fact that it is retail trade.\n\nThe registration profile spans Mikro, Kecil, Menengah, and Besar scales. Nationally, the foreign-ownership ceiling is 100%, with Perpres 10/2021, 49/2021 cited as the PMA source. Those national facts remain meaningful, but they do not erase the separate Bali result. The same record that says the activity is TERBUKA nationally says it is BLOCCATO_CLASSE_RISCHIO in Bali.\n\nFor a founder, the conclusion must preserve both truths without softening either. A 100% national foreign-ownership ceiling describes the national position; it does not create a route to PMA registration in Bali where the moratorium applies. Nor is the Bali constraint presented as a percentage cap or partnership requirement. It is a block linked to the stated OSS risk classification at the Besar scale and the Bali-wide rule for Low and Medium-Low risk classifications. That is the current practical boundary for this activity in Bali.",
+    "pullQuote": "A 100% national foreign-ownership ceiling describes the national position; it does not create a route to PMA registration in Bali where the moratorium applies.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

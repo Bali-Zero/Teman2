@@ -1,0 +1,27 @@
+{
+  "code": "47511",
+  "editorial": {
+    "headline": "Textile Retail: Nationally Open, Blocked for PMA Registration in Bali",
+    "standfirst": "Textile retail is nationally open to full foreign ownership, but Bali’s permanent risk-based moratorium blocks PMA registration for this activity.",
+    "body": "At national level, this is an activity open to PMA, with a foreign-ownership ceiling of 100%. On Bali, the answer changes: a foreign-owned business cannot register this activity for PMA today. The Bali record marks it as blocked under the province’s island-wide, permanent moratorium. The stated trigger is its OSS risk treatment at the Besar scale—Low or Medium-Low across every scope—rather than the national foreign-ownership setting.\n\nRetail textile trade here means selling a defined range of fabrics and related materials. The covered stock begins with textiles made from natural, synthetic, and blended fibres, then sets out woven fabrics such as cotton and polyester sarongs and silk or mixed-fibre suiting. It also embraces printed fabrics in cotton, polyamide, and waterproof cloth; batik made by hand, stamp, or a combination of both; and knitted fabrics in wool, rayon, and wool/cotton. The activity extends to retailing base materials used to make carpets, decorative wall hangings, embroidery, and needlework. Taken together, the scope is materially specific: the commercial subject is the textile itself and the stated craft-related inputs.\n\nThe registration is open across the full listed scale range: Mikro, Kecil, Menengah, and Besar. It captures a business operating at any of those listed scales while retaining a specific commercial subject: retailing the stated textiles and related base materials. The scale list identifies the available registration range; it does not broaden the merchandise described by the scope.\n\nThe practical reading requires the national and Bali positions to stay separate. The national position is clear: PMA is TERBUKA, and the national ceiling is 100%. Bali does not erase that national classification, but it does block PMA registration for this activity under its own permanent, island-wide moratorium. The record ties that outcome to the Low or Medium-Low OSS risk result at Besar across every scope and identifies the moratorium in May 2026. For a foreign founder, Bali is therefore not an available PMA-registration location for this activity today, even though the national setting allows full foreign ownership.",
+    "pullQuote": "For a foreign founder, Bali is therefore not an available PMA-registration location for this activity today, even though the national setting allows full foreign ownership.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

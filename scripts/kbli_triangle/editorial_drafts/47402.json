@@ -1,0 +1,27 @@
+{
+  "code": "47402",
+  "editorial": {
+    "headline": "The Business of Selling Physical Video Games in Indonesia",
+    "standfirst": "Nationally open to full foreign ownership, this physical-games retail activity is nevertheless unavailable for PMA registration anywhere in Bali.",
+    "body": "For a foreign investor considering KBLI 47402, the essential conclusion is geographical: it cannot be registered for PMA in Bali today. That is despite a national classification of TERBUKA and a national foreign-ownership ceiling of 100%. The Bali result is not a reduced ownership allowance. It is a registration block, applied under the province’s permanent, island-wide moratorium for PMA activities assessed as Low or Medium-Low risk. The record states that, at the Besar scale, every scope of this activity carries a Low or Medium-Low OSS risk assessment; Bali therefore marks it BLOCCATO_CLASSE_RISCHIO.\n\nAt its centre, this is a retail trade activity for video-game console equipment and for video-game products sold in physical form. The record is specific about the tangible formats: cartridges, CDs, DVDs, and other physical forms. That focus gives the classification its practical shape: the retail sale of equipment and physical game products. Direct sales are also noted in the recorded scope.\n\nThe classification is available at every listed business scale: Mikro, Kecil, Menengah and Besar. The record therefore opens the activity across the full stated range of scales. Yet it also provides the decisive Bali-specific detail for a foreign-owned registration: the risk finding cited for the Besar scale connects this activity to the province-wide PMA moratorium. National scale availability should be read alongside, rather than in place of, the Bali registration position.\n\nNationally, the position is straightforward: PMA is open, with ownership permitted up to 100%, under the cited Perpres sources. In Bali, the conclusion is equally straightforward but different: a PMA investor cannot register this activity on the island today, because the relevant Low and Medium-Low risk categories are blocked permanently. These are two distinct layers of the same record—national access on one hand, and a Bali-specific registration prohibition on the other—without turning the national 100% ceiling into a Bali permission.",
+    "pullQuote": "In Bali, a PMA investor cannot register this activity on the island today, because the relevant Low and Medium-Low risk categories are blocked permanently.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
