@@ -80,7 +80,24 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **Claude 5 routing (2026-07-02)**: interactive sessions = **Fable 5** (architect/orchestrator/final on-disk gate, max effort — the final gate never cascades to a weaker model; window dead → task SUSPENDS); implementer subagents/workflows = **Sonnet 5** (`claude-sonnet-5`, `model:"sonnet"`); grunt = Haiku 4.5. Cron tier-1: repo-side pins migrated to `claude-sonnet-5` on 2026-07-03 after per-agent probes (see `research/operations/2026-07-03-sonnet5-cron-migration.md`); LIVE HOME wrappers (`~/scripts/`) still on `claude-sonnet-4-6` until the operator applies the diffs in that doc (tracked in modus PENDING-ARMS). Exception: the nb-agents slug micro-prompt stays 4-6 (probe wobble). Full arsenal routing: `.claude/skills/modus/SKILL.md` §Arsenal.
 
-> **[PROPOSED, pending Zero GO] Fable-paid contingency** (2026-07-11 Gear-3 synthesis — see `research/operations/2026-07-11-fable-paywall-routing.md`, report + corrected blind A/B; a Codex adversarial review on 2026-07-12 caught and required the fixes reflected in this revision — see the report's own `## Adversarial review` section): this proposal applies ONLY to non-final-gate interactive work — architecture/red-team/council synthesis and the general "which model answers this session" choice. **It does not touch, narrow, gate, condition, or in any way apply to the final on-disk gate.** The final gate (line above: "the final gate never cascades to a weaker model; window dead → task SUSPENDS") remains unconditionally Fable, with zero classifier, novelty-check, or task-shape logic ever inserted in front of it — full stop, no exception clause. Scope of THIS proposal: if Fable-5 becomes a metered/paid endpoint, do NOT reflexively default every *non-final-gate* interactive session to it at max-effort by habit; for grounded/structured/checkable shapes (KBLI bulk generation, WR2 lanes 1/2/4, cron classification, fact-lookup) Sonnet+scaffold is measured-tied there, so route those to Sonnet+scaffold instead of paid Fable. This is strictly cost-routing for ordinary work, never a rule about what the final gate is. (An earlier draft edit to modus §Arsenal's final-gate row was struck by adversarial review for breaching the invariant — do not reintroduce it in any form, including indirect "narrows which shapes get X" phrasing.)
+> **Fable-paid contingency — ACTIVE (Zero decision 2026-07-12: "non voglio pagare")** (research:
+> `research/operations/2026-07-11-fable-paywall-routing.md`, report + blind A/B, Codex adversarial
+> review). Scope is ONLY non-final-gate interactive work — architecture/red-team/council synthesis and
+> the general "which model answers this session" choice. **It does not touch, narrow, gate, condition,
+> or in any way apply to the final on-disk gate.** The final gate (line above: "the final gate never
+> cascades to a weaker model; window dead → task SUSPENDS") remains unconditionally Fable, with zero
+> classifier, novelty-check, or task-shape logic ever inserted in front of it — full stop, no exception
+> clause. **Rule for everything else: if/when Fable-5 becomes a metered/paid endpoint, do NOT pay for it
+> — route non-final-gate work to Sonnet+scaffold (or Opus-4.8 where Sonnet alone is thin) instead.** This
+> is a hard preference, not a cost/quality tradeoff to weigh case by case: the corrected A/B (§0.5 of the
+> report) found Fable and Opus-4.8 measured-indistinguishable on a real grounded/structured shape (KBLI,
+> 10/14 ties, 0 factual errors either side) — evidence that paying rarely buys anything on this class of
+> work, which is why "just don't pay" is a safe default rather than a corner being cut. The one shape the
+> report flagged as still-unproven-but-plausibly-Fable-favoring (WR2 lane-3, novel/uncatalogued
+> brand-voice judgment) is deliberately NOT special-cased here: use Sonnet/Opus-4.8+scaffold there too: no
+> exploration of a paid-Fable path for it. (An earlier draft edit to modus §Arsenal's final-gate row was
+> struck by adversarial review for breaching the invariant — do not reintroduce it in any form, including
+> indirect "narrows which shapes get X" phrasing.)
 
 **Anthropic SDK BANNED.** Never `from anthropic import Anthropic` or `ANTHROPIC_API_KEY`. Sole path: shell out to `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` (MAX-plan quota). Refuse any new tool/MCP/cron requiring `ANTHROPIC_API_KEY`. Reference: `apps/backend-rag/backend/llm/claude_oauth_client.py`.
 
