@@ -153,7 +153,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         return asyncio.run(_run(ids, dry_run=args.dry_run, force=args.force))
-    except (asyncpg.PostgresError, OSError) as exc:
+    except (
+        asyncpg.PostgresError,
+        asyncpg.InterfaceError,  # sibling of PostgresError, NOT a subclass (W34)
+        OSError,
+    ) as exc:
         logger.error("connection/query failed: %s", exc)
         return 2
 
