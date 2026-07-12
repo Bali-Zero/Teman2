@@ -1,0 +1,27 @@
+{
+  "code": "84224",
+  "editorial": {
+    "headline": "Naval Activity: Closed to Foreign Ownership Nationwide and in Bali",
+    "standfirst": "This code covers the Navy’s administrative and operational activities, including civilian personnel, and is closed to PMA registration nationally and in Bali.",
+    "body": "This activity covers the full administrative, operational and related work of the Navy. Its scope expressly includes civilian employees within the naval environment, placing the code around the institutional functioning of the service rather than a narrow commercial task. The record gives the Indonesian Navy Headquarters as an example. It also excludes naval members who are employed or who hold positions in government.\n\nThere is no listed business scale open to this activity. That absence matters: the record does not identify a micro, small, medium or large-business route for registration under this code. Its PMA status is **TERTUTUP**, with a national foreign-ownership ceiling of **0%**. In practical terms, a foreign-owned company cannot register this activity in Indonesia under this code.\n\nBali reaches the same result. The Bali status is **TERTUTUP**, and the record marks PMA registration as blocked. A foreigner therefore cannot register this activity in Bali today. This is not presented as an island-wide moratorium outcome: the stated Bali reason places the activity at medium-high or high risk and says it is not blocked by the moratorium, while requiring verification by address.\n\nThat distinction is worth keeping clear. Bali’s permanent PMA moratorium applies to all low and medium-low risk activities, but this record does not place naval activity in that category. Its closure in Bali stands on the recorded Bali status and address-sensitive risk treatment, alongside a national position that already permits no foreign ownership. The result is direct: this is not a PMA entry point, whether assessed nationally or in Bali.",
+    "pullQuote": "This is not a PMA entry point, whether assessed nationally or in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "0%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "Bali status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}
