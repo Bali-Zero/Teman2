@@ -1,0 +1,27 @@
+{
+  "code": "52313",
+  "editorial": {
+    "headline": "Cargo Air Representation: Open Nationally, Scope-Dependent in Bali",
+    "standfirst": "A cargo-air representative activity with wide scale eligibility, foreign ownership open nationally, and a Bali outcome that turns on the precise scope declared and its OSS risk.",
+    "body": "This activity concerns the operational representation of specialised cargo air transport: the commercial work of selling and marketing air-transport services, including the full marketing function. Its practical territory runs from market research and promotion to distribution. The record expressly places this work in the context of marketing and selling for foreign air-transport companies. It also includes the stated activities of electronic-trade operators and intermediary-platform operators, whether established in Indonesia or operating from abroad while conducting electronic trade in Indonesia. The focus is on putting cargo air-transport services into the market, rather than selling passenger air tickets.\n\nThe scale position is notably broad. Registration is open to Mikro, Kecil, Menengah and Besar enterprises, allowing the activity to sit across the country’s recognised business-scale categories. That range fits the character of representative work: an enterprise may be responsible for market-facing activity, promotion and distribution without the description itself turning into a statement about operating aircraft or selling passenger tickets. The defining thread is commercial representation for cargo air transport and the surrounding marketing responsibilities.\n\nNationally, the foreign-investment position is direct. The activity is marked TERBUKA, with foreign ownership permitted up to 100%. The cited basis is Perpres 10/2021, 49/2021. For a foreign-owned company assessing the national position, the record therefore presents no foreign-equity reduction below that stated ceiling. The important distinction is that this is the national ownership position; it does not settle the separate Bali registration outcome.\n\nBali requires a more exact reading. The activity is not marked as automatically blocked, but its Bali status is scope-dependent. At the Besar scale, OSS risk is low for some scopes and higher for others. The record says PMA registration in Bali is possible only by declaring the higher-risk scope, with live OSS verification required for the precise activity. Alongside that, Bali permanently blocks PMA registration for all Low and Medium-Low risk KBLI across the island. The honest conclusion is conditional rather than blanket approval: the national 100% ceiling remains clear, while Bali registration depends on the exact declared scope and its live OSS risk assessment.",
+    "pullQuote": "The national 100% ceiling remains clear, while Bali registration depends on the exact declared scope and its live OSS risk assessment.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Scale eligibility",
+        "value": "Mikro"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

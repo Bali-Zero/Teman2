@@ -1,0 +1,27 @@
+{
+  "code": "52234",
+  "editorial": {
+    "headline": "Aviation Cargo Security, From Screening to Airline Handover",
+    "standfirst": "This activity covers the security controls that clear air cargo and mail for carriage, including by drone, within the air-supply-chain system.",
+    "body": "Aviation cargo security is not a peripheral check performed at the edge of an airport operation. It is the work of examining and controlling cargo or mail before it is carried by aircraft—including unmanned aircraft or drones—to meet national and international aviation-security standards. The activity sits within the security of the air supply chain, where the condition of a consignment, its movement and its handover all matter before it reaches an airline.\n\nIts practical scope is deliberately broad. It includes approved security-screening methods, from ionising-radiation sources and ionising-radiation generators to explosive trace detection (ETD) and internal security procedures. It also reaches beyond the point of inspection: controlling entry to restricted areas, monitoring the movement of goods, controlling transport vehicles and supervising the transfer of goods to an airline. The record identifies this work with the Regulated Agent/Known Consignor setting, and notes that it is usually undertaken by entities active in cargo agency or forwarding.\n\nRegistration is open at every listed business scale: Micro, Small, Medium and Large. Nationally, the PMA position is open, with a foreign-ownership ceiling of 100%. In other words, the national record does not impose a foreign-share cap below full ownership for this activity. That status is grounded in the cited presidential regulations, while the operating description remains focused on the security chain around cargo and mail destined for air transport.\n\nBali does not reverse that national position. The province permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities, island-wide. This activity is not blocked by that moratorium: at the Large scale, its OSS risk is Medium-High/High. The Bali status is therefore OK_or_HIGHER_RISK rather than a prohibition. For a foreign-owned registration in Bali, the decisive point is straightforward: this activity can be registered there today, subject to its recorded higher-risk profile at the Large scale.",
+    "pullQuote": "In Bali, this activity is not caught by the permanent PMA moratorium because its Large-scale OSS risk is Medium-High/High.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

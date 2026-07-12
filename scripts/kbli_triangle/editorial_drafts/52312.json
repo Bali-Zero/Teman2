@@ -1,0 +1,27 @@
+{
+  "code": "52312",
+  "editorial": {
+    "headline": "The Ship Agent’s Desk: KBLI 52312 at Sea and in Bali",
+    "standfirst": "KBLI 52312 covers the operational agency work behind vessel calls, port services, documentation and supplies—open nationally to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "At its core, KBLI 52312 covers the agency work of managing a sea-transport vessel’s affairs. It includes reporting planned and actual arrivals and departures; arranging port services; appointing loading and unloading companies; and settling vessel documentation. The work also extends to cargo accounting and disbursement, issuing bills of lading for and on behalf of the shipowner, and handling bunkering of fuel and fresh water. Supplying equipment and provisions, alongside other agency services agreed between the shipowner or operator and the ship agent, sits within the same remit. The scope additionally includes intermediary operational handling for fishing vessels at sea.\n\nA business undertaking those functions may register this activity at every listed scale: Mikro, Kecil, Menengah and Besar. That breadth places the code around the practical administration of a vessel’s port call and ongoing requirements, from formal reporting and paperwork to cargo, fuel, water, equipment and provisions. The record gives no narrower scale distinction within the activity itself; those four listed scales are its complete stated position.\n\nNationally, the foreign-investment position is direct: the PMA status is TERBUKA and the foreign-ownership ceiling is 100%. For this activity, there is no recorded national foreign-share cap below full ownership. The cited basis is Perpres 10/2021, 49/2021. That national position is material because the code concerns the party responsible for coordinating a substantial set of vessel-facing services rather than a single isolated task.\n\nBali requires its own reading. The provincial moratorium permanently blocks PMA for all Low and Medium-Low risk KBLI across the island. This activity, however, is marked OK_or_HIGHER_RISK and is not recorded as blocked. The stated reason is specific: at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is clear: the activity is foreign-open nationally and, on this Bali record, is currently not barred from PMA registration in the province.",
+    "pullQuote": "The honest conclusion is clear: the activity is foreign-open nationally and is currently not barred from PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}
