@@ -311,3 +311,51 @@ def test_read_error_fails_open_to_empty_list(monkeypatch: pytest.MonkeyPatch) ->
 
     result = modus_autoloop._read_pending_green_tasks()
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# collapse-by-job: an append-only pending+resolved pair must NOT re-process
+# (scar family #2 — blind heal-loop; the smoke-test that exposed it live 2026-07-12)
+# ---------------------------------------------------------------------------
+
+def test_collapse_by_job_excludes_resolved_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    # newest-first: the resolved record is newer than the pending one for job "done".
+    records = [
+        {"job": "done", "status": "resolved", "ts": 200.0},
+        {"job": "done", "status": "pending", "class": "green", "ts": 100.0, "mandate": "x"},
+        {"job": "live", "status": "pending", "class": "green", "ts": 150.0, "mandate": "y"},
+    ]
+    escalations_mod = _make_fake_escalations_module(pending=records)
+    _install_fake_sentinel_lib(monkeypatch, escalations_mod)
+    _install_fake_green_gate(monkeypatch, verdict=True)
+
+    result = modus_autoloop._read_pending_green_tasks()
+    jobs = [t["job"] for t in result]
+    assert jobs == ["live"], f"resolved job leaked back as pending: {jobs}"
+
+
+def test_collapse_by_job_keeps_deferred_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    records = [
+        {"job": "waiting", "status": "deferred", "ts": 300.0},
+        {"job": "waiting", "status": "pending", "class": "green", "ts": 100.0, "mandate": "z"},
+    ]
+    escalations_mod = _make_fake_escalations_module(pending=records)
+    _install_fake_sentinel_lib(monkeypatch, escalations_mod)
+    _install_fake_green_gate(monkeypatch, verdict=True)
+
+    assert modus_autoloop._read_pending_green_tasks() == []
+
+
+def test_collapse_by_job_unit() -> None:
+    recs = [
+        {"job": "a", "status": "resolved", "ts": 2},
+        {"job": "a", "status": "pending", "ts": 1},
+        {"job": "b", "status": "pending", "ts": 3},
+        {"status": "pending", "ts": 4},  # no job — kept as singleton
+    ]
+    out = modus_autoloop._collapse_by_job(recs)
+    # 'a' collapses to its newest (resolved); 'b' pending; the job-less row kept.
+    a = [r for r in out if r.get("job") == "a"]
+    assert len(a) == 1 and a[0]["status"] == "resolved"
+    assert any(r.get("job") == "b" for r in out)
+    assert any("job" not in r for r in out)
