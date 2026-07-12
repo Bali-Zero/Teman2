@@ -1,0 +1,27 @@
+{
+  "code": "85572",
+  "editorial": {
+    "headline": "KBLI 85572: Private Training for Indonesia’s Digital Workforce",
+    "standfirst": "A private training activity spanning practical information and communication technology skills, open nationally at every business scale and not blocked for PMA registration in Bali.",
+    "body": "KBLI 85572 covers private-sector job training designed to build practical skills and expertise in information and communication technology. Its terrain is broad but coherent: networking, technical support, computer engineering, programming, multimedia, databases, systems analysis, graphic design, office tools, animation, artificial intelligence, IT governance, public relations and public speaking all sit within the stated scope. The common thread is vocational learning delivered by private providers, with an emphasis on adding usable professional capability rather than defining a single technical discipline.\n\nThat breadth matters for the kind of institution that registers under this activity. A provider may organise training around foundational office tools or technical support, or around more specialised fields such as programming, database work, animation, artificial intelligence or IT governance. The record also makes no distinction by enterprise size: Mikro, Kecil, Menengah and Besar businesses are all open to it. This is therefore an activity framed around the delivery of work-oriented training itself, across a wide digital and communications curriculum.\n\nNationally, the activity is TERBUKA to foreign investment, with a foreign-ownership ceiling of 100%. In plain terms, the national record permits full foreign ownership for this activity. The cited basis is Perpres 10/2021, 49/2021. That national position is important, but it should not be treated as a substitute for reading Bali’s separate operating picture, particularly where the province applies its own permanent PMA moratorium to certain risk categories.\n\nFor Bali, the current result is not a block: the status is OK_or_HIGHER_RISK, and the activity is expressly described as not blocked by the moratorium. The reason is specific. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, while Bali’s island-wide permanent restriction applies to all Low and Medium-Low risk KBLI for PMA. For a foreign founder, the practical conclusion is unusually clean: this activity is nationally open up to 100% foreign ownership and is not barred from PMA registration in Bali by that moratorium.",
+    "pullQuote": "This activity is nationally open up to 100% foreign ownership and is not barred from PMA registration in Bali by that moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "85583",
+  "editorial": {
+    "headline": "Creative-Industry Training, Open Nationally and Clear of Bali’s PMA Block",
+    "standfirst": "This company-run training activity is nationally open to full foreign ownership and, at its recorded Bali risk level, is not blocked by the island-wide PMA moratorium.",
+    "body": "Creative-industry company job training under this activity is practical, skills-building instruction delivered by a company. Its remit spans craft and production competencies: metal and wood carving, crochet, embroidery, weaving, screen printing, basket weaving, hand-drawn and stamped batik, leather tanning and finishing, leather-product making, garment sewing in knitting or woven work, pattern technique, fashion design and technology, and skin and hair beauty. The common thread is vocational development across creative-industry work, with room for other related skills identified in the record.\n\nThe organiser is equally important. This is training conducted by a company, placing the emphasis on an enterprise that develops work skills rather than on any one creative discipline. The record lists no categories under `scales_open_to`, so it does not assign the activity to a named business scale. Its treatment therefore turns on the recorded ownership position and, for a Bali-based operation, the provincial PMA position—not on an unstated size threshold.\n\nNationally, the activity is **TERBUKA** to PMA and carries a 100% foreign-ownership ceiling. In plain terms, foreign investment can hold the entire company at the national level. The cited PMA basis is Perpres 10/2021, 49/2021. The record supplies no further national ownership condition, so the decisive national reading is direct: a company delivering this specified creative-industry training may be fully foreign-owned.\n\nFor Bali, the result is also clear. Its recorded status is `OK_or_HIGHER_RISK`, and it is expressly described as medium-high/high risk—not blocked by the provincial PMA moratorium. The stated island-wide, permanent rule blocks all Low and Medium-Low risk KBLI from PMA registration; this activity is recorded outside that block. A foreign investor may therefore register it in Bali today on the record provided, with one concrete local instruction: verify the position for the chosen address. That is address verification, not a Bali-specific ownership cap or a reason to depart from the national 100% position.",
+    "pullQuote": "A foreign investor may therefore register it in Bali today on the record provided, with one concrete local instruction: verify the position for the chosen address.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
