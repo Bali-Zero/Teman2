@@ -108,18 +108,5 @@ if [[ -f .env ]]; then
     done
     unset _k _line
 fi
-# Headless CRM delivery auth (LEVA 2/3 auto-attach -> kita). The scoped
-# X-CRM-Write-Key lives ONLY in ~/.wa-mirror.env (0600 — same file the
-# wa-mirror scripts parse; deliberately NOT in the world-readable plist,
-# scar family #4). Without it every autonomous commit's delivery degrades
-# to `no_token` (found live 2026-07-12: worker env had no key source, so
-# crm_delivery.crm_write_key_from_env() always came back empty). Absent
-# file/key = worker still starts; delivery failure stays visible in
-# intake_commit_audit and never blocks the local commit.
-if [[ -z "${WA_MIRROR_CRM_WRITE_KEY:-}" && -f "${HOME}/.wa-mirror.env" ]]; then
-    _line="$(grep -E '^WA_MIRROR_CRM_WRITE_KEY=' "${HOME}/.wa-mirror.env" | tail -1 || true)"
-    [[ -n "${_line}" ]] && export "${_line?}"
-    unset _line
-fi
 export PYTHONPATH="${BACKEND}"
 exec python -m backend.services.intake.worker
