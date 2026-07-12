@@ -46,6 +46,28 @@ updates:
       - dependency-name: "grpcio-status"
       - dependency-name: "grpcio-tools"
       - dependency-name: "grpcio-health-checking"
+      # Dependabot's pip lock updater bumps each package independently and
+      # does NOT honor sibling version pins, so leader/follower pairs break
+      # the lock when the follower moves alone. The five holds below were
+      # isolated by locally resolving group PR #2328's locks with uv
+      # (2026-07-13): reverting exactly these five bumps makes BOTH
+      # requirements.lock.txt and requirements-prod.lock.txt resolve.
+      - dependency-name: "websockets"
+        versions: [">=16.0.0"] # langgraph-sdk (latest 0.4.2) pins websockets<16
+      - dependency-name: "pdfplumber"
+        # 0.11.10 exact-pins pdfminer.six==20260107, but pdfminer's date
+        # versioning reads as semver-major so it can never join this
+        # minor-and-patch group - bump the pdfplumber+pdfminer.six pair deliberately
+        versions: [">=0.11.10"]
+      # exact-pin pair: pydantic==X requires pydantic-core==Y - a solo bump
+      # of EITHER breaks the lock (#2328 bumped core to 2.47.0 against
+      # pydantic 2.13.4's ==2.46.4). Bump the pair deliberately.
+      - dependency-name: "pydantic"
+      - dependency-name: "pydantic-core"
+      - dependency-name: "mpmath"
+        versions: [">=1.4.0"] # sympy (latest 1.14.0) pins mpmath<1.4
+      - dependency-name: "tokenizers"
+        versions: [">0.23.0"] # transformers 4.57.x pins tokenizers<=0.23.0
     groups:
       # OpenAI-stack packages isolated into their own group so a breaking bump
       # (openai/langchain-openai sit near the frozen embedding path:
