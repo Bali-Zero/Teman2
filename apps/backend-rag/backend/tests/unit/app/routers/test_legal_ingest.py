@@ -15,6 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+from backend.app.dependencies import get_current_user
 from backend.app.routers.legal_ingest import router
 from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
@@ -38,9 +39,16 @@ def mock_legal_service():
 
 @pytest.fixture
 def app():
-    """Create FastAPI app with router"""
+    """Create FastAPI app with router.
+
+    Legal ingest endpoints are admin-gated (Case OS R3): override
+    get_current_user with an admin identity so the router's
+    _require_ingest_admin gate passes and these tests exercise the
+    ingest logic rather than the auth layer.
+    """
     app = FastAPI()
     app.include_router(router)
+    app.dependency_overrides[get_current_user] = lambda: {"role": "admin"}
     return app
 
 

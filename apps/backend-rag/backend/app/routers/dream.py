@@ -7,10 +7,12 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from backend.app.dependencies import get_current_user
 from backend.app.deps.database import get_database_pool
+from backend.app.utils.crm_utils import is_crm_admin
 
 # Reuse existing AI service utilities if available, or import standard ones
 # Assuming call_claude_with_retry is available in article_composer service for now
@@ -19,6 +21,12 @@ from backend.services.article_composer import call_claude_with_retry
 
 router = APIRouter(prefix="/api/dream", tags=["Dream Room"])
 logger = logging.getLogger(__name__)
+
+
+def _require_dream_admin(user: dict[str, Any]) -> None:
+    """Gate AI generation (LLM cost) to admins. Raises 403 otherwise."""
+    if not is_crm_admin(user):
+        raise HTTPException(status_code=403, detail="admin required")
 
 # --- Pydantic Models for State ---
 
@@ -144,10 +152,14 @@ async def scrape_url(request: ScrapingRequest) -> dict[str, Any]:
 
 
 @router.post("/ai/generate", response_model=GenerateResponse)
-async def generate_content(request: GenerateRequest) -> dict[str, Any]:
+async def generate_content(
+    request: GenerateRequest,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """
     Generate content using Claude.
     """
+    _require_dream_admin(current_user)
     try:
         system_prompt = "You are an expert editor and creative writing assistant."
         user_prompt = f"Task: {request.mode}\nContext: {request.context}\nInput: {request.prompt}"

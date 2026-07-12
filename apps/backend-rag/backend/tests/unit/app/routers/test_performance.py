@@ -15,14 +15,21 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+from backend.app.dependencies import get_current_user
 from backend.app.routers.performance import router
 
 
 @pytest.fixture
 def app():
-    """Create FastAPI app with router"""
+    """Create FastAPI app with router.
+
+    The clear-cache endpoints are admin-gated (Case OS R3): override
+    get_current_user with an admin identity so the router's admin gate
+    passes and these tests exercise the cache logic rather than auth.
+    """
     app = FastAPI()
     app.include_router(router)
+    app.dependency_overrides[get_current_user] = lambda: {"role": "admin"}
     return app
 
 

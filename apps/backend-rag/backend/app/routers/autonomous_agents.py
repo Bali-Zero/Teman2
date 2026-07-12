@@ -499,6 +499,7 @@ async def extract_kg_sample(
 async def persist_kg_sample(
     collection: str = Query(default="legal_unified"),
     sample_size: int = Query(default=50, ge=10, le=200),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     💾 Persist KG sample to database (LIVE)
@@ -506,6 +507,8 @@ async def persist_kg_sample(
     Extracts and persists entities/relationships to PostgreSQL.
     Run /extract-sample first to review!
     """
+    _require_agent_admin(current_user)
+
     import re
 
     from backend.app.main_cloud import app
