@@ -81,6 +81,10 @@ async def requeue_draft_for_rerender(conn: asyncpg.Connection, draft_id: UUID | 
       a pre-image draft must never be jumped forward in the pipeline.
     - CAS on `lease_owner IS NULL`: a draft mid-render is never yanked from
       under its worker (same discipline as the stale-lease watchdog).
+    - `html_render_attempts` resets to 0: a re-render is a NEW retry budget —
+      without this, a draft that previously exhausted its attempts (or spent
+      some) re-enters with a burned circuit breaker and the first transient
+      error of the new cycle goes terminal (Codex review 2026-07-13).
 
     Returns True when the draft re-entered the lane, False otherwise.
     """
@@ -88,7 +92,8 @@ async def requeue_draft_for_rerender(conn: asyncpg.Connection, draft_id: UUID | 
         """
         UPDATE war_room_drafts
            SET status = 'drafts_imaged_checked',
-               drive_url = NULL
+               drive_url = NULL,
+               html_render_attempts = 0
          WHERE id = $1
            AND lease_owner IS NULL
            AND status IN ('rendered', 'render_failed', 'drafts_imaged_checked')

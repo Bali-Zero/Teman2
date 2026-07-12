@@ -257,8 +257,8 @@ def _make_queue_entry(
 
 
 # Content fields a re-render refreshes in place on the existing queue entry.
-# Identity fields (id, draft_id, topic_slug, topic, drafted_at) and review-state
-# fields (state, instagram_*, engagement_metrics) are deliberately NOT here:
+# Identity fields (id, draft_id, topic_slug, topic, drafted_at) and publish
+# fields (instagram_*, engagement_metrics) are deliberately NOT here:
 # the entry id feeds ref_code downstream, so it must survive a repoint.
 _REPOINT_FIELDS = (
     "carousel_path",
@@ -270,19 +270,30 @@ _REPOINT_FIELDS = (
     "fact_check_status",
 )
 
+# Pre-publish states the damar review flow can hold an entry in (see
+# _damar-queue-server.py transitions). A re-render of any of these is a NEW
+# review candidate: repoint the content and reset state to "drafted" so it
+# re-enters review — a `reviewed` approval or `rejected` verdict given on the
+# OLD images must never silently apply to the new ones (Codex review
+# 2026-07-13). Anything else (published, archived, legacy no-state) is
+# immutable history.
+_REPOINTABLE_STATES = ("drafted", "reviewed", "rejected", "drafted_needs_human_edit")
+
 
 def _append_review_queue(entry: dict, *, queue_path: Path | None = None) -> bool:
     """Append `entry` to human-review-queue.json atomically (fcntl lock, tmp+rename).
 
     Dedup/repoint contract (re-render verb, W82 exist-not-content):
     - exact id match (same render batch re-applied) -> skip, return False;
-    - same draft_id, existing entry still pre-publish (state == "drafted") ->
-      REPOINT: refresh content fields in place (new slides_dir/drive_url/critic),
-      keep the entry id (ref_code stability) and drafted_at, append a
-      state_history breadcrumb, return True. Before this existed, a re-rendered
-      draft kept its queue entry pointed at the OLD slides_dir forever;
-    - same draft_id but already published/archived -> history is immutable,
-      skip, return False.
+    - same draft_id, existing entry still pre-publish (state in
+      _REPOINTABLE_STATES) -> REPOINT: refresh content fields in place (new
+      slides_dir/drive_url/critic), keep the entry id (ref_code stability) and
+      drafted_at, RESET state to "drafted" (a review verdict on the old images
+      never applies to the new ones), append a state_history breadcrumb,
+      return True. Before this existed, a re-rendered draft kept its queue
+      entry pointed at the OLD slides_dir forever;
+    - same draft_id but already published/archived (or legacy no-state) ->
+      history is immutable, skip, return False.
     Raises on IO/corrupt-JSON so the caller can alert — a corrupt queue must be
     VISIBLE, never silently rebuilt."""
     import fcntl
@@ -307,10 +318,11 @@ def _append_review_queue(entry: dict, *, queue_path: Path | None = None) -> bool
                 if item.get("id") == entry["id"]:
                     return False  # same render batch re-applied — pure dup
                 if entry.get("draft_id") and item.get("draft_id") == entry.get("draft_id"):
-                    if item.get("state") != "drafted":
-                        return False  # published/archived — history is immutable
+                    if item.get("state") not in _REPOINTABLE_STATES:
+                        return False  # published/archived/legacy — history is immutable
                     for fld in _REPOINT_FIELDS:
                         item[fld] = entry.get(fld)
+                    item["state"] = "drafted"  # new images → back through review
                     item.setdefault("state_history", []).append(
                         {
                             "state": "drafted",

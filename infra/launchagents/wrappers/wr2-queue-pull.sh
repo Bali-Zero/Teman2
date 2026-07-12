@@ -37,7 +37,9 @@ ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
 while true; do
   for f in human-review-queue.json queue-archive.json; do
-    tmp="$DEST_DIR/.$f.pull.tmp"
+    # PID-suffixed tmp: a WR2_PULL_CHECKSUM one-shot may run while the daemon
+    # loop is live — a shared deterministic tmp path would interleave writes.
+    tmp="$DEST_DIR/.$f.pull.tmp.$$"
     if ssh -o ConnectTimeout=10 -o BatchMode=yes pro "cat '$SRC_DIR/$f'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
       # valida JSON prima di sostituire (mai clobberare con spazzatura)
       if python3 -c "import json,sys; json.load(open('$tmp'))" 2>/dev/null; then
@@ -63,7 +65,7 @@ while true; do
     "ls -1 '$AMEND_SRC'/*-ig-insights.md 2>/dev/null | grep -v insufficient-data | sort | tail -1" 2>/dev/null)
   if [ -n "$latest" ]; then
     bn=$(basename "$latest")
-    tmp="$AMEND_DEST/.$bn.pull.tmp"
+    tmp="$AMEND_DEST/.$bn.pull.tmp.$$"
     if ssh -o ConnectTimeout=10 -o BatchMode=yes pro "cat '$latest'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
       if ! cmp -s "$tmp" "$AMEND_DEST/$bn" 2>/dev/null; then
         mv "$tmp" "$AMEND_DEST/$bn"

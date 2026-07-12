@@ -286,6 +286,7 @@ async def test_requeue_rerender_resets_gate_fields_with_guards():
     sql = conn.fetchrow.call_args[0][0]
     assert "SET status = 'drafts_imaged_checked'" in sql
     assert "drive_url = NULL" in sql
+    assert "html_render_attempts = 0" in sql  # fresh retry budget on re-entry
     assert "lease_owner IS NULL" in sql
     assert "status IN ('rendered', 'render_failed', 'drafts_imaged_checked')" in sql
 
