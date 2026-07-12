@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, HttpUrl
 
 from backend.app.dependencies import get_current_user
 from backend.app.models import TierLevel
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.json_utils import to_jsonb
 from backend.core.legal_config import resolve_nb_target
@@ -25,6 +26,12 @@ from backend.services.ingestion.legal_ingestion_service import LegalIngestionSer
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/legal", tags=["legal-ingestion"])
+
+
+def _require_ingest_admin(user: dict[str, Any]) -> None:
+    """Gate legal document ingestion endpoints to CRM admins only."""
+    if not is_crm_admin(user):
+        raise HTTPException(status_code=403, detail="admin required")
 
 
 def save_upload_file_sync(path: Path, content: bytes) -> Any:
@@ -70,7 +77,10 @@ class LegalIngestResponse(BaseModel):
 
 
 @router.post("/ingest", response_model=LegalIngestResponse, status_code=status.HTTP_200_OK)
-async def ingest_legal_document(request: LegalIngestRequest) -> LegalIngestResponse:
+async def ingest_legal_document(
+    request: LegalIngestRequest,
+    current_user: dict = Depends(get_current_user),
+) -> LegalIngestResponse:
     """
     Ingest a single legal document through the specialized pipeline.
 
@@ -87,6 +97,7 @@ async def ingest_legal_document(request: LegalIngestRequest) -> LegalIngestRespo
     Returns:
         Ingestion result with metadata and statistics
     """
+    _require_ingest_admin(current_user)
     try:
         # Validate file exists
         if not Path(request.file_path).exists():
@@ -133,6 +144,7 @@ async def upload_legal_document(
     title: str | None = None,
     tier: str | None = None,
     collection_name: str | None = None,
+    current_user: dict = Depends(get_current_user),
 ) -> LegalIngestResponse:
     """
     Upload and ingest a legal document via multipart/form-data.
@@ -158,6 +170,7 @@ async def upload_legal_document(
     Returns:
         Ingestion result with metadata and statistics
     """
+    _require_ingest_admin(current_user)
     # Validate file type
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
@@ -226,6 +239,7 @@ async def upload_legal_document(
 async def ingest_legal_documents_batch(
     file_paths: list[str],
     collection_name: str | None = None,
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Ingest multiple legal documents in batch.
@@ -237,6 +251,7 @@ async def ingest_legal_documents_batch(
     Returns:
         Batch ingestion results
     """
+    _require_ingest_admin(current_user)
     service = get_legal_service()
     results = []
 

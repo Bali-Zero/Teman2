@@ -12,7 +12,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.app.dependencies import get_search_service
+from backend.app.dependencies import get_current_user, get_search_service
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.core.collection_registry import resolve_collection_name
 from backend.core.embeddings import create_embeddings_generator
 from backend.core.qdrant_db import QdrantClient
@@ -21,6 +22,12 @@ from backend.services.search.search_service import SearchService
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/oracle", tags=["Oracle INGEST"])
+
+
+def _require_ingest_admin(user: dict) -> None:
+    """Bulk ingest writes to the shared legal KB — admin only (Case OS R3)."""
+    if not is_crm_admin(user):
+        raise HTTPException(status_code=403, detail="admin required")
 
 
 # ========================================
@@ -71,6 +78,7 @@ class IngestResponse(BaseModel):
 async def ingest_documents(
     request: IngestRequest,
     service: SearchService = Depends(get_search_service),
+    user: dict = Depends(get_current_user),
 ) -> IngestResponse:
     """
     Bulk ingest documents into Qdrant collection
@@ -101,6 +109,8 @@ async def ingest_documents(
     - Max 1000 documents per request
     - Batch processing for large uploads
     """
+
+    _require_ingest_admin(user)
 
     start_time = time.time()
     target_collection = resolve_collection_name(request.collection)
