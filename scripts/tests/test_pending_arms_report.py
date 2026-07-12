@@ -714,3 +714,60 @@ def test_real_ledger_wr2_canva_owner_not_corrupted_by_quoted_pipes():
     e = next(x for x in entries if "WR2 legacy Canva lane zombies" in x.artifact)
     assert "renderer" != e.owner
     assert "me" in e.owner or "operator" in e.owner.lower()
+
+
+# ---------------------------------------------------------------------------
+# Trailing-pipe residual (2026-07-13, found the day AFTER the splitter fix
+# landed): a stray '|' at the END of a line yields an EMPTY last field, so the
+# back-anchor reads proof='' and owner=<the real proof> — the 'secrets audit
+# Pro enrichment' entry (owner operator[secret]) landed in TECH-DEBT this way.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_trailing_pipe_empty_field_does_not_shift_owner(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | trailing pipe artifact | some step "
+        "| operator[secret] (env review) | PR #2081 merged + rerun exit 0 |",
+    )
+    assert e.owner == "operator[secret] (env review)"
+    assert e.proof.startswith("PR #2081 merged")
+    assert e.cls == par.CLASS_OPERATOR_GATED
+
+
+def test_guilt_multiple_trailing_pipes_all_stripped(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | double pipe artifact | some step "
+        "| me (session) | real proof ||",
+    )
+    assert e.owner == "me (session)"
+    assert e.proof == "real proof"
+
+
+def test_innocence_five_field_entry_with_empty_proof_not_eaten(tmp_path):
+    """A 5-field entry whose PROOF is genuinely empty ('... | owner |') keeps its
+    owner anchored — the trailing-empty strip is guarded by len > 5, so it only
+    eats SURPLUS residue, never a field a well-formed entry needs."""
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | empty proof artifact | some step | me (session M5) |",
+    )
+    assert e.owner == "me (session M5)"
+    assert e.proof == ""
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+@pytest.mark.skipif(
+    not REAL_LEDGER_PATH.exists(),
+    reason=f"real ledger not found at {REAL_LEDGER_PATH} (CI checkout may not have it)",
+)
+def test_real_ledger_secrets_audit_owner_not_shifted_by_trailing_pipe():
+    """The live mis-bucket this fix cures: the 'secrets audit Pro enrichment'
+    entry ends with a stray '|' — its operator[secret] owner must classify
+    OPERATOR-GATED, not TECH-DEBT with the proof text as owner."""
+    now = par._parse_now(NOW)
+    entries = par.load_entries(REAL_LEDGER_PATH, now)
+    e = next(x for x in entries if "secrets audit Pro enrichment" in x.artifact)
+    assert "operator[secret]" in e.owner
+    assert e.cls == par.CLASS_OPERATOR_GATED
