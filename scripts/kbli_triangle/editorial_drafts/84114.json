@@ -1,0 +1,27 @@
+{
+  "code": "84114",
+  "editorial": {
+    "headline": "Planning the State: Executive Planning Institutions",
+    "standfirst": "This code covers government bodies and secretariats that coordinate public planning policy—closed to foreign ownership nationally and recorded as PMA-blocked in Bali.",
+    "body": "This code covers the governmental planning function itself: the public institutions that formulate and coordinate government policy for the conduct of government, together with the secretariats that support that work. Its stated example is the national development-planning institution, Kementerian Perencanaan Pembangunan Nasional/Bappenas. The scope is defined by public administration rather than by a market offering. Planning here means the institutional work of shaping and coordinating government policy; the accompanying secretariat activity belongs within the same function because it enables that work to be carried out. That makes the code a precise description of an executive planning institution and its administrative support, not a catch-all label for any work that happens to involve planning.\n\nThis institutional character is decisive when asking who may register the activity and at which scale. The record lists no scale as open: the `scales_open_to` field is empty. It therefore supplies no stated Micro, Small, Medium or Large business route for this activity. Nationally, its PMA status is TERTUTUP, with a maximum foreign ownership figure of 0%. In ordinary language, there is no foreign ownership permitted under the national entry for this activity and no foreign-investment registration route presented by the record. The 0% figure is the national ceiling, rather than an invitation to look for a different ownership split.\n\nBali demands the same directness, with an important distinction about the reason. Its Bali status is TERTUTUP, and the record marks it as blocked for PMA registration. A foreigner therefore cannot register this activity in Bali today. Yet the stated Bali risk reading is medium-high/high risk, and the reason says it is not blocked by the provincial moratorium; the address must be verified. The province-wide, permanent moratorium described in the record applies to all Low and Medium-Low risk KBLI for PMA. It is not given as the basis for this activity’s Bali position. Not being blocked by the moratorium does not turn the recorded Bali status into an open PMA path.\n\nThe honest reading is consequently narrow but useful. This is a government planning and policy-coordination function, inclusive of its secretariat, rather than an ordinary business activity with listed operating scales. At national level, it is closed to PMA and the foreign-ownership ceiling is 0%. In Bali, it is likewise recorded TERTUTUP and PMA-blocked, while the moratorium note remains an address-specific verification point rather than a permission. No alternate Bali ownership figure or partnership condition is stated in the Bali reason.",
+    "pullQuote": "Not being blocked by the moratorium does not turn the recorded Bali status into an open PMA path.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "0%"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

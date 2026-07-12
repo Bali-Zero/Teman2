@@ -1,0 +1,27 @@
+{
+  "code": "84123",
+  "editorial": {
+    "headline": "Housing Service Administration Is a Government Function, Not a PMA Route",
+    "standfirst": "This is public-sector housing administration; it is closed to PMA nationally and unavailable for PMA registration in Bali.",
+    "body": "A foreign investor cannot register this activity in Bali today. The Bali entry marks it closed and blocked for PMA registration, while the national entry is likewise closed to PMA and assigns a maximum foreign ownership ceiling of 0%. The conclusion is direct: there is no foreign shareholding room expressed in the national record, and Bali offers no PMA registration route for this activity. That is the governing starting point, not a detail to be treated as a secondary qualification.\n\nSubstantively, this is public administration in housing. It covers government guidance of residential facilities and infrastructure so that places to live meet housing requirements, including cleanliness and aesthetic quality, in service of healthy and prosperous communities. The formulation keeps the focus on a public function: shaping the conditions around housing through the stated guidance of its facilities and infrastructure. Cleanliness and beauty are explicitly among the cited housing criteria, and the record’s stated aim is a community that is healthy and prosperous. Its example is a government institution in public housing.\n\nWho registers it follows from that scope. The record points to government institutions in the public-housing field, rather than setting out a general commercial operator. Its scales_open_to field contains no entries. That absence has a practical consequence: the supplied record does not name any business scale as open for this activity. The empty listing is a limit on what may responsibly be claimed here; it neither opens a scale nor identifies an exception for a particular enterprise. The activity should therefore be read through the public administrative role set out in its scope, and through the example of a government housing institution.\n\nBali needs one important distinction. The record identifies the activity as Medium-High/High risk and says it is not blocked by the province-wide PMA moratorium; it also says the address should be verified. The cited moratorium is island-wide and permanent for Low and Medium-Low risk activities. But the absence of a block under that particular moratorium is not permission. The Bali status remains closed, the Bali record remains marked as blocked for PMA registration, and the national PMA position remains closed with a 0% foreign ceiling. Address verification may clarify the classification context, but it cannot turn the stated closed PMA position into an available registration path.",
+    "pullQuote": "Address verification may clarify the classification context, but it cannot turn the stated closed PMA position into an available registration path.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "0%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "Bali status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}
