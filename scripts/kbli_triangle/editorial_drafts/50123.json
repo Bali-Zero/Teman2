@@ -1,0 +1,27 @@
+{
+  "code": "50123",
+  "editorial": {
+    "headline": "Pioneer Cargo Shipping and the 49% Foreign-Ownership Limit",
+    "standfirst": "Pioneer domestic cargo shipping connects remote and developing regions to established ones—but foreign ownership is capped nationally at 49%, while Bali does not block the activity under its moratorium.",
+    "body": "Domestic pioneer cargo shipping is intended to make a connection where commercial shipping has not yet made one. The activity covers sea carriage of goods between remote areas, and between areas with potential that are still undeveloped or commercially unprofitable to serve, and areas that have already developed. It is defined through fixed, regular liner routes and the placement of ships to encourage development in remote areas. Chartering sea-transport services together with their operators is also part of the activity.\n\nThat makes the activity more specific than a broad description of cargo movement: its stated purpose is to connect places at very different stages of development, rather than merely to operate a vessel. Its operating pattern is equally material: a fixed, regular route is in the scope, as is positioning vessels to support development in remote areas. Registrants may operate at Mikro, Kecil, Menengah, or Besar scale. The record therefore leaves the activity open across all four stated scales, instead of limiting it to a single size of undertaking.\n\nAt the national level, foreign investment is TERBATAS. Foreign ownership is capped at 49%, so a foreign investor cannot hold the entire company carrying out this activity. That ceiling is national; it should be read alongside, rather than confused with, the Bali position. Bali’s status is OK_or_HIGHER_RISK. The record says that at Besar scale, the OSS risk is Menengah-Tinggi/Tinggi. Consequently, the activity is not blocked by Bali’s permanent, island-wide moratorium, which applies to Low and Medium-Low risk activities for PMA. The conclusion is unambiguous: PMA registration for this activity remains available in Bali, subject to the national 49% foreign-ownership ceiling.\n\nRather than presenting Bali as a separate restriction, the record indicates that the decisive ownership constraint is national. The local outcome is not a Bali-specific ban; it is a status that stays outside the moratorium because of its stated higher risk at the Besar scale. For founders, this is a transport activity whose economic role, eligible scales, foreign-ownership ceiling, and Bali treatment need to be read together.",
+    "pullQuote": "PMA registration for this activity remains available in Bali, subject to the national 49% foreign-ownership ceiling.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBATAS"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "49%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

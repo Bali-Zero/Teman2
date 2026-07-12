@@ -1,0 +1,27 @@
+{
+  "code": "50133",
+  "editorial": {
+    "headline": "The Moving Bridge of Local Passenger Ferry Travel",
+    "standfirst": "This code covers locally bounded passenger ferry crossings that extend a road or rail journey, open nationally and not blocked for PMA registration in Bali at Large scale.",
+    "body": "KBLI 50133 covers passenger ferry transport between ferry ports within the same regency or city. Its setting is maritime—across seas, straits and bays—but its function is distinctly terrestrial: a moving bridge between two specified places, continuing a road and/or railway network. It also includes the rental of ferry transport together with its operator. The activity is therefore defined by the local crossing and its transport role, rather than by a general idea of sea travel.\n\nThe code is open to businesses operating at the **Besar** scale. That matters because the Bali reading is expressly tied to that scale: the OSS risk classification for a Large-scale operation is Medium-High or High. The record does not place this activity in the lower-risk categories affected by Bali’s province-wide PMA moratorium.\n\nNationally, the activity is **TERBUKA** to foreign investment, with a foreign-ownership ceiling of **100%**. In plain terms, the national record allows full foreign ownership for this activity. That national position is sourced to Perpres 10/2021 and 49/2021, while the Bali assessment adds a location-specific answer rather than altering the national ceiling.\n\nFor Bali, the result is unusually direct: this activity is not blocked for PMA registration. Bali permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities across the province, but 50133 at the Large scale is classified above those risk bands. The practical reading is not a special Bali ownership cap or a local partnership condition; none is stated. It is an open national activity whose Large-scale Bali risk position keeps it outside the moratorium’s prohibition.",
+    "pullQuote": "For Bali, the decisive point is that a Large-scale operation sits above the risk bands covered by the province-wide PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scale open to",
+        "value": "Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

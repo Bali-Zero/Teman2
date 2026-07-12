@@ -1,0 +1,27 @@
+{
+  "code": "50126",
+  "editorial": {
+    "headline": "Special-Cargo Shipping Beyond Indonesia’s Waters",
+    "standfirst": "This activity governs specialist international sea transport—from hazardous cargo to fish carriers—with a 49% national foreign-ownership ceiling and no Bali moratorium block at Large-scale risk.",
+    "body": "**This is a specialist international maritime-transport activity, not a catch-all freight category.** It covers overseas sea carriage of special cargo, including dangerous goods, hazardous and toxic waste, fish and other aquatic life. Its operating pattern is also specific: it serves non-fixed, irregular or tramp routes between Indonesian ports and ports abroad. The point is not simply that cargo crosses a border, but that vessel, cargo and route are aligned to the specialised character described by the activity.\n\nThe scope reaches into emerging energy logistics as well as established fisheries transport. It includes international distribution of carbon-free fuels carried as gases, solids or liquids—energy carriers such as hydrogen, ammonia and related compounds—on specially designed sea vessels, according to storage needs and conditions. It also expressly covers overseas transport of fish on Indonesian-flagged fish-carrier vessels and on foreign-flagged fish-carrier vessels. Chartering a maritime transport service together with its operator sits within the activity too; for foreign-flagged vessels, the scope identifies an agency arrangement by a company that is not a fisheries company, with the operator.\n\nAn enterprise entering this activity is therefore registering a particular form of international special-cargo sea transport: one shaped by its cargo, its vessel and irregular international routing. The registration field is open across the Mikro, Kecil, Menengah and Besar scales. That broad scale availability matters because the record does not reduce the activity to a single company size or a single vessel flag. Instead, it embraces both Indonesian- and foreign-flagged fish-carrier operations, specialised energy-carrier distribution, and chartered transport with an operator.\n\nForeign participation requires a clear reading of the national and Bali positions. Nationally, the activity is TERBATAS: foreign ownership is capped at 49%, rather than being fully open. In Bali, it is marked OK or higher risk, and PMA registration is not blocked by the island-wide moratorium. The reason is precise: at the Besar scale, its OSS risk is medium-high/high, so the moratorium does not block it. Bali’s PMA moratorium covers activities classified low or medium-low risk; this activity’s stated Large-scale risk classification places it outside that block.",
+    "pullQuote": "Nationally, foreign ownership is capped at 49%, while Bali does not block the activity under its PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "49%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Kecil, Menengah, Besar, Mikro"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

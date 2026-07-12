@@ -1,0 +1,27 @@
+{
+  "code": "50141",
+  "editorial": {
+    "headline": "Interprovincial Cargo Ferries: Open Nationally, Clear in Bali",
+    "standfirst": "Route-bound ferry freight between provinces is nationally open to PMA up to 100%; at the listed Besar scale, Bali does not block it under its PMA moratorium.",
+    "body": "**KBLI 50141 describes a specific interprovincial freight movement:** carrying goods from one province to another on ferry vessels operating on an established route. The detail matters. The activity is not framed simply as moving cargo by water; it is ferry transport, directed to goods, crossing provincial boundaries and tied to a route. Those elements form the useful boundary of the code, making its operating identity clear before ownership or location is considered.\n\n**The declared scale is Besar.** That is the only scale listed as open to the activity. For a business registering this classification, the record therefore places the activity in a large-scale setting rather than presenting a menu of smaller operating categories. It is a concise signal about the registration the record supports: large-scale public interprovincial ferry freight transport on routes. Nothing in the record expands that into a separate licence, capital rule or timetable, so the scale should be read precisely as stated rather than as a proxy for requirements not supplied here.\n\n**At the national level, the PMA picture is open.** The PMA status is TERBUKA and the maximum foreign ownership is 100%, meaning the national ceiling permits full foreign ownership for this activity. The cited basis is Perpres 10/2021, 49/2021. That national position should be kept distinct from Bali's local PMA screen; the two are not competing descriptions of one threshold. One addresses the national foreign-ownership ceiling, while the other records whether Bali's moratorium blocks PMA registration in the activity's relevant risk position.\n\n**In Bali, it is not blocked by the moratorium.** At the Besar scale, the OSS risk is Medium-High/High, and the record assigns the Bali status OK_or_HIGHER_RISK. Bali's permanent, island-wide moratorium blocks PMA for all Low and Medium-Low risk KBLI activities. This activity falls outside that block at the listed large scale. The clear practical conclusion is that a foreign investor can register KBLI 50141 in Bali today: it remains nationally open up to 100% foreign ownership, and Bali does not bar it under the stated moratorium.",
+    "pullQuote": "A foreign investor can register KBLI 50141 in Bali today: it remains nationally open up to 100% foreign ownership, and Bali does not bar it under the stated moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

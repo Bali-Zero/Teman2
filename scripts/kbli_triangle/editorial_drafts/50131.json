@@ -1,0 +1,27 @@
+{
+  "code": "50131",
+  "editorial": {
+    "headline": "The Scheduled Ferry Route Across Provincial Lines",
+    "standfirst": "A large-scale, foreign-open activity for scheduled public ferry passenger transport between Indonesian provinces, with Bali’s PMA moratorium not blocking it.",
+    "body": "This activity is for public passenger transport by ferry between one Indonesian province and another, where the vessel operates on an established route. Its centre of gravity is therefore not an occasional crossing or a private voyage, but the organised movement of passengers across provincial boundaries through ferry services tied to a route.\n\nThe registration is open at the **Besar** scale. That matters because the record frames the activity as one carried on at large scale, rather than presenting it as a category open across every business size. For the operator, the defining proposition remains clear: passenger ferry transport, a scheduled route, and a journey that crosses from one province into another.\n\nNationally, the activity is **TERBUKA** to PMA, with a foreign-ownership ceiling of **100%**. In plain terms, the record does not place the foreign stake below full ownership for this activity at the national level. The cited basis is **Perpres 10/2021, 49/2021**. That national openness should be read alongside the scale specified in the record: the relevant opening is for a Besar-scale registration.\n\nBali’s position is equally important, and more favourable here than a blanket reading of the island-wide moratorium might suggest. Bali permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities. This activity is not blocked by that moratorium because, at the Besar scale, its OSS risk is classified as Medium-High or High. The Bali status is **OK_or_HIGHER_RISK**: PMA registration is not stopped by the moratorium, precisely because the activity sits above the risk bands the rule blocks.",
+    "pullQuote": "Bali does not block PMA registration for this activity because its Besar-scale risk sits above the moratorium’s blocked bands.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scale",
+        "value": "Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

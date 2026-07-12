@@ -1,0 +1,27 @@
+{
+  "code": "50114",
+  "editorial": {
+    "headline": "International Passenger Sea Transport, on Fixed Routes and Beyond",
+    "standfirst": "This activity covers international passenger voyages by sea—scheduled liner services, irregular tramper routes and operator-led charters—with a clear PMA position nationally and in Bali.",
+    "body": "KBLI 50114 is the registration home for passenger movement by sea between Indonesian ports and ports abroad. Its scope reaches two distinct operating patterns: liner services that run fixed, regular routes to a schedule, and tramper services whose routes are neither fixed nor regular. The code is framed around the service being provided—transporting passengers by sea—rather than a single route format. It also expressly includes the rental of sea transport together with its operator, bringing that operator-led service model within the activity’s stated boundaries.\n\nThe scope is broader than conventional international liner traffic. It includes passenger sea transport operated through pelayaran rakyat, or people’s shipping, using sailing vessels, traditional motor vessels and motor-sailing vessels of specified sizes. Other international passenger sea services, including pioneering transport, are also named within the record. The activity is open across every listed business scale: Mikro, Kecil, Menengah and Besar. In other words, the defined passenger-transport activity is available across the full scale range recorded here, without the record limiting it to one enterprise size.\n\nNationally, the PMA position is direct: the activity is TERBUKA, with a foreign-ownership ceiling of 100%. A foreign-owned business may therefore register this activity nationally within that stated ceiling. Bali’s position is likewise not a PMA registration block. The province’s permanent moratorium blocks PMA registration for Low- and Medium-Low-risk KBLI activities across the island. For this activity, however, the Bali record identifies the OSS risk at the Besar scale as Menengah-Tinggi/Tinggi and states that it is not blocked by that moratorium.\n\nThe Bali picture is not a foreign-ownership prohibition, but a risk-classification question at the Besar scale. That distinction is the useful one for a founder reading the code closely: international passenger sea transport may be structured around scheduled liner operations, irregular tramper routes, operator-led rentals, people’s shipping or pioneering services, while the PMA reading remains nationally open and Bali is marked OK_or_HIGHER_RISK rather than blocked.",
+    "pullQuote": "The Bali picture is not a foreign-ownership prohibition, but a risk-classification question at the Besar scale.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
