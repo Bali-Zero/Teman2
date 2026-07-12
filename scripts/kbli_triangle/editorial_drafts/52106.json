@@ -1,0 +1,27 @@
+{
+  "code": "52106",
+  "editorial": {
+    "headline": "Storing Ionising Radiation Sources, With Bali’s Risk Line in View",
+    "standfirst": "This activity covers specialist storage for radioactive materials and ionising-radiation generators, open nationally to full foreign ownership and not blocked for PMA in Bali.",
+    "body": "This activity is the operation of facilities for storing ionising-radiation sources: radioactive substances and equipment that generates ionising radiation. It is a storage activity with a distinctly specialised subject matter, extending beyond a conventional warehouse to facilities designed around these sources themselves. The scope includes storage operated through a warehouse-receipt system, refrigerated warehouses, storage in free-trade zones, and storage locations for physical commodities comprising radioactive substances and ionising-radiation generators.\n\nRegistration is open at **Kecil**, **Menengah**, and **Besar** scale. That matters because the activity is framed as an operating facility rather than merely holding goods: the registered business may run storage arrangements across several recognised formats, including cooled storage and free-trade-zone operations. The common thread is not a particular warehouse model, but the custody and operation of storage for ionising-radiation sources.\n\nNationally, the activity is **TERBUKA** to PMA, with a foreign-ownership ceiling of **100%**. In direct terms, the record does not place a national foreign-equity cap below full ownership. For a foreign investor assessing the activity at national level, that is the starting position: the classification is open and permits up to complete foreign ownership.\n\nBali’s position is more specific, but it is not a prohibition. The Bali status is **OK_or_HIGHER_RISK**, and the activity is not blocked by the province’s permanent, island-wide PMA moratorium for low and medium-low risk activities. The stated reason is that, at **Besar** scale, its OSS risk is **Menengah-Tinggi/Tinggi**. The practical reading is clear: Bali does not shut this activity out of PMA registration under that moratorium; its large-scale risk character is the reason it remains outside the blocked category. The national openness therefore carries through to Bali on the record provided, while the Bali assessment should be understood through that higher-risk classification rather than as a generic warehousing proposition.",
+    "pullQuote": "Bali does not shut this activity out of PMA registration under its moratorium; its large-scale risk character keeps it outside the blocked category.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

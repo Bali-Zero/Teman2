@@ -1,0 +1,27 @@
+{
+  "code": "52107",
+  "editorial": {
+    "headline": "Radioactive By-Product Storage: Open Nationally, Clear in Bali",
+    "standfirst": "A specialised storage activity for naturally occurring radioactive material, open nationally to foreign investment and not blocked by Bali’s PMA moratorium.",
+    "body": "This activity is about storing naturally occurring radioactive material (NORM) and radioactive associated minerals originating from the mining and processing of oil and natural gas, phosphate, tin, zircon, and similar materials. Its scope is deliberately specific: this is storage for radioactive by-products from natural sources, not a general description of radioactive-material handling.\n\nThe activity can take several practical forms. It includes operating storage through a warehouse-receipt system, refrigerated warehouses for these minerals, storage in free-trade zones, and physical-commodity storage facilities. The boundary matters as much as the inclusions: storage facilities for ionising-radiation sources sit outside this activity’s stated scope. The result is a defined storage classification centred on naturally occurring radioactive material and the mineral by-products associated with it.\n\nThe national investment position is open. PMA participation is permitted with a foreign-ownership ceiling of 100%, and the activity is open at small, medium, and large scales. That is a clear national position: a foreign investor is not confined to a minority stake under the record’s PMA setting, while the permitted operating scales extend from small through large enterprise.\n\nBali’s picture is also clear, though it turns on the risk classification recorded at large scale. Bali permanently blocks PMA registration for all low- and medium-low-risk activities across the province. This activity is not blocked by that moratorium because its OSS risk at large scale is medium-high/high. In Bali, this activity is not blocked by the PMA moratorium; its recorded status is OK_or_HIGHER_RISK, rather than a local exclusion.",
+    "pullQuote": "In Bali, this activity is not blocked by the PMA moratorium; its recorded status is OK_or_HIGHER_RISK, rather than a local exclusion.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

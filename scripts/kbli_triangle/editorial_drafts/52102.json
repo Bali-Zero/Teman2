@@ -1,0 +1,27 @@
+{
+  "code": "52102",
+  "editorial": {
+    "headline": "Cold Storage: Fully Foreign-Open Nationally, Blocked for PMA in Bali",
+    "standfirst": "Cold-storage operations may accept full foreign ownership nationally, but Bali’s permanent risk-based moratorium prevents PMA registration there.",
+    "body": "Cold-storage activity is the business of operating paid, contract-based storage for goods needing refrigeration during a defined preservation period before they are sent to their final destination. Its commercial centre of gravity is the storage service itself: holding physical commodities under cooling or freezing conditions for someone else, rather than owning the goods or arranging their final delivery. The paid-service basis matters: a fee or contract governs the preservation period. The scope also reaches cold stores in bonded zones and rapid-freezing facilities, including blast-freezing operations.\n\nThis is therefore a category for warehouse operators whose offering is controlled-temperature capacity. It can be registered at Mikro, Kecil, Menengah, or Besar scale. The scope recognises routine refrigerated storage, frozen storage, and blast freezing within the same operational frame. Each belongs here when the operator stores goods for compensation or under a contract before final dispatch. The practical purpose is clear: preserve goods under cold conditions for the agreed period, then release them onward to their destination.\n\nAt national level, the position is straightforward. This activity is TERBUKA to PMA, and its foreign-ownership ceiling is 100%. In ordinary terms, a foreign investor can own the business in full under the national position; the record states no lower foreign-stake cap. That nationally open setting applies to the activity as described, including the operational forms expressly included in its scope. The important qualification is geographic rather than a national restriction on ownership.\n\nFor Bali, the answer changes decisively. A foreign investor cannot register this activity in Bali today. At the Besar scale, OSS marks every scope as Rendah or Menengah-Rendah, placing the activity within Bali’s island-wide, permanent moratorium on PMA for all Low and Medium-Low risk KBLI. The record identifies this moratorium as applying in May 2026. Bali’s status is BLOCCATO_CLASSE_RISCHIO: the issue is not a reduction from the national 100% ceiling, but a block on PMA registration under Bali’s risk-based rule.",
+    "pullQuote": "Nationally the ceiling is 100%; in Bali, the issue is not the stake but whether PMA can register at all.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

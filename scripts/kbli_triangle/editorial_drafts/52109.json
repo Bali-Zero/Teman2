@@ -1,0 +1,27 @@
+{
+  "code": "52109",
+  "editorial": {
+    "headline": "Warehousing Beyond the Standard Categories",
+    "standfirst": "This activity spans general warehousing, container depots and selected storage services—nationally open to full foreign ownership, with a scope-sensitive PMA route in Bali.",
+    "body": "KBLI 52109 covers the practical infrastructure of holding goods before they reach their final destination. It includes the management or operation of enclosed warehouses, silos and tanks, alongside other storage facilities. The scope also reaches container depots that store or stack containers and may offer additional facilities; warehousing used for electronic-trade activities; tanks for liquid and gaseous products such as water and liquefied gas; and physical-commodity storage not classified elsewhere. In other words, it is a broad operational category for storage activity, provided the proposed business fits one of those stated functions.\n\nThe code is open to businesses at Mikro, Kecil, Menengah and Besar scale. That breadth matters because the activity is defined by what the facility does—holding goods, containers or specified products before onward movement—rather than by one fixed building type. The registered activity should therefore be described with care: the applicable scope is not decorative wording, but the detail that determines how the business is understood in the OSS process.\n\nNationally, the position is clear. The activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. A foreign investor can therefore hold the full permitted stake nationally, subject to the activity falling within this code’s stated scope. The national basis recorded for that position is Perpres 10/2021, 49/2021.\n\nBali requires a more exact reading. This is not recorded as an outright PMA block, but as BLOCCATO_DIPENDE_SCOPE: the result depends on the declared scope and its OSS risk treatment. Bali’s permanent, island-wide moratorium blocks PMA registration for all Low and Medium-Low risk KBLI activities. For this code, some Besar-scale scopes are assessed as low risk, while others carry a higher risk. PMA registration in Bali is possible only where the business declares the higher-risk scope; the exact activity must be checked live in OSS. The sensible conclusion is neither blanket permission nor blanket refusal: the national 100% ceiling remains the national position, while Bali registration turns on the precise scope selected and its current OSS classification.",
+    "pullQuote": "The national 100% ceiling remains the national position, while Bali registration turns on the precise scope selected and its current OSS classification.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

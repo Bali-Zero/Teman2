@@ -1,0 +1,27 @@
+{
+  "code": "52104",
+  "editorial": {
+    "headline": "Where Indonesia Stores Its Energy Supplies",
+    "standfirst": "KBLI 52104 covers the infrastructure that receives, holds and releases petroleum, gas fuels and related energy carriers—open nationally and not blocked for PMA in Bali.",
+    "body": "KBLI 52104 is the operating code for petroleum and natural-gas storage: the facilities that receive, collect, hold and release crude oil, petroleum fuels, gas fuels and processed products. Storage may sit above ground, below ground or on the water’s surface. Its scope also reaches storage in free-trade zones, cold warehouses used for oil and gas, warehouse-receipt storage systems, and physical commodity storage locations for oil and gas.\n\nThe category also acknowledges the changing form of energy storage. It includes carbon-free fuels used as energy carriers—including hydrogen, ammonia and other compounds—whether held in geological formations, as compressed gas, solids, liquids or other forms. That makes this a code about operating the storage function itself: receiving a commodity, keeping it in controlled storage and releasing it onward.\n\nThe activity is open at Small, Medium and Large scale. Nationally, it is open to foreign investment, with foreign ownership permitted up to 100%. In Bali, the position is also open rather than barred: the provincial moratorium blocks PMA activity only for Low and Medium-Low risk KBLI activities, while the OSS risk stated for this activity at Large scale is Medium-High/High. It is therefore not blocked by that moratorium. For an investor assessing a Bali operation, that distinction matters: the national foreign-ownership ceiling remains full ownership, and the Bali assessment does not impose a moratorium block on this code.\n\nThe practical character of the code is consequently infrastructural rather than commercial in the narrow sense. It concerns the custody and movement through storage of oil, gas fuels and specified energy carriers, across a range of physical storage settings. Its regulatory picture is equally direct in the record: broad scale eligibility, national openness to foreign investment, and no Bali moratorium block for PMA registration.",
+    "pullQuote": "This is a code about operating the storage function itself: receiving a commodity, keeping it in controlled storage and releasing it onward.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

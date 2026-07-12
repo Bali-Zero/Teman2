@@ -1,0 +1,27 @@
+{
+  "code": "52221",
+  "editorial": {
+    "headline": "Sea-Port Services: Nationally Open, Blocked for PMA Registration in Bali",
+    "standfirst": "Sea-port services are nationally open to PMA up to 100%, yet Bali’s permanent risk-based moratorium blocks PMA registration for this activity today.",
+    "body": "Today, a foreign investor cannot register this sea-port service activity in Bali. That is the operative local conclusion even though activity 52221 is nationally classified as open to PMA, with a national foreign-ownership ceiling of 100%. The Bali record marks it blocked by risk class: at the Besar scale, every stated scope is assessed in OSS as Low or Medium-Low risk. Those risk levels trigger Bali’s moratorium, recorded as an island-wide, permanent block on PMA for all Low and Medium-Low risk activities. The moratorium date given is May 13, 2026.\n\nAt its core, this activity concerns the service infrastructure that makes maritime port movement function. Its stated scope reaches port services connected with water transport for passengers, animals, and goods. That includes operating terminal facilities such as ports and wharves, as well as marine navigation operations. It also encompasses port-based handling arrangements around vessel movement: navigation services, berthing activity, mooring, pilotage, and towing. The scope further covers dangerous-goods storage when it forms part of sea-port services, alongside the inspection of cargo and containers using ionising-radiation sources.\n\nThe classification is open across the full stated business-scale range: Mikro, Kecil, Menengah, and Besar. That breadth matters because the activity is not described as a narrow terminal-only function. It is a port-service field spanning facilities, navigation, vessel arrival and departure support, and specified cargo-control operations. Still, the Bali result turns on the record’s risk assessment at the Besar scale, where every listed scope is Low or Medium-Low risk in OSS. The practical issue is therefore not whether the activity has a nationally open PMA status, but how Bali applies its local moratorium to that recorded risk position.\n\nNationally, the foreign-ownership ceiling is 100%, under the stated PMA source. In Bali, however, that national opening does not produce a registrable PMA route for this activity today. The local rule recorded here blocks PMA for all Low and Medium-Low risk activities, and this activity falls within that block at the stated scale. For founders, the distinction should be held plainly: national openness and a 100% foreign-ownership ceiling remain part of the record, while Bali’s current, permanent moratorium prevents PMA registration for this activity on the island.",
+    "pullQuote": "National openness and a 100% foreign-ownership ceiling remain part of the record, while Bali’s current, permanent moratorium prevents PMA registration for this activity on the island.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

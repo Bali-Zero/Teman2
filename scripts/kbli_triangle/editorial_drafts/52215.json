@@ -1,0 +1,27 @@
+{
+  "code": "52215",
+  "editorial": {
+    "headline": "Off-Street Parking: Open Nationally, Clear of Bali’s Moratorium",
+    "standfirst": "KBLI 52215 covers off-street parking facilities—from dedicated structures to parking at offices, malls and hospitals—with a nationally open PMA position and no Bali moratorium block.",
+    "body": "KBLI 52215 is the activity of operating parking outside the road carriageway: parking buildings, parking areas within office buildings, shopping centres and hospitals, and other off-street parking services. Its subject is the place where vehicles are accommodated away from the public roadway, whether that place is a purpose-built facility or part of a larger property. Parking operated on the road itself sits outside this activity’s stated scope.\n\nThe code is open across the full stated business spectrum: Mikro, Kecil, Menengah and Besar. That breadth matters because the activity can describe a modest parking operation as readily as a larger facility attached to a major commercial or institutional setting. The common thread is not the size of the premises but the provision of parking beyond the street.\n\nNationally, the PMA position is TERBUKA, with a maximum foreign ownership level of 100%. In plain terms, the national record permits full foreign ownership for this activity. The cited basis is Perpres 10/2021, 49/2021. There is no lower national foreign-ownership ceiling in the record to qualify that position.\n\nBali’s picture is also materially straightforward, though it should be read on its own terms. The province permanently blocks PMA for all Low and Medium-Low risk KBLI across the island. This activity is not blocked by that moratorium: at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, placing it outside the moratorium’s stated reach. Bali therefore carries the status OK_or_HIGHER_RISK for this code, rather than a PMA registration block. For a foreign-owned off-street parking business, that distinction is the decisive one: national openness is not undone here by Bali’s standing moratorium rule.",
+    "pullQuote": "For a foreign-owned off-street parking business, national openness is not undone here by Bali’s standing moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
