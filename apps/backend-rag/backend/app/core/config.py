@@ -542,6 +542,15 @@ class Settings(BaseSettings):
         default="",
         description="API key for internal scraper poller. Set via INTEL_SCRAPER_API_KEY env var.",
     )
+    api_key_roles: str | None = Field(
+        default=None,
+        description=(
+            "Explicit per-key role map, `key:role,key:role` (role in {admin,user}). "
+            "Resolves an API key's role by IDENTITY, not by the spelling of the key. "
+            "A key not listed here (and not a legacy-admin) defaults to `user` — "
+            "adding a key never grants admin by accident. Set via API_KEY_ROLES."
+        ),
+    )
 
     @field_validator("api_keys", mode="before")
     @classmethod
