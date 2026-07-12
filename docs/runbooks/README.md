@@ -5,7 +5,7 @@
 > `python scripts/docs_sync.py`. The `docs-sync.yml` CI gate fails if stale.
 
 <!-- DOCSYNC:RUNBOOKS_INDEX_START -->
-**Runbooks:** 43 (git-tracked in `docs/runbooks/`)
+**Runbooks:** 44 (git-tracked in `docs/runbooks/`)
 
 | Runbook | Title |
 | ------- | ----- |
@@ -23,6 +23,7 @@
 | [`healer-organ.md`](healer-organ.md) | Healer organ — autonomous cure loop (Mini-Pro2) |
 | [`home-bridge-sync.md`](home-bridge-sync.md) | HOME-bridge sync antibody |
 | [`how-to-send-email.md`](how-to-send-email.md) | How to send an email (LLMs & agents) — the one true way |
+| [`ig-token-watchdog.md`](ig-token-watchdog.md) | IG token watchdog (Task 30) — keep the measurer's Meta token alive |
 | [`intake-review-pro-reader.md`](intake-review-pro-reader.md) | Runbook — Intake-Review Pro Reader (Fix #1) |
 | [`intel-lake-perfect-prod.md`](intel-lake-perfect-prod.md) | Runbook — Intel Lake pipeline (operatore non-dev) |
 | [`jules-dispatch.md`](jules-dispatch.md) | Jules dispatch — the active arm for Google's async cloud implementer |
