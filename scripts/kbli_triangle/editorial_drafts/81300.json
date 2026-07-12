@@ -1,0 +1,27 @@
+{
+  "code": "81300",
+  "editorial": {
+    "headline": "Landscaping Services: Nationally Open, Blocked for PMA Registration in Bali",
+    "standfirst": "This activity spans garden care, ecological restoration and landscape protection—open nationally to full foreign ownership, but unavailable for PMA registration in Bali.",
+    "body": "Landscaping services here means far more than keeping a garden attractive. The activity covers planting, care and maintenance for private and public residential gardens; public and semi-public buildings such as schools, hospitals, government institutions and places of worship; urban parks, green areas and cemeteries; transport corridors; and industrial and commercial sites. It also reaches roof gardens, green frontage, indoor plants, sports grounds, playgrounds, recreation areas, and still or flowing water features including pools, ditches, streams and drainage systems.\n\nThe scope is equally concerned with the protective and restorative work of landscape. It includes planting vegetation to reduce noise, wind, erosion, unwanted visibility, heat or sun glare; protecting and restoring gardens and landscapes; and ecological engineering for conservation purposes. Amenity-tree care and arboriculture sit within the same activity, alongside natural-environment restoration, plant engineering and ecosystem renaturalisation. Environmental erosion control in mountain areas, spawning grounds and riverbanks is included, as are habitat creation or relocation measures such as nesting boxes, shelters and hibernacula, plus prevention, control and response to invasive fauna or flora.\n\nRegistration is open across the full scale range stated in the record: Mikro, Kecil, Menengah and Besar. Nationally, the activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. That is a clear national position: foreign equity may reach 100% for this activity. The cited national basis is Perpres 10/2021 and 49/2021.\n\nBali is the decisive exception for a PMA applicant. A foreigner cannot register this activity in Bali through PMA today. The Bali record marks it BLOCCATO_CLASSE_RISCHIO because, at the Besar scale, OSS risk is Rendah or Menengah-Rendah across every scope; the activity is therefore caught by Bali’s moratorium of May 13, 2026. The provincial rule is stated as island-wide and permanent, blocking all Low and Medium-Low risk KBLI activities for PMA. National openness and a 100% foreign-ownership ceiling do not override that Bali registration block.",
+    "pullQuote": "National openness and a 100% foreign-ownership ceiling do not override Bali’s PMA registration block.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Registration scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

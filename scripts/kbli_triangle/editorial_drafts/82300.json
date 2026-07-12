@@ -1,0 +1,27 @@
+{
+  "code": "82300",
+  "editorial": {
+    "headline": "The Event Business That Is Nationally Open but Closed to PMA in Bali",
+    "standfirst": "KBLI 82300 spans the organisation and operation of business events nationwide, yet foreign investors cannot register it in Bali under the province’s permanent PMA moratorium.",
+    "body": "KBLI 82300 covers the organisation, promotion and management of business events: trade and business exhibitions, corporate events, general or specialist shows, conferences, conventions, seminars, symposia, workshops, agricultural markets, craft fairs and rural festivals. It can form part of the wider meetings, incentives, conferences and exhibitions ecosystem. The activity may also include managing an event venue and supplying its operating staff, but only where that work is tied to organising, promoting or managing the event itself.\n\nIts practical reach extends beyond invitations and floor plans. The code includes the technical planning, provision, installation and operation of audiovisual equipment and special effects for conferences, conventions and trade exhibitions. The boundary matters: exhibition-stand construction, cultural events, sporting events and private celebrations sit outside this activity’s stated scope. In other words, this is a code for the machinery of business gatherings—the production, management and technical delivery that turns a commercial event into a functioning occasion.\n\nNationally, the activity is open to foreign investment, with a foreign-ownership ceiling of 100%. It is available across Mikro, Kecil, Menengah and Besar scales, making it a broad registration category for operators whose work ranges from smaller commercial gatherings to substantial exhibition and convention activity. The national position is therefore straightforward: foreign participation is permitted at the full stated ceiling.\n\nBali tells a different story. A foreign investor cannot register this activity in Bali today. At the Besar scale, every stated scope falls within Rendah or Menengah-Rendah risk, placing the activity inside Bali’s island-wide, permanent prohibition on PMA registration for Low and Medium-Low risk KBLI. The recorded moratorium took effect in May 2026. That does not alter the national foreign-ownership ceiling; it determines whether a PMA registration for this activity can be made in Bali. For founders, the distinction is decisive: national openness does not create a Bali registration route where the provincial moratorium blocks it.",
+    "pullQuote": "National openness does not create a Bali registration route where the provincial moratorium blocks it.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "82200",
+  "editorial": {
+    "headline": "The Operating Room of Customer Contact",
+    "standfirst": "This activity code covers the systems and teams that receive, direct and resolve customer contact—open nationally to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "A call-centre activity is the operational centre of a company’s customer contact: the place where calls, digital enquiries and follow-up are received, routed and answered. It covers inbound operations that take orders, provide product information, respond to customer-assistance requests and handle complaints. Those functions may be delivered through human operators, artificial intelligence, automatic call distribution, computer-telephone integration, interactive voice-response systems or comparable methods. Web contact centres, and centres handling assistance requests or complaints through other communication channels, also sit within the activity’s stated scope.\n\nThe outward-facing side is equally material. Outbound call-centre operations may use similar methods to sell or market goods and services to prospective customers, or to conduct telephone interviews for market-research and opinion-survey purposes on a fee or contract basis. In practice, the code describes the contact operation itself: a business structured to manage incoming demand, customer support and complaint handling, while also enabling organised outbound contact. It is not limited to a single technology or a purely voice-based service.\n\nRegistration is open at Mikro, Kecil, Menengah and Besar scales. Nationally, the PMA status is TERBUKA, with a maximum foreign ownership level of 100%. That is a full foreign-ownership ceiling, not a partial opening. The relevant national source recorded for that position is Perpres 10/2021, 49/2021. For founders, the important reading is straightforward: the activity is nationally open to PMA registration, across the listed business scales.\n\nBali does not reverse that conclusion. The province permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities, island-wide. This activity is not blocked by that moratorium: at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi. Its Bali status is therefore OK_or_HIGHER_RISK. That does not add a Bali-specific foreign-ownership cap or partnership condition; none is recorded. The honest position is simply that a foreign investor can register this activity in Bali today, subject to the recorded risk position rather than a moratorium block.",
+    "pullQuote": "A foreign investor can register this customer-contact activity in Bali today because it is not caught by the province’s PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

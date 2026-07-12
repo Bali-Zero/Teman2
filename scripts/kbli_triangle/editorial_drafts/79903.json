@@ -1,0 +1,27 @@
+{
+  "code": "79903",
+  "editorial": {
+    "headline": "Tour-Guide Services: Nationally Open, Structurally Closed to PMA in Bali",
+    "standfirst": "Tour-guide services may be wholly foreign-owned nationally, but a PT PMA cannot register this activity in Bali under the available scale structure.",
+    "body": "Tour-guide services are more than an itinerary accessory. This activity covers professional accompaniment and guidance for travellers, including interpretation of culture and nature, as well as help with the practical matters travellers need. It also includes coordinating freelance guides when an individual traveller needs support or when a travel agency needs guide capacity. The registered enterprise therefore sits where local knowledge, visitor support and the organisation of guiding labour meet.\n\nThe available registration scales are Mikro, Kecil and Menengah. That matters because the activity is framed around an operating service: a business can provide guidance itself, arrange the appropriate freelance guide, or do both in response to individual visitors and travel agencies. Nationally, the activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. A foreign investor may therefore hold the full permitted stake at the national level.\n\nBali is the decisive exception. A foreigner cannot register this activity in Bali today through a PT PMA. The obstacle is structural: OSS has no Usaha Besar scale row, leaving the available registration space reserved for UMKM. Because a PT PMA is Usaha Besar by law, it cannot register against this activity’s available scales in Bali. This conclusion follows from the stated scale structure, rather than from the nature of the service itself.\n\nThat position sits beside a permanent, island-wide Bali rule blocking PMA for low- and medium-low-risk activities. The record does not provide a risk classification for this activity, so the stated basis for its Bali outcome remains the absent Usaha Besar row and the UMKM reservation. Founders should keep the two levels separate: national policy permits up to 100% foreign ownership, while Bali’s registration structure prevents a PT PMA from using this activity there. That is the practical boundary to understand before treating national openness as a Bali registration route.",
+    "pullQuote": "National policy permits up to 100% foreign ownership, while Bali’s registration structure prevents a PT PMA from using this activity there.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}

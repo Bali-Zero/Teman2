@@ -1,0 +1,27 @@
+{
+  "code": "82921",
+  "editorial": {
+    "headline": "Agricultural Product Packing: Open Nationally, Conditional in Bali",
+    "standfirst": "This code covers contract packing for agricultural, plantation, forestry and fisheries materials and products, with a nationally open PMA position but a scope-sensitive route in Bali.",
+    "body": "This activity is the business of packing agricultural, plantation, forestry and fisheries materials and products for a fee or under contract. It may be carried out through automated or manual processes. The work is practical but wide-ranging: bottling liquids, packing solid goods, labelling, marking, sterilising products in connection with packing, and other related packing activities all sit within its stated scope. The common thread is not ownership of the goods, but the provision of packing as a contracted activity for these product categories.\n\nThe code is open across every listed business scale: Micro, Small, Medium and Large. At the national level, it is also open to foreign investment, with foreign ownership permitted up to 100%. That makes the national position unusually direct: a foreign investor can participate fully in an entity carrying out this activity, provided the business is registered for the activity actually undertaken. The scope nonetheless matters. Packing is described here as a service performed for agricultural, plantation, forestry and fisheries materials and products, so the registration should reflect that operational reality rather than a broader commercial ambition.\n\nBali requires a more exact reading. This code is not marked as blocked for PMA registration in Bali, but its status depends on the declared scope. Bali permanently blocks PMA registration for all low- and medium-low-risk KBLI activities across the province. For this activity, OSS risk at the Large scale is low for some scopes and higher for others. A PMA registration in Bali is therefore possible only where the higher-risk scope is declared, and the precise activity must be verified in live OSS. This is not a general national restriction; it is the practical consequence of Bali's province-wide moratorium interacting with the risk classification attached to the exact scope selected.\n\nFor founders, the point is simple but important. National openness and a 100% foreign-ownership ceiling do not by themselves settle the Bali outcome. The relevant question is whether the proposed Large-scale packing operation is recorded in OSS under a higher-risk scope. If it is, the record indicates a PMA route in Bali; if it falls within the low or medium-low risk categories covered by the moratorium, Bali's permanent block applies. The registration decision therefore turns on the exact declared scope, not on an assumed entitlement drawn from the national PMA position alone.",
+    "pullQuote": "National openness does not by itself settle the Bali outcome: the exact declared scope determines whether a PMA route exists.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}
