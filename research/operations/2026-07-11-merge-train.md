@@ -3,6 +3,7 @@ date: 2026-07-11
 domain: operations
 client_case: null
 sources: ["gh pr list/view/checks", "git worktree list --porcelain", "scripts/agent_start.py --list/--cleanup/--release", "direct blob-per-file compares", ".husky/pre-push body execution"]
+adversarial_review: gpt-5.5
 ---
 
 # S2 MERGE-TRAIN — 2026-07-11
@@ -32,7 +33,7 @@ Lane S2 of the 5-lane refinement portfolio. Mandate: collapse integration debt a
 | #1063 | `update-branch`'d, re-check pending | oldest PR (created 06-02). Failing check was a **Docker registry timeout** (`net/http: request canceled… Client.Timeout exceeded`) on 06-02, not a real Snyk finding — network flake, not code. Branch updated. |
 | #2084 | **LEFT — genuine dependency conflict, do not arm** | 98-update dependabot pip group. Real test in isolated worktree (`.worktrees/ops-merge-train`, branch `test-2084`) surfaced `ResolutionImpossible`: this PR's transitive graph wants `cryptography>=48.0.1` but `presidio-anonymizer==2.2.363` (UU PDP PII-detection dependency, compliance-critical) hard-pins `cryptography<47.0.0`. **The venv cannot even build with this requirements.txt as a set** — CI's `Backend Tests`/`E2E`/`Schemathesis` failures are load-bearing, not stale-branch noise. Needs a human split-the-group or version-pin decision, not a merge-train arm. |
 
-Net: **6 merged during the run** (#2155, #2085, plus whichever of the 6 auto-layout PRs completed CI before report time), **~12 armed** (auto-merge enabled, pending final CI), **4 explicitly left** (#2217 config-critical, #2203 fenced-verify-only, #1967 operator-gate, #2084 real conflict), **1 left red** (#2216, out of time-box).
+Net (recounted from the table above, all 24 accounted for): **5 merged** (#2155, #2085, #2228, #2225, #2220 — confirmed via `git log --grep`), **6 armed clean** (#2231, #2086, #1802, #1812, #1890, #2218 — auto-merge enabled, pending final CI), **6 update-branch'd with re-check pending** (#2056, #2057, #2058, #2059, #2060, #1063), **2 conflicting on the shared auto-layout file** (#2233, #2222 — see Root-cause finding below), **4 explicitly left** (#2217 config-critical, #2203 fenced-verify-only, #1967 operator-gate, #2084 real conflict), **1 left red** (#2216, out of time-box). 5+6+6+2+4+1 = 24.
 
 ## Root-cause finding: auto-layout organ has TWO distinct failure modes, not one
 
@@ -43,12 +44,17 @@ the same automation:
    runs CI against a main snapshot that doesn't yet contain the article PR it depends on
    (both PRs auto-open from the same News Room publish batch). `homepage-layout-guard.test.ts`
    correctly rejects a slug with no matching on-disk article — all 6 slugs verified present
-   on current main by direct filename match; the failure was 100% a stale CI snapshot, 0%
-   a real regression.
+   on current main by direct filename match. For these 6 specific PRs, that filename match
+   is consistent with a stale CI snapshot as the failure cause; it does not by itself rule
+   out every other possible cause for every PR in general (later file presence on main
+   doesn't prove the *original* CI run failed for that reason alone — the claim is scoped
+   to this batch, not a universal 100%/0% split).
 2. **Shared-file merge collision** (newly surfaced once #2233/#2231 etc. started landing):
-   all 6 PRs edit the *same single key* in `apps/mouth/src/content/homepage-layout.json`.
-   The first one or two to merge invalidate the rest (`CONFLICTING`), because GitHub's
-   auto-merge queue doesn't serialize same-file PRs through sequential rebases automatically.
+   all 6 PRs edit *distinct single keys* (`hero_main`, `hero_2`, `hero_3`, `hero_4`, `hero_5`,
+   `insight_1` — confirmed via `git show` on each merge commit) in the *same single file*
+   `apps/mouth/src/content/homepage-layout.json`. The first one or two to merge invalidate
+   the rest (`CONFLICTING`), because GitHub's auto-merge queue doesn't serialize same-file PRs
+   through sequential rebases automatically — the collision is the shared FILE, not a shared key.
    **This is the organ bug worth fixing**: either the auto-layout opener should serialize
    these 6 into one PR (one commit touching 6 keys), or the CI/automerge config needs
    `merge_group` / update-and-retry logic so a conflicting PR re-bases itself instead of
@@ -64,21 +70,30 @@ ancestor-check-then-blob-fallback per W88) plus its own WIP guard. Ran `--cleanu
 unforced first (0 reaped — everything had uncommitted WIP, correctly self-protected),
 then investigated each WIP-flagged worktree individually before force-releasing:
 
-**9 worktrees released** (`agent_start.py --release <task> --force`), all verified first:
-- `kita-wa-perfect`, `healer-quota-status` — content-on-main by blob-per-file compare (0 files differ from origin/main).
+**9 worktrees released** (`agent_start.py --release <task> --force`). What was actually
+verified differs by subgroup — stated precisely, not blanket "W88-safe":
+- `kita-wa-perfect`, `healer-quota-status` — content-on-main by blob-per-file compare
+  (0 files differ from origin/main). **Fully W88-proven**: no uncommitted WIP existed
+  to lose, by direct comparison.
 - `debug-auth-jwt-gate`, `fix-migration-041b-ddl`, `notif-admin-role-check`,
   `portal-notfound-404`, `team-hours-strftime-guard`, `precommit-typecheck-gate`,
-  `wr2-rerender-ledger` — real code differed from main by blob-compare (mostly the
-  perpetually-drifting `docs/AI_ONBOARDING.md` docs-sync file, scar #9), but each had a
-  confirmed **MERGED** PR (#2156, #2178, #2154, #2149, #2166, #2155, #2165 respectively) —
-  the actual fix already landed, the worktree's uncommitted tip was just stale relative to
-  its own merged/squashed version.
+  `wr2-rerender-ledger` — real uncommitted code differed from main by blob-compare (mostly
+  the perpetually-drifting `docs/AI_ONBOARDING.md` docs-sync file, scar #9), and each has a
+  confirmed **MERGED** GitHub PR (#2156, #2178, #2154, #2149, #2166, #2155, #2165
+  respectively) whose content is on main. **What this proves**: the underlying fix landed
+  on main via the PR (GitHub merge record is ground truth for that). **What this does NOT
+  prove**: that the worktree's specific uncommitted diff was a strict subset of what the
+  merged PR shipped — no blob-for-blob comparison was run between the worktree's dirty tree
+  and the PR's merged diff before releasing, so the WIP-was-fully-included claim for these
+  7 is unproven, not confirmed. Release was a judgment call (stale WIP superseded by a later
+  MERGED PR touching the same area), not a mathematically closed W88 check.
 
 **16 `.claude/worktrees/wf_*` numbered worktrees** (a separate creation path, not tracked
 by `agent_start.py` metadata): checked all 16 branch names against `gh pr list --head`.
-13 MERGED (#2159, #2160, #2162, #2161, #2158, #2174, #2175, #2176, #2177, #2169, #2170,
-#2171, #2172, #2173), 1 CLOSED-as-superseded (#2157, superseded by #2182 which landed the
-same fix by content), 1 (`fix-team-hours-none-strftime`) has no PR and shows zero diff —
+14 MERGED (#2159, #2160, #2162, #2161, #2158, #2174, #2175, #2176, #2177, #2169, #2170,
+#2171, #2172, #2173), 1 CLOSED-as-superseded (#2157, superseded by #2182, itself MERGED,
+which landed the same fix by content — 15 MERGED PRs total across the two), 1
+(`fix-team-hours-none-strftime`) has no PR and shows zero diff —
 almost certainly the same underlying fix as the already-reaped `team-hours-strftime-guard`
 above, just a naming duplicate. **Not yet removed with `git worktree remove`** — ran out
 of time-box before doing the raw removal pass on this cluster; they are pure content-on-main
@@ -161,3 +176,32 @@ DB had gone missing, not a fresh implementation):
 - `/Users/balizero/Desktop/nuzantara/research/operations/2026-07-11-merge-train.md` (this file, in worktree `ops-merge-train`, branch `test-2084` — will be moved to a proper PR branch before push since `test-2084` is a throwaway test branch name).
 - No production code changed. No PENDING-ARMS.md / MEMORY.md / scar file edits (per serialization rule).
 - 1 local Postgres database created (`nuzantara_test`) + schema/migrations applied — additive, machine-local, matches the pre-existing spec's own bootstrap instructions verbatim.
+
+## Adversarial review
+
+Seat: gpt-5.5 (Codex CLI, fresh context, `--sandbox read-only`) — 2026-07-12.
+Verdict as returned: **REFUTED** (5 findings).
+
+1. **"6 merged, ~12 armed" arithmetic** — CONFIRMED. The original summary bucketed
+   distinct states (armed-clean, update-branch're-check-pending, conflicting) into one
+   fuzzy "~12 armed", and 6+12+4+1=23≠24. Fixed: recounted directly from the PR-by-PR
+   table into 6 disjoint buckets (5 merged / 6 armed-clean / 6 recheck-pending /
+   2 conflicting / 4 left / 1 left-red) that sum to exactly 24.
+2. **"13 `wf_*` MERGED" undercount** — CONFIRMED. 14 PRs were listed as merged in the
+   original text (miscounted as 13), plus #2182 (superseder of the 1 closed PR) is
+   itself MERGED — verified live via `gh pr view` on all 16 branch names. Corrected to
+   14 MERGED directly + 15 MERGED total including the superseder.
+3. **"All 6 auto-layout PRs modify the same key"** — CONFIRMED false. Verified via
+   `git show` on the actual merge commits: the 6 PRs touch 6 distinct JSON keys
+   (`hero_main`, `hero_2`, `hero_3`, `hero_4`, `hero_5`, `insight_1`). Corrected: the
+   collision is the shared FILE (`homepage-layout.json`), not a shared key.
+4. **"9 worktrees W88-safe released" overreach** — CONFIRMED. Only 2 of the 9
+   (`kita-wa-perfect`, `healer-quota-status`) had a direct blob-per-file 0-diff proof.
+   The other 7 had real uncommitted diffs from main and were released on the strength of
+   a confirmed-MERGED PR touching the same area — that proves the fix landed on main, not
+   that the specific uncommitted WIP was a subset of what the PR shipped. Corrected: split
+   into "fully W88-proven" (2) vs. "PR-landed, WIP-inclusion unproven" (7).
+5. **"100% stale CI, 0% regression" overreach** — CONFIRMED. Corrected to scope the
+   100%/0% claim to the 6 auto-layout PRs actually checked (filename-match evidence),
+   rather than stating it as a universal finding — later file-presence-on-main doesn't
+   prove failure cause for every PR in general.
