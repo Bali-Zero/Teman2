@@ -1,0 +1,27 @@
+{
+  "code": "64955",
+  "editorial": {
+    "headline": "Tapera Fund Management: Open Nationally, Address-Checked in Bali",
+    "standfirst": "This activity manages public housing savings funds, with national foreign ownership open to 100% and Bali access not blocked by the moratorium, subject to address verification.",
+    "body": "Managing public housing savings is a distinct fund-management activity, centred on Tapera and focused on the fund itself. The scope covers handling public housing savings funds from mobilisation, through accumulation, to utilisation. It is a continuous mandate rather than a single moment in the fund’s life: the record allows these functions to be performed separately or together. The activity can be carried out conventionally or under sharia principles, both expressly within its defined scope.\n\nThe record makes it available at every listed business scale—Mikro, Kecil, Menengah and Besar. That span matters because the core description does not change with scale. In each case, the formal activity remains the management of Tapera funds, structured around mobilisation, accumulation and/or utilisation. Nor does the record split conventional and sharia operation into separate activities here: both are recognised ways in which the same fund-management activity may be carried out. For a reader weighing the fit of the category, that fund-management focus is the decisive feature.\n\nNationally, the investment position is direct. The PMA status is TERBUKA and the maximum foreign ownership is 100%. That full ceiling means the national ownership field permits a foreign investor to hold the entire equity stake; it does not impose a lower foreign cap. The basis given in the record is Perpres 10/2021, 49/2021. Read together, those fields make the national position clear: foreign investment is open for this activity, including at the stated maximum of 100%.\n\nBali calls for a more exact reading, but not a pessimistic one. The Bali status is OK_or_HIGHER_RISK, and its note identifies the activity as medium-high/high risk. It is therefore not blocked by the province’s island-wide, permanent PMA moratorium. The note nevertheless requires verification per address. Bali does not shut this activity out under that moratorium, yet a PMA registration must still be checked against the specific address.",
+    "pullQuote": "Bali does not shut this activity out under that moratorium, yet a PMA registration must still be checked against the specific address.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

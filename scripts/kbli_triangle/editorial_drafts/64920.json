@@ -1,0 +1,27 @@
+{
+  "code": "64920",
+  "editorial": {
+    "headline": "International Trade Finance: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "This activity supports the movement of goods across borders with finance and related services—open to foreign investment nationally, but unavailable for PMA registration at a Bali address.",
+    "body": "International trade finance is the business of providing financial support—often alongside additional services—to help entities move goods to and from markets around the world. Its scope is practical and institutional: enabling cross-border shipments rather than merely describing trade itself. The activity also includes Indonesia’s export financing institution, placing export support within the same defined field.\n\nIt is open to businesses operating at every listed scale: micro, small, medium and large. That breadth matters because the activity is not framed as the preserve of only the largest financial operators. A registration can sit at any of those scales, provided its actual operations remain within the stated work of financing and supporting the international movement of goods.\n\nNationally, the PMA position is open, with foreign ownership permitted up to 100%. In straightforward terms, foreign capital may hold the full ownership interest nationally. That national openness is real, but it is not the whole answer for an investor choosing a Bali address.\n\nIn Bali, a foreign investor cannot register this activity as PMA today. The large-scale classification is identified as low risk, and Bali’s permanent, island-wide PMA moratorium blocks all low- and medium-low-risk KBLI activities for a Bali address. The result is a clear jurisdictional divide: the activity is open nationally, yet closed to PMA registration in Bali under the province’s moratorium.",
+    "pullQuote": "The activity is open nationally, yet closed to PMA registration in Bali under the province’s moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "CHIUSO_MORATORIA_BALI"
+      }
+    ]
+  }
+}

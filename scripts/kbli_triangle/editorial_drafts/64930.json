@@ -1,0 +1,27 @@
+{
+  "code": "64930",
+  "editorial": {
+    "headline": "Factoring: Buying the Claim, Not Lending Against It",
+    "standfirst": "Factoring is the purchase of trade receivables at a discount, nationally open to full foreign ownership and not blocked by Bali’s permanent PMA moratorium.",
+    "body": "Factoring begins with the purchase of a third party’s trade receivables—such as invoices—at an agreed discount or return. The defining transaction is the acquisition of the receivable itself, rather than debt financing that merely takes receivables as collateral. That distinction establishes the activity’s centre of gravity: a business acquires claims arising from trade, on terms that include a specified discount or return. The scope also expressly includes conventional finance companies that finance goods and/or services through investment financing, working-capital financing, multipurpose financing, or other financing business approved by the Financial Services Authority. Those conventional companies may also undertake operating leases and fee-based activities where these do not conflict with financial-services law.\n\nThe registration is open at Micro, Small, Medium, and Large scales. Scale is therefore a clear part of the picture, while a single commercial definition remains at the centre. Across those scales, the activity is anchored in buying trade receivables from third parties at a specified discount or return. For conventional finance companies, the description is broader in operational form but still bounded: financing of goods and/or services may take the stated investment, working-capital, multipurpose, or other Authority-approved forms. Operating leases and fee-based work are additional possibilities in that setting, subject to their consistency with financial-services legislation. The record thus describes both a focused transaction—buying receivables—and the conventional finance-company operations included within this activity.\n\nNationally, the PMA status is TERBUKA, with a maximum foreign ownership of 100%. In plain terms, the national position permits a foreign stake up to full ownership. Bali does not block this activity for PMA registration. Its provincial status is OK_or_HIGHER_RISK, and the stated reason is precise: at the Large scale, the OSS risk designation is Medium-High/High, so the activity is not blocked by the moratorium. That matters because Bali’s permanent, island-wide PMA rule blocks every Low and Medium-Low risk KBLI. The Bali position is therefore specific rather than assumed: this activity has no Bali PMA block, while its Large-scale classification sits outside the moratorium’s Low and Medium-Low reach.",
+    "pullQuote": "In plain terms, the national position permits a foreign stake up to full ownership.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
