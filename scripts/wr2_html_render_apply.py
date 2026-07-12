@@ -356,6 +356,22 @@ async def _publish_visibility(
     ALWAYS alerted — invisible production is the disease this cures."""
     from datetime import datetime, timezone
 
+    if not str(topic or "").strip() or not png_paths:
+        # W96 junk guard: an empty topic / zero slides violates the queue-entry
+        # contract (every real draft carries its topic — the leaked test
+        # fixtures did not). Enqueueing would put an undisplayable
+        # micro-carousel in front of the operator; refuse and alert instead.
+        logger.warning(
+            "visibility REFUSED for draft %s: malformed (topic=%r, slides=%d)",
+            draft_id, topic, len(png_paths),
+        )
+        await _ops_alert(
+            f"WR2 visibility REFUSED for draft {draft_id}: empty topic or zero "
+            f"slides — entry NOT queued (W96 junk guard). Drive: {drive_url or 'n/a'}",
+            tier="p1", dedup_key=f"wr2-visibility-malformed-{draft_id}",
+        )
+        return
+
     drafted_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
         car_dir = _persist_local_artifacts(
