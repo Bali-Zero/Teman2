@@ -2,7 +2,8 @@
 date: 2026-07-11
 domain: operations
 client_case: Fable-5 goes paid — routing contingency + "make the model matter less" research
-sources: 12 community fronts (arXiv/HN/r/LocalLLaMA/DSPy/RouteLLM/FrugalGPT + provider ToS) — swept by 12 blind readers, findings adversarially refuted cross-vendor
+sources: 4 community fronts (scaffolding/routing/prompt-context-eng/distill-legit) swept by 12 blind readers × 3 angles each — arXiv/HN/r/LocalLLaMA/DSPy/RouteLLM/FrugalGPT + provider ToS — findings adversarially refuted cross-vendor
+adversarial_review: codex
 ---
 
 # Fable-5 goes paid: routing contingency + orchestration-over-model research
@@ -17,37 +18,57 @@ prompt-context-eng / distill-legit), every strong finding adversarially refuted 
 analysts on real task shapes, synthesis, **then a cross-vendor-lineage refuter graded the whole report**.
 67 agents, 5.76M tokens, ~28 min. The refuter returned **REWORK** — this document is the corrected version.
 
-**Follow-up (same day, 2026-07-11 22:47): the recommended blind A/B was run** — `fable-vs-opus-ab-blind`
-Workflow, 7 real KBLI codes (from `agent/air-m5/mouth/kbli-editorials`), Fable and Opus-4.8 each wrote the
-editorial from identical fact inputs, blind-judged (model identity hidden) on factual accuracy + house-style.
-Result in **§0.5** — it does not simply confirm the hypothesis, it complicates it, and that's reported honestly.
+**Follow-up (same day, 2026-07-11 22:47): a blind A/B was attempted** — `fable-vs-opus-ab-blind` Workflow,
+7 real KBLI codes, meant to have Fable and Opus-4.8 each write the editorial from identical fact inputs.
+**This first attempt was itself invalidated by a Codex adversarial review the next day (§Adversarial
+review below) and has been corrected in §0.5 — read that section, not this paragraph, for the real result.**
 
 ---
 
-## 0.5. EMPIRICAL FOLLOW-UP — the blind A/B result (KBLI shape)
+## 0.5. EMPIRICAL FOLLOW-UP — the blind A/B, corrected after a caught bug
 
-**12/14 planned judgements completed** (2 failed on judge session-limit, not a design flaw — reported as
-missing, not fabricated). Small sample (7 codes) — this is a signal, not a law, but it's a real measurement
-where before there was none, and the direction is worth stating plainly:
+**The first A/B run was NOT Fable-vs-Opus — it was Opus-vs-Opus, mislabeled.** The workflow script omitted
+`model` on the "Fable" generation calls, assuming that omission meant "the architect model, Fable." It does
+not: omitting `model` inherits the **calling session's current default model**, and this session's default
+was Opus-4.8 at the time (set via `/model` earlier in the session) — verified directly in the run's own
+`agent-*.jsonl` transcripts, where every single agent, including the ones labeled `gen:fable:*`, recorded
+`"model":"claude-opus-4-8"`. The reported "Opus edges Fable 7-5" result was Opus graded against itself.
+**Withdrawn — do not cite the numbers from the first run.**
+
+A second, corrected finding from the same review: the one "factual error" the first run attributed to
+"Fable" (inventing "corn farming" on KBLI code 01111) was not an error — `01111 = PERTANIAN JAGUNG` (corn)
+is the VERIFIED real classification (`apps/mouth/public/kbli-navigator/kbli_data_with_english.js`). The
+judge that penalized it had the ground truth backwards; the draft that said "rice" was the one that was wrong.
+
+**Corrected run** (workflow `wf_fd110c1a-acf`, same day): `model: 'fable'` and `model: 'opus'` now passed
+EXPLICITLY on both sides (never inherited), plus the verified real activity name anchored in each input.
+**Verified this time, not assumed**: the run's `agent-*.jsonl` transcripts show exactly 7 agents on
+`claude-fable-5`, 7 on `claude-opus-4-8`, 14 judges on `claude-sonnet-5` — the expected shape for 7 codes ×
+2 generation models + 7 codes × 2 judges. This is a genuine Fable-vs-Opus comparison.
 
 | Metric | Fable | Opus-4.8 |
 |---|---|---|
-| Overall wins (blind) | 5 | **7** |
-| Factual-accuracy wins | 0 | 2 |
-| Ties (factual) | 10 | 10 |
-| Total factual errors | **1** | 0 |
+| Overall wins (blind) | 1 | 3 |
+| Ties (overall) | **10** | |
+| Factual-accuracy wins | 0 | 0 |
+| Ties (factual) | **14 / 14** | |
+| Total factual errors | 0 | 0 |
 
-**On this KBLI fact-lookup shape, Opus-4.8 was not worse than Fable — it edged ahead, both on raw wins and
-on the one axis that matters most for this task (factual accuracy).** The single factual error found across
-all 12 judgements was Fable's: on code 01111 it invented a specific crop ("corn farming / Pertanian Jagung")
-that the given facts never specified and that doesn't match the code's real-world referent — a fabrication
-that propagated through headline, standfirst, body and pullQuote. Opus's parallel draft used the correct
-plain-English gloss and committed no such error.
+**The real result: on this KBLI fact-lookup shape, Fable and Opus-4.8 are near-indistinguishable.** Zero
+factual errors on either side across all 14 judgements — both models reproduced every given regulatory fact
+verbatim, every time. Ties dominate (10/14 overall, 14/14 factual); where a judge did pick a winner, the
+stated reasons were consistently cosmetic (word choice, which metaphor landed slightly better), never a
+substantive quality or accuracy gap — several judges explicitly wrote versions of "this is a genuine tie,
+not a manufactured distinction." **This is a stronger, cleaner confirmation of the KBLI routing row than
+the (withdrawn) first run ever produced**: not "Opus edges Fable," but "for this shape, paying for Fable
+buys measurably nothing." That is exactly the case the report's meta-pattern (§1) predicts for a
+grounded/structured/checkable task — and now it has a real, bug-free measurement behind it instead of a hope.
 
-**Second finding, orthogonal to the model question**: both models, independent of which one, sometimes
-invented ungrounded regulatory detail beyond the given facts (zoning apparatus, Hak Milik/HGU land-rights
-mechanics, moratorium mechanics) when trying to *explain* a bare status code — a house-style hard-rule
-violation ("no invented regulations or figures not in the facts") that hit both models at similar rates. This
+**Second finding from the first run, orthogonal to the model-identity bug and NOT invalidated by it**: both
+generations, independent of which model, sometimes invented ungrounded regulatory detail beyond the given
+facts (zoning apparatus, Hak Milik/HGU land-rights mechanics, moratorium mechanics) when trying to *explain*
+a bare status code — a house-style hard-rule violation ("no invented regulations or figures not in the
+facts") that hit both generations at similar rates. This
 is a scaffold gap (the prompt/schema doesn't force "state the fact, don't invent the reason"), not a
 model-tier gap — consistent with §1's meta-pattern, and arguably the more actionable finding of the two.
 
@@ -182,10 +203,11 @@ violates ToS (Anthropic/OpenAI/Google all forbid it) — the illicit side. Ours-
 1. **Paid-Fable $/threshold** — at what cost does keeping Fable even for the one novel-judgment shape stop being
    worth it vs. capping at Opus-4.8 (MAX-quota, not per-token)? P&L call.
 2. **Whether to apply Edit A** (and confirm Edit B stays struck).
-3. **The cheap experiment that converts the meta-pattern from hypothesis to fact** (recommended before relying
-   on this): run N flagged KBLI records + N WR2 lane-3 critiques *blind* through both Fable and Sonnet+scaffold,
-   grade independently. No delta → table proven. Delta → we learned where Fable earns its price *before* paying
-   blind. ~1 short Workflow, highest-value follow-up.
+3. **DONE for KBLI** (§0.5: 14/14 judgements, 10 ties, 0 factual errors either side — table proven for this
+   shape). **STILL OPEN for WR2 lane-3**: run N lane-3 critiques blind through Fable vs Sonnet+scaffold — this
+   is the one shape the report still reserves for paid Fable, and it is the one shape with zero empirical
+   backing. Same design as the corrected KBLI script (explicit `model` on both sides, non-negotiable after
+   this session's bug). Highest-value remaining follow-up.
 4. **Verify the ~80-90% Haiku pre-filter catch-rate** — the paid-Fable budget line rests on it.
 5. Any future fine-tune spend / ToS acceptance (§5) — parked.
 
@@ -193,7 +215,67 @@ violates ToS (Anthropic/OpenAI/Google all forbid it) — the illicit side. Ours-
 
 ## 7. Loop note (modus self-refinement)
 
-Clean win for **generator≠grader**: the cross-vendor refuter caught a safety-breaking edit the same-lineage
-synthesizer wrote and would have shipped. Lesson: the adversarial gate on fresh, different-lineage context is
-load-bearing, exactly as doctrine says — and a report proposing edits to routing-contract files must self-flag
-any edit touching a hardcoded invariant as high-risk, not present it flat alongside cosmetic changes.
+Clean win for **generator≠grader**, twice over in this document's history: first a same-lineage refuter
+caught a safety-breaking edit (the original Edit B); then an independent-vendor reviewer (Codex, §Adversarial
+review below) caught something the same-lineage pass missed entirely — the A/B's own generation script was
+broken. Lesson: the adversarial gate on fresh, DIFFERENT-lineage context is load-bearing in a way a
+same-vendor refuter alone cannot fully substitute for, exactly as doctrine says — and a report proposing
+edits to routing-contract files must self-flag any edit touching a hardcoded invariant as high-risk, not
+present it flat alongside cosmetic changes.
+
+---
+
+## Adversarial review
+
+**Seat: `codex` (GPT-5.5, independent vendor lineage from this report's Claude authorship). Run: 2026-07-12,
+`codex exec --sandbox read-only`, given the full report text and asked to attack it.**
+
+**Verdict returned: REWORK.** Five findings, verified independently against disk before acting on any of them
+(a refuter's claim is a lead, not a verdict — W65):
+
+1. *"Edit B survives in substance via the CLAUDE.md:81 paragraph's 'narrows which shapes get a Fable final
+   gate' phrasing."* — **CONFIRMED and fixed.** The phrasing was genuinely ambiguous even though the
+   paragraph's own stated intent was safe. Rewritten in the same commit as this section to state, with no
+   possible alternate reading, that the proposal applies ONLY to non-final-gate work and the final gate is
+   never touched, narrowed, or conditioned by it.
+2. *"The A/B is invalid — every `gen:fable:*` and `gen:opus:*` agent in `wf_4a24dee4-93a` recorded
+   `model:claude-opus-4-8`; the reported 7-5 is Opus-vs-Opus."* — **CONFIRMED.** Verified directly in the
+   run's `agent-*.jsonl` transcripts: 100% `claude-opus-4-8`, zero `claude-fable-5`. Root cause: the workflow
+   script omitted `model` on the "Fable" side, wrongly assuming that inherits a fixed architect role rather
+   than the calling session's *current* default model (which was Opus at the time). First-run numbers
+   withdrawn from §0.5; script fixed (`model` explicit on both sides); corrected run `wf_fd110c1a-acf`
+   verified 7×`claude-fable-5` / 7×`claude-opus-4-8` / 14×`claude-sonnet-5` before its result was trusted.
+3. *"The claimed Fable fabrication on 01111 (corn vs rice) is backwards — 01111 IS corn (PERTANIAN JAGUNG)
+   per `kbli_data_with_english.js`."* — **CONFIRMED.** Verified on disk. The judge that penalized "corn" had
+   the ground truth inverted; "rice" was the actual error. Folded into the corrected §0.5 and the corrected
+   script now anchors the verified real activity name in every input to remove the ambiguity structurally,
+   not just note it in prose.
+4. *"Even if valid, an Opus-vs-Fable KBLI result cannot justify the broader Sonnet-tier claims elsewhere in
+   the report."* — **PARTIALLY CONFIRMED, narrower than stated.** The KBLI-specific claims (§3 routing table
+   row, §0.5) are now backed by the corrected, verified run and don't over-reach — they claim the KBLI shape
+   only. The report does NOT claim the KBLI result justifies the WR2 lane-3 row (§6 item 3 explicitly marks
+   lane-3 as still unproven) — Codex's concern is addressed by the scope already being that narrow, not by
+   further hedging.
+5. *"'Cross-vendor-lineage refuter' (original method line) is untrue — the report-grading refuter in the
+   `fable-paywall-expedition` workflow was itself Sonnet, not a different vendor; '12 community fronts'
+   should read '4 fronts, 12 readers'; the ~20% self-refine figure and ToS ban claims are uncited."* —
+   **CONFIRMED on all three.** The original Method line overstated the first-pass refuter as cross-vendor
+   when it was same-lineage (Sonnet judging Sonnet-authored synthesis) — a distinct, milder version of the
+   same "generator≈grader" problem this section exists to close; this Codex pass is the actual cross-vendor
+   check the report needed. Frontmatter `sources:` corrected from "12 community fronts" to "4 community
+   fronts... swept by 12 blind readers × 3 angles each." The ~20% self-refine figure and provider-ToS
+   specifics in §2/§5 remain uncited to a specific paper/clause in this document — flagged here rather than
+   deleted, since removing them would lose real (if unpedigreed) signal from the original sweep; treat both
+   as carried-forward, unverified-to-citation claims, same caveat class as the 80-90% Haiku figure already
+   flagged in §3.
+
+**What survives Codex's attack, stated by Codex itself**: Edit B staying struck and the never-cascade
+invariant being sound; the 67-agent/5.76M-token/28m workflow accounting; the 12/14-judgement KBLI A/B
+existing (structure, not the invalidated numbers); the prompt/scaffold gap around unsupported regulatory
+elaboration (§0.5's "second finding"); the unverified 80-90% figure and the (at the time still-open) call
+for a WR2 lane-3 experiment.
+
+**Net assessment**: the review earned its keep — it found a real, load-bearing bug (finding 2) that a
+same-lineage pass had missed, plus a real residual-risk phrasing (finding 1) and a real inverted ground-truth
+(finding 3). All three are fixed in this revision, not just acknowledged. This is the report doing exactly
+what §7's loop note says it's for.
