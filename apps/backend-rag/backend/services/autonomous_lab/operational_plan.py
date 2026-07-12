@@ -295,10 +295,10 @@ MISSING_V1_COMPONENTS: tuple[LabControlPlaneComponent, ...] = (
     LabControlPlaneComponent(
         key="verification_runner",
         agent_role="verification_runner",
-        responsibility="run allowlisted tests, lint, metrics, and failure analysis",
-        output="verification report",
+        responsibility="claim Pro-only queue work and run allowlisted verification",
+        output="owner-scoped worker transition and receipt-safe verification report",
         gate="empirical_result_recorded",
-        state=ComponentState.PLANNED,
+        state=ComponentState.CONTRACTED,
         depends_on=("worktree_experiment_runner",),
         parallel_group="execution",
     ),

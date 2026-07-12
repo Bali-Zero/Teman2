@@ -91,6 +91,15 @@ from backend.services.autonomous_lab.runtime_contracts import (
     build_lab_checkpoint,
     build_runtime_snapshot,
 )
+from backend.services.autonomous_lab.runtime_worker import (
+    LabRunStateStore,
+    LabWorkerConfig,
+    LabWorkerStatus,
+    VerificationCommandResult,
+    default_worker_id,
+    execute_command_plan,
+    run_worker_once,
+)
 from backend.services.autonomous_lab.sandbox_policy import (
     SANDBOX_POLICY_VERSION,
     SandboxExecutionLimits,
@@ -222,6 +231,7 @@ __all__ = [
     "LabRun",
     "LabRunQueueItem",
     "LabRunRecord",
+    "LabRunStateStore",
     "LabRunStatus",
     "LabRuntimeAction",
     "LabRuntimeLane",
@@ -243,7 +253,9 @@ __all__ = [
     "LabTone",
     "LabWorkerCheckpoint",
     "LabWorkerCheckpointStatus",
+    "LabWorkerConfig",
     "LabWorkerDryRun",
+    "LabWorkerStatus",
     "LabWorkerTickResult",
     "LocalWorktreeSandboxRunner",
     "MaterialCluster",
@@ -271,6 +283,7 @@ __all__ = [
     "SourceAdapterKind",
     "SourceAdapterSpec",
     "StageResult",
+    "VerificationCommandResult",
     "WatchtowerTick",
     "assert_outbox_consumer_allowed",
     "assert_receipt_persistable",
@@ -289,7 +302,10 @@ __all__ = [
     "default_sandbox_policy",
     "default_source_adapters",
     "default_stage_nodes",
+    "default_worker_id",
+    "execute_command_plan",
     "normalize_and_dedupe_materials",
     "resolve_runtime_placement",
     "review_lab_run",
+    "run_worker_once",
 ]
