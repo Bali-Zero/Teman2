@@ -1,0 +1,27 @@
+{
+  "code": "86103",
+  "editorial": {
+    "headline": "Private Hospitals: Foreign-Open Nationally and Not Blocked in Bali",
+    "standfirst": "A large-scale private hospital activity that is nationally open to full foreign ownership and, because of its stated risk category, not blocked from PMA registration in Bali.",
+    "body": "Private hospital care is the essential subject of this activity. It covers health care and physical treatment delivered by private general hospitals, private maternity hospitals and private specialist hospitals. The work may be outpatient care, or inpatient care in which the patient is admitted. This is not a loose label for health services generally: the record fixes the setting as a private hospital and the service as care and physical treatment carried out there. The definition is concerned with where and how care occurs, not merely the broad subject of health. It also identifies two bed-count bands—private hospitals with more than 250 beds, and those with 201 to 250 beds—placing those institutions squarely within the stated scope.\n\nFor registration, the scale explicitly open is Besar. That is the whole scale signal supplied by the record, and it matters: the activity is framed around large-scale private hospital provision rather than an undifferentiated health-care venture. The code therefore speaks to the private institution that delivers the specified care through a general hospital, maternity hospital or specialist hospital, across outpatient and admitted-patient treatment. Both outpatient and inpatient care remain inside that same hospital frame. Its scope is concise but not casual; it ties the registered activity to the hospital setting, the forms of care, and the listed bed ranges.\n\nAt national level, the position is unequivocal. The PMA status is TERBUKA, with a maximum foreign ownership of 100%. Put plainly, the national ceiling allows full foreign ownership of this activity; it is a ceiling, rather than a partial foreign stake. That conclusion belongs to this activity’s own record and does not depend on a wider reading of the health sector. The cited national basis is Perpres 10/2021, 49/2021, but the practical point is already clear in the entry itself: foreign capital is nationally open up to the stated 100% ceiling.\n\nBali does not overturn that national openness. Its local assessment is OK_or_HIGHER_RISK because OSS places the activity, at Besar scale, in the Menengah-Tinggi/Tinggi risk category. Bali’s permanent, island-wide PMA moratorium blocks every Low and Medium-Low risk activity; this one is expressly not blocked by that moratorium. There is no separate Bali-side foreign-ownership percentage or partnership condition in the reason given, so none should be inferred. The honest local conclusion is clean: a foreign investor can register this activity in Bali today, because its stated risk position sits outside the activities that the moratorium blocks.",
+    "pullQuote": "The honest local conclusion is clean: a foreign investor can register this activity in Bali today, because its stated risk position sits outside the activities that the moratorium blocks.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

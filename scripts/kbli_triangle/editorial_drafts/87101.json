@@ -1,0 +1,27 @@
+{
+  "code": "87101",
+  "editorial": {
+    "headline": "Residential Health Care by Government: Open Nationally, Address-Sensitive in Bali",
+    "standfirst": "This government-run residential care activity is nationally open to full foreign ownership, while Bali leaves its treatment outside the PMA moratorium but subject to address verification.",
+    "body": "This activity covers government-provided residential health care and recovery services: assisted living, medical care, nursing care and rehabilitation delivered within a residential setting. It is not simply accommodation with support. The model described here combines continuing personal care with clinical nursing attention for people whose care takes place where they live.\n\nThe operating foundation is a permanent core staff that includes registered or licensed practising nurses, alongside other personnel. Their work joins nursing care to personal care, with services that may include administering medication, making medical diagnoses and treating wounds. Those services are usually provided without a medical doctor stationed at the facility. In other words, the category describes a structured, care-led residential service rather than a conventional lodging operation or an occasional visiting-care arrangement.\n\nThe record places the activity in a government-delivered setting, so the defining operator is the government. It does not specify any business scales open to the activity. Nationally, however, its PMA status is open and the foreign-ownership ceiling is 100%. That is the national position stated for this activity: foreign ownership may reach the full ceiling, without a lower foreign-share cap appearing in the record.\n\nBali requires a more careful reading, but not a gloomy one. The activity is marked as acceptable or higher risk and is not blocked by Bali’s PMA moratorium. That moratorium permanently blocks PMA for low- and medium-low-risk activities across the island; this activity sits outside that stated block because it is identified as medium-high or high risk. The practical qualifier is geographic rather than numerical: the position must be verified for the particular address. For a founder assessing a Bali location, that is the honest conclusion—nationally open, not moratorium-blocked in Bali, and still dependent on address-level verification.",
+    "pullQuote": "Nationally open, not moratorium-blocked in Bali, and still dependent on address-level verification.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

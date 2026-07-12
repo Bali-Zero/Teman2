@@ -1,0 +1,27 @@
+{
+  "code": "86992",
+  "editorial": {
+    "headline": "Traditional Health Care, Defined by Prevention",
+    "standfirst": "KBLI 86992 frames traditional health services around promotion and prevention, with a clear national opening and no Bali moratorium block.",
+    "body": "KBLI 86992 covers traditional health services whose centre of gravity is promotive and preventive care. The work is delivered by traditional health practitioners through skills-based methods and/or preparations, in a *Panti Sehat*—also described as a Type 2 traditional health clinic. Its scope embraces practices such as health massage, reflexology, acupressure, Indonesian herbal preparations, hypnotherapy, bone-setting, dry cupping, sinse practice and energy therapy. The unifying idea is not a single technique, but a traditional-health service organised around supporting health through those recognised forms of care.\n\nThe activity is open at every stated business scale: Micro, Small, Medium and Large. Nationally, it is open to foreign investment, with a foreign-ownership ceiling of 100%. That is the straightforward national position recorded for this activity: foreign participation is not capped below full ownership. The applicable source is Perpres 10/2021, 49/2021.\n\nBali requires a more specific reading, but it does not reverse that national openness. The province’s standing rule blocks PMA registration for all Low and Medium-Low risk KBLI activities, island-wide and permanently. This activity is not marked as blocked by that moratorium. The record identifies the relevant reason at the Large scale: its OSS risk is Medium-High/High, placing it outside the moratorium’s blocked Low and Medium-Low categories. Bali’s status is therefore recorded as OK_or_HIGHER_RISK, rather than as a prohibition. For a foreign-owned registration, the honest conclusion is that this activity can be registered in Bali today; the Bali moratorium does not block it on the stated risk basis.\n\nThat distinction matters because the national foreign-investment position and Bali’s island-wide moratorium operate on different terms. Here, the national ceiling remains 100%, while the Bali assessment turns on the activity’s recorded risk treatment at Large scale. The result is neither a hidden Bali cap nor a special local partnership condition: the record states neither. It instead gives a clean, bounded answer—traditional health services under this activity are nationally open to foreign investment and are not blocked for PMA registration in Bali by the provincial moratorium.",
+    "pullQuote": "Traditional health services under this activity are nationally open to foreign investment and are not blocked for PMA registration in Bali by the provincial moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
