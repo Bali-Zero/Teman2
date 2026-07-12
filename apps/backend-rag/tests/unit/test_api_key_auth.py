@@ -87,8 +87,10 @@ def test_init_logs_initialization(fresh_api_key_auth):
     with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         APIKeyAuth()
         mock_logger.info.assert_called_once()
-        assert "API Key service initialized" in mock_logger.info.call_args[0][0]
-        assert "2 valid keys" in mock_logger.info.call_args[0][0]
+        args = mock_logger.info.call_args[0]
+        assert "API Key service initialized" in args[0]
+        # log is now `%d keys (%d admin)` with the count as a positional arg
+        assert 2 in args[1:]
 
 
 # ============================================================================
