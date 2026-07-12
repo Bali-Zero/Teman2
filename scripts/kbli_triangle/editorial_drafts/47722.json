@@ -1,0 +1,27 @@
+{
+  "code": "47722",
+  "editorial": {
+    "headline": "Human Pharmaceutical Retail: Open Nationally, Blocked in Bali",
+    "standfirst": "This activity covers retail sales of human pharmaceutical preparations beyond conventional pharmacies—but Bali’s permanent PMA moratorium changes the practical answer for foreign founders.",
+    "body": "This activity is the retail trade of pharmaceutical preparations for human use outside a conventional pharmacy setting. Its scope is broad in form rather than in medical purpose: tablets, capsules, ointments, solutions, parenteral solutions and suspensions all sit within it. The record specifically includes products associated with skin, eye, dental, ear, respiratory, digestive, blood-pressure and hormonal conditions, alongside vitamins and health supplements. In practice, it reaches drug stores, Type B village pharmacies and pharmaceutical market stalls, as well as mobile and internet-based medicine sales.\n\nThe activity is open across the full stated scale range: Mikro, Kecil, Menengah and Besar. That matters because the code is not framed as a niche format reserved for a single kind of outlet. It accommodates a fixed retail presence, market-based selling, circulation through mobile sales, and an online channel. The common thread is the retail sale of pharmaceutical preparations for people; the setting may change, but the activity remains defined by that retail function.\n\nAt national level, the record classifies the activity as TERBUKA and permits foreign ownership up to 100%. That is a clear national position: foreign capital may hold the full permitted stake in a business registered under this activity. It should not, however, be mistaken for a universal right to register in every Indonesian location. The national foreign-ownership ceiling and the provincial position in Bali are separate facts, and here they lead to different practical conclusions.\n\nFor Bali, the conclusion is direct: a foreign investor cannot register this activity there today. At the Besar scale, every scope is assessed in OSS as Low or Medium-Low risk, bringing it within Bali’s permanent, island-wide moratorium on PMA registration for activities in those risk classes. The block was in force from May 2026. For a founder considering Bali as the operating base, the national openness is therefore real but unavailable locally: the activity remains nationally open to full foreign ownership while PMA registration in Bali is blocked.",
+    "pullQuote": "National openness is real, but for PMA registration in Bali this activity is unavailable today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "47726",
+  "editorial": {
+    "headline": "Animal Medicines at Retail: An Open National Route, With Bali Risk in View",
+    "standfirst": "This activity covers retail sales of animal pharmaceutical products—from tablets and ointments to fish medicines—open nationally to foreign investment and available across small, medium, and large enterprise scales.",
+    "body": "KBLI 47726 is the retail trade of pharmaceutical medicines for animals. Its scope is practical and broad: products may be sold as powders, tablets, capsules, ointments, solutions, suspensions, or aerosols, and medicines for fish are expressly included. The activity also encompasses veterinary pharmacies, animal-medicine depots, pet shops, poultry shops, and animal-medicine stores. The unifying point is retail distribution of medicines intended for animals.\n\nThe code is open to small, medium, and large enterprises. That matters because the activity is not framed as a narrow retail format confined to one type of outlet. A veterinary pharmacy and a poultry shop may look very different on the ground, yet both sit within the same stated retail scope where they trade animal pharmaceutical medicines. For a founder, the essential question is whether the proposed business remains recognisably within that retail activity and the listed forms of animal medicine.\n\nNationally, the foreign-investment position is clear: the activity is open, with a foreign-ownership ceiling of 100%. The cited basis is Presidential Regulations 10/2021 and 49/2021. In other words, the national record does not impose a foreign-equity cap below full ownership for this activity.\n\nBali requires a more specific reading of the record. The province permanently blocks all low- and medium-low-risk KBLI activities for PMA registration, island-wide. This activity is not marked as blocked by that moratorium. At the large-enterprise scale, its OSS risk is medium-high or high, which is why the record places it outside the moratorium block. The Bali status is therefore recorded as OK_or_HIGHER_RISK: open from the moratorium perspective, while requiring attention to the risk classification attached to a large-scale operation.",
+    "pullQuote": "Nationally open to 100% foreign ownership, this animal-medicine retail activity is not blocked by Bali’s PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Enterprise scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

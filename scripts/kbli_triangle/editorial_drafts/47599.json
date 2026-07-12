@@ -1,0 +1,27 @@
+{
+  "code": "47599",
+  "editorial": {
+    "headline": "Household Essentials Retail: Nationally Open, Closed to PMA in Bali",
+    "standfirst": "This retail activity covers everyday household essentials, with national foreign ownership open to 100% but no PMA registration route in Bali.",
+    "body": "This activity covers the retail sale of household equipment and supplies not classified elsewhere, including twig brooms, palm-fibre brooms, brushes, doormats, mops and cleaning cloths. It is a practical retail category: the ordinary goods that support cleaning and day-to-day household upkeep, brought together in one defined business activity rather than treated as incidental stock.\n\nThe registration scope is broad in business scale. It is open to Mikro, Kecil, Menengah and Besar enterprises, allowing the same activity to be registered from micro through large scale. Nationally, it is also marked TERBUKA for PMA. The maximum foreign ownership is 100%, which means there is no national foreign-share cap below full ownership for this activity.\n\nThat national position does not create a Bali PMA registration route. A foreign investor cannot register this activity in Bali today. The record identifies the reason at the Besar scale: its OSS risk is Rendah or Menengah-Rendah across every scope. Bali’s island-wide, permanent moratorium blocks PMA registration for KBLI activities assessed as Low or Medium-Low risk, and this activity is therefore marked BLOCCATO_CLASSE_RISCHIO.\n\nThe distinction matters because the national ownership ceiling and Bali’s registration position answer different questions. At national level, foreign ownership may reach 100%. In Bali, however, the risk-based moratorium blocks PMA registration for this activity, regardless of that national openness. The Bali restriction is tied to the activity’s recorded risk treatment and the provincial moratorium noted in May 2026, not to a reduced national foreign-ownership percentage.",
+    "pullQuote": "National openness does not translate into a Bali PMA registration route for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

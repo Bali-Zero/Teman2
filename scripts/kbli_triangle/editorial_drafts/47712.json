@@ -1,0 +1,27 @@
+{
+  "code": "47712",
+  "editorial": {
+    "headline": "Footwear Retail Is Nationally Open, but Closed to PMA in Bali",
+    "standfirst": "This activity spans specialist footwear retail at every scale nationally, yet Bali’s permanent moratorium prevents PMA registration today.",
+    "body": "Specialist retail of shoes, sandals and other footwear is broader than a single shop format. It covers footwear made from leather, artificial leather, plastic, rubber, fabric or wood: adult men’s and women’s shoes, children’s shoes, sports shoes, sandal shoes, sandals, slippers and health shoes. The common thread is retail specialisation in footwear itself, across materials and uses.\n\nThe activity is open to registration at Mikro, Kecil, Menengah and Besar scales. Nationally, its PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. In other words, the national position permits full foreign ownership for this activity. The cited national reference is Perpres 10/2021, 49/2021.\n\nBali is where the national reading stops being sufficient. A foreign investor cannot register this activity in Bali today. At the Besar scale, OSS risk is Rendah or Menengah-Rendah across every scope, placing the activity inside Bali’s island-wide, permanent moratorium on PMA registration for Low and Medium-Low risk activities. The record identifies the Bali position as BLOCCATO_CLASSE_RISCHIO: it is a block arising from the risk classification, not a reduced foreign-ownership percentage.\n\nThat distinction matters. Full foreign ownership is available nationally, but it is not a route to PMA registration for this activity in Bali while the moratorium applies. The Bali restriction is tied to the province’s rule and was recorded as blocked from May 13, 2026. For a founder assessing this activity, the honest conclusion is clear: the national framework is fully open to foreign ownership, while Bali currently does not permit PMA registration for it.",
+    "pullQuote": "Full foreign ownership is available nationally, but Bali currently does not permit PMA registration for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

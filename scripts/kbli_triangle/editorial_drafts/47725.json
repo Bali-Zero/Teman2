@@ -1,0 +1,27 @@
+{
+  "code": "47725",
+  "editorial": {
+    "headline": "Health-Equipment Retail: Nationally Open, Blocked for PMA in Bali",
+    "standfirst": "This retail activity is nationally open to full foreign ownership, yet Bali’s permanent risk-based moratorium blocks PMA registration today.",
+    "body": "For a foreign founder, the practical headline is stark: this health-equipment retail activity cannot be registered for PMA in Bali today. That conclusion sits beside—not beneath—the national position. Nationally, the activity is open to foreign investment and permits foreign ownership up to 100%. The distinction is central, not semantic. The national ceiling answers the ownership question; Bali’s rule answers whether the activity may be registered there for PMA at all. A plan that relies only on the national position therefore misses the operational boundary the Bali record sets.\n\nThe scope is retail trade in health equipment for people, expressed in the record as a health-equipment store. It includes instruments and aids such as thermometers, blood-pressure monitors, hearing aids, orthopaedic prostheses and neck braces. The named items are not incidental illustrations: they show the activity’s practical territory, spanning measurement, monitoring, hearing and physical support for human use. The expressly identified shop format keeps the classification grounded in retail trade of these products rather than an abstract commercial label.\n\nRegistration is open at every listed business scale: Mikro, Kecil, Menengah and Besar. The record thus presents a complete scale range, from Mikro through Besar, for this activity. In its national PMA position, it is TERBUKA and carries a maximum foreign ownership ceiling of 100%. That is an unequivocal national setting: a foreign investor can hold the full stated maximum. The applicable national reference identified for that position is Perpres 10/2021, 49/2021.\n\nBali’s barrier is tied to risk classification, not a lower foreign-ownership figure. At the Besar scale, OSS assigns every scope within this activity a Low or Medium-Low risk classification. Bali’s permanent, island-wide moratorium blocks all Low and Medium-Low risk KBLI from PMA registration. For this activity, the effect is the recorded blocked status, BLOCCATO_CLASSE_RISCHIO, with the block tied to the Bali moratorium of May 13, 2026. National openness does not change Bali’s current block on PMA registration.",
+    "pullQuote": "National openness does not change Bali’s current block on PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

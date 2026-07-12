@@ -1,0 +1,27 @@
+{
+  "code": "47724",
+  "editorial": {
+    "headline": "The Cosmetics Shop Code That Stops at Bali’s PMA Gate",
+    "standfirst": "This activity is nationally open to full foreign ownership, yet foreign investors cannot register it in Bali under the province’s permanent PMA moratorium.",
+    "body": "Retail cosmetics for human use sit at the centre of this activity: the sale of make-up, fragrance, hair products, nail products, skincare, personal-hygiene products and shaving preparations. Its scope also includes traditional cosmetics, alongside items such as body powder, beauty cotton and baby powder. In practical terms, this is the retail territory of a cosmetics shop, but the record also expressly reaches cosmetics street vendors and market-stall traders.\n\nThe code is built for retail rather than manufacture or service provision. Its examples make that distinction tangible: eye shadow, mascara, face cream, lipstick and lip liner; cologne, toilet water and perfume; shampoo, hair tonic and hair oil; nail polish, nail cream and cuticle remover. The same retail frame extends to baby oil, cleansing lotion, masks and foot cream, as well as spray and cream deodorants, traditional body treatments and shaving cream. The common thread is the sale of cosmetics intended for people.\n\nRegistration is open across every stated business scale: Mikro, Kecil, Menengah and Besar. Nationally, the PMA position is TERBUKA, with a foreign-ownership ceiling of 100%. That is a clear national setting for a foreign-owned cosmetics retail activity. It does not, however, settle the question for an investor seeking to register in Bali.\n\nIn Bali, a foreign investor cannot register this activity today. The record marks it as blocked for PMA registration because, at the Besar scale, every scope carries a Rendah or Menengah-Rendah OSS risk classification. Bali’s permanent, island-wide moratorium blocks all Low and Medium-Low risk KBLI for PMA; for this activity, the relevant moratorium is identified as beginning in May 2026. The result is not a partial local caveat on the national 100% ceiling, but a direct barrier to PMA registration in Bali. A founder can read the national position as fully open while still needing to treat Bali as unavailable for a PMA registration under this code.",
+    "pullQuote": "Nationally the activity is open to 100% foreign ownership, but Bali is unavailable for PMA registration under this code.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
