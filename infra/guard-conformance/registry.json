@@ -229,6 +229,11 @@
         "scar": ["W82"],
         "delegated_to": "infra/scar-gates/test_W82_content_freshness_undermatch.py",
         "note": "guilt+innocence live in the scar gate; the fact-based cure is a declared operator firebreak (2026-06-16)"
+      },
+      "rh-linter-async-tests": {
+        "scar": ["W95"],
+        "delegated_to": "scripts/test_lint_test_reward_hacking.py",
+        "note": "the anti-reward-hacking linter walked ast.FunctionDef only - blind to async def, the MAJORITY of this repo's tests (under-match half of W95). Async branch activated 2026-07-13: guilt = async assertless test fires RH005 (warn-mode firebreak, 211-finding backlog in PENDING-ARMS, RH_ASYNC_STRICT=1 enforces); innocence = async pytest_asyncio fixture named test_* stays silent, sync semantics untouched. Gate registered as scar_W95_rh_linter_async in verify_the_verifiers_gates.yaml + executed per-PR by immune-enforcement.yml"
       }
     },
     "exempt_matchers": {
