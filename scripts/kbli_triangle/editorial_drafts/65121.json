@@ -1,0 +1,27 @@
+{
+  "code": "65121",
+  "editorial": {
+    "headline": "Conventional General Insurance, Clearly Defined",
+    "standfirst": "A conventional general-insurance activity open across all recorded scales, with a nationally open PMA position and no Bali moratorium block on this record.",
+    "body": "Conventional general insurance is the business of covering risk other than life insurance. Under this activity, an insurer provides compensation to an insured person or policyholder for loss, damage, expenses incurred, lost profits, or third-party legal liability when an uncertain event occurs. It is a defined insurance service built around the financial consequences of risk: the damage itself, the cost it creates, income forgone, or liability to another party.\n\nThe recorded scale range runs from Mikro and Kecil through Menengah to Besar. That breadth does not alter the activity’s centre of gravity. The business remains conventional general insurance, providing risk-cover services and compensation within the categories set out in its scope. For a founder reading the classification closely, the important distinction is that this is insurance other than life insurance, with the scope expressly focused on losses and liabilities arising from uncertain events.\n\nNationally, the PMA position is open, with a foreign-ownership ceiling of 100%. Put plainly, the national record does not set a foreign-share cap below full ownership for this activity. The cited basis is Perpres 10/2021 and 49/2021. That is the national position; it says something material about foreign participation, but it should not be mistaken for a substitute for the activity’s own operational definition, which remains anchored in conventional general-insurance risk coverage.\n\nBali’s position is also clear on the record, though it turns on risk classification rather than a blanket exemption. This activity is not marked as blocked for PMA registration in Bali. At the Besar scale, its OSS risk classification is Medium-High/High, placing it outside Bali’s permanent, island-wide moratorium for PMA activities classified Low or Medium-Low risk. Bali’s restriction exists, but this activity is identified as not blocked by it. The distinction is specific and useful: the national foreign-ownership position is open, while the Bali record confirms that the moratorium does not bar PMA registration for this activity.",
+    "pullQuote": "Bali’s restriction exists, but this activity is identified as not blocked by it.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

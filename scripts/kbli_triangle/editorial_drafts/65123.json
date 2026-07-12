@@ -1,0 +1,27 @@
+{
+  "code": "65123",
+  "editorial": {
+    "headline": "Deposit Protection Is Open Nationally, With an Address Check in Bali",
+    "standfirst": "This activity protects bank-held customer funds and insurance-policy claims; it is nationally open to foreign investment, while Bali’s record retains a precise address-level caution.",
+    "body": "KBLI 65123 concerns financial protection for customer funds held in banks and for policy claims arising from insurance products. The protection is funded through periodic contributions paid by the financial institutions involved. Its subject is therefore clearly defined: safeguarding deposited customer funds and insurance-policy claims through a contribution-backed protection arrangement. The record provides no further operational subdivision, so the boundary should remain exactly there—financial protection for those deposits and claims, supported by recurring institutional contributions.\n\nThe record does not name a particular legal form of registrant. It does, however, make financial institutions materially visible because they pay the periodic contributions that fund the protection. No eligible business scale is listed in `scales_open_to`. That absence should be read as an absence of stated scale information, rather than turned into an unstated permission or restriction. The national investment position is explicit: the activity is classified as TERBUKA, with a foreign-ownership ceiling of 100%. In plain terms, the national record permits foreign ownership up to that ceiling.\n\nBali presents a more specific local reading. The activity is not marked as blocked, and the Bali status is `OK_or_HIGHER_RISK`. The stated reason places it in the medium-high/high risk range and says it is not blocked by the moratorium, while also requiring verification per address. There is no separate Bali foreign-ownership percentage or partnership condition in the record to add. The honest position is therefore narrow but clear: Bali does not block PMA registration for this activity through the stated moratorium, yet the address must still be verified.\n\nThat distinction matters. National openness and a 100% foreign-ownership ceiling establish the national setting; Bali’s record does not overturn it through a moratorium block. But neither does the record support a blanket local assurance beyond the instruction to verify the address. The cited national basis is Perpres 10/2021, 49/2021, while the Bali moratorium source is the Gubernur letter B.27.000/642/PM/DPMPTSP.",
+    "pullQuote": "Nationally, the ceiling is 100%; in Bali, the activity is not blocked by the moratorium but still needs verification per address.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}
