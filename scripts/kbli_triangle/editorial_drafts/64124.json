@@ -1,0 +1,27 @@
+{
+  "code": "64124",
+  "editorial": {
+    "headline": "Islamic Banking Beyond the Payment Rails",
+    "standfirst": "An Islamic banking activity defined by deposit and investment gathering, Sharia-compliant financing, and a deliberate absence from payment-traffic services.",
+    "body": "This activity covers forms of Islamic banking that operate differently from the general banking system. Its core work is familiar in broad outline but specific in function: gathering funds from the public as deposits and/or investments, then distributing them as financing and/or other forms of support under Islamic principles. The classification expressly includes Islamic rural banking, including Bank Perkreditan Rakyat Syariah, within that wider banking framework.\n\nThe boundary matters. These are banking operations built around the collection and channeling of funds under Islamic principles, but they do not provide payment-traffic services. Fund transfers and similar payment services sit outside the activity described here. That distinction gives the classification a clear institutional character: it is concerned with Islamic deposit, investment and financing activity, rather than the movement of payments between parties.\n\nThe registration picture is broad on scale. The activity is open to Mikro, Kecil, Menengah and Besar enterprises. Nationally, it is listed as TERBUKA for foreign investment, with a foreign-ownership ceiling of 100%. In plain terms, the national record permits full foreign ownership within this activity. The cited basis for that position is Perpres 10/2021, 49/2021.\n\nBali does not reverse that national opening. The province’s permanent, island-wide moratorium blocks PMA registration for Low and Medium-Low risk activities. This activity is not blocked by that moratorium: at the Besar scale, its OSS risk is recorded as medium-high to high. The Bali status is therefore OK_or_HIGHER_RISK. For a foreign investor considering this activity in Bali, the honest conclusion is straightforward: the record does not show a Bali PMA block, while the national ceiling remains 100%.",
+    "pullQuote": "This is Islamic banking focused on gathering and channeling funds, not on providing payment-traffic services.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

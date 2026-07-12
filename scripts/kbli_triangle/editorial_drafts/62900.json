@@ -1,0 +1,27 @@
+{
+  "code": "62900",
+  "editorial": {
+    "headline": "Indonesia’s Catch-All IT Service Code Faces a Bali PMA Bar",
+    "standfirst": "This code keeps specialist IT support under one roof nationally, yet Bali’s permanent moratorium prevents PMA registration there today.",
+    "body": "This activity covers the practical services that keep computers and information technology operating when the work does not sit elsewhere: recovering from computer damage or disaster, setting up personal computers, installing software, managing incidents and carrying out digital forensics. It is a service code for technical execution and support, rather than for information-system consulting or planning. That distinction matters: its centre of gravity is the hands-on restoration, installation and operational response required when technology needs to be put in place, repaired or investigated.\n\nThe activity is open to businesses at every listed scale: Mikro, Kecil, Menengah and Besar. Nationally, it is marked TERBUKA, with a foreign-ownership ceiling of 100%. In ordinary national terms, that is a fully open foreign-investment position. The code therefore accommodates a broad range of operators, from smaller technical-service businesses to large organisations delivering recovery, deployment, incident-management and forensic support.\n\nBali changes the registration answer decisively. A foreigner cannot register this activity in Bali today through PMA. At the Besar scale, OSS risk is assessed as Rendah or Menengah-Rendah across every scope, placing the activity within Bali’s permanent, island-wide block on PMA registration for all Low and Medium-Low risk KBLI. The recorded Bali status is BLOCCATO_CLASSE_RISCHIO: the restriction follows the risk classification and the provincial moratorium, not a reversal of the national foreign-ownership ceiling.\n\nThat creates an unusually clear divide between the national framework and the provincial reality. The national record says the activity is open and permits up to 100% foreign ownership; Bali’s moratorium means that openness cannot be used for PMA registration on the island. For founders, the relevant question is therefore not whether these IT services are internationally open in principle, but where the business is being registered. In Bali, the present answer is blocked; nationally, the activity remains open on the terms recorded.",
+    "pullQuote": "National openness does not overcome Bali’s permanent PMA block for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

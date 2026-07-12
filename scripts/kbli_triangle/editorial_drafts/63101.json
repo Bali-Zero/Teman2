@@ -1,0 +1,27 @@
+{
+  "code": "63101",
+  "editorial": {
+    "headline": "Data Processing: Fully Open Nationally, Clear of Bali’s PMA Moratorium",
+    "standfirst": "This activity is nationally open to full foreign ownership, and Bali’s moratorium does not block it because, at large scale, OSS places it above the restricted risk bands.",
+    "body": "Data processing, under this activity, is the practical work of turning supplied material into usable data and reporting. Its scope includes the processing and tabulation of many kinds of data: big data in structured, semi-structured and unstructured forms, as well as satellite and remote-sensing imagery. The work may begin with preparation—data entry, migration, cleaning and normalisation—and can extend to developing algorithms for data storage and processing.\n\nThe activity also covers processing data and producing tailored reports from information supplied by a client or data owner. That work may be undertaken by a data controller or data processor, including through blockchain or distributed-ledger technology. Shared computing facilities for data processing and analysis fall within the scope, as do document digitisation for further processing, big-data management, and information services built from processed data. Taken together, these are the operational stages through which raw or supplied data is prepared, handled, analysed and returned in a useful form.\n\nThe activity is open at Mikro, Kecil, Menengah and Besar scale. Nationally, its PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. In plain terms, the national position allows full foreign ownership for this activity. The cited PMA reference is Perpres 10/2021, 49/2021. That national opening matters because the code is not confined to a narrow data-handling task; the stated scope reaches from preparation and algorithm development through analysis, reporting, computing capacity and data-derived information services.\n\nBali applies a separate moratorium rule: PMA registration is blocked island-wide and permanently for all Low and Medium-Low risk KBLI activities. This activity is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the record gives the reason directly: at Besar scale, its OSS risk classification is Menengah-Tinggi/Tinggi, so it is not caught by the moratorium. A foreign investor can therefore register this activity in Bali today under the position stated in the record, rather than being shut out by Bali’s Low and Medium-Low risk restriction.",
+    "pullQuote": "A foreign investor can therefore register this activity in Bali today under the position stated in the record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Available scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

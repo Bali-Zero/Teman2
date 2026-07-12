@@ -1,0 +1,27 @@
+{
+  "code": "62203",
+  "editorial": {
+    "headline": "Digital Trust Services, Open at Scale in Bali",
+    "standfirst": "Electronic certification, signatures and cryptographic trust services are open to foreign investment at large scale, with Bali’s risk rule leaving this activity outside its PMA moratorium.",
+    "body": "This activity is the operating field of electronic certification and its related services. It covers providers acting as electronic certification organisers, or certificate authorities, as well as providers of services based on cryptographic technology. Its scope includes issuing and managing digital certificates, electronic signatures and seals, electronic timestamps, registered electronic delivery, and website authentication. These are distinct functions, but the record places them within one activity concerned with electronic certification and its supporting services.\n\nThe scope also reaches the preservation and validation of electronic signatures or seals. It includes the integration of electronic certificate services into a client’s information system or application when that integration forms part of a security and digital-identity solution. In other words, the activity is not confined to issuing a certificate: it also encompasses the cryptographic services and systems integration expressly listed in the record. The registered undertaking may therefore sit either in the certification role itself or in the provision of the related technology services described here.\n\nRegistration is open only at the **Besar** scale. Nationally, the activity is open to foreign investment, with a foreign-ownership ceiling of **100%**. The cited national basis is Perpres 10/2021 and 49/2021. For a foreign founder, that is the central national position: the record does not place the foreign stake below full ownership, provided the business is registered at the scale stated.\n\nBali does not reverse that position. A foreign investor can register this activity in Bali today at the specified large scale. The province’s permanent, island-wide PMA moratorium applies to low and medium-low risk activities; this activity’s OSS risk at the Besar scale is recorded as medium-high/high. It is therefore not blocked by the moratorium. The Bali reading is straightforward rather than conditional: foreign ownership is nationally open up to 100%, and the relevant Bali risk classification keeps the activity outside the provincial PMA block.",
+    "pullQuote": "At the large-business scale, Bali’s risk classification leaves this foreign-open activity outside the provincial PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

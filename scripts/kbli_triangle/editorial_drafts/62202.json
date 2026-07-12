@@ -1,0 +1,27 @@
+{
+  "code": "62202",
+  "editorial": {
+    "headline": "KBLI 62202: The Business of Making Digital Identity Work",
+    "standfirst": "This activity covers the systems that register, verify, secure and manage digital identities across electronic environments.",
+    "body": "Digital identity is not simply a login screen. Under KBLI 62202, it is the provision and management of digital identity as the electronic representation of an individual, organisation or device. The activity reaches across the full working life of an identity system: consulting, planning, development, operation and maintenance. It includes registering, verifying and validating identities; managing credentials such as unique numbers, user accounts, electronic certificates and tokens; and handling user authentication and authorisation within digital systems.\n\nThe practical scope is equally broad on the information side. A business in this category may manage identity attributes including biographical data, biometric data, legal identifiers and unique identifiers. It may also provide digital-identity services at different assurance levels, calibrated to risk. Integration into a client’s information system is expressly within the activity when it forms part of an information-security solution. In other words, the code describes the infrastructure and stewardship of identity in electronic systems, not merely a single verification step.\n\nRegistration is open at Mikro, Kecil, Menengah and Besar scale. Nationally, the activity is TERBUKA to foreign investment, with foreign ownership permitted up to 100%. That is the national position stated for this code, rather than a limited foreign-share arrangement. For founders, the essential distinction is that the category encompasses both the construction of the identity system and its ongoing management: the planning and development work, as well as the operational functions that keep credentials, attributes, authentication and authorisation in service.\n\nBali does not block PMA registration for this activity under its island-wide moratorium on Low and Medium-Low risk KBLI. The record places the activity at Menengah-Tinggi/Tinggi OSS risk when conducted at Besar scale, which is why it is not caught by that moratorium. The Bali status is therefore OK_or_HIGHER_RISK: foreign investment is not barred there by the stated moratorium, while the national ceiling remains 100%. That is a genuinely open national-and-Bali picture on the facts provided, with the risk classification at Besar scale explaining the Bali result.",
+    "pullQuote": "Digital identity here means the full system of proving, protecting and managing who—or what—exists in an electronic environment.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
