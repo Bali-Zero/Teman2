@@ -3,7 +3,23 @@
 > **TRIGGER WORD: `KBLIREGEN`** — when Zero types it at session start, this file is the resume
 > command. Count drafts, probe Codex quota on the Pro, and resume (steps in "HOW TO RESUME" below).
 
-## STATUS 2026-07-13 — ✅ REGEN COMPLETE: 1559/1559 drafts, writer + reconcile both exited clean
+## STATUS 2026-07-13 (later) — ✅ APPLY + LINT 0 + MAIN-RECONCILE DONE, PR imminent
+
+- Grading complete (0 fabrications), APPLY 1559/0 refused, L11 de-boilerplate landed,
+  dataset lint exit 0 (only L7 informational). Committed `e56da3df35`.
+- **Main-reconcile (W88/W90 catch)**: branch dataset predated purge #2164 → rebuilt as
+  main-dataset + editorial layer re-applied; invalidation sweep found ONE stale-ground-truth
+  editorial (02102, l4 reason 95%→100% open) → regenerated with Terra locally on M5 (codex
+  works here), verified. Commit `69d11b5013`, then `origin/main` MERGED into the branch
+  (`e46de9e728`): page.tsx auto-merged (renderer + #2185 padding), 15 main-side files
+  prettier-normalized, PENDING-ARMS union (4 branch lines re-added).
+- Test-DB gotcha: private pre-push DBs drift schema — kda needed migrations 240+241
+  (`psql -U test -d nuzantara_test_kda -f …/240…sql`). GOTCHA: `git push … | tail` masks
+  the hook exit code — read the OUTPUT (a "completed" bg task had actually FAILED the push).
+- NEXT: post-merge build green → push (PRE_PUSH_TEST_DB=nuzantara_test_kda) → PR +
+  auto-merge → prove-live balizero.com/kbli/<code> → Qdrant re-ingest on Pro → app refresh.
+
+## STATUS 2026-07-13 (early) — ✅ REGEN COMPLETE: 1559/1559 drafts, writer + reconcile both exited clean
 
 - Pro writer (`gpt-5.6-terra`, `~/kbli-regen`) finished 2026-07-13 00:16 Pro-clock:
   **`writer done: ok=742 fail=0 skip=0`** (log `_terrarun.out`).
