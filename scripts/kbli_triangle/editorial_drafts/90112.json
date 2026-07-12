@@ -1,0 +1,27 @@
+{
+  "code": "90112",
+  "editorial": {
+    "headline": "A Nationally Open Music Code Meets Bali’s PMA Block",
+    "standfirst": "This activity is nationally open to full foreign ownership, but Bali currently blocks its PMA registration under a permanent, island-wide risk-based moratorium.",
+    "body": "**The work here is the creation of music.** This activity covers making musical compositions, whether the person doing it is a songwriter, composer or music arranger. It also expressly includes composition work done in another person’s name. That detail prevents an overly narrow reading: the defined activity reaches both work carried out under the creator’s own name and work created for another name. Its subject is the act of composing and arranging music, as the scope puts it.\n\n**The registration range is broad in scale, but specific in subject.** It is open at Micro, Small, Medium and Large scales. The record identifies the people carrying out its core work — songwriters, composers and music arrangers — and makes clear that another person’s name does not take the work outside this activity. The listed scales do not alter that stated centre: from Micro through Large, the activity remains the creation of musical compositions.\n\n**At national level, the foreign-investment position is open.** The recorded PMA status is TERBUKA, with a maximum foreign ownership of 100%. The relevant national PMA references are Perpres 10/2021 and 49/2021. That ceiling is national, while the Bali status is supplied separately in the record. Reading those two positions together is essential: national openness does not by itself settle whether a PMA registration can proceed in Bali.\n\n**In Bali, the decisive answer for PMA is a block.** At the Large scale, the record says OSS risk is Low or Medium-Low across every scope. Bali’s stated rule blocks all Low and Medium-Low risk KBLI for PMA across the island, permanently. This activity is therefore marked BLOCCATO_CLASSE_RISCHIO and specifically blocked by Bali’s moratorium. A foreign investor cannot register this activity for PMA in Bali today. The national ceiling of 100% remains the national fact; it does not displace the Bali registration block.",
+    "pullQuote": "A foreign investor cannot register this activity for PMA in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
