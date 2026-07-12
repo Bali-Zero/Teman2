@@ -1,25 +1,25 @@
 {
   "code": "73202",
   "editorial": {
-    "headline": "Public-Opinion Research Is Open Nationally, but Closed to PMA in Bali",
-    "standfirst": "This activity covers research into public views and voting behaviour: nationally open to full foreign ownership, yet unavailable for PMA registration in Bali.",
-    "body": "A foreign investor cannot register this public-opinion research activity in Bali today. That is the practical starting point, despite a nationally open position for PMA and a national foreign-ownership ceiling of 100%. Bali’s restriction is not a marginal qualification: it blocks PMA registration island-wide under the province’s permanent moratorium for Low and Medium-Low risk activities.\n\nThe activity itself is the disciplined study of what the public thinks and how it behaves. Its scope includes research into quality of life and lifestyle, social and political participants, party preferences, and voting behaviour. In other words, it is concerned with gathering and interpreting public opinion across questions that may be social, political or electoral in character. The code’s value lies in that research function: identifying views, preferences and behaviour rather than making claims on their behalf.\n\nNationally, the activity is marked **TERBUKA**, with foreign ownership permitted up to 100%. It is open at every listed business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the national classification does not reserve the activity for a narrow business size. The national position is therefore clear: PMA is permitted, and the foreign-ownership ceiling is full ownership.\n\nBali reaches a different operational result. The provincial status is **BLOCCATO_CLASSE_RISCHIO** because, at the Besar scale, OSS risk is Low or Medium-Low across every scope. Under Bali’s moratorium, all Low and Medium-Low risk KBLI activities are blocked for PMA on an island-wide, permanent basis. The moratorium cited here dates from May 2026. For founders, the distinction is simple but consequential: national openness does not create a PMA registration path in Bali where the provincial moratorium blocks it.",
-    "pullQuote": "National openness does not create a PMA registration path in Bali where the provincial moratorium blocks it.",
+    "headline": "Public Opinion Polling: Nationally Open, Closed to PMA Registration in Bali",
+    "standfirst": "Research into public views and voting behaviour is open nationally to full foreign ownership, but PMA registration is blocked in Bali.",
+    "body": "Public-opinion polling is a research activity concerned with how people describe their lives, choices and public orientation. The stated scope covers studies of quality of life and lifestyle; social and political participants; party preference; and voting behaviour. It is consequently defined by investigation of opinion across both everyday and political questions. These subjects sit within one activity: research into the views people hold and the choices they make, from lifestyle questions through to participation, party preference and voting.\n\nRegistration is open at the Mikro, Kecil, Menengah and Besar scales. The record therefore makes the activity available at each of the four listed business scales. Nationally, it is TERBUKA to PMA, and the foreign-ownership ceiling is 100%. There is no national foreign-share limitation below full ownership in the supplied record. That national position is supported by Perpres 10/2021, 49/2021. For a foreign-owned company considering this activity nationally, the position is direct: it is open to PMA registration with up to full foreign ownership.\n\nThat national openness is not the answer for PMA registration in Bali. A foreign investor cannot register this activity in Bali today. The Bali status is BLOCCATO_CLASSE_RISCHIO. At the Besar scale, OSS risk is Low or Medium-Low across every scope, placing the activity within Bali’s relevant prohibition. Bali’s island-wide, permanent moratorium blocks all Low and Medium-Low risk KBLI for PMA. This is not a lower Bali foreign-ownership ceiling; it is a block on PMA registration arising from the local risk-class moratorium, notwithstanding the national 100% ceiling.\n\nThe distinction is decisive. The 100% ceiling describes the national foreign-ownership position; it does not override Bali’s permanent risk-class moratorium. The record’s Bali outcome follows the local rule that blocks PMA for Low and Medium-Low risk KBLI. Thus, while the activity remains nationally open at the listed scales, the current Bali conclusion for a PMA applicant is unequivocal: registration is blocked. That is the operative Bali result for this activity, based on its stated risk treatment and the provincial moratorium.",
+    "pullQuote": "National openness permits full foreign ownership, but Bali’s permanent risk-class moratorium blocks PMA registration for this activity.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "Foreign ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "Open business scales",
+        "label": "Open scales",
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "National PMA source",
+        "label": "National source",
         "value": "Perpres 10/2021, 49/2021"
       },
       {
-        "label": "Bali status",
+        "label": "Bali PMA status",
         "value": "BLOCCATO_CLASSE_RISCHIO"
       }
     ]

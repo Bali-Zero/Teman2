@@ -1,22 +1,26 @@
 {
   "code": "91429",
   "editorial": {
-    "headline": "Conservation Work, With a Clear Bali Reading",
-    "standfirst": "KBLI 91429 covers managed activity in conservation areas, open nationally to full foreign ownership and not recorded as blocked for PMA in Bali.",
-    "body": "KBLI 91429 concerns the management, maintenance and use of conservation areas. It includes water-based nature-tourism infrastructure; facilities, equipment rental and services for water-based nature tourism; aquaculture infrastructure; and other permanent activities within a conservation area. Its centre of gravity is therefore the sustained, on-site operation of activities in a protected setting—not a generic description of tourism, equipment hire or fisheries.\n\nThe activity is open to Micro, Small, Medium and Large enterprises. That range matters because the record recognises the same activity across the full business-scale spectrum. Nationally, its PMA status is open, with a maximum foreign ownership level of 100%. In practical terms, the national record does not impose a foreign-equity ceiling below full ownership for this activity.\n\nBali requires a separate reading, and the result here is materially more positive than a blanket assumption about island-wide restrictions. The provincial moratorium blocks PMA for activities classified as Low or Medium-Low risk. This activity is not recorded as blocked by that moratorium. The stated reason is that, at the Large scale, its OSS risk classification is Medium-High or High. Bali’s record therefore does not describe a moratorium-based prohibition on PMA registration for this activity.\n\nThat distinction is the point founders should retain. National openness establishes the 100% foreign-ownership position; Bali’s entry confirms that this activity is not marked as blocked under the province’s stated moratorium rule. The record contains no separate Bali-specific foreign-ownership percentage or partnership condition, so none should be inferred. For a business built around permanent, managed activity in conservation areas, KBLI 91429 offers a clear national position and a Bali treatment that is explicitly not blocked by the moratorium.",
-    "pullQuote": "Bali’s record does not describe a moratorium-based prohibition on PMA registration for this activity.",
+    "headline": "Conservation-area enterprise, read through the practical work it permits",
+    "standfirst": "A conservation-area activity spanning water-based nature tourism, aquaculture infrastructure and other permanent operations, open at every business scale and to full foreign ownership nationally.",
+    "body": "KBLI 91429 concerns the management, maintenance and use of other natural-reserve areas. Its scope is operational rather than merely descriptive: the business-licensing framework covers water-based nature-tourism infrastructure; related facilities, equipment rental and services; the placement of aquaculture infrastructure; and other permanent activities in conservation areas. It is therefore a category for enterprises making an enduring, practical intervention in a conservation setting through visitor infrastructure, supporting services, fisheries-cultivation infrastructure or another fixed activity within the stated scope.\n\nThe activity is open to micro, small, medium and large businesses. That breadth means the code does not confine its underlying work to one size of operator. At the same time, its scope has a clear internal logic: it brings together stewardship functions—management and maintenance—with specified forms of use. Water-based nature tourism, associated facilities and equipment, aquaculture infrastructure, and other permanent conservation-area activities are all named as parts of that operational picture.\n\nNationally, foreign investment is open. The foreign-ownership ceiling is 100%, so the record sets no foreign-share cap below full ownership for this activity. The stated basis is Presidential Regulation 10/2021 and 49/2021. This is a direct national position on ownership, while the conservation-area scope gives that position its particular commercial and operational setting.\n\nBali does not reverse that result. The province’s island-wide, permanent moratorium blocks PMA registration for low- and medium-low-risk KBLI activities. For this activity, the Bali record states that OSS risk at the large (Besar) scale is medium-high/high; it is therefore not blocked by that moratorium, and Bali is marked as OK or higher risk. The distinction matters because Bali’s rule is broad: a national 100% ceiling does not by itself resolve every Bali question, but this record indicates no moratorium block. A foreign investor can treat the activity as open nationally and not barred from PMA registration in Bali on that moratorium ground.",
+    "pullQuote": "A foreign investor can treat the activity as open nationally and not barred from PMA registration in Bali on that moratorium ground.",
     "byTheNumbers": [
       {
-        "label": "Maximum foreign ownership",
+        "label": "Foreign ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "Business scales open to",
+        "label": "Open business scales",
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "National PMA source",
+        "label": "PMA source",
         "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
       }
     ]
   }

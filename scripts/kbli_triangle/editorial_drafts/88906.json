@@ -1,10 +1,10 @@
 {
   "code": "88906",
   "editorial": {
-    "headline": "Early-Childhood Playgroups, Open Nationally and in Bali",
-    "standfirst": "This activity covers organised playgroup and preschool education for young children, with foreign investment open nationally and a clear path for PMA registration in Bali.",
-    "body": "Playgroup education is an early-childhood education activity for children aged two to six, with priority given to ages three and four. Its centre is the playgroup itself, whether managed by government or by the community. The scope also includes preschool education that combines educational and child-welfare programmes from birth through age six, with priority for children aged two to four. It is a clearly defined setting for early-years learning and care.\n\nThe record lists Mikro, Kecil, Menengah, and Besar as the scales open to this activity. It also expressly includes playgroups formed through cooperation with foreign educational institutions. Within the formal education route described, that cooperation joins a foreign educational institution accredited or recognised in its own country with an Indonesian educational institution, in line with applicable legal provisions. The defining subject remains the playgroup and preschool education activity set out in the scope.\n\nNationally, PMA status is open, with a maximum foreign ownership level of 100%. Put plainly, the record allows full foreign ownership for this activity at the national level; it does not set a national foreign-share cap below that level. That openness is not detached from the activity’s stated form: cooperation involving foreign educational institutions is expressly included in the scope. The educational focus, however, remains early-childhood provision for the children and age ranges described.\n\nBali’s position is also open on the facts supplied. The local status is OK_or_HIGHER_RISK, and the activity is not blocked by the moratorium. The reason is specific: at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi—medium-high/high—which keeps it outside the stated moratorium block. A foreign investor can therefore register this activity in Bali today. The local result follows the recorded risk treatment at the Besar scale, while the national ownership ceiling remains 100%.",
-    "pullQuote": "A foreign investor can register this early-childhood education activity in Bali today, with national ownership open to 100%.",
+    "headline": "Playgroup Education: Nationally Open, Not Blocked by Bali’s Moratorium",
+    "standfirst": "This activity covers playgroup and preschool education for young children, including formal collaborations between recognised foreign and Indonesian educational institutions.",
+    "body": "Playgroup education is an early-childhood activity for children aged two to six, with particular priority given to ages three and four. Its scope includes playgroups run by government or the community, as well as preschool provision that combines educational and child-welfare programmes from birth to age six, prioritising children aged two to four. The category is therefore not merely a place for supervised activity: it describes a defined early-years educational setting.\n\nThe activity can be managed by government or by the community. It is open across Mikro, Kecil, Menengah and Besar scales, giving the category a broad operating range rather than confining it to one size of provider. Its stated scope also includes playgroups created through cooperation with foreign educational institutions. Where that cooperation forms a formal educational pathway, the record describes a playgroup educational unit organised or managed through collaboration between an accredited or recognised foreign educational institution and an Indonesian educational institution.\n\nNationally, the investment position is clear. The activity is TERBUKA for PMA, with a national foreign-ownership ceiling of 100%. In plain terms, foreign ownership may reach the full permitted ceiling nationally. The cited national basis is Perpres 10/2021, 49/2021. That openness sits alongside the activity’s educational character: the record frames the work around early-childhood education, community or government management, and—in the collaboration case—a structured relationship between foreign and Indonesian educational institutions.\n\nBali requires its own reading, but the outcome here is also direct. The provincial rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This activity is not blocked by that moratorium. The record identifies its OSS risk at the Besar scale as Menengah-Tinggi/Tinggi, and marks the Bali position as OK_or_HIGHER_RISK. Accordingly, a PMA registration for this activity is not barred in Bali by the stated moratorium. The distinction matters: national openness is real, and the Bali rule does not reverse it for this activity on the facts provided.",
+    "pullQuote": "National openness is real, and the Bali rule does not reverse it for this activity on the facts provided.",
     "byTheNumbers": [
       {
         "label": "National foreign-ownership ceiling",
@@ -15,8 +15,12 @@
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "Bali status",
-        "value": "OK_or_HIGHER_RISK"
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali OSS risk at Besar scale",
+        "value": "Menengah-Tinggi/Tinggi"
       }
     ]
   }

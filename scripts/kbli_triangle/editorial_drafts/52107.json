@@ -1,22 +1,22 @@
 {
   "code": "52107",
   "editorial": {
-    "headline": "Radioactive By-Product Storage: Open Nationally, Clear in Bali",
-    "standfirst": "A specialised storage activity for naturally occurring radioactive material, open nationally to foreign investment and not blocked by Bali’s PMA moratorium.",
-    "body": "This activity is about storing naturally occurring radioactive material (NORM) and radioactive associated minerals originating from the mining and processing of oil and natural gas, phosphate, tin, zircon, and similar materials. Its scope is deliberately specific: this is storage for radioactive by-products from natural sources, not a general description of radioactive-material handling.\n\nThe activity can take several practical forms. It includes operating storage through a warehouse-receipt system, refrigerated warehouses for these minerals, storage in free-trade zones, and physical-commodity storage facilities. The boundary matters as much as the inclusions: storage facilities for ionising-radiation sources sit outside this activity’s stated scope. The result is a defined storage classification centred on naturally occurring radioactive material and the mineral by-products associated with it.\n\nThe national investment position is open. PMA participation is permitted with a foreign-ownership ceiling of 100%, and the activity is open at small, medium, and large scales. That is a clear national position: a foreign investor is not confined to a minority stake under the record’s PMA setting, while the permitted operating scales extend from small through large enterprise.\n\nBali’s picture is also clear, though it turns on the risk classification recorded at large scale. Bali permanently blocks PMA registration for all low- and medium-low-risk activities across the province. This activity is not blocked by that moratorium because its OSS risk at large scale is medium-high/high. In Bali, this activity is not blocked by the PMA moratorium; its recorded status is OK_or_HIGHER_RISK, rather than a local exclusion.",
-    "pullQuote": "In Bali, this activity is not blocked by the PMA moratorium; its recorded status is OK_or_HIGHER_RISK, rather than a local exclusion.",
+    "headline": "Radioactive By-Mineral Storage: Nationally Open, Carefully Defined in Bali",
+    "standfirst": "This activity covers specialised storage of naturally occurring radioactive materials and radioactive by-minerals, open nationally to foreign investment across small, medium and large business scales.",
+    "body": "KBLI 52107 covers the storage of naturally occurring radioactive material (NORM) and radioactive by-minerals arising from activities such as oil and gas processing and the handling of phosphate, tin, zircon and comparable materials. Its focus is storage: the custodial infrastructure required for these materials, rather than their extraction or processing. The scope includes warehouse-receipt operations, cold-storage warehousing, storage in free-trade zones, and facilities used to store physical commodities of radioactive by-minerals. It does not extend to facilities for storing ionising radiation sources.\n\nThe activity is open to businesses at the **Kecil**, **Menengah**, and **Besar** scales. That breadth matters because the code is not confined to a single warehouse format or commercial setting. It accommodates conventional storage arrangements as well as warehouse-receipt systems, refrigerated facilities, free-trade-zone operations, and locations holding physical commodity stocks. In each case, the defining subject remains radioactive by-minerals or NORM originating in the stated industrial and mining-related streams.\n\nAt the national level, the PMA position is straightforward: the activity is **TERBUKA**, with a foreign-ownership ceiling of **100%**. Foreign investment is therefore permitted nationally up to full ownership. The applicable national basis recorded for that position is Perpres 10/2021 and 49/2021. This is an openness finding for the activity itself; it should not be mistaken for a description of operating requirements beyond the storage scope recorded here.\n\nBali does not reverse that national position. The province permanently blocks PMA registration for activity codes assessed as Low or Medium-Low risk, island-wide. For this activity, however, the recorded Bali assessment is that OSS risk at the **Besar** scale is Medium-High or High, meaning it is not blocked by that moratorium. The practical picture is consequently clear: KBLI 52107 remains available for PMA registration in Bali under the recorded risk treatment, while its large-scale classification carries the Medium-High/High risk character stated in the Bali record.",
+    "pullQuote": "Nationally open to full foreign ownership, this radioactive by-mineral storage activity is not blocked for PMA registration in Bali by the province’s Low and Medium-Low risk moratorium.",
     "byTheNumbers": [
       {
         "label": "Foreign-ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "Open scales",
+        "label": "Open business scales",
         "value": "Kecil, Menengah, Besar"
       },
       {
-        "label": "National PMA status",
-        "value": "TERBUKA"
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
       },
       {
         "label": "Bali status",

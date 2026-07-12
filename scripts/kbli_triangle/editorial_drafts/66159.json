@@ -1,15 +1,11 @@
 {
   "code": "66159",
   "editorial": {
-    "headline": "Financial Advisory: Open Nationally, Closed to PMA Registration in Bali",
-    "standfirst": "A foreign investor cannot register this financial-advisory activity as PMA in Bali today, although it is nationally open to 100% foreign ownership across every business scale.",
-    "body": "This activity covers financial-support work that is not otherwise classified: financial consultancy, mortgage advisers and brokers, mortgage consultancy, and other investment consultancy, including robo-advisory services. Its centre of gravity is advice—helping clients navigate financial or mortgage decisions, brokering mortgage-related guidance, or providing investment counsel through conventional or technology-enabled formats.\n\nThe registration scope is broad in scale. It is open to Mikro, Kecil, Menengah, and Besar businesses, allowing the activity to sit within enterprises from the smallest category through to the largest. Nationally, its PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. In plain terms, the national framework permits full foreign ownership for this activity, under the cited Perpres 10/2021, 49/2021 basis.\n\nFor a Bali address, however, the answer changes completely: a foreign investor cannot register this activity as PMA in Bali today. National openness does not make a Bali PMA registration available. The record identifies the Besar scale as Medium-Low risk and places it within Bali’s PMA moratorium. Under the provincial rule recorded here, all Low and Medium-Low risk activities are blocked for PMA across Bali, island-wide and permanently. The relevant governor’s letter was issued in May 2026.\n\nThat distinction is the decisive one for founders. The national position is not a conditional opening or a reduced foreign stake: it is TERBUKA up to 100% foreign ownership, across the stated scales. But the Bali position is a registration block for PMA, driven by the provincial moratorium rather than by the national ownership ceiling. A business planning this exact financial-advisory activity must therefore read the national permission and the Bali-address restriction together; neither tells the whole story alone.",
-    "pullQuote": "National openness does not make a Bali PMA registration available.",
+    "headline": "Financial Market Advice: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "This advisory activity is nationally open to full foreign ownership, yet Bali’s permanent PMA moratorium blocks registration at a Bali address.",
+    "body": "For a Bali address, the starting point is blunt: a foreign investor cannot register this activity there today. That conclusion sits beside, not against, the national setting. Nationally, Other Financial Market Advisory Activities is open to foreign investment, with foreign ownership permitted up to 100%. Bali’s status is closed under the PMA moratorium, so the national opening does not translate into a PMA registration route on the island.\n\nThe activity itself is a broad home for financial-support work not classified elsewhere. It includes financial consulting; mortgage advisory and brokerage; mortgage consulting; and other investment advisory services. The record specifically names robo-advisor services as an example. Taken together, the scope describes advice and advisory intermediation across financial and mortgage matters, including technology-enabled investment guidance, rather than a single narrow professional service. Its breadth matters: several advisory forms sit within one declared activity without being confined to one delivery model.\n\nRegistration is open across every stated business scale: Mikro, Kecil, Menengah, and Besar. That broad scale availability is national context; it does not dissolve Bali’s local PMA position. The record identifies the Besar scale as Menengah Rendah. Under Bali’s island-wide, permanent PMA moratorium, all Low and Medium-Low risk KBLI activities are blocked where registration uses a Bali address. The decisive Bali fact is therefore not whether the advisory work is delivered conventionally or through a robo-advisor, but that its stated risk treatment brings it within the moratorium.\n\nThe record must be read in two layers. The national layer says the activity is TERBUKA and allows a foreign stake of up to 100%. The Bali layer says PMA registration is blocked for a Bali address because of the moratorium. Both statements are true at once; neither overrides the other. For a proposal centred on Bali, the address is the point at which the national permission stops being actionable. The code remains the description for the listed advisory activities, but it is not a current PMA-registration path in Bali.",
+    "pullQuote": "A national 100% foreign-ownership ceiling does not create a PMA registration path in Bali under the island-wide moratorium.",
     "byTheNumbers": [
-      {
-        "label": "National PMA status",
-        "value": "TERBUKA"
-      },
       {
         "label": "Foreign-ownership ceiling",
         "value": "100%"
@@ -17,6 +13,10 @@
       {
         "label": "Open scales",
         "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
       },
       {
         "label": "Bali status",

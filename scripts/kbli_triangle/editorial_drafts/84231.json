@@ -1,26 +1,22 @@
 {
   "code": "84231",
   "editorial": {
-    "headline": "Policing: A Public-Security Activity Closed to Foreign Investment",
-    "standfirst": "This code covers policing in its administrative and operational forms, serving the public across security, order, complaints and criminal investigation.",
-    "body": "## What the activity covers\n\nThis activity covers the full range of policing work that serves the general public, directly or indirectly, across security and public order. Its scope includes administrative and operational functions, handling complaints, criminal matters, enforcement of legal order, investigation of criminal offences and secret-police activities. The defining feature is not a narrow service line but the breadth of police functions carried out in the public interest.\n\n## Registration and business scale\n\nThe record lists no business scales as open to this activity. That absence matters: there is no stated small, medium or large-scale route in the supplied record. Its national PMA status is **TERTUTUP**, with a foreign-ownership ceiling of 0%. On the record’s terms, this is not an activity available for foreign investment registration in Indonesia.\n\n## The Bali position\n\nBali reaches the same practical conclusion: the local status is **TERTUTUP**, and the record marks the activity as blocked for PMA registration. A foreigner therefore cannot register this activity in Bali today. The stated reason does not place it within Bali’s permanent island-wide restriction for low and medium-low risk activities; instead, it identifies the activity as medium-high or high risk and says the position should be verified by address. That address-specific verification does not alter the recorded closed status or create an opening for PMA registration.\n\nThe distinction is worth keeping clear. Bali’s moratorium rule blocks all low and medium-low risk KBLI activities for PMA across the province, permanently. This activity is recorded outside that particular moratorium category, yet remains closed in Bali under the supplied local assessment. The result is straightforward: neither the national record nor the Bali record presents a foreign-investment route for this policing activity.",
-    "pullQuote": "A foreigner cannot register this policing activity in Bali today, even though its closure is not attributed to the island-wide moratorium.",
+    "headline": "Policing Is Closed to PMA, Nationally and in Bali",
+    "standfirst": "This code covers the full field of policing, but its registration answer is direct: PMA is closed nationally, and a foreign investor cannot register it in Bali today.",
+    "body": "A foreign investor cannot register this police activity in Bali today. The national position points to the same conclusion: the PMA status is closed and the foreign-ownership ceiling is 0%. This is not a general security-service label. The activity is defined as the entire field of policing—administration, operations and other functions serving the public, directly or indirectly, across security and public-order matters. Its scope runs from receiving complaints and criminal matters to enforcing legal order and investigating criminal acts, and includes secret-police activity. The breadth matters: the description is about policing itself, rather than one isolated task performed within a wider security setting.\n\nAt the practical level, the slim record names no business scale as open to this activity. That absence sits beside a nationally closed PMA status, rather than supplying a route for foreign participation at a particular size. Readers should therefore treat the code’s scope as a description of public-facing and behind-the-scenes police functions, while the registration picture remains unequivocal: there is no foreign ownership available under the national ceiling recorded here. The source record supplies no further permit pathway, operating threshold or institutional exception, so none should be inferred from the breadth of the activity.\n\nBali requires an equally careful reading. The Bali entry is closed and explicitly marked as blocked for PMA registration. Its stated risk position is medium-high/high. That distinction explains a potentially confusing point: Bali’s permanent, island-wide PMA moratorium applies to low- and medium-low-risk KBLI activities, whereas this activity is recorded as not blocked by that moratorium. The Bali result is still closed; the absence of a moratorium block is not an opening for PMA.\n\nThe record also says the address must be verified. That is a location-level instruction attached to Bali’s stated risk treatment, not a relaxation of the documented Bali status. It directs attention to the particular address before relying on the entry, but does not change the recorded block. For founders, the clean conclusion is narrow but firm: this code describes policing in its administrative, operational and investigative breadth; it has no listed open scale; it is closed to PMA nationally at a 0% foreign-ownership ceiling; and it cannot be registered by a foreign investor in Bali today. No broader commercial conclusion should be drawn beyond those recorded facts.",
+    "pullQuote": "The Bali result is still closed; the absence of a moratorium block is not an opening for PMA.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "Foreign-ownership ceiling",
         "value": "0%"
-      },
-      {
-        "label": "National PMA status",
-        "value": "TERTUTUP"
-      },
-      {
-        "label": "Bali status",
-        "value": "TERTUTUP"
       },
       {
         "label": "PMA source",
         "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "TERTUTUP"
       }
     ]
   }

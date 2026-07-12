@@ -1,21 +1,21 @@
 {
   "code": "72201",
   "editorial": {
-    "headline": "Social Research, Fully Foreign-Owned—With a Bali Address Check",
-    "standfirst": "This classification covers systematic social-science research and development, nationally open to full foreign ownership and not subject to Bali’s PMA moratorium.",
-    "body": "This activity is the home for systematic research and development in the social sciences: work that is regular and structured rather than incidental. Its field is deliberately broad, encompassing economics and business administration, psychology and cognitive science, education, sociology, anthropology, law, political science and government, trade, media and communications, as well as customs and social practices. It also reaches into social and economic geography, criminology, demography, development studies, gender studies, policy and administration, and social work.\n\nIn practical terms, the classification describes an R&D undertaking whose subject matter is social life, institutions, behaviour, public affairs or the systems through which communities and organisations operate. Research in economics and business, education, media and communications, politics, psychology, sociology and other social-science fields is expressly within its stated scope. The emphasis is on research and development conducted systematically; the record does not narrow that work to a single discipline or research setting.\n\nNationally, the foreign-investment position is clear. The activity is open to PMA, with a maximum foreign ownership of 100%. That means the record places no national foreign-equity cap below full ownership for this classification. It does not, however, list any enterprise scales in the `scales_open_to` field, so this record does not itself identify a scale-based eligibility category.\n\nBali’s position is also materially different from a blanket prohibition. The activity is marked as medium-high or high risk and is not blocked by the province-wide PMA moratorium that applies to low and medium-low risk activities. A foreign investor can therefore treat the classification as not moratorium-blocked in Bali, while taking the record’s address-specific verification seriously. The relevant question in Bali is not a stated foreign-ownership reduction or local-partnership condition; it is confirmation for the particular address.",
-    "pullQuote": "For social-science R&D, Bali is not a moratorium barrier, but the proposed address still deserves verification.",
+    "headline": "Social-Science Research: Nationally Open, With a Bali Address Check",
+    "standfirst": "This systematic social-science research activity is fully foreign-open nationally and unblocked by Bali’s moratorium, though the record calls for address-level verification.",
+    "body": "KBLI 72201 covers regular, systematic research and development connected with the social sciences. The recorded scope embraces work in economics and business administration, psychology and cognitive science, education, sociology, anthropology, law, political science, government, trade, media and communication, and customs and traditions. It also reaches social and economic geography, criminology, demography, development studies, gender studies, policy and administration, social work, and other social-science research. The record specifically identifies research and development in economics and business, education, media and communication, political science, psychology and cognitive science, and sociology alongside that broader field list. Its scope is broad in discipline, while remaining anchored in regular, systematic research and development.\n\nThat breadth matters when describing the registrant. The record’s investment setting is a PMA one: nationally it is marked TERBUKA, with a maximum foreign ownership of 100%. A PMA company can therefore be fully foreign-owned for this activity under the national position recorded here. The cited basis is Perpres 10/2021, 49/2021. The scale field supplies an empty list of open business scales. Consequently, this source provides no listed scale-specific qualification, whether permissive or restrictive, to add to the national ownership position.\n\nBali is where an otherwise straightforward national reading must remain specific. The province’s stated moratorium blocks PMA across all Low and Medium-Low risk activities, island-wide and permanently. This entry, however, is listed as OK or higher risk; its stated reason places it in a medium-high/high-risk setting and says it is not blocked by the moratorium. The plain Bali conclusion is that a foreign investor is not barred from PMA registration for this activity today on that moratorium ground.\n\nThat does not turn Bali into an automatic address-level answer. The Bali record expressly says to verify per address. Its message is precise: the province-wide Low and Medium-Low risk moratorium is not the barrier for this activity, while the particular address still needs verification. National openness at 100% and Bali’s unblocked status can therefore be stated together without confusing one for the other.",
+    "pullQuote": "National openness at 100% and Bali’s unblocked status can therefore be stated together without confusing one for the other.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
-        "value": "100%"
-      },
-      {
-        "label": "PMA status",
+        "label": "National PMA status",
         "value": "TERBUKA"
       },
       {
-        "label": "PMA source",
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA source",
         "value": "Perpres 10/2021, 49/2021"
       },
       {

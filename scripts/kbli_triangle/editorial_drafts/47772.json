@@ -1,25 +1,25 @@
 {
   "code": "47772",
   "editorial": {
-    "headline": "LPG Cylinder Retail: Open Nationally, Closed to PMA Registration in Bali",
-    "standfirst": "This activity covers retail sales of cooking LPG cylinders, including specified LPG sub-bases and bases—open nationally to foreign ownership, but unavailable for PMA registration in Bali.",
-    "body": "KBLI 47772 covers the retail sale of liquefied petroleum gas (LPG) in cylinders for cooking. Its scope explicitly includes specified LPG sub-bases and LPG bases, placing the activity in the practical, consumer-facing trade of bottled cooking gas rather than in a broader description of energy commerce. The definition is narrow in a useful way: the registered activity is the retailing of LPG cylinders for household cooking use.\n\nThe activity is available across the full scale range recorded here: Mikro, Kecil, Menengah and Besar. Nationally, its PMA status is TERBUKA, with a maximum foreign ownership ceiling of 100%. In other words, the national position permits full foreign ownership for this activity. That openness is grounded in Perpres 10/2021, 49/2021; there is no lower foreign-share cap stated in the record.\n\nBali presents a materially different registration outcome. A foreign investor cannot register this activity as PMA in Bali today. The Bali status is blocked due to risk class because, at the Besar scale, every scope is classified as Rendah or Menengah-Rendah in OSS risk terms. Bali’s permanent, island-wide moratorium blocks all Low and Medium-Low risk KBLI activities from PMA registration. The restriction is therefore not a national foreign-ownership limit: it is a Bali-specific bar on PMA registration arising from the activity’s recorded risk classification.\n\nFor founders, the distinction deserves to be held plainly. Nationally, KBLI 47772 is open and can carry foreign ownership up to 100%. In Bali, that national opening does not translate into a PMA registration route for this activity. The relevant question is not whether foreign ownership is permitted in Indonesia in the abstract, but whether the Bali moratorium permits PMA registration for this particular risk-class outcome. On the record provided, it does not.",
-    "pullQuote": "Nationally, KBLI 47772 is open to 100% foreign ownership; in Bali, it cannot be registered as PMA.",
+    "headline": "LPG Cylinder Retail: Nationally Open, Not Registrable for PMA in Bali",
+    "standfirst": "This activity covers retail sales of cooking LPG cylinders, open nationally to full foreign ownership but blocked for PMA registration in Bali.",
+    "body": "At the national level, KBLI 47772 is open to foreign investment, with a foreign-ownership ceiling of 100%. In Bali, however, a foreign investor cannot register this activity for PMA today. The difference is not a contradiction: Bali’s province-wide moratorium blocks PMA registration for all Low and Medium-Low risk KBLI activities. For this activity, the OSS risk at the Besar scale is Rendah or Menengah-Rendah across every listed scope, placing it inside that Bali block.\n\nThe activity is specific in purpose and product. It covers retail trade in liquefied petroleum gas (LPG) supplied in cylinders for cooking. The stated scope also includes Sub Pangkalan LPG Tertentu and Pangkalan LPG Tertentu, the particular LPG sub-base and base formats named in the record. This is a retail classification centred on bottled cooking gas: its language does not broaden into a general account of the gas sector, and its commercial focus remains the sale of LPG cylinders to the retail market.\n\nThe classification is open to enterprises at every recorded scale: Mikro, Kecil, Menengah, and Besar. That scale range describes who may register the activity by business size. Its national investment position is a separate matter: the code is TERBUKA, with foreign ownership permitted up to 100%, under Perpres 10/2021, 49/2021. The national opening is clear, but it does not displace Bali’s PMA restriction where the activity falls within the risk classes covered by the provincial moratorium.\n\nFor founders, the essential distinction is straightforward. Nationally, the record permits a PMA stake up to the full 100% ceiling. In Bali, the present result is a registration barrier rather than a reduced foreign-ownership limit: PMA registration is blocked because the activity’s Besar-scale OSS classification is Low or Medium-Low throughout the stated scope. The Bali reason identifies the moratorium in May 2026, while the governing rule describes it as island-wide and permanent. The resulting Bali status is therefore unambiguous: BLOCCATO_CLASSE_RISCHIO.",
+    "pullQuote": "Nationally open to 100% foreign ownership, this activity is nevertheless blocked for PMA registration in Bali.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "Foreign-ownership ceiling",
         "value": "100%"
-      },
-      {
-        "label": "PMA basis",
-        "value": "Perpres 10/2021, 49/2021"
       },
       {
         "label": "Open scales",
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "Bali PMA status",
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
         "value": "BLOCCATO_CLASSE_RISCHIO"
       }
     ]

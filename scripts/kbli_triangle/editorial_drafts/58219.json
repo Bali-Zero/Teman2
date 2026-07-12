@@ -1,22 +1,22 @@
 {
   "code": "58219",
   "editorial": {
-    "headline": "Publishing Video Games: Open Nationally, Scope-Dependent in Bali",
-    "standfirst": "KBLI 58219 covers the publishing and related intermediation of ready-to-run video-game software, with full national foreign ownership—but a Bali PMA registration depends on the exact risk scope declared.",
-    "body": "KBLI 58219 is for publishing other video-game software that is ready to operate across operating-system platforms and devices. Its remit also includes intermediary services for that publishing activity, including games designed to be played offline. In practical terms, this is a publishing classification: it concerns bringing game software to market, as well as the stated intermediation surrounding its publication.\n\nThe activity is open at every listed business scale: micro, small, medium and large. Nationally, it is classified as open to foreign investment, with a foreign-ownership ceiling of 100%. That is a clear national position, grounded in the cited presidential regulations. It means the ownership question is not, at the national level, a partial-stake equation for this activity.\n\nBali requires a more exact reading. The provincial rule permanently blocks PMA registration for all low- and medium-low-risk KBLI activities across the island. Yet this record does not treat the activity as simply blocked: its Bali status depends on scope. Some scopes at the large-business scale carry low OSS risk, while others carry a higher risk. PMA registration in Bali is available only where the higher-risk scope is declared.\n\nThat distinction is the central compliance fact. A national 100% foreign-ownership ceiling does not by itself settle a Bali filing. The proposed activity must be matched to its precise scope and checked in the live OSS system before registration, because the applicable result turns on the declared scope’s risk classification. For founders, the disciplined reading is neither automatic permission nor a blanket prohibition: national openness remains real, while Bali registration is contingent on the exact higher-risk scope being declared.",
-    "pullQuote": "National openness remains real, while Bali registration is contingent on the exact higher-risk scope being declared.",
+    "headline": "Video-Game Publishing: Open Nationally, Conditional in Bali",
+    "standfirst": "This activity covers ready-to-run video-game software publishing and its stated intermediary services, open to full foreign ownership nationally but conditional on scope and live OSS treatment in Bali.",
+    "body": "Video-game publishing looks simple only from a distance. This activity covers the publication of other ready-to-run video-game software for every operating-system platform and device. It also covers intermediary services for publishing that software. Its perimeter expressly includes games used outside a network, so offline video games belong within the activity rather than sitting at its edge. The record does not make a network connection its dividing line: an offline video game remains expressly inside the described publishing activity. It should be read from that practical centre: ready-to-operate games and the services that intermediate their publication.\n\nWho can use it is expressed through activity and scale, not a separate category of person. It is the activity description for the publisher or intermediary the record describes, and registration is open at Mikro, Kecil, Menengah and Besar scale. That range is significant because it does not reserve the activity for one end of the market. Still, scale does not expand the scope. The registration should track publication of video-game software that is ready to operate and, where relevant, the listed intermediary role. The code’s reach is broad in platform and device terms, while remaining specific about the software and publishing function at its core.\n\nNationally, the position is direct: PMA status is TERBUKA, with a maximum foreign ownership ceiling of 100%. That is a national ownership position, not a shortcut around Bali’s local treatment. In Bali, the status is scope-dependent, not an outright PMA block. The province’s permanent moratorium blocks all Low and Medium-Low risk KBLI for PMA island-wide. For this activity, however, OSS risk at the Besar scale is low for some scopes and higher for others. A PMA registration in Bali is registrable only by declaring the higher-risk scope; the exact activity must be verified live in OSS. That qualification is central, rather than a footnote to the national rule.\n\nThe consequence is an editorially simple but operationally important distinction. A national ceiling of 100% confirms full foreign ownership in the national record; it does not, by itself, resolve a Bali registration. Nor is the Bali answer a flat refusal: the recorded treatment changes with the declared scope and its risk reading. For a founder or company whose work genuinely fits the stated publishing or intermediary activity, the reliable reading is two-part—open nationally, conditional in Bali, and dependent on a live OSS check for the exact activity. Precision in the declaration is what keeps those two positions aligned.",
+    "pullQuote": "A national ceiling of 100% confirms full foreign ownership in the national record; it does not, by itself, resolve a Bali registration.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "Open business scales",
+        "label": "Open scales",
         "value": "Mikro, Kecil, Menengah, Besar"
-      },
-      {
-        "label": "National source",
-        "value": "Perpres 10/2021, 49/2021"
       },
       {
         "label": "Bali status",

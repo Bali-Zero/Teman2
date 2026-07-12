@@ -1,21 +1,21 @@
 {
   "code": "50133",
   "editorial": {
-    "headline": "The Moving Bridge of Local Passenger Ferry Travel",
-    "standfirst": "This code covers locally bounded passenger ferry crossings that extend a road or rail journey, open nationally and not blocked for PMA registration in Bali at Large scale.",
-    "body": "KBLI 50133 covers passenger ferry transport between ferry ports within the same regency or city. Its setting is maritime—across seas, straits and bays—but its function is distinctly terrestrial: a moving bridge between two specified places, continuing a road and/or railway network. It also includes the rental of ferry transport together with its operator. The activity is therefore defined by the local crossing and its transport role, rather than by a general idea of sea travel.\n\nThe code is open to businesses operating at the **Besar** scale. That matters because the Bali reading is expressly tied to that scale: the OSS risk classification for a Large-scale operation is Medium-High or High. The record does not place this activity in the lower-risk categories affected by Bali’s province-wide PMA moratorium.\n\nNationally, the activity is **TERBUKA** to foreign investment, with a foreign-ownership ceiling of **100%**. In plain terms, the national record allows full foreign ownership for this activity. That national position is sourced to Perpres 10/2021 and 49/2021, while the Bali assessment adds a location-specific answer rather than altering the national ceiling.\n\nFor Bali, the result is unusually direct: this activity is not blocked for PMA registration. Bali permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities across the province, but 50133 at the Large scale is classified above those risk bands. The practical reading is not a special Bali ownership cap or a local partnership condition; none is stated. It is an open national activity whose Large-scale Bali risk position keeps it outside the moratorium’s prohibition.",
-    "pullQuote": "For Bali, the decisive point is that a Large-scale operation sits above the risk bands covered by the province-wide PMA moratorium.",
+    "headline": "The Moving Bridge in a Local Ferry Network",
+    "standfirst": "A large-scale passenger-ferry activity linking ports within one regency or city, open to full foreign ownership nationally and not blocked for PMA in Bali.",
+    "body": "KBLI 50133 covers public passenger ferry transport between ferry ports within the same regency or city. Its arena is the sea, straits and bays; its role is unusually terrestrial. The ferry is conceived as a moving bridge between two specified places, carrying forward a road and/or rail network rather than operating as a detached maritime service. The scope also includes the rental of ferry transport when supplied together with its operator. Put simply, the activity is defined by a local crossing and by the connection it completes within that local network.\n\nThat definition gives the code a clear operational shape. The journey is not merely waterborne movement from one port to another: it is a crossing structured around a particular link in the local transport network. Passenger transport is central to the designation, and the geography is bounded inside a regency or city. The record makes the scale equally clear: it is open to businesses classified as Besar. It also encompasses ferry rental when an operator is part of the provision. The commercial identity comes from that combination—public passenger crossings, a defined local corridor, and a large-scale operating frame.\n\nAt the national level, the foreign-investment position is straightforward. The activity is TERBUKA and the maximum foreign ownership is 100%. That means the national position allows full foreign ownership; there is no lower foreign-ownership ceiling in this record. The cited national basis is Perpres 10/2021 and 49/2021. The point matters because “open” can otherwise sound more qualified than it is: for this activity, the national ceiling is full foreign ownership.\n\nBali calls for a separate reading, but not a contrary one. The province’s permanent, island-wide PMA moratorium blocks all Low and Medium-Low risk KBLI. For this activity at Besar scale, the OSS risk is Menengah-Tinggi/Tinggi—medium-high/high—and the record says it is not blocked by that moratorium. Its Bali status is therefore OK_or_HIGHER_RISK, not a prohibition. The honest conclusion is clean: this is nationally open to 100% foreign ownership, and its large-scale Bali case is not blocked by the stated moratorium. The risk description explains why it remains outside the moratorium’s blocked categories.",
+    "pullQuote": "This is nationally open to 100% foreign ownership, and its large-scale Bali case is not blocked by the stated moratorium.",
     "byTheNumbers": [
       {
         "label": "National foreign-ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "Scale open to",
+        "label": "Business scale",
         "value": "Besar"
       },
       {
-        "label": "National PMA source",
+        "label": "National basis",
         "value": "Perpres 10/2021, 49/2021"
       },
       {

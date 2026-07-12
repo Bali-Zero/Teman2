@@ -1,25 +1,25 @@
 {
   "code": "84223",
   "editorial": {
-    "headline": "Air Force Activities Are Closed to Foreign Investment",
-    "standfirst": "This activity covers the Air Force’s administrative and operational environment and is closed to PMA nationwide, including in Bali.",
-    "body": "KBLI 84223 concerns the Air Force as an institutional activity rather than a commercial service category. Its scope embraces the full range of administrative, operational and other work carried out within the Air Force environment. It expressly includes civilian employees working there. The boundary matters too: Air Force members who are employed or hold government positions, including the Air Force headquarters cited in the scope, are excluded.\n\nThere are no business scales listed as open for this activity. That sits alongside its national PMA classification of TERTUTUP: foreign investment is closed, with a maximum foreign ownership ceiling of 0%. A foreign investor therefore has no PMA registration route under this activity nationally. This is not a matter of selecting a smaller or larger operating scale; the record provides neither an open scale nor foreign ownership capacity.\n\nBali reaches the same practical conclusion. The Bali status is TERTUTUP and the activity is marked as blocked for PMA registration, meaning a foreign investor cannot register it in Bali today. The reason needs to be read precisely. The activity is identified as medium-high or high risk, and its Bali restriction is not attributed to the province-wide moratorium. That moratorium permanently blocks all low- and medium-low-risk activities for PMA across the island; this record instead calls for verification by address.\n\nFor founders, the clarity lies in holding both layers at once. The national position is already closed to PMA, and Bali also records the activity as closed and blocked. Bali’s risk and address-verification note explains the local treatment; it does not create an alternative foreign-investment route. The scope should therefore be read narrowly, as a description of the Air Force institutional environment and its civilian workforce, within a category unavailable to foreign ownership.",
-    "pullQuote": "A foreign investor has no PMA registration route under this activity nationally or in Bali.",
+    "headline": "Air Force Activity: A Closed Category in Indonesia and Bali",
+    "standfirst": "This category encompasses the administrative and operational work of the Air Force environment, but it is closed to foreign investment nationally and cannot be registered for PMA in Bali.",
+    "body": "This is not a commercial aviation category. It covers the full range of administrative, operational and related activities within the Air Force environment, including civilian employees working there. The scope expressly excludes Air Force personnel who are seconded elsewhere or hold government positions, such as at Air Force Headquarters.\n\nThe registration picture is unusually direct. No business scale is listed as open, and the national PMA status is closed. The foreign-ownership ceiling is 0%, so this is not an activity in which foreign capital can take an ownership stake under the record’s national position. That conclusion follows from the category itself as well as its stated PMA treatment: the work belongs to the institutional environment of the Air Force, rather than to an investor-facing business field.\n\nBali does not soften that position. The provincial status is also closed, and the record marks the activity as blocked for PMA registration. A foreign investor therefore cannot register this activity in Bali today. The stated Bali reason places it in the medium-high or high-risk range and says that the block does not arise from the island-wide moratorium; the applicable position should nevertheless be verified for the specific address.\n\nThat distinction matters. Bali’s permanent PMA moratorium applies to all low- and medium-low-risk KBLI activities, whereas this record identifies a different risk position and a separate closed outcome. The practical reading is not that Bali offers a route around the national restriction, but that the activity remains closed on both levels for reasons recorded independently of the moratorium.",
+    "pullQuote": "A foreign investor cannot register this activity in Bali today.",
     "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "0%"
+      },
       {
         "label": "National PMA status",
         "value": "TERTUTUP"
-      },
-      {
-        "label": "Foreign ownership ceiling",
-        "value": "0%"
       },
       {
         "label": "Bali status",
         "value": "TERTUTUP"
       },
       {
-        "label": "PMA source",
+        "label": "National PMA source",
         "value": "Perpres 10/2021, 49/2021"
       }
     ]

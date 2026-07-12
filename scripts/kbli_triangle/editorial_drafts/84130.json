@@ -1,13 +1,13 @@
 {
   "code": "84130",
   "editorial": {
-    "headline": "Environmental Public Service, at the Administrative Core",
-    "standfirst": "A public-administration remit for environmental programmes, closed to PMA nationally and marked blocked for PMA registration in Bali.",
-    "body": "KBLI 84130 is an administrative public-service remit: it covers the public administration of environmental-service programmes and of policy concerning environmental research, development and associated funds. Its scope also reaches administration of drinking-water provision, waste collection and disposal, and environmental-protection programmes. The defining point is administration—setting, managing and funding public programmes—not performing the underlying operational work.\n\nThe boundary is material. The record specifically excludes waste disposal, rubbish disposal and remediation activities, as well as operating nature reserves. This is therefore not a general operating category for an environmental-services business. It describes the public-administration layer behind programmes, policies and related funding. For registration purposes, the slim record names no business scale as open; its intended activity is expressly public administration.\n\nThe foreign-investment position is unusually direct. Nationally, the activity is TERTUTUP for PMA and the maximum foreign ownership is 0%. In Bali the result is equally clear: the entry is TERTUTUP and marked blocked, so a foreigner cannot register this activity in Bali today. That is the operative answer even though the Bali reason adds an important qualification about how the restriction is categorised.\n\nBali's permanent island-wide PMA moratorium blocks Low and Medium-Low risk activities. This entry is instead noted as Medium-High/High risk, meaning its Bali block is not attributed to that moratorium; the record instructs verification by address. That address-level verification should be read as a check on the local position, not as a stated route to foreign participation. With national PMA status closed and a 0% ceiling, the record supplies no foreign-ownership opening to rely on.",
-    "pullQuote": "With national PMA status closed and a 0% ceiling, the record supplies no foreign-ownership opening to rely on.",
+    "headline": "Environmental Public-Service Administration Is Closed to Foreign Investment",
+    "standfirst": "This is a public-administration activity for environmental programmes and policy—not an opening for foreign registration nationally or in Bali.",
+    "body": "Environmental public-service administration is the work of organising the public side of environmental policy and programmes. Its scope reaches public administration for environmental-service programmes, related public policy on research, development and funding, drinking-water provision, waste collection and disposal programmes, and environmental-protection programmes. The common thread is administration: setting, coordinating and running public programmes—not carrying out the underlying operational work itself.\n\nThat distinction makes the intended registrant unusually clear. This is a government-service activity, centred on public administration rather than a conventional commercial service line. The slim record names no business scales as open to it. It therefore offers no basis for saying that any particular micro, small, medium or large scale is available; the meaningful frame is the public-administrative function set out in the scope.\n\nNationally, the foreign-investment position is closed. The stated foreign-ownership ceiling is 0%, so there is no foreign equity stake to describe as available within this activity. That is a substantive limit, not a technical footnote: the record’s national classification is TERTUTUP, with its cited basis in Perpres 10/2021, 49/2021. A foreign investor should read the activity first as a public-administration category and then as one that is closed to PMA registration nationwide.\n\nBali does not soften that answer. A foreigner cannot register this activity in Bali today: its Bali PMA status is also TERTUTUP and the record marks it blocked. The reason, however, matters. Bali’s island-wide, permanent low- and medium-low-risk PMA moratorium does not apply here, because this activity is recorded as medium-high/high risk. Its Bali position still calls for verification at the specific address. In short, Bali’s closure should not be misread as a moratorium case, nor as an opening merely because the moratorium does not apply.",
+    "pullQuote": "There is no foreign equity stake to describe as available within this public-administration activity.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "Foreign-ownership ceiling",
         "value": "0%"
       },
       {
@@ -17,6 +17,10 @@
       {
         "label": "Bali PMA status",
         "value": "TERTUTUP"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
       }
     ]
   }

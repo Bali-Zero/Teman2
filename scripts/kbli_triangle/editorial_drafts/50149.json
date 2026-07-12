@@ -1,13 +1,13 @@
 {
   "code": "50149",
   "editorial": {
-    "headline": "Freight Crossings Beyond the Usual Route",
-    "standfirst": "This large-scale maritime crossing activity is nationally open to full foreign ownership and is not blocked for PMA registration in Bali.",
-    "body": "Transportasi Pesisir Lainnya untuk Barang covers freight crossing services on seas, straits and bays that are not classified elsewhere as movable bridges linking two fixed points in an extension of a road or rail network. Its practical territory is maritime passage: moving goods across a water crossing, including international freight-crossing services. It also includes the rental of crossing transport together with its operator.\n\nThe activity is available only at the **Besar** scale. That matters because the record places the business in a large-scale operating context rather than presenting it as a small local transport registration. The defined scope is specific, but not narrow: it covers the transport service itself and an operated rental model, provided both remain within the stated crossing-transport activity.\n\nNationally, the position is straightforward. The activity is **TERBUKA** to PMA, with a foreign-ownership ceiling of **100%**. In plain terms, the national record permits full foreign ownership for this activity. The cited basis is Perpres 10/2021, 49/2021; there is no lower foreign-share limit or additional national condition stated in this record.\n\nBali does not reverse that national position. The provincial moratorium permanently blocks PMA registration for all Low and Medium-Low risk activities across the island, but this activity at the **Besar** scale is recorded as Menengah-Tinggi/Tinggi risk. It is therefore not blocked by that moratorium. Bali’s status is **OK_or_HIGHER_RISK**: the activity remains available for PMA registration there, while its risk classification at the relevant scale is the reason it falls outside the island-wide restriction.",
-    "pullQuote": "Bali does not reverse the national position: this large-scale activity is not blocked by the provincial PMA moratorium.",
+    "headline": "Freight Crossings That Keep Sea Routes in the Network",
+    "standfirst": "This activity covers freight ferry crossings across seas, straits and bays, including international services and vessel hire with an operator.",
+    "body": "This is the activity for freight crossings that function as moving links between fixed points across seas, straits and bays. Its practical idea is a ferry connection that continues a road or rail network across water: goods move by crossing, rather than through a conventional land link. The scope also expressly includes international freight-crossing services, as well as the hire of crossing transport together with its operator. It is therefore a defined transport activity, not a general description of maritime commerce.\n\nThe registration picture is deliberately narrow in scale. The record opens the activity at the **Besar** scale—Large—so this is framed for substantial operations rather than a broad spread of business sizes. Nationally, it is **TERBUKA** to foreign investment, with foreign ownership permitted up to **100%**. That is the national position stated in the record: a foreign-owned company may hold the activity in full, within the Large-scale setting identified for it.\n\nBali does not reverse that position for this activity. The province’s standing rule blocks PMA registration for activities assessed at Low or Medium-Low risk, across the island and on a permanent basis. But this activity, at the Large scale recorded here, is assessed by OSS as Medium-High or High risk. The result is direct: it is not blocked by Bali’s moratorium. There is no separate Bali ownership ceiling or partnership condition stated in the record, so none should be inferred.\n\nThe useful distinction is between national ownership openness and Bali’s risk-based registration screen. Here, they align in a workable way. Nationally, foreign ownership can reach 100%; in Bali, the Large-scale activity sits outside the moratorium because of its recorded risk classification. For a founder considering this precise freight-crossing operation, that is the central regulatory fact: Bali does not prohibit PMA registration for it on the basis of the provincial moratorium.",
+    "pullQuote": "Nationally, foreign ownership can reach 100%; in Bali, the Large-scale activity sits outside the moratorium because of its recorded risk classification.",
     "byTheNumbers": [
       {
-        "label": "Foreign-ownership ceiling",
+        "label": "Foreign ownership ceiling",
         "value": "100%"
       },
       {
@@ -15,12 +15,8 @@
         "value": "Besar"
       },
       {
-        "label": "National PMA basis",
+        "label": "National PMA source",
         "value": "Perpres 10/2021, 49/2021"
-      },
-      {
-        "label": "Bali status",
-        "value": "OK_or_HIGHER_RISK"
       }
     ]
   }

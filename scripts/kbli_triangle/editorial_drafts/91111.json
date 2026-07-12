@@ -1,26 +1,22 @@
 {
   "code": "91111",
   "editorial": {
-    "headline": "Government Libraries: A Public-Service Activity Closed to Foreign Capital",
-    "standfirst": "Government library work spans collections, access and preservation—yet it is closed to foreign investment nationally and for PMA registration in Bali.",
-    "body": "A foreign investor cannot register this government-library activity in Bali today. The national position is equally clear: its PMA status is **TERTUTUP**, with a foreign-ownership ceiling of 0%. This is therefore a public-service activity with no foreign-equity route under the record’s national classification.\n\nThe work itself is broader than shelving books. It covers the management, care, preservation and appraisal of libraries operated by government institutions. That includes documentation and information services across government libraries, including digital libraries, reading rooms, listening rooms and viewing rooms. It also reaches the organisation and cataloguing of collections, alongside lending and storage of books, maps, periodicals, films, recordings, tapes and artworks.\n\nIts defining setting is institutional. The operators identified are government bodies at national, regional and local level, provided the library is not under an educational institution or another cultural institution. The activity also includes retrieving library documents to meet information needs. No business scales are listed as open in the record, reinforcing that this classification should be read through its stated public-government function rather than as a general commercial library-services category.\n\nBali’s record also marks the activity **TERTUTUP** and blocked for PMA registration. Its stated reason places the activity at medium-high or high risk and says it is not blocked by Bali’s island-wide moratorium; the relevant position must instead be verified for the address concerned. That distinction matters: the moratorium applies to all low- and medium-low-risk KBLI activities, but it is not the stated basis here. It does not change the practical conclusion for foreign investment: the activity remains closed nationally and closed for PMA registration in Bali.",
-    "pullQuote": "The moratorium is not the stated basis in Bali, but the practical conclusion remains the same: this activity is closed to foreign investment.",
+    "headline": "Government Libraries: A Public-Service Activity, Not a PMA Entry Point",
+    "standfirst": "This code covers the stewardship of government libraries, from cataloguing collections to retrieving information, but it is closed to foreign investment nationally and in Bali.",
+    "body": "Government library activity is the public work of managing, maintaining, preserving and appraising libraries run by national, regional or local government institutions. It applies where those institutions sit outside an educational body or another cultural institution. The scope is broad in the practical sense: it includes documentation and information services across government libraries, including digital libraries, reading rooms, listening rooms and viewing rooms. It also reaches the organisation and cataloguing of collections, as well as the lending and storage of books, maps, periodicals, films, recordings, tapes and artworks.\n\nAt its centre, this is an information-access function. Government institutions operating such libraries may organise specialised or general collections and retrieve documents to meet information needs. The activity therefore describes an institutional public service rather than a private commercial format: a library’s collection is kept intelligible, preserved and available through the systems that make its materials findable and usable. The slim record identifies government institutions at national, regional and local level as the relevant operators, and lists no business scales as open to this activity.\n\nFor foreign investors, the national position is decisive: the activity is closed to PMA, with a foreign-ownership ceiling of 0%. Bali records the activity as closed and blocked for PMA registration, so a foreigner cannot register this activity in Bali today. The Bali entry characterises the matter as medium-high/high risk, states that it is not blocked by the provincial moratorium, and says the position should be verified for the specific address. That address-level verification does not alter the recorded conclusion: Bali’s status for PMA registration is closed.",
+    "pullQuote": "A government library may be a vital public information service, but it is not an entry point for foreign investment.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "Foreign ownership ceiling",
         "value": "0%"
       },
       {
-        "label": "National PMA status",
-        "value": "TERTUTUP"
-      },
-      {
-        "label": "Bali PMA status",
-        "value": "TERTUTUP"
-      },
-      {
-        "label": "National source",
+        "label": "PMA basis",
         "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "TERTUTUP"
       }
     ]
   }

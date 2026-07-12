@@ -1,26 +1,22 @@
 {
   "code": "84124",
   "editorial": {
-    "headline": "Government Social-Welfare Administration Has No PMA Route",
-    "standfirst": "This government-led social-welfare activity is closed to foreign investment nationally and marked closed and blocked for PMA registration in Bali.",
-    "body": "KBLI 84124 is not an activity a foreign investor can register in Bali today. Its national PMA status is closed, with a foreign-ownership ceiling of 0%; Bali is likewise recorded as closed and blocked for PMA registration. This is a public-administration activity centred on the government’s role in social welfare, rather than an opening for foreign participation in a welfare-facing business.\n\nIts scope covers government guidance for the delivery of social security, social assistance, and social rehabilitation. In practical terms, the activity concerns the administrative and supervisory work through which those forms of social welfare are organised. The record gives government institutions in the social field as its example. That matters: the emphasis is on the governmental function of fostering and administering the provision of social welfare, not simply on the existence of social-security, assistance, or rehabilitation services themselves.\n\nThe record names no business scale as open to this activity. There is therefore no scale-based opening stated here for a prospective registrant to rely upon. At the national level, the position is direct: the activity is closed to PMA and the foreign-ownership ceiling is 0%. Bali does not soften that conclusion. Its own entry is marked closed, and the PMA-registration flag is blocked.\n\nOne Bali detail needs to be read accurately rather than stretched into an exception. The record places the activity in the medium-high/high-risk range and says it is not blocked by Bali’s island-wide, permanent moratorium for low- and medium-low-risk PMA activities; it also calls for verification by address. That risk-and-address note does not change the recorded Bali outcome for this activity: it remains closed and blocked for PMA registration. For founders, the clean reading is that this is government social-welfare administration with no foreign-ownership route nationally, and no PMA registration route in Bali.",
-    "pullQuote": "This is a public-administration activity centred on the government’s role in social welfare, rather than an opening for foreign participation in a welfare-facing business.",
+    "headline": "Social Welfare Administration: A Closed Government Activity",
+    "standfirst": "This code covers government administration of social insurance, assistance and rehabilitation—and is closed to PMA nationally and in Bali.",
+    "body": "A foreign investor cannot register this activity in Bali today. The national PMA position is already closed, with a foreign-ownership ceiling of 0%; Bali likewise records it as closed. That alignment matters because this is not framed as a general private welfare-service activity, but as government administration in the social-welfare field.\n\nIts scope is the government’s role in guiding the delivery of social insurance, social assistance and social rehabilitation. In practical terms, it concerns the institutional work through which public bodies oversee and develop those welfare functions, including the activities of government agencies responsible for social affairs. The emphasis is administrative and governmental: the code describes the public architecture around social protection, assistance and rehabilitation.\n\nThe slim record identifies no business scales as open to this activity. That absence sits consistently with the national PMA classification: it is marked **TERTUTUP**, rather than open with a stated foreign share. There is therefore no foreign-equity structure to interpret or percentage below full ownership to navigate; the national ceiling is simply 0%.\n\nBali’s entry is also **TERTUTUP** and explicitly marked as blocked for PMA registration. The stated reason places the activity in the medium-high or high-risk range and says it is not blocked by Bali’s island-wide Low and Medium-Low risk moratorium; verification remains necessary for the specific address. That is a distinction about the basis for Bali’s position, not an opening. For this government social-welfare administration activity, the operative picture remains straightforward: it is closed nationally to PMA and cannot be registered by a foreigner in Bali today.",
+    "pullQuote": "For this government social-welfare administration activity, the operative picture remains straightforward: it is closed nationally to PMA and cannot be registered by a foreigner in Bali today.",
     "byTheNumbers": [
       {
         "label": "National foreign-ownership ceiling",
         "value": "0%"
       },
       {
-        "label": "National PMA status",
-        "value": "TERTUTUP"
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
       },
       {
         "label": "Bali status",
         "value": "TERTUTUP"
-      },
-      {
-        "label": "PMA source",
-        "value": "Perpres 10/2021, 49/2021"
       }
     ]
   }

@@ -1,17 +1,17 @@
 {
   "code": "86109",
   "editorial": {
-    "headline": "Other Hospital Activities: Open Nationally, Address-Specific in Bali",
-    "standfirst": "A large-scale hospital activity open to full foreign ownership nationally, with Bali’s moratorium not blocking its medium-high or high-risk classification.",
-    "body": "This activity covers other healthcare and physical-treatment work carried out by hospitals beyond the activity’s more specifically defined hospital categories. Its importance lies in that residual scope: it is intended for hospital-based care and treatment that belongs within the broader hospital setting but is not captured by those defined categories. The classification is therefore not a generic label for every form of health service; its boundary is set by the hospital context and by the care-and-treatment activity described in the record.\n\nThe activity is open to businesses at the **Besar** scale. Nationally, it is marked **TERBUKA**, with a foreign-ownership ceiling of 100%. In practical ownership terms, the record permits full foreign ownership at the national level. That conclusion rests on the cited national PMA source, Perpres 10/2021 and 49/2021, rather than on an implied assumption about healthcare activities generally.\n\nBali presents a more qualified but still workable picture. The province’s permanent PMA moratorium blocks all low- and medium-low-risk activities island-wide. This activity is not marked as blocked by that moratorium: the Bali record places it in the medium-high or high-risk range and says it is not blocked. For a foreign investor, that is the decisive distinction—the national openness is not overridden here by the Bali moratorium.\n\nThere remains one location-specific discipline in the record: the position should be verified for the proposed address. That is not a new restriction or a claim about a permit; it is the stated Bali qualification attached to an activity that remains open nationally and is not moratorium-blocked in Bali. The clear reading is that full foreign ownership is available nationally, while Bali requires the classification to be checked against the actual address before treating the provincial position as settled.",
-    "pullQuote": "Full foreign ownership is available nationally, while Bali does not block this activity under its PMA moratorium.",
+    "headline": "Other Hospital Services: Nationally Open, Address-Sensitive in Bali",
+    "standfirst": "This hospital-services activity is open to full foreign ownership nationally and is not blocked by Bali’s moratorium, though the proposed address still requires verification.",
+    "body": "### A residual hospital-services category\n\nThis activity sits within hospital services as the category for other health-care and physical-treatment work not included in the specifically enumerated hospital activities. That restrained wording matters. It is not a broad label for every venture with a clinical dimension; its centre of gravity remains hospital activity. The classification provides room for the remaining health-care and physical-treatment activity described by its scope, so the real question is whether the proposed care or treatment belongs within that hospital-services setting.\n\nOn scale, the record gives one clear answer: **Besar**. It is the only scale open to this activity. That makes the registration profile unusually focused: the classification is available to operators registering at the large scale stated in the record, rather than across a range of business scales. Nothing in the record adds a separate applicant type, licence pathway, capital threshold, or timetable, so those should not be inferred from the activity title alone.\n\nFor foreign investment at the national level, the position is direct. The activity is marked **TERBUKA**, with a maximum foreign ownership level of 100%. In practical terms, the national classification permits full foreign ownership. The cited basis is Perpres 10/2021 and 49/2021. There is no lesser foreign-share ceiling recorded here, and no partnership condition is attached to the national PMA position in this slim record.\n\nBali requires a more exact reading, but not a pessimistic one. The Bali status is recorded as **OK_or_HIGHER_RISK**, with the activity described as medium-high/high risk and therefore not blocked by the provincial moratorium. That moratorium blocks low and medium-low risk KBLI activities for PMA across the province; this activity is outside that blocked category on the record presented. The important qualification is geographical rather than numerical: the record says to verify the position for the proposed address. The honest conclusion is that a foreign investor is not shut out of Bali by this moratorium, while the address-specific check remains part of a careful registration assessment.",
+    "pullQuote": "The honest conclusion is that a foreign investor is not shut out of Bali by this moratorium, while the address-specific check remains part of a careful registration assessment.",
     "byTheNumbers": [
       {
-        "label": "Foreign-ownership ceiling",
+        "label": "Maximum foreign ownership",
         "value": "100%"
       },
       {
-        "label": "Open business scale",
+        "label": "Open scale",
         "value": "Besar"
       },
       {
@@ -19,8 +19,8 @@
         "value": "Perpres 10/2021, 49/2021"
       },
       {
-        "label": "Bali assessment",
-        "value": "medium-high/high risk → not blocked by moratorium (verify per address)"
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
       }
     ]
   }

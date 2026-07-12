@@ -1,13 +1,13 @@
 {
   "code": "46442",
   "editorial": {
-    "headline": "Veterinary Pharmaceutical Wholesale: Open Nationally, Clear in Bali",
-    "standfirst": "This activity covers the wholesale movement of veterinary pharmaceutical preparations, from animal medicines and ingredients to animal cosmetics, across every business scale.",
-    "body": "Veterinary pharmaceutical wholesale is the commercial circulation of preparations made for animal use. Its scope runs across wholesale trading, import, export and distribution, covering forms such as veterinary-medicine raw materials, animal cosmetics and veterinary medicines. In practical terms, it is the activity for businesses moving these products through the market rather than merely describing a product category or a clinical service.\n\nThe activity is available to Micro, Small, Medium and Large businesses. The record also identifies the relevant commercial roles directly: exporter, importer and distributor for veterinary pharmaceutical medicines, and exporter, importer and distributor for animal cosmetics. That breadth matters because the activity is framed around how animal-use preparations enter, leave and circulate within trade channels.\n\nNationally, the activity is open to foreign investment, with a foreign-ownership ceiling of 100%. The applicable foreign-investment source is Perpres 10/2021, 49/2021. There is no lower foreign cap recorded here: a foreign-owned business may hold the full permitted stake nationally, subject to the activity as defined.\n\nBali does not block this activity for PMA registration under its permanent, island-wide moratorium on Low and Medium-Low risk activities. The Bali record places it at `OK_or_HIGHER_RISK`: at the Large scale, the OSS risk is Medium-High or High, which is why it is not caught by that moratorium. The honest reading is therefore straightforward. This is nationally open to full foreign ownership, and Bali’s moratorium does not close it; the relevant Bali context is its higher risk position at the Large scale, not a foreign-ownership ban.",
-    "pullQuote": "This is nationally open to full foreign ownership, and Bali’s moratorium does not close it.",
+    "headline": "Animal Pharmaceutical Wholesale: Open Nationally, Viable in Bali",
+    "standfirst": "This activity covers the wholesale movement of animal medicines, ingredients and cosmetics, with a clear national opening and no Bali moratorium block.",
+    "body": "Animal pharmaceutical wholesale is the commercial circulation of pharmaceutical preparations intended for animals. Its scope includes wholesale trade, import, export and distribution of veterinary medicinal products, animal-medicine raw materials and animal cosmetics. In practical terms, it is the activity for businesses operating as exporters, importers or distributors of animal pharmaceutical products and animal cosmetics—not a retail description, but a wholesale and circulation-facing one.\n\nThe activity is open across every recorded business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the record does not confine the activity to one end of the market. A business may be positioned around bringing veterinary preparations into Indonesia, moving them out of the country, or distributing them through the wholesale channel; the same scope also expressly includes raw materials for animal medicines and cosmetics intended for animals. The unifying thread is the trade and movement of pharmaceutical preparations for animal use.\n\nNationally, the foreign-investment position is straightforward. The activity is TERBUKA, with a maximum foreign ownership of 100%. In other words, the national record allows full foreign ownership for this activity. Bali does not reverse that position. The province’s standing is recorded as OK_or_HIGHER_RISK, and the activity is not blocked for PMA registration by the island-wide moratorium. The decisive Bali detail is scale-specific: at the Besar scale, the OSS risk is Menengah-Tinggi or Tinggi, placing it outside the moratorium’s stated reach over Low and Medium-Low risk activities.\n\nThat makes this an unusually clean national-versus-Bali reading. Bali’s permanent PMA moratorium remains material because it blocks all Low and Medium-Low risk KBLI across the province. Yet this activity is expressly recorded as not blocked by that rule. For a foreign-owned wholesale business dealing in animal pharmaceutical preparations, the result is not a theoretical national opening that disappears on the island: the record supports a 100% national foreign-ownership ceiling and confirms that Bali’s moratorium does not bar PMA registration for this activity.",
+    "pullQuote": "The national opening does not disappear in Bali: the activity is recorded as outside the island-wide PMA moratorium block.",
     "byTheNumbers": [
       {
-        "label": "Foreign-ownership ceiling",
+        "label": "National foreign-ownership ceiling",
         "value": "100%"
       },
       {
@@ -15,12 +15,12 @@
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "PMA source",
-        "value": "Perpres 10/2021, 49/2021"
-      },
-      {
         "label": "Bali status",
         "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "Bali PMA block",
+        "value": "false"
       }
     ]
   }

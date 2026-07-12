@@ -1,13 +1,13 @@
 {
   "code": "85401",
   "editorial": {
-    "headline": "Public Higher Education Is Not an Open PMA Route",
-    "standfirst": "This activity covers government-run higher education, from diploma to doctoral level, but is closed to foreign investment nationally and listed as closed for PMA in Bali.",
-    "body": "Government General Higher Education is the public provision of tertiary education: diploma, bachelor’s, master’s and doctoral programmes, alongside equivalent academic, professional and vocational education. Its stated purpose is broad intellectual development across science, technology, the arts and the humanities. The setting is equally specific: this is education delivered by government through universities, institutes and higher-education schools.\n\nThe activity is open across the recorded business scales—micro, small, medium and large—but scale should not be mistaken for an invitation to foreign ownership. Nationally, the PMA status is closed and the maximum foreign ownership is 0%. In practical terms, a foreign investor does not have a foreign-equity route into this activity under the national position recorded here. The relevant national references are Presidential Regulations 10/2021 and 49/2021.\n\nBali does not soften that conclusion. The provincial status is also listed as closed, and the Bali record marks PMA registration as blocked. A foreigner therefore cannot register this activity in Bali today. The accompanying Bali note adds an important distinction: the activity is described as medium-high or high risk and is not blocked by the province-wide moratorium itself; the position should be verified for the specific address. That moratorium applies island-wide and permanently to all low- and medium-low-risk KBLI activities for PMA, but it is not the stated basis for this activity’s Bali outcome.\n\nThat distinction matters because it keeps the analysis disciplined. The national position is a closed PMA classification with no foreign ownership permitted. Bali’s recorded result is likewise closed for PMA, while its note points to risk classification and address-level verification rather than the provincial moratorium. For founders, the clearest reading is also the most useful: government-run higher education may span every listed enterprise scale, but it is not available as a foreign-owned registration pathway, nationally or in Bali.",
-    "pullQuote": "Government-run higher education may span every listed enterprise scale, but it is not available as a foreign-owned registration pathway, nationally or in Bali.",
+    "headline": "Public Higher Education Is a Government-Run Academic Mandate",
+    "standfirst": "This activity covers government-delivered higher education, from diploma study to doctoral and professional programmes, but it is closed to foreign investment nationally and in Bali.",
+    "body": "Public higher education, in this classification, is government-delivered study across diploma, undergraduate, master’s and doctoral levels, alongside comparable academic, professional and vocational education. Its purpose is broad rather than narrowly commercial: developing knowledge, technology, the arts and the humanities on a universal footing. The institutional setting is equally clear. The activity is carried out by government through universities, institutes and higher-education schools.\n\nThe scope is therefore defined by both provider and level. It embraces the full progression of higher learning, from diploma education through advanced postgraduate study, while also including equivalent academic, professional and vocational programmes. The record lists the activity as open across Mikro, Kecil, Menengah and Besar scales. That scale listing describes the activity’s recognised business-scale range; it does not alter the defining fact that the education itself is organised by government institutions.\n\nFor foreign investment, the national position is unequivocal. The PMA status is TERTUTUP, with a foreign-ownership ceiling of 0%. There is no national foreign stake available within this activity. That conclusion should be read as part of the classification itself, not as a question of whether a particular university, institute or school might appear attractive as an operating proposition: the national PMA setting is closed.\n\nBali reaches the same practical result for PMA registration today: a foreigner cannot register this activity there. Bali’s status is TERTUTUP and the record marks it as blocked. The stated Bali rationale places it in the medium-high/high-risk range and says it is not blocked by the province-wide moratorium, with verification required for the specific address. That distinction matters. Bali’s permanent island-wide moratorium applies to Low and Medium-Low risk KBLI activities for PMA, whereas this activity’s Bali outcome is recorded as closed despite not being blocked by that moratorium. The honest position is therefore simple: foreign ownership is unavailable nationally, and Bali is also closed for PMA registration, while address-level verification remains expressly noted in the record.",
+    "pullQuote": "Foreign ownership is unavailable nationally, and Bali is also closed for PMA registration.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "Foreign ownership ceiling",
         "value": "0%"
       },
       {
@@ -15,12 +15,12 @@
         "value": "TERTUTUP"
       },
       {
-        "label": "Open scales",
-        "value": "Mikro, Kecil, Menengah, Besar"
-      },
-      {
         "label": "Bali PMA status",
         "value": "TERTUTUP"
+      },
+      {
+        "label": "Recognised scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
       }
     ]
   }

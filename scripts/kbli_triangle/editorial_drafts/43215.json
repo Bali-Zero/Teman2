@@ -1,17 +1,17 @@
 {
   "code": "43215",
   "editorial": {
-    "headline": "Rail Signalling and Telecoms Installation: Open Nationally, Viable in Bali",
-    "standfirst": "This activity covers the systems that help railway signalling and communications work, with national PMA openness and no Bali moratorium block.",
-    "body": "This activity is the practical work of installing, maintaining and repairing railway signalling and telecommunications systems. It includes, for example, electrical signals running alongside the track. The scope is therefore not simply about supplying equipment: it is about putting these systems in place and keeping them operational through maintenance and repair.\n\nIt suits enterprises whose work sits directly within that installation-and-upkeep chain. The record makes it available across Mikro, Kecil, Menengah and Besar scales, so the classification is not reserved for one particular business scale. What matters is that the registered activity remains within railway signalling and telecommunications installation, maintenance or repair.\n\nNationally, the PMA position is open, with a foreign-ownership ceiling of 100%. In plain terms, the record permits full foreign ownership at the national level for this activity. That openness is grounded in the cited presidential regulations; it is not a conclusion drawn from a neighbouring business category or from a general assumption about rail infrastructure.\n\nBali does not overturn that national position. The province’s permanent, island-wide moratorium blocks PMA registration for low and medium-low risk activities, but this activity is not blocked by that rule. At the Besar scale, the record identifies its OSS risk as Menengah-Tinggi/Tinggi—medium-high/high—which is why the moratorium does not apply. Bali’s recorded status is therefore OK_or_HIGHER_RISK: a foreign-owned registration is not barred there by the stated moratorium.",
-    "pullQuote": "Bali does not overturn the national position: this activity is not blocked by the stated moratorium.",
+    "headline": "Railway Signalling and Telecoms: The National–Bali Position",
+    "standfirst": "This activity covers the systems that communicate and signal along Indonesia’s railways, with PMA open nationally and not blocked by Bali’s island-wide moratorium.",
+    "body": "Railway signalling and telecommunications installation is the work of putting in place, maintaining and repairing the systems that allow a railway to signal and communicate. That includes electrical signals installed along the track, as well as the associated railway telecommunications systems. It is an infrastructure activity with a distinctly operational remit: installation is only part of the picture; maintenance and repair belong to the same stated scope.\n\nNationally, the activity is **open to PMA**, with a foreign-ownership ceiling of **100%**. It is available at every listed business scale: Mikro, Kecil, Menengah and Besar. For a foreign-owned business, that makes the national position unusually direct in the record: the activity is open, and the stated ownership ceiling does not require a reduced foreign stake.\n\nBali needs to be read on its own terms. The province permanently blocks PMA for all Low and Medium-Low risk KBLI activities across the island. This activity is not blocked by that moratorium. The record identifies the OSS risk at the Besar scale as Menengah-Tinggi/Tinggi—Medium-High/High—which places it outside the risk categories covered by the provincial block.\n\nThat distinction matters because a national PMA opening does not, by itself, settle the Bali position. Here, however, the two layers do not conflict: the activity is open to PMA nationally at up to 100% foreign ownership, and Bali’s moratorium does not block it. The practical reading is therefore neither a blanket Bali exclusion nor an invented local condition, but a clear higher-risk position outside the moratorium’s Low and Medium-Low scope.",
+    "pullQuote": "The activity is open to PMA nationally at up to 100% foreign ownership, and Bali’s moratorium does not block it.",
     "byTheNumbers": [
       {
         "label": "Foreign-ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "Open scales",
+        "label": "Open business scales",
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
@@ -19,8 +19,8 @@
         "value": "Perpres 10/2021, 49/2021"
       },
       {
-        "label": "Bali status",
-        "value": "OK_or_HIGHER_RISK"
+        "label": "Bali risk position at Besar scale",
+        "value": "Menengah-Tinggi/Tinggi"
       }
     ]
   }

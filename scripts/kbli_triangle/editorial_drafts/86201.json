@@ -1,25 +1,25 @@
 {
   "code": "86201",
   "editorial": {
-    "headline": "Independent Medical Practice: Open Nationally, Closed to PMA in Bali",
-    "standfirst": "Independent general care and treatment by doctors is open nationally to 100% foreign ownership, but the activity is closed to PMA registration in Bali.",
-    "body": "This activity is the independent provision of general care and treatment for illness by doctors. Its scope is deliberately narrow in its wording: it concerns services for general illness, performed independently by a doctor. That makes the independence of the practitioner central to the activity, alongside the actual provision of care and treatment. For a founder, the useful reading is not merely health services, but an independent doctor’s practice whose work is general care and treatment of disease.\n\nRegistration is open at every scale named in the record: Mikro, Kecil, Menengah, and Besar. This is a meaningful part of the classification: it places the activity across the full stated scale range instead of confining it to a single business size. The scale field, however, should be read for what it says. It confirms availability at those four scales; it does not by itself alter the defining premise that the service is independently provided by a doctor.\n\nAt the national level, the PMA status is open and the maximum foreign ownership is 100%. In plain terms, the national record permits full foreign ownership of this activity. Bali changes the result completely. Its Bali status is closed, and the record marks PMA registration as blocked. The honest conclusion for a foreign founder is direct: an independent doctor’s practice under this activity cannot be registered in Bali today. The recorded reason is a Health Ministry health-law restriction: a foreign doctor cannot open a solo practice. This is the stated substantive barrier, rather than a minor administrative qualification.\n\nThe Bali record also contains a province-wide, permanent PMA rule: it blocks all Low and Medium-Low risk KBLI activities across the island. It is sourced to Governor’s letter B.27.000/642/PM/DPMPTSP. That provincial rule sits beside the activity’s explicit Bali closure and the stated restriction on a foreign doctor’s solo practice. National openness should therefore be read as the national position only; it does not turn Bali’s closed PMA registration status into an available route.",
-    "pullQuote": "National openness does not turn Bali’s closed PMA registration status into an available route.",
+    "headline": "A Doctor’s Independent Practice, and Bali’s PMA Boundary",
+    "standfirst": "Independent general medical care may be nationally foreign-open, but a foreign doctor cannot register a solo practice in Bali.",
+    "body": "For a foreign doctor considering Bali, the conclusion comes first: this activity cannot be registered there today as an independent solo practice. Bali records it as closed to foreign nationals. That is the local position even though the national entry is open to foreign investment and sets a foreign-ownership ceiling of 100%. A national ceiling describes the extent of foreign participation allowed nationally; it does not, by itself, create a registration route in Bali.\n\nThe activity is a focused professional practice. It covers general care and treatment for diseases, delivered independently by a doctor. In clear English, it is the independent practice of a doctor providing general medical care. The word “independently” does important work here: the care and treatment within scope are carried out by the doctor as an independent practitioner. That gives the activity a defined clinical character rather than making it a broad label for health-related enterprise.\n\nNationally, the record makes the activity available at Micro, Small, Medium and Large scales. That is a notably broad range of business scales, while the centre of the activity remains the same: a doctor independently providing general care and treatment. The record does not supply further detail on facilities, credentials, permits or operating steps, and those should not be inferred from either the ownership status or the scale categories.\n\nBali is where national openness stops being the whole story. Its status is TERTUTUP—closed—and the stated rationale is health law: a foreign doctor cannot open a solo practice. The provincial PMA rule recorded here is island-wide and permanent. Read together, these facts establish a firm local boundary, not a technical footnote. A 100% national ceiling allows full foreign ownership nationally; it does not override Bali’s recorded closure of this activity to a foreign doctor. For a founder assessing this route, the honest Bali answer is therefore no registration of this independent practice by a foreigner.",
+    "pullQuote": "A 100% national ceiling allows full foreign ownership nationally; it does not create a Bali registration route.",
     "byTheNumbers": [
       {
         "label": "National foreign-ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "Registration scales",
+        "label": "Open business scales",
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "National PMA basis",
+        "label": "National source",
         "value": "Perpres 10/2021, 49/2021"
       },
       {
-        "label": "Bali PMA status",
+        "label": "Bali status",
         "value": "TERTUTUP"
       }
     ]

@@ -1,13 +1,13 @@
 {
   "code": "46332",
   "editorial": {
-    "headline": "Wholesale Bakery Products: Nationally Open, Blocked for PMA in Bali",
-    "standfirst": "This activity covers wholesale trade in bread, cakes and other bakery products, open across every listed business scale nationally but blocked for PMA registration in Bali.",
-    "body": "Wholesale bakery-products trading is the business of supplying bread, cakes and other bakery goods on a wholesale basis. Its scope is commercial distribution: bringing bakery products into the wholesale trade rather than defining how they are made, served or sold in another setting. For a founder, that distinction matters because the activity is framed around the movement of finished bakery goods through wholesale channels.\n\nThe code is open to businesses at the **Mikro**, **Kecil**, **Menengah** and **Besar** scales. Nationally, it is marked **TERBUKA** for PMA, with a maximum foreign ownership ceiling of **100%**. In plain terms, the national position permits full foreign ownership for this wholesale activity. The stated national basis is *Perpres 10/2021, 49/2021*.\n\nBali presents a materially different registration picture. A foreign investor cannot register this activity for PMA in Bali today. The Bali status is **BLOCCATO_CLASSE_RISCHIO**: at the **Besar** scale, every stated scope is classified by OSS as Low or Medium-Low risk, placing the activity within Bali’s island-wide, permanent moratorium on PMA for all Low and Medium-Low risk KBLI activities. The recorded reason specifically identifies that moratorium as taking effect in May 2026.\n\nThat does not alter the national foreign-ownership ceiling; it changes the practical answer for a PMA intending to establish this activity in Bali. Nationally, the activity is open and may be wholly foreign-owned. In Bali, however, the applicable risk-based moratorium blocks PMA registration. The relevant Bali source is the Governor’s letter *B.27.000/642/PM/DPMPTSP*.",
-    "pullQuote": "Nationally this wholesale activity may be wholly foreign-owned, but PMA registration for it is blocked in Bali.",
+    "headline": "The National Opening—and Bali Stop Sign—for Bakery Wholesalers",
+    "standfirst": "Wholesale trading in bread, cakes and other bakery products is nationally open to foreign investment, but Bali’s permanent PMA moratorium blocks registration for this activity.",
+    "body": "This activity is the wholesale trade of bread, cakes and other bakery products: the commercial distribution layer that moves bakery goods through the market rather than their production. Nationally, it is classified as open to foreign investment, with foreign ownership permitted up to 100%. That is the starting point, and it is an important one: the national position is not a partial opening or a foreign-share cap, but a fully open ceiling under the cited presidential regulations.\n\nThe activity is open across the stated business scales—Mikro, Kecil, Menengah and Besar. In practical terms, the classification accommodates wholesale bakery-product businesses at each of those registered scales. The scope remains specific, however: bread, cakes and other bakery products are the goods at its centre. A sound registration narrative should keep that commercial focus clear, because the code’s definition is framed around wholesale trade in those products.\n\nFor a foreign-owned company considering Bali, the national opening does not settle the question. Bali blocks PMA registration for this activity today. At the Besar scale, every listed scope is assessed in OSS as Rendah or Menengah-Rendah risk, placing the activity within Bali’s island-wide, permanent moratorium on all Low and Medium-Low risk KBLI for PMA. The block is therefore not a reduction of the national 100% foreign-ownership ceiling; it is a Bali-specific restriction on PMA registration.\n\nThat distinction deserves to be made without softening it. A foreign investor may see an activity that is nationally TERBUKA and assume Bali follows the same result. Here it does not. The Bali classification is BLOCCATO_CLASSE_RISCHIO, and the recorded basis is the low or medium-low OSS risk profile at the Besar scale together with the moratorium cited as taking effect in May 2026. For founders, the reliable reading is straightforward: national foreign-investment openness exists, yet Bali is not available for PMA registration of this activity under the stated provincial rule.",
+    "pullQuote": "National openness and Bali eligibility are different questions: this activity is open nationally, but blocked for PMA registration in Bali.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "Foreign-ownership ceiling",
         "value": "100%"
       },
       {
@@ -15,11 +15,11 @@
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "National source",
+        "label": "National PMA source",
         "value": "Perpres 10/2021, 49/2021"
       },
       {
-        "label": "Bali status",
+        "label": "Bali PMA status",
         "value": "BLOCCATO_CLASSE_RISCHIO"
       }
     ]

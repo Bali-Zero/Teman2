@@ -1,25 +1,25 @@
 {
   "code": "46334",
   "editorial": {
-    "headline": "Non-Dairy Soft Drinks Wholesale: Nationally Open, Closed to PMA in Bali",
-    "standfirst": "This wholesale activity is nationally open to full foreign ownership, but Bali’s permanent PMA moratorium prevents registration there.",
-    "body": "KBLI 46334 covers the wholesale trade of non-alcoholic beverages other than milk. Its scope includes fruit nectars and juices, soft drinks, mineral water and packaged water. In practical terms, the activity is defined by supplying these beverage products on a wholesale basis, rather than by any one drink category alone.\n\nThe classification is open across the full stated business-scale range: Mikro, Kecil, Menengah and Besar. That breadth matters because the activity can be registered at each of those scales under the national classification. The scope is specific about the goods involved—non-dairy, non-alcoholic beverages—and broad enough to include both prepared drinks such as juices and soft drinks, and water products such as mineral and packaged water.\n\nNationally, the PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. The national position is therefore clear: full foreign ownership is permitted within the stated ceiling. The applicable source is Perpres 10/2021, 49/2021. For a foreign-owned company considering this activity at the national level, there is no lower foreign-equity cap stated in the record.\n\nBali is the decisive exception. A foreign investor cannot register this activity as PMA in Bali today. At the Besar scale, OSS assigns Low or Medium-Low risk across every scope of the activity; Bali’s permanent, island-wide moratorium blocks PMA registration for all KBLI in those risk classes. The Bali status is BLOCCATO_CLASSE_RISCHIO, and the block has applied under the moratorium since May 2026. This is not a reduced foreign-ownership allowance or a procedural condition: for PMA registration in Bali, the activity is blocked.",
-    "pullQuote": "A foreign investor cannot register this activity as PMA in Bali today.",
+    "headline": "The Wholesale Trade Behind Indonesia’s Non-Dairy Drinks",
+    "standfirst": "Nationally open to 100% foreign ownership, this wholesale activity is nevertheless blocked for PMA registration in Bali under the island-wide moratorium.",
+    "body": "Wholesale trade in non-dairy beverages is a precisely defined commercial lane. Its scope is the wholesale trade of non-alcoholic drinks other than milk, expressly including fruit nectars, juices, soft drinks, mineral water and packaged water. The category is broad enough to encompass familiar everyday beverages, yet its centre of gravity remains clear: wholesale trade in the listed non-alcoholic products. For an enterprise, the relevance lies in the nature of the products handled and in the wholesale character of the activity.\n\nThe activity is open at every scale named in the record—Mikro, Kecil, Menengah and Besar—rather than being confined to a single enterprise size. In registration terms, it is available to enterprises at each of those listed scales, from micro through large business. The scale picture is therefore broad, but not vague: the activity remains anchored to the specified beverages and to wholesale trade. The range tells a prospective registrant where it may sit by business size; the scope tells them what activity is being registered.\n\nNationally, the PMA position is open and the foreign-ownership ceiling is 100%. In plain terms, foreign ownership may reach the full stated ceiling under the national setting recorded for this activity. The distinction between an open status and its stated 100% ceiling is useful: the percentage supplies the precise national extent of foreign ownership rather than leaving it implicit. This national picture matters, but it does not settle the question for a business seeking PMA registration in Bali.\n\nIn Bali, the conclusion changes sharply. The activity is blocked because, at the Besar scale, OSS risk is Low/Medium-Low across every scope and the Bali moratorium blocks PMA registration on that basis. The moratorium is island-wide and permanent, and the recorded reason identifies it as the Bali moratorium of May 13, 2026. Accordingly, a foreign investor cannot register this activity for PMA in Bali today. This is not a Bali-specific foreign-ownership cap alongside the national 100% ceiling; it is a registration block. National openness does not override Bali’s registration block. For a Bali PMA plan, that local block is the decisive fact.",
+    "pullQuote": "National openness does not override Bali’s registration block.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "Foreign ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "Open business scales",
+        "label": "Scales open to",
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "National PMA source",
+        "label": "PMA source",
         "value": "Perpres 10/2021, 49/2021"
       },
       {
-        "label": "Bali PMA status",
+        "label": "Bali status",
         "value": "BLOCCATO_CLASSE_RISCHIO"
       }
     ]

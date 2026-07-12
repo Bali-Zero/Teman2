@@ -1,25 +1,25 @@
 {
   "code": "84146",
   "editorial": {
-    "headline": "Government Trade and Tourism Institutions: A Closed PMA Activity",
-    "standfirst": "This code covers government institutions that guide, develop and administer trade and tourism—and is closed to foreign investment nationally and in Bali.",
-    "body": "This activity is not a commercial trade or tourism venture. It covers the work of government institutions responsible for guiding, developing and administering the trade and tourism fields, including government bodies operating in trade and government bodies operating in tourism. Its character is institutional: the activity sits within public administration rather than the private delivery of tourism or trading services.\n\nFor a founder assessing a company structure, that distinction is decisive. The record identifies no business scale as open to this activity, and its national PMA status is **TERTUTUP**. The national foreign-ownership ceiling is **0%**. In practical terms, this is not an activity that can be registered as a foreign-investment company; the public-institutional purpose described in the scope is reflected directly in its investment position.\n\nBali does not soften that conclusion. A foreign investor cannot register this activity in Bali today: the Bali status is also **TERTUTUP**, and the record marks it as blocked for PMA registration. The province-wide moratorium on all Low and Medium-Low risk KBLI activities is not identified as the basis for this result. Instead, the record places the activity in the Medium-High/High risk range and says the position is not blocked by that moratorium, with verification required for the particular address.\n\nThat last qualification is narrow, not an opening. It directs attention to address-level verification; it does not alter either the national closure or Bali’s recorded closed status. The clean reading is therefore straightforward: this is a government-institution activity, with no stated open scale, no foreign ownership permitted nationally, and no PMA registration route in Bali on the record provided.",
-    "pullQuote": "This is a government-institution activity, with no foreign ownership permitted nationally and no PMA registration route in Bali on the record provided.",
+    "headline": "Trade and Tourism Administration Is Not a PMA Entry Route",
+    "standfirst": "This government-institution activity is closed to foreign investment nationally and remains closed for PMA registration in Bali.",
+    "body": "Code 84146 concerns government institutions that guide, develop and administer the fields of trade and tourism. Its scope includes the work of government bodies in those fields, including government trade institutions and government tourism institutions. The activity is therefore defined by an institutional public role: the organisation and development of trade and tourism through government bodies, rather than by a private commercial offer.\n\nThe slim record identifies government institutions as the relevant actors and supplies no business scale as open. That absence should be read plainly, without importing an assumed scale classification. More decisively, the national PMA position is **TERTUTUP**, with a foreign-ownership ceiling of **0%**. In practical terms, foreign investment has no entry into this activity at the national level. For a founder assessing an Indonesian structure, the code’s subject matter is the first signal: this is a governmental field of activity, and its PMA setting is fully closed.\n\nBali does not soften that conclusion. The Bali status is also **TERTUTUP**, and the record marks the activity as blocked for PMA registration. A foreigner therefore cannot register this activity in Bali today. The record classifies the relevant risk position as medium-high or high and says it is not blocked by Bali’s province-wide moratorium, which applies to low and medium-low risk activities; the address must nevertheless be verified. That distinction explains the route to the conclusion, but it does not alter the current Bali outcome: the activity remains closed.\n\nThe clean reading is consequently a narrow one. This code describes government-led trade and tourism administration, names no open business scale, and permits no foreign ownership nationally. Bali reaches the same closed result, while adding an address-verification point to its risk and moratorium context. There is no basis in the record to treat the provincial moratorium analysis as an opening for PMA; the stated Bali status and block remain the controlling facts.",
+    "pullQuote": "A foreigner therefore cannot register this activity in Bali today.",
     "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "0%"
+      },
       {
         "label": "National PMA status",
         "value": "TERTUTUP"
-      },
-      {
-        "label": "National foreign-ownership ceiling",
-        "value": "0%"
       },
       {
         "label": "PMA source",
         "value": "Perpres 10/2021, 49/2021"
       },
       {
-        "label": "Bali PMA status",
+        "label": "Bali status",
         "value": "TERTUTUP"
       }
     ]

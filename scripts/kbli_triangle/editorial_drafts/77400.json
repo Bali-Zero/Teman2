@@ -1,26 +1,26 @@
 {
   "code": "77400",
   "editorial": {
-    "headline": "Where Intellectual Property Earns Its Licence Fees",
-    "standfirst": "This activity concerns the commercial right to use non-copyright intellectual-property assets—nationally open to full foreign ownership, but blocked for PMA registration in Bali.",
-    "body": "This activity is about allowing another party to use intellectual-property products or similar assets in exchange for royalties or licence fees paid to the product owner or asset holder. That permission can take several forms: authorising reproduction, use within a later process or production activity, or operation of a business under a franchise system. The present owner need not be the person or entity that originally created the asset.\n\nIts scope includes operational leasing without an option to purchase for intellectual-property products that are not copyrighted works. It also covers royalties and licence fees connected with patented entities, trademarks and service marks, trade names, mineral-exploration rights, franchise agreements, internet domains, and rights to designed or developed board games. Royalties or licence fees arising from scientific research results are included as well. The common thread is the monetisation of permission to use an identified intellectual-property asset or comparable right.\n\nThe activity is open to Mikro, Kecil, Menengah, and Besar businesses. Nationally, its PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. The record cites Perpres 10/2021, 49/2021 as the basis for that national position. In practical terms, the national setting does not impose a foreign-share cap below full ownership for this activity.\n\nBali produces a different result. For PMA registration, this activity is blocked in Bali today. The record states that, at the Besar scale, every scope falls within Rendah or Menengah-Rendah risk, bringing it under Bali’s island-wide, permanent moratorium on PMA registration for all Low and Medium-Low risk KBLI. The stated block is tied to the moratorium of the thirteenth of May 2026. A national ceiling of 100% foreign ownership therefore does not create eligibility to register this activity as PMA in Bali; the Bali restriction is a registration block, not a reduced ownership percentage.",
-    "pullQuote": "A national ceiling of 100% foreign ownership does not override Bali’s permanent PMA registration block.",
+    "headline": "Licensing Intellectual Property: Nationally Open, PMA-Barred in Bali",
+    "standfirst": "This activity turns non-copyright intellectual-property rights into royalty income—open nationally to full foreign ownership, yet barred from PMA registration in Bali.",
+    "body": "KBLI 77400 is the business of allowing another party to use non-copyright intellectual-property assets, or comparable products, in exchange for royalties or licence consideration paid to the owner or asset holder. Permission can take several commercial forms: reproduction, use within a later process or production, or the operation of a business under a franchise system. The present owner need not be the person who created the asset. It can therefore sit behind arrangements that make an asset usable by another enterprise without transferring ownership.\n\nThe activity includes operational leasing without an option for eligible intellectual-property products, together with receiving royalties or licence fees. The record identifies patented entities, trademarks and service marks, trade names, mineral-exploration rights, franchise agreements, internet domains, and rights in designed or developed board games. It also includes royalties or licence fees for the results of scientific research. The category is framed by the commercial permission and the fee stream attached to it, however varied the underlying asset may be.\n\nNationally, the investment position is unambiguous. The activity is open at Mikro, Kecil, Menengah and Besar scales, spanning the full range stated in the record. Its national foreign-ownership ceiling is 100%, so there is no national cap below full foreign ownership. For founders, that means the rights-and-royalties character of the business does not confine it to a particular listed scale, and the national setting permits a wholly foreign-owned PMA registration.\n\nBali changes the answer completely. For this activity, Bali's moratorium is decisive: a foreigner cannot register it there as PMA today. At the Besar scale, every scope is recorded as Low or Medium-Low risk, placing the activity within Bali's permanent, island-wide moratorium on PMA registration for those risk levels. This is not a reduction of the national 100% ceiling or a case-by-case caution; it is a provincial bar under the moratorium dated 13 May 2026. National openness remains relevant outside Bali, but within Bali the moratorium controls the registration outcome.",
+    "pullQuote": "For this activity, Bali's moratorium is decisive: a foreigner cannot register it there as PMA today.",
     "byTheNumbers": [
       {
         "label": "National foreign-ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "Open business scales",
+        "label": "Registration scales",
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "Bali PMA status",
-        "value": "BLOCCATO_CLASSE_RISCHIO"
+        "label": "PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
       },
       {
-        "label": "PMA source",
-        "value": "Perpres 10/2021, 49/2021"
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
       }
     ]
   }

@@ -1,26 +1,26 @@
 {
   "code": "46743",
   "editorial": {
-    "headline": "Wholesale Trade in Radioactive Substances: Open Nationally and in Bali",
-    "standfirst": "This wholesale activity includes radioactive substances and ionising-radiation generators, including their import, with foreign investment open nationally and not blocked in Bali.",
-    "body": "This activity covers the wholesale trade of radioactive substances and ionising-radiation generators. Its stated scope also includes importing ionising-radiation generators and importing radioactive substances. The classification is therefore defined by the wholesale activity itself, with import expressly included in that scope.\n\nIt is open to businesses at every listed scale: Mikro, Kecil, Menengah and Besar. Nationally, its PMA status is TERBUKA, with a maximum foreign ownership ceiling of 100%. In plain terms, foreign investment is open for this activity nationally, including full foreign ownership within that stated ceiling.\n\nBali does not impose a PMA-registration block on this activity. The province’s permanent moratorium blocks PMA for Low and Medium-Low risk activities across the island, but this activity is recorded as not blocked by that moratorium. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, which is the stated reason it falls outside the moratorium block.\n\nThat distinction is the useful one for founders: national foreign-investment openness is not undermined here by a Bali moratorium block. Bali’s recorded position is OK_or_HIGHER_RISK, rather than a prohibition on PMA registration. The activity remains one concerned specifically with wholesale trade and the stated imports of radioactive substances and ionising-radiation generators.",
-    "pullQuote": "National foreign-investment openness is not undermined here by a Bali moratorium block.",
+    "headline": "Radioactive Materials and Ionising Generators, Clearly Defined",
+    "standfirst": "An open PMA activity for wholesale trade and specified imports of radioactive materials and ionising-radiation generators, available at every listed business scale.",
+    "body": "Wholesale trade in radioactive materials and ionising radiation generators is a tightly stated commercial activity. It covers the wholesale trade of radioactive substances and ionising-radiation generators, while its scope expressly includes the import of ionising-radiation generators and the import of radioactive substances. Those import lines are part of the record itself, not an extrapolation from the word “wholesale”. The result is a registration category with a defined commercial focus: the stated trading and import activity in those named materials and generators.\n\nThe business that registers here is the undertaking carrying on that stated wholesale trade, including the specified import lines. It is open at every scale named in the record—Mikro, Kecil, Menengah and Besar—so the category is available across the full listed range of enterprise sizes. There is no scale singled out as the only route into the activity. For founders, that means the scale selection is broad while the commercial activity remains specific: wholesale trade in radioactive substances and ionising-radiation generators, with both import activities expressly included.\n\nAt national level, the foreign-investment reading is direct. The PMA status is TERBUKA and foreign ownership may reach 100%. In practical ownership terms, the record places no national ceiling below full foreign ownership for this activity. The 100% ceiling matters because it is expressly stated for this particular registration category and its stated scope. Foreign capital can therefore enter under the national position presented here, at any of the listed scales.\n\nBali does not overturn that national position. The provincial assessment is OK_or_HIGHER_RISK and the activity is not blocked by Bali's moratorium. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi—Medium-High/High. The moratorium described in the record permanently blocks PMA for Low and Medium-Low risk activities across the island; this activity lies outside that blocked band. The honest Bali conclusion is clean: a foreigner can register this activity in Bali today. The record’s reasoning is risk-based, with no separate Bali ownership ceiling or partnership condition stated.",
+    "pullQuote": "The honest Bali conclusion is clean: a foreigner can register this activity in Bali today.",
     "byTheNumbers": [
       {
         "label": "Foreign-ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "PMA status",
-        "value": "TERBUKA"
-      },
-      {
         "label": "Open scales",
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "PMA source",
+        "label": "National PMA basis",
         "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
       }
     ]
   }

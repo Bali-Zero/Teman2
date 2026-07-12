@@ -1,26 +1,26 @@
 {
   "code": "66122",
   "editorial": {
-    "headline": "Futures Commodity Brokerage, With a Clear Bali Reading",
-    "standfirst": "A client-mandated role in futures and derivatives trading, open nationally to full foreign ownership and not marked as blocked for PMA registration in Bali.",
-    "body": "KBLI 66122 covers the brokerage of commodity trading through futures contracts, Sharia derivatives contracts, and other derivatives contracts. The broker acts on a client’s instruction to buy or sell, drawing specified funds and/or securities as margin to secure the transaction. It is therefore an intermediary activity rooted in contract-based commodity trading, rather than the commodity trade itself. Its stated scope also includes broker representatives, the opening of futures-broker branch offices, the forwarding of client instructions to overseas futures exchanges, and participation in an alternative trading system.\n\nThe activity is open at Mikro, Kecil, Menengah, and Besar scales. That breadth gives the code a clear operational range: the record accommodates the brokerage function across each of those business scales, while retaining the same essential character—handling client mandates in futures and derivatives transactions and the related margin mechanism. Nationally, its PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. On the national reading supplied here, foreign participation is not capped below full ownership.\n\nBali requires a separate reading, because its province-wide permanent moratorium blocks PMA registration for all Low and Medium-Low risk activities. For this code, however, the Bali record does not mark PMA registration as blocked. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is specific: at the Besar scale, the OSS risk classification is Menengah-Tinggi/Tinggi—medium-high/high—so the activity is not caught by that moratorium.\n\nThe practical editorial point is straightforward. This is a futures commodity brokerage activity with a nationally open PMA position and a 100% foreign-ownership ceiling. In Bali, the record does not treat the code as blocked for PMA registration, because the relevant large-scale risk classification sits above the moratorium’s Low and Medium-Low threshold. That conclusion rests on the classification and moratorium rule recorded here, not on a separate Bali ownership figure or condition.",
-    "pullQuote": "In Bali, the record does not treat the code as blocked for PMA registration.",
+    "headline": "Commodity Futures Brokerage, Open Nationally and in Bali",
+    "standfirst": "This activity covers client-mandated commodity futures and derivatives trading, with full foreign ownership nationally and no Bali moratorium block.",
+    "body": "Commodity futures brokerage is the business of carrying out client-ordered purchases and sales of commodities through futures contracts, sharia derivatives, and other derivatives. The broker receives a specified amount of money and/or securities as margin to secure the transaction. The activity is defined not by owning or producing commodities, but by acting on a client mandate within contract-based commodity trading. Its scope also expressly includes futures-broker representatives, the opening of branch offices, forwarding mandates abroad to overseas futures exchanges, and participation in an alternative trading system.\n\nRegistration is open across every stated business scale: Mikro, Kecil, Menengah, and Besar. For foreign investment at the national level, the status is TERBUKA and the permitted foreign-ownership ceiling is 100%. In practical terms, the national position in this record does not impose a foreign-equity cap below full ownership. The stated national basis is Perpres 10/2021, 49/2021.\n\nBali’s position is equally direct, but it should be read beside the provincial moratorium. That rule blocks PMA registration across Bali for all Low and Medium-Low risk activities. This activity is not marked as blocked. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, and the record identifies it as not blocked by the moratorium. The Bali status is OK_or_HIGHER_RISK: the activity is open in Bali rather than excluded, with its large-scale risk classification explaining why the moratorium does not close it to PMA.\n\nClient mandates remain the connecting thread across the scope. Whether an order is executed through futures, sharia derivatives, or another derivative contract; forwarded to an overseas futures exchange; or connected to an alternative trading system, the activity remains commodity trading performed for a client and supported by margin in money and/or securities. It also accommodates representation and branch-office presence. That is the complete picture in this record: a nationally open, 100-percent foreign-ownership activity whose Bali treatment is not blocked by the province’s lower-risk PMA moratorium.",
+    "pullQuote": "That is the complete picture in this record: a nationally open, 100-percent foreign-ownership activity whose Bali treatment is not blocked by the province’s lower-risk PMA moratorium.",
     "byTheNumbers": [
-      {
-        "label": "National PMA status",
-        "value": "TERBUKA"
-      },
       {
         "label": "Foreign-ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "PMA source",
+        "label": "Available scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National basis",
         "value": "Perpres 10/2021, 49/2021"
       },
       {
-        "label": "Open scales",
-        "value": "Mikro, Kecil, Menengah, Besar"
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
       }
     ]
   }

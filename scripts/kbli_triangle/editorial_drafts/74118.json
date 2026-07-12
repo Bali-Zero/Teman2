@@ -1,17 +1,17 @@
 {
   "code": "74118",
   "editorial": {
-    "headline": "Packaging Design: Nationally Open, Barred for Bali PMA",
-    "standfirst": "Packaging design is nationally open to full foreign ownership, but Bali’s permanent risk-based moratorium prevents PMA registration for this activity today.",
-    "body": "**A foreign investor cannot register this activity in Bali today.** That result sits beside a national position that is fully open to PMA: packaging-design activity is marked open, with foreign ownership available up to 100%. The contrast is decisive for a foreign-owned business considering this specific activity in Bali, even though the national framework otherwise permits it.\n\nThis activity is industrial design directed at creating packaging products. Its scope includes designs for bottles, tubes, containers and waste or scrap receptacles; for cans, drums, storage barrels and boxes; and for closures, baskets, wooden crates, pallets, bags and capsules. It is a design practice rather than the production of those items, and the record expressly recognises that the work is also carried out through specialised software.\n\nNationally, the activity is open to micro, small, medium and large enterprises. That broad availability does not erase the Bali PMA position. At the large scale, every listed scope is assessed in OSS as Low or Medium-Low risk. Bali’s island-wide, permanent moratorium blocks PMA registration where the applicable risk falls into either of those categories; the record therefore marks this activity as blocked for Bali PMA registration under the May 2026 moratorium.\n\nThe proper reading is neither that national openness is irrelevant nor that it settles the Bali question. Nationally, a foreign stake may reach the full 100% ceiling. In Bali, however, the risk classification activates the provincial moratorium and prevents a foreign investor from registering this activity through PMA today. The national ceiling remains a national fact; it is not a Bali clearance.",
-    "pullQuote": "National openness does not override the Bali moratorium: for this activity, a foreign investor cannot register in Bali today.",
+    "headline": "Packaging Design Is Nationally Open, but Blocked for PMA Registration in Bali",
+    "standfirst": "This industrial-design activity covers packaging forms from bottles to pallets, nationally open to full foreign ownership yet blocked for PMA registration in Bali.",
+    "body": "Packaging design is a distinct industrial-design activity focused on producing packaging products. KBLI 74118 covers designs for bottles, tubes and containers; receptacles for rubbish or scrap; cans, drums, storage barrels and boxes; and closures, baskets, wooden crates, pallets, bags and capsules. The scope therefore runs from familiar containers to storage and transport forms, while remaining centred on the design of the package. It does not describe a single material or object: the listed output includes rigid containers, closures and carrying or storage formats. The design work may also be carried out using specialised software, making that toolset an express part of the activity.\n\nThe registration picture is broad in scale. The activity is open to Mikro, Kecil, Menengah and Besar enterprises. Those are the record's complete stated scale range, so packaging-design work is not confined to one size of enterprise. An undertaking at any of those scales remains within the same activity when its work concerns the listed packaging products. The important continuity is the purpose of the work: industrial design that produces packaging-product designs. Scale identifies the available registration range, while the defined subject of the work remains packaging design.\n\nAt the national level, the foreign-investment position is direct. The record marks the activity TERBUKA and gives a national PMA maximum foreign share of 100%. For national registration, a foreign-owned business may be held to that full ceiling; the stated national limit does not stop below full foreign ownership. The cited national basis is Perpres 10/2021, 49/2021. This national conclusion follows the PMA status and national maximum given in the record. It speaks to the activity's position nationally, rather than resolving the separate Bali position.\n\nBali changes the answer decisively. The Bali status is BLOCCATO_CLASSE_RISCHIO: a foreigner cannot register this activity as PMA in Bali today. The stated reason is that, at the Besar scale, every scope falls within Low or Medium-Low OSS risk. That puts the activity inside Bali's island-wide, permanent moratorium, which blocks all Low and Medium-Low risk KBLI from PMA registration. The record ties this block to a moratorium in May 2026. Nationally the ceiling is 100%; in Bali, the block flows from the recorded risk classification and the provincial moratorium. That is the fact a foreign founder needs to place first.",
+    "pullQuote": "Nationally the ceiling is 100%; in Bali, the block flows from the recorded risk classification and the provincial moratorium.",
     "byTheNumbers": [
       {
-        "label": "Foreign-ownership ceiling",
+        "label": "National foreign-ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "Open enterprise scales",
+        "label": "Open business scales",
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
@@ -19,7 +19,7 @@
         "value": "Perpres 10/2021, 49/2021"
       },
       {
-        "label": "Bali status",
+        "label": "Bali PMA status",
         "value": "BLOCCATO_CLASSE_RISCHIO"
       }
     ]

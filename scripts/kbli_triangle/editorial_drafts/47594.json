@@ -1,22 +1,22 @@
 {
   "code": "47594",
   "editorial": {
-    "headline": "Selling Music, Facing Bali’s PMA Line",
-    "standfirst": "This retail activity is nationally open to full foreign ownership, but Bali’s permanent PMA moratorium blocks registration today.",
-    "body": "This activity is the retail sale of musical instruments: traditional Indonesian instruments alongside modern ones. Its scope reaches from kecapi, bamboo flutes, calung, angklung, kolintang, gamelan, rebab, rebana, tifa and sasando to guitars, violins, cellos, pianos, organs, drums, saxophones, harmonicas and tuning forks. The unifying fact is not a particular musical tradition or instrument family, but retail trade in instruments themselves.\n\nThe activity is open across the full stated scale range: Mikro, Kecil, Menengah and Besar. Nationally, its PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. On that national reading, foreign investment is permitted without a stated foreign-equity cap below full ownership.\n\nBali changes the practical result for PMA registration. A foreigner cannot register this activity in Bali today. At the Besar scale, OSS assigns every scope within this activity a Rendah or Menengah-Rendah risk classification. Bali’s island-wide, permanent moratorium blocks PMA for all Low and Medium-Low risk KBLI activities, and this activity is therefore marked BLOCCATO_CLASSE_RISCHIO.\n\nThat is the essential distinction founders must hold clearly: national foreign openness is real, but it does not override Bali’s PMA moratorium. The restriction is not presented as a reduced foreign-share allowance or a conditional route to registration. It is a block on PMA registration in Bali, tied to the activity’s risk classification and the provincial moratorium in force since May 2026.",
-    "pullQuote": "National foreign openness is real, but it does not override Bali’s PMA moratorium.",
+    "headline": "A Nationally Open Trade With No Bali PMA Route",
+    "standfirst": "Retail musical-instrument trade is open to full foreign ownership nationally, yet Bali blocks PMA registration for the activity under its permanent risk-based moratorium.",
+    "body": "Retail musical-instrument trade is a category with a pleasingly broad retail vocabulary. It covers the sale of instruments from Indonesia’s traditional repertoire—kecapi, bamboo flute, calung, angklung, kolintang, gamelan set, rebab, rebana, tifa and sasando—alongside modern instruments including saxophone, harmonica, trombone, guitar, mandolin, ukulele, harp, bass, violin, cello, piano, organ and drums. The inclusion of tuning forks makes the perimeter especially clear: the activity is about musical instruments and their retail presence, not a narrow genre or a single tradition. Its scope lets traditional and modern instruments sit under the same retail roof without asking the business to choose between them.\n\nThe registration scales are uncomplicated: Mikro, Kecil, Menengah and Besar are all open to this activity. That gives the category one consistent description across those listed scales. The important qualifier is geographical, not a difference in the kind of instrument being sold. A shop centred on bamboo flutes and angklung, or one offering guitars, pianos and drums, falls within the stated retail scope; its scale can be any of the four listed.\n\nAt the national level, the activity is TERBUKA to PMA, with a maximum foreign ownership of 100%. That is an unambiguous national ceiling: a foreign investor may hold the full ownership interest nationally. The cited national basis is Perpres 10/2021, 49/2021. But national status alone does not settle the answer on the island. The Bali register marks the activity BLOCCATO_CLASSE_RISCHIO, so a foreigner cannot register it in Bali today as PMA.\n\nThe reason is specific. At Besar scale, OSS risk is Rendah or Menengah-Rendah across every scope, and Bali’s permanent, island-wide moratorium blocks all Low and Medium-Low risk activities from PMA registration. Therefore, the national 100% ownership ceiling remains a national fact, while the Bali outcome is a block on PMA registration. It is a clear distinction worth preserving: full national foreign ownership does not create a Bali PMA route for this retail activity under the stated moratorium.",
+    "pullQuote": "Full national foreign ownership does not create a Bali PMA route for this retail activity under the stated moratorium.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
         "value": "100%"
       },
       {
         "label": "Open scales",
         "value": "Mikro, Kecil, Menengah, Besar"
-      },
-      {
-        "label": "PMA source",
-        "value": "Perpres 10/2021, 49/2021"
       },
       {
         "label": "Bali status",

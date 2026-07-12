@@ -1,22 +1,22 @@
 {
   "code": "47721",
   "editorial": {
-    "headline": "Pharmacy Retail That Is Open Nationally—and Not Barred in Bali",
-    "standfirst": "A defined pharmacy retail activity spanning medicines, supplements and specified health supplies, open to foreign ownership nationally and not blocked from PMA registration in Bali.",
-    "body": "This activity is the retail sale, through a pharmacy, of pharmaceutical preparations for human use. Its scope is deliberately broad: tablets, capsules, ointments, powders, solutions, parenteral solutions and suspensions all sit within it. It includes preparations associated with skin, eye, dental, ear, respiratory, digestive, hypertension and hormonal conditions, as well as vitamins and health supplements. Specified rubber health necessities are included too, from condoms and breast pumps to blood bags, surgical gloves, family-planning devices and rubber stoppers for pharmaceutical vials. The defining setting is clear: this is pharmacy retail.\n\nThe activity is open at every stated business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the record does not confine pharmacy retail of these products to one size of enterprise. At the same time, the scope remains specific. It is not an undefined claim to health-related retailing; it is framed around human pharmaceutical preparations in their various forms, together with the named health supplies.\n\nFor foreign investment, the national position is direct. The activity is marked TERBUKA, with foreign ownership permitted up to 100%. In practical terms, the record presents a fully foreign-open national ceiling for this pharmacy retail activity. There is no lower foreign-ownership cap stated here: a foreign investor may hold up to the full 100% national ceiling.\n\nBali does not reverse that national position: this activity is not blocked from PMA registration there. The province’s permanent, island-wide moratorium blocks PMA for Low and Medium-Low risk KBLI activities. For this activity at the Besar scale, however, the OSS risk is Menengah-Tinggi/Tinggi—medium-high/high risk—so it is not caught by that moratorium. Its Bali status is OK_or_HIGHER_RISK: the record places it outside the provincial block while signalling the higher-risk position associated with the Large scale.",
-    "pullQuote": "The national position is fully foreign-open, and Bali does not block PMA registration for this activity.",
+    "headline": "An Apotek Activity Open Nationally—and Not Blocked in Bali",
+    "standfirst": "This code covers the pharmacy retail sale of human pharmaceutical preparations and specified health goods, with full national foreign-ownership availability and no Bali moratorium block recorded.",
+    "body": "An apotek operating under this activity is a retail setting for human pharmaceutical preparations in their many practical forms: tablets, capsules, ointments, powders, solutions, parenteral solutions and suspensions. The stated range is broad within that pharmacy setting, spanning preparations for skin, eye, dental, ear, respiratory and digestive conditions, high blood pressure and hormone disorders, alongside vitamins and health supplements. The defining point is not simply the product catalogue, but its retail sale through an apotek.\n\nThe scope also includes specified health-related goods made of rubber. These include condoms, breast pumps, feeding teats, blood bags, surgical gloves, rubber pipettes, family-planning devices and rubber stoppers for small pharmaceutical vials. Taken together, the activity describes a pharmacy retail operation able to handle both medicinal preparations for human use and the named health necessities that sit alongside them. It is open to businesses at Mikro, Kecil, Menengah and Besar scales.\n\nNationally, the position is direct. The activity is recorded as TERBUKA for PMA, with maximum foreign ownership of 100%. In other words, the national record allows foreign ownership to reach the full ceiling stated for this activity. Its stated availability across every listed business scale gives the code a consistent national footing, from Mikro through Besar, rather than reserving it to one end of the scale spectrum.\n\nBali requires its own reading, because the province permanently blocks all Low and Medium-Low risk KBLI activities for PMA registration across the island. This activity is not recorded as blocked by that moratorium. Bali marks it as OK or higher risk, and the record notes that, at Besar scale, its OSS risk is Menengah-Tinggi/Tinggi. The practical conclusion from the record is therefore clear: a foreign-owned apotek retail business under this activity is nationally open up to 100% foreign ownership, and it is not barred from PMA registration in Bali by the stated moratorium.",
+    "pullQuote": "A foreign-owned apotek retail business under this activity is nationally open up to 100% foreign ownership, and it is not barred from PMA registration in Bali by the stated moratorium.",
     "byTheNumbers": [
       {
-        "label": "Foreign ownership ceiling",
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Maximum foreign ownership",
         "value": "100%"
       },
       {
-        "label": "Open scales",
+        "label": "Open business scales",
         "value": "Mikro, Kecil, Menengah, Besar"
-      },
-      {
-        "label": "Bali status",
-        "value": "OK_or_HIGHER_RISK"
       },
       {
         "label": "PMA source",

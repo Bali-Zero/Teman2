@@ -1,26 +1,26 @@
 {
   "code": "46632",
   "editorial": {
-    "headline": "A Nationally Open Trade That Bali Blocks",
-    "standfirst": "Used-motorcycle wholesale is nationally open to full foreign ownership across all listed business scales, yet Bali’s permanent PMA moratorium prevents registration there.",
-    "body": "At its core, this is wholesale trade in used motorcycles—a category that also includes motorised bicycles and mopeds. It is a focused trading activity, defined by the fact that the motorcycles are used and by the wholesale character of the transaction. The commercial subject is second-hand motorcycles, with motorised bicycles and mopeds expressly within the same activity. For a business selecting the classification, the practical reading begins and ends with that defined field of trade.\n\nNationally, the activity is marked TERBUKA and carries a maximum foreign-ownership position of 100% under Perpres 10/2021, 49/2021. In direct terms, the national setting permits full foreign ownership for this activity. It is open at every listed scale—Mikro, Kecil, Menengah and Besar—so the classification is not confined to one size of enterprise. That breadth establishes the national position across the listed scales, but it does not erase the separate Bali position.\n\nFor PMA, a foreigner cannot register this activity in Bali today. The Bali status is blocked by risk class: at the Besar scale, its OSS risk assessment is Low or Medium-Low across every scope, bringing it within Bali’s island-wide, permanent PMA moratorium for those risk levels. This is not a lower Bali foreign-ownership ceiling. The national ceiling remains 100%, while the provincial rule blocks the PMA registration route. The record identifies the moratorium as dating from May 2026 and cites Governor’s letter B.27.000/642/PM/DPMPTSP. The distinction is decisive: national foreign-ownership openness is real, but it does not create a Bali PMA registration path for this activity.",
-    "pullQuote": "National foreign-ownership openness is real, but it does not create a Bali PMA registration path for this activity.",
+    "headline": "Used Motorcycle Wholesale: Open Nationally, Blocked for PMA in Bali",
+    "standfirst": "Used-motorcycle wholesale is nationally open to full foreign ownership, but Bali’s risk-class moratorium blocks PMA registration for it.",
+    "body": "Wholesale trade in used motorcycles, including motorised bicycles and mopeds, is the commercial terrain of this activity. Its language is deliberately wholesale: it is concerned with the trade in previously owned two-wheelers at that level of commerce. That category extends beyond motorcycles alone, since motorised bicycles and mopeds are expressly included. The record places the activity within a practical set of business sizes—Micro, Small, Medium and Large—so its definition is not confined to one scale. For a founder, that gives the activity a clear frame before the investment question begins: used two-wheelers, traded wholesale, across the named scale categories.\n\nNationally, that investment question has an unambiguous answer. The PMA status is open, and foreign ownership may reach 100%. The cited basis is Perpres 10/2021, 49/2021. The 100% figure is the stated foreign-ownership ceiling; it is not a number that needs to be inferred. National openness, however, should not be mistaken for a blanket geographical assurance. The Bali entry carries a separate result, drawn from the activity’s OSS risk classification and the province’s rule.\n\nBali is where the answer changes sharply. The Bali status is blocked by risk class. At the Large scale, the OSS risk is Low or Medium-Low across every scope in the record. Bali’s permanent, island-wide moratorium blocks PMA registration for Low and Medium-Low risk KBLI activities. On the facts supplied here, that prohibition applies to this activity. A foreign investor therefore cannot register it in Bali through a PMA business today, even though the national PMA position is open and permits up to 100% foreign ownership.\n\nThe useful reading is not to dilute either side of the record. There is a national pathway characterised by an open PMA status and a 100% foreign-ownership ceiling. In Bali, there is a different present result: blocked PMA registration, because the activity falls within the risk bands captured by the provincial moratorium. This distinction is the centre of the entry, not a footnote to it. Anyone evaluating wholesale trade in used motorcycles, motorised bicycles and mopeds should hold both statements together: the national investment setting is open; Bali does not allow a PMA registration for the activity.",
+    "pullQuote": "A foreign investor therefore cannot register it in Bali through a PMA business today, even though the national PMA position is open and permits up to 100% foreign ownership.",
     "byTheNumbers": [
       {
-        "label": "National PMA status",
-        "value": "TERBUKA"
-      },
-      {
-        "label": "Foreign-ownership ceiling",
+        "label": "National PMA ceiling",
         "value": "100%"
       },
       {
-        "label": "Open business scales",
+        "label": "Scales open to",
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "PMA source",
+        "label": "National basis",
         "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
       }
     ]
   }

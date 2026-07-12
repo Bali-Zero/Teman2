@@ -1,25 +1,25 @@
 {
   "code": "66224",
   "editorial": {
-    "headline": "A Nationally Open Agency Activity, Closed to PMA Registration in Bali",
-    "standfirst": "Guarantee-marketing agents can operate across every listed scale nationally, but Bali’s permanent PMA moratorium closes this activity to a Bali address.",
-    "body": "This activity covers the marketing of guarantee-business activities for and on behalf of a guarantee company or an Islamic guarantee company. Its centre of gravity is agency: the registered business promotes the guarantee company’s activity under that company’s name, rather than presenting an undefined commercial role. The scope is therefore precise about both the work—marketing—and the relationship within which it is done.\n\nNationally, the activity is open to foreign investment, with a foreign-ownership ceiling of 100%. It is also open at Mikro, Kecil, Menengah and Besar scales. That combination gives the code a broad national frame: it recognises an agency function that may be registered from the smallest listed scale through to the largest, while retaining the same defined role of marketing for a guarantee company or Islamic guarantee company.\n\nBali is the decisive exception. A foreign investor cannot register this activity at a Bali address today. Although the national status is open, the Besar scale is classified as Medium-Low risk, and Bali blocks all Low and Medium-Low risk KBLI from PMA registration. The restriction is island-wide and permanent under the Bali PMA moratorium, reflected in the activity’s Bali status as closed because of that moratorium. National openness is real, but it does not overcome Bali’s island-wide PMA moratorium.\n\nFor founders, the distinction is not cosmetic. The national setting permits up to full foreign ownership and lists every business scale as open; the Bali setting prevents PMA registration for this activity altogether. The relevant question is therefore not whether the activity is nationally open in principle, but whether the proposed business address is in Bali. For a Bali address, the record’s answer is unambiguous: the PMA route is blocked.",
-    "pullQuote": "National openness is real, but it does not overcome Bali’s island-wide PMA moratorium.",
+    "headline": "Guarantee Agency Activity: Nationally Open, Blocked for PMA in Bali",
+    "standfirst": "An agency role marketing guarantee-business activity is nationally open to full foreign ownership, yet PMA registration at a Bali address is blocked by the island-wide moratorium.",
+    "body": "For a foreign investor seeking a Bali address, this activity cannot be registered today. That is the decisive local fact, even though its national record is open. KBLI 66224 covers agency activity in the guarantee sector: marketing the business activities of guarantee companies or sharia guarantee companies, for and on their behalf. It is a defined representative and market-facing role, not a catch-all description of commercial activity. The scope stays anchored to both the marketing function and the named guarantee businesses whose activity is being marketed. It does not merely name an industry; it specifies marketing undertaken for and on behalf of those businesses.\n\nNationally, the position is clear. The code is TERBUKA and sets a maximum foreign ownership of 100%, which permits full foreign ownership at the national level. It is available at each listed scale—Mikro, Kecil, Menengah and Besar. The range of scales widens the set of possible registrations, but does not widen the scope: at any of those scales, the activity recorded here remains the marketing of guarantee-business activity for and on behalf of a guarantee company or sharia guarantee company. Scale is a registration attribute, not a substitute for the stated marketing mandate.\n\nBali produces a different answer for PMA registration. The Bali record is CHIUSO_MORATORIA_BALI and expressly flags the activity as blocked. Its stated reason places the Besar scale in the Menengah Rendah category for this purpose. Bali’s rule blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. A national ceiling of 100% therefore does not create a route to a Bali address: for a foreign investor, the moratorium controls the registration outcome there.\n\nThis is not a marginal caveat to be addressed after the national analysis; it is the practical dividing line. The national entry describes an activity that is open to foreign ownership, while Bali’s rule bars a PMA registration for the same activity at a Bali address. Founders should read both statements together, beginning with the real activity—marketing undertaken for the named guarantee businesses—and then the listed scale. Only then does the apparent contradiction resolve: national openness and a Bali registration block can coexist.",
+    "pullQuote": "A national ceiling of 100% does not create a route to a Bali address when the PMA moratorium controls the outcome.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "Foreign-ownership ceiling",
         "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
       },
       {
         "label": "Open scales",
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "National PMA source",
-        "value": "Perpres 10/2021, 49/2021"
-      },
-      {
-        "label": "Bali status",
+        "label": "Bali PMA status",
         "value": "CHIUSO_MORATORIA_BALI"
       }
     ]

@@ -1,13 +1,13 @@
 {
   "code": "91112",
   "editorial": {
-    "headline": "Private Libraries: Nationally Open, but Closed to PMA in Bali",
-    "standfirst": "Private-library work is nationally open to full foreign ownership, but Bali’s permanent risk-based moratorium blocks PMA registration there.",
-    "body": "**Private library activity** covers the private-sector management, care, preservation and appraisal of libraries. It is undertaken by non-government parties: individuals, organisations, companies, foundations and other private institutions. The defining boundary is institutional rather than cultural: the library is not under the auspices of an educational institution or another cultural institution.\n\nThe work can be as physical or as digital as the collection requires. It includes documentation and information services for private libraries, including digital libraries, reading rooms, listening rooms and viewing rooms. It also encompasses organising both specialist and general collections; cataloguing them; lending and storing books, maps, periodicals, films, recordings, tapes and works of art; and retrieving library documents to meet information needs. Private archive-management activity and private library activity are expressly within this scope.\n\nThis is an activity for private operators of varied forms and sizes, from an individual or foundation to an organisation or company. The registration frame is open across Mikro, Kecil, Menengah and Besar scales. That breadth matters because the activity is not confined to a single format of collection or institution: its scope reaches the systems that make a private collection usable, searchable, maintained and available to its audience.\n\nNationally, the activity is TERBUKA, with a foreign-ownership ceiling of 100%. That is the national position. In Bali, however, a foreigner cannot register this activity through PMA today. At the Besar scale, every scope is assessed as Rendah or Menengah-Rendah risk; Bali’s island-wide, permanent moratorium blocks all Low and Medium-Low risk KBLI for PMA. The Bali outcome is therefore not a reduced foreign-ownership percentage, but a block on PMA registration for this activity despite its nationally open status.",
-    "pullQuote": "In Bali, however, a foreigner cannot register this activity through PMA today.",
+    "headline": "Private Libraries: Nationally Open, but Blocked for PMA in Bali",
+    "standfirst": "Private library work can be wholly foreign-owned nationally, yet Bali’s permanent PMA moratorium prevents registration there today.",
+    "body": "Private Library Activities is a private-sector library practice in the full sense, not merely a room of books. It covers the management, maintenance, preservation and appraisal of libraries operated by individuals, organisations, companies, foundations and other private bodies, provided they are not under an educational institution or another cultural institution. The scope includes private libraries of many kinds—including digital libraries—as well as reading, listening and viewing rooms. Its work also reaches documentation and information services: organising collections, cataloguing them, and retrieving documents to answer information needs.\n\nThe collection itself may be broad. Books, maps, periodicals, films, recordings, tapes, works of art and other materials can be stored or lent through a private library. Private archive management is included too. The activity is therefore defined by stewardship as much as access: maintaining a collection, giving it order and description, keeping it available, and making information retrievable. An individual, organisation, company, foundation or another private institution can carry out this work within those boundaries.\n\nFor registration, the activity is open at Mikro, Kecil, Menengah and Besar scales. Nationally, its PMA status is open, with a foreign-ownership ceiling of 100%. That means a foreign investor may hold the activity entirely at the national level. It is a clear national position, but it should not be mistaken for a Bali registration outcome.\n\nIn Bali, a foreign investor cannot register this activity under PMA today. At the Besar scale, the OSS risk is Low or Medium-Low across every scope recorded here, placing it within Bali’s moratorium in May 2026. The provincial rule blocks PMA registration for Low and Medium-Low risk activities island-wide and permanently. This is not a lower Bali foreign-ownership ceiling: despite the national 100% position, PMA registration for this activity is blocked in Bali.",
+    "pullQuote": "National openness does not override Bali’s permanent block on PMA registration for this activity.",
     "byTheNumbers": [
       {
-        "label": "National foreign-ownership ceiling",
+        "label": "Foreign-ownership ceiling",
         "value": "100%"
       },
       {
@@ -15,11 +15,11 @@
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "National source",
+        "label": "PMA source",
         "value": "Perpres 10/2021, 49/2021"
       },
       {
-        "label": "Bali status",
+        "label": "Bali PMA status",
         "value": "BLOCCATO_CLASSE_RISCHIO"
       }
     ]

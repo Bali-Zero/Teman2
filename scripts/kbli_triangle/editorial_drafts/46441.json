@@ -1,13 +1,13 @@
 {
   "code": "46441",
   "editorial": {
-    "headline": "KBLI 46441: The Wholesale Trade Behind Human Pharmaceutical Supply",
-    "standfirst": "This activity covers the wholesale distribution of pharmaceutical preparations for human use, open across every business scale and to full foreign ownership nationally.",
-    "body": "KBLI 46441 concerns the wholesale trade of pharmaceutical preparations intended for human use. Its scope is deliberately broad: medicinal ingredients, natural medicinal ingredients, cosmetics, quasi-drugs, health supplements, medicines and natural medicines all sit within the activity when their intended use is human. In practical terms, this is a wholesale-trade classification for the movement of these preparations through the supply chain, rather than a narrow category confined to one product form.\n\nThe record identifies both Pharmaceutical Wholesalers and Pharmaceutical Wholesaler Branches within that scope. It is open to enterprises operating at Mikro, Kecil, Menengah and Besar scale, so the classification is not reserved for a single size of business. That breadth matters because the activity describes a commercial function—the wholesale trade of the listed preparations—while allowing that function to be carried out across the full range of recorded enterprise scales.\n\nNationally, the foreign-investment position is clear: the activity is TERBUKA, with a foreign-ownership ceiling of 100%. A foreign investor may therefore hold the full permitted stake under the national position recorded for this code. The reference basis given is Perpres 10/2021, 49/2021. That is the national picture, and it should be read plainly: there is no lower foreign-ownership cap in this record.\n\nBali also remains open for PMA registration under the recorded local assessment. The province’s permanent moratorium blocks Low and Medium-Low risk activities for PMA island-wide, but this activity is not blocked by that rule. At Besar scale, its OSS risk is recorded as Menengah-Tinggi/Tinggi, which is why it falls outside the moratorium’s stated reach. For a foreign-owned business considering this wholesale activity in Bali, the honest conclusion is straightforward: the national 100% ceiling applies, and the Bali record does not show a moratorium block.",
-    "pullQuote": "For a foreign-owned business considering this wholesale activity in Bali, the honest conclusion is straightforward: the national 100% ceiling applies, and the Bali record does not show a moratorium block.",
+    "headline": "Wholesale Pharmaceutical Supply for Human Use: Open Nationally, Viable in Bali",
+    "standfirst": "KBLI 46441 covers the wholesale distribution of pharmaceutical preparations for human use, with full foreign ownership nationally and no Bali moratorium block at large scale.",
+    "body": "KBLI 46441 is the wholesale trade of pharmaceutical preparations intended for human use. Its scope is broad but specific: drug ingredients, natural-medicine ingredients, cosmetics, quasi-drugs, health supplements, medicines, and medicines made from natural ingredients all sit within the activity when their intended use is human. This is a distribution code, concerned with moving these preparations through wholesale trade rather than describing a retail or consumer-facing activity.\n\nThe record identifies two forms within the activity: a Pharmaceutical Wholesaler Branch and a Pharmaceutical Wholesaler. It is open across every listed business scale—Mikro, Kecil, Menengah, and Besar—so the code does not confine the activity to a single size of enterprise. That breadth matters because the scope combines conventional pharmaceutical products with health supplements, cosmetics, and natural-medicine preparations, while retaining one unifying boundary: each is intended for human use.\n\nNationally, the foreign-investment position is direct. The activity is TERBUKA, with a foreign-ownership ceiling of 100%. In practical terms, the record places no national foreign-equity cap below full ownership for this code. The stated source for that position is Perpres 10/2021, 49/2021. That national openness should be read as the ownership position for this particular wholesale activity, not as a claim about any other activity or category.\n\nBali does not reverse that conclusion. The province permanently blocks PMA registration for all Low and Medium-Low risk KBLI, island-wide, but this activity is not blocked by that moratorium. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, which is why the record gives Bali the status OK_or_HIGHER_RISK rather than a moratorium block. For a foreign-owned wholesale pharmaceutical business considering Bali, the honest reading is therefore clear: full foreign ownership is available nationally, and Bali is not closed to PMA registration for this code under the stated moratorium rule; the relevant Bali context is its higher OSS risk at the Besar scale.",
+    "pullQuote": "Full foreign ownership is available nationally, and Bali is not closed to PMA registration for this code under the stated moratorium rule.",
     "byTheNumbers": [
       {
-        "label": "Foreign ownership ceiling",
+        "label": "Foreign-ownership ceiling",
         "value": "100%"
       },
       {
@@ -15,7 +15,7 @@
         "value": "Mikro, Kecil, Menengah, Besar"
       },
       {
-        "label": "PMA source",
+        "label": "National PMA source",
         "value": "Perpres 10/2021, 49/2021"
       },
       {

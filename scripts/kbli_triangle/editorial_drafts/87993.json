@@ -1,22 +1,26 @@
 {
   "code": "87993",
   "editorial": {
-    "headline": "Residential Social Care for People Rebuilding Their Lives",
-    "standfirst": "This activity covers residential care and support for people facing serious social vulnerability, with full foreign ownership open nationally and no Bali moratorium block recorded.",
-    "body": "KBLI 87993 concerns residential social-care services for people confronting acute social vulnerability: sex workers, former prisoners, homeless people and beggars, and survivors of human trafficking. Its scope is not confined to accommodation. It includes care and assistance delivered where people live, placing shelter, support and rehabilitation within the same social-welfare setting.\n\nThe activity may be undertaken by government or by a social-welfare institution. It also extends to time-limited shelter assistance; social support for socially vulnerable people, refugees and immigrants; rehabilitation group homes for people with social and personal problems; and other residential family-support activities. The record does not specify business scales open to this activity, so scale should not be assumed from the classification alone.\n\nNationally, the activity is open to foreign investment, with a foreign-ownership ceiling of 100%. That establishes a clear national PMA position, but it does not erase Bali’s separate local screening. Bali’s standing for this code is recorded as OK or higher risk: it is not blocked by the province-wide PMA moratorium, because the record places it in the medium-high or high-risk range rather than the low or medium-low categories affected by that rule.\n\nThat is a meaningful distinction, not a blanket clearance. For a Bali address, the record expressly calls for verification by address. A foreign investor therefore has an activity that is nationally open and not subject to the recorded Bali moratorium block, while the location-specific position in Bali still requires confirmation. In a field centred on shelter, care and rehabilitation, that final check belongs to the substance of a responsible registration decision.",
-    "pullQuote": "National openness is clear, but a Bali address still calls for location-specific verification.",
+    "headline": "Residential Social Care With a Clear PMA Position in Bali",
+    "standfirst": "This residential social-care activity is nationally open to 100% foreign ownership and is not blocked by Bali’s PMA moratorium, though the particular address must still be verified.",
+    "body": "At its centre is a residential social-care setting: care and assistance provided in a place of residence. The description gathers together a deliberately wide population—people facing social vulnerability, former prisoners, homeless people and beggars, and people who have been victims of trafficking. It also reaches time-limited shelter-based social assistance, support for socially vulnerable people, refugees and immigrants, rehabilitation group homes for people with social and personal problems, and other residential family-support activities. The common feature is the provision of social support and care in a residential setting.\n\nThe operators are equally clearly named: the government may carry out the activity, as may a social-welfare institution (LKS). The record therefore places public delivery and institutional social-welfare delivery within the same activity description. It supplies no entries under `scales_open_to`. That absence should be preserved in the reading: the record does not designate a particular business scale as open for this activity, so it provides no scale label or threshold to apply.\n\nNationally, the PMA position is open, with foreign ownership permitted up to 100%. In practical ownership terms, the ceiling stated for this activity is full foreign ownership, not a lesser percentage. That national position and Bali’s local treatment are recorded separately and need to be read that way. No Bali-specific foreign-ownership percentage appears in the Bali reason, so the national 100% ceiling should not be recast as a separate Bali-side figure.\n\nBali’s position is neither hidden nor blanket negative. Its status is recorded as OK or higher risk, and the reason identifies this activity as medium-high/high risk. Bali’s permanent, island-wide PMA moratorium applies to low- and medium-low-risk activities; this activity is expressly not blocked by that moratorium. On the record, foreign PMA registration is not prohibited in Bali by the stated moratorium. The particular address should nevertheless be verified, exactly as the Bali reason directs.",
+    "pullQuote": "On the record, foreign PMA registration is not prohibited in Bali by the stated moratorium.",
     "byTheNumbers": [
       {
         "label": "National foreign-ownership ceiling",
         "value": "100%"
       },
       {
-        "label": "National PMA source",
-        "value": "Perpres 10/2021, 49/2021"
+        "label": "PMA status",
+        "value": "TERBUKA"
       },
       {
         "label": "Bali status",
         "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
       }
     ]
   }
