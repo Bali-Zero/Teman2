@@ -182,26 +182,28 @@ Identify:
 
 ### Target Fields (Columns D through U)
 
-| #   | Column | Field Name                 | Source Document             | Example                                                                 |
-| --- | ------ | -------------------------- | --------------------------- | ----------------------------------------------------------------------- |
-| 1   | D      | Legal Address              | AKTA or Profil Perseroan    | Jl. Raya Tangeb No. 59, Abianbase, Kec. Mengwi, Kab. Badung, Bali 80351 |
-| 2   | E      | NIB                        | NIB.pdf                     | REDACTED-CLIENT-PII                                                           |
-| 3   | F      | NPWP                       | NPWP.pdf                    | REDACTED-CLIENT-PII                                                    |
-| 4   | G      | KBLI (comma-separated)     | NIB.pdf or Profil Perseroan | 68111, 70209                                                            |
-| 5   | H      | Director 1                 | AKTA                        | Ivan Shamrai                                                            |
-| 6   | I      | Ownership % (Director)     | AKTA                        | 50%                                                                     |
-| 7   | J      | Commissioner 1             | AKTA                        | Oleksandr Huliaiev                                                      |
-| 8   | K      | Ownership % (Commissioner) | AKTA                        | 30%                                                                     |
-| 9   | L      | Investor (optional)        | AKTA                        | PT Predmet Construction Group                                           |
-| 10  | M      | Ownership % (Investor)     | AKTA                        | 50%                                                                     |
-| 11  | N      | Authorized Capital         | AKTA                        | Rp REDACTED-CLIENT-PII                                                       |
-| 12  | O      | Incorporation Date         | AKTA or SK                  | 20 Agustus 2024                                                         |
-| 13  | P      | Official Email             | Profil Perseroan or AKTA    | REDACTED-CLIENT-PII                                    |
-| 14  | Q      | Official Phone             | Profil Perseroan or AKTA    | REDACTED-CLIENT-PII                                                            |
-| 15  | R      | SK Number                  | AKTA                        | REDACTED-CLIENT-PII 2024                                         |
-| 16  | S      | Tax Office (KPP)           | NPWP                        | KPP Pratama Badung Utara                                                |
-| 17  | T      | Company Status             | AKTA                        | TERTUTUP                                                                |
-| 18  | U      | Office Type                | NIB or general knowledge    | PMA                                                                     |
+> All example values below are SYNTHETIC (redacted 2026-07-12). Never paste real client data into this document.
+
+| #   | Column | Field Name                 | Source Document             | Example                                              |
+| --- | ------ | -------------------------- | --------------------------- | ---------------------------------------------------- |
+| 1   | D      | Legal Address              | AKTA or Profil Perseroan    | Jl. Contoh Raya No. 1, Kuta, Kab. Badung, Bali 80361 |
+| 2   | E      | NIB                        | NIB.pdf                     | 1234567890123                                        |
+| 3   | F      | NPWP                       | NPWP.pdf                    | XX.XXX.XXX.X-XXX.XXX                                 |
+| 4   | G      | KBLI (comma-separated)     | NIB.pdf or Profil Perseroan | 68111, 70209                                         |
+| 5   | H      | Director 1                 | AKTA                        | John Doe                                             |
+| 6   | I      | Ownership % (Director)     | AKTA                        | 50%                                                  |
+| 7   | J      | Commissioner 1             | AKTA                        | Jane Doe                                             |
+| 8   | K      | Ownership % (Commissioner) | AKTA                        | 30%                                                  |
+| 9   | L      | Investor (optional)        | AKTA                        | PT Example Construction Group                        |
+| 10  | M      | Ownership % (Investor)     | AKTA                        | 50%                                                  |
+| 11  | N      | Authorized Capital         | AKTA                        | Rp 10.000.000.000                                    |
+| 12  | O      | Incorporation Date         | AKTA or SK                  | 1 Januari 2024                                       |
+| 13  | P      | Official Email             | Profil Perseroan or AKTA    | company@example.com                                  |
+| 14  | Q      | Official Phone             | Profil Perseroan or AKTA    | 081234567890                                         |
+| 15  | R      | SK Number                  | AKTA                        | AHU-0000000.AH.01.01.TAHUN 2024                      |
+| 16  | S      | Tax Office (KPP)           | NPWP                        | KPP Pratama Badung Utara                             |
+| 17  | T      | Company Status             | AKTA                        | TERTUTUP                                             |
+| 18  | U      | Office Type                | NIB or general knowledge    | PMA                                                  |
 
 ### Extraction Priority
 
@@ -238,8 +240,8 @@ pdfinfo "file.pdf"
 1. **If a field is not found in any document, leave it as empty string `""`**. Never guess or invent data.
 2. **KBLI codes** must be comma-separated, codes only (no descriptions). Example: `"68111, 70209"`, NOT `"68111 - Real Estat"`.
 3. **Ownership percentages** must include the `%` symbol. Example: `"50%"`, NOT `"50"`.
-4. **Capital amounts** must include `Rp` prefix. Example: `"Rp REDACTED-CLIENT-PII"`.
-5. **Dates** should be in the format found in the document (Indonesian format preferred). Example: `"20 Agustus 2024"`.
+4. **Capital amounts** must include `Rp` prefix. Example: `"Rp 10.000.000.000"`.
+5. **Dates** should be in the format found in the document (Indonesian format preferred). Example: `"1 Januari 2024"`.
 6. **SK Number** always starts with `AHU-` followed by digits and year.
 7. **Company Status** is either `TERTUTUP` (closed/private) or `TERBUKA` (open/public). Most are `TERTUTUP`.
 8. **Office Type** is either `PMA` (foreign investment) or `PMDN` (domestic). If company has foreign shareholders → `PMA`.
@@ -332,26 +334,26 @@ from reportlab.lib.enums import TA_CENTER
 def generate_profil_perseroan(data: dict, output_path: str):
     """
     data = {
-        "company_name": "PT BACKTOBACK DEVELOPMENT GROUP",
+        "company_name": "PT EXAMPLE DEVELOPMENT GROUP",
         "company_type": "Perseroan Terbatas (PT) - PMA",
         "status": "TERTUTUP",
-        "sk_number": "REDACTED-CLIENT-PII 2024",
-        "incorporation_date": "20 Agustus 2024",
+        "sk_number": "AHU-0000000.AH.01.01.TAHUN 2024",
+        "incorporation_date": "1 Januari 2024",
         "notaris": "Notaris di Kab. Badung",
-        "address": "Jl. Raya Tangeb No. 59, ...",
+        "address": "Jl. Contoh Raya No. 1, ...",
         "email": "company@gmail.com",
-        "phone": "REDACTED-CLIENT-PII",
-        "nib": "REDACTED-CLIENT-PII",
-        "npwp": "REDACTED-CLIENT-PII",
+        "phone": "081234567890",
+        "nib": "1234567890123",
+        "npwp": "XX.XXX.XXX.X-XXX.XXX",
         "kpp": "KPP Pratama Badung Utara",
         "kbli": "68111, 70209",
-        "authorized_capital": "Rp REDACTED-CLIENT-PII",
+        "authorized_capital": "Rp 10.000.000.000",
         "shareholders": [
-            {"name": "PT Predmet Construction Group", "pct": "50%", "role": "Pemegang Saham Mayoritas"},
-            {"name": "Oleksandr Huliaiev", "pct": "30%"},
+            {"name": "PT Example Construction Group", "pct": "50%", "role": "Pemegang Saham Mayoritas"},
+            {"name": "Jane Doe", "pct": "30%"},
         ],
-        "director": "Ivan Shamrai",
-        "commissioner": "Oleksandr Huliaiev",
+        "director": "John Doe",
+        "commissioner": "Jane Doe",
     }
     """
     doc = SimpleDocTemplate(output_path, pagesize=A4,
@@ -459,7 +461,7 @@ Body: {
   "spreadsheet_id": "1CcsZmYOiajdWtTlgmoHNeCqBXhbLRZrQVQOBRs422oY",
   "range": "Company!B10:B",
   "search_column": 0,
-  "search_value": "Backtoback Development Group PT"
+  "search_value": "Example Development Group PT"
 }
 ```
 
@@ -507,7 +509,7 @@ Body: {
   "sheet_name": "Company",
   "row_number": 1701,
   "column_start": "D",
-  "values": ["Jl. Raya Tangeb No. 59, ...", "REDACTED-CLIENT-PII", ...]
+  "values": ["Jl. Contoh Raya No. 1, ...", "1234567890123", ...]
 }
 ```
 
@@ -583,7 +585,7 @@ Maintain a JSON log file:
   "errors": 2,
   "companies": [
     {
-      "name": "Backtoback Development Group PT",
+      "name": "Example Development Group PT",
       "status": "success",
       "fields_extracted": 18,
       "fields_empty": 2,
@@ -688,7 +690,7 @@ email = re.search(r'([\w.+-]+@[\w.-]+\.\w+)', text)
 
 ---
 
-## WORKED EXAMPLE: BACKTOBACK DEVELOPMENT GROUP PT
+## WORKED EXAMPLE: EXAMPLE DEVELOPMENT GROUP PT
 
 ### Phase 1: Exploration
 
@@ -697,7 +699,7 @@ Listed folder `1V1BcajeME-mZqhwtT93q9eMsFW6RrJkh`:
 ```
 [DIR] AKTA/                    1YP1XCXc82_l6gJoxEGOxb2NvDmvYUPWE
 [DIR] DOKUMEN/                 1v4c_fkk78zcqRoi4eMEKFR9hhXOZGLFz
-[DIR] KHASAN KHATER/           ...
+[DIR] PERSONAL DOCS/           ...
 [DIR] NIB/                     14xqNMIjgfYmYxfMe_kR5CKlKeQqPlzwY
 [DIR] NPWP/                    1uIqj3O2JdpljJUax-Gff9CBM3Rb9LLwS
 [DIR] WAJIB LAPOR/             ...
@@ -709,31 +711,31 @@ Listed folder `1V1BcajeME-mZqhwtT93q9eMsFW6RrJkh`:
 Read AKTA documents. Extracted:
 
 ```
-company_name: PT BACKTOBACK DEVELOPMENT GROUP
+company_name: PT EXAMPLE DEVELOPMENT GROUP
 company_type: Perseroan Terbatas (PT) - PMA
 status: TERTUTUP
-sk_number: REDACTED-CLIENT-PII 2024
-incorporation_date: 20 Agustus 2024
-address: Jl. Raya Tangeb No. 59, Abianbase, Kec. Mengwi, Kab. Badung, Bali 80351
-email: REDACTED-CLIENT-PII
-phone: REDACTED-CLIENT-PII
-nib: REDACTED-CLIENT-PII
-npwp: REDACTED-CLIENT-PII
+sk_number: AHU-0000000.AH.01.01.TAHUN 2024
+incorporation_date: 1 Januari 2024
+address: Jl. Contoh Raya No. 1, Kuta, Kab. Badung, Bali 80361
+email: company@example.com
+phone: 081234567890
+nib: 1234567890123
+npwp: XX.XXX.XXX.X-XXX.XXX
 kpp: KPP Pratama Badung Utara
 kbli: 68111, 70209
-authorized_capital: Rp REDACTED-CLIENT-PII
+authorized_capital: Rp 10.000.000.000
 shareholders:
-  - PT Predmet Construction Group: 50% (Pemegang Saham Mayoritas)
-  - Oleksandr Huliaiev: 30%
-  - Roman Beznosiuk: 15%
-  - Taras Levchyk: 5%
-director: Ivan Shamrai
-commissioner: Oleksandr Huliaiev
+  - PT Example Construction Group: 50% (Pemegang Saham Mayoritas)
+  - Jane Doe: 30%
+  - Alex Roe: 15%
+  - Sam Poe: 5%
+director: John Doe
+commissioner: Jane Doe
 ```
 
 ### Phase 3: Organization
 
-Created `Other/` and `Profile Perseroan/` folders. Moved 12 non-standard items (DOKUMEN, KHASAN KHATER, WAJIB LAPOR, loose files) to `Other/`.
+Created `Other/` and `Profile Perseroan/` folders. Moved 12 non-standard items (DOKUMEN, PERSONAL DOCS, WAJIB LAPOR, loose files) to `Other/`.
 
 Root now contains exactly: AKTA, NIB, NPWP, Profile Perseroan, Other.
 
@@ -745,21 +747,21 @@ Found row via append (company wasn't in sheet yet). Wrote 18 values:
 
 ```python
 values = [
-    "Jl. Raya Tangeb No. 59, Abianbase, Kec. Mengwi, Kab. Badung, Bali 80351",  # D
-    "REDACTED-CLIENT-PII",                    # E
-    "REDACTED-CLIENT-PII",             # F
+    "Jl. Contoh Raya No. 1, Kuta, Kab. Badung, Bali 80361",  # D
+    "1234567890123",                    # E
+    "XX.XXX.XXX.X-XXX.XXX",             # F
     "68111, 70209",                     # G
-    "Ivan Shamrai",                     # H
+    "John Doe",                     # H
     "",                                 # I - Director ownership not specified separately
-    "Oleksandr Huliaiev",               # J
+    "Jane Doe",               # J
     "30%",                              # K
-    "PT Predmet Construction Group",    # L - Investor/majority shareholder
+    "PT Example Construction Group",    # L - Investor/majority shareholder
     "50%",                              # M
-    "Rp REDACTED-CLIENT-PII",               # N
-    "20 Agustus 2024",                  # O
-    "REDACTED-CLIENT-PII",  # P
-    "REDACTED-CLIENT-PII",                     # Q
-    "REDACTED-CLIENT-PII 2024", # R
+    "Rp 10.000.000.000",               # N
+    "1 Januari 2024",                  # O
+    "company@example.com",  # P
+    "081234567890",                     # Q
+    "AHU-0000000.AH.01.01.TAHUN 2024", # R
     "KPP Pratama Badung Utara",         # S
     "TERTUTUP",                         # T
     "PMA",                              # U
