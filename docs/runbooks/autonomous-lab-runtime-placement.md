@@ -102,6 +102,33 @@ Operational contract:
    signal and one engineering-pattern grounding, or explicitly record why the
    tick is idle.
 
+## Pro Worker Activation Slice
+
+`scripts/autonomous_lab_worker.py` is a bounded Pro-only queue worker. It claims
+at most one pending `autonomous_lab_runs` item per iteration, maps target paths
+to the shared command allowlist, executes verification without a shell, and then
+marks the run `succeeded` or retryable/failed through owner-scoped state-store
+transitions.
+
+From Pro only:
+
+```bash
+cd ~/Desktop/nuzantara
+source apps/backend-rag/.venv/bin/activate
+DATABASE_URL="$DATABASE_URL_LOCAL" \
+  python scripts/autonomous_lab_worker.py --execute-verification --iterations 1
+```
+
+From Air-M5, use dry-run only:
+
+```bash
+python scripts/autonomous_lab_worker.py --dry-run
+```
+
+The worker intentionally does not create a worktree experiment, merge, deploy,
+push, write Google Workspace files, or start a persistent scheduler. H24
+scheduling remains gated by `scheduler_daemon`.
+
 ## Local Verification
 
 From the worktree:
@@ -111,7 +138,7 @@ cd apps/backend-rag
 source .venv/bin/activate
 PYTHONPATH=. pytest backend/tests/unit/services/autonomous_lab -q
 PYTHONPATH=. pytest backend/tests/migrations/test_migration_124_autonomous_lab_runtime.py -q
-ruff check backend/services/autonomous_lab backend/migrations/migration_124_autonomous_lab_runtime.py
+ruff check backend/services/autonomous_lab backend/migrations/migration_124_autonomous_lab_runtime.py ../../scripts/autonomous_lab_worker.py
 ```
 
 These checks are intentionally Air-safe: they use fake async connections and do
