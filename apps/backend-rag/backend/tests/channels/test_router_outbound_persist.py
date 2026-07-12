@@ -133,6 +133,122 @@ async def test_empty_stream_persists_no_outbound():
 
 
 @pytest.mark.asyncio
+async def test_both_persists_receive_session_id():
+    """Audit unification: route_message must hand the ChannelMessage's
+    session_id to BOTH persists — it is the key the session-context reader
+    (conversation/engine.py) filters on."""
+    events = [ChannelResponse(text="ok", metadata={"event_type": "answer"})]
+    router = _build_router(events)
+
+    await router.route_message("instagram", {})
+
+    calls = _persist_calls(router)
+    assert len(calls) == 2
+    assert calls[0]["session_id"] == "instagram_session"
+    assert calls[1]["session_id"] == "instagram_session"
+
+
+@pytest.mark.asyncio
+async def test_persist_metadata_json_gains_session_id():
+    """GUILT (unified shape): the REAL _persist_message must fold session_id
+    into the metadata JSON next to the adapter-native keys — before this,
+    router-written rows had {message_id, wamid, ...} but NO session_id, so
+    the engine's `metadata->>'session_id'` reader never saw them."""
+    import json
+
+    router = ChannelRouter(_make_engine([]))
+    router._db_pool = AsyncMock()
+
+    await router._persist_message(
+        channel="whatsapp",
+        direction="inbound",
+        sender_id="whatsapp_628123",
+        content="halo",
+        metadata={"phone": "628123", "message_id": "wamid.X", "message_type": "text"},
+        session_id="wa_session_628123",
+    )
+
+    args = router._db_pool.execute.await_args[0]
+    meta = json.loads(args[-1])
+    assert meta["session_id"] == "wa_session_628123"
+    # adapter-native keys pass through untouched
+    assert meta["phone"] == "628123"
+    assert meta["message_id"] == "wamid.X"
+    assert meta["message_type"] == "text"
+
+
+@pytest.mark.asyncio
+async def test_persist_param_session_id_overrides_metadata():
+    """GUILT (injection): metadata can be client-influenced — a forged
+    metadata session_id (e.g. "wa_session_<phone>" smuggled by a web caller)
+    must be overwritten by the adapter-derived parameter."""
+    import json
+
+    router = ChannelRouter(_make_engine([]))
+    router._db_pool = AsyncMock()
+
+    await router._persist_message(
+        channel="web",
+        direction="inbound",
+        sender_id="web_1",
+        content="hi",
+        metadata={"session_id": "wa_session_628123"},
+        session_id="web_derived-session",
+    )
+
+    args = router._db_pool.execute.await_args[0]
+    meta = json.loads(args[-1])
+    assert meta["session_id"] == "web_derived-session"
+
+
+@pytest.mark.asyncio
+async def test_persist_skips_unknown_fallback_session_id():
+    """INNOCENCE: the adapters' malformed-webhook fallback "unknown" is not
+    persisted — it would pool degenerate events from every channel into one
+    shared cross-channel history."""
+    import json
+
+    router = ChannelRouter(_make_engine([]))
+    router._db_pool = AsyncMock()
+
+    await router._persist_message(
+        channel="whatsapp",
+        direction="inbound",
+        sender_id="whatsapp_x",
+        content="???",
+        metadata={"phone": "x"},
+        session_id="unknown",
+    )
+
+    args = router._db_pool.execute.await_args[0]
+    meta = json.loads(args[-1])
+    assert "session_id" not in meta
+
+
+@pytest.mark.asyncio
+async def test_persist_without_session_id_unchanged():
+    """INNOCENCE: callers that pass no session_id (legacy/None) keep the old
+    shape — no phantom empty key is written."""
+    import json
+
+    router = ChannelRouter(_make_engine([]))
+    router._db_pool = AsyncMock()
+
+    await router._persist_message(
+        channel="telegram",
+        direction="outbound",
+        sender_id="zantara",
+        content="ciao",
+        metadata={"chat_id": 42},
+    )
+
+    args = router._db_pool.execute.await_args[0]
+    meta = json.loads(args[-1])
+    assert "session_id" not in meta
+    assert meta["chat_id"] == 42
+
+
+@pytest.mark.asyncio
 async def test_stream_passthrough_unchanged():
     """The tee must not alter what the adapter receives."""
     events = [
