@@ -1,0 +1,27 @@
+{
+  "code": "66152",
+  "editorial": {
+    "headline": "Commodity Futures Advice: Open Nationally, Clear in Bali at Scale",
+    "standfirst": "This activity covers paid advice on commodity futures and derivative transactions, with national foreign ownership open to 100% and no Bali moratorium block.",
+    "body": "Commodity futures advisory activity is the business of giving paid advice to another party on buying and selling commodities through futures contracts, sharia derivative contracts, and other derivative contracts. Its subject is advice rather than the transaction itself: the value lies in counsel offered to someone considering commodity dealings under those contractual forms. The scope also includes those acting as representatives of a futures adviser, placing both the principal advisory function and its representative role within the same activity.\n\nThe classification is open across Mikro, Kecil, Menengah, and Besar scales. That breadth matters because the description does not reserve advisory work for a single size of enterprise; it recognises the activity from micro through large scale. The common thread is not company size but the paid provision of advice concerning commodity futures and derivatives. Where that is the activity being registered, the classification gives it a clear commercial identity.\n\nNationally, the PMA position is TERBUKA, with a foreign-ownership ceiling of 100%. In plain terms, foreign investment is fully open at the national level for this activity. The applicable source recorded for that position is Perpres 10/2021, 49/2021. There is no lower foreign-ownership cap in the record to qualify that national conclusion.\n\nBali’s picture is also materially open, though it should be read through the province’s risk-based moratorium. Bali blocks all Low and Medium-Low risk KBLI activities for PMA island-wide on a permanent basis. This activity is not blocked by that moratorium: at Besar scale, its OSS risk is Menengah-Tinggi/Tinggi. The Bali status is therefore OK_or_HIGHER_RISK. For a foreign-owned registration in Bali, the decisive point is straightforward: this activity is not among those stopped by the province’s Low and Medium-Low risk PMA restriction.",
+    "pullQuote": "For a foreign-owned registration in Bali, the decisive point is straightforward: this activity is not among those stopped by the province’s Low and Medium-Low risk PMA restriction.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

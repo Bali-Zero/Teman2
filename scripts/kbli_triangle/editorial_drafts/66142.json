@@ -1,0 +1,27 @@
+{
+  "code": "66142",
+  "editorial": {
+    "headline": "Payment-System Infrastructure: Open Nationally, Viable in Bali at Higher Risk",
+    "standfirst": "This activity covers the infrastructure behind payment transfers—from switching and clearing to final settlement—and is nationally open to 100% foreign ownership.",
+    "body": "Payment-system infrastructure is the operational framework that allows payment-transfer transactions to move through clearing and settlement. Its remit includes acting as a principal, providing switching functions, and maintaining the records needed to identify parties involved in completing a payment transaction. It also covers infrastructure primarily used to facilitate transactions for Payment Service Providers, whether for the providers’ own purposes or for end users. In practical terms, this is the activity behind the systems that route, reconcile and complete payments rather than the payment transaction itself.\n\nThe activity is open across every recorded business scale: Micro, Small, Medium and Large. That breadth matters because the scope is defined by the infrastructure function, not by a single size of operator. A business may be positioned around principal functions, switching, clearing, final settlement, or the administration of identities connected with transaction completion. Each sits within the same activity where it forms part of organising the payment-system infrastructure described in the record.\n\nNationally, the activity is open to foreign investment, with a foreign-ownership ceiling of 100%. In Bali, it is not blocked for PMA registration under the island-wide rule that blocks Low and Medium-Low risk activities. The record’s reason is specific: at the Large scale, OSS risk is Medium-High or High, placing this activity outside that moratorium. The Bali picture is therefore not a hidden prohibition: it remains available for PMA registration, while its recorded risk position at the Large scale is higher.\n\nThat distinction is the useful one for a founder assessing the activity. National openness and a 100% foreign-ownership ceiling establish the investment position; Bali’s result turns on the activity’s recorded risk classification at scale rather than on a separate foreign-ownership cap. The code should consequently be read as payment infrastructure with a nationally open investment route and a Bali position that is not caught by the permanent moratorium for Low and Medium-Low risk KBLI activities.",
+    "pullQuote": "In Bali, this activity is not caught by the permanent moratorium because its Large-scale OSS risk is recorded as Medium-High or High.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

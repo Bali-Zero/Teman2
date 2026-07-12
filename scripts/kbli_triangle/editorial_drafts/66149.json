@@ -1,0 +1,27 @@
+{
+  "code": "66149",
+  "editorial": {
+    "headline": "Financial Transaction Clearing: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "This activity covers financial transaction clearing and settlement outside payment systems and fund transfers—open nationally to full foreign ownership, but blocked for PMA registration at a Bali address.",
+    "body": "This activity is concerned with organising financial transactions and managing rupiah outside the financial markets, where the work is not otherwise classified. Its practical centre of gravity is the machinery of clearing and settlement: bringing transactions to completion after they have been made. The stated examples are deliberately narrow and useful—clearing and settling financial transactions other than those belonging to payment systems and fund transfers. It is an operational financial-services activity, defined by the orderly completion and administration of transactions rather than by participation in the financial markets themselves.\n\nThe activity is open to businesses at Mikro, Kecil, Menengah, and Besar scale. Nationally, its PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. That is a clear national position: a foreign investor may hold the full permitted stake in a company registered for this activity. The applicable national reference is Perpres 10/2021, 49/2021. For a founder assessing the activity on an Indonesia-wide basis, there is no foreign-equity reduction stated in the record.\n\nBali produces a materially different answer. A foreigner cannot register this activity as PMA at a Bali address today. The record identifies the Besar scale as Menengah Rendah and states that it is blocked by Bali’s PMA moratorium. That moratorium applies across the province and permanently blocks PMA registration for KBLI activities assessed as Low or Medium-Low risk. The restriction is therefore not a national foreign-ownership limit disguised as a local preference; it is a Bali-address registration block for PMA.\n\nThat distinction matters because the national and Bali positions can both be true at once. Nationally, this is a fully foreign-open activity, with 100% foreign ownership permitted. In Bali, however, the provincial PMA moratorium controls the immediate registration outcome for a Bali address. The sensible reading is not that foreign ownership has been reduced, but that the PMA route is unavailable there under the stated moratorium. Founders should treat the location of registration as central to the analysis: the national framework describes the ownership ceiling, while Bali’s rule determines whether PMA registration can proceed on the island.",
+    "pullQuote": "Nationally the activity permits 100% foreign ownership; in Bali, the PMA registration route is unavailable.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "CHIUSO_MORATORIA_BALI"
+      }
+    ]
+  }
+}

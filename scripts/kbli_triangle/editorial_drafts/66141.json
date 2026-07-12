@@ -1,0 +1,27 @@
+{
+  "code": "66141",
+  "editorial": {
+    "headline": "KBLI 66141: The Front End of Indonesia’s Payment System",
+    "standfirst": "This activity covers payment services for end users, from payment accounts and remittances to acquiring and payment gateways, with foreign ownership open nationally and no Bali moratorium block indicated.",
+    "body": "KBLI 66141 concerns the provision of payment services to end users on the front end of the payment-system chain. In practical terms, it covers the administration of funds for payment, including issuing payment instruments or accounts; forwarding fund-transfer orders, including remittance services; and forwarding payment-transaction data. It also reaches acquiring and payment-gateway operations, alongside activities such as displaying funding-source information and initiating transactions through electronic wallets, acquirers, and payment gateways.\n\nThe category is therefore defined by its direct relationship with the payment-service user. It includes the infrastructure and customer-facing functions through which a payment source is shown, a transaction is initiated, an account or instrument is issued, or money is transferred. The scope is broad enough to encompass both the handling of payment instructions and the transmission of the data that allows those instructions to move through the system.\n\nRegistration is open across every listed business scale: Mikro, Kecil, Menengah, and Besar. Nationally, the activity is TERBUKA to foreign investment, with a foreign-ownership ceiling of 100%. That is the clear national position recorded for the code: foreign participation is not capped below full ownership.\n\nBali requires a more precise reading, but not a more dramatic one. The province permanently blocks PMA registration for all Low and Medium-Low risk activities island-wide. This activity is not marked as blocked by that moratorium. The Bali record identifies the risk at the Besar scale as Menengah-Tinggi/Tinggi and expressly states that it is not blocked by the moratorium. Its Bali status is OK_or_HIGHER_RISK: the relevant point is that the activity remains outside the stated moratorium block, while its risk position at the Besar scale is higher than the categories subject to that island-wide restriction.",
+    "pullQuote": "For KBLI 66141, foreign ownership is open nationally to 100%, and the Bali record does not place it inside the province’s PMA moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "Besar-scale risk",
+        "value": "Menengah-Tinggi/Tinggi"
+      }
+    ]
+  }
+}

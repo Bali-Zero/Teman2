@@ -1,0 +1,27 @@
+{
+  "code": "66159",
+  "editorial": {
+    "headline": "Financial Advisory: Open Nationally, Closed to PMA Registration in Bali",
+    "standfirst": "A foreign investor cannot register this financial-advisory activity as PMA in Bali today, although it is nationally open to 100% foreign ownership across every business scale.",
+    "body": "This activity covers financial-support work that is not otherwise classified: financial consultancy, mortgage advisers and brokers, mortgage consultancy, and other investment consultancy, including robo-advisory services. Its centre of gravity is advice—helping clients navigate financial or mortgage decisions, brokering mortgage-related guidance, or providing investment counsel through conventional or technology-enabled formats.\n\nThe registration scope is broad in scale. It is open to Mikro, Kecil, Menengah, and Besar businesses, allowing the activity to sit within enterprises from the smallest category through to the largest. Nationally, its PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. In plain terms, the national framework permits full foreign ownership for this activity, under the cited Perpres 10/2021, 49/2021 basis.\n\nFor a Bali address, however, the answer changes completely: a foreign investor cannot register this activity as PMA in Bali today. National openness does not make a Bali PMA registration available. The record identifies the Besar scale as Medium-Low risk and places it within Bali’s PMA moratorium. Under the provincial rule recorded here, all Low and Medium-Low risk activities are blocked for PMA across Bali, island-wide and permanently. The relevant governor’s letter was issued in May 2026.\n\nThat distinction is the decisive one for founders. The national position is not a conditional opening or a reduced foreign stake: it is TERBUKA up to 100% foreign ownership, across the stated scales. But the Bali position is a registration block for PMA, driven by the provincial moratorium rather than by the national ownership ceiling. A business planning this exact financial-advisory activity must therefore read the national permission and the Bali-address restriction together; neither tells the whole story alone.",
+    "pullQuote": "National openness does not make a Bali PMA registration available.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "CHIUSO_MORATORIA_BALI"
+      }
+    ]
+  }
+}

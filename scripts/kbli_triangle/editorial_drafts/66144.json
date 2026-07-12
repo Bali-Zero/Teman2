@@ -1,0 +1,27 @@
+{
+  "code": "66144",
+  "editorial": {
+    "headline": "The Business of Keeping Rupiah Moving",
+    "standfirst": "A look at the businesses that keep rupiah circulating and cash machines supplied—and why a nationally open PMA activity is not blocked by Bali’s risk-based moratorium.",
+    "body": "Rupiah handling is infrastructure work, not simply the movement of cash from one counter to another. This activity covers the distribution of rupiah, its custody in cash vaults and its processing. It also embraces the practical cycle that keeps cash machines useful: putting cash into, taking cash from, and monitoring the adequacy of cash in ATMs, cash deposit machines, cash recycling machines and other cash-rupiah transaction machines. It extends to supplying and maintaining those machines, as well as cooperation connected with bringing foreign banknotes into and out of Indonesia’s customs territory.\n\nThat scope makes this an activity for enterprises that operate the machinery and systems behind cash availability: businesses handling physical rupiah, managing vault-based storage and processing, or maintaining the devices through which customers deposit, withdraw or recycle it. The record opens the activity to Micro, Small, Medium and Large businesses. This is broad in scale, but not in subject matter: the common thread is the operational handling of rupiah and the associated cash-machine estate.\n\nNationally, the PMA position is open, with a foreign ownership ceiling of 100%. Put plainly, the record does not set a national foreign-equity cap below full ownership for this activity. The cited basis is Presidential Regulations 10/2021 and 49/2021. That national reading should be kept separate from Bali’s local risk treatment: national openness does not erase the way Bali’s PMA moratorium is applied.\n\nBali’s stated rule permanently blocks PMA for all low and medium-low risk activities across the province. This activity is not marked as blocked. Instead, the Bali record says that at the Large scale its OSS risk is Medium-High/High, placing it outside the moratorium’s blocked category. Its Bali classification is OK_or_HIGHER_RISK. The distinction is precise: this is an activity open to PMA nationally and not blocked in Bali by the island-wide moratorium because its large-scale risk sits above the barred bands.",
+    "pullQuote": "National openness does not erase the way Bali’s PMA moratorium is applied.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "66126",
+  "editorial": {
+    "headline": "Securities Crowdfunding: The Operator Behind the Open Electronic Offer",
+    "standfirst": "KBLI 66126 covers the provision, management and operation of securities offerings that connect issuers directly with investors through an open electronic system.",
+    "body": "KBLI 66126 concerns the party that provides, manages and operates a securities offering in which an issuer reaches investors directly through an open electronic-system network. Its subject is not the issuer’s business in the abstract, but the organisation of the offering itself: the infrastructure and operation through which securities are presented by issuers to investors in an open electronic environment. In practical terms, the activity sits at the point where an issuer’s offer meets a digitally connected investing public.\n\nThe record opens this activity to every listed business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the code describes an operational role rather than reserving it to one size of enterprise. The relevant registrant is the party providing, managing and operating the securities-offering arrangement. The defining feature is the direct route from issuer to investor through the open electronic network, not a narrower description of either participant on its own.\n\nNationally, the activity is **TERBUKA** to foreign investment, with a foreign-ownership ceiling of **100%**. That is a clean national position: foreign participation is open up to the stated ceiling. It should nevertheless be read as a statement about this specific activity and its stated investment position, not as a substitute for details the record does not supply. The cited national source is Perpres 10/2021, 49/2021.\n\nBali does not add a foreign-ownership cap or partnership condition in this record. Its position is **OK_or_HIGHER_RISK**, and the stated reason is specific: at the Besar scale, the OSS risk is Menengah-Tinggi/Tinggi, so the activity is not blocked by the moratorium. The provincial rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently; this activity is recorded as outside that block. For a foreign investor considering Bali, the honest reading is therefore straightforward: the activity is nationally open to 100% foreign ownership and is not blocked by Bali’s stated moratorium on the record provided.",
+    "pullQuote": "The activity is nationally open to 100% foreign ownership and is not blocked by Bali’s stated moratorium on the record provided.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
