@@ -4,7 +4,7 @@ Auth + sender policy (from ``memory/feedback_email_sender``):
     - Sender is ALWAYS ``zantara@balizero.com`` with name "Zantara".
     - Never use zero@, nuzantara@, notifications@ as sender.
     - Transport is the internal FastAPI route ``/api/notifications/send-email``
-      with header ``X-API-Key: zantara-secret-2024``.
+      with header ``X-API-Key: <NOTIFICATIONS_API_KEY>``.
     - The route auto-detects Brevo vs SendGrid based on key prefix; we don't
       care here, we just POST.
 
@@ -42,7 +42,11 @@ DEFAULT_NOTIFICATIONS_URL = (
     os.environ.get("NOTIFICATIONS_EMAIL_URL")
     or "http://127.0.0.1:8000/api/notifications/send-email"
 )
-DEFAULT_API_KEY = os.environ.get("NOTIFICATIONS_API_KEY", "zantara-secret-2024")
+# No hardcoded default: the previous fallback (`zantara-secret-2024`) was a
+# real admin key committed to a public repo. It has been rotated + revoked.
+# In prod NOTIFICATIONS_API_KEY is set; anywhere it is not, fail loudly rather
+# than ship a credential-shaped string.
+DEFAULT_API_KEY = os.environ.get("NOTIFICATIONS_API_KEY", "")
 DEFAULT_TIMEOUT = 15.0
 
 

@@ -432,7 +432,18 @@ def main() -> None:
     # the import chain) so the split routing is the only behaviour.
     root.handlers = [stdout_h, stderr_h]
 
-    run_gap_consumer()
+    stats = run_gap_consumer()
+
+    # Stage 1 heartbeat (2026-06-29): write the organism sidecar at END of real
+    # work so the receptor surfaces the green-but-dead case (read a backlog,
+    # ack'd ~none) as `unhealthy` instead of it being invisible. Best-effort.
+    from mata_garuda.workers.heartbeat import emit_heartbeat, status_from_stats
+
+    emit_heartbeat(
+        "mata_garuda.gap_consumer",
+        status_from_stats(stats or {}),
+        metadata=dict(stats or {}),
+    )
 
 
 if __name__ == "__main__":

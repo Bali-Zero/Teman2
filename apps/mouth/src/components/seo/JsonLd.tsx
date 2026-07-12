@@ -13,6 +13,7 @@ export function OrganizationJsonLd() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": `${baseUrl}/#organization`,
     name: "Bali Zero",
     alternateName: "Bali Zero Team",
     url: baseUrl,
@@ -55,6 +56,7 @@ export function LocalBusinessJsonLd() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
+    "@id": `${baseUrl}/#organization`,
     name: "Bali Zero",
     image: `${baseUrl}/static/balizero-logo-clean.png`,
     url: baseUrl,
@@ -303,9 +305,11 @@ export function WebsiteJsonLd() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": `${baseUrl}/#website`,
     name: "Bali Zero",
     alternateName: "Bali Zero - Visa & Business Experts",
     url: baseUrl,
+    publisher: { "@id": `${baseUrl}/#organization` },
     potentialAction: {
       "@type": "SearchAction",
       target: {
@@ -330,6 +334,7 @@ export function AggregateRatingJsonLd() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
+    "@id": `${baseUrl}/#organization`,
     name: "Bali Zero",
     url: baseUrl,
     aggregateRating: {

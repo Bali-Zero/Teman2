@@ -12,13 +12,41 @@ SESSION_DIR="$BACKUP_DIR/$TIMESTAMP"
 KEEP_LOCAL=7
 KEEP_REMOTE=30
 
-# Qdrant Cloud credentials (from backend .env)
-QDRANT_ENV="$HOME/Projects/nuzantara/apps/backend-rag/.env"
+# Qdrant Cloud credentials (from backend .env).
+# Resolve the repo/env path at runtime so this works from both the repo copy
+# and the deprecated ~/scripts fork used by the daily unified backup cron.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_CANDIDATES=()
+if [[ -n "${NUZANTARA_REPO:-}" ]]; then
+    REPO_CANDIDATES+=("$NUZANTARA_REPO")
+fi
+REPO_CANDIDATES+=(
+    "$(cd "$SCRIPT_DIR/.." && pwd)"
+    "$HOME/Desktop/nuzantara"
+    "$HOME/Projects/nuzantara"
+)
+
+QDRANT_ENV="${QDRANT_ENV:-}"
+if [[ -z "$QDRANT_ENV" ]]; then
+    for repo_candidate in "${REPO_CANDIDATES[@]}"; do
+        candidate_env="$repo_candidate/apps/backend-rag/.env"
+        if [[ -f "$candidate_env" ]]; then
+            QDRANT_ENV="$candidate_env"
+            break
+        fi
+    done
+fi
+
 if [[ -f "$QDRANT_ENV" ]]; then
-    QDRANT_URL=$(grep '^QDRANT_URL=' "$QDRANT_ENV" | cut -d= -f2-)
-    QDRANT_API_KEY=$(grep '^QDRANT_API_KEY=' "$QDRANT_ENV" | cut -d= -f2-)
+    QDRANT_URL="${QDRANT_URL:-$(grep '^QDRANT_URL=' "$QDRANT_ENV" | cut -d= -f2-)}"
+    QDRANT_API_KEY="${QDRANT_API_KEY:-$(grep '^QDRANT_API_KEY=' "$QDRANT_ENV" | cut -d= -f2-)}"
 else
-    echo "ERROR: $QDRANT_ENV not found"
+    echo "ERROR: Qdrant env file not found. Tried QDRANT_ENV='$QDRANT_ENV' and repo candidates: ${REPO_CANDIDATES[*]}"
+    exit 1
+fi
+
+if [[ -z "${QDRANT_URL:-}" || -z "${QDRANT_API_KEY:-}" ]]; then
+    echo "ERROR: QDRANT_URL and QDRANT_API_KEY must be set in $QDRANT_ENV or environment"
     exit 1
 fi
 
@@ -35,14 +63,19 @@ TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-1125336968}"
 mkdir -p "$SESSION_DIR"
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
+# cohort-3: routes through the notification gateway. Backup FAILURE = guardian
+# red → tier p0 (dedup collapses repeats); success ping is digest (see below).
+_tg_gateway() {
+    local g
+    g="$(dirname "$0")/tg_notify.py"
+    [ -f "$g" ] || g="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    echo "$g"
+}
 alert() {
     log "ALERT: $*"
-    if [[ -n "$TELEGRAM_BOT_TOKEN" ]]; then
-        curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
-            -d chat_id="$TELEGRAM_CHAT_ID" \
-            -d text="⚠️ Qdrant Backup: $*" \
-            -d parse_mode="Markdown" > /dev/null 2>&1 || true
-    fi
+    python3 "$(_tg_gateway)" --tier p0 --source qdrant-backup \
+        --dedup-key "qdrant-backup-fail" -- "⚠️ Qdrant Backup: $*" \
+        > /dev/null 2>&1 || true
 }
 
 log "Starting Qdrant Cloud backup..."
@@ -64,7 +97,8 @@ log "Found $TOTAL_COLLECTIONS collections"
 TOTAL_SIZE=0
 FAILED=0
 SUCCEEDED=0
-declare -A SNAP_NAMES_TO_DELETE  # collection → snap_name, filled after download, deleted after upload
+SNAP_COLLECTIONS_TO_DELETE=()
+SNAP_NAMES_TO_DELETE=()
 
 for COLLECTION in $COLLECTIONS; do
     log "Backing up: $COLLECTION"
@@ -115,7 +149,8 @@ for COLLECTION in $COLLECTIONS; do
     log "  Downloaded: ${FILE_SIZE_MB}MB"
 
     SUCCEEDED=$((SUCCEEDED + 1))
-    SNAP_NAMES_TO_DELETE[$COLLECTION]="$SNAP_NAME"
+    SNAP_COLLECTIONS_TO_DELETE+=("$COLLECTION")
+    SNAP_NAMES_TO_DELETE+=("$SNAP_NAME")
 done
 
 TOTAL_SIZE_MB=$(echo "scale=1; $TOTAL_SIZE / 1048576" | bc)
@@ -147,8 +182,9 @@ if command -v aws &> /dev/null; then
 
         # Step 4b: Delete server-side snapshots only after confirmed Tigris upload
         log "Cleaning up server-side snapshots..."
-        for COLL in "${!SNAP_NAMES_TO_DELETE[@]}"; do
-            SNAME="${SNAP_NAMES_TO_DELETE[$COLL]}"
+        for IDX in "${!SNAP_NAMES_TO_DELETE[@]}"; do
+            COLL="${SNAP_COLLECTIONS_TO_DELETE[$IDX]}"
+            SNAME="${SNAP_NAMES_TO_DELETE[$IDX]}"
             curl -sf -X DELETE -H "api-key: $QDRANT_API_KEY" \
                 "$QDRANT_URL/collections/$COLL/snapshots/$SNAME" > /dev/null 2>&1 || \
                 log "WARN: Could not delete server snapshot for $COLL ($SNAME)"
@@ -183,11 +219,9 @@ if [[ $FAILED -gt 0 ]]; then
     alert "Completed with errors: $SUCCEEDED/$TOTAL_COLLECTIONS OK, $FAILED failed ($ARCHIVE_SIZE)"
 else
     log "Backup complete: $SUCCEEDED/$TOTAL_COLLECTIONS collections, $ARCHIVE_SIZE compressed"
-    # Success notification (only if Telegram configured)
-    if [[ -n "$TELEGRAM_BOT_TOKEN" ]]; then
-        curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
-            -d chat_id="$TELEGRAM_CHAT_ID" \
-            -d text="✅ Qdrant backup OK: $SUCCEEDED/$TOTAL_COLLECTIONS collections, $ARCHIVE_SIZE" \
-            > /dev/null 2>&1 || true
-    fi
+    # Success ping = informative green → digest tier (grouped, never buzzes)
+    python3 "$(_tg_gateway)" --tier digest --source qdrant-backup \
+        --dedup-key "qdrant-backup-ok:$(date +%Y%m%d)" \
+        -- "✅ Qdrant backup OK: $SUCCEEDED/$TOTAL_COLLECTIONS collections, $ARCHIVE_SIZE" \
+        > /dev/null 2>&1 || true
 fi

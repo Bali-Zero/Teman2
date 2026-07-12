@@ -22,6 +22,12 @@ import type { ReactNode } from "react";
 import { compileMDX } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 import { mdxComponents } from "./MDXContent";
+import { CalculatorRSC } from "./interactive/CalculatorRSC";
+
+const rscMdxComponents = {
+  ...mdxComponents,
+  Calculator: CalculatorRSC,
+};
 
 /**
  * Compile and render an MDX article body on the server (React-19-safe).
@@ -38,8 +44,13 @@ import { mdxComponents } from "./MDXContent";
 export async function renderMDXBody(source: string): Promise<ReactNode> {
   const { content } = await compileMDX({
     source,
-    components: mdxComponents,
+    components: rscMdxComponents,
     options: {
+      // These MDX files are local, versioned article sources. The interactive
+      // article components rely on array/object props such as nodes={[...]} and
+      // steps={[...]}; next-mdx-remote removes those by default as "remote" JS.
+      blockJS: false,
+      blockDangerousJS: true,
       mdxOptions: {
         remarkPlugins: [remarkGfm],
         development: false,

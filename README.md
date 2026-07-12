@@ -6,28 +6,25 @@ Production AI-powered business intelligence platform for **Bali Zero** — Indon
 
 ## Architecture
 
-Monorepo with 20 apps, powered by agentic RAG with Knowledge Graph.
+Monorepo powered by agentic RAG with Knowledge Graph (live app/router/service counts in **Tech Stack** below — auto-synced by `scripts/docs_sync.py`).
 
 ```
 nuzantara/
 ├── apps/
-│   ├── backend-rag/          # Python FastAPI — RAG, KG, 88 routers, 244 services
+│   ├── backend-rag/          # Python FastAPI — RAG, KG, WR2 pipeline (deploy Fly.io)
 │   ├── mouth/                # Next.js frontend — kita/my/prime.balizero.com
-│   ├── nuzantara-mcp/        # MCP server v2.1 — 131 tools, 10 prompts, 8 chains
-│   ├── nuzantara-mcp-advanced/ # Fly.io ops, diagnostics (14 tools)
+│   ├── nuzantara-mcp/        # MCP server v2.1
+│   ├── nuzantara-mcp-advanced/ # Fly.io ops, diagnostics
 │   ├── admin-dashboard/      # Admin UI (Next.js)
 │   ├── bali-intel-scraper/   # Intel pipeline (local Pro, OpenClaw cron)
 │   ├── evaluator/            # QA + Core Guardian V3
-│   ├── war-room/             # Ops dashboard + Canva automation
-│   ├── calendar/             # calendar.balizero.com
-│   ├── drive/                # drive.balizero.com
-│   ├── knowledge/            # knowledge.balizero.com
-│   ├── mail/                 # mail.balizero.com
+│   ├── mata-garuda/          # Meta-agent Lamarckian 5-layer
 │   ├── web/                  # zantara.balizero.com
-│   └── ...                   # graph-engine, kbli-voice, kbli-navigator, webapp
+│   ├── kb/                   # Knowledge base
+│   └── ...                   # graph-engine, kbli-navigator, wa-mirror, zantara-media, …
 ├── packages/
 │   ├── core/                 # Shared libs + BZ design tokens
-│   └── kb/                   # Knowledge base
+│   └── cell-core/            # Biology framework (base for living agents)
 ├── docs/                     # Technical & operational docs
 ├── config/                   # Prometheus, Grafana, alerts
 ├── scripts/                  # Deploy, maintenance, analysis
@@ -37,14 +34,12 @@ nuzantara/
 ## Tech Stack
 
 <!-- DOCSYNC:TECH_STATS_START -->
-- Backend: FastAPI · 329 routers · 635 services
+- Backend: FastAPI · 327 routers · 634 services
 - Vector DB: Qdrant · 12 collections · 104,154 documents
 - Knowledge Graph: 108,068 nodes · 242,827 edges
-- Apps: 30 · Packages: 6
+- Apps: 31 · Packages: 6
 - Version: 5.2.0
 <!-- DOCSYNC:TECH_STATS_END -->
-
-| **Vector Store** | 10 collections, 93,283 documents |
 
 ## Search Pipeline (enabled 2026-03-24)
 
@@ -106,7 +101,7 @@ curl https://nuzantara-rag.fly.dev/health
 
 ## Feature Flags (Fly.io secrets)
 
-<!-- DOCSYNC:FEATURE_FLAGS_START -->
+<!-- hand-maintained: no docs_sync generator for this table; source of truth = `fly secrets list -a nuzantara-rag` -->
 
 | Flag                     | Value  | Effect                                 |
 | ------------------------ | ------ | -------------------------------------- |
@@ -115,8 +110,6 @@ curl https://nuzantara-rag.fly.dev/health
 | `ENABLE_BM25`            | `true` | Sparse vectors for hybrid search       |
 | `ENABLE_QUERY_EXPANSION` | `true` | LLM multi-query expansion + RRF        |
 | `ENABLE_KG_LANGGRAPH`    | `true` | Knowledge Graph LangGraph orchestrator |
-
-<!-- DOCSYNC:FEATURE_FLAGS_END -->
 
 ## Communication Channels
 

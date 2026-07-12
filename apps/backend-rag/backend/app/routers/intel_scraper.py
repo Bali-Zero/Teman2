@@ -20,6 +20,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from backend.app.core.config import settings
+from backend.app.dependencies import get_current_user
 from backend.app.metrics import (
     intel_articles_duplicates,
     intel_articles_submitted,
@@ -36,6 +37,7 @@ from backend.app.routers.intel import (
     get_embedder,
     staging_service,
 )
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
@@ -44,6 +46,16 @@ from backend.core.qdrant_db import QdrantClient
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["intel-scraper"])
+
+
+def _require_publish_admin(user: dict[str, Any]) -> None:
+    """Gate publish-to-public-website to admins. Raises 403 otherwise.
+
+    Publishing opens a PR against the public site repo, so an authenticated
+    team member is not a sufficient principal (Case OS R3).
+    """
+    if not is_crm_admin(user):
+        raise HTTPException(status_code=403, detail="Publish requires admin")
 
 
 async def update_homepage_layout(slug: str, position: str) -> None:
@@ -572,6 +584,7 @@ async def publish_staging_item(
     item_id: str,
     body: PublishToSiteRequest | None = None,
     request: Request = None,
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Publish approved item to Qdrant knowledge base and register in anti-duplicate system.
@@ -583,11 +596,61 @@ async def publish_staging_item(
     2. Registers article in anti-duplicate system
     3. Archives to published folder
 
-    Should be called after team approval (manual or via Telegram).
+    Admin-only: publishing pushes the article to the PUBLIC website
+    (balizero.com) via a GitHub PR, so it is an R3 (world-visible) action.
+    Being an authenticated team member is not enough.
+
+    Internal callers that carry their own authorization (e.g. the Telegram
+    approval quorum) must call :func:`publish_staging_item_internal` instead,
+    which names the actor explicitly rather than bypassing the gate.
     """
+    _require_publish_admin(current_user)
+    return await _publish_staging_item(
+        type=type,
+        item_id=item_id,
+        body=body,
+        request=request,
+        actor=(current_user.get("email") or "unknown"),
+    )
+
+
+async def publish_staging_item_internal(
+    intel_type: str,
+    item_id: str,
+    actor: str,
+) -> dict[str, Any]:
+    """Publish path for internal callers that carry their own authorization.
+
+    ``actor`` names the authority that approved the publish (e.g.
+    ``"telegram:quorum"``) and is written to the audit log. It is NOT a
+    bypass hatch: only add a caller here when the caller itself gates the
+    action, and say so at the call site.
+    """
+    return await _publish_staging_item(
+        type=intel_type,
+        item_id=item_id,
+        body=None,
+        request=None,
+        actor=actor,
+    )
+
+
+async def _publish_staging_item(
+    type: str,
+    item_id: str,
+    body: PublishToSiteRequest | None,
+    request: Request | None,
+    actor: str,
+) -> dict[str, Any]:
+    """Publish implementation. Callers are responsible for authorization."""
     logger.info(
         "Publish request received",
-        extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/publish"},
+        extra={
+            "type": type,
+            "item_id": item_id,
+            "endpoint": "/api/intel/staging/publish",
+            "actor": actor,
+        },
     )
 
     intel_user_actions_total.labels(intel_type=type, action="publish").inc()
@@ -864,13 +927,13 @@ async def publish_staging_item(
                 position=body.position if body else "latest",
             )
 
-            # Import publish_article function
-            # Note: publish_article is a FastAPI endpoint function, but we can call it directly
-            # since we're in the same application context
-            from backend.app.routers.article_composer import publish_article
+            # This path is already admin-gated at the endpoint above, so it calls
+            # the implementation directly rather than the gated HTTP endpoint
+            # (whose Depends() would not resolve on a direct Python call).
+            from backend.app.routers.article_composer import publish_article_internal
 
             # Publish to GitHub/Vercel
-            publish_result = await publish_article(publish_request)
+            publish_result = await publish_article_internal(publish_request)
 
             if publish_result.success:
                 # Update with actual published URL

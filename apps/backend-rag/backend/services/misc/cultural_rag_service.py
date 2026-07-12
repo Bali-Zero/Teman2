@@ -15,6 +15,18 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+class _EmptyCulturalInsights:
+    """Fallback cultural insight provider for tests and disabled deployments."""
+
+    async def query_insights(
+        self,
+        query: str,
+        when_to_use: str | None = None,
+        limit: int = 2,
+    ) -> list[dict[str, Any]]:
+        return []
+
+
 class CulturalRAGService:
     """
     Retrieves ZANTARA-generated Indonesian cultural intelligence for ZANTARA AI enrichment
@@ -40,15 +52,10 @@ class CulturalRAGService:
             # Fallback: use SearchService's cultural insights service
             self.cultural_insights = getattr(search_service, "cultural_insights", None)
             if not self.cultural_insights:
-                # If no cultural_insights, create a minimal stub
-                from backend.services.misc.cultural_insights_service import CulturalInsightsService
-
-                self.cultural_insights = CulturalInsightsService()
+                self.cultural_insights = _EmptyCulturalInsights()
         else:
             # For test compatibility, allow initialization without services
-            from backend.services.misc.cultural_insights_service import CulturalInsightsService
-
-            self.cultural_insights = CulturalInsightsService()
+            self.cultural_insights = _EmptyCulturalInsights()
 
         logger.info("✅ CulturalRAGService initialized")
 

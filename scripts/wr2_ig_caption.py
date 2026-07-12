@@ -50,8 +50,11 @@ from typing import Any
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _DEFAULT_CAROUSEL_BASE = _REPO_ROOT / "apps" / "war-room" / "output" / "carousel"
 
-# The ONLY two files a carousel caption may be built from (LAW 2 boundary).
-_ALLOWED_INPUT_FILES = ("brief.json", "slides.json")
+# The ONLY files a carousel caption may be built from (LAW 2 boundary).
+# brief.revised.json is the post-revision editorial brief (hook_angle /
+# key_numbers) some carousels carry alongside the original brief.json intake
+# record — same public editorial nature, not a separate PII surface.
+_ALLOWED_INPUT_FILES = ("brief.json", "brief.revised.json", "slides.json")
 
 IG_CAPTION_HARD_LIMIT = 2200  # Instagram caption hard char limit.
 
@@ -210,8 +213,8 @@ _LOWER_SMALL_WORDS = {
 _PRESERVE_TOKENS = {
     "BVK", "VoA", "e-VoA", "KITAS", "KITAP", "ITAS", "ITAP", "NPWP", "PMA",
     "PT", "PT PMA", "KBLI", "LKPM", "BKPM", "OSS", "NIB", "RPTKA", "IMTA",
-    "PNBP", "DJP", "SPT", "MERP", "KUA", "Rp", "PP", "UU", "DPR", "ASEAN",
-    "USA", "US", "UK", "EU", "HK", "DM",
+    "PNBP", "DJP", "SPT", "MERP", "KUA", "Rp", "IDR", "PP", "UU", "DPR",
+    "ASEAN", "USA", "US", "UK", "EU", "HK", "DM",
 }
 
 
@@ -338,20 +341,26 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def _first_slide_heading(slides: dict[str, Any]) -> str:
-    """Return the cover / slide-1 heading (the carousel's core tension)."""
+    """Return the cover / slide-1 heading (the carousel's core tension).
+
+    Newer drafts key the slide title as `headline`; older (Canva-era) drafts
+    used `heading` — same schema-fallback composer.py's _fill_placeholders
+    already applies (BUG #3 there). Read both so a modern-schema carousel
+    doesn't silently produce an empty hook line.
+    """
     slide_list = slides.get("slides") or []
     for slide in slide_list:
         if not isinstance(slide, dict):
             continue
         if slide.get("index") == 1 or slide is slide_list[0]:
-            heading = slide.get("heading")
+            heading = slide.get("headline") or slide.get("heading")
             if isinstance(heading, str) and heading.strip():
                 return heading.strip()
             break
     # Fallback: first non-empty heading anywhere.
     for slide in slide_list:
         if isinstance(slide, dict):
-            heading = slide.get("heading")
+            heading = slide.get("headline") or slide.get("heading")
             if isinstance(heading, str) and heading.strip():
                 return heading.strip()
     return ""
@@ -367,7 +376,10 @@ def _build_body(brief: dict[str, Any]) -> str:
     candidates: list[str] = []
     if isinstance(hook, str) and hook.strip():
         candidates.append(hook.strip())
-    facts = brief.get("key_facts") or []
+    # brief.revised.json (the storyboarder's editorial brief) names this
+    # array `key_numbers`; the older/staging brief.json schema used
+    # `key_facts`. Try both — first one present wins.
+    facts = brief.get("key_facts") or brief.get("key_numbers") or []
     if isinstance(facts, list):
         for fact in facts:
             if isinstance(fact, str) and fact.strip():
@@ -432,7 +444,9 @@ def _build_hashtags(brief: dict[str, Any], slides: dict[str, Any]) -> list[str]:
         scan_parts.extend(f for f in facts if isinstance(f, str))
     for slide in slides.get("slides") or []:
         if isinstance(slide, dict):
-            for k in ("heading", "subheading", "body"):
+            # headline/subhead (newer schema) or heading/subheading (older)
+            # — same schema-fallback as _first_slide_heading above.
+            for k in ("headline", "heading", "subhead", "subheading", "body"):
                 v = slide.get(k)
                 if isinstance(v, str):
                     scan_parts.append(v)
@@ -459,6 +473,11 @@ def _restrain(text: str) -> str:
     via the BUG #2-safe guard.
     """
     text = _strip_emoji(text)
+    # An author-supplied " / " is the rendered slide's explicit line-break
+    # marker (see composer.py's identical handling) — in a plain-text caption
+    # there is no line concept to preserve, so it collapses to a normal
+    # space rather than surfacing the slash character.
+    text = " ".join(part.strip() for part in text.split(" / "))
     # If the fragment is mostly uppercase, sentence-case it for restraint.
     letters = [c for c in text if c.isalpha()]
     if letters:
@@ -492,7 +511,15 @@ def build_caption(slug: str, base_dir: str | Path | None = None) -> str:
 
     _assert_no_pii_path(carousel_dir)
 
-    brief = _load_json(carousel_dir / "brief.json")
+    # brief.json is the raw staging-article intake record (article_title /
+    # article_summary schema for some carousels) — it does NOT reliably carry
+    # hook_angle/key_facts. brief.revised.json, when present, is the actual
+    # post-revision editorial brief the storyboarder produced (hook_angle +
+    # key_numbers) and is what _build_body needs. Prefer it; fall back to
+    # brief.json only when no revised brief exists.
+    revised_path = carousel_dir / "brief.revised.json"
+    brief_path = revised_path if revised_path.is_file() else carousel_dir / "brief.json"
+    brief = _load_json(brief_path)
     slides = _load_json(carousel_dir / "slides.json")
 
     # Touch the (normalized) lexicon so the nested-dict shape is exercised on

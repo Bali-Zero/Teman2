@@ -5,6 +5,7 @@
 export function ZantaraFAB() {
   return (
     <button
+      id="zantara-fab"
       aria-label="Ask Zantara, your AI assistant"
       className="fab-zantara fixed z-[50] flex items-center gap-3 rounded-full transition-all hover:-translate-y-1 hover:scale-[1.03] group p-[10px] sm:pr-[20px]"
       style={{

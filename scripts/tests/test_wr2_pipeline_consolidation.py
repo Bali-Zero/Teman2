@@ -182,6 +182,9 @@ class TestHtmlApplyLedger:
             order.append("ledger")
 
         monkeypatch.setattr(html, "_log_ledger_best_effort", AsyncMock(side_effect=_ledger))
+        # visibility chain (R1-R3 cure) is filesystem/Telegram-touching — inert here;
+        # its own unit tests live in test_wr2_visibility_chain.py
+        monkeypatch.setattr(html, "_publish_visibility", AsyncMock())
 
         async def _hb(*a, **k):
             return None
@@ -200,7 +203,8 @@ class TestHtmlApplyLedger:
                 return False
 
         monkeypatch.setattr(html, "_HeroServer", _Srv)
-        monkeypatch.setattr(html, "_render_carousel", AsyncMock(return_value=slides_dir))
+        # _render_carousel now returns (slides_dir, weak_slides) — N-1 semantics
+        monkeypatch.setattr(html, "_render_carousel", AsyncMock(return_value=(slides_dir, [])))
         monkeypatch.setattr(html, "_drive_upload_carousel", AsyncMock(return_value="https://drive/x"))
         monkeypatch.setattr(html, "_ops_alert", AsyncMock())
         monkeypatch.delenv("WR2_HTML_SHADOW", raising=False)

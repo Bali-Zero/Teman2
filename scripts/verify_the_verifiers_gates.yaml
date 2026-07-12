@@ -324,6 +324,19 @@ gates:
       innocence (no false block on code-residue) AND guilt (genuine writes to main
       still blocked). Green = the over-match family stays dead.
 
+  - id: scar_homefork_live_vs_tracked
+    kind: scar_test
+    w_number: "#1-HOMEFORK"
+    target: infra/scar-gates/test_W_homefork_live_vs_tracked.py
+    note: >
+      Superscar #1 (HOME-fork drift) core detector. infra/scar-gates/MANIFEST.json
+      already declared this gate `prose_only:false` — but MANIFEST.json is only
+      consumed by the MANUAL runner `scripts/run_scar_gates.py`, never by the CI-wired
+      `.github/workflows/verify-the-verifiers.yml` (which reads THIS file). The gate
+      was theater: it looked armed on paper while no workflow ever ran it (found during
+      a 2026-07-07 healer tick ledger review). This entry closes the gap — the existing
+      CI job now executes it on every PR that touches verify_the_verifiers.py/gates.yaml.
+
   - id: scar_premise_gate_L1
     kind: scar_test
     w_number: premise-gate-L1
@@ -419,3 +432,25 @@ gates:
       status RAISES, the failure path records LLM_FAILED + exits 1, and the tautology alarm
       fires after 3 empty weeks. Green = the last green-but-empty loop now records its own
       no-delta. Closes the self-loop: all reflexion organs delegate to the one core.
+
+  # ---------------------------------------------------------------------------
+  # R1 (2026-07-06) — generator != grader T-GATE on research/audit deliverables.
+  # Reference: docs/specs/rules-as-harness-and-simulation-chamber-v1.md section 2/R1.
+  # Script: scripts/check_adversarial_review.py. Tests: scripts/tests/test_adversarial_review_gate.py
+  # (armed via .github/workflows/immune-enforcement.yml the same way pending_arms_report /
+  # lint_home_fork / secrets_permissions_audit / lint_plist_keepalive are — wired into that
+  # workflow's `paths:` + unit-test loop 2026-07-06, and the gate workflow runs on EVERY PR
+  # (no paths filter) because it is a required check on main branch protection).
+  # ---------------------------------------------------------------------------
+  - id: adversarial_review_gate
+    kind: ci_workflow
+    target: .github/workflows/adversarial-review-gate.yml
+    step_anchor: "R1 gate — adversarial review present"
+    expected_continue_on_error: false
+    note: >
+      Deterministic safety gate (R1): every new/changed research/**/*.md in a PR must
+      declare `adversarial_review: <seat != author>` in frontmatter + a matching
+      '## Adversarial review' section, or an explicit `exempt-<reason>` value.
+      Pure-stdlib checker, no network, no LLM. continue-on-error must stay false —
+      this is the enforcing gate, not a monitor-by-design step (contrast
+      hot_zone_redis_lease/p3_sandbox_runtime above, which intentionally stay true).

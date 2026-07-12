@@ -32,7 +32,9 @@ export type KBLIPmaRawStatus = "TERBUKA" | "TERTUTUP" | "TERBATAS";
 export interface KBLIScaleEntry {
   skala_usaha: KBLIBusinessScale[];
   kategori_risiko: KBLIRiskCategory;
-  perizinan: string;
+  // Real data: an array on ~99.5% of scales (often empty []), a bare string on ~20 legacy
+  // records. resolveLicenseType() in kbli-derive.ts handles both forms.
+  perizinan: string | string[];
   persyaratan: string[];
   jangka_waktu: string;
   kewajiban: string[];
@@ -56,7 +58,7 @@ export interface KBLIRawCode {
   status_mapping: KBLIMappingStatus;
   pp28_sources: string[];
   pma_status: KBLIPmaRawStatus;
-  pma_max_asing: number | 'special'; // "special" = open-with-special-conditions (47221-class), no clean %
+  pma_max_asing: number | "special"; // "special" = open-with-special-conditions (47221-class), no clean %
   pma_kondisi: string | null;
   pma_prioritas: boolean;
   pma_nota: string | null;
@@ -79,6 +81,7 @@ export interface KBLIRawCode {
     zantaraOpener?: string;
     baliContext?: string;
     youllAlsoNeed?: string;
+    whoThisIsFor?: string;
     coverImage?: string | null;
     // Legacy field names (older enrichment batches)
     legacy_bridge?: string;
@@ -173,6 +176,10 @@ export interface KBLICode {
   code: string;
   titleId: string;
   titleEn: string;
+  /** true when titleEn is a real English title (curated or generated), not the Indonesian fallback */
+  titleEnIsReal?: boolean;
+  /** English title for <title>/meta — frozen to the curated-legacy map (SEO firebreak PR #1967) */
+  titleEnMeta?: string;
   description: string;
   section: string | null;
   sectionName: string | null;
@@ -197,6 +204,7 @@ export interface KBLICode {
     zantaraOpener?: string;
     baliContext?: string;
     youllAlsoNeed?: string;
+    whoThisIsFor?: string;
     coverImage?: string | null;
   };
   /** L4 — Bali sovereign-local status (moratorium 2026-05-13). National PMA openness != Bali registrability. */

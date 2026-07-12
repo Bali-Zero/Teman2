@@ -21,6 +21,7 @@ from backend.app.routers.kbli_notebook import (
     KBLINotebookChatRequest,
     KBLINotebookChatResponse,
     KBLISearchResult,
+    _clean_snippet,
     _get_kbli_payload_from_qdrant,
     _payload_value,
     _resolve_embedding,
@@ -442,10 +443,15 @@ async def _generate_kbli_explanation(
         return fallback_answer
 
 
-# Minimum score threshold for ABSTAIN logic
-MIN_RELEVANCE_SCORE = (
-    0.40  # Results below this score trigger ABSTAIN (lowered from 0.60 to reduce false negatives)
-)
+# Minimum score threshold for ABSTAIN logic.
+# Calibrated 2026-07-08 against the LIVE prod score distribution (query embedder
+# text-embedding-3-small vs the enriched ~6k-char kbli_2025_final docs): legit
+# natural-language questions score 0.28-0.52, legit single keywords 0.18-0.32,
+# off-domain noise 0.11-0.16. The previous 0.40 (tuned on the older, shorter
+# pre-enrichment collection) sat ABOVE the entire legit band and abstained on
+# every natural question in prod — including the site's own suggested examples.
+# Tripwire test: TestChatAbstainThreshold (test_kbli_notebook.py).
+MIN_RELEVANCE_SCORE = 0.18
 
 # Hardcoded known KBLI codes not present in Qdrant collection
 # Used as synthetic fallback when code lookup fails via both PostgreSQL and Qdrant
@@ -757,9 +763,9 @@ async def chat_kbli(
                         "title_id",
                         default=f"KBLI {code}",
                     ),
-                    description=(
+                    description=_clean_snippet(
                         _payload_value(qdrant_payload, "content", "text", "description", default="")
-                        or ""
+                        or "",
                     )[:200]
                     + "...",
                     score=1.0,
@@ -975,8 +981,8 @@ async def chat_kbli(
                     KBLISearchResult(
                         code=code,
                         title=_payload_value(p, "judul", "title_id", default="N/A"),
-                        description=(
-                            _payload_value(p, "content", "text", "description", default="") or ""
+                        description=_clean_snippet(
+                            _payload_value(p, "content", "text", "description", default="") or "",
                         )[:200]
                         + "...",
                         score=round(r.get("score", 0.0), 4),

@@ -3,8 +3,9 @@
 
 Extracts live metrics from the Nuzantara codebase and injects them into
 markdown files between <!-- DOCSYNC:KEY_START --> / <!-- DOCSYNC:KEY_END -->
-markers. Keeps CLAUDE.md, README.md, docs/AI_ONBOARDING.md in sync with
-actual code state.
+markers. Keeps README.md, INDEX.md, docs/AI_ONBOARDING.md and
+docs/runbooks/README.md in sync with actual code state.
+(CLAUDE.md was a target until F44 removed its markers — kept out on purpose.)
 
 Spec: docs/DOCSYNC_SENTINEL.md
 Implementation: 2026-04-15 (Sprint 5.1.5 lean)
@@ -39,9 +40,10 @@ CACHE_PATH = REPO_ROOT / ".docs_sync_cache.json"
 # Target files + markers
 # ---------------------------------------------------------------------------
 TARGET_FILES = [
-    REPO_ROOT / "CLAUDE.md",
     REPO_ROOT / "README.md",
+    REPO_ROOT / "INDEX.md",
     REPO_ROOT / "docs" / "AI_ONBOARDING.md",
+    REPO_ROOT / "docs" / "runbooks" / "README.md",
 ]
 
 # Marker regex: captures everything between START and END markers (inclusive).
@@ -202,6 +204,151 @@ def count_channels() -> int:
     )
 
 
+# ---------------------------------------------------------------------------
+# Atlas extractors (enumerable organs — runbooks, workflows, skills, plists)
+# ---------------------------------------------------------------------------
+
+def _git_ls_files(prefix: str) -> list[str]:
+    """Tracked files under prefix. Same local↔CI determinism rationale as
+    _tracked_app_names: untracked leftovers on a dev machine must not make
+    --check diverge from CI's fresh clone."""
+    try:
+        import subprocess
+        out = subprocess.run(
+            ["git", "ls-files", prefix],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return []
+    return [line.strip() for line in out.splitlines() if line.strip()]
+
+
+def _first_heading(path: Path) -> str:
+    """First '# ' heading of a markdown file, or '' if none."""
+    try:
+        for line in path.read_text(errors="ignore").splitlines():
+            if line.startswith("# "):
+                return line[2:].strip()
+    except OSError:
+        pass
+    return ""
+
+
+def list_runbooks() -> list[dict[str, str]]:
+    """docs/runbooks/*.md (tracked, README excluded): {file, title}."""
+    rows: list[dict[str, str]] = []
+    for rel in sorted(_git_ls_files("docs/runbooks/")):
+        name = rel.rsplit("/", 1)[-1]
+        if not rel.endswith(".md") or name == "README.md":
+            continue
+        title = _first_heading(REPO_ROOT / rel) or name
+        rows.append({"file": name, "title": title})
+    return rows
+
+
+_META_NAME_RE = re.compile(r"name:\s*['\"]([^'\"]+)['\"]")
+_META_DESC_RE = re.compile(r"description:\s*['\"]([^'\"]+)['\"]")
+
+
+def list_workflows() -> list[dict[str, str]]:
+    """infra/workflows/*.js: {file, name, description} from the
+    `export const meta` block (which sits below the header comments —
+    anchor to it, or header-comment text pollutes the regex match)."""
+    rows: list[dict[str, str]] = []
+    for rel in sorted(_git_ls_files("infra/workflows/")):
+        if not rel.endswith(".js"):
+            continue
+        try:
+            text = (REPO_ROOT / rel).read_text(errors="ignore")
+        except OSError:
+            continue
+        anchor = text.find("export const meta")
+        block = text[anchor : anchor + 2000] if anchor >= 0 else ""
+        name_m = _META_NAME_RE.search(block)
+        desc_m = _META_DESC_RE.search(block)
+        rows.append(
+            {
+                "file": rel.rsplit("/", 1)[-1],
+                "name": name_m.group(1) if name_m else "",
+                "description": desc_m.group(1) if desc_m else "",
+            }
+        )
+    return rows
+
+
+def list_skills() -> list[dict[str, str]]:
+    """Repo-tracked .claude/skills/*/SKILL.md: {name, description}.
+
+    Handles YAML folded scalars (`description: >` + indented lines).
+    Only repo-tracked skills — the ~/.claude user library is per-machine
+    state and would break local↔CI determinism.
+    """
+    rows: list[dict[str, str]] = []
+    for rel in sorted(_git_ls_files(".claude/skills/")):
+        if not rel.endswith("/SKILL.md"):
+            continue
+        try:
+            lines = (REPO_ROOT / rel).read_text(errors="ignore").splitlines()
+        except OSError:
+            continue
+        desc = ""
+        if lines and lines[0].strip() == "---":
+            fm: list[str] = []
+            for line in lines[1:]:
+                if line.strip() == "---":
+                    break
+                fm.append(line)
+            i = 0
+            while i < len(fm):
+                if fm[i].startswith("description:"):
+                    value = fm[i].split(":", 1)[1].strip()
+                    if value in (">", "|", ">-", "|-", ""):
+                        parts: list[str] = []
+                        i += 1
+                        while i < len(fm) and (
+                            fm[i].startswith("  ") or not fm[i].strip()
+                        ):
+                            parts.append(fm[i].strip())
+                            i += 1
+                        desc = " ".join(p for p in parts if p)
+                    else:
+                        desc = value
+                    break
+                i += 1
+        if len(desc) > 160:
+            desc = desc[:157] + "..."
+        rows.append({"name": rel.split("/")[2], "description": desc})
+    return rows
+
+
+def automation_coverage() -> dict[str, int]:
+    """Tracked infra/launchagents plists vs the two automation docs.
+
+    'documented' = plist label appears in scripts/automation_catalog.json
+    OR docs/AUTOMATIONS_REFERENCE.md. A signaler, not a gate (W81): the
+    coverage gap stays visible in INDEX.md instead of hiding in no diff.
+    """
+    labels = [
+        rel.rsplit("/", 1)[-1][: -len(".plist")]
+        for rel in _git_ls_files("infra/launchagents/")
+        if rel.endswith(".plist")
+    ]
+    haystack = ""
+    for doc in (
+        REPO_ROOT / "scripts" / "automation_catalog.json",
+        REPO_ROOT / "docs" / "AUTOMATIONS_REFERENCE.md",
+    ):
+        try:
+            haystack += doc.read_text(errors="ignore")
+        except OSError:
+            continue
+    documented = sum(1 for label in labels if label in haystack)
+    return {"plists": len(labels), "documented": documented}
+
+
 _QDRANT_FALLBACK = {
     "collections": 10,
     "documents": 93283,
@@ -300,7 +447,62 @@ def _render_living_organs(stats: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _render_runbooks_index(stats: dict[str, Any]) -> str:
+    """Render RUNBOOKS_INDEX marker: table of all runbooks with titles."""
+    lines = [
+        "",
+        f"**Runbooks:** {len(stats['runbooks'])} (git-tracked in `docs/runbooks/`)",
+        "",
+        "| Runbook | Title |",
+        "| ------- | ----- |",
+    ]
+    for rb in stats["runbooks"]:
+        title = rb["title"].replace("|", "\\|")
+        lines.append(f"| [`{rb['file']}`]({rb['file']}) | {title} |")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_workflows_index(stats: dict[str, Any]) -> str:
+    """Render WORKFLOWS_INDEX marker: infra/workflows scripts with meta."""
+    lines = ["", "| File | Name | Description |", "| ---- | ---- | ----------- |"]
+    for wf in stats["workflows"]:
+        desc = wf["description"].replace("|", "\\|")
+        lines.append(f"| `infra/workflows/{wf['file']}` | {wf['name']} | {desc} |")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_skills_index(stats: dict[str, Any]) -> str:
+    """Render SKILLS_INDEX marker: repo-tracked .claude/skills."""
+    lines = [
+        "",
+        "| Skill | Description (truncated) |",
+        "| ----- | ----------------------- |",
+    ]
+    for sk in stats["skills"]:
+        desc = sk["description"].replace("|", "\\|")
+        lines.append(f"| `.claude/skills/{sk['name']}/` | {desc} |")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_automation_coverage(stats: dict[str, Any]) -> str:
+    """Render AUTOMATION_COVERAGE marker: plists vs documentation coverage."""
+    cov = stats["automation_coverage"]
+    pct = round(100 * cov["documented"] / cov["plists"]) if cov["plists"] else 0
+    return (
+        f"\n`{cov['plists']} plist tracked in infra/launchagents/ · "
+        f"{cov['documented']} documented in automation_catalog.json + "
+        f"AUTOMATIONS_REFERENCE.md ({pct}% coverage)`\n"
+    )
+
+
 TEMPLATES: dict[str, Any] = {
+    "RUNBOOKS_INDEX": _render_runbooks_index,
+    "WORKFLOWS_INDEX": _render_workflows_index,
+    "SKILLS_INDEX": _render_skills_index,
+    "AUTOMATION_COVERAGE": _render_automation_coverage,
     "BACKEND_STATS": lambda s: (
         f"\n- **Backend:** Python 3.11+, FastAPI, "
         f"{s['routers']} routers, {s['services']} services, "
@@ -351,6 +553,10 @@ def gather_stats() -> dict[str, Any]:
         "version": get_version(),
         "qdrant": qdrant,
         "kg": kg,
+        "runbooks": list_runbooks(),
+        "workflows": list_workflows(),
+        "skills": list_skills(),
+        "automation_coverage": automation_coverage(),
     }
     # Refresh cache with successful fetches
     _save_cache({"qdrant": qdrant, "kg": kg})

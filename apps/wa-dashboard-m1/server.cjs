@@ -24,8 +24,7 @@ const PORT = parseInt(process.env.PORT || "7790", 10);
 const HOST = process.env.HOST || "0.0.0.0"; // bind also Tailnet (parity with wa-viewer:7777)
 
 const DATABASE_URL =
-  process.env.WA_DASHBOARD_DATABASE_URL ||
-  process.env.DATABASE_URL;
+  process.env.WA_DASHBOARD_DATABASE_URL || process.env.DATABASE_URL;
 if (!DATABASE_URL) {
   console.error("FATAL: WA_DASHBOARD_DATABASE_URL or DATABASE_URL must be set");
   process.exit(74);
@@ -35,10 +34,24 @@ const ACCOUNTS_JSON =
   process.env.WA_MIRROR_ACCOUNTS_JSON ||
   path.join(process.env.HOME || "/", ".wa-mirror.accounts.json");
 
-const MEDIA_ROOT = process.env.WA_MIRROR_MEDIA_ROOT || "/Users/nuzantara/wa-mirror-media";
-const TEAM_AVATAR_DIR = process.env.WA_TEAM_AVATAR_DIR || "/Users/nuzantara/Desktop/nuzantara/apps/mouth/public/static/team";
+// Extended team roster (2026-06-30): accounts.json holds only the ~9 mirror
+// devices, so the other ~56 operators — including the whole Bayu Santera
+// group — were classified as PROSPECT. This file carries the full team list
+// (e164 + name + kind:"team" + company), kept out of the repo (PII = team
+// phone numbers) and chmod 600. accounts.json still wins on conflicts so the
+// mirror devices keep their avatars/metadata.
+const TEAM_ROSTER_EXTRA =
+  process.env.WA_TEAM_ROSTER_EXTRA ||
+  path.join(process.env.HOME || "/", ".wa-team-roster-extra.json");
+
+const MEDIA_ROOT =
+  process.env.WA_MIRROR_MEDIA_ROOT || "/Users/nuzantara/wa-mirror-media";
+const TEAM_AVATAR_DIR =
+  process.env.WA_TEAM_AVATAR_DIR ||
+  "/Users/nuzantara/Desktop/nuzantara/apps/mouth/public/static/team";
 const QWEN_GATE_SNAPSHOT =
-  process.env.INTAKE_QWEN_GATE_SNAPSHOT || "/tmp/intake-qwen-gate-snapshot.json";
+  process.env.INTAKE_QWEN_GATE_SNAPSHOT ||
+  "/tmp/intake-qwen-gate-snapshot.json";
 
 // Team members hidden from views (parity with conversations columns; Law-2 perimeter).
 const HIDE_TEAM_NAMES = new Set(
@@ -49,20 +62,70 @@ const HIDE_TEAM_NAMES = new Set(
 );
 
 const TEAM = (() => {
+  const valid = (arr) =>
+    (arr || []).filter(
+      (m) => m && typeof m.e164 === "string" && m.e164.length > 0,
+    );
+  let mirror = [];
   try {
-    const raw = JSON.parse(fs.readFileSync(ACCOUNTS_JSON, "utf8")).accounts || [];
-    // Drop entries with empty e164 — they are placeholders (e.g. Subhi pre-onboarding)
-    return raw.filter((m) => m && typeof m.e164 === "string" && m.e164.length > 0);
+    mirror = valid(JSON.parse(fs.readFileSync(ACCOUNTS_JSON, "utf8")).accounts);
   } catch (err) {
-    console.error(`[wa-dashboard-m1] cannot read ${ACCOUNTS_JSON}: ${err.message}`);
-    return [];
+    console.error(
+      `[wa-dashboard-m1] cannot read ${ACCOUNTS_JSON}: ${err.message}`,
+    );
   }
+  // Merge the extended roster; accounts.json (mirror devices) wins on conflict
+  // so their avatar/metadata are preserved. Missing/invalid extra file is
+  // non-fatal — the dashboard simply falls back to the mirror-only list.
+  let extra = [];
+  try {
+    extra = valid(
+      JSON.parse(fs.readFileSync(TEAM_ROSTER_EXTRA, "utf8")).accounts,
+    );
+  } catch (_err) {
+    // optional file — silent fallback
+  }
+  const byPhone = new Map();
+  for (const m of extra) byPhone.set(m.e164, { ...m, mirror: false });
+  // mirror overrides extra; flag mirror devices so buildTeamList() can show
+  // ONLY them in the left "Team" column (the extended roster is for
+  // classification badges, not for listing every operator as a contact row).
+  for (const m of mirror) byPhone.set(m.e164, { ...m, mirror: true });
+  return Array.from(byPhone.values());
 })();
 
 // Map phone → TEAM entry, used by contactKindColor lookup
 const TEAM_BY_PHONE = new Map();
 for (const m of TEAM) {
   if (m.e164) TEAM_BY_PHONE.set(m.e164, m);
+}
+
+// 2026-06-30: set of Bali Zero operator names (first tokens), used to strip the
+// operator-tag suffix some CRM full_names carry, e.g. "Aigerim Tugayeva (surya)".
+// The CRM value stays untouched in the DB — this is DISPLAY-ONLY. We strip ONLY when
+// the parenthetical is a known operator name, so real info like "(PT jam jam)",
+// "(Makar Burba)", "(satpam)" is preserved (verified against live data 2026-06-30).
+const OPERATOR_NAMES = new Set();
+for (const m of TEAM) {
+  for (const src of [m.name, m.full_name]) {
+    if (!src) continue;
+    for (const tok of String(src).toLowerCase().split(/\s+/)) {
+      if (tok.length >= 3) OPERATOR_NAMES.add(tok);
+    }
+  }
+}
+// strip a single trailing "(operator)" tag from a CRM display name, display-only.
+function stripOperatorSuffix(name) {
+  if (!name) return name;
+  // closing ")" is OPTIONAL: some CRM names are malformed, e.g. "Satya Dewi (surya"
+  // (paren opened, never closed) — still a stray operator tag, strip it too.
+  const m = String(name).match(/^(.*?)\s*\(([^()]{1,30})\)?\s*$/);
+  if (!m) return name;
+  const base = m[1].trim();
+  const inside = m[2].trim().toLowerCase();
+  // only strip if the WHOLE parenthetical is a single known operator name
+  if (base && /^[a-z]+$/.test(inside) && OPERATOR_NAMES.has(inside)) return base;
+  return name;
 }
 
 function readQwenGateSnapshot() {
@@ -76,11 +139,11 @@ function readQwenGateSnapshot() {
 // === Contact kind/color taxonomy (2026-05-26 naming + color coding) ===
 // 5 categories with WCAG AA+ contrast on both light (#ffffff/#efeae2) and dark backgrounds.
 const KIND_COLORS = {
-  zero:           "#fbbf24",   // gold        — Antonello (board)
-  team_balizero:  "#06b6d4",   // cyan        — Bali Zero staff
-  team_bayu:      "#3b82f6",   // vivid blue  — Bayu Santera partner staff
-  client:         "#10b981",   // green       — in CRM clients table
-  prospect:       "#a855f7",   // purple      — phone seen, no CRM match
+  zero: "#fbbf24", // gold        — Antonello (board)
+  team_balizero: "#06b6d4", // cyan        — Bali Zero staff
+  team_bayu: "#3b82f6", // vivid blue  — Bayu Santera partner staff
+  client: "#10b981", // green       — in CRM clients table
+  prospect: "#a855f7", // purple      — phone seen, no CRM match
 };
 
 function contactKindColor(account, isInClients) {
@@ -89,9 +152,17 @@ function contactKindColor(account, isInClients) {
   }
   if (account?.kind === "team") {
     if (account.company === "Bayu Santera") {
-      return { kind: "team_bayu", color: KIND_COLORS.team_bayu, label: "TEAM·BS" };
+      return {
+        kind: "team_bayu",
+        color: KIND_COLORS.team_bayu,
+        label: "TEAM·BS",
+      };
     }
-    return { kind: "team_balizero", color: KIND_COLORS.team_balizero, label: "TEAM·BZ" };
+    return {
+      kind: "team_balizero",
+      color: KIND_COLORS.team_balizero,
+      label: "TEAM·BZ",
+    };
   }
   if (isInClients) {
     return { kind: "client", color: KIND_COLORS.client, label: "CLIENT" };
@@ -106,7 +177,9 @@ try {
     const files = fs.readdirSync(TEAM_AVATAR_DIR);
     for (const m of TEAM) {
       const lower = m.name.toLowerCase();
-      const candidates = files.filter((f) => f.toLowerCase().startsWith(lower + "."));
+      const candidates = files.filter((f) =>
+        f.toLowerCase().startsWith(lower + "."),
+      );
       if (candidates.length) {
         TEAM_AVATAR_FILES[m.e164] = path.join(TEAM_AVATAR_DIR, candidates[0]);
       }
@@ -148,7 +221,11 @@ function cleanName(name) {
   return s.replace(/\s+/g, " ");
 }
 
-const pool = new Pool({ connectionString: DATABASE_URL, max: 6, idleTimeoutMillis: 30000 });
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  max: 6,
+  idleTimeoutMillis: 30000,
+});
 pool.on("error", (err) => console.error("[pg-pool-error]", err.message));
 
 const CACHE = { teams: { at: 0, payload: null } };
@@ -164,7 +241,8 @@ function aliasesForTeamMember(member) {
     // single-7  +628213454725 (13 chars) → double-7  +6282134547725 (14 chars)
     // insert "7" at position 11 (after "+6282134547")
     if (member.e164.startsWith("+6282134547") && member.e164.length === 13) {
-      const doubleSeven = member.e164.slice(0, 11) + "7" + member.e164.slice(11);
+      const doubleSeven =
+        member.e164.slice(0, 11) + "7" + member.e164.slice(11);
       aliases.add(doubleSeven);
     }
   }
@@ -231,7 +309,16 @@ async function teamSessionFor(member) {
 
 // === MAIN overview query ===
 function buildTeamList() {
-  return TEAM.map((m) => {
+  // Left "Team" column lists ONLY the mirror-device operators (the ~9 accounts
+  // that actually mirror conversations). The extended roster (the other ~56
+  // operators, incl. Bayu Santera) exists purely for classification badges
+  // when they appear as a counterpart/group sender — listing them here would
+  // fill the column with empty "0 msg" contact rows. Fallback: if no entry is
+  // flagged mirror (e.g. roster file present but accounts.json missing), keep
+  // the old behaviour and show all, so the column is never empty.
+  const mirrorTeam = TEAM.filter((m) => m.mirror);
+  const source = mirrorTeam.length ? mirrorTeam : TEAM;
+  return source.map((m) => {
     const kindInfo = contactKindColor(m, false);
     return {
       name: m.name,
@@ -247,7 +334,9 @@ function buildTeamList() {
       contact_color: kindInfo.color,
       contact_label: kindInfo.label,
       aliases: aliasesForTeamMember(m),
-      avatar_url: TEAM_AVATAR_FILES[m.e164] ? `/team-avatar/${encodeURIComponent(m.name.toLowerCase())}` : null,
+      avatar_url: TEAM_AVATAR_FILES[m.e164]
+        ? `/team-avatar/${encodeURIComponent(m.name.toLowerCase())}`
+        : null,
     };
   });
 }
@@ -257,20 +346,25 @@ async function fetchOverview() {
     return CACHE.teams.payload;
   }
 
-  const result = { generated_at: new Date().toISOString(), team: [], by_phone: {} };
+  const result = {
+    generated_at: new Date().toISOString(),
+    team: [],
+    by_phone: {},
+  };
   result.team = buildTeamList();
 
   // P1 fix 2026-05-26: serial for-loop → Promise.all(.map()) parallelize cross-member.
   // Each member's payload is keyed by member.phone in result.by_phone (no shared state,
   // safe to parallelize). Reduces refresh latency from N×roundtrip to 1×roundtrip
   // for the slowest member.
-  await Promise.all(result.team.map(async (member) => {
-    const aliases = member.aliases;
-    const since = "30 days";
+  await Promise.all(
+    result.team.map(async (member) => {
+      const aliases = member.aliases;
+      const since = "30 days";
 
-    const [directRows, groupRows, sessionInfo] = await Promise.all([
-      pool.query(
-        `
+      const [directRows, groupRows, sessionInfo] = await Promise.all([
+        pool.query(
+          `
       WITH base AS (
         SELECT
           NULLIF(m.counterpart_phone, '') AS direct_phone,
@@ -331,7 +425,8 @@ async function fetchOverview() {
         GROUP BY k.conv_key
       ),
       last_msg AS (
-        SELECT DISTINCT ON (conv_key) conv_key, body AS last_body, media_type AS last_media
+        SELECT DISTINCT ON (conv_key) conv_key, body AS last_body, media_type AS last_media,
+               direction AS last_direction
         FROM keyed
         ORDER BY conv_key, message_date DESC NULLS LAST
       ),
@@ -344,7 +439,7 @@ async function fetchOverview() {
       )
       SELECT g.conv_key, g.direct_phone, g.lid, g.lid_pushname, g.client_id, g.n, g.last_at,
              g.attention_priority, g.unread_count,
-             lm.last_body, lm.last_media, lp.pushname,
+             lm.last_body, lm.last_media, lm.last_direction, lp.pushname,
              COALESCE(cli_id.full_name, cli_phone.full_name, cli_archived.full_name) AS client_name,
              COALESCE(cli_id.company_name, cli_phone.company_name, cli_archived.company_name) AS company_name,
              COALESCE(cli_id.status, cli_phone.status, cli_archived.status) AS client_status,
@@ -364,14 +459,25 @@ async function fetchOverview() {
       LEFT JOIN last_push lp USING (conv_key)
       LEFT JOIN clients cli_id
         ON cli_id.id = g.client_id AND cli_id.deleted_at IS NULL
-      LEFT JOIN clients cli_phone
-        ON cli_phone.deleted_at IS NULL
-       AND COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
-       AND (
-         cli_phone.phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
-         OR cli_phone.phone = COALESCE(g.effective_phone, g.direct_phone)
-         OR cli_phone.whatsapp = COALESCE(g.effective_phone, g.direct_phone)
-       )
+      -- FIX (2026-06-30, cicatrix #9 fan-out): same phone has N duplicate rows
+      -- in clients (621 phones affected, worst case 8). A plain LEFT JOIN
+      -- multiplied the single conv into N rows -> "Aigerim x3" in the list.
+      -- LATERAL ... LIMIT 1 collapses to ONE deterministic client per phone
+      -- (most recently active, then highest id) so each conv_key stays 1 row.
+      LEFT JOIN LATERAL (
+        SELECT id, full_name, company_name, status, assigned_to, tax_consultant,
+               strategic_recap, strategic_recap_source, avatar_url
+        FROM clients
+        WHERE deleted_at IS NULL
+          AND COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
+          AND (
+            phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
+            OR phone = COALESCE(g.effective_phone, g.direct_phone)
+            OR whatsapp = COALESCE(g.effective_phone, g.direct_phone)
+          )
+        ORDER BY last_interaction_date DESC NULLS LAST, id DESC
+        LIMIT 1
+      ) cli_phone ON cli_id.id IS NULL
       -- Fallback: soft-deleted clients still talking on WA (cicatrix marzo-2026 7733-purge ghosts)
       LEFT JOIN LATERAL (
         SELECT id, full_name, company_name, status, assigned_to, tax_consultant,
@@ -387,16 +493,22 @@ async function fetchOverview() {
         ORDER BY deleted_at DESC
         LIMIT 1
       ) cli_archived ON cli_id.id IS NULL AND cli_phone.id IS NULL
-      LEFT JOIN whatsapp_contacts wc
-        ON COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
-       AND wc.phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
+      -- whatsapp_contacts can also have duplicate rows per phone -> LATERAL LIMIT 1
+      LEFT JOIN LATERAL (
+        SELECT name, business_name
+        FROM whatsapp_contacts
+        WHERE COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
+          AND phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
+        ORDER BY updated_at DESC NULLS LAST
+        LIMIT 1
+      ) wc ON TRUE
       ORDER BY g.last_at DESC NULLS LAST
       LIMIT 200;
       `,
-        [aliases],
-      ),
-      pool.query(
-        `
+          [aliases],
+        ),
+        pool.query(
+          `
       WITH base AS (
         SELECT group_jid,
                COALESCE(NULLIF(group_subject_snapshot, ''), group_jid) AS group_label,
@@ -430,6 +542,7 @@ async function fetchOverview() {
       last_msg AS (
         SELECT DISTINCT ON (group_jid)
                group_jid, body AS last_body, media_type AS last_media, sender_phone,
+               direction AS last_direction,
                raw_baileys_event->>'pushName' AS sender_pushname
         FROM whatsapp_message_context
         WHERE team_member_phone = ANY($1::text[])
@@ -438,7 +551,7 @@ async function fetchOverview() {
         ORDER BY group_jid, message_date DESC NULLS LAST
       )
       SELECT g.group_jid, g.group_label, g.n, g.last_at, g.attention_priority, g.unread_count,
-             lm.last_body, lm.last_media, lm.sender_phone, lm.sender_pushname,
+             lm.last_body, lm.last_media, lm.last_direction, lm.sender_phone, lm.sender_pushname,
              cli.full_name AS sender_crm_name,
              cli.company_name AS sender_company,
              cli.strategic_recap AS sender_strategic_recap,
@@ -446,153 +559,198 @@ async function fetchOverview() {
              wc.name AS sender_wa_contact_name
       FROM grouped g
       LEFT JOIN last_msg lm USING (group_jid)
-      LEFT JOIN clients cli
-        ON cli.deleted_at IS NULL
-       AND lm.sender_phone IS NOT NULL
-       AND (
-         cli.phone_normalized = regexp_replace(lm.sender_phone, '\\D', '', 'g')
-         OR cli.phone = lm.sender_phone
-         OR cli.whatsapp = lm.sender_phone
-       )
-      LEFT JOIN whatsapp_contacts wc
-        ON lm.sender_phone IS NOT NULL
-       AND wc.phone_normalized = regexp_replace(lm.sender_phone, '\\D', '', 'g')
+      -- FIX (2026-06-30, cicatrix #9 fan-out): LATERAL LIMIT 1 so a sender with
+      -- duplicate clients rows does not multiply the group row.
+      LEFT JOIN LATERAL (
+        SELECT full_name, company_name, strategic_recap, avatar_url
+        FROM clients
+        WHERE deleted_at IS NULL
+          AND lm.sender_phone IS NOT NULL
+          AND (
+            phone_normalized = regexp_replace(lm.sender_phone, '\\D', '', 'g')
+            OR phone = lm.sender_phone
+            OR whatsapp = lm.sender_phone
+          )
+        ORDER BY last_interaction_date DESC NULLS LAST, id DESC
+        LIMIT 1
+      ) cli ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT name
+        FROM whatsapp_contacts
+        WHERE lm.sender_phone IS NOT NULL
+          AND phone_normalized = regexp_replace(lm.sender_phone, '\\D', '', 'g')
+        ORDER BY updated_at DESC NULLS LAST
+        LIMIT 1
+      ) wc ON TRUE
       ORDER BY g.last_at DESC NULLS LAST
       LIMIT 200;
       `,
-        [aliases],
-      ),
-      teamSessionFor(member),
-    ]);
+          [aliases],
+        ),
+        teamSessionFor(member),
+      ]);
 
-    const bridge = bridgeHealthFor(member.name);
+      const bridge = bridgeHealthFor(member.name);
 
-    // === Build convs array ===
-    const convs = [];
-    let attentionHigh = 0;
-    let attentionMedium = 0;
-    let crmMatched = 0;
-    let unresolvedLids = 0;
-    let internalCount = 0;
+      // === Build convs array ===
+      const convs = [];
+      let attentionHigh = 0;
+      let attentionMedium = 0;
+      let crmMatched = 0;
+      let unresolvedLids = 0;
+      let internalCount = 0;
 
-    for (const r of directRows.rows) {
-      // Display name with priority: CRM > TEAM > WA business > WA contact > raw-message pushName > lid_phone_map pushname > phone
-      const crmName = cleanName(r.client_name);
-      const businessName = cleanName(r.wa_business_name);
-      const waName = cleanName(r.wa_contact_name);
-      const push = cleanName(r.pushname);
-      // 2026-05-26 fix #2: pushname from whatsapp_lid_phone_map (for LID-only conv where Baileys raw event has no pushName)
-      const lidPush = cleanName(r.lid_pushname);
+      for (const r of directRows.rows) {
+        // Display name with priority: CRM > TEAM > WA business > WA contact > raw-message pushName > lid_phone_map pushname > phone
+        const crmName = cleanName(r.client_name);
+        // 2026-06-30: display-only — strip "(surya)"-style operator tags from the CRM
+        // name; crmName itself stays intact for the tag/crm_match logic below.
+        const crmNameDisplay = stripOperatorSuffix(crmName);
+        const businessName = cleanName(r.wa_business_name);
+        const waName = cleanName(r.wa_contact_name);
+        const push = cleanName(r.pushname);
+        // 2026-05-26 fix #2: pushname from whatsapp_lid_phone_map (for LID-only conv where Baileys raw event has no pushName)
+        const lidPush = cleanName(r.lid_pushname);
 
-      // 2026-05-26 lookup TEAM roster FIRST so internal counterpart resolves to display name
-      const teamMatch = r.direct_phone ? TEAM_BY_PHONE.get(r.direct_phone) : null;
-      const teamName = teamMatch ? (teamMatch.full_name || teamMatch.name) : null;
+        // 2026-05-26 lookup TEAM roster FIRST so internal counterpart resolves to display name
+        const teamMatch = r.direct_phone
+          ? TEAM_BY_PHONE.get(r.direct_phone)
+          : null;
+        const teamName = teamMatch
+          ? teamMatch.full_name || teamMatch.name
+          : null;
 
-      let display = crmName || teamName;
-      if (display && crmName && r.company_name) display = `${crmName} · ${r.company_name}`;
-      if (!display) display = businessName || waName || push || lidPush || r.direct_phone || r.conv_key;
-      const isInternal = isTeamPhone(r.direct_phone);
-      const isLid = !r.direct_phone && r.lid;
-      const isCrmArchived = !!r.crm_archived;
-      let tag;
-      if (isInternal) { tag = "internal"; internalCount++; }
-      else if (crmName && !isCrmArchived) { tag = "crm"; crmMatched++; }
-      else if (crmName && isCrmArchived) { tag = "crm-archived"; }
-      else if (push || waName || businessName || lidPush) tag = "prospect";
-      else if (isLid) { tag = "lid"; unresolvedLids++; }
-      else tag = "unknown";
+        let display = crmNameDisplay || teamName;
+        if (display && crmName && r.company_name)
+          display = `${crmNameDisplay} · ${r.company_name}`;
+        if (!display)
+          display =
+            businessName ||
+            waName ||
+            push ||
+            lidPush ||
+            r.direct_phone ||
+            r.conv_key;
+        const isInternal = isTeamPhone(r.direct_phone);
+        const isLid = !r.direct_phone && r.lid;
+        const isCrmArchived = !!r.crm_archived;
+        let tag;
+        if (isInternal) {
+          tag = "internal";
+          internalCount++;
+        } else if (crmName && !isCrmArchived) {
+          tag = "crm";
+          crmMatched++;
+        } else if (crmName && isCrmArchived) {
+          tag = "crm-archived";
+        } else if (push || waName || businessName || lidPush) tag = "prospect";
+        else if (isLid) {
+          tag = "lid";
+          unresolvedLids++;
+        } else tag = "unknown";
 
-      // 2026-05-26 naming + color coding: contactKindColor over counterpart
-      // Hierarchy: ZERO > TEAM·BZ > TEAM·BS > CLIENT > PROSPECT
-      const isInClients = !!crmName; // active or archived CRM match counts
-      const kindInfo = contactKindColor(teamMatch, isInClients);
+        // 2026-05-26 naming + color coding: contactKindColor over counterpart
+        // Hierarchy: ZERO > TEAM·BZ > TEAM·BS > CLIENT > PROSPECT
+        const isInClients = !!crmName; // active or archived CRM match counts
+        const kindInfo = contactKindColor(teamMatch, isInClients);
 
-      if (r.attention_priority === "HIGH") attentionHigh++;
-      else if (r.attention_priority === "MEDIUM") attentionMedium++;
+        if (r.attention_priority === "HIGH") attentionHigh++;
+        else if (r.attention_priority === "MEDIUM") attentionMedium++;
 
-      convs.push({
-        kind: "direct",
-        counterpart: r.direct_phone || r.conv_key,
-        display_name: display,
-        crm_match: !!crmName,
-        crm_archived: isCrmArchived,
-        archived_at: r.archived_at,
-        client_id: r.resolved_client_id || r.client_id,
-        client_status: r.client_status,
-        assigned_to: r.assigned_to,
-        tax_consultant: r.tax_consultant,
-        strategic_recap: r.strategic_recap,
-        strategic_recap_source: r.strategic_recap_source,
-        avatar_url: r.avatar_url,
-        company_name: r.company_name,
-        wa_contact_name: waName,
-        wa_business_name: businessName,
-        pushname: push,
-        attention_priority: r.attention_priority,
-        n: parseInt(r.n, 10),
-        unread_count: parseInt(r.unread_count || 0, 10),
-        last_at: r.last_at,
-        last_body: r.last_body,
-        last_media: r.last_media,
-        is_internal: isInternal,
-        is_legacy_lid: !!isLid,
-        tag,
-        // 2026-05-26 naming + color coding
-        contact_kind: kindInfo.kind,
-        contact_color: kindInfo.color,
-        contact_label: kindInfo.label,
-        contact_company: teamMatch?.company || null,
-        contact_department: teamMatch?.department || null,
-      });
-    }
-    for (const r of groupRows.rows) {
-      const senderName = cleanName(r.sender_crm_name) || cleanName(r.sender_wa_contact_name) || cleanName(r.sender_pushname);
-      const groupLabel = r.group_label && !r.group_label.endsWith("@g.us")
-        ? r.group_label
-        : (senderName
-            ? `Gruppo ${senderName}${r.sender_company ? " (" + r.sender_company + ")" : ""}`
-            : r.group_label);
-      if (r.attention_priority === "HIGH") attentionHigh++;
-      else if (r.attention_priority === "MEDIUM") attentionMedium++;
+        convs.push({
+          kind: "direct",
+          counterpart: r.direct_phone || r.conv_key,
+          display_name: display,
+          crm_match: !!crmName,
+          crm_archived: isCrmArchived,
+          archived_at: r.archived_at,
+          client_id: r.resolved_client_id || r.client_id,
+          client_status: r.client_status,
+          assigned_to: r.assigned_to,
+          tax_consultant: r.tax_consultant,
+          strategic_recap: r.strategic_recap,
+          strategic_recap_source: r.strategic_recap_source,
+          avatar_url: r.avatar_url,
+          company_name: r.company_name,
+          wa_contact_name: waName,
+          wa_business_name: businessName,
+          pushname: push,
+          attention_priority: r.attention_priority,
+          n: parseInt(r.n, 10),
+          unread_count: parseInt(r.unread_count || 0, 10),
+          last_at: r.last_at,
+          last_body: r.last_body,
+          last_media: r.last_media,
+          last_direction: r.last_direction,
+          is_internal: isInternal,
+          is_legacy_lid: !!isLid,
+          tag,
+          // 2026-05-26 naming + color coding
+          contact_kind: kindInfo.kind,
+          contact_color: kindInfo.color,
+          contact_label: kindInfo.label,
+          contact_company: teamMatch?.company || null,
+          contact_department: teamMatch?.department || null,
+        });
+      }
+      for (const r of groupRows.rows) {
+        const senderName =
+          stripOperatorSuffix(cleanName(r.sender_crm_name)) ||
+          cleanName(r.sender_wa_contact_name) ||
+          cleanName(r.sender_pushname);
+        const groupLabel =
+          r.group_label && !r.group_label.endsWith("@g.us")
+            ? r.group_label
+            : senderName
+              ? `Gruppo ${senderName}${r.sender_company ? " (" + r.sender_company + ")" : ""}`
+              : r.group_label;
+        if (r.attention_priority === "HIGH") attentionHigh++;
+        else if (r.attention_priority === "MEDIUM") attentionMedium++;
 
-      // 2026-05-26 group kind/color reflects LAST sender (most informative for triage)
-      const groupTeamMatch = r.sender_phone ? TEAM_BY_PHONE.get(r.sender_phone) : null;
-      const groupIsInClients = !!r.sender_crm_name;
-      const groupKindInfo = contactKindColor(groupTeamMatch, groupIsInClients);
+        // 2026-05-26 group kind/color reflects LAST sender (most informative for triage)
+        const groupTeamMatch = r.sender_phone
+          ? TEAM_BY_PHONE.get(r.sender_phone)
+          : null;
+        const groupIsInClients = !!r.sender_crm_name;
+        const groupKindInfo = contactKindColor(
+          groupTeamMatch,
+          groupIsInClients,
+        );
 
-      convs.push({
-        kind: "group",
-        counterpart: `group:${r.group_jid}`,
-        display_name: groupLabel,
-        group_jid: r.group_jid,
-        sender_phone: r.sender_phone,
-        sender_crm_name: cleanName(r.sender_crm_name),
-        sender_wa_contact_name: cleanName(r.sender_wa_contact_name),
-        sender_company: r.sender_company,
-        sender_strategic_recap: r.sender_strategic_recap,
-        sender_avatar_url: r.sender_avatar_url,
-        crm_match: !!r.sender_crm_name,
-        attention_priority: r.attention_priority,
-        n: parseInt(r.n, 10),
-        unread_count: parseInt(r.unread_count || 0, 10),
-        last_at: r.last_at,
-        last_body: r.last_body,
-        last_media: r.last_media,
-        is_internal: false,
-        tag: "group",
-        // 2026-05-26 naming + color coding
-        contact_kind: groupKindInfo.kind,
-        contact_color: groupKindInfo.color,
-        contact_label: groupKindInfo.label,
-        contact_company: groupTeamMatch?.company || null,
-        contact_department: groupTeamMatch?.department || null,
-      });
-    }
-    convs.sort((a, b) => new Date(b.last_at) - new Date(a.last_at));
+        convs.push({
+          kind: "group",
+          counterpart: `group:${r.group_jid}`,
+          display_name: groupLabel,
+          group_jid: r.group_jid,
+          sender_phone: r.sender_phone,
+          sender_crm_name: cleanName(r.sender_crm_name),
+          sender_wa_contact_name: cleanName(r.sender_wa_contact_name),
+          sender_company: r.sender_company,
+          sender_strategic_recap: r.sender_strategic_recap,
+          sender_avatar_url: r.sender_avatar_url,
+          crm_match: !!r.sender_crm_name,
+          attention_priority: r.attention_priority,
+          n: parseInt(r.n, 10),
+          unread_count: parseInt(r.unread_count || 0, 10),
+          last_at: r.last_at,
+          last_body: r.last_body,
+          last_media: r.last_media,
+          last_direction: r.last_direction,
+          is_internal: false,
+          tag: "group",
+          // 2026-05-26 naming + color coding
+          contact_kind: groupKindInfo.kind,
+          contact_color: groupKindInfo.color,
+          contact_label: groupKindInfo.label,
+          contact_company: groupTeamMatch?.company || null,
+          contact_department: groupTeamMatch?.department || null,
+        });
+      }
+      convs.sort((a, b) => new Date(b.last_at) - new Date(a.last_at));
 
-    // True raw count from DB (not conv-aggregated, single source of truth)
-    const rawCountRow = await pool.query(
-      `
+      // True raw count from DB (not conv-aggregated, single source of truth)
+      const rawCountRow = await pool.query(
+        `
       SELECT
         COUNT(*) AS msgs_total,
         COUNT(*) FILTER (WHERE chat_type='direct') AS msgs_direct,
@@ -603,45 +761,50 @@ async function fetchOverview() {
       WHERE team_member_phone = ANY($1::text[])
         AND message_date >= NOW() - INTERVAL '${since}'
       `,
-      [aliases],
-    );
-    const counts = rawCountRow.rows[0] || {};
+        [aliases],
+      );
+      const counts = rawCountRow.rows[0] || {};
 
-    const unreadTotal = convs.reduce((sum, c) => sum + (c.unread_count || 0), 0);
-    const unreadConvs = convs.filter((c) => (c.unread_count || 0) > 0).length;
-    const archivedCount = convs.filter((c) => c.crm_archived).length;
+      const unreadTotal = convs.reduce(
+        (sum, c) => sum + (c.unread_count || 0),
+        0,
+      );
+      const unreadConvs = convs.filter((c) => (c.unread_count || 0) > 0).length;
+      const archivedCount = convs.filter((c) => c.crm_archived).length;
 
-    result.by_phone[member.phone] = {
-      team: member,
-      bridge,                    // Feature #2 (health pill)
-      session: sessionInfo,      // messages_logged / messages_filtered / connected_at
-      total: parseInt(counts.msgs_total || 0, 10),
-      msgs_direct: parseInt(counts.msgs_direct || 0, 10),
-      msgs_group: parseInt(counts.msgs_group || 0, 10),
-      msgs_lid_only: parseInt(counts.msgs_lid_only || 0, 10),
-      msgs_media: parseInt(counts.msgs_media || 0, 10),
-      direct_count: convs.filter((c) => c.kind === "direct").length,
-      group_count: convs.filter((c) => c.kind === "group").length,
-      crm_count: crmMatched,
-      internal_count: internalCount,
-      unresolved_lids: unresolvedLids,
-      unread_total: unreadTotal,         // Feature: unread badge (col 1 team pill)
-      unread_convs: unreadConvs,
-      archived_count: archivedCount,     // Feature: ghost CRM clients still talking on WA
+      result.by_phone[member.phone] = {
+        team: member,
+        bridge, // Feature #2 (health pill)
+        session: sessionInfo, // messages_logged / messages_filtered / connected_at
+        total: parseInt(counts.msgs_total || 0, 10),
+        msgs_direct: parseInt(counts.msgs_direct || 0, 10),
+        msgs_group: parseInt(counts.msgs_group || 0, 10),
+        msgs_lid_only: parseInt(counts.msgs_lid_only || 0, 10),
+        msgs_media: parseInt(counts.msgs_media || 0, 10),
+        direct_count: convs.filter((c) => c.kind === "direct").length,
+        group_count: convs.filter((c) => c.kind === "group").length,
+        crm_count: crmMatched,
+        internal_count: internalCount,
+        unresolved_lids: unresolvedLids,
+        unread_total: unreadTotal, // Feature: unread badge (col 1 team pill)
+        unread_convs: unreadConvs,
+        archived_count: archivedCount, // Feature: ghost CRM clients still talking on WA
 
-      attention: { high: attentionHigh, medium: attentionMedium }, // Feature #7
-      convs,
-    };
-  }));
+        attention: { high: attentionHigh, medium: attentionMedium }, // Feature #7
+        convs,
+      };
+    }),
+  );
 
   CACHE.teams = { at: Date.now(), payload: result };
   return result;
 }
 
 async function fetchIntakeSummary() {
-  const [queueRows, groupKindRows, directRows, routingRows] = await Promise.all([
-    pool.query(
-      `
+  const [queueRows, groupKindRows, directRows, routingRows] = await Promise.all(
+    [
+      pool.query(
+        `
       WITH docs AS (
         SELECT
           CASE
@@ -697,9 +860,9 @@ async function fetchIntakeSummary() {
         COUNT(*) FILTER (WHERE scope='group' AND client_id_hint IS NOT NULL) AS group_unsafe_client_hint
       FROM docs
       `,
-    ),
-    pool.query(
-      `
+      ),
+      pool.query(
+        `
       WITH group_docs AS (
         SELECT
           COALESCE(w.group_jid, q.source_context->>'group_jid_hash', q.source_ref) AS group_key,
@@ -742,9 +905,9 @@ async function fetchIntakeSummary() {
       GROUP BY inferred_group_kind
       ORDER BY docs DESC
       `,
-    ),
-    pool.query(
-      `
+      ),
+      pool.query(
+        `
       WITH latest AS (
         SELECT DISTINCT ON (queue_id)
                queue_id,
@@ -795,9 +958,9 @@ async function fetchIntakeSummary() {
       SELECT *
       FROM direct_docs
       `,
-    ),
-    pool.query(
-      `
+      ),
+      pool.query(
+        `
       WITH latest AS (
         SELECT DISTINCT ON (queue_id)
                queue_id,
@@ -819,8 +982,9 @@ async function fetchIntakeSummary() {
       GROUP BY 1,2
       ORDER BY docs DESC
       `,
-    ),
-  ]);
+      ),
+    ],
+  );
 
   const queue = queueRows.rows[0] || {};
   const docTypeMap = new Map();
@@ -842,14 +1006,18 @@ async function fetchIntakeSummary() {
       routed_non_stub: 0,
     };
     existingDoc.docs += 1;
-    if (Number(row.type_confidence || 0) >= 0.7) existingDoc.high_confidence += 1;
+    if (Number(row.type_confidence || 0) >= 0.7)
+      existingDoc.high_confidence += 1;
     if (row.extracted_non_stub) existingDoc.extracted_non_stub += 1;
     if (row.routed_non_stub) existingDoc.routed_non_stub += 1;
     docTypeMap.set(docKey, existingDoc);
 
     parserMap.set(parserBucket, (parserMap.get(parserBucket) || 0) + 1);
     actionMap.set(actionBucket, (actionMap.get(actionBucket) || 0) + 1);
-    workspaceMap.set(workspaceBucket, (workspaceMap.get(workspaceBucket) || 0) + 1);
+    workspaceMap.set(
+      workspaceBucket,
+      (workspaceMap.get(workspaceBucket) || 0) + 1,
+    );
   }
 
   const directActions = [...actionMap.entries()]
@@ -857,9 +1025,14 @@ async function fetchIntakeSummary() {
     .sort((a, b) => b.docs - a.docs);
   const directActionSummary = buildDirectActionSummary(directActions);
   const qwenGateSnapshot = readQwenGateSnapshot();
-  const qwenPlacementPreview = buildQwenPlacementPreviewSummary(qwenGateSnapshot);
-  const qwenBatchGate = buildQwenBatchGateSummary(directActionSummary, qwenGateSnapshot);
-  const qwenKnownBenchmarkGate = buildQwenKnownBenchmarkSummary(qwenGateSnapshot);
+  const qwenPlacementPreview =
+    buildQwenPlacementPreviewSummary(qwenGateSnapshot);
+  const qwenBatchGate = buildQwenBatchGateSummary(
+    directActionSummary,
+    qwenGateSnapshot,
+  );
+  const qwenKnownBenchmarkGate =
+    buildQwenKnownBenchmarkSummary(qwenGateSnapshot);
   const autocatalogPlan = buildAutocatalogPlanSummary(
     directActionSummary,
     qwenBatchGate,
@@ -908,7 +1081,11 @@ async function fetchIntakeSummary() {
       .sort((a, b) => b.docs - a.docs),
     direct_actions: directActions,
     direct_action_summary: directActionSummary,
-    direct_catalog_summary: buildDirectCatalogSummary(directActionSummary, queue, qwenPlacementPreview),
+    direct_catalog_summary: buildDirectCatalogSummary(
+      directActionSummary,
+      queue,
+      qwenPlacementPreview,
+    ),
     qwen_batch_gate: qwenBatchGate,
     qwen_known_benchmark_gate: qwenKnownBenchmarkGate,
     qwen_placement_preview: qwenPlacementPreview,
@@ -977,28 +1154,53 @@ async function fetchThread(memberPhone, convKey) {
       ON lpr_c.counterpart_lid = m.counterpart_lid
     LEFT JOIN wa_lid_phone_resolution lpr_s
       ON lpr_s.counterpart_lid = m.sender_lid
-    LEFT JOIN clients cli_s
-      ON cli_s.deleted_at IS NULL
-     AND COALESCE(m.sender_phone, lpr_s.resolved_phone) IS NOT NULL
-     AND (
-       cli_s.phone_normalized = regexp_replace(COALESCE(m.sender_phone, lpr_s.resolved_phone), '\\D', '', 'g')
-       OR cli_s.phone = COALESCE(m.sender_phone, lpr_s.resolved_phone)
-       OR cli_s.whatsapp = COALESCE(m.sender_phone, lpr_s.resolved_phone)
-     )
-    LEFT JOIN clients cli_c
-      ON cli_c.deleted_at IS NULL
-     AND COALESCE(m.counterpart_phone, lpr_c.resolved_phone) IS NOT NULL
-     AND (
-       cli_c.phone_normalized = regexp_replace(COALESCE(m.counterpart_phone, lpr_c.resolved_phone), '\\D', '', 'g')
-       OR cli_c.phone = COALESCE(m.counterpart_phone, lpr_c.resolved_phone)
-       OR cli_c.whatsapp = COALESCE(m.counterpart_phone, lpr_c.resolved_phone)
-     )
-    LEFT JOIN whatsapp_contacts wc_s
-      ON COALESCE(m.sender_phone, lpr_s.resolved_phone) IS NOT NULL
-     AND wc_s.phone_normalized = regexp_replace(COALESCE(m.sender_phone, lpr_s.resolved_phone), '\\D', '', 'g')
-    LEFT JOIN whatsapp_contacts wc_c
-      ON COALESCE(m.counterpart_phone, lpr_c.resolved_phone) IS NOT NULL
-     AND wc_c.phone_normalized = regexp_replace(COALESCE(m.counterpart_phone, lpr_c.resolved_phone), '\\D', '', 'g')
+    -- FIX (2026-06-30, cicatrix #9 fan-out): duplicate clients rows per phone
+    -- made cli_s (sender) AND cli_c (counterpart) each match N rows; their
+    -- Cartesian product duplicated every thread message N*N times (3*3=9 for
+    -- "Aigerim", up to 8*8=64 worst case). LATERAL ... LIMIT 1 collapses each
+    -- side to ONE deterministic client so each message stays exactly 1 row.
+    LEFT JOIN LATERAL (
+      SELECT id, full_name, company_name
+      FROM clients
+      WHERE deleted_at IS NULL
+        AND COALESCE(m.sender_phone, lpr_s.resolved_phone) IS NOT NULL
+        AND (
+          phone_normalized = regexp_replace(COALESCE(m.sender_phone, lpr_s.resolved_phone), '\\D', '', 'g')
+          OR phone = COALESCE(m.sender_phone, lpr_s.resolved_phone)
+          OR whatsapp = COALESCE(m.sender_phone, lpr_s.resolved_phone)
+        )
+      ORDER BY last_interaction_date DESC NULLS LAST, id DESC
+      LIMIT 1
+    ) cli_s ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT id, full_name, company_name
+      FROM clients
+      WHERE deleted_at IS NULL
+        AND COALESCE(m.counterpart_phone, lpr_c.resolved_phone) IS NOT NULL
+        AND (
+          phone_normalized = regexp_replace(COALESCE(m.counterpart_phone, lpr_c.resolved_phone), '\\D', '', 'g')
+          OR phone = COALESCE(m.counterpart_phone, lpr_c.resolved_phone)
+          OR whatsapp = COALESCE(m.counterpart_phone, lpr_c.resolved_phone)
+        )
+      ORDER BY last_interaction_date DESC NULLS LAST, id DESC
+      LIMIT 1
+    ) cli_c ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT name, business_name
+      FROM whatsapp_contacts
+      WHERE COALESCE(m.sender_phone, lpr_s.resolved_phone) IS NOT NULL
+        AND phone_normalized = regexp_replace(COALESCE(m.sender_phone, lpr_s.resolved_phone), '\\D', '', 'g')
+      ORDER BY updated_at DESC NULLS LAST
+      LIMIT 1
+    ) wc_s ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT name, business_name
+      FROM whatsapp_contacts
+      WHERE COALESCE(m.counterpart_phone, lpr_c.resolved_phone) IS NOT NULL
+        AND phone_normalized = regexp_replace(COALESCE(m.counterpart_phone, lpr_c.resolved_phone), '\\D', '', 'g')
+      ORDER BY updated_at DESC NULLS LAST
+      LIMIT 1
+    ) wc_c ON TRUE
     WHERE m.team_member_phone = ANY($1::text[])
       ${where}
       AND m.message_date >= NOW() - INTERVAL '30 days'
@@ -1017,7 +1219,7 @@ async function fetchThread(memberPhone, convKey) {
     return {
       ...r,
       sender_display:
-        cleanName(r.sender_crm_name) ||
+        stripOperatorSuffix(cleanName(r.sender_crm_name)) ||
         cleanName(r.sender_wa_business_name) ||
         cleanName(r.sender_wa_contact_name) ||
         cleanName(r.pushname) ||
@@ -1121,14 +1323,20 @@ app.get("/intake-summary.json", async (_req, res) => {
 });
 
 app.get("/thread.json", async (req, res) => {
-  const memberPhone = typeof req.query.member === "string" ? req.query.member : "";
+  const memberPhone =
+    typeof req.query.member === "string" ? req.query.member : "";
   const convKey = typeof req.query.conv === "string" ? req.query.conv : "";
   if (!memberPhone || !convKey) {
     return res.status(400).json({ error: "missing member or conv" });
   }
   try {
     const rows = await fetchThread(memberPhone, convKey);
-    res.json({ member: memberPhone, conv: convKey, count: rows.length, messages: rows });
+    res.json({
+      member: memberPhone,
+      conv: convKey,
+      count: rows.length,
+      messages: rows,
+    });
   } catch (err) {
     console.error("[thread.json] error", { code: err.code, name: err.name });
     res.status(500).json({ error: "thread query failed" });
@@ -1150,10 +1358,18 @@ app.get("/client.json", async (req, res) => {
 
 // === Media inline (Feature #9) ===
 const MIME_BY_EXT = {
-  ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
-  ".gif": "image/gif", ".webp": "image/webp", ".pdf": "application/pdf",
-  ".mp4": "video/mp4", ".webm": "video/webm", ".m4a": "audio/mp4",
-  ".ogg": "audio/ogg", ".mp3": "audio/mpeg", ".opus": "audio/opus",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".pdf": "application/pdf",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".m4a": "audio/mp4",
+  ".ogg": "audio/ogg",
+  ".mp3": "audio/mpeg",
+  ".opus": "audio/opus",
 };
 
 function xmlEscape(value) {
@@ -1167,9 +1383,10 @@ function xmlEscape(value) {
 function initialsForAvatar(name) {
   const clean = cleanName(name) || "Client";
   const parts = clean.split(/\s+/).filter(Boolean);
-  const letters = parts.length > 1
-    ? `${parts[0][0] || ""}${parts[1][0] || ""}`
-    : clean.slice(0, 2);
+  const letters =
+    parts.length > 1
+      ? `${parts[0][0] || ""}${parts[1][0] || ""}`
+      : clean.slice(0, 2);
   return letters.toUpperCase();
 }
 
@@ -1185,7 +1402,8 @@ app.get("/media", (req, res) => {
   const p = req.query.path;
   if (!p || typeof p !== "string") return res.status(400).send("missing path");
   const resolved = path.resolve(p);
-  if (!resolved.startsWith(MEDIA_ROOT + "/")) return res.status(403).send("forbidden");
+  if (!resolved.startsWith(MEDIA_ROOT + "/"))
+    return res.status(403).send("forbidden");
   if (!fs.existsSync(resolved)) return res.status(404).send("not found");
   const ext = path.extname(resolved).toLowerCase();
   const mime = MIME_BY_EXT[ext] || "application/octet-stream";
@@ -1193,7 +1411,10 @@ app.get("/media", (req, res) => {
   res.setHeader("Cache-Control", "private, max-age=300");
   res.setHeader(
     "Content-Disposition",
-    mime === "application/pdf" || mime.startsWith("image/") || mime.startsWith("video/") || mime.startsWith("audio/")
+    mime === "application/pdf" ||
+      mime.startsWith("image/") ||
+      mime.startsWith("video/") ||
+      mime.startsWith("audio/")
       ? "inline"
       : `inline; filename="${path.basename(resolved)}"`,
   );
@@ -1202,7 +1423,9 @@ app.get("/media", (req, res) => {
 
 // Team avatar — serve disk file mapped by lowercased team name
 app.get("/team-avatar/:name", (req, res) => {
-  const name = String(req.params.name || "").toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  const name = String(req.params.name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "");
   const member = TEAM.find((m) => m.name.toLowerCase() === name);
   if (!member) return res.status(404).send("no team");
   const file = TEAM_AVATAR_FILES[member.e164];
@@ -1236,12 +1459,18 @@ app.get("/client-avatar/:id", async (req, res) => {
     }
     // Google Drive view URLs → not directly streamable, fallback redirect
     let parsedUrl = null;
-    try { parsedUrl = new URL(a); } catch { /* not a URL */ }
+    try {
+      parsedUrl = new URL(a);
+    } catch {
+      /* not a URL */
+    }
     if (parsedUrl && parsedUrl.hostname === "drive.google.com") {
       const idMatch = parsedUrl.pathname.match(/\/d\/([a-zA-Z0-9_-]+)/);
       if (idMatch) {
         // Use thumbnail endpoint (works for public files)
-        return res.redirect(`https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w200`);
+        return res.redirect(
+          `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w200`,
+        );
       }
     }
     if (a.startsWith("http")) return res.redirect(a);
@@ -1255,8 +1484,12 @@ app.get("/client-avatar/:id", async (req, res) => {
 // Refresh LID resolution map (cron-able): POST /lid-refresh
 app.post("/lid-refresh", async (_req, res) => {
   try {
-    await pool.query("REFRESH MATERIALIZED VIEW CONCURRENTLY wa_lid_phone_resolution");
-    const r = await pool.query("SELECT COUNT(*) AS n FROM wa_lid_phone_resolution");
+    await pool.query(
+      "REFRESH MATERIALIZED VIEW CONCURRENTLY wa_lid_phone_resolution",
+    );
+    const r = await pool.query(
+      "SELECT COUNT(*) AS n FROM wa_lid_phone_resolution",
+    );
     CACHE.teams = { at: 0, payload: null };
     res.json({ ok: true, resolved_lids: parseInt(r.rows[0].n, 10) });
   } catch (err) {
@@ -1285,7 +1518,13 @@ app.get("/lid-stats", async (_req, res) => {
 app.get("/metrics.json", async (req, res) => {
   try {
     const windowDays = parseInt(req.query.window, 10) || 30;
-    const payload = await metrics.fetchLiveMetrics(pool, TEAM, aliasesForTeamMember, HIDE_TEAM_NAMES, windowDays);
+    const payload = await metrics.fetchLiveMetrics(
+      pool,
+      TEAM,
+      aliasesForTeamMember,
+      HIDE_TEAM_NAMES,
+      windowDays,
+    );
     res.json(payload);
   } catch (err) {
     console.error("[metrics.json]", err);
@@ -1310,7 +1549,13 @@ app.get("/metrics-history.json", async (req, res) => {
 app.post("/metrics-rollup", async (req, res) => {
   try {
     const windowDays = parseInt(req.query.window, 10) || 30;
-    const result = await metrics.computeAndStoreRollup(pool, TEAM, aliasesForTeamMember, HIDE_TEAM_NAMES, windowDays);
+    const result = await metrics.computeAndStoreRollup(
+      pool,
+      TEAM,
+      aliasesForTeamMember,
+      HIDE_TEAM_NAMES,
+      windowDays,
+    );
     res.json(result);
   } catch (err) {
     console.error("[metrics-rollup]", err);
@@ -1324,10 +1569,22 @@ app.get("/", (_req, res) => {
 
 app.listen(PORT, HOST, () => {
   console.log(`[wa-dashboard-m1] listening on http://${HOST}:${PORT}`);
-  console.log(`[wa-dashboard-m1] DB: ${DATABASE_URL.replace(/:[^@]+@/, ":***@")}`);
-  console.log(`[wa-dashboard-m1] Team size: ${TEAM.length} | Media root: ${MEDIA_ROOT}`);
+  console.log(
+    `[wa-dashboard-m1] DB: ${DATABASE_URL.replace(/:[^@]+@/, ":***@")}`,
+  );
+  console.log(
+    `[wa-dashboard-m1] Team size: ${TEAM.length} | Media root: ${MEDIA_ROOT}`,
+  );
   // Ensure the team-quality rollup table exists (idempotent, local DB).
-  metrics.ensureMetricsSchema(pool)
-    .then(() => console.log("[wa-dashboard-m1] wa_team_daily_metrics schema ready"))
-    .catch((err) => console.error("[wa-dashboard-m1] metrics schema init failed:", err.message));
+  metrics
+    .ensureMetricsSchema(pool)
+    .then(() =>
+      console.log("[wa-dashboard-m1] wa_team_daily_metrics schema ready"),
+    )
+    .catch((err) =>
+      console.error(
+        "[wa-dashboard-m1] metrics schema init failed:",
+        err.message,
+      ),
+    );
 });

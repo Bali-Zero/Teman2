@@ -22,6 +22,12 @@ class LeadSource(str, Enum):
     # Conversational handoff (2026-06): the Zantara chat widget, after the
     # visitor sends 3+ messages (high-intent signal). No result page.
     ZANTARA_WIDGET_HANDOFF = "zantara_widget_handoff"
+    # Sticky "Next actions" handoff bar — shared CTAHandoff component across all funnel pages (2026-06).
+    CTA_HANDOFF = "cta_handoff"
+    # Pricing page modal CTA (2026-06-29): ServicePricing.tsx package
+    # selection modal, /services/[slug] pages. No fixed hash route — the
+    # service slug + package name are carried in context, not result_hash.
+    PRICING_MODAL = "pricing_modal"
 
     @property
     def human_name(self) -> str:
@@ -36,6 +42,8 @@ class LeadSource(str, Enum):
             LeadSource.ARTICLE: "the Insights blog",
             LeadSource.KBLI_NAVIGATOR: "the KBLI Navigator",
             LeadSource.ZANTARA_WIDGET_HANDOFF: "the Zantara chat",
+            LeadSource.CTA_HANDOFF: "Bali Zero",
+            LeadSource.PRICING_MODAL: "the pricing page",
         }[self]
 
     @property
@@ -55,4 +63,8 @@ class LeadSource(str, Enum):
             # Chat widget: no result page; the visitor carries the conversation
             # context in the WA message body, not a hash-addressed page.
             LeadSource.ZANTARA_WIDGET_HANDOFF: "/",
+            # Sticky handoff bar lives on the page already in context; no hash-based result page.
+            LeadSource.CTA_HANDOFF: "/",
+            # No fixed hash route — service slug varies; carried in context.
+            LeadSource.PRICING_MODAL: "/",
         }[self]

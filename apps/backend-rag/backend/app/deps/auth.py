@@ -8,12 +8,9 @@ No heavy service imports at module level — only jose, fastapi.security.
 import logging
 from typing import Annotated, Any
 
-import asyncpg
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-
-from backend.app.deps.database import get_database_pool
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +18,6 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 __all__ = [
-    "get_current_portal_client",
     "get_current_user",
     "get_current_user_email",
     "get_current_user_optional",
@@ -188,112 +184,3 @@ def require_team_member(user: dict[str, Any] = Depends(get_current_user)) -> dic
             detail="Access denied. This endpoint is only accessible to team members.",
         )
     return user
-
-
-# Superusers allowed to impersonate any client via ?as_client=<id>.
-# HIGH-7 (audit 2026-04-18): centralised into settings.admin_emails_set.
-# Use the getter below to pick up ADMIN_EMAILS env-var changes without
-# module reload. The portal router uses the same source (see
-# backend/app/routers/portal.py:_superuser_emails).
-def _superuser_emails() -> frozenset[str]:
-    from backend.app.core.config import settings
-
-    return settings.admin_emails_set
-
-
-async def get_current_portal_client(
-    request: Request,
-    db_pool: asyncpg.Pool = Depends(get_database_pool),
-) -> dict[str, Any]:
-    """
-    Get current authenticated client from JWT token for Portal endpoints.
-
-    Validates that:
-    1. User has valid JWT token (set by middleware)
-    2. User role is 'client' (bypassed for superusers)
-    3. User has a linked client profile in the database
-       (bypassed for superusers using ?as_client=<id>)
-
-    Superuser impersonation mirrors portal.get_current_client — see that
-    function for the full rationale. Audit entries are written from the
-    portal.py code path; this dependency is used only by portal_visa and
-    portal_taxes, both of which are read-only data fetches.
-
-    Returns:
-        dict: {id, email, full_name, impersonating (bool)}
-    """
-    if not hasattr(request.state, "user") or not request.state.user:
-        raise HTTPException(
-            status_code=401,
-            detail="Authentication required",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user = request.state.user
-    user_email = (user.get("email") or "").lower()
-    is_superuser = user_email in _superuser_emails()
-
-    # ---- Superuser impersonation path ----
-    if is_superuser:
-        as_client_raw = request.query_params.get("as_client")
-        if as_client_raw is None:
-            async with db_pool.acquire() as conn:
-                own = await conn.fetchrow(
-                    "SELECT id, email, full_name FROM clients WHERE LOWER(email) = LOWER($1)",
-                    user_email,
-                )
-            if own:
-                return {**dict(own), "impersonating": False}
-            raise HTTPException(
-                status_code=422,
-                detail="Superuser: select a client via ?as_client=<id>",
-            )
-
-        try:
-            as_client_id = int(as_client_raw)
-        except ValueError as e:
-            raise HTTPException(
-                status_code=400,
-                detail="as_client must be an integer",
-            ) from e
-
-        async with db_pool.acquire() as conn:
-            target = await conn.fetchrow(
-                "SELECT id, email, full_name FROM clients WHERE id = $1",
-                as_client_id,
-            )
-        if not target:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Client {as_client_id} not found",
-            )
-        return {**dict(target), "impersonating": True}
-
-    # ---- Normal client path ----
-    if user.get("role") != "client":
-        raise HTTPException(
-            status_code=403,
-            detail="This endpoint is only accessible to clients",
-        )
-
-    async with db_pool.acquire() as conn:
-        client_row = await conn.fetchrow(
-            """
-            SELECT c.id, c.email, c.full_name
-            FROM clients c
-            JOIN user_profiles up ON up.linked_client_id = c.id
-            WHERE up.id = $1 AND up.role = 'client'
-            """,
-            user.get("user_id"),
-        )
-
-        if not client_row:
-            logger.warning(
-                f"Portal client lookup failed for user_id={user.get('user_id')} email={user.get('email')}",
-            )
-            raise HTTPException(
-                status_code=404,
-                detail="Client profile not found. Please contact support.",
-            )
-
-        return {**dict(client_row), "impersonating": False}

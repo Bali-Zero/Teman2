@@ -1,0 +1,51 @@
+{
+  "run_at": "2026-07-02T07:00:00+08:00",
+  "today": "2026-07-02",
+  "yesterday_seen_count": 17,
+  "new_today_count": 1,
+  "partial": false,
+  "nb_query_errors": [],
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (Cloudflare challenge - JS stub)",
+    "https://ortax.org/news (404 Not Found)"
+  ],
+  "deltas": [
+    {
+      "citation": "PMK 37/2025",
+      "title_id": "Peraturan Menteri Keuangan Nomor 37 Tahun 2025 tentang Penunjukan Pemungut, Tata Cara Pemungutan, Penyetoran, dan Pelaporan Pajak Penghasilan Pasal 22 atas Penjualan Barang Dagangan Melalui Sistem Elektronik",
+      "title_en": "Minister of Finance Regulation No. 37 of 2025 — Marketplace PPh Article 22 Collection: Designation of e-commerce platforms as tax collection agents",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "medium",
+      "effective_date": "2026-07-01",
+      "impact_note": "Mulai 1 luglio 2026, marketplace (Tokopedia, Shopee, Lazada, Bukalapak ecc.) devono raccogliere PPh Pasal 22 sulle transazioni dei merchant; merchant con omzet <Rp 500 juta/tahun sono esenti ma devono presentare surat pernyataan omzet a ciascun marketplace.",
+      "summary": "PMK 37/2025 entrata in vigore il 1 luglio 2026: i marketplace designati da DJP sono ora agenti di riscossione del PPh Pasal 22 sui venditori. DJP stima gettito aggiuntivo Rp 24 triliun. I merchant possono spostarsi su sito/social media propri per evitare il prelievo. Merchant sotto soglia Rp 500 juta devono dichiarare il proprio omzet (1 surat pernyataan valida per tutti i marketplace).",
+      "confidence": "high",
+      "source": "NB-INTEL-Tax (hint 2026-07-02) | DDTC News https://news.ddtc.co.id/berita/nasional/1820506/pajak-marketplace-resmi-berlaku-transaksi-dagang-bisa-geser-ke-sosmed",
+      "verbatim_excerpt": "Dengan mulai dipungutnya PPh Pasal 22, pedagang berpotensi lebih banyak melakukan penjualan melalui website ataupun media sosial yang dikelola pribadi. (DDTC, 2026-07-01)",
+      "first_seen_at": "2026-07-02T07:00:00+08:00",
+      "event_type": "effective_date"
+    }
+  ],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK 37/2025"
+  ]
+}

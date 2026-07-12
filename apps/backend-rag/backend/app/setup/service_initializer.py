@@ -603,7 +603,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
 
             return db_pool
 
-        except (asyncpg.PostgresError, ValueError, ConnectionError) as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, ConnectionError) as e:
             error_type = type(e).__name__
             is_transient = _is_transient_error(e)
 

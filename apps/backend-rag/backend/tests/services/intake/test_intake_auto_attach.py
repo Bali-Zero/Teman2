@@ -22,7 +22,24 @@ from backend.services.intake import auto_attach
 
 
 class _StubConn:
-    """Minimal stand-in; evaluate_concordance only passes it to the patched matcher."""
+    """Minimal stand-in for the direct-phone gate's own DB lookups.
+
+    ``evaluate_concordance`` (strict gate) never queries through it. The
+    direct-phone gate now runs two reads: an anti-funnel volume ``fetchrow`` and a
+    client-name ``fetchval``. Defaults are the benign case (low volume + a client
+    name); tests override per case.
+    """
+
+    def __init__(self, *, funnel=None, client_name="Maria Garcia"):
+        # benign default: 1 doc / 1 doctype (not a funnel)
+        self._funnel = funnel if funnel is not None else {"docs": 1, "distinct_types": 1}
+        self._client_name = client_name
+
+    async def fetchrow(self, _query, *_args):
+        return self._funnel
+
+    async def fetchval(self, _query, *_args):
+        return self._client_name
 
 
 def _patch_phone(monkeypatch, matches):
@@ -160,19 +177,163 @@ _DIRECT_SOURCE_CONTEXT = {
 
 @pytest.mark.asyncio
 async def test_guilt_direct_phone_link_candidate_is_concordant(monkeypatch):
-    _patch_phone(monkeypatch, [{"id": 42, "full_name": "X"}])
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
     v = await auto_attach.evaluate_direct_phone_concordance(
-        _StubConn(),
+        _StubConn(client_name="Maria Garcia"),
         decision="LINK_CANDIDATE",
         client_id=42,
         doc_type="passport",
         sender_phone="0812...",
         source_context=_DIRECT_SOURCE_CONTEXT,
         reason={"reason": "sender phone match (no strong identifier, no fuzzy name >= 0.40)"},
+        extracted_name="MARIA GARCIA LOPEZ",  # OCR subject name agrees with client
     )
     assert v["concordant"] is True
     assert v["phone_client_id"] == 42
     assert v["phone_match_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_internal_filter_direct_phone_internal_number_abstains(monkeypatch):
+    monkeypatch.setenv("BZ_INTERNAL_PHONE_NUMBERS", "+628213454720")
+
+    async def _fail_if_called(_conn, _phone):
+        raise AssertionError("internal phone should not reach CRM phone lookup")
+
+    monkeypatch.setattr(auto_attach, "_match_sender_phone", _fail_if_called)
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="+628213454720",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="MARIA GARCIA",
+    )
+    assert v["concordant"] is False
+    assert v["phone_client_id"] is None
+    assert v["phone_match_count"] == 0
+    assert "internal-number" in v["reason"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sender_phone", ["08213454720", "628213454720"])
+async def test_internal_filter_direct_phone_internal_number_alt_formats_abstain(
+    monkeypatch, sender_phone
+):
+    monkeypatch.setenv("BZ_INTERNAL_PHONE_NUMBERS", "+62 821-345-4720")
+
+    async def _fail_if_called(_conn, _phone):
+        raise AssertionError("internal phone should not reach CRM phone lookup")
+
+    monkeypatch.setattr(auto_attach, "_match_sender_phone", _fail_if_called)
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone=sender_phone,
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="MARIA GARCIA",
+    )
+    assert v["concordant"] is False
+    assert "internal-number" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_internal_filter_direct_phone_non_internal_number_unchanged(monkeypatch):
+    monkeypatch.setenv("BZ_INTERNAL_PHONE_NUMBERS", "+628213454720")
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="+628299900001",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="MARIA GARCIA",
+    )
+    assert v["concordant"] is True
+    assert v["phone_client_id"] == 42
+    assert v["phone_match_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_internal_filter_direct_phone_empty_blocklist_unchanged(monkeypatch):
+    monkeypatch.delenv("BZ_INTERNAL_PHONE_NUMBERS", raising=False)
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="+628213454720",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="MARIA GARCIA",
+    )
+    assert v["concordant"] is True
+    assert v["phone_client_id"] == 42
+    assert v["phone_match_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_innocence_direct_phone_name_mismatch_abstains(monkeypatch):
+    """The lived incident: phone resolves a client but the document's OCR subject
+    name is a DIFFERENT person (operator forwarded a client's doc) → abstain."""
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Ari Firda"}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Ari Firda"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="birth_certificate",
+        sender_phone="0812...",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="JUAN CARLOS FERNANDEZ",  # the Spanish client, not Ari
+    )
+    assert v["concordant"] is False
+    assert "name not concordant" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_direct_phone_no_extractable_name_abstains(monkeypatch):
+    """doc with no subject name (ktp/bank_statement) cannot be verified → abstain."""
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="bank_statement",
+        sender_phone="0812...",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name=None,  # nothing to verify the subject
+    )
+    assert v["concordant"] is False
+    assert "no extractable subject name" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_direct_phone_funnel_abstains(monkeypatch):
+    """high-volume funnel phone (one number forwarding for many clients) → abstain
+    even though it resolves to one client_id and the name agrees."""
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
+    v = await auto_attach.evaluate_direct_phone_concordance(
+        _StubConn(funnel={"docs": 51, "distinct_types": 8}, client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        doc_type="passport",
+        sender_phone="0812...",
+        source_context=_DIRECT_SOURCE_CONTEXT,
+        reason={"reason": "sender phone match"},
+        extracted_name="MARIA GARCIA",
+    )
+    assert v["concordant"] is False
+    assert "funnel/transit" in v["reason"]
 
 
 @pytest.mark.asyncio
@@ -318,5 +479,147 @@ async def test_try_direct_phone_auto_attach_noop_when_writer_off(monkeypatch):
         sender_phone="0812",
         source_context=_DIRECT_SOURCE_CONTEXT,
     )
+    assert out["committed"] is False
+    assert out["skipped"] == "writer_off"
+
+
+# --------------------------------------------------------------------------- #
+# LEVA 3 — name-id concordance for NO-PHONE sources (Drive/Dropbox bulk).
+# Second signal = OCR-extracted subject name vs CRM client name; a present,
+# resolving sender phone is LEVA 2 territory and must NEVER be overruled here.
+# --------------------------------------------------------------------------- #
+def test_nameid_auto_attach_disabled_by_default(monkeypatch):
+    monkeypatch.delenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", raising=False)
+    assert auto_attach.nameid_auto_attach_enabled() is False
+
+
+def test_nameid_auto_attach_enabled_when_truthy(monkeypatch):
+    for val in ("1", "true", "yes", "on", "ON"):
+        monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", val)
+        assert auto_attach.nameid_auto_attach_enabled() is True
+
+
+def test_nameid_auto_attach_disabled_when_falsy(monkeypatch):
+    for val in ("0", "false", "no", "off", ""):
+        monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", val)
+        assert auto_attach.nameid_auto_attach_enabled() is False
+
+
+@pytest.mark.asyncio
+async def test_guilt_nameid_no_phone_strong_id_and_name_agree(monkeypatch):
+    """Drive doc: NO sender phone, strong-id→1 client, doc subject name matches
+    the client name (order-insensitive) → concordant. The one case LEVA 3 exists for."""
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="AUTO_ATTACH",
+        client_id=42,
+        sender_phone=None,
+        extracted_name="GARCIA MARIA",
+    )
+    assert v["concordant"] is True
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_resolving_phone_defers_to_leva2(monkeypatch):
+    """A sender phone that resolves to ANY client — even the SAME one, agreeing —
+    keeps this gate shut: phone concordance (LEVA 2) owns every present-phone
+    verdict (agree/disagree/shared) and name evidence never overrules it."""
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="AUTO_ATTACH",
+        client_id=42,
+        sender_phone="0812...",
+        extracted_name="GARCIA MARIA",
+    )
+    assert v["concordant"] is False
+    assert "phone" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_name_mismatch_abstains(monkeypatch):
+    """strong-id→client 42 but the document's subject is someone else → review."""
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="AUTO_ATTACH",
+        client_id=42,
+        sender_phone=None,
+        extracted_name="JOHN SMITH",
+    )
+    assert v["concordant"] is False
+    assert "name not concordant" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_no_extractable_name_abstains(monkeypatch):
+    """ktp/bank_statement carry no extractable subject name → unverifiable → review."""
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="AUTO_ATTACH",
+        client_id=42,
+        sender_phone=None,
+        extracted_name=None,
+    )
+    assert v["concordant"] is False
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_client_without_name_abstains(monkeypatch):
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name=None),
+        decision="AUTO_ATTACH",
+        client_id=42,
+        sender_phone=None,
+        extracted_name="GARCIA MARIA",
+    )
+    assert v["concordant"] is False
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_not_auto_attach_decision(monkeypatch):
+    """LINK_CANDIDATE/NO_MATCH never enter LEVA 3 — strong identifier is signal #1."""
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        sender_phone=None,
+        extracted_name="GARCIA MARIA",
+    )
+    assert v["concordant"] is False
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_unresolved_client_abstains(monkeypatch):
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="AUTO_ATTACH",
+        client_id=None,
+        sender_phone=None,
+        extracted_name="GARCIA MARIA",
+    )
+    assert v["concordant"] is False
+
+
+@pytest.mark.asyncio
+async def test_try_nameid_auto_attach_noop_when_killswitch_off(monkeypatch):
+    monkeypatch.delenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", raising=False)
+    proposal = {"id": 1, "routing": {"client_id": 42}, "entity_resolution": {"decision": "AUTO_ATTACH"}}
+    out = await auto_attach.try_nameid_auto_attach(proposal, pool=None)
+    assert out["committed"] is False
+    assert out["skipped"] == "nameid_killswitch_off"
+
+
+@pytest.mark.asyncio
+async def test_try_nameid_auto_attach_noop_when_writer_off(monkeypatch):
+    monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", "1")
+    monkeypatch.delenv("INTAKE_WRITER_ENABLED", raising=False)
+    proposal = {"id": 1, "routing": {"client_id": 42}, "entity_resolution": {"decision": "AUTO_ATTACH"}}
+    out = await auto_attach.try_nameid_auto_attach(proposal, pool=None)
     assert out["committed"] is False
     assert out["skipped"] == "writer_off"

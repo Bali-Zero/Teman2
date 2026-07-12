@@ -25,7 +25,11 @@ def _get_bus() -> EventBus:
     """Lazy-init EventBus singleton. Overridable in tests via monkeypatch."""
     global _bus_singleton
     if _bus_singleton is None:
-        r = redis.from_url(_REDIS_URL, decode_responses=False)
+        # #1944 pattern: honor REDIS_PASSWORD when the URL carries no password
+        # (conditional: an explicit password=None would clobber an in-URL password)
+        _pw = os.getenv("REDIS_PASSWORD")
+        r = redis.from_url(_REDIS_URL, decode_responses=False,
+                           **({"password": _pw} if _pw else {}))
         _bus_singleton = EventBus(redis=r, jsonl_path=ORGANISM_JSONL_DEFAULT)
     return _bus_singleton
 

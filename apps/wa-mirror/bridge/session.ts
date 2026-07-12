@@ -53,7 +53,11 @@ import {
   openSession,
   touch,
 } from "./heartbeat.js";
-import { query } from "./pg.js";
+import { query, getPool } from "./pg.js";
+import {
+  hydrateAllGroupSubjects,
+  attachGroupSubjectListeners,
+} from "./group_subject.js";
 import {
   PgMessageContextStore,
   extractMessageRecord,
@@ -321,10 +325,21 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
           bumpUpsertTs();
         }
       });
+      let groupSubjectsHydrated = false;
       onSock("connection.update", (u) => {
         if (u.connection === "open") {
           connectionOpen = true;
           lastUpsertAt = Date.now(); // reset timer on fresh open
+          // FIX (2026-06-30): hydrate group names once per session. Groups are
+          // dashboard-blind without this — group_subject_snapshot is only ever
+          // set from Baileys group metadata, never the message envelope.
+          // Fire-and-forget + fully defensive (never throws into the ev loop).
+          if (!groupSubjectsHydrated) {
+            groupSubjectsHydrated = true;
+            void hydrateAllGroupSubjects(sock, getPool(), logger);
+            const detach = attachGroupSubjectListeners(sock, getPool(), logger);
+            disposers.add(detach);
+          }
         } else if (u.connection === "close") {
           connectionOpen = false;
         }
@@ -489,7 +504,10 @@ async function handleConnectionUpdate(
       );
     }
     logger.info({ sessionId: ctx.sessionId }, "wa-mirror session connected");
-    await sendTelegramAlert(`wa-mirror connected: ${ctx.account.name}`, logger);
+    await sendTelegramAlert(`wa-mirror connected: ${ctx.account.name}`, logger, {
+      tier: "digest",
+      dedupKey: `wa-bridge:connected:${ctx.account.name}`,
+    });
 
     // CICATRIX 2026-05-25: refresh pre-keys on every connect.
     // Pre-fix: bridge initial pairing seeded ~30 prekeys, all consumed over time.
@@ -564,6 +582,9 @@ async function handleConnectionUpdate(
     await sendTelegramAlert(
       `wa-mirror disconnected: ${ctx.account.name}; reason=${reason}; reconnect_attempt=${deps.attempt}`,
       logger,
+      // W67: reconnect storms flood this path — dedup collapses a flap wave
+      // into one digest entry per account per 6h window.
+      { tier: "digest", dedupKey: `wa-bridge:disconnected:${ctx.account.name}` },
     );
 
     if (terminal) {
@@ -722,6 +743,7 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
           await sendTelegramAlert(
             `wa-mirror DB write errors >5: ${ctx.account.name}; consecutive=${consecutiveDbErrors}`,
             logger,
+            { tier: "p0", dedupKey: `wa-bridge:dberr:${ctx.account.name}` },
           );
         }
       }

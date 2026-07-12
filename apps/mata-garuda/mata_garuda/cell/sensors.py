@@ -86,18 +86,20 @@ class GapStreamSensor:
         self.name = "gap_stream"
 
     async def read(self, **context) -> SensorReading:
+        # Route XLEN through base_worker.redis_cmd (authed SSOT) — bare redis-cli
+        # returned NOAUTH at exit 0 under the requirepass cutover, which then
+        # crashed int() and reported a misleading error (W89, cicatrix #2).
+        from mata_garuda.workers.base_worker import redis_cmd as _bw_redis_cmd
         try:
-            result = await asyncio.to_thread(
-                subprocess.run,
-                ["redis-cli", "XLEN", self.STREAM_KEY],
-                capture_output=True, text=True, timeout=5,
+            out = await asyncio.to_thread(
+                _bw_redis_cmd, "XLEN", self.STREAM_KEY, timeout=5
             )
-            if result.returncode != 0:
+            if out.startswith("[ERROR]"):
                 return SensorReading(
                     sensor_name=self.name, status="yellow",
-                    metadata={"error": "redis-cli failed"},
+                    metadata={"error": out},
                 )
-            count = int(result.stdout.strip())
+            count = int(out.strip())
             if count == 0:
                 status = "green"
             elif count < 10:

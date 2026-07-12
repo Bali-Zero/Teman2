@@ -32,7 +32,7 @@ import httpx
 # ---------------------------------------------------------------------------
 
 GEMINI_MODEL = "gemini-3-flash-preview"
-DEEPSEEK_MODEL = "deepseek-chat"
+DEEPSEEK_MODEL = "deepseek-v4-flash"  # legacy alias retires 2026-07-24
 
 GEMINI_URL_TMPL = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"

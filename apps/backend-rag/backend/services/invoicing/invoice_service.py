@@ -274,7 +274,7 @@ class InvoiceAutomationService:
                 "accounting_notified": asya_notified,
             }
 
-        except (asyncpg.PostgresError, OSError) as error:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as error:
             logger.warning(
                 f"Invoice automation failed for practice {practice_id} "
                 f"({type(error).__name__}): {error}",

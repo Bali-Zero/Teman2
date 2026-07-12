@@ -154,6 +154,7 @@ from nuzantara_mcp.tools.workflows import register as register_workflows
 from nuzantara_mcp.tools.admin import register as register_admin
 from nuzantara_mcp.tools.health import register as register_health
 from nuzantara_mcp.tools.google_bridge import register as register_google_bridge
+from nuzantara_mcp.tools.flowkit import register as register_flowkit
 
 # --- Tier 1 expansion: Journey, Pricing, Invoicing, Compliance ---
 from nuzantara_mcp.tools.journey import register as register_journey
@@ -204,6 +205,7 @@ register_workflows(mcp, _call, _call_safe)
 register_admin(mcp, _call, _call_safe)
 register_health(mcp, _call, _call_safe)
 register_google_bridge(mcp, _call, _call_safe)
+register_flowkit(mcp, _call, _call_safe)
 
 # Tier 1 expansion
 register_journey(mcp, _call, _call_safe)

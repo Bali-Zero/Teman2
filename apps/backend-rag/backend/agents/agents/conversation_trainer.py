@@ -223,7 +223,7 @@ Return JSON:
                     "common_themes": [],
                 }
 
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error analyzing winning patterns: %s", e, exc_info=True)
             return None
         except Exception as e:

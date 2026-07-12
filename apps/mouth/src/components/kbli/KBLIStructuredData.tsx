@@ -1,9 +1,27 @@
 import type { KBLICode } from "@/lib/kbli-types";
+import { buildKbliFaq } from "@/lib/kbli-faq";
 
-export function KBLICodeJsonLd({ code }: { code: KBLICode }) {
+export function KBLICodeJsonLd({
+  code,
+  dateModified,
+}: {
+  code: KBLICode;
+  // Real dataset modification date (file mtime, same source as the sitemap
+  // lastmod). Rendering-time `new Date()` claimed "modified today" on every
+  // build — a fabricated freshness signal Google learns to distrust.
+  dateModified?: Date;
+}) {
+  // National PMA openness != Bali registrability. When a code is nationally open
+  // but l4_bali.blocked, the SEO/JSON-LD must NOT tell Google "100% foreign
+  // ownership allowed" unqualified — it would surface in rich results / AI answers
+  // as a green light that is false for a Bali setup.
+  const baliBlocked = !!code.baliL4?.blocked;
+  const baliNat = baliBlocked
+    ? " nationally — but blocked for a PT PMA in Bali"
+    : "";
   const pmaLabel =
     code.pma.status === "open"
-      ? `100% foreign ownership allowed (TERBUKA)`
+      ? `100% foreign ownership allowed (TERBUKA)${baliNat}`
       : code.pma.status === "restricted"
         ? `Restricted to max ${code.pma.maxForeign}% foreign ownership (TERBATAS)`
         : "Closed to foreign investment (TERTUTUP)";
@@ -19,7 +37,9 @@ export function KBLICodeJsonLd({ code }: { code: KBLICode }) {
     description: `${code.description.slice(0, 160)}. ${pmaLabel}. Risk: ${riskLevel}.`,
     inLanguage: "en",
     datePublished: "2025-06-18",
-    dateModified: new Date().toISOString().split("T")[0],
+    ...(dateModified
+      ? { dateModified: dateModified.toISOString().split("T")[0] }
+      : {}),
     author: {
       "@type": "Organization",
       name: "Bali Zero",
@@ -46,7 +66,8 @@ export function KBLICodeJsonLd({ code }: { code: KBLICode }) {
     keywords: [
       `KBLI ${code.code}`,
       code.titleId,
-      code.titleEn,
+      // avoid repeating the Indonesian title when no distinct English title exists
+      code.titleEn !== code.titleId ? code.titleEn : undefined,
       "KBLI 2025",
       "Indonesian business license",
       code.pma.status === "open" ? "PT PMA" : undefined,
@@ -86,44 +107,13 @@ export function KBLICodeJsonLd({ code }: { code: KBLICode }) {
 }
 
 export function KBLIFaqJsonLd({ code }: { code: KBLICode }) {
-  const pmaAnswer =
-    code.pma.status === "open"
-      ? `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
-      : code.pma.status === "restricted"
-        ? `Partially. KBLI ${code.code} is TERBATAS — foreign ownership capped at ${code.pma.maxForeign}%.${code.pma.condition ? ` Condition: ${code.pma.condition}` : ""} An Indonesian partner holds the remaining shares.`
-        : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — closed to foreign investment. Reserved for Indonesian nationals only.`;
-
-  const licenseAnswer =
-    code.licensing.length > 0
-      ? `KBLI ${code.code} has a ${code.licensing[0].riskCategory} risk classification. Required license: ${code.licensing[0].licenseType ?? "NIB (Nomor Induk Berusaha)"}. ${code.licensing[0].timeframe ? `Processing time: ${code.licensing[0].timeframe}.` : "Processed through OSS (Online Single Submission)."}`
-      : `KBLI ${code.code} requires a NIB (Nomor Induk Berusaha) via OSS (Online Single Submission). Contact a licensed consultant for specific requirements.`;
-
-  const questions: { question: string; answer: string }[] = [
-    {
-      question: `Can foreigners operate a ${code.titleEn.toLowerCase()} business in Indonesia?`,
-      answer: pmaAnswer,
-    },
-    {
-      question: `What license is required for KBLI ${code.code}?`,
-      answer: licenseAnswer,
-    },
-    {
-      question: `What is KBLI ${code.code}?`,
-      answer: `KBLI ${code.code} is the Indonesian business classification code for "${code.titleId}" (${code.titleEn}). It falls under Section ${code.section ?? "N/A"} of KBLI 2025, the Indonesian Standard Industrial Classification updated by BPS (Regulation 7/2025), effective June 18, 2026.`,
-    },
-  ];
-
-  if (code.transition.previousCodes.length > 0) {
-    questions.push({
-      question: `How did KBLI ${code.code} change from KBLI 2020 to 2025?`,
-      answer: `KBLI ${code.code} was mapped from previous code${code.transition.previousCodes.length > 1 ? "s" : ""} ${code.transition.previousCodes.join(", ")} (KBLI 2020).${code.transition.mappingNote ? ` ${code.transition.mappingNote}` : ""} All businesses must migrate to KBLI 2025 by June 18, 2026 per BPS Regulation 7/2025.`,
-    });
-  }
-
+  // Questions and answers come from buildKbliFaq — the SAME source that
+  // renders the visible Common Questions section, so the FAQPage markup
+  // always has matching on-page content (Google requires it).
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: questions.map((q) => ({
+    mainEntity: buildKbliFaq(code).map((q) => ({
       "@type": "Question",
       name: q.question,
       acceptedAnswer: {

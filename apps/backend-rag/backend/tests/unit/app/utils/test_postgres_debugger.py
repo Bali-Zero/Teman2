@@ -242,3 +242,183 @@ class TestPostgreSQLDebuggerInit:
             mock_settings.database_url = "postgresql://from-settings"
             debugger = PostgreSQLDebugger()
             assert debugger.database_url == "postgresql://from-settings"
+
+
+class TestPostgreSQLDebuggerGetActiveLocks:
+    """
+    Regression tests for get_active_locks().
+
+    Live prod bug: /api/debug/postgres/performance/locks returned 500
+    with 'column reference "pid" is ambiguous'. The query JOINs
+    pg_locks (aliased l) with pg_stat_activity (aliased a) — both
+    tables have a `pid` column, so any bare, unqualified `pid` in the
+    SELECT list is ambiguous to Postgres. Fix: qualify with `a.pid`.
+    """
+
+    @pytest.fixture
+    def debugger(self):
+        with patch("backend.app.utils.postgres_debugger.settings") as mock_settings:
+            mock_settings.database_url = "postgresql://test"
+            return PostgreSQLDebugger()
+
+    async def _captured_query(self, debugger, mock_conn):
+        """Run get_active_locks with a mocked connection and return the SQL sent to fetch()."""
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            await debugger.get_active_locks()
+        assert mock_conn.fetch.await_args is not None
+        return mock_conn.fetch.await_args.args[0]
+
+    @pytest.mark.asyncio
+    async def test_query_qualifies_pid_with_table_alias(self, debugger):
+        """The SELECT list must not contain a bare, unqualified `pid` column."""
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=[])
+        mock_conn.close = AsyncMock()
+
+        query = await self._captured_query(debugger, mock_conn)
+
+        # Isolate the SELECT clause (before FROM) — this is where an
+        # unqualified `pid` caused Postgres to reject the query.
+        select_clause = query.split("FROM", 1)[0]
+        import re
+
+        bare_pid_matches = re.findall(r"(?<![\w.])pid(?![\w])", select_clause)
+        assert not bare_pid_matches, (
+            f"SELECT clause has {len(bare_pid_matches)} unqualified 'pid' reference(s) "
+            f"— ambiguous with a JOIN across pg_locks/pg_stat_activity: {select_clause!r}"
+        )
+        # The qualified reference must still be present so the fix
+        # doesn't silently drop the column.
+        assert "a.pid" in query or "l.pid" in query.split("JOIN")[0]
+
+    @pytest.mark.asyncio
+    async def test_join_still_matches_pid_between_both_tables(self, debugger):
+        """The JOIN condition itself (l.pid = a.pid) must be untouched."""
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=[])
+        mock_conn.close = AsyncMock()
+
+        query = await self._captured_query(debugger, mock_conn)
+        assert "l.pid = a.pid" in query
+
+    @pytest.mark.asyncio
+    async def test_response_shape_preserved(self, debugger):
+        """The fix must not change the returned dict shape (frontend-facing contract)."""
+        mock_row = {
+            "locktype": "relation",
+            "relation": "some_table",
+            "mode": "AccessShareLock",
+            "granted": True,
+            "pid": 12345,
+            "usename": "nuzantara_rag",
+            "application_name": "backend",
+            "state": "active",
+            "query_start": None,
+        }
+
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=[mock_row])
+        mock_conn.close = AsyncMock()
+
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            result = await debugger.get_active_locks()
+
+        assert result == [
+            {
+                "lock_type": "relation",
+                "relation": "some_table",
+                "mode": "AccessShareLock",
+                "granted": True,
+                "pid": 12345,
+                "username": "nuzantara_rag",
+                "application": "backend",
+                "state": "active",
+                "query_start": None,
+            }
+        ]
+
+
+class TestGetTableStatsSQL:
+    """
+    Regression tests for get_table_stats() SQL generation.
+
+    Bug: prod 500 on GET /api/debug/postgres/stats/tables —
+    "relation \"information_schema.statistics\" does not exist".
+    information_schema.statistics is a MySQL-only relation; PostgreSQL has
+    no such view. The index-count subquery must use pg_indexes instead,
+    qualified against the outer pg_tables columns to avoid ambiguity.
+    """
+
+    @pytest.fixture
+    def debugger(self):
+        """Create debugger instance"""
+        with patch("backend.app.utils.postgres_debugger.settings") as mock_settings:
+            mock_settings.database_url = "postgresql://test"
+            return PostgreSQLDebugger()
+
+    @staticmethod
+    def _mock_connection_capturing_sql():
+        """Return (mock_conn, get_connection_patch_target) that records the SQL passed to fetch()."""
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=[])
+        mock_conn.close = AsyncMock()
+        return mock_conn
+
+    @pytest.mark.asyncio
+    async def test_single_table_query_has_no_mysql_only_relation(self, debugger):
+        """table_name branch: query must not reference information_schema.statistics"""
+        mock_conn = self._mock_connection_capturing_sql()
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            await debugger.get_table_stats(table_name="clients")
+
+        assert mock_conn.fetch.await_count == 1
+        sql = mock_conn.fetch.await_args.args[0]
+        assert "information_schema.statistics" not in sql
+        assert "STATISTICS" not in sql.upper()
+
+    @pytest.mark.asyncio
+    async def test_single_table_query_uses_qualified_pg_indexes(self, debugger):
+        """table_name branch: index_count subquery must use pg_indexes, qualified vs pg_tables"""
+        mock_conn = self._mock_connection_capturing_sql()
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            await debugger.get_table_stats(table_name="clients")
+
+        sql = mock_conn.fetch.await_args.args[0]
+        assert "FROM pg_indexes" in sql
+        assert "pg_indexes.schemaname = pg_tables.schemaname" in sql
+        assert "pg_indexes.tablename = pg_tables.tablename" in sql
+
+    @pytest.mark.asyncio
+    async def test_all_tables_query_has_no_mysql_only_relation(self, debugger):
+        """else branch (no table_name filter): same MySQL-ism must be absent"""
+        mock_conn = self._mock_connection_capturing_sql()
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            await debugger.get_table_stats(table_name=None)
+
+        assert mock_conn.fetch.await_count == 1
+        sql = mock_conn.fetch.await_args.args[0]
+        assert "information_schema.statistics" not in sql
+
+    @pytest.mark.asyncio
+    async def test_all_tables_query_uses_qualified_pg_indexes(self, debugger):
+        """else branch: index_count subquery must use pg_indexes, qualified vs pg_tables"""
+        mock_conn = self._mock_connection_capturing_sql()
+        with patch.object(debugger, "_get_connection", AsyncMock(return_value=mock_conn)):
+            await debugger.get_table_stats(table_name=None)
+
+        sql = mock_conn.fetch.await_args.args[0]
+        assert "FROM pg_indexes" in sql
+        assert "pg_indexes.schemaname = pg_tables.schemaname" in sql
+        assert "pg_indexes.tablename = pg_tables.tablename" in sql
+
+    def test_module_source_has_no_information_schema_statistics(self):
+        """
+        Static guard: the whole module must never reference the MySQL-only
+        information_schema.statistics relation again (W89 class regression guard).
+        """
+        import inspect
+
+        from backend.app.utils import postgres_debugger
+
+        source = inspect.getsource(postgres_debugger)
+        assert "information_schema.statistics" not in source

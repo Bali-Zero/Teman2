@@ -239,3 +239,121 @@ def test_photo_fullbleed_skeleton_is_full_bleed_photo_with_body() -> None:
     assert ".scrim" in skel
     # logo present per brand convention
     assert "logo" in skel
+
+
+# ── 6. B1 deterministic composition swap (2026-07-02) ─────────────────────────
+#
+# statement-bomb is a 3-15-word punch layout. A MID cta/statement/closing slide
+# with an over-budget body crams (the "35-word take" failure mode, but on the
+# statement path). B1 swaps that pre-render to editorial-text. The TRUE last
+# slide (index==total) is ALWAYS statement-bomb — Art 9.5 hard rule, closer
+# excluded from the swap by construction.
+
+from wr2_html_renderer.composer import (  # noqa: E402
+    _STATEMENT_BOMB_MAX_WORDS,
+    _slide_body_word_count,
+)
+
+
+def _long_body(n_words: int) -> str:
+    return " ".join(f"word{i}" for i in range(n_words))
+
+
+# guilt: an over-budget MID cta/statement slide swaps to editorial-text ─────────
+
+
+def test_b1_mid_cta_overlong_body_swaps_to_editorial_text() -> None:
+    slide = {"slide_type": "cta", "is_hero_image": False,
+             "body": _long_body(_STATEMENT_BOMB_MAX_WORDS + 10)}
+    assert map_slide_to_family(slide, 5, 8) == "editorial-text"
+
+
+def test_b1_mid_statement_overlong_statement_field_swaps() -> None:
+    # the {{statement}} fill prefers slide["statement"]; the word count must too.
+    slide = {"slide_type": "statement", "is_hero_image": False,
+             "statement": _long_body(_STATEMENT_BOMB_MAX_WORDS + 5),
+             "body": "short"}
+    assert map_slide_to_family(slide, 4, 9) == "editorial-text"
+
+
+def test_b1_mid_closing_overlong_body_swaps() -> None:
+    slide = {"slide_type": "closing", "is_hero_image": False,
+             "body": _long_body(_STATEMENT_BOMB_MAX_WORDS + 1)}
+    assert map_slide_to_family(slide, 6, 9) == "editorial-text"
+
+
+# innocence: the closer, short punches, and non-statement paths are untouched ───
+
+
+def test_b1_true_last_slide_never_swaps_even_when_overlong() -> None:
+    # Art 9.5 hard rule: the closing slide MUST be statement-bomb. Over-length
+    # here is A4's job (drafter regen), NOT a layout swap — B1 must NOT touch it.
+    slide = {"slide_type": "cta", "is_hero_image": False,
+             "body": _long_body(_STATEMENT_BOMB_MAX_WORDS + 50)}
+    assert map_slide_to_family(slide, 8, 8) == "statement-bomb"
+
+
+def test_b1_short_punch_cta_stays_statement_bomb() -> None:
+    # a genuine 3-15 word punch on a mid CTA slide is the layout's intended use.
+    slide = {"slide_type": "cta", "is_hero_image": False,
+             "body": _long_body(8)}
+    assert map_slide_to_family(slide, 5, 8) == "statement-bomb"
+
+
+def test_b1_at_budget_boundary_stays_statement_bomb() -> None:
+    # exactly at the budget (not OVER it) is still a valid punch → no swap.
+    slide = {"slide_type": "statement", "is_hero_image": False,
+             "body": _long_body(_STATEMENT_BOMB_MAX_WORDS)}
+    assert map_slide_to_family(slide, 4, 9) == "statement-bomb"
+
+
+def test_b1_empty_body_cta_stays_statement_bomb() -> None:
+    # absent/empty body (0 words) must never trip the swap.
+    assert map_slide_to_family({"slide_type": "cta"}, 5, 8) == "statement-bomb"
+
+
+def test_b1_does_not_mutate_the_slide_dict() -> None:
+    # map_slide_to_family returns a string; it must NOT write back to the caller's
+    # slide (landmine: render_apply passes the ORIGINAL object downstream).
+    slide = {"slide_type": "cta", "is_hero_image": False,
+             "body": _long_body(_STATEMENT_BOMB_MAX_WORDS + 10)}
+    before = dict(slide)
+    map_slide_to_family(slide, 5, 8)
+    assert slide == before
+
+
+def test_b1_is_idempotent() -> None:
+    # calling twice yields the same family (no hidden state / accumulation).
+    slide = {"slide_type": "cta", "is_hero_image": False,
+             "body": _long_body(_STATEMENT_BOMB_MAX_WORDS + 10)}
+    a = map_slide_to_family(slide, 5, 8)
+    b = map_slide_to_family(slide, 5, 8)
+    assert a == b == "editorial-text"
+
+
+def test_b1_explicit_pin_still_wins_over_swap() -> None:
+    # an explicit RENDERABLE layout_family pin is honoured first (line 118),
+    # so a manual author who pins statement-bomb keeps it — B1 only governs the
+    # AUTO-routing path, not explicit intent.
+    slide = {"slide_type": "cta", "is_hero_image": False,
+             "layout_family": "statement-bomb",
+             "body": _long_body(_STATEMENT_BOMB_MAX_WORDS + 30)}
+    assert map_slide_to_family(slide, 5, 8) == "statement-bomb"
+
+
+def test_b1_swapped_slide_editorial_text_renders_full_body() -> None:
+    # the swap target must actually carry the long body (no message loss): the
+    # editorial-text skeleton has a {{body}} slot, unlike statement-bomb's
+    # {{statement}} punch. This is WHY the swap preserves the content.
+    skel = _extract_skeleton("editorial-text")
+    assert "{{body}}" in skel
+
+
+def test_b1_word_count_helper_matches_statement_fill_precedence() -> None:
+    # helper precedence (statement > headline > body) mirrors the {{statement}}
+    # fill at composition time, so the budget is measured on the rendered text.
+    assert _slide_body_word_count({"statement": "a b c", "headline": "x y",
+                                   "body": "1 2 3 4"}) == 3
+    assert _slide_body_word_count({"headline": "x y", "body": "1 2 3 4"}) == 2
+    assert _slide_body_word_count({"body": "1 2 3 4"}) == 4
+    assert _slide_body_word_count({}) == 0

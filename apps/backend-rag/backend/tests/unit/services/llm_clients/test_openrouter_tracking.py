@@ -15,6 +15,16 @@ from backend.services.llm_clients.openrouter_client import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _enable_openrouter():
+    """These tests cover cost tracking, not the COS-LAW-013 kill switch —
+    egress must be enabled for complete() to reach the tracked path."""
+    with patch("backend.services.llm_clients.openrouter_client.settings") as mock_settings:
+        mock_settings.openrouter_enabled = True
+        mock_settings.openrouter_api_key = "test-key"
+        yield
+
+
 @pytest.mark.asyncio
 async def test_complete_records_cost_with_dynamic_model():
     client = OpenRouterClient(api_key="test-key", default_tier=ModelTier.RAG)

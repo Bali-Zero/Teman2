@@ -33,6 +33,17 @@ def _restore_real_config_module():
     finally:
         if saved is not None:
             sys.modules["backend.app.core.config"] = saved
+            # The re-import above also rebound the parent package's `config`
+            # attribute to the fresh module. Restore it too: otherwise
+            # sys.modules and `backend.app.core.config`-as-attribute point at
+            # DIFFERENT module objects for the rest of the session, and any
+            # later monkeypatch.setattr("backend.app.core.config.settings...")
+            # (getattr-chain resolution) patches the orphan while runtime
+            # `from ... import settings` (sys.modules resolution) reads the
+            # original — a phantom patch that cost a full pre-push cycle.
+            parent = sys.modules.get("backend.app.core")
+            if parent is not None:
+                parent.config = saved
 
 
 def _fresh_settings(env_vars: dict[str, str | None]):

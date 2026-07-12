@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Repo canon of the LIVE plist on Pro (~/Library/LaunchAgents). Committed 2026-07-02 by the
+     proprioception PR: the watcher ran armed-but-invisible-to-repo for weeks (boundary
+     home<->repo). Pro-resident job: paths are Pro's user (nuzantara) by design; installers
+     adapt per machine. No secrets inline (verified before commit). -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.regulatory-watcher.daily</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>/Users/nuzantara/scripts/regulatory-watcher-run.sh &gt;&gt; /Users/nuzantara/logs/regulatory-watcher.log 2&gt;&amp;1</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/regulatory-watcher.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/regulatory-watcher.error.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

@@ -29,8 +29,19 @@ from mata_garuda.tools.youtube_tools import fetch_youtube_transcript
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.workers.normalizer import run_normalizer
 from mata_garuda.workers.scorer import run_scorer
-from mata_garuda.workers.nlm_feeder import run_nlm_feeder
+from mata_garuda.workers.heartbeat import emit_heartbeat
 from mata_garuda.config import AI_RSS_FEEDS, AI_YOUTUBE_CHANNELS
+
+# Organ id matches organs_registry.yaml `mata_garuda.sentinel_daily.mini`
+# (com.matagaruda.sentinel.daily on Mini — live ProgramArguments invoke THIS
+# file). A prior instrumentation pass (PR #2090) wired emit_heartbeat into
+# run_sentinel_cell.py under this same organ_id, but that script is what
+# Pro's separate hourly cron (com.matagaruda.sentinel.hourly) invokes — an
+# unverified assumption ("this script is the Mini daily cron target") that
+# never held. The Mini daily cron kept writing no sidecar at all, so the
+# healer receptor flagged this organ never_armed indefinitely. Wired here
+# 2026-07-08 (healer tick, PENDING-ARMS ledger-overdue).
+ORGAN_ID = "mata_garuda.sentinel_daily.mini"
 
 
 def harvest() -> dict:
@@ -99,7 +110,7 @@ def harvest() -> dict:
     return counts
 
 
-def main():
+def main() -> int:
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S %Z")
     print(f"\n=== AI-Intel-Sentinel — {ts} ===")
 
@@ -111,7 +122,8 @@ def main():
 
     if total == 0:
         print("  No items harvested. Exiting.")
-        return
+        emit_heartbeat(ORGAN_ID, "ok", metadata={"harvested": counts, "normalized": 0, "scored": 0})
+        return 0
 
     # 2. Normalize + Score + NLM Feed
     print("\n[PROCESS]")
@@ -121,21 +133,51 @@ def main():
     s_stats = run_scorer(kb, max_items=50)
     print(f"  Scorer: {s_stats}")
 
-    # 3. Feed to NLM (grows the brain over time)
-    print("\n[NLM FEED]")
-    nlm_stats = run_nlm_feeder(kb, max_items=30)
-    print(f"  NLM Feeder: {nlm_stats}")
+    # NLM feeding is a SEPARATE Sink stage, handled by the dedicated cron
+    # com.matagaruda.nlm-feeder-stream.hourly (reads the stream every hour).
+    # It was inline here, but run_nlm_feeder (KB-scan → `nlm` CLI / headless
+    # Chrome) HANGS under launchd (no TTY) and got SIGKILL'd (-9), which
+    # silently stalled the WHOLE harvester for days. Decoupled 2026-06-30.
     kb.close()
 
-    # 3. Digest
-    print("\n[DIGEST]")
-    # Import here to avoid circular issues
-    from scripts.run_ai_digest import main as run_digest
-    run_digest()
+    # Digest/briefing is a SEPARATE Sink, handled by the dedicated crons
+    # com.matagaruda.daily-briefing + com.matagaruda.weekly-digest. It was
+    # inline here, but run_ai_digest calls `nlm notebook query` (headless
+    # Chrome) which ALSO hangs under launchd. Decoupled 2026-06-30.
 
     print(f"\n=== Sentinel complete ({total} harvested, "
           f"{n_stats['published']} normalized, {s_stats['stored']} scored) ===")
 
+    # Heartbeat at real completion, carrying the actual run counts — not
+    # just a process-start ping (same convention as run_intel_bridge.py).
+    emit_heartbeat(
+        ORGAN_ID,
+        "ok",
+        metadata={
+            "harvested": total,
+            "normalized": n_stats.get("published", 0),
+            "scored": s_stats.get("stored", 0),
+        },
+    )
+    return 0
+
+
+def _cli_entrypoint(main_fn) -> int:
+    """Run `main_fn()`, emitting a fail heartbeat only on a genuine exception.
+
+    Catching `Exception` (not `BaseException`) means a `sys.exit()` inside
+    `main_fn` would propagate untouched instead of being caught and
+    relabeled as a failure — the exact class of bug fixed in run_normalizer.py
+    / run_intel_bridge.py (2026-07-07, PR #2107). `main` here never calls
+    `sys.exit()` itself, but the guard is applied from the start to avoid
+    reintroducing that bug later.
+    """
+    try:
+        return main_fn()
+    except Exception as exc:  # noqa: BLE001 — heartbeat then re-raise
+        emit_heartbeat(ORGAN_ID, "fail", metadata={"error": f"{type(exc).__name__}: {exc}"})
+        raise
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(_cli_entrypoint(main))

@@ -77,6 +77,62 @@ OURS_RE = re.compile(r"\b(nuzantara|balizero)\b", re.IGNORECASE)
 # often is itself suspicious (the stale-interactive-run smell). 3 days default.
 STALE_GREEN_SEC = 3 * 24 * 3600
 
+# TAC-2 A2 (2026-07-05): a failure marker only counts if the log that carries it
+# was written RECENTLY. Without this gate, an err-log never appended again after
+# a TCC re-grant keeps its old "Operation not permitted" tail forever and the
+# detector holds a CURED organ hostage as DEAD-* (the "stale W84 marker" bug —
+# proprioception kept an already-cured M5 job sick for days). A job that is
+# STILL failing re-appends the marker on every attempt, so its log mtime stays
+# fresh and the gate never hides a live failure.
+MARKER_FRESH_SEC = int(os.environ.get("W84_MARKER_FRESH_SEC", str(48 * 3600)))
+
+# Healer tick 2026-07-10: LastExitStatus is STICKY — launchd keeps reporting the
+# PREVIOUS incarnation's exit code for as long as the CURRENT incarnation keeps
+# running (a SIGTERM at sleep/wake, or a crash years ago, never clears itself).
+# A job that died once and has been alive+quiet ever since was reported
+# FAILING-HONESTLY forever, off evidence that predates its current run. Live
+# proof: mlx-server (4d11h uptime, serving /v1/models), fly-pg-tunnel.local
+# (16d uptime, port 15432 accepting connections) — both FAILING-HONESTLY,
+# both demonstrably alive and serving. RECOVERED requires a stable uptime
+# (see _classify) so a job that JUST restarted (could still be crash-looping)
+# is never masked.
+#
+# Healer tick 2026-07-10 (same day, second pass): the FIRST version of this
+# fix additionally required `stale_green` (log quiet for STALE_GREEN_SEC) on
+# the theory that "log actively re-writing" meant "actively re-writing fresh
+# ERRORS". False: stale_green only measures ANY log write, not a failure one.
+# local-livekit-server (16d uptime, port 7880 answering 200) logs benign
+# periodic "high cpu load" INFO lines every few hours — its log is NEVER
+# stale, so it stayed FAILING-HONESTLY forever despite being provably healthy.
+# The real "no active failure" signal already exists: `marker is None`, which
+# _log_has_failure_marker gates on its OWN freshness window (MARKER_FRESH_SEC,
+# 48h) and only matches known launch-failure signatures. By the time
+# `_classify` reaches the RECOVERED branch, marker is already guaranteed None
+# (the marker-present branches return earlier) — stale_green added no real
+# protection beyond that, only false negatives for chatty-but-healthy jobs.
+UPTIME_STABLE_SEC = int(os.environ.get("W84_UPTIME_STABLE_SEC", str(STALE_GREEN_SEC)))
+
+
+def _decode_wait_status(raw: int) -> int:
+    """Decode the raw POSIX wait() status word `launchctl list <label>` reports
+    for LastExitStatus into the human-legible exit code `launchctl print` and
+    `subprocess` use (positive = normal exit code, negative = killed by that
+    signal number).
+
+    `launchctl list` emits the UNSHIFTED wait-status (a plain `exit 1` shows up
+    as 256, since normal-exit codes are packed into the high byte), while a
+    signal death (e.g. SIGKILL) shows up unshifted in the low bits (9, not
+    2304). Left raw, two jobs both "failing" can show wildly different
+    `last_exit` numbers for no operator-visible reason — confusing in the
+    ledger/Telegram output even though `_classify()`'s zero/non-zero checks
+    are unaffected either way (verified live 2026-07-12: overlap-detector.sh's
+    designed `exit 1` on a real finding showed as `last_exit: 256`).
+    """
+    try:
+        return os.waitstatus_to_exitcode(raw)
+    except ValueError:
+        return raw
+
 
 def _launchctl_status(label: str) -> dict | None:
     """Return the parsed `launchctl list <label>` dict, or None if not loaded."""
@@ -94,6 +150,8 @@ def _launchctl_status(label: str) -> dict | None:
         m = re.search(r'"(\w+)"\s*=\s*(-?\d+)', line)
         if m:
             d[m.group(1)] = int(m.group(2))
+    if "LastExitStatus" in d:
+        d["LastExitStatus"] = _decode_wait_status(d["LastExitStatus"])
     return d
 
 
@@ -166,18 +224,25 @@ def _program_path(plist: Path) -> str | None:
     return args[0] if args else None
 
 
-def _log_has_failure_marker(paths: list[Path]) -> str | None:
+def _log_has_failure_marker(paths: list[Path], now: float | None = None) -> str | None:
     """Return the matched line if any log tail proves the WORKER failed to launch.
 
     Two-tier: the high-signal launcher-failure shape (`/bin/bash: /path: reason`)
     OR a specific TCC/exec marker. Generic shell noise (`gh: command not found` from
     .zshenv) is deliberately NOT matched — that was the cry-wolf bug. We do NOT bare-
     except: an unreadable log is reported as no-marker, but the read error itself is
-    not swallowed into a misleading 'healthy' (the irony the TAC caught in v1)."""
+    not swallowed into a misleading 'healthy' (the irony the TAC caught in v1).
+
+    Freshness gate (TAC-2 A2): a log whose mtime is older than MARKER_FRESH_SEC is
+    archaeology, not evidence — its marker is ignored so a cured job stops being
+    reported dead once its failure stops re-occurring."""
+    now = time.time() if now is None else now
     for p in paths:
         if not p.exists():
             continue
         try:
+            if (now - p.stat().st_mtime) > MARKER_FRESH_SEC:
+                continue
             tail = p.read_text(errors="replace").splitlines()[-25:]
         except OSError:
             continue
@@ -201,6 +266,88 @@ def _newest_log_mtime(paths: list[Path]) -> float | None:
     return mt
 
 
+def _parse_etime(raw: str) -> float | None:
+    """Parse `ps -o etime=` output: `[[DD-]HH:]MM:SS`. Pure, no subprocess."""
+    raw = raw.strip()
+    if not raw:
+        return None
+    days = 0
+    if "-" in raw:
+        day_part, raw = raw.split("-", 1)
+        try:
+            days = int(day_part)
+        except ValueError:
+            return None
+    bits = raw.split(":")
+    try:
+        nums = [int(b) for b in bits]
+    except ValueError:
+        return None
+    if len(nums) == 3:
+        h, m, s = nums
+    elif len(nums) == 2:
+        h, m, s = 0, nums[0], nums[1]
+    elif len(nums) == 1:
+        h, m, s = 0, 0, nums[0]
+    else:
+        return None
+    return float(days * 86400 + h * 3600 + m * 60 + s)
+
+
+def _process_uptime_seconds(pid: int) -> float | None:
+    """Seconds `pid` has been continuously running, via `ps -o etime=`.
+    None if the PID doesn't exist or the output can't be parsed."""
+    try:
+        out = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "etime="],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if out.returncode != 0:
+        return None
+    return _parse_etime(out.stdout)
+
+
+def _classify(
+    *,
+    status: dict | None,
+    marker: str | None,
+    prog_exists: bool,
+    uptime_sec: float | None,
+) -> str:
+    """Pure classification — exit-code x log-content x process-uptime.
+
+    RECOVERED fires when the process has been alive longer than
+    UPTIME_STABLE_SEC with NO failure marker. Marker is already guaranteed
+    None by the time we reach this branch (the marker-present branches above
+    return first), and `_log_has_failure_marker` has its own freshness gate
+    (MARKER_FRESH_SEC) — so "no marker" already means "no known launch-failure
+    signature in the recent log", independent of how chatty the log is.
+    Short uptime alone still blocks RECOVERED: a job that just restarted
+    could still be crash-looping regardless of log content.
+    """
+    if status is None:
+        return "NOT-LOADED"
+    exit_code = status.get("LastExitStatus")
+    pid = status.get("PID")
+    if marker and exit_code == 0:
+        return "DEAD-GREEN"          # the W84 vector: green lies
+    if marker and exit_code not in (0, None):
+        return "DEAD-NONZERO"        # honest non-zero + proven launch failure
+    if exit_code not in (0, None):
+        if (
+            pid is not None
+            and uptime_sec is not None
+            and uptime_sec > UPTIME_STABLE_SEC
+        ):
+            return "RECOVERED"       # sticky exit code, provably alive since
+        return "FAILING-HONESTLY"    # non-zero, no marker, no recovery proof
+    if not prog_exists:
+        return "ARMED-TO-NOTHING"    # plist points at a missing script
+    return "OK"
+
+
 def audit() -> list[dict]:
     findings: list[dict] = []
     if not LAUNCHAGENTS.exists():
@@ -217,22 +364,16 @@ def audit() -> list[dict]:
         prog_exists = bool(prog and Path(os.path.expanduser(prog)).exists())
         newest = _newest_log_mtime(logs)
         stale_green = newest is not None and (now - newest) > STALE_GREEN_SEC
+        pid = (status or {}).get("PID")
+        uptime_sec = _process_uptime_seconds(pid) if pid is not None else None
 
-        # Classification — the whole point: cross exit-code with log content.
-        if status is None:
-            verdict = "NOT-LOADED"   # plist on disk, not in launchd domain
-        else:
-            exit_code = status.get("LastExitStatus")
-            if marker and exit_code == 0:
-                verdict = "DEAD-GREEN"          # the W84 vector: green lies
-            elif marker and exit_code not in (0, None):
-                verdict = "DEAD-NONZERO"        # honest non-zero + proven launch failure
-            elif exit_code not in (0, None):
-                verdict = "FAILING-HONESTLY"    # non-zero, no launch-failure marker (real finding, NOT cry-wolf)
-            elif not prog_exists:
-                verdict = "ARMED-TO-NOTHING"    # plist points at a missing script
-            else:
-                verdict = "OK"
+        # Classification — the whole point: cross exit-code with log content
+        # AND (2026-07-10) process uptime, so a sticky historical exit code
+        # doesn't outlive the incarnation that produced it. See _classify.
+        verdict = _classify(
+            status=status, marker=marker, prog_exists=prog_exists,
+            uptime_sec=uptime_sec,
+        )
 
         findings.append({
             "label": label,
@@ -292,7 +433,12 @@ def main() -> int:
         else:
             print(f"launchd liveness detector — {len(findings)} job(s), {len(alarms)} alarm(s):\n")
             for f in findings:
-                flag = "🚨" if f["verdict"] in ALARM_VERDICTS else ("⚠️ " if f["verdict"] == "FAILING-HONESTLY" else "✓ ")
+                flag = (
+                    "🚨" if f["verdict"] in ALARM_VERDICTS
+                    else "⚠️ " if f["verdict"] == "FAILING-HONESTLY"
+                    else "♻️ " if f["verdict"] == "RECOVERED"
+                    else "✓ "
+                )
                 print(f"  {flag} {f['verdict']:<17} {f['label']}  (exit={f['last_exit']})")
                 if f["log_marker"]:
                     print(f"        ↳ log proves launch failure: {f['log_marker']}")

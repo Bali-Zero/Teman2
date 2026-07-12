@@ -154,14 +154,28 @@ class ClientValuePredictor:
         """
         Send WhatsApp message via Twilio.
 
+        Fail-closed: autonomous outbound to a real client is an R3 action, so it
+        stays disabled unless ``CLIENT_NURTURING_OUTBOUND_ENABLED=true``. This is
+        deliberately a separate switch from the transport credentials — adding
+        Twilio secrets must not silently arm a bot that messages the client book.
+
         Args:
             phone: Phone number
             message: Message text
             max_retries: Maximum retry attempts
 
         Returns:
-            Message SID if successful, None otherwise
+            Message SID if successful, None otherwise (including when disabled)
         """
+        from backend.app.core.config import settings
+
+        if not settings.client_nurturing_outbound_enabled:
+            logger.warning(
+                "Nurturing outbound is disabled — message NOT sent "
+                "(set CLIENT_NURTURING_OUTBOUND_ENABLED=true to arm)",
+            )
+            return None
+
         return await self.whatsapp_service.send_message(phone, message, max_retries)
 
     async def run_daily_nurturing(self, timeout: float = 300.0) -> dict[str, Any]:
@@ -308,7 +322,7 @@ All clients scored and segmented automatically!""",
                 "total_messages_sent": 0,
                 "errors": [f"Operation timed out after {timeout}s"],
             }
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, asyncpg.InterfaceError) as e:
             logger.error("Database error in run_daily_nurturing: %s", e, exc_info=True)
             return {
                 "vip_nurtured": 0,

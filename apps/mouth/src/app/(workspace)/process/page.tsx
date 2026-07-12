@@ -1360,6 +1360,8 @@ export default function PratichePage() {
                                     onClick={(e) =>
                                       handleMenuClick(e, practice)
                                     }
+                                    title="More options"
+                                    aria-label="More options"
                                   >
                                     <MoreVertical className="w-4 h-4" />
                                   </button>
@@ -1805,9 +1807,9 @@ export default function PratichePage() {
                                         : "transparent",
                                   color:
                                     ageDays > 14
-                                      ? "#f87171"
+                                      ? "var(--bz-error)"
                                       : ageDays > 7
-                                        ? "#fbbf24"
+                                        ? "var(--bz-warning)"
                                         : "var(--bz-text-2)",
                                 }}
                                 title={`Last updated: ${new Date(practice.updated_at).toLocaleDateString("en-US")}`}
@@ -2019,10 +2021,10 @@ export default function PratichePage() {
                     color:
                       selectedPractice.payment_status === ps
                         ? ps === "paid"
-                          ? "#4ade80"
+                          ? "var(--bz-success)"
                           : ps === "partial"
-                            ? "#fbbf24"
-                            : "#f87171"
+                            ? "var(--bz-warning)"
+                            : "var(--bz-error)"
                         : "var(--bz-text-2)",
                     border:
                       selectedPractice.payment_status === ps
@@ -2050,21 +2052,21 @@ export default function PratichePage() {
                   {
                     value: "normal",
                     label: "Normal",
-                    color: "#9ca3af",
+                    color: "var(--bz-text-secondary)",
                     active: "rgba(156,163,175,0.25)",
                     border: "rgba(156,163,175,0.4)",
                   },
                   {
                     value: "high",
                     label: "High",
-                    color: "#fb923c",
+                    color: "var(--bz-warning)",
                     active: "rgba(249,115,22,0.25)",
                     border: "rgba(249,115,22,0.4)",
                   },
                   {
                     value: "urgent",
                     label: "Urgent",
-                    color: "#f87171",
+                    color: "var(--bz-error)",
                     active: "rgba(239,68,68,0.25)",
                     border: "rgba(239,68,68,0.4)",
                   },

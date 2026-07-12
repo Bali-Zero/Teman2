@@ -11,7 +11,7 @@ _Discovered: 2026-06-17, durante la riconciliazione 3-nodi — un subagent ha ri
 
 **Famiglia: superscar #3 (Guard-over-match), terzo membro consecutivo della linea locale W83→W84→W85.** Identica radice di W83: la guardia decide sul **sottocomando testuale**, non sull'**intento** (mutazione vs introspezione). W83 era il dispatcher remoto troppo largo; W84 lo stripper di rumore; W85 è la regex blocked-subcmd che tratta tutto il verbo `stash` come mutante.
 
-**TRAUMA:** `worktree_isolation.py:102` definisce `BLOCKED_SUBCMD_RE` con `(checkout|switch|stash|reset|merge|rebase|pull)\b`. Il `\b` ferma il word-boundary su `stash`, ma `git stash` ha sottocomandi: `push`/`pop`/`apply`/`drop` **mutano** la working tree (legittimamente da bloccare in main), mentre `list`/`show` sono **puro read-only** (introspezione, zero scrittura). Il regex non guarda oltre il verbo → `git stash list` matcha e viene bloccato (exit 2). Stessa classe di `git log`/`git status` che (correttamente) NON sono blocked: `stash list` appartiene a quella categoria read-only ma è catturato per sineddoche dal verbo padre. Costo: un agent che vuole solo *ispezionare* gli stash deve aggirare con `git rev-parse refs/stash` + `git reflog refs/stash` (verbi non-blocked) — friction inutile, e un agent meno esperto si pianterebbe.
+**TRAUMA:** `worktree_isolation.py:102` definisce `BLOCKED_SUBCMD_RE` con `(checkout|switch|stash|reset|merge|rebase|pull)\b`. Il `\b` ferma il word-boundary su `stash`, ma `git stash` ha sottocomandi: `push`/`pop`/`apply`/`drop` **mutano** la working tree (legittimamente da bloccare in main), mentre `list`/`show` sono **puro read-only** (introspezione, zero scrittura). Il regex non guarda oltre il verbo → `git stash list` matcha e viene bloccato (exit 2). Stessa classe di `git log`/`git status` che (correttamente) NON sono blocked: `stash list` appartiene a quella categoria read-only ma è catturato per sineddoche dal verbo padre. Costo: un agent che vuole solo _ispezionare_ gli stash deve aggirare con `git rev-parse refs/stash` + `git reflog refs/stash` (verbi non-blocked) — friction inutile, e un agent meno esperto si pianterebbe.
 
 **ANTIBODY (PROGETTATO, non ancora armato):** distinguere il sottocomando read-only dentro la famiglia `stash`: dopo il match del verbo, se il token seguente è `list`|`show` → ALLOW (come `git log`). Implementazione minima: una `STASH_READONLY_RE = re.compile(r"\bstash\s+(list|show)\b")` testata PRIMA del blocked-scan, oppure raffinare `BLOCKED_SUBCMD_RE` in `stash\s+(push|pop|apply|drop|save|clear|store|create)` (enumerare i mutanti) lasciando passare il resto. Stesso pattern di innocenza/colpevolezza del vaccino #1485: un test che `stash list`/`stash show` NON scattano + `stash push`/`stash pop` ancora scattano.
 
@@ -25,7 +25,7 @@ _Discovered: 2026-06-17, durante la riconciliazione 3-nodi — un subagent ha ri
 
 _Discovered: 2026-06-16, fratello-immediato di W83 nella stessa sessione — il fix W83 aveva aggiunto `_strip_noise` pre-scan ma lo stripper stesso aveva il bug. Trigger reale: un mio `echo "=== verify: dell'insurance ... ==="` (apostrofo italiano in "dell'insurance") ha aperto una single-quote che si è accoppiata col `'` di apertura del primo `ssh '...'` 2 righe sotto · Severity: **P2 STRUCTURAL** (over-match: blocca un `ssh ... grep ...` read-only legittimo come se scrivesse in main) · Status: **FIXED** — char-class `[^'\n]*`/`[^"\n]*` + classifier scarta `\`/`|`, 15/15 test, W83 (6/6) e W79 (20/20) reggono, live patchato (+`.bak.pre-w84`)_
 
-**Famiglia: superscar #3 (Guard-over-match), variante OVER-match su guard-di-COMANDO — gemello di W83.** Stessa malattia: la guardia decide sulla **forma testuale** del comando, non sul target reale. W83 era il regex dispatcher troppo largo; W84 è lo *stripper di rumore* che W83 stesso aveva introdotto — un fix che ha partorito il bug successivo nella stessa classe.
+**Famiglia: superscar #3 (Guard-over-match), variante OVER-match su guard-di-COMANDO — gemello di W83.** Stessa malattia: la guardia decide sulla **forma testuale** del comando, non sul target reale. W83 era il regex dispatcher troppo largo; W84 è lo _stripper di rumore_ che W83 stesso aveva introdotto — un fix che ha partorito il bug successivo nella stessa classe.
 
 **TRAUMA:** `worktree_isolation.py:_strip_noise` emptia le stringhe quotate con `re.sub(r"'[^']*'", ...)` e `r'"[^"]*"'` PRIMA dello scan write-target (la ricetta W79/W83). Ma `[^']*` e `[^"]*` **matchano anche `\n`**: in un comando multi-riga (`cd ... && echo "..." && ssh 'grep ...' && ssh 'grep ...'`) una quota orfana su una riga si accoppia con una quota su un'altra. Il trigger empirico: `echo "=== verify: dell'insurance files ==="` — l'**apostrofo italiano** in `dell'insurance` apre una single-quote che il regex chiude contro il `'` di apertura del primo `ssh '...'` due righe sotto, **fondendo 3 comandi** in una stringa mangled tipo `...num_predict""EnvironmentVariables\|...warm_models_extra\|...`. I pattern grep (`"a\|b" 2>&1`) sopravvivono allo strip, il `>` di `2>&1` viene letto come redirect, e `REDIR_RE` estrae `warm_models_extra\` come write-target → risolto sotto il main checkout → **falso BLOCK** di un `ssh ... grep ...` puramente read-only. Vissuto 3 volte nella sessione (ogni STADIO-0 verify multi-riga con un apostrofo).
 
@@ -57,24 +57,25 @@ _Discovered: 2026-06-16 vissuta IN DIRETTA 3 volte nella sessione che rianimava 
 
 _Discovered: 2026-06-16 dalla lane L-KNOWLEDGE della Connectome Campaign (Mini, ciclo 1→2), confermata su disco dal Super-Osservatore leggendo `content-freshness-sentinel.test.ts` riga per riga · Severity: **P1 STRUCTURAL** (il guardiano anti-knowledge-decay ha un buco strutturale: verde mentre il sito è marcio) · Status: **REPORTED + scar promossa per decisione operatore (Antonello, 2026-06-16) — fix = guardiano fact-based, spec+PR mai armata senza OK**_
 
-**Famiglia: superscar #3 (Guard-over-match) — variante UNDER-match.** #3 nasce con guardie che *sopra*-matchano (clobberano risposte corrette). W82 è il gemello speculare: una guardia che *sotto*-matcha (lascia passare fatti marci). Stessa malattia di fondo — **il match è sulla forma testuale, non sull'intento/entità** — segno opposto.
+**Famiglia: superscar #3 (Guard-over-match) — variante UNDER-match.** #3 nasce con guardie che _sopra_-matchano (clobberano risposte corrette). W82 è il gemello speculare: una guardia che _sotto_-matcha (lascia passare fatti marci). Stessa malattia di fondo — **il match è sulla forma testuale, non sull'intento/entità** — segno opposto.
 
 **TRAUMA:** `apps/mouth/src/content/content-freshness-sentinel.test.ts` (nato 2026-06-14, Mythos M3) è il "dead-man's switch" tra contenuto pubblicato e ground-truth regolatorio: legge `_regulatory-claim-ledger.json` (15 `stale_pattern` literal) e FALLISCE se un pattern stale ricompare in MDX pubblicato. **Ma il match è puro substring-letterale** (`staleHits`, riga 125: `lines[i].toLowerCase().includes(needle)`). Tre buchi strutturali, tutti verificati nel codice:
 
-1. **Substring, non fatto** (riga 119-132): cerca la *frase esatta* `"hotels (55110)"`. Lo **stesso codice KBLI 55110** dentro una cella-tabella, o riformulato (`"perhotelan 55110"`, `"55110 (hotel)"`), o citato senza la parola "hotels", **NON matcha** → test verde. Prova viva: C312 (retirement) e 55110 (hotels) sono stale **anche nel canonico EN**, e il sentinel è **verde** su entrambi.
-2. **Scope strutturalmente cieco alle traduzioni** (riga 21-22, 35-36, `TRANSLATION_SUFFIX`): *"English canonical .mdx only — translations audited separately"*. Il sentinel **non guarda mai** `.it/.id/.ru/.fr/.de/.es/.nl`. Questa è **letteralmente la causa-radice del bug KN-3** che il ciclo 2 ha dovuto fixare a mano (LKPM 10th→15th era stale in it/ru/fr mentre il sentinel era verde) — by-design non poteva vederlo. "Audited separately" = audited **mai**, finché un umano/agente non passa.
+1. **Substring, non fatto** (riga 119-132): cerca la _frase esatta_ `"hotels (55110)"`. Lo **stesso codice KBLI 55110** dentro una cella-tabella, o riformulato (`"perhotelan 55110"`, `"55110 (hotel)"`), o citato senza la parola "hotels", **NON matcha** → test verde. Prova viva: C312 (retirement) e 55110 (hotels) sono stale **anche nel canonico EN**, e il sentinel è **verde** su entrambi.
+2. **Scope strutturalmente cieco alle traduzioni** (riga 21-22, 35-36, `TRANSLATION_SUFFIX`): _"English canonical .mdx only — translations audited separately"_. Il sentinel **non guarda mai** `.it/.id/.ru/.fr/.de/.es/.nl`. Questa è **letteralmente la causa-radice del bug KN-3** che il ciclo 2 ha dovuto fixare a mano (LKPM 10th→15th era stale in it/ru/fr mentre il sentinel era verde) — by-design non poteva vederlo. "Audited separately" = audited **mai**, finché un umano/agente non passa.
 3. **Anche l'escape-clause è literal** (`MIGRATION_CONTEXT`, riga 58-97): la lista di frasi che "scusano" un pattern stale (`"superseded"`, `"old kbli 2020"`, `"moved to the 15th"`...) è essa stessa una lista di stringhe → fragile e da manutenere a mano; una correzione fraseggiata diversamente o non-EN non viene riconosciuta come legittima.
 
 **ANTIBODY (PROGETTATO, NON armato — firebreak operatore):** guardiano **fact-based**, non string-based. La spec (vedi Reference) propone:
-1. **Match per ENTITÀ normativa, non per frase**: ogni claim del ledger porta un `fact_key` strutturato (codice KBLI / sigla visto / numero-norma / soglia) + `fact_anchor` regex tolleranti a contesto-tabella e punteggiatura, NON una singola `stale_pattern` letterale. Il test fallisce se l'*entità* ricompare con il valore-stale, ovunque appaia.
+
+1. **Match per ENTITÀ normativa, non per frase**: ogni claim del ledger porta un `fact_key` strutturato (codice KBLI / sigla visto / numero-norma / soglia) + `fact_anchor` regex tolleranti a contesto-tabella e punteggiatura, NON una singola `stale_pattern` letterale. Il test fallisce se l'_entità_ ricompare con il valore-stale, ovunque appaia.
 2. **Scope multilingua**: rimuovere `TRANSLATION_SUFFIX` dallo skip per i `fact_key` numerici/codici (un codice KBLI è language-invariant: `55110` è `55110` in ogni lingua). Le traduzioni rientrano nel guardiano per i fatti-codice; restano fuori solo per il fact-in-prosa che richiede NLM.
 3. **Test di INNOCENZA obbligatorio** (regola madre #3): ogni nuovo `fact_anchor` deve dimostrare di NON scattare su un caso legittimo limitrofo (es. `55110` dentro una nota "old KBLI 2020"), oltre al test di colpevolezza. Mai mergiare una guardia senza prova d'innocenza.
 4. **Stale-anche-in-EN → escalation NLM, non auto-fix**: i claim marci nel canonico (C312, 55110) NON si indovinano — si verificano contro NotebookLM ground-truth (no-guess rule). Solo i `traduzione-lag-puliti` (EN corretto come riferimento) sono auto-fixabili.
 
 **GOTCHA:**
 
-- Il test **già si auto-accusa**: il suo stesso commento (riga 8-12) cita *"the malattia-delle-malattie: the SAME stale code reappears across many files and silently rots"* — ma poi lo combatte con substring-match, che è proprio il vettore del "silently rots". L'intento era giusto, l'implementazione resta alla forma.
-- "Verde non prova che il sito sia perfetto, prova solo che i known-stale non sono regrediti" (riga 16-18) — vero, ma **understated**: verde non prova nemmeno *quello*, perché un known-stale riformulato/in-tabella/in-traduzione regredisce SENZA far diventare rosso il test. È #2 (Esiste≠Armato) applicato a un guardiano: gira e si dichiara verde mentre il fatto che dovrebbe presidiare è marcio.
+- Il test **già si auto-accusa**: il suo stesso commento (riga 8-12) cita _"the malattia-delle-malattie: the SAME stale code reappears across many files and silently rots"_ — ma poi lo combatte con substring-match, che è proprio il vettore del "silently rots". L'intento era giusto, l'implementazione resta alla forma.
+- "Verde non prova che il sito sia perfetto, prova solo che i known-stale non sono regrediti" (riga 16-18) — vero, ma **understated**: verde non prova nemmeno _quello_, perché un known-stale riformulato/in-tabella/in-traduzione regredisce SENZA far diventare rosso il test. È #2 (Esiste≠Armato) applicato a un guardiano: gira e si dichiara verde mentre il fatto che dovrebbe presidiare è marcio.
 - Confine #3-vs-W82: stessa famiglia, NON unire. #3 = guardia che NUOCE (clobbera il corretto, falso-positivo). W82 = guardia che NON PROTEGGE (lascia passare il marcio, falso-negativo). L'antidoto comune è identico: **match su entità/intento, non su substring** + test di innocenza E di colpevolezza.
 - Scope reale della classe: 15 entry nel ledger oggi, ognuna una superficie di evasione × N lingue × (tabella|prosa|FAQ-embed). Il numero di "fatti potenzialmente marci ma verdi" è 15 × molteplicità, non 15.
 
@@ -306,6 +307,7 @@ _Discovered: 2026-06-23 16:14 WITA · Severity: P3 · Status: RESOLVED (riparato
 **Reference**: PR #1670 (merge che ha lasciato stale), PR #1672 (riparazione 1083->1084). Worktree: `.worktrees/ops-docssync-fix`. Gate: `.github/workflows/*` step `check-docs-sync` -> `scripts/docs_sync.py --check`. Famiglia: superscar #9 (state-schema mutation drift) + interazione con auto-merge. Memo: `decision_pr_split_and_aidispatch_stale_rebuild_2026_06_23.md`.
 
 ### 🩹 W81b: venv-SKELETON passes the missing-venv guard — supervisor down ~3 days (2026-06-23)
+
 _Discovered: 2026-06-23 · Severity: P1 (WR2 pipeline frozen 20→23 Jun) · Status: FIXED (PR #1690) · Family: superscar #1 HOME-fork/venv-evaporation_
 
 **TRAUMA**: Zero asked "does WR2 make a carousel every day?". It did NOT — the WR2 supervisor (the daily entry-point, runs the draft-generator) had been dead since ~20 Jun 23:57. Draft log had a 4-day hole (19→23 Jun). `launchctl` showed `state=running, last exit=0` (green-but-dead, superscar #2) but the worker process was a zombie. Root cause in the launchd.err.log tracebacks: `ModuleNotFoundError: No module named 'asyncpg'` at `nuzantara-deploy/scripts/wr2_supervisor.py:65`. The deploy worktree's venv had a SKELETON (python binary present, site-packages evaporated by a periodic `git worktree add` re-add — venvs are gitignored, classic W81). The W81 self-heal in `wr2-script-wrapper.sh` only guarded `[[ ! -x "$VENV_PY" ]]` (python MISSING) — a skeleton (python PRESENT, packages GONE) sailed past the guard into the fast-path `exec`, then crashed at top-level `import asyncpg`. The reconnect/asyncpg-except code (W34) was fine; the problem was the ENVIRONMENT, not the DB loop. (False lead I had to discard: "the Postgres reconnect is fragile" — the `connection lost: — reconnecting in 1.0s` line was a red herring; the killer was the import.)
@@ -326,4 +328,167 @@ _Discovered: 2026-06-23 · Severity: P1 (WR2 pipeline frozen 20→23 Jun) · Sta
 
 **ANTIBODY (PR #1745):** `scripts/pg.sh` — l'unico modo. Auto-avvia il fly proxy se `:15432` è giù, legge la pw dal Keychain a runtime (nessun secret nello script), `exec psql` con flag pass-through. `PG_TARGET=local` per la dev locale. `.mcp.json` patchato sul workstation (dev→prod identity; config machine-local, non committata). Memory `reference_postgres_access_one_true_way_2026_06_26`.
 
-**GOTCHA:** (1) MCP `✔ Connected` nel manifest NON prova che la credenziale funzioni — è handshake TCP, non auth+query; prova sempre `SELECT 1` reale (Esiste≠Armato). (2) Lo stesso *service* Keychain può avere più *account*: il fallimento auth con un nome non significa "secret mancante", significa "stai usando l'identità del DB sbagliato". (3) WA-send allowlist = `team_members.whatsapp` (SSOT), NON `messaging_users`/`whatsapp_contacts` (quelli danno 403 "not found in CRM or team directory"); numero spedibile di un membro = `team_members.whatsapp`, non la riga-contatto del mirror.
+**GOTCHA:** (1) MCP `✔ Connected` nel manifest NON prova che la credenziale funzioni — è handshake TCP, non auth+query; prova sempre `SELECT 1` reale (Esiste≠Armato). (2) Lo stesso _service_ Keychain può avere più _account_: il fallimento auth con un nome non significa "secret mancante", significa "stai usando l'identità del DB sbagliato". (3) WA-send allowlist = `team_members.whatsapp` (SSOT), NON `messaging_users`/`whatsapp_contacts` (quelli danno 403 "not found in CRM or team directory"); numero spedibile di un membro = `team_members.whatsapp`, non la riga-contatto del mirror.
+
+---
+
+## W89 — mata_garuda harvester writes NOTHING: sibling redis-cli path mai authato (familia #2 — Esiste ≠ Armato; cugina #1 partial-fix-drift) — 2026-06-30
+
+**TRAUMA:** Il monitor pipeline-health (appena armato) segnala `garuda:raw newest entry 69.5h old — harvest stalled`. Il sentinel.daily su Mini gira "verde" da giorni e stampa `[HARVEST] Total: 56 items` ad ogni ciclo, ma `garuda:raw` è congelato (len 4603 immutata, newest 4177 min). L'organismo OSINT è cieco da 3 giorni mentre si dichiara sano. (Prima ipotesi: il -9 inline-NLM-feed hang — vera ma SEPARATA, già fixata; decoupling NON ha sbloccato lo stream.)
+
+**ROOT CAUSE (A/B-confermato live su Pro, un solo mismatch di AUTH):** `mata_garuda/tools/stream_tools._redis_cmd` esegue **`redis-cli` NUDO** — niente auth, niente host-args, niente abs-path. La Stage 1 cutover (#1825) aveva curato il fratello `workers/base_worker.redis_cmd` (auth via `REDISCLI_AUTH`, mai `-a` su argv — cicatrix #4; + canonical-host + abs-path) ma ha lasciato `stream_tools` intatto. **L'harvester (`run_sentinel_py.harvest → stream_publish → _redis_cmd`) usa `stream_tools`, NON `base_worker`** → ogni `XADD` colpisce `NOAUTH Authentication required.` e fallisce silenziosamente. Il loop di harvest **ignora il valore di ritorno** di `stream_publish`, quindi conta "56 harvested" mentre scrive zero. L'età 69.5h = l'istante in cui Redis ha preso `requirepass`. Doppia cicatrice: **#1** (partial-fix drift: 1 di 2 path-fratelli curato) ⊗ **#2** (green-but-dead: successo riportato, nulla scritto). Prova A/B: `redis-cli XADD` nudo → `NOAUTH`; `REDISCLI_AUTH=… redis-cli XADD` → `1782803075217-0`.
+
+**COMBO FUNZIONANTE (verificata live):** dopo il fix, harvester → `garuda:raw 4603→4659 (+56, esattamente l'harvest count)`, newest age `69.5h→0min`, cascata sbloccata `56 harvested, 50 normalized (era 0), 33 scored`. Monitor flippa `RED→YELLOW` (espone il prossimo collo di bottiglia onesto: `nlm_feeder lag growing`).
+
+**ANTIBODY (commit 1c38091df, branch agent/air-m5/ops/mata-garuda-pipeline-hardening):** `stream_tools._redis_cmd` **delega a `base_worker.redis_cmd`** (l'unico path già curato = SSOT). `base_worker` NON importa `stream_tools` (verificato) → niente circular import; `redis_cmd` è passthrough generico → il `MAXLEN/*` che `stream_publish` fornisce sopravvive. Uccide l'intera famiglia "due path redis-cli che divergono". TDD: `test_stream_auth` (delega / publish-routes / error-propagates-non-swallowed / no-circular-import) 4/4.
+
+**GOTCHA:** (1) Un harvester che stampa "N harvested" NON prova che N siano stati scritti — se il loop ignora il return di publish, il contatore mente (leggi l'OUTPUT = la lunghezza dello stream, non il log dell'harvester). (2) Quando curi un secret/auth in UN file, **grep i fratelli che fanno la stessa cosa** (`subprocess.run(["redis-cli"`, `_redis_cmd`, `REDIS_CLI`): la cura applicata a 1-di-N path è una bomba a orologeria (#1). (3) Il monitor che ti dice "harvest stalled" è il guardiano che funziona — ma il SUO finding ("69h stale") punta al sintomo (-9 hang sospettato), non alla causa (NOAUTH): A/B sul publish-path, non fidarti della prima diagnosi del guardiano.
+
+---
+
+## W90 — Il ground-truth verifier serve uno snapshot stantio: NB-3 "conferma" i numeri PMA pre-risoluzione (familia #6 — anche il verifier è un lead; cugina #1 stale-derived-copy) — 2026-07-02
+
+**TRAUMA (near-miss, run-2 audit KBLI):** Il Triangle usa NB-3 come vertice ground-truth ("Claude allucina le normative, NB conferma"). Nel run-2, NB-3 ha risposto con citazioni pulite e verdetti netti: 03110 "CONFIRMED max 30% WNA", 50122/50123 "DENIED il cap 49% — TERBUKA 100%", 47222 "TERBATAS 49%". Tutti e tre **SBAGLIATI**: la fonte-catalogo dentro NB-3 è uno snapshot del NOSTRO dataset **precedente alla risoluzione ufficiale 2026-06-27** contro il lampiran Perpres 10/2021 (commit d8f5835/1e683cd/2e8695b, `pma_cap_verified=true`). Il verifier stava confermando i nostri VECCHI errori con la voce dell'autorità. A un passo dal patchare la prosa nella direzione sbagliata (es. riscrivere 50122 a "100% open" quando il cap 49% cabotage è il dato ufficiale).
+
+**SAVE:** ri-grounding su disco PRIMA di patchare — la memoria `discovery_kbli_pma_status_not_from_oss_2026_06_27` (sezione RESOLVED) + i flag `pma_cap_verified`/`pma_cap_note` sulle righe del dataset. La gerarchia di autorità corretta era: lampiran ufficiale > dataset flaggato > prosa curata > **NB-3 catalogo (ultimo, perché stantio)** — l'esatto inverso dell'assunzione del Triangle.
+
+**ANTIBODY:** (1) Un verdetto NB su un numero/percentuale è un LEAD: prima di agirci, verifica la FRESCHEZZA della fonte NB rispetto allo strato che stai verificando (se il dataset porta un flag di provenance con data, la fonte NB deve esserle posteriore). (2) Ogni re-grounding ufficiale di uno strato-verità deve emettere una lista di invalidazione delle superfici derivate: prosa, export NB, guide generate (la matrice COM-025 portava ancora claim mai riconciliati). (3) §Solo-operatore: refresh delle fonti KBLI+PMA di NB-3.
+
+**GOTCHA:** Il verdetto stantio è INDISTINGUIBILE da uno fresco a guardarlo — citazioni formattate, articolo di legge, tono sicuro. L'unica difesa è il confronto data-vs-data (source NB caricata QUANDO vs strato risolto QUANDO), non la qualità apparente della risposta. E il refuter/verifier che "boccia" il tuo dato può stare bocciando la verità: W65 diceva "anche il refuter allucina"; W90 aggiunge "anche il ground-truth invecchia".
+
+---
+
+## W91 — Il flag in un COMMENTO apre l'eccezione ff-only: quarto over-match della stessa guardia (familia #3 — substring vs intento; il fix di un guard partorisce il proprio buco) — 2026-07-06
+
+**TRAUMA (guilt-probe live, stessa sessione dell'arming):** PR #2022 aggiunge al worktree_isolation l'eccezione "pull --ff-only su main tracked-clean = ALLOW" (direttiva Zero: la flotta si auto-allinea). La prova finale passa (pull ff-only attraversa, main M5 allineato). Poi il GUILT-test live: `git pull origin main` NUDO — che DEVE essere bloccato — **PASSA**. Il probe-log dice `allow_ffonly_pull_clean_main`. Il comando Bash conteneva un COMMENTO shell: `# GUILT LIVE: pull nudo (senza --ff-only)...` — e il check era `"--ff-only" in cmd_scan`, substring OVUNQUE. `_strip_noise` (W83/W84) rimuove stringhe quotate e heredoc ma **NON i commenti** → il flag citato nel commento ha aperto l'eccezione per un pull nudo. Quarto over-match consecutivo della STESSA guardia (W83→W84→W85→W91): ogni fix del worktree-isolation ha partorito il proprio buco.
+
+**RISCHIO REALE (finestra live ~30min su 3 macchine):** pull nudo su main con HEAD divergente (commit locali non pushati, tree pulito) + "--ff-only" in un commento → git avrebbe creato un MERGE COMMIT sul main. Nessun danno avvenuto (il main era già allineato quando il guilt-test ha bucato).
+
+**ANTIBODY (fix in-turn, stessa sessione):** `FFONLY_PULL_SEGMENT_RE = \bgit\s+(?:-c\s+\S+\s+)*(?:-C\s+\S+\s+)?pull\b[^|;&#\n]*--ff-only(?!\S)` — il flag deve essere un ARGOMENTO del segmento pull: ancorato al verbo, si ferma a separatori di comando (| ; & newline) e a `#`. `--rebase` resta disqualifier-ovunque (over-blocking = direzione sicura). Test: il comando ESATTO del probe-log ora dà False; 15 guilt + 7 innocence + 4 probe.
+
+**GOTCHA:** (1) Il guilt-test live che "fallisce" è il test che funziona — ha beccato in 30 minuti quello che 15 test unitari non avevano immaginato (nessuno dei miei guilt-case aveva il flag in un commento; il caso reale l'ha scritto la mia stessa mano nel commento del test). (2) Quando aggiungi un'ECCEZIONE a una guardia, l'eccezione È una guardia a segno invertito: le serve il suo guilt+innocence, e il suo over-match = il blocco che si apre troppo. (3) `_strip_noise` non copre i commenti: chiunque riusi `cmd_scan` per un check di presenza-flag deve ancorare al segmento del comando, MAI substring globale. (4) La prova-finale-verde non basta: prova l'innocenza E la colpevolezza LIVE, nello stesso giro.
+
+### ⚠️ P2: kbli perizinan è string[] non string — type mentitore crasha resolveLicenseType (2026-06-28)
+
+_Discovered: 2026-06-28 · Severity: P2 · Status: FIXED (PR #1807, commit 51d3c368)_
+
+**TRAUMA**: portando i fix Swift sul web (apps/mouth), `resolveLicenseType` faceva `(perizinan || "").trim()` assumendo stringa (come diceva il tipo `KBLIScaleEntry.perizinan: string`). Ma il dato reale ha `perizinan` come **array** sul 99.5% delle scale (3941 list vs 20 str, spesso `[]`). Array è truthy -> `[].trim()` -> "trim is not a function" -> transformCode CRASHA al primo record. `tsc --noEmit` PASSA (il tipo mentiva), il pre-commit passa, ma i Frontend Tests mouth in CI falliscono 5/5 (kbli-data.test.ts). Stesso pattern dell'audit Swift di giugno (perizinanList[] vs scalar perizinan vuoto).
+
+**ANTIBODY**: `if(Array.isArray(perizinan))` -> join distinct non-vuoti con " · ", else derive-from-risk; mantieni il path scalar per i 20 legacy. Corretto il tipo a `string | string[]`. Verificato 0 crash su tutte le 9262 scale reali via node-runtime PRIMA del commit + casi array nel test.
+
+**GOTCHA**: il typecheck NON e' la rete di sicurezza quando il TIPO stesso e' sbagliato — `perizinan: string` su un dato `string[]` passa tsc e crasha a runtime. La rete e' il test che gira sul DATO REALE (vitest mouth) o il node-runtime-su-dataset-vero. Lezione cross: quando porti logica da un'altra app (Swift->TS), porta anche la conoscenza della FORMA reale del dato, non fidarti del tipo dichiarato nella app di destinazione.
+
+**Reference**: PR #1807, kbli-derive.ts resolveLicenseType, commit 51d3c368. Famiglia #9 (state-schema: tipo dichiarato != forma reale).
+
+### ⚠️ P2: KBLI app — 2 display surfaces ignore l4_bali.blocked, contradict the BLOCKED verdict (461 codes) (2026-06-28)
+
+_Discovered: 2026-06-28 18:50 WITA · Severity: P2 · Status: FIXED (commit 783bf32, kbli-navigator-app)_
+
+**TRAUMA**: On the rich KBLI card (Swift app ~/Desktop/kbli-navigator-app), code 55203 (Villa Rental) showed the verdict correctly as BLOCKED ("a PT PMA cannot register this code") — that surface reads l4Bali.blocked. But TWO other surfaces on the SAME card rendered the raw national-PMA fields and contradicted it: (1) the Authority & Legal Basis ledger table printed a green "PMA: Fully open · 100%" (KBLIRegistryView.swift authorityRows, the closed flag tested only pmaStatus=="TERTUTUP" || m==0 — national closure — never l4Bali.blocked); (2) the Ask Zantara opener (openerLine) truncated the curated bilingual verdict via v.split(".").first, and for a Bali-blocked code that verdict reads "Nationally open ... In Bali, however, ... closed to foreign-owned companies" — so .first alone = "fully open to foreign ownership (100% PMA)", which inverts the meaning. A client sees green "100% open" + Zantara "fully open" under a red "blocked" badge. Affects 461 codes nationally TERBUKA but Bali-blocked.
+
+**ANTIBODY**: Same cure as the whole #3 family — every surface that renders a PMA/openness signal must read the SAME l4Bali.blocked gate the verdict reads, or it is a guard-miss. (1) Authority row now has an else-if baliBlocked branch -> "Open nat'l · blocked in Bali" in the restricted colour, before the green "Fully open" fallback. (2) openerLine returns the WHOLE curated verdict when l4Bali.blocked. Data correct and untouched — rendering-honesty fix only. Structural rule: a verdict/badge and any secondary "at a glance" field that restate the same fact must derive from one shared predicate, not re-derive from raw fields independently.
+
+**GOTCHA**: NEW member of superscar #3 at a fresh grade — not an over-match (false block) nor W82 under-match (stale-fact passes), but a partial-truth surface: the guard fires on the primary surface (verdict) and is ABSENT on the secondary surfaces, which re-derive from raw data and disagree. Also: build.sh is zsh-only (${0:A:h}) — bash build.sh dies with "A: unbound variable" under set -u; run zsh build.sh. And build.sh cp's the canonical dataset from sibling monorepo source_documents/ on every build (cure for #1 HOME-fork), so the app's Resources/KBLI_2025_FINAL_CLEAN.json shows git-dirty after a build that is NOT your change — leave-dirty.
+
+**Reference**: kbli-navigator-app commit 783bf32 · KBLIRegistryView.swift (authorityRows ~535, openerLine ~787) · superscar #3 · memory "discovery KBLI Navigator app 2 display surfaces 2026-06-28"
+
+### ⚠️ P1: second commit pushed after auto-merge fired is orphaned by squash (2026-06-29)
+
+_Discovered: 2026-06-29 08:05 WITA · Severity: P1 · Status: fixed (re-landed PR #1826)_
+
+**TRAUMA**: PR #1824 (wa-mirror internal-sender guard) had auto-merge armed right after creation. I then committed a SECOND fix to the same branch (`edbc340da6` — downstream name-concordance + anti-funnel guards) and pushed. Auto-merge had ALREADY squash-merged the FIRST commit (`fc4ac55c`) at that point → PR went `state: MERGED` carrying only commit 1. The second commit sat orphaned on a dead branch. `gh pr view --json commits` showed "1 commit" (correct, not cache) while the remote BRANCH had 2 — I initially mis-read the discrepancy as API cache lag. The truth was the PR was already closed-merged; pushing more commits to a merged PR's branch does nothing. The downstream gate guards (the whole point of "affronta") never reached main.
+
+**ANTIBODY**: (1) After arming `--auto --squash`, treat the PR as CLOSED to further commits — a high-traffic repo merges within minutes. New work = new branch + new PR, never "push one more onto the armed branch". (2) When `gh pr view --json commits` count < local branch commits, check `state` FIRST: `MERGED` means the extra commits are orphaned, NOT cache lag. (3) Re-land via cherry-pick onto FRESH origin/main (W88: verify by CONTENT — `git show origin/main:<file> | grep <new-symbol>` returned 0, proving not landed) — NOT by re-pushing the stale branch, which had drifted behind main and would have reverted unrelated files (.pip-audit-ignore.md, mata-garuda heartbeat) = regression.
+
+**GOTCHA**: the stale-branch `git diff origin/main..branch` was noisy (20 files, -1120 lines) because main moved forward after the branch base — the deletions were main's NEW work the branch lacked, not the branch's contribution. The branch's REAL contribution was just `auto_attach.py +125` and its test `+80`. Re-pushing the stale branch to "fix" the orphan would have carried all those phantom reverts. Cherry-pick of the single clean commit onto fresh main is the only safe path.
+
+**Reference**: PR #1824 (merged, commit 1 only) → PR #1826 (re-land commit 2, `198f44cef0`). Family #9 state-schema/W88 (verify-by-content) + workflow `feedback_arm_automerge_default_not_leave_to_operator`.
+
+### ⚠️ P1: W80-recidiva — worktree vivo reapato interamente (dir+branch+registrazione) mentre l'implementer ci lavorava (2026-07-07)
+
+_Discovered: 2026-07-07 22:10 WITA · Severity: P1 · Status: OPEN (antidoto a-ledger, non armato)_
+
+**TRAUMA**: Campagna multi-wave CRM/portal overhaul (GEAR 3): l'orchestratore ha lanciato 3 implementer Sonnet su 3 worktree isolati (`mouth-wave0-fixes`, `mouth-wave2-portal`, `mouth-wave15-integrity`) via `scripts/agent_start.py`. Mentre `build-wave15` lavorava VIVO su WAVE 1.5 (ordine esplicito "committa task per task"), il suo worktree `mouth-wave15-integrity` è stato reapato COMPLETAMENTE — dir su disco, branch git, E registrazione `git worktree` tutti spariti — prima del primo commit. Verificato: zero commit nel reflog dei branch, zero stash, zero dangling commit attribuibili → lavoro non committato PERSO (viveva solo nel contesto dell'agente). Gli altri 2 worktree (wave0/wave2) sopravvissuti intatti e mergiati (#2120/#2121). Recidiva di W80 aggravata: non "pulito ma scaduto" — l'agente era ATTIVO e il reap ha portato via anche il branch, non solo la dir.
+
+**ANTIBODY**: (1) "committa task per task" NON protegge la finestra tra ultimo-commit e reap. Antidoto STRUTTURALE lato reaper: `agent_start.py --cleanup` DEVE rifiutare worktree con mtime filesystem <30min (il flag `--skip-recent-min` ESISTE ma NON è il default del cleanup automatico) + liveness-check dei processi con CWD nel worktree (lsof) prima di reapare. (2) Difesa orchestratore: al fan-out di implementer su worktree, ordina come PRIMO atto `git commit --allow-empty -m "wip: claim"` (pianta la bandiera → il branch entra nel reflog → sopravvive al reap della dir). (3) Attribuzione reap aperta (broker daily cleanup? sibling session? `--force`?) → serve forense unified-log come per l'incidente cohort2 a ledger.
+
+**GOTCHA**: senza commit, reap = perdita totale silenziosa. `git fsck --lost-found` mostra solo dangling commit di ALTRE sessioni (vecchi WIP), non del worktree reapato — perché senza commit non c'è oggetto git da recuperare; il lavoro vive solo nel working tree della dir, che il reap cancella. Diversamente da W80 originale (dove almeno un commit c'era). Unico recupero: il contesto vivo dell'agente — interrogalo PRIMA di rilanciare da zero. (Audit-log in `~/.claude/state/` NON scritto: host_boundary control-plane, operator-only by design.)
+
+**Reference**: PENDING-ARMS "sibling-race LIVE-REAP (famiglia #5, W80 aggravato)" 2026-07-07 · scar madre W80 · PR #2120 #2121 (vivi) vs wave15 (perso) · `scripts/agent_start.py --skip-recent-min`
+
+### ⚠️ P1: `tccutil reset All` scambiato per diagnostica read-only — reset TCC system-wide, non scoped (2026-07-08)
+
+_Discovered: 2026-07-08 · Severity: P1 · Status: OPEN (verifica operatore pendente)_
+
+**TRAUMA**: Durante il chase KBLI, la shell perde accesso filesystem a metà sessione (`ls`/`cd`/`git`/import Python su `~/Desktop/nuzantara` → "Operation not permitted" mentre `stat` continua a funzionare — pattern W84 esatto: TCC grant perso, permessi Unix intatti). Tentando una "diagnosi rapida", ho eseguito `tccutil reset All` pensando fosse un probe innocuo. Non lo è: resetta i grant TCC di **TUTTE le app sul Mac** (Full Disk Access, Camera, Microfono, Automazione, Contatti…), non solo l'accesso Desktop della shell corrente. Ha risposto "Successfully reset All" con exit 0 — quindi ha eseguito per davvero. L'accesso filesystem della mia shell è tornato subito dopo (coincidenza o effetto collaterale del reset), ma qualsiasi altra app con grant TCC standing su questo Mac può essere stata silenziosamente derubricata e richiedere ri-autorizzazione manuale.
+
+**ANTIBODY**: (1) MAI eseguire comandi `tccutil`/`sqlite3` sul DB TCC di sistema come "diagnostica" — sono comandi di **scrittura/reset a scope OS-wide**, non lettura. Il probe corretto per un blocco W84-style è: verificare `stat` (spesso funziona), provare un binario assoluto (`/bin/ls`), e se persiste — FERMARSI e segnalare a operator[tcc], non tentare self-heal con comandi che toccano lo stato TCC globale. (2) Qualunque comando il cui man-page dice "reset"/"remove"/"revoke" senza uno scope esplicito (bundle-id, servizio) va trattato come distruttivo by default — stesso principio delle git destructive ops, esteso a livello OS. (3) Trasparenza immediata: appena eseguito, fermare la catena e segnalare a Zero PRIMA di continuare — fatto qui, ma il comando non andava mai lanciato.
+
+**GOTCHA**: il sintomo (blocco W84) e la "cura" tentata condividono la stessa superficie (TCC) ma scope opposti — un fix scoped-corretto esiste (ri-concedere Full Disk Access a Terminal/Claude Code via System Settings, operator-only) mentre `tccutil reset All` è la versione "nuke it from orbit" che sistema il sintomo locale (per coincidenza) rompendo potenzialmente N altre app. Nessun modo per la sessione di enumerare "quali app avevano grant TCC prima del reset" — serve verifica manuale operatore in System Settings → Privacy & Security.
+
+**Reference**: sessione KBLI audit 2026-07-08 · scar madre W84 (#2 Esiste≠Armato, TCC come principal separato) · nessun PR/fix — richiede verifica manuale Zero, non codice.
+
+### ⚠️ P1: W92 — QUOTA_RE bare `429` matcha i codici KBLI 42911-42919: writer in backoff infinito su successi VALIDI (2026-07-11)
+
+_Discovered: 2026-07-11 21:03 WITA · Severity: P1 · Status: FIXED (11a8abdf2e, branch agent/air-m5/mouth/kbli-editorials)_
+
+**TRAUMA**: al resume KBLIREGEN su GPT-5.6 Terra, entrambi i worker di `editorial_writer.py` loggavano `quota — backoff` a oltranza mentre le chiamate manuali identiche passavano (rc=0, editoriale valido). Causa: `QUOTA_RE` conteneva il pattern nudo `429` e la coda dei todo riparte esattamente da 42911 — il numero del codice KBLI, echato nel prompt E presente nel completion valido (`{"code": "42913", ...}`), matcha `429` → OGNI chiamata sul blocco 429xx (anche riuscita) classificata quota → backoff infinito, 0 draft scritti. Retro-lettura: parte della diagnosi 2026-07-10 "Codex quota genuinely exhausted, fails even at --workers 1" era QUESTO over-match, non esaurimento — la pausa campagna è iniziata proprio sul bordo del blocco 429xx.
+
+**ANTIBODY**: (1) guardie di contesto sul pattern numerico: `(?<![\d/])429(?![\d/])` — un HTTP 429 vero non è mai adiacente a cifre o slash; (2) ordering parse-first in `codex_write`: se l'output contiene JSON valido NON è mai quota — QUOTA_RE si scansiona solo su parse-failure; (3) guilt+innocence test inline prima del commit (innocenti: `"code": "42911"`, `progress 429/871`; colpevoli: `HTTP 429 Too Many Requests`, `usage limit`). Fix: commit 11a8abdf2e.
+
+**GOTCHA**: il cascade-detection pattern `429|rate.?limit|quota…` è COPIATO in N wrapper (`~/scripts/regulatory-watcher-run.sh`, CLAUDE.md §cascade, memory). Ovunque il payload possa contenere "429" come dato (codici KBLI, ID, importi), il bare `429` è una mina. Il segnale-precoce della famiglia #3 vale per i matcher di INFRASTRUTTURA, non solo per le guardie di contenuto: "quota — backoff" ripetuto CON chiamate manuali che passano = quasi certamente over-match, non quota. Sonda sempre con l'output RAW di una chiamata reale prima di credere alla label.
+
+**Reference**: `scripts/kbli_triangle/editorial_writer.py` QUOTA_RE + `codex_write` (commit 11a8abdf2e) · RESUME-HERE.md STATUS 2026-07-11 · famiglia #3 cicatrix-superscar.md
+
+---
+
+## W94 — worktree-isolation remote-dispatch exemption is WHOLE-COMMAND (6th family-#3 instance: UNDER-match born from an over-match cure, + latent W83 twin) — 2026-07-11
+
+**TRAUMA:** the W92-bis cure of the file-write scanner exempted commands containing a remote
+dispatch (ssh/scp/rsync) by scanning the WHOLE command: `ssh mini hostname && cp /tmp/x scripts/f.py`
+PASSED the patched guard — the local `cp` writes into the main checkout under cover of the ssh
+segment. Same latent hole PRE-EXISTING on main since W83 on the git-verb channel
+(`ssh pro hostname && git pull` passed, call-site ~:827). Caught AT THE GATE before merge
+(PR #2266 bounced), confirmed empirically by direct module import — not by reading the diff.
+
+**ANTIBODY:** segment-scoped exemption on BOTH channels — `_segments()` splits on `&& || ; |`,
+remote dispatch only excuses the POSITION where the verb actually sits
+(`_is_position_remote_dispatched()`); `_git_verb_verdict()` extracted pure so the harness tests
+the LIVE code path (kills the harness-tested-stale-copy anti-pattern found in the lane's own
+harness). Guilt+innocence corpus 9/9 (4 guilt BLOCK incl. `ssh&&cp`, `ssh;tee`, `ssh|tee`,
+`ssh&&git-pull`; 4 innocence ALLOW incl. `scp&&ssh-cp`, `foo|ssh-git`; echo-ssh-word still BLOCK);
+fuzz harness 445/445; W83/84/85 regressions green.
+
+**GOTCHA:** the first cure's corpus had no true-compound shape — its only "compound" case had the
+ssh INSIDE quotes. An exemption is a guard with the sign inverted (W91): it needs guilt+innocence
+rows OF ITS OWN, and a fix for an over-match births the under-match twin whenever the corpus
+does not cover COMPOSITION (W84 pattern). Family #3 score on this one guard: 4 over-matches +
+2 under-matches in under a month — the guard is structurally cured only when the exemption is
+scoped to the segment, never to the command.
+
+## W95 — l'anti-reward-hacking linter fa over-match su una @pytest.fixture chiamata `test_client` (7ª istanza famiglia #3 — stavolta nel GUARDIANO dei test) + è CIECO agli `async def` — 2026-07-12
+
+**TRAUMA:** durante la PR dei gate Case OS (#2285) il pre-commit hook ha BLOCCATO un commit legittimo:
+`RH005: test 'test_client' asserts nothing`. Ma `test_client` è una **`@pytest.fixture`**, non un test —
+non ha alcun dovere di asserire. `scripts/lint_test_reward_hacking.py:150` filtrava su
+`node.name.startswith("test_")` **senza guardare i decoratori**: la forma, non l'entità. Il guardiano
+che deve smascherare i test-che-barano bocciava una fixture innocente e bloccava il lavoro vero.
+Il file non era mai stato staged prima, quindi l'hook non l'aveva mai visto: il bug era latente da sempre.
+
+**GEMELLO UNDER-MATCH (stesso sopralluogo):** lo stesso filtro cammina solo su `ast.FunctionDef` e
+**non su `ast.AsyncFunctionDef`** — e la maggioranza dei test di questo repo è `async def`. Il guardiano
+era cieco proprio dove vive il grosso della superficie: attivare AsyncFunctionDef fa emergere **297 RH005**
+latenti (misurati live, non stimati). Over-match e under-match nella STESSA riga di codice.
+
+**ANTIBODY:** `_is_fixture(fn)` — esenzione basata sul **decoratore** (`@pytest.fixture`, `@fixture`,
+`@pytest.fixture(scope=...)`, `@pytest_asyncio.fixture`), non sul nome. Corpus proprio:
+2 test di **innocenza** (la fixture non scatta; le forme parametrizzate e l'import nudo pure) +
+1 test di **colpevolezza** (un test SENZA assert seduto ACCANTO a una fixture scatta ancora — l'esenzione
+è scoped alla funzione, NON spegne il rilevatore sul file). 23/23 verdi.
+
+**GOTCHA:** il ramo async è stato **dichiarato e NON attivato** — 297 findings non si triagiano dentro
+una PR che parla d'altro, e flipparlo alla cieca renderebbe l'hook rosso su ogni file che chiunque tocca.
+Il gap è ora scritto in un commento AL SITO DEL FILTRO + a ledger, non lasciato invisibile: un buco
+dichiarato è debito, un buco taciuto è una bugia. Regola: quando curi un over-match, **cerca subito il
+gemello under-match nella stessa guardia** — W83→W84 e W91→W94 dicono che nasce nello stesso punto, e qui
+i due vivevano letteralmente sulla stessa riga.
