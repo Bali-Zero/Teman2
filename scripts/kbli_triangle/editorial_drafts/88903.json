@@ -1,0 +1,23 @@
+{
+  "code": "88903",
+  "editorial": {
+    "headline": "Islamic Social-Fund Activity: Open Nationally, Address-Sensitive in Bali",
+    "standfirst": "This activity covers collecting, distributing and managing Islamic social funds, with full foreign ownership open nationally and a Bali position that remains unblocked but address-sensitive.",
+    "body": "This activity is the organised collection, distribution and management of social funds associated with Islam: zakat, infak, sedekah, wakaf and other religious social funds. Its scope is deliberately broader than a single institutional form. The funds may be managed by Islamic institutions or by bodies that are not Islamic institutions, provided the activity remains within that social-fund mandate. The practical centre of gravity is stewardship: receiving funds, directing them to intended social purposes and managing them responsibly across the lifecycle of collection and distribution.\n\nFor founders, the defining point is that this is an activity concerned with social funding rather than a generic commercial service. The record identifies the kinds of funds involved and makes clear that the relevant work includes all three operational stages—collection, distribution and management. It also identifies the institutional field without limiting it solely to Islamic organisations. The slim record does not list scale categories open to this activity, so it offers no further scale distinction to rely on when framing the registration.\n\nNationally, the position is clear. The activity is marked open to PMA registration, with a foreign-ownership ceiling of 100%. In plain terms, the national record allows full foreign ownership for this activity. That openness is grounded in the PMA source recorded for it, rather than in an implied local exception or an unstated ownership condition.\n\nBali requires a more exact reading, but it is not a prohibition. The provincial rule blocks PMA registration for all Low and Medium-Low risk activities, island-wide and permanently. This activity is recorded instead as Medium-High or High risk, and is therefore not blocked by that moratorium. Its Bali status is recorded as OK_or_HIGHER_RISK, with the explicit instruction to verify the position for the particular address. A foreign founder can therefore treat Bali as currently unblocked for this activity, while treating address-level verification as part of a careful registration decision—not as a substitute for the national 100% ownership position.",
+    "pullQuote": "Nationally, full foreign ownership is open; in Bali, the activity is unblocked but still requires address-level verification.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

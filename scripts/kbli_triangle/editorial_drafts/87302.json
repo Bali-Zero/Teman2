@@ -1,0 +1,27 @@
+{
+  "code": "87302",
+  "editorial": {
+    "headline": "Residential Social Care for Older People and Physical Disabilities",
+    "standfirst": "A social-welfare institution may provide residential personal care nationally with up to 100% foreign ownership, while Bali requires address-level verification.",
+    "body": "This activity is residential social care delivered by a social-welfare institution for older people or people with physical disabilities who cannot manage their own care and do not wish to live independently. It is not merely a place to stay. The scope describes a managed setting in which personal care is joined by rooms, meals, supervision, day-to-day safeguarding and household-style support. Nursing services may also sometimes be provided to patients in a separate location.\n\nThe defining operator is a social-welfare institution: the care is organised through that institutional setting, rather than framed as an informal arrangement between individuals. The intended residents are equally specific. They are older people or people with physical disabilities whose needs make independent self-care impractical, and whose preference is not to live on their own. The record lists no business-scale entry, so it does not identify a particular scale of enterprise as open for this activity.\n\nAt the national level, the activity is marked **TERBUKA** for foreign investment, with a maximum foreign ownership figure of **100%**. In plain terms, the national record permits full foreign ownership. Its cited basis is *Perpres 10/2021, 49/2021*. That national position matters because the activity concerns a form of care where accommodation, daily living support and personal assistance are integral to the service described—not incidental additions.\n\nBali presents a more location-sensitive picture, but not a blanket bar. The provincial moratorium permanently blocks PMA registration for all low and medium-low risk activities across the island. This activity is identified as medium-high or high risk, so it is not blocked by that moratorium. Its Bali status is **OK_or_HIGHER_RISK**. That is not a substitute for checking the actual site: the record expressly says the position must be verified for the address in question. For a foreign-owned social-welfare institution considering Bali, the honest conclusion is therefore open nationally, not blocked by the provincial moratorium, and still subject to address-level verification in Bali.",
+    "pullQuote": "Bali does not block this activity through its PMA moratorium, but the proposed address still needs to be verified.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
