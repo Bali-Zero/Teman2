@@ -927,13 +927,13 @@ async def _publish_staging_item(
                 position=body.position if body else "latest",
             )
 
-            # Import publish_article function
-            # Note: publish_article is a FastAPI endpoint function, but we can call it directly
-            # since we're in the same application context
-            from backend.app.routers.article_composer import publish_article
+            # This path is already admin-gated at the endpoint above, so it calls
+            # the implementation directly rather than the gated HTTP endpoint
+            # (whose Depends() would not resolve on a direct Python call).
+            from backend.app.routers.article_composer import publish_article_internal
 
             # Publish to GitHub/Vercel
-            publish_result = await publish_article(publish_request)
+            publish_result = await publish_article_internal(publish_request)
 
             if publish_result.success:
                 # Update with actual published URL

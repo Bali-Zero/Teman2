@@ -48,11 +48,20 @@ def test_client():
     """
     from fastapi import FastAPI
 
+    from backend.app.dependencies import get_current_user
     from backend.app.routers.article_composer import limiter
 
     limiter.enabled = False
     app = FastAPI()
     app.include_router(router)
+    # /publish pushes to the public website — admin-only (Case OS R3 gate).
+    # These tests exercise the handler body, so they authenticate as an admin;
+    # the gate itself is covered by test_caseos_r3_admin_gates.py.
+    app.dependency_overrides[get_current_user] = lambda: {
+        "id": "u-1",
+        "email": "zero@balizero.com",
+        "role": "admin",
+    }
     return TestClient(app)
 
 

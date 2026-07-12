@@ -66,6 +66,56 @@ def test_rh005_no_assertion_fires():
 # ─── each rule STAYS SILENT on the legitimate counterpart ────────────
 
 
+def test_rh005_silent_on_a_fixture_named_test_something():
+    """INNOCENCE: a @pytest.fixture named `test_client` is not a test.
+
+    It has no business asserting anything — RH005 firing on it is an over-match
+    of the `test_` prefix rule (cicatrix family #3), and it blocked a real commit.
+    """
+    src = (
+        "import pytest\n"
+        "@pytest.fixture\n"
+        "def test_client():\n"
+        "    app = build()\n"
+        "    return TestClient(app)\n"
+    )
+    assert "RH005" not in _codes(src)
+
+
+def test_rh005_silent_on_parametrized_fixture_and_bare_fixture_import():
+    """INNOCENCE: the decorator forms that appear in this repo all count."""
+    parametrized = (
+        "import pytest\n"
+        "@pytest.fixture(scope='module')\n"
+        "def test_pool():\n"
+        "    return Pool()\n"
+    )
+    bare_import = (
+        "from pytest import fixture\n@fixture\ndef test_db():\n    return Db()\n"
+    )
+    assert "RH005" not in _codes(parametrized)
+    assert "RH005" not in _codes(bare_import)
+
+
+def test_rh005_still_fires_on_a_real_assertionless_test_next_to_a_fixture():
+    """GUILT: the exemption is scoped to the fixture, it does not blanket the file.
+
+    The whole point of family #3 is that a fix for an over-match must not become
+    an under-match: a genuinely assertionless test sitting beside a fixture must
+    still be caught.
+    """
+    src = (
+        "import pytest\n"
+        "@pytest.fixture\n"
+        "def test_client():\n"
+        "    return TestClient(build())\n"
+        "\n"
+        "def test_nothing(test_client):\n"
+        "    test_client.get('/health')\n"
+    )
+    assert "RH005" in _codes(src)
+
+
 def test_rh001_real_assert_silent():
     assert "RH001" not in _codes("def test_x():\n    assert compute() == 4\n")
 

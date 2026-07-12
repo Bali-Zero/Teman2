@@ -101,6 +101,92 @@ def test_telegram_webhook_imports_the_real_publish_symbol() -> None:
 
 
 # ---------------------------------------------------------------------------
+# article_composer: the OTHER door to the public website
+# ---------------------------------------------------------------------------
+#
+# Gating only /api/intel/staging/publish would have left this one unlocked:
+# POST /api/articles/publish pushes MDX to the public site repo and triggers a
+# Vercel deploy — the same R3 effect, reachable without going through staging.
+# (Found by an adversarial review of the first two gates; verified on disk.)
+
+ARTICLE_PAYLOAD: dict[str, Any] = {
+    "article": {
+        "title": "T",
+        "headline": "H",
+        "tldr": {
+            "should_worry": "no",
+            "what": "w",
+            "who": "h",
+            "when": "n",
+            "risk_level": "low",
+        },
+        "facts": "F",
+        "bali_zero_take": {
+            "hidden_insight": "i",
+            "our_analysis": "a",
+            "our_advice": "b",
+        },
+        "next_steps": {"expat": ["x"], "investor": ["y"]},
+        "category": "news",
+        "priority": "medium",
+        "relevance_score": 50,
+        "ai_summary": "s",
+        "ai_tags": ["t"],
+        "suggested_components": [],
+        "source": "src",
+        "source_url": "https://example.com",
+        "enriched_at": "2026-01-01T00:00:00Z",
+    },
+}
+
+
+@pytest.mark.asyncio
+async def test_article_publish_blocked_for_non_admin() -> None:
+    """GUILT: the article-composer publish door is admin-only too."""
+    from backend.app.routers.article_composer import router
+
+    async with _client(router, TEAM_USER) as client:
+        resp = await client.post("/api/articles/publish", json=ARTICLE_PAYLOAD)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_article_publish_admin_reaches_the_handler() -> None:
+    """INNOCENCE: an admin passes the gate (and is stopped only by config)."""
+    from backend.app.routers.article_composer import router
+
+    async with _client(router, ADMIN_USER) as client:
+        resp = await client.post("/api/articles/publish", json=ARTICLE_PAYLOAD)
+
+    # Anything but 403 proves the gate let the admin through: the handler then
+    # rejects on its own terms (GitHub not configured / validation), which is
+    # exactly what should happen in a test environment.
+    assert resp.status_code != 403
+
+
+def test_staging_publish_calls_the_internal_article_path() -> None:
+    """The staging path must not call the gated endpoint as a plain function.
+
+    A bare `Depends(...)` default would arrive as a Depends object, not a user
+    dict — the internal split exists precisely so the in-process caller does not
+    have to fake a principal.
+    """
+    from backend.app.routers import article_composer
+
+    assert hasattr(article_composer, "publish_article_internal")
+
+    src = (
+        __import__("pathlib")
+        .Path(article_composer.__file__)
+        .parent.joinpath("intel_scraper.py")
+        .read_text()
+    )
+    assert "publish_article_internal(publish_request)" in src
+    assert "await publish_article(publish_request)" not in src
+
+
+# ---------------------------------------------------------------------------
 # autonomous_agents: agent triggers + scheduler
 # ---------------------------------------------------------------------------
 
