@@ -1,0 +1,27 @@
+{
+  "code": "51101",
+  "editorial": {
+    "headline": "Scheduled Commercial Air Travel Has a Clear Route in Bali",
+    "standfirst": "Scheduled passenger air transport on fixed routes and published fares is nationally open to full foreign ownership and is not barred from PMA registration in Bali.",
+    "body": "This activity covers commercial air transport of passengers, or passengers together with cargo, on fixed and regular flight routes and schedules. The service is offered for a published fare: its defining character is a scheduled commercial operation, rather than an arrangement made flight by flight. It embraces both domestic and international scheduled passenger operations, provided they sit within that regular-route, regular-timetable model.\n\nThe registration is open across the full business-scale range: Mikro, Kecil, Menengah, and Besar. That breadth matters because the activity is not framed as the preserve of only the largest operators. The business description remains exacting, however. A founder is registering a scheduled air-transport operation with published tariffs and an established service pattern—not simply any use of an aircraft to carry people.\n\nNationally, the foreign-ownership position is direct. The activity is TERBUKA, with a maximum foreign ownership of 100%. In practical terms, the national record does not impose a foreign-equity cap below full ownership for this activity. That is the starting point for a PMA structure, and it should be read alongside the activity’s operational scope: scheduled passenger transport, potentially carrying cargo with those passengers, on regular services.\n\nBali does not reverse that national openness here. The province permanently blocks PMA registration for activities assessed as Low or Medium-Low risk, island-wide. This activity is not blocked by that moratorium because, at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi. A foreign investor can therefore register this activity in Bali today, subject to the record’s stated risk position. The distinction is worth keeping clean: full foreign ownership is the national ceiling, while Bali’s result turns on whether the activity falls inside the province’s low-risk moratorium. Here, it does not.",
+    "pullQuote": "Bali does not reverse the national openness: this activity is not blocked by the province’s PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scale open to",
+        "value": "Mikro"
+      },
+      {
+        "label": "Scale open to",
+        "value": "Kecil"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

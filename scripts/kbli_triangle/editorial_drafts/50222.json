@@ -1,0 +1,27 @@
+{
+  "code": "50222",
+  "editorial": {
+    "headline": "Specialised Inland Cargo Transport: Open Nationally, Clear in Bali",
+    "standfirst": "This activity is for purpose-modified vessels carrying one specialised cargo type on Indonesia’s inland waterways, with full foreign ownership open nationally and no Bali moratorium block.",
+    "body": "**KBLI 50222** covers the movement of specialised cargo on rivers, canals, lakes, swamps and other inland waters. It is not a general-cargo description: the vessel or cargo boat is specially modified and carries only one type of goods. The recorded scope includes logs; pipes, steel bars or rails; bulk cargo; liquids; goods requiring refrigeration; plants and live animals; containers; heavy equipment; and other specialised goods. The vessel must meet the technical and seaworthiness requirements appropriate to the particular cargo it carries.\n\nThe activity is open across the stated business spectrum: Mikro, Kecil, Menengah and Besar. That breadth does not dilute the defining feature of the code. What matters is the dedicated nature of the transport operation—the craft is adapted to its cargo and operates on inland waters, rather than being described as a vessel for mixed or general freight. For a business selecting this activity, the fit lies in that close relationship between vessel design, cargo type and inland-waterway transport.\n\nNationally, the PMA position is straightforward: the activity is TERBUKA, with a maximum foreign ownership ceiling of 100%. Bali does not reverse that position through its province-wide PMA moratorium. The moratorium blocks Low and Medium-Low risk KBLI island-wide and permanently, but this activity is recorded as not blocked. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, which places it outside that moratorium block. The Bali status is therefore OK_or_HIGHER_RISK: foreign investment is not barred here by the stated Bali rule, while the relevant risk position remains part of the picture at large scale.\n\nThe practical reading is deliberately narrow. A foreign-owned business may register this specialised inland cargo activity nationally up to the full stated ownership ceiling, and Bali’s cited moratorium does not prevent that registration. The activity itself remains defined by specialised vessels, a single cargo category and transport across inland waters.",
+    "pullQuote": "A foreign-owned business may register this specialised inland cargo activity nationally up to the full stated ownership ceiling, and Bali’s cited moratorium does not prevent that registration.",
+    "byTheNumbers": [
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "Bali OSS risk at Besar scale",
+        "value": "Menengah-Tinggi/Tinggi"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "52101",
+  "editorial": {
+    "headline": "Warehouse Receipts Need a Warehouse System, Not Just Storage",
+    "standfirst": "This activity covers the management of warehouse-receipt-system facilities, from safeguarding goods to issuing the receipts that represent them.",
+    "body": "This activity is for operators of warehouses within Indonesia’s warehouse receipt system. Its work is not limited to keeping goods under a roof: it includes storing and maintaining goods placed in a system warehouse, then issuing warehouse receipts for goods deposited by their owners or by other parties. The defining feature is therefore the warehouse-receipt system itself, with the operator responsible for the facility and the receipts issued against goods held there.\n\nThe scope extends across several practical settings. It includes operating warehouse-receipt-system facilities in free-trade zones, cold-storage warehouses operating through that system, and physical commodity storage locations using it. A business registering this activity is positioning itself as the manager of such a warehouse operation—not merely as the owner of stored inventory. The code is open to micro, small, medium and large business scales, giving the activity a broad formal entry point across the stated scale categories.\n\nNationally, the position for foreign investment is straightforward: the activity is open to PMA, with a foreign-ownership ceiling of 100%. That does not turn warehouse-receipt operations into a generic logistics proposition; the commercial identity remains tied to the storage, care and receipt issuance described in the scope. But it does mean that the national investment setting does not impose a foreign-equity cap below full ownership for this activity.\n\nBali’s position is also materially clear. This activity is not blocked for PMA registration under the province-wide rule that blocks low- and medium-low-risk activities. At the large-business scale, however, its OSS risk classification is medium-high or high. The practical Bali reading is therefore not a moratorium barrier, but an activity whose large-scale operation sits in a higher-risk category. For a foreign founder, the honest conclusion is clean: the activity is nationally open to full foreign ownership and is not barred from PMA registration in Bali by that moratorium.",
+    "pullQuote": "The practical Bali reading is not a moratorium barrier, but an activity whose large-scale operation sits in a higher-risk category.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

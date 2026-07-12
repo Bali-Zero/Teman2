@@ -1,0 +1,27 @@
+{
+  "code": "51203",
+  "editorial": {
+    "headline": "Cargo Beyond the Atmosphere: Open Nationally, Address-Checked in Bali",
+    "standfirst": "This activity covers launch-vehicle cargo transport, satellite launches and operator-led space transport—open nationwide to full foreign ownership, with address verification required in Bali.",
+    "body": "Activity code 51203 is the classification for moving freight or cargo by launch vehicle, whatever the route and whatever the launch schedule. Its scope is deliberately wider than a single launch event: it includes the launch of satellites and other spacecraft, as well as the hire of space transport with its operator when the purpose is moving goods. The boundary is equally clear. This is a cargo activity; passenger space transport is expressly outside its scope. The subject, then, is a defined transport activity centred on goods and the vehicle that carries them.\n\nRegistration is open to the full set of stated business scales—Mikro, Kecil, Menengah and Besar. That matters because the record does not reserve this activity to a single scale: a business registering it may be classified at any of those four stated levels. The activities covered retain the same core: transport of cargo using launch vehicles, including satellite and spacecraft launches and operator-led rental for goods transport. The inclusion of an operator keeps the rental provision within the definition of goods transport.\n\nAt national level, this is an open PMA activity, or TERBUKA, with a foreign-ownership ceiling of 100%. In plain terms, foreign ownership may reach full ownership nationwide. The record attributes that national position to Perpres 10/2021, 49/2021. The stated national maximum is complete. That national position, however, should be kept distinct from Bali’s own treatment, which is recorded through a different status and an address-specific instruction.\n\nBali does not block this activity for PMA registration under the province-wide moratorium. The Bali record places it in the medium-high/high-risk range, while the moratorium applies island-wide and permanently to Low and Medium-Low risk KBLI for PMA. Bali’s position is therefore unblocked, with an explicit instruction to verify the particular address. That is the honest outcome: national PMA openness is 100%, and a Bali registration is not barred by the moratorium, but the address must still be checked.",
+    "pullQuote": "National PMA openness is 100%, but Bali still requires the particular address to be verified.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
