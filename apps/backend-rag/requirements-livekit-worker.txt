@@ -3,4 +3,4 @@
 # Install this in a dedicated local worker venv when possible. The backend doctor
 # only needs the worker's loopback HTTP health endpoint; the deployable backend
 # image must not depend on LiveKit Agents.
-livekit-agents==1.6.3
+livekit-agents==1.6.5

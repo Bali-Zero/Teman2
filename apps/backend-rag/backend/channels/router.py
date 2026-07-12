@@ -141,6 +141,7 @@ class ChannelRouter:
                 sender_id=message.user_id,
                 content=message.text,
                 metadata=message.metadata,
+                session_id=message.session_id,
             )
 
             # 3.5 Omnichannel: resolve identity, classify, thread
@@ -184,6 +185,7 @@ class ChannelRouter:
                     sender_id="zantara",
                     content=final_text,
                     metadata=message.metadata,
+                    session_id=message.session_id,
                 )
 
             logger.info("✅ Successfully routed and processed message from %s", channel)
@@ -265,9 +267,26 @@ class ChannelRouter:
         sender_id: str,
         content: str,
         metadata: dict[str, Any] | None = None,
+        session_id: str | None = None,
     ) -> None:
         """
         Persist message to conversation_messages table for cross-channel history.
+
+        Unified metadata shape (Case OS audit unification, 2026-07-13): every
+        persisted row carries `session_id` in its metadata JSON — the session
+        adapters already derive it identically to the sync WA writer
+        (`wa_session_{phone}`, see whatsapp/adapter.py:128 vs
+        whatsapp_chat.py:507). Without it, rows written on this path were
+        invisible to the session-context reader
+        (conversation/engine.py: WHERE metadata->>'session_id' = $1), so a
+        P0-6 replayed message never contributed to context reconstruction.
+        Adapter-native keys (message_id, wamid, message_type, phone, ...) pass
+        through untouched. The adapter-derived session_id PARAMETER is
+        authoritative and overwrites any metadata-supplied value — metadata
+        can be client-influenced, the parameter cannot (Codex 2026-07-13).
+        The adapters' malformed-webhook fallback "unknown" is never persisted:
+        it would pool degenerate events from every channel into one shared
+        history under the same key.
 
         Non-blocking: failures are logged but don't break the message flow.
         """
@@ -279,6 +298,10 @@ class ChannelRouter:
             # Resolve client_id from sender metadata if available
             client_id = (metadata or {}).get("client_id")
 
+            meta = dict(metadata or {})
+            if session_id and session_id != "unknown":
+                meta["session_id"] = session_id
+
             await db_pool.execute(
                 """
                 INSERT INTO conversation_messages (client_id, channel, direction, sender_id, content, metadata)
@@ -289,7 +312,7 @@ class ChannelRouter:
                 direction,
                 sender_id,
                 content[:10000],  # Limit content size
-                json.dumps(metadata or {}),
+                json.dumps(meta),
             )
         except Exception as e:
             # F40: a failed persist silently holes the conversation history.

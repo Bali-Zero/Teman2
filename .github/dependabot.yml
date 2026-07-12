@@ -68,6 +68,16 @@ updates:
         versions: [">=1.4.0"] # sympy (latest 1.14.0) pins mpmath<1.4
       - dependency-name: "tokenizers"
         versions: [">0.23.0"] # transformers 4.57.x pins tokenizers<=0.23.0
+      # fastapi 0.137.0 refactored router.routes from a flat list into a
+      # TREE (_IncludedRouter nodes without .path): every surface that
+      # iterates app.routes goes silently blind - reachability tests,
+      # manifest parity, auth-contract sampling (proven empirically on
+      # group PR #2337: app.routes showed ONLY the 4 docs routes). No
+      # security regression, but the bump needs a deliberate adaptation
+      # lane (tree-aware route walking) before it can land - tracked in
+      # modus PENDING-ARMS. Drop this ignore in that lane's PR.
+      - dependency-name: "fastapi"
+        versions: [">=0.137.0"]
     groups:
       # OpenAI-stack packages isolated into their own group so a breaking bump
       # (openai/langchain-openai sit near the frozen embedding path:

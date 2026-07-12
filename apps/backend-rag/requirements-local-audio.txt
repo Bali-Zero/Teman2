@@ -7,7 +7,7 @@
 # declares strict torch==2.6.0, torchaudio==2.6.0, and transformers==5.2.0
 # pins for Python <3.14. This overlay pins the empirically verified
 # local audio ABI separately from the deployable backend base image.
-torch==2.11.0
+torch==2.13.0
 torchaudio==2.11.0
 silero-vad==6.2.1
 chatterbox-tts==0.1.7
