@@ -1,0 +1,27 @@
+{
+  "code": "66195",
+  "editorial": {
+    "headline": "Investor Protection Funds: Open Nationally, Permitted in Bali",
+    "standfirst": "This activity manages investor-protection funds designed to shield investors from the loss of their assets.",
+    "body": "Investor-protection fund administration is a specialised financial-market activity: establishing and managing a pooled protection fund created to safeguard investors when their assets are lost. Its purpose is not ordinary fund management, but the stewardship of a collective financial safeguard directed at investor protection.\n\nThe activity is for a party authorised by the Financial Services Authority (OJK) to organise and manage that protection fund. The record makes the authorisation point explicit, reflecting the tightly defined institutional role of the operator. Registration is open across every stated business scale—from Mikro and Kecil through Menengah and Besar—so scale does not alter the underlying character of the activity: managing a dedicated pool intended to protect investors.\n\nNationally, the activity is open to foreign investment, with foreign ownership permitted up to 100%. That is a clear position: the national foreign-ownership ceiling does not require a local equity share. The applicable reference is Perpres 10/2021, 49/2021.\n\nBali does not block PMA registration for this activity under its island-wide moratorium on Low and Medium-Low risk activities. The local assessment records that, at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi; accordingly, it falls outside that moratorium. In practical terms, a foreign investor can register this activity in Bali today, subject to the defined OJK-authorised role and the activity’s stated scope.",
+    "pullQuote": "Bali does not block PMA registration for this investor-protection activity under its moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

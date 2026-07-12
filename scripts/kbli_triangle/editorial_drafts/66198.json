@@ -1,0 +1,27 @@
+{
+  "code": "66198",
+  "editorial": {
+    "headline": "Who Rates Indonesia’s Small Businesses and Cooperatives?",
+    "standfirst": "A nationwide activity for independent rating services, with full foreign ownership nationally but a scope-dependent route in Bali.",
+    "body": "KBLI 66198 covers the provision of rating services for micro, small and medium enterprises, as well as cooperatives. In practical terms, it is the business of assessing and classifying these organisations through a rating service. Its stated scope also includes MSME-rating activities and work carried out by independent cooperative-rating institutions. The focus is therefore specific: an evaluative service for the enterprises and cooperative bodies that sit at the smaller-business end of Indonesia’s economy.\n\nThe activity is open at every listed scale: Mikro, Kecil, Menengah and Besar. Nationally, it is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. That is a clear national position: foreign investors may hold the full permitted stake in a company registered for this activity. The applicable national reference in the record is Perpres 10/2021, 49/2021.\n\nBali requires a more exact reading. This activity is not marked as categorically blocked for PMA registration there; its Bali status is scope-dependent. The record says that, at the Besar scale, OSS risk may be low for some scopes and higher for others. A PMA registration in Bali is possible only by declaring the higher-risk scope, with the precise activity to be checked live in OSS. This is not a cosmetic distinction. The declared scope determines whether the registration route is available.\n\nThe reason is Bali’s permanent, island-wide moratorium on PMA registration for all Low and Medium-Low risk KBLI activities. For this rating-services activity, national openness does not automatically translate into an uncomplicated Bali registration. The national ceiling remains 100%, but Bali eligibility turns on the exact scope declared and its live OSS risk treatment. For founders, the disciplined conclusion is simple: the business is nationally open and available at all listed scales, while a Bali PMA filing depends on selecting and verifying the higher-risk scope for the exact activity.",
+    "pullQuote": "National openness does not automatically translate into an uncomplicated Bali registration.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Eligible business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

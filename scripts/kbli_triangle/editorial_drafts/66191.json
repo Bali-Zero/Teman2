@@ -1,0 +1,27 @@
+{
+  "code": "66191",
+  "editorial": {
+    "headline": "Financing the Securities Trade",
+    "standfirst": "This activity covers OJK-licensed lending of funds or securities to brokers for securities transactions, open to PMA nationally and not blocked by Bali’s moratorium.",
+    "body": "At its core, this is the financing infrastructure behind a securities trade. The activity provides brokers with lending facilities in the form of funds and/or securities so that the transaction can proceed. The stated examples—margin transactions, short selling and repos—show the practical terrain: financing is extended in direct support of securities transactions. The formal scope also draws a firm professional boundary around the activity. It covers parties that have obtained a business licence from the Financial Services Authority (OJK) to provide lending facilities of funds and/or securities for securities transactions. That licence status is part of the activity’s definition.\n\nThe registration canvas is broad across business scale. The record opens the activity to Mikro, Kecil, Menengah and Besar enterprises. It does not reserve the category for only the largest market participants; each of the four stated scales is included. Nationally, its PMA status is TERBUKA, with foreign ownership permitted up to 100%. In plain terms, the national record does not place the foreign stake below full ownership for this activity. The cited basis is Perpres 10/2021, 49/2021. For a founder, those facts give the category its national shape: regulated transaction finance, available across the specified business scales, with a 100% foreign-ownership ceiling.\n\nBali’s conclusion is clear, and it is not a prohibition: PMA registration is not blocked by the provincial moratorium. The Bali entry is marked OK_or_HIGHER_RISK, and the recorded reason says that at the Besar scale the OSS risk is Menengah-Tinggi/Tinggi—Medium-High/High—so the activity is not blocked by that moratorium. The moratorium itself permanently applies, island-wide, to all Low and Medium-Low risk KBLI for PMA. This activity’s recorded Bali position therefore remains open rather than barred: the risk assessment cited for the Besar scale places it outside that particular restriction. The honest reading is simply that Bali does not block PMA registration here under its moratorium, while the OJK licence boundary continues to define the business activity.",
+    "pullQuote": "Bali does not block PMA registration here under its moratorium, while the OJK licence boundary continues to define the business activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "66192",
+  "editorial": {
+    "headline": "Trust Administration Is Nationally Open, but Closed to PMA Registration in Bali",
+    "standfirst": "This activity covers fee- or contract-based custody and management under trust agreements for beneficiaries—open nationally to full foreign ownership, yet unavailable for PMA registration at a Bali address.",
+    "body": "A foreign investor cannot register this activity as PMA in Bali today. That local restriction sits beside a very different national position: the activity is nationally open to foreign investment, with a foreign-ownership ceiling of 100%. For founders, the distinction is not semantic. National openness describes the investment position for the activity; the Bali address triggers an island-wide PMA moratorium that closes the registration route there.\n\nThe activity itself is narrowly defined. It concerns the custody and management carried out under a trust agreement for the benefit of a beneficiary, performed in return for remuneration or under a contract. The centre of gravity is therefore the administration of an agreed trust arrangement: holding and managing on behalf of the beneficiary within the terms of that arrangement. It is not a catch-all label for financial activity, but a defined custodial and management service grounded in a trust agreement and directed to the beneficiary’s interest.\n\nRegistration is open across the stated business scales: Mikro, Kecil, Menengah, and Besar. That breadth does not dilute the Bali result for PMA. The record identifies the Besar scale for this activity as Menengah Rendah, or Medium-Low risk. Bali’s permanent, province-wide PMA moratorium blocks all Low- and Medium-Low-risk KBLI activities when the registered address is in Bali. The consequence is categorical for a foreign-owned registration in Bali: despite the national 100% foreign-ownership position, this activity is blocked there.\n\nThe practical reading is straightforward but must remain precise. A founder considering this activity should recognise both facts at once: nationally, full foreign ownership is permitted; in Bali, PMA registration is closed under the moratorium because of the activity’s Medium-Low-risk treatment at the stated scale. The Bali restriction is not a reduction of the national ownership ceiling. It is a location-specific bar on PMA registration for a Bali address, and it is the controlling fact for a foreign investor planning to establish this activity on the island.",
+    "pullQuote": "National openness does not overcome Bali’s location-specific bar on PMA registration for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "CHIUSO_MORATORIA_BALI"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "66225",
+  "editorial": {
+    "headline": "KBLI 66225: Acting for the Guaranteed Party",
+    "standfirst": "This activity covers advisory and brokerage services for guarantees, including claim settlement handled on behalf of the guaranteed party.",
+    "body": "KBLI 66225 covers guarantee-broker activity: advisory and intermediary services in arranging guarantees, together with the handling of claim settlement. Its defining perspective is clear. The broker acts for and on behalf of the guaranteed party, not as a detached observer of the guarantee process. In practical terms, this is an activity built around representing that party’s interests while consulting on, or mediating, the provision of a guarantee and its claims.\n\nThe code is open across every stated business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the activity is not framed as the preserve of one company size. The record places the same core work—consultation, intermediation and claim-settlement handling for the guaranteed party—within a classification available from micro through large enterprises.\n\nNationally, the PMA position is TERBUKA, with a foreign-ownership ceiling of 100%. That is an unambiguous national opening: foreign ownership is permitted up to the full ceiling recorded for this activity. The governing source cited is Perpres 10/2021, 49/2021. Nothing in the record suggests a lower national foreign-ownership limit, so the national picture should be read exactly as it stands: open, with a maximum foreign stake of 100%.\n\nBali requires a more precise reading, but not a pessimistic one. The province permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities across the island. This activity is not blocked by that moratorium. The record explains why: at the Besar scale, the OSS risk classification is Menengah-Tinggi/Tinggi, placing it outside the moratorium’s stated Low and Medium-Low scope. Bali’s recorded status is therefore OK_or_HIGHER_RISK. For a foreign-owned registration, the honest conclusion is that this activity is not barred in Bali by the provincial PMA moratorium described in the record; the relevant distinction is its higher OSS risk position at the Besar scale, rather than any Bali-specific foreign-ownership cap.",
+    "pullQuote": "Bali does not bar this activity under its PMA moratorium because its Besar-scale OSS risk position sits above the blocked categories.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

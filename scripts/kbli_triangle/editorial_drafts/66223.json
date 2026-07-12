@@ -1,0 +1,27 @@
+{
+  "code": "66223",
+  "editorial": {
+    "headline": "Reinsurance Brokerage: Open Nationally, Clear of Bali’s PMA Moratorium",
+    "standfirst": "This activity covers advice and brokerage for reinsurance placements and related claim settlement, with full foreign ownership permitted nationally and no Bali moratorium block.",
+    "body": "**Reinsurance brokerage** is a specialist advisory and intermediary activity for placing reinsurance or sharia reinsurance, and for handling the settlement of related claims. The broker acts for and on behalf of an insurance company, sharia insurance company, guarantee company, sharia guarantee company, reinsurance company, or sharia reinsurance company making that placement. The scope is therefore defined by representation and placement: advising on, or intermediating in, reinsurance arrangements for the institutions that place them, while also handling the associated claim-settlement work.\n\nThe activity is open across the full scale spectrum recorded here: Micro, Small, Medium and Large. That breadth is significant because the code does not confine this work to one particular size of enterprise. A business registering this activity may be organised at any of those listed scales, while remaining within the same core description: consulting and/or acting as intermediary in reinsurance or sharia reinsurance placement, including the handling of claims settlement for the named insurance, guarantee and reinsurance businesses.\n\nNationally, the PMA position is straightforward. The activity is listed as open, with a maximum foreign ownership level of 100%. In practical terms, the national record permits a foreign investor to hold the entire foreign-ownership ceiling in a PMA business registered for this activity. The stated basis is Perpres 10/2021, 49/2021. There is no lower national foreign-ownership cap in the record to qualify that position.\n\nBali’s picture is also clear, though it turns on risk classification rather than a separate ownership percentage. Bali permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities across the province. This activity is not blocked by that moratorium: at the Large scale, its OSS risk is recorded as Medium-High/High. Bali therefore does not bar PMA registration for this activity under the province-wide moratorium. For a foreign founder considering Bali, the honest conclusion is that the national 100% foreign-ownership ceiling remains relevant here, and the Bali moratorium does not shut the activity out.",
+    "pullQuote": "Bali therefore does not bar PMA registration for this activity under the province-wide moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

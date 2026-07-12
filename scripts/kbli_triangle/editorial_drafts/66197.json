@@ -1,0 +1,27 @@
+{
+  "code": "66197",
+  "editorial": {
+    "headline": "Money-Market Support: Nationally Open, Blocked for PMA in Bali",
+    "standfirst": "This activity supports transactions beyond an exchange in Indonesia’s money and foreign-exchange markets; it is nationally open to foreign investment, but cannot be registered by PMA at a Bali address.",
+    "body": "This code covers intermediary support for issuing and trading instruments, and for carrying out transactions, in Indonesia’s money and foreign-exchange markets when the activity occurs other than through an exchange. Its scope is anchored in intermediation around instruments and transactions within those two markets. The defining work is therefore support for issuance, trading, or transaction execution outside an exchange venue.\n\nMicro, Small, Medium and Large enterprises may register it. Nationally, the activity is TERBUKA to PMA, with a 100% foreign-ownership ceiling. Its listed national source is Perpres 10/2021, 49/2021. This is the ownership result at national level: a fully foreign-owned structure fits within the stated ceiling. That conclusion should be kept precise, because it speaks to the national position and does not settle the Bali registration question.\n\nBali changes the practical answer sharply. A foreign investor cannot register this activity at a Bali address today. The record classifies Bali as closed under the PMA moratorium, explaining that the Large scale is Menengah Rendah. Under the province-wide rule, all Low and Medium-Low risk KBLI activities are blocked for PMA; the moratorium is island-wide and permanent. The record associates this application with a governor’s letter dated May 2026.\n\nNational openness and a Bali block are therefore not competing descriptions. The former tells a founder how much foreign ownership the activity can carry nationally; the latter determines whether PMA registration is available for the Bali address. **National openness describes the ownership ceiling, while the Bali PMA moratorium decides whether registration can be made at a Bali address.** For this activity, both statements must be read together: 100% is the national ceiling, but Bali PMA registration remains blocked.",
+    "pullQuote": "National openness describes the ownership ceiling, while the Bali PMA moratorium decides whether registration can be made at a Bali address.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "CHIUSO_MORATORIA_BALI"
+      }
+    ]
+  }
+}

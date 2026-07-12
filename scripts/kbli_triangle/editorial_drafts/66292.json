@@ -1,0 +1,27 @@
+{
+  "code": "66292",
+  "editorial": {
+    "headline": "Insurance Oversight: Nationally Open, Bali PMA Closed",
+    "standfirst": "This activity covers financial oversight in insurance, guarantee and pension funds—open nationally to full foreign ownership, but unavailable for PMA registration at a Bali address.",
+    "body": "KBLI 66292 is defined by oversight work in financial services, not by a retail or product description. It covers four stated functions—regulation, supervision, examination and investigation—directed at activity in insurance, guarantee and pension funds. Those functions and sectors are the activity’s whole frame in the record. In clear terms, the code concerns work that regulates, supervises, examines and investigates financial-services activity within those named areas. It is a functional definition, built from what is done and the sectors to which it is applied.\n\nThe boundary is equally deliberate. The scope excludes supervisory financial-services activity beyond insurance and pension funds. That exclusion keeps the reading disciplined, while guarantee activity remains explicit in the main description. The remit therefore has two inseparable parts: the functions—regulation, supervision, examination and investigation—and the named insurance, guarantee and pension-fund sectors. For this record, both parts together form the definition.\n\nNationally, the position is open. The record marks the activity TERBUKA, makes it available at Mikro, Kecil, Menengah and Besar scales, and gives a national foreign-ownership ceiling of 100%. Foreign ownership may therefore reach 100% nationally. These facts belong together: the code is not confined in the record to a single business scale, and the stated foreign-ownership ceiling is full ownership. The national basis cited for that position is Perpres 10/2021, 49/2021.\n\nBali demands a separate conclusion. Although the national position is open, a foreigner cannot register this activity as PMA at a Bali address today. The record gives Bali a closed-under-moratorium status and identifies the Besar scale as Menengah Rendah. That classification places it inside Bali’s PMA moratorium: the island-wide, permanent rule blocks PMA for Low and Medium-Low risk classifications. National openness does not turn into a right to register a PMA at a Bali address. The Governor’s letter cited in the record is the local source for that moratorium.",
+    "pullQuote": "National openness does not turn into a right to register a PMA at a Bali address.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_MORATORIA_BALI"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "66291",
+  "editorial": {
+    "headline": "Actuarial Advice: Pricing Life Insurance Through Mathematics",
+    "standfirst": "This activity applies mathematical principles and statistical data to design life-insurance programmes and determine premium rates.",
+    "body": "Actuarial advisory activity is the disciplined work of turning statistical data into the probabilities that underpin life-insurance programmes. Its scope is expressly mathematical: applying actuarial principles to determine or calculate possible outcomes from statistical information, then using that work to prepare or design different forms of life-insurance programme and establish premium rates. It is not a broad label for insurance activity; its centre of gravity is the calculation behind programme design and pricing.\n\nAn actuarial business may carry out this activity at every listed business scale: Mikro, Kecil, Menengah and Besar. That range matters because the record does not reserve the activity for one particular size of enterprise. Whether organised at a micro, small, medium or large scale, the described business remains anchored in the same substantive work: mathematical analysis of likelihoods derived from statistical data, applied to life-insurance programmes and premium determination.\n\nNationally, the activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. In Bali, it is not blocked for PMA registration. The provincial moratorium blocks Low and Medium-Low risk activities for PMA across the island, permanently; this activity sits outside that block because, at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi. The practical Bali reading is therefore straightforward: the activity remains open rather than being caught by the moratorium, while its risk position at the large scale is explicitly higher than the categories the moratorium blocks.\n\nThat distinction is worth keeping clear. The national position establishes full foreign ownership for the activity, and the Bali position does not reverse it through the province-wide moratorium. The record’s Bali classification is `OK_or_HIGHER_RISK`: open in that sense, but explicitly associated at the Besar scale with Menengah-Tinggi/Tinggi OSS risk. For founders, the useful precision lies in recognising both facts at once—full national PMA openness and a Bali status that remains available because it is not within the permanently blocked Low or Medium-Low risk band.",
+    "pullQuote": "The activity remains open in Bali because it is not within the permanently blocked Low or Medium-Low risk band.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

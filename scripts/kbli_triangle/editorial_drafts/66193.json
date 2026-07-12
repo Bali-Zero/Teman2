@@ -1,0 +1,27 @@
+{
+  "code": "66193",
+  "editorial": {
+    "headline": "The Discipline Behind a Securities Rating",
+    "standfirst": "This activity turns assessments of repayment capacity into a defined rating system that gives investors a clearer basis for judging securities and rated entities.",
+    "body": "## A judgement system for investors\n\nSecurities rating is the business of translating financial judgement into an established rating system. It covers ratings for debt securities, sukuk, asset-backed securities and other securities capable of being rated, as well as ratings of entities themselves. Its remit also includes mutual funds and real-estate investment funds structured as collective investment contracts. The purpose is precise: to give investors information on a party’s ability to meet payment obligations fully and on time.\n\nThat purpose makes the activity more exacting than a broad financial commentary service. The rating is expressed through a predetermined system, and its value lies in making a view of payment capacity legible to the market. The registrant is the party undertaking those ratings: assessing the relevant securities or entity, then communicating that assessment through the stated rating framework. Registration is open across the full stated range of business scales, from Mikro and Kecil through Menengah and Besar.\n\nNationally, the activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. In practical terms, the record does not set a foreign stake below full ownership for this activity at the national level. That openness applies to the rating activity itself: ratings of the specified securities, entities, mutual funds and qualifying real-estate investment funds are all within its stated scope.\n\nBali’s position is also clear, but it deserves to be read on its own terms. The province’s permanent PMA moratorium blocks activities classified as Low or Medium-Low risk across the island. This activity is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the record notes that, at the Besar scale, its OSS risk classification is Menengah-Tinggi/Tinggi—therefore it is not blocked by the moratorium. A foreign investor can register this activity in Bali today; the record identifies no separate Bali ownership ceiling or partnership condition.",
+    "pullQuote": "A foreign investor can register this activity in Bali today because it is not blocked by the province’s PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Registration scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
