@@ -1,0 +1,27 @@
+{
+  "code": "66115",
+  "editorial": {
+    "headline": "The Infrastructure Behind Rupiah Market Transactions",
+    "standfirst": "This code covers the systems and facilities that enable rupiah money-market and foreign-exchange transactions, with full national foreign ownership and no Bali moratorium block.",
+    "body": "KBLI 66115 concerns the operation, provision or use of systems through which financial transactions are conducted in the money market and foreign-exchange market involving rupiah. It is the transactional infrastructure itself: the facilities and systems that allow those markets to function, rather than a generic technology label. Its scope expressly includes electronic trading-platform providers, systematic internalisers, exchange operators and other transaction-facility operators. It also includes businesses that provide technology and operate facilities for rupiah money-market and foreign-exchange transactions, including money-market and foreign-exchange brokerage companies.\n\nThe registering business is therefore one that operates transaction facilities or provides the technology and means through which these market transactions are carried out. The activity is open at every listed business scale: micro, small, medium and large. That breadth does not dilute the definition. The common thread is the organisation and operation of a system or facility for transactions in the specified rupiah markets, whether the business is providing an electronic platform, acting as a market broker, or operating another form of transaction venue.\n\nNationally, the activity is classified as open to foreign investment, with a maximum foreign ownership level of 100%. In plain terms, the national record permits full foreign ownership for this activity. The relevant PMA source is Perpres 10/2021 and 49/2021. There is no lower foreign-ownership ceiling in the record to qualify that national position.\n\nBali’s position is also clear for this code. Bali does not block PMA registration for this activity under its moratorium. The province’s permanent, island-wide moratorium applies to Low and Medium-Low risk KBLI activities for PMA; the Bali assessment for this activity states that OSS risk at the Large scale is Medium-High/High. It is therefore not blocked by the moratorium. A foreign investor can register this activity in Bali today, subject to the record’s stated Bali status of OK_or_HIGHER_RISK rather than a moratorium exclusion.",
+    "pullQuote": "Bali does not block PMA registration for this activity under its moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

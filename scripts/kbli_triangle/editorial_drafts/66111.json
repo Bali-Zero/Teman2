@@ -1,0 +1,27 @@
+{
+  "code": "66111",
+  "editorial": {
+    "headline": "The Market Infrastructure Behind Securities Trading",
+    "standfirst": "KBLI 66111 covers the systems that bring securities buyers and sellers together, with full foreign ownership nationally and no Bali moratorium block at Large scale.",
+    "body": "KBLI 66111 is the infrastructure of a securities market: the business of operating and providing the systems or facilities through which separate parties can meet to offer, buy and sell securities. Its scope includes securities trading involving carbon units, whether transactions take place through an exchange or through an alternative trading system. The defining work is not the ownership of the securities being traded, but the organisation of the venue, mechanism or infrastructure that allows other parties’ offers to meet.\n\nThat remit also reaches business entities that provide systems or facilities for matching other parties’ buy and sell offers. It explicitly includes an electronic system that continuously brings together service users’ transactions in debt securities and/or sukuk outside a securities exchange. In practical terms, this is a code for the operator of the trading environment: the party making the market’s meeting place function, rather than simply participating in a transaction conducted there.\n\nThe activity is open across Mikro, Kecil, Menengah and Besar scales. Nationally, its PMA status is TERBUKA and the foreign-ownership ceiling is 100%. That is a clean national position: foreign investment may hold the full permitted stake in a business registered under this activity. The record cites Perpres 10/2021, 49/2021 as the source for that national setting.\n\nBali does not reverse that position with a PMA registration block today. The province’s permanent, island-wide moratorium blocks PMA registration for Low and Medium-Low risk KBLI activities, but this activity is not blocked by that rule. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, which is why its Bali status is recorded as OK_or_HIGHER_RISK. For a founder, the important distinction is precise: national foreign openness remains intact, and Bali is not closed to PMA registration under the stated moratorium; the relevant Bali reading is instead the activity’s higher risk at Large scale.",
+    "pullQuote": "This is the business of making the trading environment function, rather than simply taking part in the trades conducted there.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

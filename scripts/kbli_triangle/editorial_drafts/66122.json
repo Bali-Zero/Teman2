@@ -1,0 +1,27 @@
+{
+  "code": "66122",
+  "editorial": {
+    "headline": "Futures Commodity Brokerage, With a Clear Bali Reading",
+    "standfirst": "A client-mandated role in futures and derivatives trading, open nationally to full foreign ownership and not marked as blocked for PMA registration in Bali.",
+    "body": "KBLI 66122 covers the brokerage of commodity trading through futures contracts, Sharia derivatives contracts, and other derivatives contracts. The broker acts on a client’s instruction to buy or sell, drawing specified funds and/or securities as margin to secure the transaction. It is therefore an intermediary activity rooted in contract-based commodity trading, rather than the commodity trade itself. Its stated scope also includes broker representatives, the opening of futures-broker branch offices, the forwarding of client instructions to overseas futures exchanges, and participation in an alternative trading system.\n\nThe activity is open at Mikro, Kecil, Menengah, and Besar scales. That breadth gives the code a clear operational range: the record accommodates the brokerage function across each of those business scales, while retaining the same essential character—handling client mandates in futures and derivatives transactions and the related margin mechanism. Nationally, its PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. On the national reading supplied here, foreign participation is not capped below full ownership.\n\nBali requires a separate reading, because its province-wide permanent moratorium blocks PMA registration for all Low and Medium-Low risk activities. For this code, however, the Bali record does not mark PMA registration as blocked. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is specific: at the Besar scale, the OSS risk classification is Menengah-Tinggi/Tinggi—medium-high/high—so the activity is not caught by that moratorium.\n\nThe practical editorial point is straightforward. This is a futures commodity brokerage activity with a nationally open PMA position and a 100% foreign-ownership ceiling. In Bali, the record does not treat the code as blocked for PMA registration, because the relevant large-scale risk classification sits above the moratorium’s Low and Medium-Low threshold. That conclusion rests on the classification and moratorium rule recorded here, not on a separate Bali ownership figure or condition.",
+    "pullQuote": "In Bali, the record does not treat the code as blocked for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      }
+    ]
+  }
+}

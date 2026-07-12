@@ -1,0 +1,27 @@
+{
+  "code": "66116",
+  "editorial": {
+    "headline": "Financial Oversight: Nationally Open, Closed to PMA in Bali",
+    "standfirst": "A nationally open activity covering financial-sector oversight, but one that Bali’s permanent PMA moratorium blocks at a Bali address.",
+    "body": "KBLI 66116 covers the work behind regulation, supervision, inspection and investigation in financial services outside insurance and pension funds. Its scope reaches banking; capital markets, derivatives and carbon exchanges; financing institutions, venture-capital firms, microfinance institutions and other financial-services industries; commodity-contract trading; and financial-sector technology innovation, digital financial assets and crypto-assets. It also encompasses the conduct of financial-services businesses, consumer education and protection, and oversight of the financial sector as an integrated whole.\n\nNationally, the activity is classified as TERBUKA, with a foreign-ownership ceiling of 100%. It is open across every listed business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the record places the activity across both the institutional mechanics of finance and the public-facing work of consumer protection. The national position is therefore direct: this is an activity open to foreign ownership up to the full stated ceiling, rather than one restricted to a particular scale of enterprise.\n\nBali changes the outcome decisively. A foreign investor cannot register this activity at a Bali address today. The record identifies the Besar scale as Menengah Rendah, or medium-low risk, and Bali’s rule blocks PMA registration for all Low and Medium-Low risk activities across the province on a permanent basis. This is not a Bali-specific reduction in the foreign-ownership percentage. The stated result is a block: despite the national TERBUKA classification and 100% ceiling, the Bali status is CHIUSO_MORATORIA_BALI. The record ties that result to the Bali PMA moratorium cited in the gubernatorial letter dated May 13, 2026.\n\nThe distinction is consequential and should be read exactly as it stands. National openness establishes the foreign-ownership position for the activity; it does not create a PMA registration route at a Bali address where the island-wide moratorium applies. For this code, the national setting is fully open, while the Bali setting is closed for PMA registration.",
+    "pullQuote": "National openness does not create a PMA registration route at a Bali address where the island-wide moratorium applies.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "CHIUSO_MORATORIA_BALI"
+      }
+    ]
+  }
+}

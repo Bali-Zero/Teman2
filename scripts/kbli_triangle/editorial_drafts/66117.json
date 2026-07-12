@@ -1,0 +1,27 @@
+{
+  "code": "66117",
+  "editorial": {
+    "headline": "The Institutions That Keep Indonesia’s Financial Markets in Order",
+    "standfirst": "KBLI 66117 covers self-regulatory, central-custody and settlement functions in financial markets—open to PMA nationally and not blocked by Bali’s stated moratorium.",
+    "body": "KBLI 66117 is the classification for self-regulatory activity in Indonesia’s financial markets: institutions that make rules and supervise the conduct of transactions for their members, so those transactions are safe, orderly and consistent with financial-market policy. It also covers the operating side of central custody and exchange-transaction settlement. The scope places these functions in one institutional frame: oversight of a member market’s transaction rules, alongside custody and settlement carried out in an orderly, fair and efficient way. Its subject is not the financial market in the abstract, but the organisations and operating functions that sustain its transaction architecture. It expressly includes PT Kustodian Sentral Efek Indonesia (KSEI).\n\nThe party registering it is therefore the party performing one of those defined roles. It may be a self-regulatory organisation serving its members through rule-making and supervision; it may instead be the party that operates central custody for custodian banks, securities companies and other parties, and handles the stated exchange settlement. The description combines regulatory and operational functions, yet both are specific: one concerns rules and oversight, the other custody and settlement. It is not a broad label for every participant around a financial-market transaction. Registration is open at every stated business scale—Micro, Small, Medium and Large.\n\nNationally, the investment position is unambiguous. The activity is open to PMA, with a foreign-ownership ceiling of 100%. Full foreign ownership is therefore allowed nationally under the record’s cited PMA basis. That openness attaches to the work actually described: market rule-making and supervision for members, or central custody and the orderly, fair and efficient settlement of exchange transactions. It should be read as the ownership position for this defined activity, rather than as a claim about an undefined wider financial-services field.\n\nBali needs a separate reading, because its provincial moratorium permanently blocks PMA for all low- and medium-low-risk KBLI across the island. This activity, however, is recorded as not blocked by that moratorium. At the Large scale, its OSS risk is Medium-High/High, which is why the Bali record places it at “OK or higher risk” rather than under a moratorium prohibition. For a foreign investor, the practical conclusion is clean: this activity can be registered as PMA in Bali today under the information given, rather than being shut out by the stated moratorium.",
+    "pullQuote": "The national position is full foreign ownership, and Bali does not block PMA registration under its stated moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

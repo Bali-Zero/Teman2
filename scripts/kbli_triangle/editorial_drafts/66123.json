@@ -1,0 +1,27 @@
+{
+  "code": "66123",
+  "editorial": {
+    "headline": "Digital Financial Asset Brokerage: Open Nationally, Closed to Bali PMA",
+    "standfirst": "Digital financial asset brokerage permits full foreign ownership nationally, but PMA registration at a Bali address is blocked by the province’s permanent moratorium.",
+    "body": "A foreign investor cannot register this activity through PMA at a Bali address today. That conclusion belongs at the beginning, because its national availability can otherwise sound more decisive than it is. Bali blocks PMA registration for this activity under an island-wide, permanent moratorium on low- and medium-low-risk activities. The record’s stated reason identifies the Large scale as medium-low risk, placing the activity within the Bali block when the registration address is in the province.\n\nNationally, however, the activity is open to PMA and permits foreign ownership of up to 100%. Its national footing is identified as Perpres 10/2021 and 49/2021. This is a fully open foreign-ownership ceiling at the national level, not a partial one. Yet national openness does not make a Bali address available for PMA registration. The national setting and the Bali registration condition have different effects, and that distinction is the central planning fact for this activity.\n\nDigital financial asset brokerage means facilitating trades in financial assets represented digitally, including crypto. Its scope is precise: transactions are carried out on a digital financial asset exchange in the name of another party or customer. The registered business is therefore defined by its role in enabling those customer-side exchange transactions. The record opens the activity at every listed scale—micro, small, medium, and large—although the stated Bali restriction catches the Large scale because it is classified as medium-low risk.\n\nFor Bali, the result is unambiguous for PMA registration: closed under the permanent, island-wide moratorium. The provincial rule applies to all low- and medium-low-risk activities, and the record places this activity’s Large scale within that condition. There is no inconsistency in saying both that the activity is nationally open to full foreign ownership and that a Bali PMA registration cannot proceed today; each statement describes a different layer of the record.",
+    "pullQuote": "National openness does not make a Bali address available for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_MORATORIA_BALI"
+      }
+    ]
+  }
+}

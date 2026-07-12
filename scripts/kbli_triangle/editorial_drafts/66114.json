@@ -1,0 +1,27 @@
+{
+  "code": "66114",
+  "editorial": {
+    "headline": "Alternative-Market Derivatives Trading: Indonesia Open, Bali Clear",
+    "standfirst": "This activity covers proprietary trading of eligible derivative contracts through an alternative trading-system mechanism, with full foreign ownership nationally and no Bali moratorium block.",
+    "body": "This activity is the proprietary buying and selling of derivative contracts—excluding futures contracts and sharia derivative contracts—through an alternative trading-system mechanism. The defining point is whose account is being served: the transactions are undertaken in the operator’s own name and for its own account. It is therefore a tightly framed trading activity, rather than a broad description of arranging transactions for others.\n\nRegistration is open across the full stated range of business scales: Micro, Small, Medium and Large. That breadth does not dilute the activity’s scope. A registrant should still be able to describe its operations in terms that remain faithful to proprietary trading of the specified contracts within an alternative trading system, rather than relying on a looser financial-services label.\n\nNationally, the activity is open to foreign investment, with a foreign-ownership ceiling of 100%. The record identifies Perpres 10/2021, 49/2021 as the PMA source. In plain terms, there is no national foreign-equity cap below full ownership for this activity.\n\nBali’s position is also materially clearer than the usual concern around the province’s PMA moratorium. Bali blocks all Low and Medium-Low risk KBLI activities for PMA registration on an island-wide, permanent basis. This activity is not blocked by that rule: at the Large scale, its OSS risk is Medium-High/High. The practical reading is not that Bali supplies a separate ownership figure or additional condition; it is that the moratorium does not prevent PMA registration for this activity. A founder considering Bali can therefore treat the activity as open nationally and not moratorium-blocked in Bali, while keeping the registration description disciplined around the proprietary derivative trading actually stated here.",
+    "pullQuote": "Bali’s moratorium does not prevent PMA registration for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
