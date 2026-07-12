@@ -1,0 +1,27 @@
+{
+  "code": "77292",
+  "editorial": {
+    "headline": "A National Opening, a Bali PMA Block on Musical-Equipment Rental",
+    "standfirst": "Nationally open to 100% foreign ownership, this musical-equipment rental activity is nevertheless blocked for PMA registration in Bali.",
+    "body": "A foreigner cannot register this activity as a PMA in Bali today, even though it is nationally open to PMA. KBLI 77292 covers the rental and operational leasing, without an option to buy, of musical equipment. Guitars, drums, organs and gamelan sit inside that frame. In clear terms, it is the activity of making musical equipment available through rental or an operational lease that carries no purchase option. That distinction is central to the stated scope: the arrangement is defined by rental or lease use, while the right to purchase is absent.\n\nAt the national level, the activity is marked TERBUKA and carries a maximum foreign ownership of 100%. The national position is therefore straightforward: a PMA investor may hold up to 100% foreign ownership in this activity. It is open to Mikro, Kecil, Menengah and Besar scales. The stated reference for that national PMA position is Perpres 10/2021, 49/2021. Taken together, these fields describe a nationally foreign-open activity across the listed business scales.\n\nBali is a separate and decisive question. Its status is BLOCCATO_CLASSE_RISCHIO. At the Besar scale, OSS risk is Rendah/Menengah-Rendah across every scope, bringing the activity within the stated Bali moratorium. That moratorium, dated 13 May 2026, is island-wide and permanent: it blocks PMA for all Low and Medium-Low risk KBLI. The relevant Bali setting is therefore not a locally adjusted foreign-ownership percentage or partnership condition; it is a block on PMA registration. The cited provincial basis is Governor’s letter B.27.000/642/PM/DPMPTSP.\n\nThe two layers must be kept distinct. Nationally, the activity is open to PMA up to 100% foreign ownership and across the listed scales. In Bali, that national ceiling does not create a PMA registration pathway because the province-level status is a block. The precise conclusion is that national openness remains in place, but PMA registration for this activity in Bali is unavailable today.",
+    "pullQuote": "A foreigner cannot register this activity as a PMA in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

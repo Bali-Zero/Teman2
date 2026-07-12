@@ -1,0 +1,27 @@
+{
+  "code": "77395",
+  "editorial": {
+    "headline": "Mining Equipment Leasing: Open Nationally, Blocked for PMA in Bali",
+    "standfirst": "This equipment-leasing activity permits full foreign ownership nationally, but PMA registration for it is blocked in Bali today.",
+    "body": "KBLI 77395 covers the rental and operational lease of mining and excavation machinery and equipment, supplied without an operator. It is a capital-equipment activity: the company makes machinery available for business use rather than providing people to operate it. The stated range is broad but specific, taking in power-generation machinery—including engines or steam machinery and turbines—mining and petroleum equipment, and professional radio and communications equipment. The leasing model is equally defined: it is an operational lease without an option right. That distinction keeps the focus on access to the equipment itself.\n\nThe record opens this activity to enterprises at Mikro, Kecil, Menengah and Besar scale. This makes the code available to a leasing business at each of the listed sizes, while preserving one central boundary: the rented machinery and equipment come without an operator. A registration under this activity therefore rests on the equipment-leasing function set out in the scope, whether the assets are mining-related, petroleum-related, power-generating or professional communications equipment. The scale list is wide; the defined activity remains exact.\n\nAt the national level, the foreign-investment reading is clear. The activity is TERBUKA and carries a foreign-ownership ceiling of 100%. In other words, the national record permits a PMA company to hold the activity with full foreign ownership. This is not a partial-equity opening: the cited national basis is Perpres 10/2021, 49/2021. The result is a clean national position for the particular leasing activity described here, rather than a separate claim about operations beyond its stated equipment scope.\n\nBali changes the answer entirely. A foreigner cannot register this activity through PMA in Bali today: its Bali status is blocked by risk classification. The reason is expressly risk-based. At the Besar scale, OSS treats every scope here as Rendah or Menengah-Rendah. Bali’s permanent, island-wide moratorium blocks PMA registration for activities in the Low and Medium-Low risk classes, so the restriction follows from the classification rather than a lower foreign-ownership ceiling. The moratorium is recorded as applying from May 2026. Founders should keep the two conclusions separate—100% foreign ownership nationally, but no PMA registration for this activity in Bali under the applicable risk moratorium.",
+    "pullQuote": "Founders should keep the two conclusions separate—100% foreign ownership nationally, but no PMA registration for this activity in Bali under the applicable risk moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA classification",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "77399",
+  "editorial": {
+    "headline": "Operational Leasing, Nationally Open but Closed to PMA in Bali",
+    "standfirst": "This broad rental activity permits full foreign ownership nationally, yet Bali’s permanent PMA moratorium prevents its registration on the island.",
+    "body": "At its core, this is an operational-leasing activity: the rental or lease, without an option to purchase, of machinery, equipment and other tangible goods not classified elsewhere within its rental grouping. The stated examples show how broad the activity can be: containers used for homes or offices, pallets and comparable equipment for lifting containers, plus the rental of livestock and racehorses. Those examples should be read together, not as a closed inventory. They show an activity framed by the rental or operational-lease arrangement and tangible assets, rather than by one particular machine, customer setting or end use.\n\nThis is also an activity available to a full range of business scales. Registration is open to Mikro, Kecil, Menengah and Besar enterprises. At the national level it is TERBUKA for PMA, with a foreign-ownership ceiling of 100%; the record cites Perpres 10/2021, 49/2021 as its PMA source. In national terms, that is a complete foreign-ownership opening, and it applies alongside the stated availability from micro through large scale. The national position answers the ownership question nationally, but it does not itself decide whether a foreign-owned company may register the activity in Bali.\n\nOn Bali, the answer changes decisively. The Bali status is BLOCCATO_CLASSE_RISCHIO: registration by PMA is blocked under an island-wide, permanent Bali moratorium covering all Low and Medium-Low risk KBLI activities. The record identifies the reason for this activity with unusual specificity: at the Besar scale, OSS risk is Low or Medium-Low on every scope, and it is therefore blocked by the Bali moratorium recorded on May 13, 2026. The result is plain: a foreign-owned company cannot register this activity in Bali today.\n\nThis is a registration block, not a reduced Bali ownership percentage beside the national ceiling. The 100% foreign-ownership ceiling remains the national fact, while Bali’s local rule determines the island outcome. The distinction matters particularly for an activity whose stated scope is intentionally wide—from containers and lifting equipment to livestock and racehorses—because the breadth of its tangible assets does not override the local risk-based moratorium. Nationally it is open across every stated scale; in Bali it is unavailable for PMA registration.",
+    "pullQuote": "The result is plain: a foreign-owned company cannot register this activity in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali moratorium date",
+        "value": "13 May 2026"
+      }
+    ]
+  }
+}
