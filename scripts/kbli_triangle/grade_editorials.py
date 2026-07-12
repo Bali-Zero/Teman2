@@ -94,6 +94,11 @@ def slim(rec: dict) -> dict:
         "l4_bali_blocked": bool(l4.get("blocked")),
         "l4_bali_reason": l4.get("reason"),
         "bali_moratorium_rule": mor.get("rule"),
+        # W65 live 2026-07-12: omitting this field made the grader flag the REAL
+        # governor-letter citation (a record field the writer legitimately quoted)
+        # as fabrication in 10/10 FAILs. The grader must see EVERY field the
+        # writer saw — mirror editorial_writer.slim() field-for-field, always.
+        "bali_moratorium_source": mor.get("source"),
     }
 
 
