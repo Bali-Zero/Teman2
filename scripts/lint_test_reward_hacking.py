@@ -86,7 +86,26 @@ def _raises_is_broad(call: ast.Call) -> bool:
     return any(isinstance(a, ast.Name) and a.id in _BROAD_EXC for a in call.args)
 
 
-def _body_has_assertion(fn: ast.FunctionDef) -> bool:
+def _is_fixture(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """True if the function is decorated as a pytest fixture.
+
+    A fixture named `test_client` is a legitimate neighbour of the `test_*`
+    naming rule, not a test: it MUST NOT be required to assert. Without this,
+    RH005 fires on it — an over-match in the guard itself (family #3).
+
+    Matches `@pytest.fixture`, `@fixture`, `@pytest.fixture(...)`,
+    `@pytest_asyncio.fixture`, and `@pytest.fixture(scope=...)` alike.
+    """
+    for dec in fn.decorator_list:
+        target = dec.func if isinstance(dec, ast.Call) else dec
+        if isinstance(target, ast.Attribute) and target.attr == "fixture":
+            return True
+        if isinstance(target, ast.Name) and target.id == "fixture":
+            return True
+    return False
+
+
+def _body_has_assertion(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     """True if the test body contains an assert, a self.assert*, or pytest.raises."""
     for node in ast.walk(fn):
         if isinstance(node, ast.Assert):
@@ -104,7 +123,7 @@ def _body_has_assertion(fn: ast.FunctionDef) -> bool:
     return False
 
 
-def _has_early_sys_exit(fn: ast.FunctionDef) -> bool:
+def _has_early_sys_exit(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     """sys.exit(0) / exit(0) anywhere in a test fn (bail before the real assert)."""
     for node in ast.walk(fn):
         if isinstance(node, ast.Call):
@@ -146,8 +165,22 @@ def lint_source(path: Path, source: str) -> list[Finding]:
             )
 
     # Function-level checks (only on test_* functions).
+    #
+    # A @pytest.fixture named `test_client` is NOT a test — it has no business
+    # asserting anything. Filtering on the `test_` prefix alone is the classic
+    # over-match (cicatrix family #3): it fires on a legitimate neighbour.
+    #
+    # KNOWN GAP (deliberate, filed in PENDING-ARMS): `async def` tests are not
+    # scanned — this walks ast.FunctionDef only, and most of this repo's tests
+    # are async. Adding ast.AsyncFunctionDef here surfaces ~297 RH005 across the
+    # suite; that is a real backlog to triage, not a change to smuggle into an
+    # unrelated PR, because the hook would go red on every file that touches one.
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
+        if (
+            isinstance(node, ast.FunctionDef)
+            and node.name.startswith("test_")
+            and not _is_fixture(node)
+        ):
             if _has_early_sys_exit(node):
                 findings.append(
                     Finding(rel, node.lineno, "RH004",

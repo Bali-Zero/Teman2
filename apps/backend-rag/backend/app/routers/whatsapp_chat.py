@@ -281,10 +281,21 @@ async def process_whatsapp_message(
                     "🎯 Auto-triggered onboarding chain for %s: %s", phone, onboarding_result
                 )
                 # Send confirmation message to client
+                onboarding_confirm_msg = (
+                    "Great! I've started your onboarding process. "
+                    "You'll receive updates shortly! 🎉"
+                )
                 await whatsapp_service.send_message(
                     phone=phone,
-                    text="Great! I've started your onboarding process. You'll receive updates shortly! 🎉",
+                    text=onboarding_confirm_msg,
                     reply_to_message_id=message_id,
+                )
+                await _persist_audit_messages(
+                    db_pool=_get_db_pool(request),
+                    phone=phone,
+                    session_id="",
+                    message_text=message_text,
+                    response_text=onboarding_confirm_msg,
                 )
                 # Notify admin via Telegram
                 if settings.admin_telegram_chat_id:
@@ -332,6 +343,13 @@ async def process_whatsapp_message(
                 conversation_history=ctx.get("conversation_history"),
             )
 
+            await _persist_audit_messages(
+                db_pool=db_pool,
+                phone=phone,
+                session_id="",
+                message_text=message_text,
+                response_text=escalation_msg,
+            )
             logger.info("Message from %s escalated to human (reason: %s)", phone, reason)
             return
 
@@ -342,6 +360,13 @@ async def process_whatsapp_message(
                 phone=phone,
                 text=welcome_msg,
                 reply_to_message_id=message_id,
+            )
+            await _persist_audit_messages(
+                db_pool=_get_db_pool(request),
+                phone=phone,
+                session_id="",
+                message_text=message_text,
+                response_text=welcome_msg,
             )
             logger.info("Welcome message sent to %s", phone)
             return
@@ -599,20 +624,36 @@ async def process_whatsapp_message(
             )
 
         except asyncio.TimeoutError:
+            timeout_msg = "Un attimo, ci sto mettendo troppo 😅 Riprova tra poco!"
             await whatsapp_service.send_message(
                 phone=phone,
-                text="Un attimo, ci sto mettendo troppo 😅 Riprova tra poco!",
+                text=timeout_msg,
                 reply_to_message_id=message_id,
+            )
+            await _persist_audit_messages(
+                db_pool=_get_db_pool(request),
+                phone=phone,
+                session_id="",
+                message_text=message_text,
+                response_text=timeout_msg,
             )
 
     except Exception as e:
         logger.error("Error processing WhatsApp message from %s: %s", phone, e, exc_info=True)
 
         try:
+            error_msg = "Ops, errore tecnico 😬 Riprova tra un attimo!"
             await whatsapp_service.send_message(
                 phone=phone,
-                text="Ops, errore tecnico 😬 Riprova tra un attimo!",
+                text=error_msg,
                 reply_to_message_id=message_id,
+            )
+            await _persist_audit_messages(
+                db_pool=_get_db_pool(request),
+                phone=phone,
+                session_id="",
+                message_text=message_text,
+                response_text=error_msg,
             )
         except Exception as send_error:
             logger.error("Failed to send error message: %s", send_error)
@@ -745,6 +786,59 @@ async def _save_conversation(
         logger.info("💾 Conversation saved for %s (session: %s)", phone, session_id)
     except Exception as e:
         logger.warning("Failed to save conversation for %s: %s", phone, e)
+
+    # Unified audit trail (COS-LAW-013): the `conversations` JSONB above is a
+    # truncated history buffer (MAX_HISTORY_MESSAGES), not an audit record.
+    # Both directions land in conversation_messages like every ChannelRouter
+    # channel, so the bot's reply is durable and replayable.
+    await _persist_audit_messages(
+        db_pool=db_pool,
+        phone=phone,
+        session_id=session_id,
+        message_text=message_text,
+        response_text=response_text,
+    )
+
+
+async def _persist_audit_messages(
+    db_pool,
+    phone: str,
+    session_id: str,
+    message_text: str,
+    response_text: str,
+) -> None:
+    """Persist one inbound + one outbound row to conversation_messages.
+
+    Non-blocking: failures are logged but never break the reply flow.
+    """
+    if not db_pool:
+        return
+
+    rows = [
+        ("inbound", phone, message_text),
+        ("outbound", "zantara", response_text),
+    ]
+    for direction, sender_id, content in rows:
+        if not content:
+            continue
+        try:
+            await db_pool.execute(
+                """
+                INSERT INTO conversation_messages (channel, direction, sender_id, content, metadata)
+                VALUES ('whatsapp', $1, $2, $3, $4::jsonb)
+                """,
+                direction,
+                sender_id,
+                content[:10000],
+                json.dumps({"phone": phone, "session_id": session_id}),
+            )
+        except Exception as e:
+            logger.warning(
+                "WA audit persist failed (direction=%s, session=%s): %s",
+                direction,
+                session_id,
+                e,
+            )
 
 
 # ============================================================

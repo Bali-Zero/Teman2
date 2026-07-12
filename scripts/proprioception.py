@@ -226,9 +226,39 @@ def probe_produced_promoted(root: Path, args: dict, timeout: int) -> tuple[str, 
     return (DIVERGED if findings else RECONCILED), findings, ev
 
 
+def load_declared_fork_pairs(root: Path, machine: str) -> list[dict]:
+    """Merge in infra/home-fork/declared-pairs.json pairs applicable to this machine.
+
+    lint_home_fork.py already imports THIS probe's embedded pairs and merges them
+    with declared-pairs.json for its own check — but the merge never ran in the
+    other direction, so pairs added only to declared-pairs.json (e.g. the
+    Mini-only kg-query-api-wrapper.sh/mlx-server-run.sh entries) were invisible
+    to this probe, which kept reporting UNPROBEABLE on machines that do have
+    live home-fork pairs to check. Best-effort: a missing/malformed config
+    degrades to empty, never raises — the embedded pairs remain the fallback.
+    """
+    cfg_path = root / "infra" / "home-fork" / "declared-pairs.json"
+    try:
+        data = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    out = []
+    for pair in data.get("pairs", []):
+        machines = pair.get("machines", ["all"])
+        if ("all" in machines or machine in machines) and "live" in pair and "repo" in pair:
+            out.append({"live": pair["live"], "repo": pair["repo"]})
+    return out
+
+
 def probe_home_fork_scripts(root: Path, args: dict, timeout: int) -> tuple[str, int, list[str]]:
     ev, findings, probeable = [], 0, 0
-    for pair in args.get("pairs", []):
+    seen: set[tuple[str, str]] = set()
+    pairs = list(args.get("pairs", [])) + load_declared_fork_pairs(root, machine_label())
+    for pair in pairs:
+        key = (pair["live"], pair["repo"])
+        if key in seen:
+            continue
+        seen.add(key)
         live = Path(os.path.expanduser(pair["live"]))
         repo = root / pair["repo"]
         if not live.exists():

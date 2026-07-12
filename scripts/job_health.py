@@ -11,15 +11,17 @@ Reads from: ~/logs/cron/*.jsonl (cron-wrapper.sh structured output)
 """
 
 import json
+import os
+import subprocess
 import sys
 import time
-import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 WITA = timezone(timedelta(hours=8))
 CRON_LOG_DIR = Path.home() / "logs" / "cron"
 SECRETS_FILE = Path.home() / ".nuzantara-secrets.env"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Expected jobs and their max intervals (hours).
 # If a job hasn't run in 2× this interval, it's considered dead.
@@ -166,31 +168,30 @@ def print_table(results: list[dict]) -> None:
 
 
 def send_alert(results: list[dict]) -> None:
-    """Send Telegram alert for dead/failing critical jobs."""
+    """Route dead/failing critical-job alerts via the tg_notify gateway
+    (2026-07-11 migration, cohort-5). p0 tier: a dead/failing CRITICAL job is
+    actionable now — the gateway resolves its own credentials/dedup/budget."""
     alerts = [r for r in results if r["status"] in ("dead", "failing") and r["critical"]]
     if not alerts:
         return
 
-    secrets = load_secrets()
-    token = secrets.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = secrets.get("TELEGRAM_ADMIN_CHAT_ID", secrets.get("TELEGRAM_OWNER_CHAT_ID", ""))
-    if not token or not chat_id:
-        print("WARN: No Telegram credentials for alerting", file=sys.stderr)
-        return
-
-    lines = ["<b>CRON HEALTH ALERT</b>", ""]
+    lines = ["CRON HEALTH ALERT", ""]
     for r in alerts:
         icon = "💀" if r["status"] == "dead" else "❌"
-        lines.append(f"{icon} <b>{r['job']}</b>: {r['message'][:80]}")
+        lines.append(f"{icon} {r['job']}: {r['message'][:80]}")
 
     msg = "\n".join(lines)
+    gateway = PROJECT_ROOT / "scripts" / "tg_notify.py"
+    if not gateway.is_file():
+        gateway = Path(os.path.expanduser("~/Desktop/nuzantara/scripts/tg_notify.py"))
     try:
-        data = f"chat_id={chat_id}&parse_mode=HTML&text={msg}".encode()
-        req = urllib.request.Request(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            data=data, method="POST",
+        proc = subprocess.run(
+            [sys.executable, str(gateway), "--tier", "p0",
+             "--source", "job-health", "--", msg],
+            capture_output=True, text=True, timeout=30,
         )
-        urllib.request.urlopen(req, timeout=10)
+        if proc.returncode != 0:
+            print(f"WARN: tg_notify exit={proc.returncode}: {proc.stderr[:200]}", file=sys.stderr)
     except Exception as e:
         print(f"WARN: Telegram alert failed: {e}", file=sys.stderr)
 

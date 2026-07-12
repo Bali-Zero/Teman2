@@ -61,7 +61,12 @@ class OpenRouterProvider(LLMProvider):
 
     @property
     def is_available(self) -> bool:
-        return self._available and self._client is not None
+        # COS-LAW-013: a disabled egress must not advertise itself as
+        # available — callers would select it and fail mid-generate instead
+        # of falling back cleanly. Read at call time so a flag flip counts.
+        from backend.app.core.config import settings
+
+        return settings.openrouter_enabled and self._available and self._client is not None
 
     async def generate(
         self,

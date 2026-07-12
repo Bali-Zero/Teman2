@@ -27,8 +27,6 @@ import json
 import os
 import subprocess
 import sys
-import urllib.parse
-import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -241,26 +239,30 @@ def _load_env() -> dict[str, str]:
 
 
 def _send_telegram(text: str, bot_token: str) -> bool:
-    """Invia messaggio Telegram all'owner."""
+    """Route via the tg_notify gateway (2026-07-11 migration, cohort-5).
+
+    p0 tier: alerts only fire on an escalating tier (URGENT/CRITICAL) or an
+    expired SA key — actionable now, Drive polling either already broke or
+    breaks tomorrow. bot_token guard kept for callers still passing an empty
+    token (dry-run/test harnesses).
+    """
     if DRY_RUN:
         print(f"[DRY RUN] Telegram: {text[:120]}...")
         return True
     if not bot_token:
         log("TELEGRAM_BOT_TOKEN non trovato")
         return False
+    gateway = PROJECT_ROOT / "scripts" / "tg_notify.py"
+    if not gateway.is_file():
+        gateway = Path(os.path.expanduser("~/Desktop/nuzantara/scripts/tg_notify.py"))
     try:
-        data = urllib.parse.urlencode({
-            "chat_id": TELEGRAM_OWNER_CHAT_ID,
-            "text": text,
-            "parse_mode": "HTML",
-        }).encode()
-        urllib.request.urlopen(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            data,
-            timeout=10,
+        proc = subprocess.run(
+            [sys.executable, str(gateway), "--tier", "p0",
+             "--source", "drive-token-watchdog", "--", text],
+            capture_output=True, text=True, timeout=30,
         )
-        log("Telegram inviato")
-        return True
+        log(f"tg_notify exit={proc.returncode}")
+        return proc.returncode == 0
     except Exception as e:
         log(f"Telegram fallito: {e}")
         return False

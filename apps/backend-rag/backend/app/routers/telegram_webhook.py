@@ -177,9 +177,16 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
         )
 
         try:
-            from backend.app.routers.intel import publish_staging_item
+            # Authorization: the approval quorum above IS the authority here —
+            # `publish_staging_item_internal` records it as the actor instead of
+            # bypassing the HTTP admin gate silently.
+            from backend.app.routers.intel_scraper import publish_staging_item_internal
 
-            await publish_staging_item(intel_type, item_id)
+            await publish_staging_item_internal(
+                intel_type,
+                item_id,
+                actor=f"telegram:quorum:{approve_count}",
+            )
 
             result_text = (
                 f"APPROVED and published\nVotes: {approve_count} approve, {reject_count} reject"
