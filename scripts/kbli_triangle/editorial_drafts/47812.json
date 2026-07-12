@@ -1,0 +1,27 @@
+{
+  "code": "47812",
+  "editorial": {
+    "headline": "Used-Car Retail: Nationally Open, Closed to PMA in Bali",
+    "standfirst": "The retail sale of pre-owned passenger cars and camping vehicles is open nationally to foreign investment, but Bali’s permanent risk-based moratorium blocks PMA registration.",
+    "body": "At its core, this is the retail sale of used cars: passenger cars, along with camping vehicles such as caravans and motorhomes. The definition is useful precisely because it is concrete. It concerns a retail activity in pre-owned vehicles, and its examples give the proposed business a practical frame. For a founder, that means beginning with the activity itself: a used-vehicle retail operation whose stock includes the passenger and camping vehicles identified in the record. That scope matters because it tells the reader what is being sold at retail, while retaining the record’s concrete examples as the boundary for the description. The description does not need stretching to convey a recognisable commercial proposition—placing those used vehicles before retail buyers.\n\nRegistration is open to Micro, Small, Medium and Large businesses. That breadth makes scale an explicit part of the activity’s profile, not a footnote. They are all recorded as open for the activity. Scale is an eligibility field here, while the Bali risk reason specifically singles out the Large scale when explaining its PMA block. An investor or founder should therefore state the intended scale accurately at the outset and keep the national investment position distinct from the Bali outcome. Nationally, the activity is open to PMA, with a foreign-ownership ceiling of 100%. Put plainly, the recorded national position permits foreign ownership up to the full 100% ceiling. That reading is anchored to the cited source, Perpres 10/2021, 49/2021.\n\nIn Bali, however, the conclusion is different and immediate: a foreign investor cannot register this activity as PMA there today. Bali classifies it as blocked under the risk rule. The stated reason is that, at the Large scale, the OSS risk is Low or Medium-Low on every scope. The provincial moratorium then blocks PMA registration island-wide and permanently for the Low and Medium-Low risk classifications it covers. This is not a second foreign-ownership percentage or an exception to the national ceiling. The national ceiling remains 100%; Bali’s effect is a registration block. The record dates the moratorium to May 2026.\n\nThat separation is the essential point for decision-making. The activity’s national openness, its 100% foreign-ownership ceiling and its availability to every listed business scale do not override Bali’s position for PMA. It is important not to substitute the national number for Bali’s result: those fields answer different questions in the same record. The appropriate conclusion is neither a softened national summary nor a Bali-specific ownership calculation. At national level, the activity stands open to PMA on the recorded terms. In Bali, a PMA registration for it is blocked by the permanent, island-wide moratorium. Keeping these two levels separate preserves the record’s real message: a plainly defined used-car retail activity can be open nationally to foreign investment while unavailable for PMA registration in Bali.",
+    "pullQuote": "A 100% national ceiling does not override Bali’s permanent block on PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

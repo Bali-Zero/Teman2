@@ -1,0 +1,27 @@
+{
+  "code": "47833",
+  "editorial": {
+    "headline": "Motorcycle Parts Retail: Nationally Open, Barred to PMA in Bali",
+    "standfirst": "Retail trade in new and used motorcycle parts and accessories is open nationally to full foreign ownership, yet PMA registration in Bali is blocked by the province’s permanent risk-based moratorium.",
+    "body": "This activity covers the retail trade of motorcycle spare parts and accessories, whether new or used. Its focus is the sale of those goods at retail: parts and accessories are the centre of the registered activity, rather than a broad, catch-all description of motorcycle commerce. The scope also refers to direct sales, without adding a further channel distinction.\n\nIt is available to businesses at every listed scale: Mikro, Kecil, Menengah, and Besar. That makes the national classification broad in terms of company size, from micro through large enterprises. For an operator, the practical task is to keep the business description faithful to the retail trade in motorcycle parts and accessories, new or used, that the activity expressly identifies.\n\nNationally, the position is straightforward. The activity is marked TERBUKA, with a maximum foreign ownership level of 100%. In national PMA terms, that means the activity is open to foreign investment up to full ownership. The stated PMA references are Perpres 10/2021 and 49/2021. On that national reading alone, there is no foreign-equity ceiling below full ownership to explain away.\n\nBali changes the operational answer completely. A foreign investor cannot register this activity for PMA in Bali today. At the Besar scale, OSS risk is recorded as Rendah or Menengah-Rendah across every scope, bringing the activity within Bali’s moratorium from the thirteenth of May 2026. The provincial rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This is therefore not a case of a reduced Bali foreign-ownership percentage: the national 100% ceiling remains the national position, while Bali imposes a registration block for PMA on the basis of the activity’s risk classification.",
+    "pullQuote": "Nationally open to full foreign ownership, this activity is nevertheless unavailable for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
