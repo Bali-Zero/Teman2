@@ -302,10 +302,15 @@ class ChannelRouter:
             if session_id and session_id != "unknown":
                 meta["session_id"] = session_id
 
+            # $6::text::jsonb — the app pools register a jsonb codec whose
+            # encoder is json.dumps; a param inferred as jsonb would get the
+            # pre-serialized string dumped AGAIN and land as a jsonb string
+            # scalar, invisible to `metadata->>'session_id'` (418 rows were).
+            # Typing the param as text makes the server parse it into an object.
             await db_pool.execute(
                 """
                 INSERT INTO conversation_messages (client_id, channel, direction, sender_id, content, metadata)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                VALUES ($1, $2, $3, $4, $5, $6::text::jsonb)
                 """,
                 client_id,
                 channel,
