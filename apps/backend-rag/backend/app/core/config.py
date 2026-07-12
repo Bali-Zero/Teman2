@@ -123,6 +123,19 @@ class Settings(BaseSettings):
     zantara_ai_cost_input: float = 0.00  # Preview is free? Or check updated pricing.
     zantara_ai_cost_output: float = 0.00  # Preview is free? Or check updated pricing.
     openrouter_api_key: str | None = None  # Set via OPENROUTER_API_KEY env var (free AI fallback)
+    # COS-LAW-013 (ratified 2026-07-11): OpenRouter egress is OFF by default.
+    # Client-channel content (WhatsApp/IG/webchat) reaches OpenRouter only as
+    # quota fallback — a third-party endpoint with no DPA = PII hole. Flip via
+    # OPENROUTER_ENABLED=true only with Zero's explicit authorization.
+    openrouter_enabled: bool = False
+
+    # Autonomous outbound WhatsApp to real clients (client_value_predictor
+    # nurturing). Case OS R3: a machine talking to a client with no human in
+    # the loop. Kept fail-closed so that provisioning the transport secrets
+    # does NOT by itself arm the outbound — flipping this flag does, and that
+    # is Zero's decision. Flip via CLIENT_NURTURING_OUTBOUND_ENABLED=true.
+    client_nurturing_outbound_enabled: bool = False
+
     deepseek_api_key: str | None = Field(default=None, description="DeepSeek API Key")
     ollama_url: str = Field(
         default="http://localhost:11434",
@@ -528,6 +541,15 @@ class Settings(BaseSettings):
     intel_scraper_api_key: str = Field(
         default="",
         description="API key for internal scraper poller. Set via INTEL_SCRAPER_API_KEY env var.",
+    )
+    api_key_roles: str | None = Field(
+        default=None,
+        description=(
+            "Explicit per-key role map, `key:role,key:role` (role in {admin,user}). "
+            "Resolves an API key's role by IDENTITY, not by the spelling of the key. "
+            "A key not listed here (and not a legacy-admin) defaults to `user` — "
+            "adding a key never grants admin by accident. Set via API_KEY_ROLES."
+        ),
     )
 
     @field_validator("api_keys", mode="before")

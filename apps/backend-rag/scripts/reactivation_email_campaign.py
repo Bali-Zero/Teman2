@@ -37,7 +37,9 @@ DATABASE_URL = os.environ.get(
     "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag",
 )
 BACKEND_URL = os.environ.get("BACKEND_URL", "https://nuzantara-rag.fly.dev")
-EMAIL_API_KEY = os.environ.get("INTERNAL_API_KEY", "zantara-secret-2024")
+# No hardcoded default: the previous fallback (`zantara-secret-2024`) was a
+# real admin key committed to a public repo. It has been rotated + revoked.
+EMAIL_API_KEY = os.environ.get("INTERNAL_API_KEY", "")
 
 LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)

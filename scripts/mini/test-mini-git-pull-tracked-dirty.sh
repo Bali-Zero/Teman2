@@ -22,6 +22,7 @@ export TELEGRAM_BOT_TOKEN=""
 
 mkdir -p "$REMOTE"
 git -C "$REMOTE" init --quiet --bare
+git -C "$REMOTE" symbolic-ref HEAD refs/heads/main  # portable regardless of ambient init.defaultBranch
 ORIGIN_WORK="$WORK/origin-work"
 git clone --quiet "$REMOTE" "$ORIGIN_WORK"
 git -C "$ORIGIN_WORK" config user.email "test@test"

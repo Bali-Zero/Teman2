@@ -1902,9 +1902,9 @@ langchain-protocol==0.0.18 \
     --hash=sha256:70b53a86fbf9cedc863555effe44da192ab02d556ddbf2cf95b8873adcf41b5a \
     --hash=sha256:ec3e11782f1ed0c9db38e5a9ed01b0e7a0d3fba406faa8aef6594b73c56a63e6
     # via langchain-core
-langfuse==3.14.6 \
-    --hash=sha256:058f7b7caa9284b964feaee81c223542d78e9fb4daabf312269b9f903471b9c4 \
-    --hash=sha256:5eb22a5ea579ac10f050513e3fedccc3c9a981eeefe44f9014273bc229a56f88
+langfuse==4.13.0 \
+    --hash=sha256:0e0c5af8c8f299d6878c328518ce8414a188d1f6333ad2109aa8208f2e41500a \
+    --hash=sha256:41b6b13e1e4e96f903a24e2bb69a38b83a8a296d12de11a345e33ec2763f10d2
     # via -r requirements.txt
 langgraph==1.2.0 \
     --hash=sha256:03fd5895a8d4b70db1ff63ebc3bacead29dd20cd794a8b1a483e7ec9018f7a65 \

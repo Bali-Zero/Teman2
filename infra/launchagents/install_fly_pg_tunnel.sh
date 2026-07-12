@@ -12,6 +12,22 @@
 # M5-ONLY: the proxy + Keychain RO secret live on M5 (Law 6 / PII boundary). The Pro has its
 # own stable Fly net and does not need this. Refuses to install on any other host.
 #
+# WHY NOT MINI (decided 2026-07-11, PENDING-ARMS ledger ~56): Mini had 2 legacy
+# pre-supervisor plists (com.nuzantara.fly-pg-tunnel{,.local}) chasing this same tunnel
+# via ~/.local/bin/fly-pg-tunnel-from-config — retired (archived, not deleted) after
+# confirming a THREE-layer blocker, not a "just wire it up" gap: (1) Mini's `fly` CLI has
+# NO access token at all (`fly auth whoami` → "no access token available", interactive
+# `fly auth login` required — operator[secret], can't be scripted); (2) even once
+# authed, Mini's Keychain has no `nuzantara-postgres-readonly` entry this supervisor's
+# heartbeat_ok() requires; (3) even once seeded, a headless SSH session cannot read a
+# GUI-session Keychain item on macOS (the same wall that blocks direct Postgres access
+# from Mini, W87 family) — so the supervisor's `security find-generic-password` call
+# would still fail non-interactively. Extending the `whoami=balizero` guard to include
+# Mini would arm a supervisor that heartbeats FALSE FOREVER, which is worse than the
+# retired plists' honest churn. If Mini access is ever wanted: operator runs
+# `fly auth login` interactively on Mini + seeds the Keychain entry via a GUI-unlocked
+# session, THEN this guard can be relaxed — not before.
+#
 # TCC NOTE: launchd cannot exec scripts under ~/Desktop on M5 (macOS TCC → status 126
 # "Operation not permitted"). The installer therefore STAGES the supervisor into ~/.fly/bin/
 # (outside the protected tree) and points the LaunchAgent there. Verified 2026-06-15.
