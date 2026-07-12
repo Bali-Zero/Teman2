@@ -2,6 +2,7 @@
 date: 2026-07-11
 domain: compliance
 client_case: null
+adversarial_review: gpt-5.5
 sources:
   - infra/claude-hooks/worktree_isolation.py
   - infra/claude-hooks/guard_fuzz_harness.py
@@ -16,13 +17,17 @@ sources:
 
 ## Mandate
 
-Kill superscar family #3 (guard-over-match) at the root on its most
-recidivist guard: `infra/claude-hooks/worktree_isolation.py` had produced
-FOUR documented over-matches in sequence before this run (W83, W84, W85,
-W91), each fixed only after a live false-block already bit someone in
-production use. Also implement PENDING-ARMS "Pro main self-align
-strutturalmente chiuso" (iteration 5): a runtime-state allowlist so Pro's
-3 perennially-dirty tracked files stop shutting the ff-only-pull exception.
+Kill superscar family #3 (guard-over-match) at the root **on
+`worktree_isolation.py` specifically** — its most recidivist guard:
+`infra/claude-hooks/worktree_isolation.py` had produced FOUR documented
+over-matches in sequence before this run (W83, W84, W85, W91), each fixed
+only after a live false-block already bit someone in production use. This
+does NOT close the family across every guard in the codebase —
+`host_boundary.py` is a known sibling with the same write-target-extraction
+shape and is explicitly NOT audited by this lane (see the fenced finding
+below). Also implement PENDING-ARMS "Pro main self-align strutturalmente
+chiuso" (iteration 5): a runtime-state allowlist so Pro's 3
+perennially-dirty tracked files stop shutting the ff-only-pull exception.
 
 ## §Meta-pattern — why does THIS guard keep biting?
 
@@ -40,16 +45,22 @@ tool; this is the diagnosis the tool exists to act on):
    channels needs its blind-spot audit run TWICE, once per channel, or a
    fix to one silently leaves the twin unpatched.
 
-2. **Negative-gating (fail-open on uncertainty) is the RIGHT default and
-   the SOURCE of every over-match.** The file's own docstring states the
-   philosophy explicitly: "defense conservative — a global L1 hook on 3
-   machines must NOT false-positive." Every one of W83/84/85/91/92 is a
-   case where a shape the classifier couldn't PARSE got treated as
-   ambiguous-therefore-allow, and the allow was wrong because the shape
-   WAS parseable, just not by the code as written. The guard is choosing
-   the correct failure direction (false-allow over false-block) but paying
-   for it with an unbounded tail of "one more shape I didn't think of."
-   That tail is exactly what a hand-written regression suite cannot bound
+2. **Negative-gating (fail-open on uncertainty) is the intended default, but
+   the family's actual failures run in BOTH directions, not just one.**
+   The file's own docstring states the philosophy explicitly: "defense
+   conservative — a global L1 hook on 3 machines must NOT false-positive"
+   (i.e. must not falsely BLOCK). In practice the six over-matches split:
+   W83, W84, W85, and W91 (git-verb channel) and this run's own W92
+   (write-target channel) are each a shape that got wrongly classified
+   as a MATCH and produced a false BLOCK — the opposite of "ambiguous
+   therefore allow." The "6th over-match" found at this same PR's gate
+   (§Gate bounce below) is the true false-allow instance: the
+   whole-command `_is_remote_dispatch` exemption let a genuine local
+   write/git-pull through when only an earlier segment was remote. So the
+   family is not one causal pattern (ambiguous→allow) — it's a guard whose
+   classifier fails in both directions depending on which check is
+   under-scoped, and the fail-open default only explains the false-allow
+   half. That tail is exactly what a hand-written regression suite cannot bound
    — it only ever covers the shape someone already got burned by.
 
 3. **Shell syntax is combinatorial; hand-picked examples are not.** Quotes,
@@ -156,26 +167,42 @@ itself needs the re-copy above.
 ## Deliverables (this PR, #2266)
 
 1. **`infra/claude-hooks/guard_fuzz_harness.py`** — reusable property/fuzz
-   corpus runner, guard-agnostic (`Case` NamedTuple + `run_corpus()`).
-   Generates 445 cases (382 original + 63 true-compound remote-prelude
-   cases added at the gate bounce): 8 mutating git verbs × 5 wrapper classes
-   (noop, remote-dispatch, text-only, deceptive-local-under-match,
-   true-compound-remote-prelude) + 6 read-only verbs × 4 wrapper classes +
-   7 ff-only-pull segment variants, on the git-verb channel; 7 write-verbs ×
-   7 destination/quoting/compound shapes + 2 scp/rsync colon-dest cases +
-   heredoc/commit-message noise + sinks, on the write-target channel.
-   `python3 infra/claude-hooks/guard_fuzz_harness.py --list` prints corpus
-   size without executing; bare invocation classifies every case and reports
+   corpus runner (`Case` NamedTuple + `run_corpus()`), guard-agnostic BY
+   DESIGN (the `Case`/corpus-generator shape is meant for reuse by a future
+   guard's own corpus function) but NOT YET guard-agnostic in its current
+   caller: `run_corpus()` calls `mod._git_verb_verdict()` and
+   `mod._write_hits_main()` directly (`guard_fuzz_harness.py:358` area) —
+   both are `worktree_isolation.py`-specific symbols, so a second guard
+   (e.g. `host_boundary.py`) needs either a parametrized classifier
+   argument or its own runner copy before this harness actually runs
+   against it. Generates 445 cases (382 original + 63 true-compound
+   remote-prelude cases added at the gate bounce): 8 mutating git verbs ×
+   5 wrapper classes (noop, remote-dispatch, text-only,
+   deceptive-local-under-match, true-compound-remote-prelude) + 6
+   read-only verbs × 4 wrapper classes + 7 ff-only-pull segment variants,
+   on the git-verb channel; 7 write-verbs × 7 destination/quoting/compound
+   shapes + 2 scp/rsync colon-dest cases + heredoc/commit-message noise +
+   sinks, on the write-target channel. `python3
+   infra/claude-hooks/guard_fuzz_harness.py --list` prints corpus size
+   without executing; bare invocation classifies every case and reports
    unexplained mismatches, exit 1 on any. `run_corpus()`'s git-verb branch
    now calls the real `mod._git_verb_verdict()` (see §Gate bounce) instead
    of a hand-copy of the decision.
 
 2. **W92 fix** (`infra/claude-hooks/worktree_isolation.py::_write_hits_main`):
-   one-line reuse of the existing `_is_remote_dispatch` check (same
-   function W83 already proved correct for the git-verb channel), applied
-   upstream of `_extract_write_targets`. Pinned by
-   `test_w92_remote_write_dispatch.py` (13 innocence + 7 guilt — 2 cases
-   corrected at the gate bounce, see §Gate bounce).
+   started as a one-line reuse of the existing whole-command
+   `_is_remote_dispatch` check (same function W83 already proved correct
+   for the git-verb channel), applied upstream of `_extract_write_targets`
+   — but that whole-command check is exactly what the gate bounce (§Gate
+   bounce below) proved defective (6th over-match: it exempts a compound
+   command the instant ANY segment is remote-dispatched, even when the
+   actual write lives in a later local segment). The version that
+   shipped in this PR therefore calls the segment-scoped
+   `_is_position_remote_dispatched()` instead
+   (`worktree_isolation.py:535`), not the whole-command
+   `_is_remote_dispatch`. Pinned by `test_w92_remote_write_dispatch.py`
+   (13 innocence + 8 guilt — 2 cases corrected at the gate bounce, see
+   §Gate bounce).
 
 3. **Runtime-state allowlist** (`infra/claude-hooks/runtime_state_allowlist.json`
    + `worktree_isolation.py::_main_tree_tracked_clean`): declares 3 Pro-only
@@ -265,11 +292,18 @@ one. Whoever picks this up should read §Gate bounce above first.
 
 ## PENDING-ARMS ledger deltas
 
-- **CLOSE**: "Pro main self-align strutturalmente chiuso" (opened
-  2026-07-06) — iteration 5 (runtime-state allowlist) ships in this PR.
-  Owner: `agent[repo-side]` (code merged pending PR #2266 review — not yet
-  live-armed on Pro until `install_worktree_hooks.sh` re-run per
-  §Solo-operatore above).
+- **NOT YET CLOSE — conditional**: "Pro main self-align strutturalmente
+  chiuso" (opened 2026-07-06) — closes only when BOTH (1) PR #2266 merges
+  AND (2) the live hook copy on Pro is aligned (`install_worktree_hooks.sh`
+  re-run per §Solo-operatore above, so `_main_tree_tracked_clean()` with
+  the new allowlist is actually the code Pro's PreToolUse hook executes).
+  Iteration 5 (runtime-state allowlist) ships CODE in this PR, but the
+  ledger's own success criterion — "pull ff-only autonomo ATTRAVERSA su
+  Pro con i 3 runtime file dirty E resta BLOCCATO con un file tracked
+  non-runtime dirty" — is proven here only by synthetic unit tests
+  (`test_runtime_state_allowlist.py`), not by a live pull on Pro with the
+  new hook installed. Owner: `agent[repo-side]` until both conditions are
+  met; this matches what PENDING-ARMS.md already records for this line.
 - **OPEN** (new, this run): "host_boundary.py W92-twin audit" — the
   write-target extraction clone in `host_boundary.py` has no
   `_is_remote_dispatch` awareness; same shape as W92, unverified whether
@@ -304,3 +338,13 @@ one. Whoever picks this up should read §Gate bounce above first.
 - `/Users/balizero/Desktop/nuzantara/.worktrees/infra-guard-fuzz/.github/workflows/guard-conformance.yml` (modified, twice — initial 3 steps + gate-bounce 4th step)
 - `/Users/balizero/Desktop/nuzantara/.worktrees/infra-guard-fuzz/research/operations/2026-07-11-guard-fuzz-immune.md` (this report; committed to the PR branch per gate instruction)
 - PR: https://github.com/Balizero1987/Teman2/pull/2266 (branch `agent/air-m5/infra/guard-fuzz`, commit `182114e7db` + gate-bounce revise commit)
+
+## Adversarial review
+
+- Seat: gpt-5.5 (Codex CLI, fresh context, read-only) — 2026-07-12
+- Verdict as returned: REFUTED (5 findings)
+- (a) "Kills superscar #3 at the root" / "guard-agnostic runner" → CONFIRMED: `host_boundary.py` clones the write-target extraction verbatim with zero `_is_remote_dispatch`/`_is_position_remote_dispatched` awareness (grep confirms), and `run_corpus()` calls `mod._git_verb_verdict()` / `mod._write_hits_main()` directly — hard-wired to `worktree_isolation.py`, not a parametrized classifier. Mandate and deliverable §1 reworded to scope the claim and name the harness's actual current coupling.
+- (b) "Every prior fix landed only in the git-verb channel; every failure was ambiguous→allow" → CONFIRMED false as a single pattern: W83/W84/W85/W91 and this run's own W92 are false-BLOCKS (over-matches on a shape wrongly classified as a match), confirmed by the file's own docstring language ("phantom write-target... false BLOCK") and the W84/W85 scar text. Only the 6th over-match (whole-command `_is_remote_dispatch` exemption) is the true false-allow instance. Meta-pattern point 2 reworded to state both directions instead of one causal claim.
+- (c) "W92 fix is one-line reuse of proven-correct `_is_remote_dispatch`" → CONFIRMED stale: `worktree_isolation.py:535` shows the shipped `_write_hits_main` calling `_is_position_remote_dispatched` (segment-scoped), not the whole-command `_is_remote_dispatch` this sentence names — the sentence described the pre-gate-bounce draft. Deliverable §2 corrected to describe the final segment-scoped design.
+- (d) "13 innocence + 7 guilt" → CONFIRMED arithmetic error: counted directly in `test_w92_remote_write_dispatch.py` — 13 items in `innocent`, 8 items in `guilty`. Corrected to 13/8 in deliverable §2.
+- (e) "CLOSE: Pro main self-align strutturalmente chiuso" → CONFIRMED unsupported: the report's own §Solo-operatore section says the live hook on Pro is "not yet live-armed" until `install_worktree_hooks.sh` re-runs, and PENDING-ARMS.md's own success criterion (a live ff-only pull on Pro with the 3 runtime files dirty) is proven here only by synthetic unit tests. Ledger delta reworded to "NOT YET CLOSE — conditional" (merge + live re-arm both required), matching PENDING-ARMS.md.
