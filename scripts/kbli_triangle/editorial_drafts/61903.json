@@ -1,0 +1,27 @@
+{
+  "code": "61903",
+  "editorial": {
+    "headline": "Internet Telephony in Bali: Open Nationally, Outside the Moratorium",
+    "standfirst": "This activity covers public internet-based voice calling without transmission infrastructure—and remains open to PMA registration in Bali under the record’s stated risk position.",
+    "body": "Internet Telephony Services for Public Use (ITKP) is about organising public call and voice-communication services over Internet Protocol, or VoIP. Its defining boundary is equally important: the provider does not own or operate the transmission facilities themselves. The scope also expressly includes long-distance direct-dial and international direct-dial telephony services delivered through internet networks. In other words, this is a service activity built around internet-based voice communications, rather than the operation of the underlying transmission infrastructure.\n\nThe code is open across every stated business scale: Micro, Small, Medium and Large. That breadth matters because the activity is not confined in the record to a particular size of operator. A business registering under it is providing the public-facing call or voice-communication service described in the scope, including the specified long-distance and international calling functions, while remaining outside the ownership and operation of transmission facilities.\n\nNationally, the PMA status is **TERBUKA**, with a foreign-ownership ceiling of 100%. The record therefore supports a straightforward national reading: foreign ownership may reach 100% for this activity. Its stated PMA basis is Perpres 10/2021 and 49/2021. There is no need to soften that position with invented thresholds or unlisted obligations; the national position in this record is an open one, expressed through a full foreign-ownership ceiling.\n\nBali does not reverse that result today. The record marks the activity as not blocked for PMA registration in Bali, with the local status recorded as **OK_or_HIGHER_RISK**. At the Large scale, its OSS risk is Medium-High/High, which is why it is not caught by the provincial moratorium described here. That moratorium permanently blocks PMA registration across Bali for all Low and Medium-Low risk KBLI activities. This activity sits outside that stated restriction. For a founder, the distinction is clean: the national position is fully open to foreign ownership, and the Bali moratorium identified in the record does not block this code.",
+    "pullQuote": "The national position is fully open to foreign ownership, and the Bali moratorium identified in the record does not block this code.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "62191",
+  "editorial": {
+    "headline": "The Code Behind Online Commerce",
+    "standfirst": "An application-development code for the software behind online trade, open to PMA nationally up to 100% and not blocked for PMA registration in Bali on the record’s stated risk basis.",
+    "body": "KBLI 62191 is the category for developing software applications that support the electronic trading of goods and/or services through the internet. The subject is not commerce in the abstract but the application that enables it: its structure and content, and the computer code required to create and implement it. Electronic commerce is therefore the setting; the registered activity is the programming and software-development work that gives an online trading application its usable form.\n\nThe scope follows that work through a credible technical life cycle. It names the writing of code, its modification—including updates and patches—its customisation, testing and technical support. Those elements belong together because an internet-commerce application is not finished when its first code is written; the stated activity reaches into the work required to implement and support that code. The emphasis stays with the software application designed for electronic trade, rather than being a loose label for any business that happens to sell online.\n\nThe relevant registrant is the party actually undertaking that application-development work. The activity is open at Mikro, Kecil, Menengah and Besar scales—the full range shown in the record. That matters because the scale field does not confine this particular coding, design, modification, testing and support activity to one narrow tier. Across those named scales, the reference point remains the same: software applications built to support online transactions in goods and/or services.\n\nNationally, the position is clear: KBLI 62191 is TERBUKA to PMA, with foreign ownership allowed up to 100%. That is a full foreign-ownership ceiling, not a partial cap. Bali does not turn that national picture into a current PMA registration block. Its recorded status is OK_or_HIGHER_RISK, and it is not blocked for PMA registration. The province’s permanent, island-wide moratorium blocks all Low and Medium-Low risk KBLI for PMA. In this record, however, the OSS risk at the Besar scale is Medium-High/High, which is why the activity is stated not to be blocked by that moratorium. The conclusion should remain no broader than the evidence: national PMA openness up to 100%, and a Bali position that is not blocked on the stated large-scale risk basis.",
+    "pullQuote": "Bali does not turn that national picture into a current PMA registration block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

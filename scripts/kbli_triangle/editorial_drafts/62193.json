@@ -1,0 +1,27 @@
+{
+  "code": "62193",
+  "editorial": {
+    "headline": "Blockchain Application Development: Nationally Open, Blocked for PMA in Bali",
+    "standfirst": "Blockchain software development is nationally open to full foreign ownership, but Bali’s permanent risk-based moratorium blocks PMA registration for this activity.",
+    "body": "Foreign investors cannot register this blockchain-application development activity in Bali today, despite its nationally open foreign-ownership position. Bali’s block turns on risk classification: at the *Besar* scale, OSS risk is Low or Medium-Low across every scope. The provincial moratorium blocks PMA registration for Low and Medium-Low risk activities island-wide and permanently; the record identifies this specific block with the moratorium dated May 13, 2026. It is the *Besar*-scale OSS assessment, rather than a reduced foreign-ownership ceiling, that produces the Bali outcome.\n\nAt its core, the activity is software-making with blockchain technology as its foundation. It includes programming and developing blockchain-based applications, from designing and writing the program code needed to create and implement smart contracts to designing public and private blockchain infrastructure. The scope also includes applications built on other distributed-ledger technologies. Read plainly, it is concerned with building the application and its underlying blockchain architecture: code, smart-contract implementation and infrastructure design form the substance of the activity. Public and private infrastructure are both expressly within that development mandate.\n\nNationally, the position is open, with foreign ownership permitted up to 100%. Registration is open at micro, small, medium and large scales, so the scope is not confined to one size of operation. The record lists these as *Mikro*, *Kecil*, *Menengah* and *Besar*. Taken together, the open national status and the stated ceiling allow a fully foreign-owned company within this activity’s national ownership position, across the four listed scales. Those national facts do not, however, undo the Bali status.\n\nThe distinction is sharp rather than contradictory. The national setting answers the ownership question for the activity; Bali’s classification-driven moratorium answers the registration question within the province. Here, the latter controls the Bali outcome: the record marks the activity blocked for PMA because the *Besar*-scale OSS assessment falls into the Low or Medium-Low bands across its scope. A national ceiling of 100% therefore should not be presented as Bali availability. For Bali, the honest conclusion is blocked PMA registration today.",
+    "pullQuote": "A national ceiling of 100% should not be presented as Bali availability.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

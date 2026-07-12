@@ -1,0 +1,27 @@
+{
+  "code": "61103",
+  "editorial": {
+    "headline": "Satellite Networks, and Bali’s Higher-Risk Route",
+    "standfirst": "This code covers the infrastructure and network work that turns satellite systems into public connectivity—nationally open to full foreign ownership, with a higher-risk but unblocked position in Bali.",
+    "body": "Satellite telecommunications is the operation, maintenance and provision of telecommunications networks using satellite infrastructure for public connectivity. Its practical estate includes geostationary satellites, medium- and low-earth-orbit satellites, earth stations, satellite-control centres, gateway exchanges and the connecting networks that make those assets useful as a system. It includes satellite-based network services: fixed links between two points—mobile backhaul through VSAT is the example named—and mobile services, without defining them by a particular application. It also includes making satellite-network capacity available to other telecommunications-network and telecommunications-service operators.\n\nThe code is open at each stated business scale: Mikro, Kecil, Menengah and Besar. Its registrant is therefore an enterprise with a distinctly operational role: one that operates, maintains or provides satellite-based network infrastructure; supplies connectivity over that infrastructure; or leases capacity to other operators. The stated scope also expressly names basic telephony through satellites that have Landing Right, alongside fixed-mobile satellite-network operations. Registering at any of those scales does not change the activity’s defining subject: it remains satellite telecommunications infrastructure and network services rather than an application-specific service.\n\nNationally, the foreign-investment position is direct. The activity is marked TERBUKA, with a maximum foreign ownership of 100%. A foreign investor can therefore hold the full stake under the national figure given here. That openness applies to this defined satellite-network activity: the provision, operation or maintenance of satellite infrastructure, satellite-based network services and capacity leasing described above. The cited national basis is Perpres 10/2021, 49/2021.\n\nBali needs the same attention to wording. The province’s stated moratorium permanently blocks PMA across the island for all Low and Medium-Low risk KBLI. This code is not blocked under that rule. Rather, its Bali record says that at Besar scale the OSS risk is Menengah-Tinggi/Tinggi; its status is OK_or_HIGHER_RISK. The essential distinction is the higher risk classification at large scale, not a moratorium bar. The provincial rule is framed around risk levels, and this activity sits outside the two levels it blocks.",
+    "pullQuote": "Nationally the activity is open to full foreign ownership; in Bali, it is higher risk at large scale but not barred by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

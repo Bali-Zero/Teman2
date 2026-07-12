@@ -1,0 +1,27 @@
+{
+  "code": "61104",
+  "editorial": {
+    "headline": "Internet Access, Built on Infrastructure You Operate",
+    "standfirst": "For operators serving end users through their own network infrastructure, this activity remains fully foreign-open nationally and is not blocked for PMA registration in Bali.",
+    "body": "Internet access is the service at the centre of this activity, but the defining feature is the operator’s control of the infrastructure behind it. It covers an internet service provider that owns and operates its own cable, wireless or satellite infrastructure and delivers access directly to end users. The scope is therefore practical and broad: internet access through telecommunications networks, dedicated connections, public-space hotspots, and on-board connectivity, including internet access during flights, all sit within the activity described here.\n\nThe record opens this activity across the full range of business scales: micro, small, medium and large. That matters because the activity is not framed as a large-network proposition alone. Its stated field reaches from end-user access through a telecommunications network to more specific settings where connectivity is part of the environment itself—whether a dedicated connection for a user, a hotspot in public space, or access provided during transport. What remains constant is the model: the operator owns and runs the infrastructure used to provide the service.\n\nNationally, the position is direct. The activity is classified as open to foreign investment, with a foreign-ownership ceiling of 100%. In plain terms, foreign ownership is not capped below full ownership under the national position recorded for this code. That openness applies alongside availability at every listed business scale, giving the activity a notably complete national profile without requiring the editorial to add conditions that the record does not state.\n\nBali’s position is also open, rather than a disguised exclusion. The provincial moratorium blocks PMA registration for low- and medium-low-risk activities across the island, but this activity is expressly not blocked by that moratorium. Its Bali status is recorded as OK or higher risk. At the large-business scale, the OSS risk classification is medium-high or high; this is why the activity is not caught by the moratorium. For a foreign-owned operator considering Bali, the honest reading is uncomplicated: PMA registration for this activity is not blocked there today.",
+    "pullQuote": "For a foreign-owned operator considering Bali, PMA registration for this activity is not blocked there today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National investment status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Business scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

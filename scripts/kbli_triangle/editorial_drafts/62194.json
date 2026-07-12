@@ -1,0 +1,27 @@
+{
+  "code": "62194",
+  "editorial": {
+    "headline": "AI Building Blocks Are Open Nationally, but Shut to PMA in Bali",
+    "standfirst": "Reusable AI-code development is nationally open to full foreign ownership, yet PMA registration for this activity is blocked in Bali under the provincial moratorium.",
+    "body": "For a foreign investor, the most material fact about this activity is geographical: it cannot be registered as PMA in Bali today. That restriction does not alter what the activity is. It concerns the foundational, reusable code from which other developers construct artificial-intelligence systems and applications, rather than a bespoke build for one end user. Nationally, however, the activity is open to foreign investment, with a 100% foreign-ownership ceiling.\n\nThe work sits at the base layer of AI development. It covers designing a component’s structure and content; writing the program code; modifying it through updates and patches; customising, testing, and supporting it. The intended outputs are reusable AI modules, libraries, and frameworks: building blocks meant to be taken up by developers as components in their own systems or applications. That reusable, developer-facing purpose is the centre of gravity. It is not an activity for publishing AI software.\n\nRegistration is open across four enterprise scales: Mikro, Kecil, Menengah, and Besar. The sequence matters because it situates this as an activity available from the smallest enterprise category through the largest, while keeping the subject tightly on the creation and maintenance of reusable AI code. The activity is not presented as end-user-specific development; its audience is the developer who needs a component from which to build.\n\nThat national openness cannot be read as a Bali registration route for PMA. In Bali, the activity is classified as BLOCCATO_CLASSE_RISCHIO: at the Besar scale, every scope is assessed as Rendah or Menengah-Rendah, bringing it within Bali’s island-wide, permanent PMA moratorium. The recorded trigger is the moratorium of May 13, 2026. The position is two-layered but not ambiguous: full foreign ownership is available nationally, while PMA registration for this activity is blocked in Bali. For founders, the distinction is not an administrative footnote; it determines whether the nationwide investment setting can be used on the island.",
+    "pullQuote": "Full foreign ownership is available nationally, while PMA registration for this activity is blocked in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open enterprise scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "61101",
+  "editorial": {
+    "headline": "The Wired Networks Behind Indonesia’s Everyday Connections",
+    "standfirst": "KBLI 61101 is the operating business of wired telecommunications networks—open nationally to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 61101 is the business of running the wired networks that carry voice, data, text, audio and video. Its terrain is broad but coherent: cable infrastructure on land and beneath the sea; access and distribution networks reaching homes and offices; and connections spanning regions, islands and countries. It also reaches the quieter infrastructure links between buildings, telecommunications exchanges, cellular towers, data centres and core networks. An operator may provide access points for customers, build the connective tissue between networks, or lease cable-network capacity to other telecommunications-network and telecommunications-service operators. Cable installation by itself, without operating the facility, sits outside this activity.\n\nThe register is deliberately open in scale. Micro, small, medium and large businesses may undertake it, reflecting an activity that ranges from customer-facing access networks to substantial connective infrastructure. Nationally, it is open to foreign investment, with a foreign-ownership ceiling of 100%. That is the clear starting point for a foreign-owned operator: this classification concerns the active provision, maintenance and operation of a wired telecommunications network, not merely the presence of cable in the ground or under the sea.\n\nBali does not reverse that national position. The province’s standing moratorium blocks PMA registration for all Low and Medium-Low-risk KBLI activities, island-wide and permanently. This activity is not blocked by that moratorium. At the large-business scale, its OSS risk is recorded as Medium-High/High, which places it outside the moratorium’s blocked risk categories. The honest Bali reading is therefore straightforward: PMA registration for this wired-telecommunications activity is not shut out by the provincial moratorium. The Bali status is appropriately framed as open or higher risk—not as a low-risk exemption, and not as a prohibition. For founders, that distinction matters: national foreign openness remains intact, while Bali’s record identifies the activity’s higher-risk character at the large scale rather than closing the door to it.",
+    "pullQuote": "Bali identifies this as an open or higher-risk activity, not a moratorium exclusion for PMA.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

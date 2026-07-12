@@ -1,0 +1,27 @@
+{
+  "code": "61909",
+  "editorial": {
+    "headline": "The Quiet Infrastructure of Advanced Messaging",
+    "standfirst": "A 100% foreign-open telecommunications activity that can be registered across every business scale, including by a PT PMA in Bali.",
+    "body": "This activity covers telecommunications services that sit behind advanced data messaging rather than transmission infrastructure itself. Its stated scope includes advanced data services such as SMS+ and MMS+ provided without owning or operating the data-transmission infrastructure, alongside SMS push and telephone-network notifications. A bank’s SMS notification or a promotional text message are both cited examples: communications delivered at scale, often unnoticed until they matter.\n\nThe registration scope is broad. The activity is open at Mikro, Kecil, Menengah and Besar scales, making room for businesses that begin with a narrow service proposition as well as those operating at larger scale. The code is therefore about the provision of these telecommunications services, with its practical centre of gravity in messaging, alerts and network-based notifications rather than the underlying transmission network.\n\nNationally, the position is clear: the activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. That is a fully open national ownership position, not a partial foreign-share allowance. The governing PMA references recorded for it are Perpres 10/2021 and 49/2021. For a founder, the important distinction is simple: the national record permits a foreign-owned company to enter this activity, provided the company is structured around the services actually described here.\n\nBali reaches the same practical result, but for a stated reason that deserves attention. The Bali status is open with high risk, and the record expressly confirms that a PT PMA can register the activity in Bali. Bali’s permanent, island-wide PMA moratorium blocks low- and medium-low-risk activities; this one survives because its Besar scale is recorded as Menengah Tinggi. In other words, the Bali result is not an assumed extension of national openness. It is a specific recorded outcome: this activity remains registrable by a PT PMA in Bali despite the province’s standing moratorium.",
+    "pullQuote": "Bali’s result is specific, not assumed: this activity remains registrable by a PT PMA despite the standing moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "APERTO_BALI_RISCHIO_ALTO"
+      }
+    ]
+  }
+}

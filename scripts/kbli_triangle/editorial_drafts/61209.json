@@ -1,0 +1,27 @@
+{
+  "code": "61209",
+  "editorial": {
+    "headline": "The Business of Making Telecom Capacity Reach the Market",
+    "standfirst": "This activity covers the resale, brokering and agency intermediation that connects telecom capacity, service packages and public access with users.",
+    "body": "This activity sits in the commercial layer of telecommunications: the businesses that resell services, arrange transactions, and represent operators rather than simply supplying the underlying network. Its scope includes buying and reselling cable, wireless and satellite telecommunications capacity; telecom brokering; and the resale of prepaid calling cards. It also reaches the intermediary work around those services, where an agency sells on behalf of an operator or helps place a service package with the customer.\n\nThat intermediary role is broad enough to include agencies for cable, wireless and satellite telecommunications, agents selling mobile-phone service packages, agents selling wireless telephone packages in the name of a wireless operator, and agencies serving mobile virtual network operators. The same activity also includes the provision of telephone and internet access in facilities open to the public, including telephone shops and internet cafés. In practical terms, the code describes a route-to-market business: reselling capacity, placing packages, acting as an agent, or providing public access.\n\nNationally, the activity is open to foreign investment, with a foreign-ownership ceiling of 100%. It is open across Mikro, Kecil, Menengah and Besar business scales. That is the clean national position: a foreign investor may participate fully in an activity built around telecom resale and intermediation, provided the registered activity is the one actually being carried on.\n\nBali requires a more exact reading of the proposed scope. The provincial rule blocks all Low and Medium-Low risk KBLI activities for PMA on an island-wide, permanent basis. For this activity, the record does not impose a blanket Bali block; instead, its PMA registrability depends on the declared scope. Some scopes at the Besar scale are low risk, while others carry a higher risk. PMA registration in Bali is available only when the higher-risk scope is declared, and the exact activity should be verified in live OSS. The national opening remains real, but in Bali the registration outcome turns on how the business’s actual telecom role is stated.",
+    "pullQuote": "The national opening remains real, but in Bali the registration outcome turns on how the business’s actual telecom role is stated.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}
