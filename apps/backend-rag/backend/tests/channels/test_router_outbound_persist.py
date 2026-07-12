@@ -178,9 +178,10 @@ async def test_persist_metadata_json_gains_session_id():
 
 
 @pytest.mark.asyncio
-async def test_persist_does_not_clobber_explicit_session_id():
-    """INNOCENCE: a session_id already present in metadata wins — the
-    parameter is a fallback, never an overwrite."""
+async def test_persist_param_session_id_overrides_metadata():
+    """GUILT (injection): metadata can be client-influenced — a forged
+    metadata session_id (e.g. "wa_session_<phone>" smuggled by a web caller)
+    must be overwritten by the adapter-derived parameter."""
     import json
 
     router = ChannelRouter(_make_engine([]))
@@ -191,13 +192,37 @@ async def test_persist_does_not_clobber_explicit_session_id():
         direction="inbound",
         sender_id="web_1",
         content="hi",
-        metadata={"session_id": "explicit-session"},
-        session_id="derived-session",
+        metadata={"session_id": "wa_session_628123"},
+        session_id="web_derived-session",
     )
 
     args = router._db_pool.execute.await_args[0]
     meta = json.loads(args[-1])
-    assert meta["session_id"] == "explicit-session"
+    assert meta["session_id"] == "web_derived-session"
+
+
+@pytest.mark.asyncio
+async def test_persist_skips_unknown_fallback_session_id():
+    """INNOCENCE: the adapters' malformed-webhook fallback "unknown" is not
+    persisted — it would pool degenerate events from every channel into one
+    shared cross-channel history."""
+    import json
+
+    router = ChannelRouter(_make_engine([]))
+    router._db_pool = AsyncMock()
+
+    await router._persist_message(
+        channel="whatsapp",
+        direction="inbound",
+        sender_id="whatsapp_x",
+        content="???",
+        metadata={"phone": "x"},
+        session_id="unknown",
+    )
+
+    args = router._db_pool.execute.await_args[0]
+    meta = json.loads(args[-1])
+    assert "session_id" not in meta
 
 
 @pytest.mark.asyncio

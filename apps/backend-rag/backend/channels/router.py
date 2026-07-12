@@ -281,8 +281,12 @@ class ChannelRouter:
         (conversation/engine.py: WHERE metadata->>'session_id' = $1), so a
         P0-6 replayed message never contributed to context reconstruction.
         Adapter-native keys (message_id, wamid, message_type, phone, ...) pass
-        through untouched; an explicit session_id already present in metadata
-        wins over the parameter.
+        through untouched. The adapter-derived session_id PARAMETER is
+        authoritative and overwrites any metadata-supplied value — metadata
+        can be client-influenced, the parameter cannot (Codex 2026-07-13).
+        The adapters' malformed-webhook fallback "unknown" is never persisted:
+        it would pool degenerate events from every channel into one shared
+        history under the same key.
 
         Non-blocking: failures are logged but don't break the message flow.
         """
@@ -295,7 +299,7 @@ class ChannelRouter:
             client_id = (metadata or {}).get("client_id")
 
             meta = dict(metadata or {})
-            if session_id and not meta.get("session_id"):
+            if session_id and session_id != "unknown":
                 meta["session_id"] = session_id
 
             await db_pool.execute(
