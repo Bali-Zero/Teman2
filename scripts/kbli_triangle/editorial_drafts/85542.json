@@ -1,0 +1,27 @@
+{
+  "code": "85542",
+  "editorial": {
+    "headline": "A Nonformal Home for Islamic Religious Learning",
+    "standfirst": "This activity covers nonformal Islamic religious education, from staged learning units to Qur’an education, with a nationally open PMA position and no stated Bali moratorium block.",
+    "body": "This activity is the nonformal education setting for Islamic religious learning. It covers education units delivered either through a sequence of levels or without levels, including madrasah diniyah takmiliyah at ula, wustha, ulya, and jami'ah levels. Its remit also includes Qur’an education such as TKQ, TPA, TQA, and Rumah Tahfidz Al-Qur’an. The common thread is not a single teaching format, but the operation of Islamic religious education on the nonformal pathway.\n\nFor registration purposes, the activity is anchored to the organiser of those nonformal education units. The record places it at every stated business scale: Mikro, Kecil, Menengah, and Besar. It also includes nonformal education units operated and managed through cooperation between a foreign educational institution that is accredited or recognised in its home country and an Indonesian educational institution, provided the arrangement follows the nonformal pathway under applicable regulations. That makes the collaborative model part of the defined scope, rather than an afterthought to it.\n\nNationally, the PMA position is open, with a maximum foreign ownership of 100%. For a founder assessing the national setting, that is a full foreign-ownership ceiling rather than a partial cap. The relevant source recorded for that position is Perpres 10/2021, 49/2021. The practical editorial point is straightforward: the activity remains defined by nonformal Islamic religious education even where it is organised through recognised foreign-and-Indonesian institutional cooperation.\n\nBali requires its own reading. The provincial indicator is `OK_or_HIGHER_RISK`, and the activity is expressly not marked as blocked. The stated reason is that, at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi. Bali’s permanent PMA moratorium blocks low- and medium-low-risk activities island-wide; on the record supplied here, this activity is not blocked by that moratorium. The honest conclusion is precise: the national foreign-ownership ceiling is 100%, and Bali does not show this activity as barred from PMA registration by the moratorium.",
+    "pullQuote": "The honest conclusion is precise: the national foreign-ownership ceiling is 100%, and Bali does not show this activity as barred from PMA registration by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
