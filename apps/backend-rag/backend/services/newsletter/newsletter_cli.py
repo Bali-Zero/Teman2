@@ -10,7 +10,7 @@ Environment
 NEWSLETTER_RECIPIENTS   comma-separated email list (fallback if no recipients_fn
                         wire-up is available; primarily for bootstrap / dev).
 NOTIFICATIONS_EMAIL_URL override internal endpoint (default localhost:8000).
-NOTIFICATIONS_API_KEY   override internal X-API-Key (default REDACTED-ROTATED-KEY).
+NOTIFICATIONS_API_KEY   internal X-API-Key (required; no default — rotated key).
 
 Exit codes:
     0  sent (even if 0 recipients — log-only)

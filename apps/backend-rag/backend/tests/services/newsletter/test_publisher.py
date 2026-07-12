@@ -159,7 +159,9 @@ async def test_recipients_trimmed_and_empty_filtered():
 async def test_single_recipient_happy_path():
     client = AsyncMock(spec=httpx.AsyncClient)
     client.post = AsyncMock(return_value=_ok_response())
-    pub = NewsletterPublisher(http_client=client)
+    # Pass the key explicitly — the old hardcoded default (`REDACTED-ROTATED-KEY`)
+    # was a real admin key on a public repo and has been rotated + revoked.
+    pub = NewsletterPublisher(http_client=client, api_key="test-notifications-key")
 
     result = await pub.send_roundup(_content(), ["zero@balizero.com"])
     assert result.recipients_attempted == 1
@@ -172,7 +174,7 @@ async def test_single_recipient_happy_path():
     payload = call.kwargs["json"]
 
     assert url.endswith("/api/notifications/send-email")
-    assert headers.get("X-API-Key") == "REDACTED-ROTATED-KEY"
+    assert headers.get("X-API-Key") == "test-notifications-key"
     assert payload["from"] == LOCKED_SENDER_EMAIL
     assert payload["from_name"] == LOCKED_SENDER_NAME
     assert payload["to"] == "zero@balizero.com"
