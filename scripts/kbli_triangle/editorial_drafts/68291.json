@@ -1,0 +1,27 @@
+{
+  "code": "68291",
+  "editorial": {
+    "headline": "Real Estate Appraisal: Open Nationally, Viable in Bali at Higher Risk",
+    "standfirst": "KBLI 68291 covers real-estate valuation services, open to foreign investment nationally and not blocked for PMA registration in Bali.",
+    "body": "Real-estate appraisal is a specialised service activity centred on determining the value of real property. KBLI 68291 covers services that appraise the value of real-estate property: the commercial focus is valuation itself, rather than a broader claim over the property market. It is a precise category for businesses whose work concerns the assessed worth of real estate.\n\nThe activity is open across the full business-scale range stated in the record: Mikro, Kecil, Menengah, and Besar. That breadth matters because the code is not confined to one narrow size of enterprise. A business may register this activity at any of those listed scales, while retaining the same essential focus on real-estate valuation services.\n\nNationally, the PMA position is straightforward. The activity is TERBUKA, with a foreign-ownership ceiling of 100%. In plain terms, foreign investment is open at the national level and the record does not impose a lower national foreign-equity cap. The stated basis is Perpres 10/2021, 49/2021.\n\nBali does not reverse that national opening. The province’s permanent, island-wide PMA moratorium applies to Low and Medium-Low risk KBLI activities; this activity is not blocked by that rule. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, which places it outside the moratorium’s blocked risk bands. For a foreign investor considering this specific appraisal activity in Bali today, the record’s conclusion is clear: PMA registration is not blocked there.",
+    "pullQuote": "For a foreign investor considering this specific appraisal activity in Bali today, PMA registration is not blocked there.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Business scale",
+        "value": "Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

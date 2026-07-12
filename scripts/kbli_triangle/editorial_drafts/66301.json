@@ -1,0 +1,27 @@
+{
+  "code": "66301",
+  "editorial": {
+    "headline": "Conventional Investment Management: Open Nationally, Not Barred in Bali",
+    "standfirst": "This activity covers conventional management of securities and investment portfolios for clients, with full foreign ownership available nationally and no Bali moratorium block stated.",
+    "body": "Conventional investment management in the financial market is, at its core, the professional management of other people’s investments. The activity covers the management of securities portfolios, collective investments and other investment portfolios for either a group of clients or an individual client, conducted on a conventional basis. It is not a broad label for every institution that holds or deploys capital: the stated scope excludes insurance companies, pension funds and banks carrying out their own business activities under the applicable rules.\n\nThat distinction gives the activity its proper centre of gravity. This is portfolio management for clients: arranging and managing securities or collective investment portfolios on their behalf, rather than an institution simply operating its own balance sheet. It is open across the full stated range of business scales — Mikro, Kecil, Menengah and Besar — so the classification does not confine the activity to a single size of enterprise.\n\nNationally, the foreign-investment position is direct. The activity is listed as TERBUKA, with a foreign-ownership ceiling of 100%. In practical terms, the national record permits full foreign ownership for this activity. The source recorded for that position is Perpres 10/2021, 49/2021; there is no lower national ownership cap in the supplied record to soften or qualify that conclusion.\n\nBali requires a separate reading, but not a more pessimistic one. The province’s stated moratorium blocks all Low and Medium-Low risk activities for PMA registration, island-wide and permanently. This activity is not blocked by that moratorium: at the Besar scale, its OSS risk is stated as Menengah-Tinggi/Tinggi, and the Bali status is recorded as OK_or_HIGHER_RISK. The clean conclusion is that a foreign investor is not barred from registering this activity in Bali by the stated moratorium. That is a Bali-specific reading of the record, alongside — not instead of — the national 100% foreign-ownership ceiling.",
+    "pullQuote": "A foreign investor is not barred from registering this activity in Bali by the stated moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

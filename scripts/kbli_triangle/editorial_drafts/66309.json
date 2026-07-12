@@ -1,0 +1,27 @@
+{
+  "code": "66309",
+  "editorial": {
+    "headline": "Fund Management: Nationally Open, Blocked for PMA Registration in Bali",
+    "standfirst": "This activity covers paid or contractual portfolio and funding management, open nationally across every business scale but blocked for PMA registration at a Bali address.",
+    "body": "Fund management is not a catch-all label here. This activity is for portfolio and funding-management work carried out for remuneration or under contract. Its stated scope includes the management of mutual funds other than investment funds and pension funds not otherwise covered by the group. The category is therefore defined by a professional management function performed on an agreed commercial basis, with portfolio and funding management at its centre.\n\nThat framing matters when deciding what business is being registered. The record opens the activity to Micro, Small, Medium, and Large scales, so scale is not an exclusion at the national activity level. A business registered here should fit the described work: portfolio and funding management supplied for payment or under a contract. The mutual-fund example gives the activity a clear financial-management character, while the wording also preserves its stated boundary around funds other than investment funds and pension funds not otherwise covered by the group.\n\nNationally, the PMA position is open. The foreign-ownership ceiling is 100%, meaning the record states no foreign-capital cap below full ownership for this activity. Its cited basis is Perpres 10/2021 and 49/2021. This is an important national result, but it is not the same as a Bali registration outcome.\n\nFor a Bali address, the position changes decisively. The record marks Bali as closed under the PMA moratorium because its Large scale is classified as Medium-Low. The Bali rule blocks all Low and Medium-Low risk activities for PMA across the province on a permanent, island-wide basis; the record cites the Governor’s letter dated May 13, 2026. Consequently, a foreigner cannot register this activity in Bali today under this record. This is not a lower foreign-ownership ceiling or a condition to negotiate: nationally the activity is open up to 100% foreign ownership, while PMA registration in Bali is blocked.",
+    "pullQuote": "Nationally the activity is open up to 100% foreign ownership, while PMA registration in Bali is blocked.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "CHIUSO_MORATORIA_BALI"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

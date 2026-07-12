@@ -1,0 +1,27 @@
+{
+  "code": "68126",
+  "editorial": {
+    "headline": "Warehouse and Self-Storage Rental: Open Nationally, Address-Sensitive in Bali",
+    "standfirst": "This activity covers secure warehouse, self-storage and locker rental, open to medium and large enterprises with full foreign ownership nationally.",
+    "body": "This activity is about renting space for goods: warehouses, self-storage facilities and security-equipped lockers. Its commercial centre of gravity is access to storage rather than the operation of storage for every kind of goods. A business registered under this activity is therefore offering premises or units in which customers can place their belongings, with secure lockers explicitly within the scope.\n\nThe activity is open to enterprises at the **Menengah** and **Besar** scales. Nationally, it is classified as **TERBUKA** for foreign investment, with a foreign-ownership ceiling of **100%**. That is a clear national position: a foreign investor may hold the entire business, subject to the activity’s stated scale eligibility.\n\nBali requires a more location-conscious reading, but not a pessimistic one. The province permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities. This activity, however, is identified as Medium-High or High risk and is not blocked by that moratorium. Its Bali status is **OK_or_HIGHER_RISK**, meaning the moratorium does not itself close the door to PMA registration.\n\nThe remaining discipline is practical rather than rhetorical: verify the position for the proposed address. That instruction appears directly in the Bali assessment and matters because the activity’s island-wide moratorium outcome does not remove the need for address-specific confirmation. For a medium- or large-scale warehouse, self-storage or secure-locker rental business, the national picture is fully foreign-open; in Bali, it is not barred by the stated moratorium, provided the address is checked.",
+    "pullQuote": "Nationally, a foreign investor may hold the entire business; in Bali, the activity is not barred by the stated moratorium, provided the address is checked.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Eligible scale",
+        "value": "Menengah"
+      },
+      {
+        "label": "Eligible scale",
+        "value": "Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
