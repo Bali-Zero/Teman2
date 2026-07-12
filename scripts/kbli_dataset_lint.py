@@ -35,7 +35,7 @@ from pathlib import Path
 
 ITALIAN_MARKERS = re.compile(
     r"\b(riservat[oaie]|chius[oaie]|apert[oaie]|vietat[oaie]|bloccat[oaie]|"
-    r"società|attività|sanit[aà]|agricoltur[a]|pesca|commercio|edilizi[oa]|"
+    r"società|attività|sanit[aà](?![a-z])|agricoltur[a]|pesca|commercio|edilizi[oa]|"
     r"consulenza|servizi|stranier[oi]|iscritt[oi]|avvocat[oi]|dipende|richiede|"
     r"gestion[ei]|impres[ae]|settore|primo dei|dal \d{1,2}/)",
     re.IGNORECASE,
@@ -488,7 +488,10 @@ def main() -> int:
             print(f"  {rule}: {by_rule[rule]}")
         blocking = [f for f in findings if f["rule"] not in ("L7", "L2")]
         print(f"\nblocking findings (non-L2/L7): {len(blocking)}")
-        for f in blocking[:40]:
+        # No display cap (2026-07-13): a truncated findings list reads as the whole
+        # list downstream — the [:40] here and the applier's twin cost a day of
+        # "exactly 40 refusals" audits. Counts live in the by_rule summary above.
+        for f in blocking:
             print(f"  [{f['rule']}] {f['code']} {f['field']}: {f['detail']}")
 
     return 1 if any(r not in ("L7",) for r in by_rule) else 0
