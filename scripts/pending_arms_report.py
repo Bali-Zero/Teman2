@@ -157,6 +157,37 @@ def _safe_get(parts: Sequence[str], idx: int) -> str:
         return ""
 
 
+def _split_pipe_fields(raw: str) -> List[str]:
+    """Split a raw ledger line on top-level '|' separators, ignoring '|' inside
+    backtick-quoted spans (shell commands, regex alternations).
+
+    A naive raw.split("|") breaks the moment the free-text body quotes a shell pipe
+    or a regex alternation in backticks — e.g. `launchctl list \\| grep -E
+    "canva-(oauth|renderer|apply)"` — because every '|' inside that quoted span
+    counts as a real field separator too. Falls back to a naive split when backticks
+    are unbalanced (odd count): an unbalanced backtick means the source markdown
+    itself is malformed in a way this heuristic cannot reason about, and treating the
+    rest of the line as one giant quoted span would be a worse guess than the
+    pre-existing naive behavior.
+    """
+    if raw.count("`") % 2 != 0:
+        return raw.split("|")
+    fields: List[str] = []
+    current: List[str] = []
+    in_backtick = False
+    for ch in raw:
+        if ch == "`":
+            in_backtick = not in_backtick
+            current.append(ch)
+        elif ch == "|" and not in_backtick:
+            fields.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    fields.append("".join(current))
+    return fields
+
+
 def _extract_missing_step(parts: Sequence[str]) -> str:
     """Best-effort recovery of the 'missing arming step' field.
 
@@ -170,6 +201,33 @@ def _extract_missing_step(parts: Sequence[str]) -> str:
     if middle:
         return "|".join(p.strip() for p in middle).strip()
     return _safe_get(parts, 2)
+
+
+# A session appends a progress note to a live entry by writing another
+# '| **UPDATE ...**' segment after the proof field — a legitimate growth pattern
+# found live in the real ledger (2026-07-11 audit). Back-anchoring owner/proof
+# (parts[-2]/parts[-1]) gets this wrong the moment it fires: the anchor shifts onto
+# the appended note instead of the real owner/proof. Detecting and stripping ONLY
+# this specific, narrowly-recognizable trailing shape (rather than guessing that
+# any >5-field entry grew at the tail) avoids mis-anchoring entries that instead
+# grew a genuine EXTRA field in the MIDDLE (date/artifact/missing-step/[note]/owner/
+# proof — found live too, 'codex-redteam MCP server' entry) where back-anchoring
+# from the outside-in was already correct.
+_TRAILING_UPDATE_NOTE_RE = re.compile(r"^\*\*\s*UPDATE", re.IGNORECASE)
+
+
+def _split_trailing_update_notes(parts: Sequence[str]) -> tuple[List[str], List[str]]:
+    """Peel off trailing '**UPDATE ...**' fields, returning (core, notes).
+
+    Only pops from the end, and only while there are still enough fields left for
+    the peeled result to remain a plausible >=4-field entry (date/artifact/owner/
+    proof at minimum) — never eats into the fields a normal entry needs.
+    """
+    core = list(parts)
+    notes: List[str] = []
+    while len(core) > 4 and _TRAILING_UPDATE_NOTE_RE.match(core[-1].strip()):
+        notes.insert(0, core.pop())
+    return core, notes
 
 
 def _truncate(text: str, limit: int = 120) -> str:
@@ -241,14 +299,17 @@ def parse_entry(raw: str, now: date) -> Entry:
     else:
         reasons.append("no 'opened YYYY-MM-DD' date found")
 
-    parts = raw.split("|")
-    if len(parts) < 3:
-        reasons.append(f"only {len(parts)} pipe-segment(s) (need >= 3)")
+    all_parts = _split_pipe_fields(raw)
+    if len(all_parts) < 3:
+        reasons.append(f"only {len(all_parts)} pipe-segment(s) (need >= 3)")
+
+    parts, trailing_notes = _split_trailing_update_notes(all_parts)
 
     artifact = _safe_get(parts, 1)
-    owner = _safe_get(parts, -2)
-    proof = _safe_get(parts, -1)
     missing_step = _extract_missing_step(parts)
+    owner = _safe_get(parts, -2)
+    proof_core = _safe_get(parts, -1)
+    proof = "|".join([proof_core, *trailing_notes]).strip() if trailing_notes else proof_core
 
     age_days: Optional[int] = None
     overdue = False

@@ -627,3 +627,90 @@ def test_innocence_open_prose_without_date_not_swallowed_as_entry(tmp_path):
     assert len(parsed) == 1
     assert parsed[0].artifact == "real artifact"
     assert "open source library" not in parsed[0].raw
+
+
+# ---------------------------------------------------------------------------
+# Backtick-quoted pipes & trailing "**UPDATE**" notes (2026-07-11/13 field-parser
+# fix). A naive raw.split("|") breaks the moment free-text quotes a shell pipe or
+# regex alternation in backticks, AND separately breaks when a session appends a
+# "| **UPDATE ...**" progress note after proof — both silently shift owner/proof
+# extraction onto a code fragment or the appended note instead of the real fields
+# (found live: 4 real ledger entries, incl. "WR2 legacy Canva lane zombies").
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_backtick_quoted_regex_pipes_do_not_corrupt_owner(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | quoted pipe artifact | some step "
+        "| me (follow-up) + operator[business] on scope "
+        '| `launchctl list \\| grep -E "svc-(oauth|renderer|apply)"` shows only kept labels',
+    )
+    assert e.owner == "me (follow-up) + operator[business] on scope"
+    assert "renderer" not in e.owner
+    assert e.cls == par.CLASS_OPERATOR_GATED
+
+
+def test_guilt_trailing_update_note_does_not_shift_owner(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | update note artifact | some step | me (follow-up PR) "
+        "| original proof text | **UPDATE 2026-07-12: progress note appended later, "
+        "PR #9999 merged, re-verified live**",
+    )
+    assert e.owner == "me (follow-up PR)"
+    assert e.proof.startswith("original proof text")
+    assert "**UPDATE 2026-07-12" in e.proof
+
+
+def test_innocence_middle_extra_field_still_resolves_via_back_anchor(tmp_path):
+    # 'codex-redteam MCP server'-style: a session inserts an EXTRA field between
+    # missing_step and owner (not a "**UPDATE**"-prefixed trailing note) — back
+    # anchoring from the outside-in must still land on the real owner/proof, not
+    # front-anchor onto the inserted field (the earlier draft of this fix did that
+    # and broke this exact shape).
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | mid-growth artifact | first step note "
+        "| BLOCCO discovered later: an inserted blocker note, not the owner "
+        "| me (real owner) + operator[control-plane] | real proof text",
+    )
+    assert e.owner == "me (real owner) + operator[control-plane]"
+    assert e.proof == "real proof text"
+    assert e.cls == par.CLASS_OPERATOR_GATED
+
+
+def test_innocence_backticks_without_pipes_parse_normally(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | backtick artifact `code_ref.py:42` | step | me | proof `value`",
+    )
+    assert e.artifact == "backtick artifact `code_ref.py:42`"
+    assert e.owner == "me"
+    assert e.proof == "proof `value`"
+
+
+def test_innocence_unbalanced_backtick_falls_back_to_naive_split(tmp_path):
+    # Malformed markdown (odd backtick count) degrades to the naive split rather
+    # than treating the rest of the line as one giant quoted span.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | odd backtick artifact ` | step | me | proof",
+    )
+    assert e.owner == "me"
+
+
+@pytest.mark.skipif(
+    not REAL_LEDGER_PATH.exists(),
+    reason=f"real ledger not found at {REAL_LEDGER_PATH} (CI checkout may not have it)",
+)
+def test_real_ledger_wr2_canva_owner_not_corrupted_by_quoted_pipes():
+    """Regression for the exact bug the real ledger documented (age 2d, 2026-07-11):
+    a backtick-quoted regex-alternation shell command inside the 'WR2 legacy Canva
+    lane zombies' entry corrupted owner extraction to a bare code fragment.
+    """
+    now = par._parse_now(NOW)
+    entries = par.load_entries(REAL_LEDGER_PATH, now)
+    e = next(x for x in entries if "WR2 legacy Canva lane zombies" in x.artifact)
+    assert "renderer" != e.owner
+    assert "me" in e.owner or "operator" in e.owner.lower()
