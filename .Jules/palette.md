@@ -62,6 +62,13 @@
 
 **Learning:** Live UI states that lack visual labels (like a voice recording overlay) are "silent" to screen readers. Adding `role="status"` and `aria-live="polite"` ensures that assistive technology users are notified of state transitions (e.g., recording started) without being interrupted. Furthermore, adding `aria-label` to semantic lists of "Quick Actions" provides necessary context for group navigation, making the interface more discoverable.
 **Action:** Always apply ARIA live regions to dynamic status overlays. Use descriptive `aria-label` on semantic list containers that serve as primary interaction points.
+
+## 2026-07-12 - [Centralized Localization for Chat Overlays]
+
+**Learning:** UI overlays that provide instructional feedback (e.g., voice recording status) must be localized to maintain a professional, accessible experience for multi-language users. Utilizing a shared `useChatLocale` hook ensures that ephemeral UI elements remain in sync with the user's selected language across the application.
+**Action:** Always use `useChatLocale` for instructional text in chat-specific overlays and indicators.
+
 ## 2025-05-15 - [Stop Generation Pattern]
+
 **Learning:** In AI chat interfaces, the primary action button (Send) should transition to a 'Stop' button during streaming to provide users with control and an intuitive way to interrupt long or irrelevant responses. This requires carefully managing the 'disabled' state to ensure the button remains interactive while the background process is active.
 **Action:** Always implement a 'Stop Generation' toggle on the main input action button when dealing with streaming LLM responses. Use a clear visual cue like a 'Square' icon and ensure proper ARIA labels ('Stop generating') for accessibility.

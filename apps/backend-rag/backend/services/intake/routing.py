@@ -1095,6 +1095,7 @@ async def _try_auto_attach_after_route(
     from backend.services.intake.auto_attach import (
         try_auto_attach,
         try_direct_phone_auto_attach,
+        try_nameid_auto_attach,
     )
 
     payload = {
@@ -1103,7 +1104,16 @@ async def _try_auto_attach_after_route(
         "entity_resolution": proposal["entity_resolution"],
     }
     if decision == DECISION_AUTO_ATTACH:
-        return await try_auto_attach(payload, pool, sender_phone=sender_phone)
+        verdict = await try_auto_attach(payload, pool, sender_phone=sender_phone)
+        if isinstance(verdict, dict) and verdict.get("skipped") == "not_concordant":
+            # LEVA 3 fallback: phone leg absent/unresolvable (Drive/Dropbox).
+            # No-op by default (own kill-switch); returns the LEVA-2 verdict
+            # unless a real name-id commit happened, so logs keep the primary
+            # gate's reason.
+            nameid_verdict = await try_nameid_auto_attach(payload, pool)
+            if nameid_verdict.get("committed"):
+                return nameid_verdict
+        return verdict
     if decision == DECISION_LINK_CANDIDATE:
         return await try_direct_phone_auto_attach(
             payload,

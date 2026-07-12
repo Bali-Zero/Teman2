@@ -561,3 +561,69 @@ def test_innocence_operator_tag_with_passive_note_stays_operator_gated(tmp_path)
         "- opened 2026-07-02 | tagged artifact | step | operator[gui] (passivo) | proof",
     )
     assert e.cls == par.CLASS_NATURAL_WAIT  # declared passive wait wins: not actionable
+
+
+# ---------------------------------------------------------------------------
+# "open" vs "opened" verb-tense drift (real ledger has 14 lines missing "-ed",
+# silently discarded by a bare "- opened " prefix check as an unrelated list
+# item — family #3 under-match: the guard watched one literal spelling).
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_open_without_ed_is_parsed_as_entry(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- open 2026-07-01 | dropped-ed artifact | some step | me | some proof",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT
+    assert e.artifact == "dropped-ed artifact"
+    assert e.age_days == 4  # NOW (fixed in _single_entry) is 2026-07-05
+    assert e.overdue is True
+    assert e.bucket == "TECH-DEBT-OVERDUE"
+
+
+def test_guilt_open_without_ed_continuation_lines_concatenated(tmp_path):
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(
+        "- open 2026-07-02 | wrapped dropped-ed artifact\n"
+        "  continuation line | missing step | me | proof\n"
+        "\n## closed (proof recorded)\n",
+        encoding="utf-8",
+    )
+    now = par._parse_now(NOW)
+    (e,) = par.load_entries(p, now)
+    assert "continuation line" in e.artifact or "continuation line" in e.raw
+    assert e.cls == par.CLASS_TECH_DEBT
+    assert e.overdue is True
+
+
+def test_guilt_open_without_ed_operator_gated_classified(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- open 2026-07-05 | dropped-ed operator artifact | step | operator[secret] | proof",
+    )
+    assert e.cls == par.CLASS_OPERATOR_GATED
+
+
+def test_innocence_opened_still_parses_unaffected(entries):
+    # pre-existing "- opened " entries must be completely unaffected by the change.
+    e = _by_artifact(entries, "overdue tech debt artifact")
+    assert e.cls == par.CLASS_TECH_DEBT
+    assert e.overdue is True
+
+
+def test_innocence_open_prose_without_date_not_swallowed_as_entry(tmp_path):
+    # unrelated "- open ..." prose (no YYYY-MM-DD immediately after) must NOT be
+    # mistaken for a ledger entry — the date anchor in ENTRY_START_RE prevents this.
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(
+        "- opened 2026-07-05 | real artifact | step | me | proof\n"
+        "- open source library consideration, not a ledger line\n"
+        "\n## closed (proof recorded)\n",
+        encoding="utf-8",
+    )
+    now = par._parse_now(NOW)
+    parsed = par.load_entries(p, now)
+    assert len(parsed) == 1
+    assert parsed[0].artifact == "real artifact"
+    assert "open source library" not in parsed[0].raw

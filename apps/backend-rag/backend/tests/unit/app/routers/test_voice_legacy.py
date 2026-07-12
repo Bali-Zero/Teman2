@@ -171,6 +171,7 @@ def test_local_audio_status_requires_api_key() -> None:
 
 def test_local_audio_status_disabled_is_sanitized(monkeypatch) -> None:
     monkeypatch.setattr(settings, "voice_concierge_local_audio_enabled", False)
+    monkeypatch.setattr(settings, "voice_concierge_local_audio", False)
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
@@ -197,6 +198,13 @@ def test_local_audio_status_disabled_is_sanitized(monkeypatch) -> None:
 
 def test_local_audio_status_redacts_whisper_paths(monkeypatch) -> None:
     monkeypatch.setattr(settings, "voice_concierge_local_audio_enabled", True)
+    # Pin VAD to an unimportable module: on hosts with silero-vad installed
+    # (voice runtime machines) the real module would flip turn_detection_ready.
+    monkeypatch.setattr(
+        settings,
+        "voice_concierge_silero_module",
+        "nonexistent_silero_module_for_test",
+    )
     monkeypatch.setattr(
         settings,
         "voice_concierge_whisper_binary",

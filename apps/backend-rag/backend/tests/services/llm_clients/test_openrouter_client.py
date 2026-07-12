@@ -27,9 +27,15 @@ from backend.services.llm_clients.openrouter_client import (
 
 @pytest.fixture()
 def _mock_settings() -> None:
-    """Patch settings so the module never reads real config."""
+    """Patch settings so the module never reads real config.
+
+    openrouter_enabled is set explicitly (not left to MagicMock truthiness):
+    these tests exercise behavior WITH egress allowed; the kill-switch itself
+    is covered in test_openrouter_kill_switch.py.
+    """
     with patch("backend.services.llm_clients.openrouter_client.settings") as mock:
         mock.openrouter_api_key = "test-key-fixture"
+        mock.openrouter_enabled = True
         yield mock
 
 
@@ -40,12 +46,18 @@ def client(_mock_settings: MagicMock) -> OpenRouterClient:
 
 
 @pytest.fixture()
-def client_no_key() -> OpenRouterClient:
-    """Return an OpenRouterClient without any API key."""
+def client_no_key():
+    """Return an OpenRouterClient without any API key (egress enabled).
+
+    Kept as a yield fixture so settings stay patched for the duration of the
+    test: with the COS-LAW-013 gate first, the missing-key ValueError is only
+    reachable when openrouter_enabled is True.
+    """
     with patch("backend.services.llm_clients.openrouter_client.settings") as mock:
         mock.openrouter_api_key = None
+        mock.openrouter_enabled = True
         with patch.dict("os.environ", {}, clear=True):
-            return OpenRouterClient(api_key=None)
+            yield OpenRouterClient(api_key=None)
 
 
 def _mock_post_response(data: dict) -> AsyncMock:

@@ -113,6 +113,27 @@ MARKER_FRESH_SEC = int(os.environ.get("W84_MARKER_FRESH_SEC", str(48 * 3600)))
 UPTIME_STABLE_SEC = int(os.environ.get("W84_UPTIME_STABLE_SEC", str(STALE_GREEN_SEC)))
 
 
+def _decode_wait_status(raw: int) -> int:
+    """Decode the raw POSIX wait() status word `launchctl list <label>` reports
+    for LastExitStatus into the human-legible exit code `launchctl print` and
+    `subprocess` use (positive = normal exit code, negative = killed by that
+    signal number).
+
+    `launchctl list` emits the UNSHIFTED wait-status (a plain `exit 1` shows up
+    as 256, since normal-exit codes are packed into the high byte), while a
+    signal death (e.g. SIGKILL) shows up unshifted in the low bits (9, not
+    2304). Left raw, two jobs both "failing" can show wildly different
+    `last_exit` numbers for no operator-visible reason — confusing in the
+    ledger/Telegram output even though `_classify()`'s zero/non-zero checks
+    are unaffected either way (verified live 2026-07-12: overlap-detector.sh's
+    designed `exit 1` on a real finding showed as `last_exit: 256`).
+    """
+    try:
+        return os.waitstatus_to_exitcode(raw)
+    except ValueError:
+        return raw
+
+
 def _launchctl_status(label: str) -> dict | None:
     """Return the parsed `launchctl list <label>` dict, or None if not loaded."""
     try:
@@ -129,6 +150,8 @@ def _launchctl_status(label: str) -> dict | None:
         m = re.search(r'"(\w+)"\s*=\s*(-?\d+)', line)
         if m:
             d[m.group(1)] = int(m.group(2))
+    if "LastExitStatus" in d:
+        d["LastExitStatus"] = _decode_wait_status(d["LastExitStatus"])
     return d
 
 

@@ -27,6 +27,20 @@ echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 # so must this hook, else every push fails with `role "nuzantara" does not exist`.
 # PYTHONPATH=.:../crm-cell also matches CI (crm-cell is a sibling package).
 #
+# CI-parity also means CI's ABSENCES: the CI service containers run Postgres+Redis
+# but NO Ollama, so live-LLM tests self-skip there via is_ollama_available()
+# (e.g. test_live_sealion_golden_rule_null_on_illegible). A dev machine may reach
+# a fleet Ollama, which flips those same tests to RUN — making the gate both
+# stricter than CI and flaky (2026-07-11: the freshly-armed gate stranded two
+# sibling report pushes on that exact live SEA-LION test). OLLAMA_URL points at a
+# dead port so the hook gates exactly the test set CI gates — the env name is the
+# pydantic mapping of settings.ollama_url (backend/app/core/config.py:127), NOT the
+# module-global's name OLLAMA_BASE_URL (probed empirically 2026-07-11: only
+# OLLAMA_URL overrides). Same rationale for --ignore=backend/tests/e2e (tests.yml:190).
+# NOTE: git resolves the relative hooksPath against the MAIN checkout — worktree
+# copies of this file do NOT govern pushes; this fix bites machine-wide only once
+# merged to main and pulled there.
+#
 # F5: keg-only postgresql@17 `pg_isready`/`psql` are NOT on the PATH of this hook's
 # non-interactive shell; resolve by absolute path with a `command -v` fallback.
 # F8: with PG provisioned, a genuine test failure must BLOCK (exit 1), not "Continuing".
@@ -53,12 +67,14 @@ else
            TEST_DATABASE_URL="postgresql://test:test@localhost:5432/$PRE_PUSH_DB" \
            JWT_SECRET_KEY="${JWT_SECRET_KEY:-test_jwt_secret_key_for_testing_only_min_32_chars_long}" \
            API_KEYS="${API_KEYS:-test_api_key_1,test_api_key_2}" \
-           PYTHONPATH=.:../crm-cell python -m pytest backend/tests/ --tb=short -q ); then
+           OLLAMA_URL="http://127.0.0.1:9" \
+           PYTHONPATH=.:../crm-cell python -m pytest backend/tests/ --ignore=backend/tests/e2e --tb=short -q ); then
         echo "❌ Python tests FAILED — push blocked."
         echo "   Reproduce: cd apps/backend-rag && source .venv/bin/activate && \\"
         echo "     DATABASE_URL=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
         echo "     TEST_DATABASE_URL=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
-        echo "     PYTHONPATH=.:../crm-cell pytest backend/tests/"
+        echo "     OLLAMA_URL=http://127.0.0.1:9 \\"
+        echo "     PYTHONPATH=.:../crm-cell pytest backend/tests/ --ignore=backend/tests/e2e"
         exit 1
     fi
 fi

@@ -439,3 +439,56 @@ _Discovered: 2026-07-11 21:03 WITA · Severity: P1 · Status: FIXED (11a8abdf2e,
 **GOTCHA**: il cascade-detection pattern `429|rate.?limit|quota…` è COPIATO in N wrapper (`~/scripts/regulatory-watcher-run.sh`, CLAUDE.md §cascade, memory). Ovunque il payload possa contenere "429" come dato (codici KBLI, ID, importi), il bare `429` è una mina. Il segnale-precoce della famiglia #3 vale per i matcher di INFRASTRUTTURA, non solo per le guardie di contenuto: "quota — backoff" ripetuto CON chiamate manuali che passano = quasi certamente over-match, non quota. Sonda sempre con l'output RAW di una chiamata reale prima di credere alla label.
 
 **Reference**: `scripts/kbli_triangle/editorial_writer.py` QUOTA_RE + `codex_write` (commit 11a8abdf2e) · RESUME-HERE.md STATUS 2026-07-11 · famiglia #3 cicatrix-superscar.md
+
+---
+
+## W94 — worktree-isolation remote-dispatch exemption is WHOLE-COMMAND (6th family-#3 instance: UNDER-match born from an over-match cure, + latent W83 twin) — 2026-07-11
+
+**TRAUMA:** the W92-bis cure of the file-write scanner exempted commands containing a remote
+dispatch (ssh/scp/rsync) by scanning the WHOLE command: `ssh mini hostname && cp /tmp/x scripts/f.py`
+PASSED the patched guard — the local `cp` writes into the main checkout under cover of the ssh
+segment. Same latent hole PRE-EXISTING on main since W83 on the git-verb channel
+(`ssh pro hostname && git pull` passed, call-site ~:827). Caught AT THE GATE before merge
+(PR #2266 bounced), confirmed empirically by direct module import — not by reading the diff.
+
+**ANTIBODY:** segment-scoped exemption on BOTH channels — `_segments()` splits on `&& || ; |`,
+remote dispatch only excuses the POSITION where the verb actually sits
+(`_is_position_remote_dispatched()`); `_git_verb_verdict()` extracted pure so the harness tests
+the LIVE code path (kills the harness-tested-stale-copy anti-pattern found in the lane's own
+harness). Guilt+innocence corpus 9/9 (4 guilt BLOCK incl. `ssh&&cp`, `ssh;tee`, `ssh|tee`,
+`ssh&&git-pull`; 4 innocence ALLOW incl. `scp&&ssh-cp`, `foo|ssh-git`; echo-ssh-word still BLOCK);
+fuzz harness 445/445; W83/84/85 regressions green.
+
+**GOTCHA:** the first cure's corpus had no true-compound shape — its only "compound" case had the
+ssh INSIDE quotes. An exemption is a guard with the sign inverted (W91): it needs guilt+innocence
+rows OF ITS OWN, and a fix for an over-match births the under-match twin whenever the corpus
+does not cover COMPOSITION (W84 pattern). Family #3 score on this one guard: 4 over-matches +
+2 under-matches in under a month — the guard is structurally cured only when the exemption is
+scoped to the segment, never to the command.
+
+## W95 — l'anti-reward-hacking linter fa over-match su una @pytest.fixture chiamata `test_client` (7ª istanza famiglia #3 — stavolta nel GUARDIANO dei test) + è CIECO agli `async def` — 2026-07-12
+
+**TRAUMA:** durante la PR dei gate Case OS (#2285) il pre-commit hook ha BLOCCATO un commit legittimo:
+`RH005: test 'test_client' asserts nothing`. Ma `test_client` è una **`@pytest.fixture`**, non un test —
+non ha alcun dovere di asserire. `scripts/lint_test_reward_hacking.py:150` filtrava su
+`node.name.startswith("test_")` **senza guardare i decoratori**: la forma, non l'entità. Il guardiano
+che deve smascherare i test-che-barano bocciava una fixture innocente e bloccava il lavoro vero.
+Il file non era mai stato staged prima, quindi l'hook non l'aveva mai visto: il bug era latente da sempre.
+
+**GEMELLO UNDER-MATCH (stesso sopralluogo):** lo stesso filtro cammina solo su `ast.FunctionDef` e
+**non su `ast.AsyncFunctionDef`** — e la maggioranza dei test di questo repo è `async def`. Il guardiano
+era cieco proprio dove vive il grosso della superficie: attivare AsyncFunctionDef fa emergere **297 RH005**
+latenti (misurati live, non stimati). Over-match e under-match nella STESSA riga di codice.
+
+**ANTIBODY:** `_is_fixture(fn)` — esenzione basata sul **decoratore** (`@pytest.fixture`, `@fixture`,
+`@pytest.fixture(scope=...)`, `@pytest_asyncio.fixture`), non sul nome. Corpus proprio:
+2 test di **innocenza** (la fixture non scatta; le forme parametrizzate e l'import nudo pure) +
+1 test di **colpevolezza** (un test SENZA assert seduto ACCANTO a una fixture scatta ancora — l'esenzione
+è scoped alla funzione, NON spegne il rilevatore sul file). 23/23 verdi.
+
+**GOTCHA:** il ramo async è stato **dichiarato e NON attivato** — 297 findings non si triagiano dentro
+una PR che parla d'altro, e flipparlo alla cieca renderebbe l'hook rosso su ogni file che chiunque tocca.
+Il gap è ora scritto in un commento AL SITO DEL FILTRO + a ledger, non lasciato invisibile: un buco
+dichiarato è debito, un buco taciuto è una bugia. Regola: quando curi un over-match, **cerca subito il
+gemello under-match nella stessa guardia** — W83→W84 e W91→W94 dicono che nasce nello stesso punto, e qui
+i due vivevano letteralmente sulla stessa riga.

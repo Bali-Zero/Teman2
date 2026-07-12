@@ -23,6 +23,25 @@ updates:
       # raises its fsspec ceiling - dependabot will then move the pair together.
       - dependency-name: "fsspec"
         versions: [">2026.2.0"]
+      # presidio-anonymizer==2.2.363 (UU PDP PII detection, compliance-critical)
+      # hard-pins cryptography<47.0.0; a group bump to cryptography>=48 makes the
+      # whole 98-package group ResolutionImpossible (see PR #2084 — its CI reds
+      # were load-bearing, the venv could not even build). Zero's call 2026-07-12:
+      # hold cryptography back, let the rest of the group update. Drop this ignore
+      # when presidio raises its cryptography ceiling.
+      - dependency-name: "cryptography"
+        versions: [">=47.0.0"]
+      # requirements.txt:152 deliberately ceilings protobuf <6.0.0 (OTEL /
+      # google-cloud-aiplatform compat, see the comment there). grpcio-status
+      # >=1.82 requires protobuf>=7.35, so any grpc-family bump makes the
+      # whole group ResolutionImpossible again (regenerated PR #2267 failed
+      # exactly there after the cryptography hold fixed the first conflict).
+      # The grpc family only moves TOGETHER with a deliberate protobuf major
+      # bump — drop these ignores in that PR.
+      - dependency-name: "grpcio"
+      - dependency-name: "grpcio-status"
+      - dependency-name: "grpcio-tools"
+      - dependency-name: "grpcio-health-checking"
     groups:
       # OpenAI-stack packages isolated into their own group so a breaking bump
       # (openai/langchain-openai sit near the frozen embedding path:
