@@ -69,5 +69,6 @@
 **Action:** Always use `useChatLocale` for instructional text in chat-specific overlays and indicators.
 
 ## 2025-05-15 - [Stop Generation Pattern]
+
 **Learning:** In AI chat interfaces, the primary action button (Send) should transition to a 'Stop' button during streaming to provide users with control and an intuitive way to interrupt long or irrelevant responses. This requires carefully managing the 'disabled' state to ensure the button remains interactive while the background process is active.
 **Action:** Always implement a 'Stop Generation' toggle on the main input action button when dealing with streaming LLM responses. Use a clear visual cue like a 'Square' icon and ensure proper ARIA labels ('Stop generating') for accessibility.
