@@ -8,7 +8,7 @@ sources:
   - data/source_documents/tka_kbli_README.md (Kepmenaker 228/2019 TKA positive-list provenance)
   - research/operations/2026-07-08-kbli-editorial-content-audit.md (PR #2164 precedent — 11 confirmed mis-assignments)
   - PR #2164 (5b4a983925, merged 2026-07-08/09) diff, read verbatim this session
-adversarial_review: devils-advocate subagent (fresh context, agentId a9983761c819ba239)
+adversarial_review: gpt-5.5
 ---
 
 # KBLI gold-layer certification — 428 entries, post-#2164
@@ -53,6 +53,21 @@ defect class, different survivors.
 9. **Adversarial refute** (devils-advocate subagent, fresh context, zero trust in my reasoning)
    on both candidate defects before any fix — verdicts folded into Findings below.
 
+### Scope of "PASS" — corrected (R1, gpt-5.5)
+
+Each `kbli-gold-all.json` entry has **6 editorial fields**: `whatItMeans`, `whatYouNeed`,
+`whatChanged`, `baliContext`, `youllAlsoNeed`, `zantaraOpener`. The content-correctness scans
+above (duplicate-content #4, cross-lingual anchor #5, known-bad-theme-leak #6) check only
+`whatItMeans` and `baliContext` — **2 of the 6 fields**. `whatYouNeed`, `whatChanged`, and
+`zantaraOpener` are not content-checked by any method in this pass. `youllAlsoNeed` is
+existence-checked (does the referenced code exist — Findings below) but not checked for
+editorial correctness/relevance. There is no curated anchor dictionary beyond the ~65-term
+cross-lingual list built ad hoc for this session, and no human-reviewer transcript. A code
+tagged **PASS** in the table below means: *not flagged by these heuristics, on the 2 of 6 fields
+they cover* — it is a heuristic screen, not a certification that the entry's editorial content is
+correct or complete. The report title and mandate ("certify... is coherent") overstate this scope;
+read every PASS/FIXED/SUSPECT verdict below against this narrower definition.
+
 ## Findings
 
 ### FIXED — tkaInfo.categoryName cross-leak, 3 KBLI divisions, 7 codes
@@ -84,22 +99,26 @@ provably inconsistent with the code's real section). This does NOT resolve the o
 question (keep/redesign/remove tkaInfo entirely) — it removes 7 more instances of the
 already-flagged failure mode using the already-established remedy, nothing more.
 
-### SUSPECT-unconfirmed — dangling phantom-code references in `youllAlsoNeed`, 159/428 entries
+### SUSPECT-unconfirmed — dangling phantom-code references in `youllAlsoNeed`, 164/428 entries
 
 `youllAlsoNeed` recommends KBLI codes that do not exist anywhere in the 1559-code authoritative
-2025 dataset — **77 unique phantom codes**, most plausibly stale KBLI-2020/2017 codes never
+2025 dataset — **83 unique phantom codes**, most plausibly stale KBLI-2020/2017 codes never
 migrated in the 2025 transition (structurally correct 5-digit format, just absent from the
 current classification). Top offenders: `47719`/`47999` (46 references each), `68200` (16),
 `74909` (13), `69100` (12).
 
-**Adversarial review verdict**: CONFIRMED as a real defect (5-sample-verified genuinely absent
-from the 1559 set), but my first-pass count (54 codes / 132 entries, bold-markup-only regex)
-was **methodologically incomplete** — the refuter found most `youllAlsoNeed` bullets use plain
-`- 56303 — ...` markup with no bold, and the corrected permissive scan finds 77/159. No safe
+**Adversarial review verdict (R1, gpt-5.5)**: CONFIRMED as a real defect (5-sample-verified
+genuinely absent from the 1559 set), but the previously-reported permissive-regex count
+(77 codes / 159 entries) was **itself still incomplete** — a full unfiltered rerun (every
+standalone 5-digit token in `youllAlsoNeed`, cross-checked against the 1559-code authoritative
+set) yields **83 unique phantom codes across 164 entries**. There is no exclusion rule that
+legitimately produces 77/159 from the underlying data; that number undercounted for the same
+class of reason as the original 54/132 pass (regex + counting methodology, not a deliberate
+scope decision). 83/164 is the number this certification now stands behind. No safe
 automatic remediation exists (would require domain knowledge of the correct replacement code per
 phantom reference, not just deletion) — **ships as SUSPECT-unconfirmed / follow-up-lane**, not
 an in-PR fix, per the mandate's own guidance for unconfirmed suspects. Recommend the deploy lane
-or a dedicated follow-up task re-derive the 77→correct-code mapping (likely via the
+or a dedicated follow-up task re-derive the 83→correct-code mapping (likely via the
 `KBLI_2017_TO_2025_MAPPING.json` crosswalk, though that file currently only covers 12 curated
 mappings — insufficient on its own).
 
@@ -113,13 +132,41 @@ location-specific advice" placeholder `baliContext` (benign — see Method #4). 
 correctness defect. Not fixed in this PR (writing new English editorial prose requires domain
 authoring judgment outside this certification's scope).
 
-### Confirmed benign (no action) — 8 dead orphan keys
+### SUSPECT-unconfirmed — 8 dead orphan keys, only 2 of 8 are actually benign
 
 `64921, 85300, 85491, 85499, 85600, 86903, 96120, 96130` are gold keys not present in the
 1559-code authoritative dataset. Each carries internally-coherent, on-topic content (KSP
 cooperative, SMK vocational school, health spa, beauty salon, etc.) — the mismatch is
-existential (dead code, page never renders it), not a content-quality defect. Already
-documented in the #2164 audit's own Residuals section — re-confirmed here, not new.
+existential (dead code, page never renders it), not a content-quality defect on its own face.
+Already documented in the #2164 audit's own Residuals section as dead orphans — not a new
+discovery.
+
+**Adversarial review verdict (R1, gpt-5.5)**: the "benign / no action" characterization was
+**REFUTED**. A reverse-reference scan (does any OTHER entry's `youllAlsoNeed` actively recommend
+this dead code?) shows 6 of the 8 are NOT inert — they are actively pointed-to:
+`85491`/`85499`/`85600` form a closed loop of 3 dead education codes that all recommend each
+other, and `86903`/`96120`/`96130` form a closed loop of 3 dead spa/beauty codes that all
+recommend each other. Only `64921` and `85300` have zero incoming references and are genuinely
+inert. This means 6 of the 8 "benign" orphans are the SAME defect as the phantom-cross-reference
+finding above (a live gold entry recommending a dead code), just discovered from the opposite
+direction (orphan-key audit vs. reference audit) — not a separate, lower-severity issue. Recorded
+here as SUSPECT-unconfirmed, not fixed in this PR (same remediation-scope argument as the
+phantom-reference finding: deleting the dead orphan key itself is a separate business call from
+deleting/rewriting the 6 dangling recommendations that point at it).
+
+## Cross-check against the parallel S4 gate (orchestrator, same hour)
+
+The orchestrator's S4 gate (a separate lane, live-page probes of the purged family) passed 5
+calibration facts mid-session, verified against this session's own on-disk read with zero
+correction needed: (1) 428 is the current count (436 was pre-#2164); (2) 56303/56304/56305
+correctly have no gold entry at all (never appeared in this table — my scans never treated
+their absence as a defect); (3) 70209 correctly has only 6 fields and no `tkaInfo` by design
+— re-verified its editorial content line-by-line against the official judul ("Aktivitas
+Konsultasi Manajemen dan Bisnis Lainnya" — general business/management consulting): all 5
+fields on-topic and consistent, its `SUSPECT-unconfirmed` tag in the table below is solely
+for the unrelated `youllAlsoNeed` phantom-code finding (`74909`), not for missing `tkaInfo`;
+(4)/(5) field-set and live-page-out-of-scope both match this report's Method section
+verbatim. No table entries changed as a result of this cross-check.
 
 ## Verdict table (428 entries)
 
@@ -561,9 +608,26 @@ documented in the #2164 audit's own Residuals section — re-confirmed here, not
 | FIXED | 7 | 2% |
 | SUSPECT-unconfirmed | 173 | 40% |
 
-SUSPECT breakdown: 159 phantom-cross-reference (youllAlsoNeed), 9 untranslated-content, 8
-dead-orphan-key (benign/no-action, already known), with slight overlap possible (a code can
-carry >1 SUSPECT flag but is only counted once in this table under its first-matched reason).
+**Note (R1, gpt-5.5)**: the 173 row count above is a correct partition of 428 (248+7+173=428) under
+this table's own first-matched-reason tagging — it is NOT wrong as a row count. What was wrong is
+the narrative breakdown of that 173 in the paragraph below: the originally-reported component
+counts (159 + 9 + 8 = 176) never summed to 173 in the first place, a plain arithmetic error
+independent of any overlap, and the phantom-reference component itself was undercounted (see
+correction above — true figure is 164 entries, not 159). See the corrected breakdown immediately
+below for the reconciled accounting.
+
+**SUSPECT breakdown — corrected (R1, gpt-5.5)**: the table's first-matched-reason tagging
+(156 phantom-cross-reference, 9 untranslated-content, 8 dead-orphan-key = 173, the row count
+above) undercounts the true phantom-reference problem, because an entry tagged
+untranslated-content or dead-orphan-key first is never re-checked for phantom refs even when it
+also has them. The independent full rerun in the Findings section above (every standalone
+5-digit token in every entry's `youllAlsoNeed`, checked against the 1559-code authoritative set)
+finds **164 entries** with at least one phantom reference — 8 more than the 156 the table
+surfaces under that tag. The original prose figure of "159" in an earlier draft of this section
+was itself wrong on both counts: it neither matched the table's own 156 nor the corrected 164.
+6 of the 8 dead-orphan-key entries are additionally phantom-cross-reference entries in their own
+right (see the dead-orphan finding above) — the categories are not disjoint, and "slight overlap
+possible" undersold a confirmed, non-trivial overlap.
 
 ## What this certification does NOT cover (explicit residuals, same honesty standard as #2164)
 
@@ -574,7 +638,7 @@ carry >1 SUSPECT flag but is only counted once in this table under its first-mat
   per-KBLI-code at all — explicitly Zero's open business decision per the #2164 report and the
   TKA README's own stated design constraint. This certification does not resolve it, only avoids
   making it worse.
-- **Phantom-code replacement mapping** (which real 2025 code should each of the 77 stale
+- **Phantom-code replacement mapping** (which real 2025 code should each of the 83 stale
   references point to) — needs domain research, out of scope for a mechanical certification pass.
 
 ## Files touched
@@ -586,3 +650,29 @@ carry >1 SUSPECT flag but is only counted once in this table under its first-mat
   unconditional presence (`kbli-data.server.ts`/`kbli-gold-codes.ts` have zero direct `tkaInfo`
   references). `apps/mouth/src/lib/kbli-dataset-version.test.ts` only checksums
   `KBLI_2025_FINAL_CLEAN.json` (untouched by this PR) — no sidecar bump required.
+
+## Adversarial review
+
+- Seat: gpt-5.5 (Codex CLI, fresh context, read-only) — 2026-07-12
+- (Earlier in-session devils-advocate subagent pass on the tkaInfo/phantom-reference
+  candidate defects, referenced in Method step 9 and frontmatter history, predates and is
+  superseded by this R1 gate seat for the frontmatter contract below.)
+- Verdict as returned: REFUTED (4/5 claim blocks; core fix HOLDS)
+- (a) "248 PASS / gold layer certified" — CONFIRMED overreach → reworded: PASS means
+  not-flagged by heuristics covering 2 of 6 editorial fields (`whatItMeans`/`baliContext`), no
+  anchor dictionary or reviewer transcript beyond the ad hoc ~65-term list exists; scope note
+  added after the Method section.
+- (b) "77 phantom codes across 159 entries" — CONFIRMED undercounted → corrected to 83 unique
+  phantom codes across 164 entries (independent full rerun, every standalone 5-digit token in
+  `youllAlsoNeed` vs. the 1559-code authoritative set; matches the refuter's own rerun exactly).
+- (c) "8 dead orphans are benign" — CONFIRMED wrong → corrected: a reverse-reference scan shows
+  6 of 8 (`85491, 85499, 85600, 86903, 96120, 96130`) are actively recommended by other entries'
+  `youllAlsoNeed` (two closed loops of 3 dead codes recommending each other); only `64921` and
+  `85300` have zero incoming references and are genuinely benign. Re-tagged SUSPECT-unconfirmed.
+- (d) "173 SUSPECT = 159 + 9 + 8" — CONFIRMED arithmetic error → 159+9+8=176, not 173, independent
+  of any overlap; the table's own first-matched-reason tagging (156+9+8=173) is a correct
+  partition of 428, but the prose breakdown matched neither its own table nor the corrected
+  phantom count. Reconciled in the Summary counts section with the confirmed 6-code overlap
+  between the phantom-reference and dead-orphan sets.
+- (e) "7 `tkaInfo` deletions" — HOLDS, no action: 146 tkaInfo blocks before, 139 after, diff is
+  exactly 315 deletions + 1 addition. Core fix stands unchanged by this review.
