@@ -3,6 +3,20 @@
 > **TRIGGER WORD: `KBLIREGEN`** — when Zero types it at session start, this file is the resume
 > command. Count drafts, probe Codex quota on the Pro, and resume (steps in "HOW TO RESUME" below).
 
+## STATUS 2026-07-12 — Pro REBOOTED overnight, job rebuilt at DURABLE path
+
+- The Pro rebooted ~23:16-23:31 on 07-11: `/tmp/kbli-regen` wiped (macOS clears /tmp on
+  boot), writer killed, ~5-7 drafts in the rsync gap lost (resumable writer regenerates).
+  The reconcile loop ALSO exited on a false "writer DEAD" verdict — it read ssh-timeout
+  (Tailscale flap) as death (family #8). Both cured 2026-07-12:
+  - Job dir rebuilt at **`~/kbli-regen`** on the Pro (HOME = survives reboot), seeded from
+    the origin branch (817 drafts + fixed writer). Writer relaunched 13:50 (742 to write).
+  - `reconcile_loop.sh` now distinguishes ssh rc=255 (flap → keep looping) from pgrep
+    rc=1 (real not-running), rsync `--timeout=60`, path via `PRO_JOB_DIR` (default
+    `kbli-regen`, HOME-relative).
+- M5→Pro connectivity is INTERMITTENT (Tailscale relay "sin", mDNS dead) — every remote
+  step needs retry; the loop tolerates it now.
+
 ## STATUS 2026-07-11 — RESUMED on GPT-5.6 Terra (writer live on the Pro)
 
 - **Engine switched to `gpt-5.6-terra`** (Zero's directive; batch tier, ~2x cheaper than 5.5).
