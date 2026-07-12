@@ -100,6 +100,43 @@ jobs:
           python3 infra/claude-hooks/test_w83_remote_dispatch.py
           python3 infra/claude-hooks/test_w84_strip_noise_cross_line.py
 
+      # W92 (5th over-match, file-write channel: ssh-dispatched relative
+      # destinations resolved against local session cwd) + the runtime-state
+      # allowlist (Pro's 3 perennially-dirty tracked files no longer shut the
+      # ff-only exception). Registered symbols reference these files — an
+      # EXPLICIT execution step here, not just an ancestor-dir path-filter
+      # substring match, is what actually arms them (W81: esiste != armato).
+      - name: W92 write-dispatch fix + runtime-state allowlist (2026-07-11)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_w92_remote_write_dispatch.py
+          python3 infra/claude-hooks/test_runtime_state_allowlist.py
+
+      # 6th over-match (found at THIS PR's own gate, before merge, same
+      # session as W92): the remote-dispatch exemption on BOTH channels was
+      # WHOLE-COMMAND — `ssh pro hostname && git pull` and `ssh mini hostname
+      # && cp /tmp/x scripts/f.py` both got wrongly exempted. Segment-scoped
+      # fix + the pure `_git_verb_verdict` extraction that lets the fuzz
+      # harness call the REAL decision instead of its own stale copy.
+      - name: Segment-scoped remote-dispatch fix (6th over-match, 2026-07-11)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/test_segment_scoped_dispatch.py
+
+      # Property/fuzz corpus (445 generated command shapes across both
+      # decision channels of worktree_isolation.py) — the reusable harness
+      # this same superscar #3 family motivated after 5 hand-written
+      # regression suites each only covered the shape someone already got
+      # burned by. Runs LAST as the broad net; the named suites above stay
+      # as fast, specific pins.
+      - name: Guard fuzz/property corpus (worktree_isolation.py, 445 cases)
+        if: steps.relevant.outputs.run == 'true'
+        run: |
+          set -euo pipefail
+          python3 infra/claude-hooks/guard_fuzz_harness.py
+
       - name: Sentinel success (no guard surfaces changed)
         if: steps.relevant.outputs.run != 'true'
         run: echo "No guard surface changed in this PR — conformance not required. Sentinel pass."

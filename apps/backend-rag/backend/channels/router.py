@@ -15,7 +15,9 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from backend.channels.base import ChannelMessage
+    from collections.abc import AsyncIterator
+
+    from backend.channels.base import ChannelMessage, ChannelResponse
     from backend.conversation.engine import ConversationEngine
     from backend.services.communication.thread_manager import ThreadManager
 
@@ -139,6 +141,7 @@ class ChannelRouter:
                 sender_id=message.user_id,
                 content=message.text,
                 metadata=message.metadata,
+                session_id=message.session_id,
             )
 
             # 3.5 Omnichannel: resolve identity, classify, thread
@@ -165,14 +168,50 @@ class ChannelRouter:
                 channel_config=channel_config,
             )
 
-            # 8. Stream response via adapter
-            await adapter.stream_response(channel_id, response_stream)
+            # 8. Stream response via adapter, teeing the outbound text so the
+            # bot's reply lands in the same audit trail as the inbound message
+            # (COS-LAW-013: a reply that cannot be replayed is a reply that
+            # never happened, audit-wise).
+            outbound_tracker: dict[str, str] = {"final": "", "tokens": ""}
+            tracked_stream = self._track_outbound(response_stream, outbound_tracker)
+            await adapter.stream_response(channel_id, tracked_stream)
+
+            # 8.5 Persist outbound reply (parity with step 3 inbound persist)
+            final_text = outbound_tracker["final"] or outbound_tracker["tokens"]
+            if final_text:
+                await self._persist_message(
+                    channel=channel,
+                    direction="outbound",
+                    sender_id="zantara",
+                    content=final_text,
+                    metadata=message.metadata,
+                    session_id=message.session_id,
+                )
 
             logger.info("✅ Successfully routed and processed message from %s", channel)
 
         except Exception as e:
             logger.error("❌ Error routing message from %s: %s", channel, e, exc_info=True)
             raise
+
+    @staticmethod
+    async def _track_outbound(
+        response_stream: AsyncIterator[ChannelResponse],
+        tracker: dict[str, str],
+    ) -> AsyncIterator[ChannelResponse]:
+        """Yield responses unchanged while capturing the outbound text.
+
+        The engine emits token deltas plus a final ``answer`` event carrying
+        the complete text; the ``error`` event carries the apology actually
+        sent. Token concat is the fallback when no final event arrives.
+        """
+        async for response in response_stream:
+            event_type = (response.metadata or {}).get("event_type")
+            if event_type in ("answer", "error") and response.text:
+                tracker["final"] = response.text
+            elif event_type == "token" and response.text:
+                tracker["tokens"] += response.text
+            yield response
 
     def _extract_channel_id(self, metadata: dict[str, Any]) -> str:
         """
@@ -228,9 +267,26 @@ class ChannelRouter:
         sender_id: str,
         content: str,
         metadata: dict[str, Any] | None = None,
+        session_id: str | None = None,
     ) -> None:
         """
         Persist message to conversation_messages table for cross-channel history.
+
+        Unified metadata shape (Case OS audit unification, 2026-07-13): every
+        persisted row carries `session_id` in its metadata JSON — the session
+        adapters already derive it identically to the sync WA writer
+        (`wa_session_{phone}`, see whatsapp/adapter.py:128 vs
+        whatsapp_chat.py:507). Without it, rows written on this path were
+        invisible to the session-context reader
+        (conversation/engine.py: WHERE metadata->>'session_id' = $1), so a
+        P0-6 replayed message never contributed to context reconstruction.
+        Adapter-native keys (message_id, wamid, message_type, phone, ...) pass
+        through untouched. The adapter-derived session_id PARAMETER is
+        authoritative and overwrites any metadata-supplied value — metadata
+        can be client-influenced, the parameter cannot (Codex 2026-07-13).
+        The adapters' malformed-webhook fallback "unknown" is never persisted:
+        it would pool degenerate events from every channel into one shared
+        history under the same key.
 
         Non-blocking: failures are logged but don't break the message flow.
         """
@@ -242,6 +298,10 @@ class ChannelRouter:
             # Resolve client_id from sender metadata if available
             client_id = (metadata or {}).get("client_id")
 
+            meta = dict(metadata or {})
+            if session_id and session_id != "unknown":
+                meta["session_id"] = session_id
+
             await db_pool.execute(
                 """
                 INSERT INTO conversation_messages (client_id, channel, direction, sender_id, content, metadata)
@@ -252,7 +312,7 @@ class ChannelRouter:
                 direction,
                 sender_id,
                 content[:10000],  # Limit content size
-                json.dumps(metadata or {}),
+                json.dumps(meta),
             )
         except Exception as e:
             # F40: a failed persist silently holes the conversation history.

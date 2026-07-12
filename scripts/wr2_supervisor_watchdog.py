@@ -163,6 +163,7 @@ TERMINAL_STATUSES = (
     "render_failed",
     "fact_check_failed",
     "image_failed",
+    "missed",
     "rejected",
 )
 

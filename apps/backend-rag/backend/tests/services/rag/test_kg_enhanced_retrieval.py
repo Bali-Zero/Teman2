@@ -195,3 +195,37 @@ async def test_get_context_for_query_returns_golden_route_without_db_hits() -> N
     assert context.confidence == 0.8
     assert "Open Restaurant as Foreigner" in context.graph_summary
     assert conn.fetch_calls == []
+
+
+def test_golden_routes_accessible_as_class_attribute_dict() -> None:
+    """
+    Regression test for prod 500 on /api/kg/routes and /api/kg/stats:
+
+    'KGEnhancedRetrieval' object has no attribute '_load_golden_routes'
+
+    Both endpoints (backend/app/routers/kg_agentic.py) read golden routes via
+    `orchestrator.kg_retrieval.GOLDEN_ROUTES` (a dict[str, GoldenRoute] class
+    attribute), NOT via a `_load_golden_routes()` method — that method does
+    not exist on KGEnhancedRetrieval. This test proves (a) the class has no
+    such method (guilt — matches the live error) and (b) GOLDEN_ROUTES is a
+    populated, iterable mapping usable the way the router uses it: `.values()`
+    for /routes and `len(...)` for /stats (innocence — the real attribute
+    works end to end without touching the DB).
+    """
+    service = KGEnhancedRetrieval(db_pool=object())
+
+    # Guilt: the method the router used to call does not exist.
+    assert not hasattr(service, "_load_golden_routes")
+
+    # Innocence: the actual attribute is a non-empty dict of GoldenRoute,
+    # and supports the exact access patterns the router performs.
+    routes = service.GOLDEN_ROUTES
+    assert isinstance(routes, dict)
+    assert len(routes) > 0
+
+    for route in routes.values():
+        assert route.route_id
+        assert route.name
+        assert route.description
+        assert isinstance(route.path, list)
+        assert isinstance(route.key_conditions, list)

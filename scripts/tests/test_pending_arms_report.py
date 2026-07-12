@@ -561,3 +561,213 @@ def test_innocence_operator_tag_with_passive_note_stays_operator_gated(tmp_path)
         "- opened 2026-07-02 | tagged artifact | step | operator[gui] (passivo) | proof",
     )
     assert e.cls == par.CLASS_NATURAL_WAIT  # declared passive wait wins: not actionable
+
+
+# ---------------------------------------------------------------------------
+# "open" vs "opened" verb-tense drift (real ledger has 14 lines missing "-ed",
+# silently discarded by a bare "- opened " prefix check as an unrelated list
+# item — family #3 under-match: the guard watched one literal spelling).
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_open_without_ed_is_parsed_as_entry(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- open 2026-07-01 | dropped-ed artifact | some step | me | some proof",
+    )
+    assert e.cls == par.CLASS_TECH_DEBT
+    assert e.artifact == "dropped-ed artifact"
+    assert e.age_days == 4  # NOW (fixed in _single_entry) is 2026-07-05
+    assert e.overdue is True
+    assert e.bucket == "TECH-DEBT-OVERDUE"
+
+
+def test_guilt_open_without_ed_continuation_lines_concatenated(tmp_path):
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(
+        "- open 2026-07-02 | wrapped dropped-ed artifact\n"
+        "  continuation line | missing step | me | proof\n"
+        "\n## closed (proof recorded)\n",
+        encoding="utf-8",
+    )
+    now = par._parse_now(NOW)
+    (e,) = par.load_entries(p, now)
+    assert "continuation line" in e.artifact or "continuation line" in e.raw
+    assert e.cls == par.CLASS_TECH_DEBT
+    assert e.overdue is True
+
+
+def test_guilt_open_without_ed_operator_gated_classified(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- open 2026-07-05 | dropped-ed operator artifact | step | operator[secret] | proof",
+    )
+    assert e.cls == par.CLASS_OPERATOR_GATED
+
+
+def test_innocence_opened_still_parses_unaffected(entries):
+    # pre-existing "- opened " entries must be completely unaffected by the change.
+    e = _by_artifact(entries, "overdue tech debt artifact")
+    assert e.cls == par.CLASS_TECH_DEBT
+    assert e.overdue is True
+
+
+def test_innocence_open_prose_without_date_not_swallowed_as_entry(tmp_path):
+    # unrelated "- open ..." prose (no YYYY-MM-DD immediately after) must NOT be
+    # mistaken for a ledger entry — the date anchor in ENTRY_START_RE prevents this.
+    p = tmp_path / "PENDING-ARMS.md"
+    p.write_text(
+        "- opened 2026-07-05 | real artifact | step | me | proof\n"
+        "- open source library consideration, not a ledger line\n"
+        "\n## closed (proof recorded)\n",
+        encoding="utf-8",
+    )
+    now = par._parse_now(NOW)
+    parsed = par.load_entries(p, now)
+    assert len(parsed) == 1
+    assert parsed[0].artifact == "real artifact"
+    assert "open source library" not in parsed[0].raw
+
+
+# ---------------------------------------------------------------------------
+# Backtick-quoted pipes & trailing "**UPDATE**" notes (2026-07-11/13 field-parser
+# fix). A naive raw.split("|") breaks the moment free-text quotes a shell pipe or
+# regex alternation in backticks, AND separately breaks when a session appends a
+# "| **UPDATE ...**" progress note after proof — both silently shift owner/proof
+# extraction onto a code fragment or the appended note instead of the real fields
+# (found live: 4 real ledger entries, incl. "WR2 legacy Canva lane zombies").
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_backtick_quoted_regex_pipes_do_not_corrupt_owner(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | quoted pipe artifact | some step "
+        "| me (follow-up) + operator[business] on scope "
+        '| `launchctl list \\| grep -E "svc-(oauth|renderer|apply)"` shows only kept labels',
+    )
+    assert e.owner == "me (follow-up) + operator[business] on scope"
+    assert "renderer" not in e.owner
+    assert e.cls == par.CLASS_OPERATOR_GATED
+
+
+def test_guilt_trailing_update_note_does_not_shift_owner(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | update note artifact | some step | me (follow-up PR) "
+        "| original proof text | **UPDATE 2026-07-12: progress note appended later, "
+        "PR #9999 merged, re-verified live**",
+    )
+    assert e.owner == "me (follow-up PR)"
+    assert e.proof.startswith("original proof text")
+    assert "**UPDATE 2026-07-12" in e.proof
+
+
+def test_innocence_middle_extra_field_still_resolves_via_back_anchor(tmp_path):
+    # 'codex-redteam MCP server'-style: a session inserts an EXTRA field between
+    # missing_step and owner (not a "**UPDATE**"-prefixed trailing note) — back
+    # anchoring from the outside-in must still land on the real owner/proof, not
+    # front-anchor onto the inserted field (the earlier draft of this fix did that
+    # and broke this exact shape).
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | mid-growth artifact | first step note "
+        "| BLOCCO discovered later: an inserted blocker note, not the owner "
+        "| me (real owner) + operator[control-plane] | real proof text",
+    )
+    assert e.owner == "me (real owner) + operator[control-plane]"
+    assert e.proof == "real proof text"
+    assert e.cls == par.CLASS_OPERATOR_GATED
+
+
+def test_innocence_backticks_without_pipes_parse_normally(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | backtick artifact `code_ref.py:42` | step | me | proof `value`",
+    )
+    assert e.artifact == "backtick artifact `code_ref.py:42`"
+    assert e.owner == "me"
+    assert e.proof == "proof `value`"
+
+
+def test_innocence_unbalanced_backtick_falls_back_to_naive_split(tmp_path):
+    # Malformed markdown (odd backtick count) degrades to the naive split rather
+    # than treating the rest of the line as one giant quoted span.
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | odd backtick artifact ` | step | me | proof",
+    )
+    assert e.owner == "me"
+
+
+@pytest.mark.skipif(
+    not REAL_LEDGER_PATH.exists(),
+    reason=f"real ledger not found at {REAL_LEDGER_PATH} (CI checkout may not have it)",
+)
+def test_real_ledger_wr2_canva_owner_not_corrupted_by_quoted_pipes():
+    """Regression for the exact bug the real ledger documented (age 2d, 2026-07-11):
+    a backtick-quoted regex-alternation shell command inside the 'WR2 legacy Canva
+    lane zombies' entry corrupted owner extraction to a bare code fragment.
+    """
+    now = par._parse_now(NOW)
+    entries = par.load_entries(REAL_LEDGER_PATH, now)
+    e = next(x for x in entries if "WR2 legacy Canva lane zombies" in x.artifact)
+    assert "renderer" != e.owner
+    assert "me" in e.owner or "operator" in e.owner.lower()
+
+
+# ---------------------------------------------------------------------------
+# Trailing-pipe residual (2026-07-13, found the day AFTER the splitter fix
+# landed): a stray '|' at the END of a line yields an EMPTY last field, so the
+# back-anchor reads proof='' and owner=<the real proof> — the 'secrets audit
+# Pro enrichment' entry (owner operator[secret]) landed in TECH-DEBT this way.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_trailing_pipe_empty_field_does_not_shift_owner(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | trailing pipe artifact | some step "
+        "| operator[secret] (env review) | PR #2081 merged + rerun exit 0 |",
+    )
+    assert e.owner == "operator[secret] (env review)"
+    assert e.proof.startswith("PR #2081 merged")
+    assert e.cls == par.CLASS_OPERATOR_GATED
+
+
+def test_guilt_multiple_trailing_pipes_all_stripped(tmp_path):
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | double pipe artifact | some step "
+        "| me (session) | real proof ||",
+    )
+    assert e.owner == "me (session)"
+    assert e.proof == "real proof"
+
+
+def test_innocence_five_field_entry_with_empty_proof_not_eaten(tmp_path):
+    """A 5-field entry whose PROOF is genuinely empty ('... | owner |') keeps its
+    owner anchored — the trailing-empty strip is guarded by len > 5, so it only
+    eats SURPLUS residue, never a field a well-formed entry needs."""
+    e = _single_entry(
+        tmp_path,
+        "- opened 2026-07-05 | empty proof artifact | some step | me (session M5) |",
+    )
+    assert e.owner == "me (session M5)"
+    assert e.proof == ""
+    assert e.cls == par.CLASS_TECH_DEBT
+
+
+@pytest.mark.skipif(
+    not REAL_LEDGER_PATH.exists(),
+    reason=f"real ledger not found at {REAL_LEDGER_PATH} (CI checkout may not have it)",
+)
+def test_real_ledger_secrets_audit_owner_not_shifted_by_trailing_pipe():
+    """The live mis-bucket this fix cures: the 'secrets audit Pro enrichment'
+    entry ends with a stray '|' — its operator[secret] owner must classify
+    OPERATOR-GATED, not TECH-DEBT with the proof text as owner."""
+    now = par._parse_now(NOW)
+    entries = par.load_entries(REAL_LEDGER_PATH, now)
+    e = next(x for x in entries if "secrets audit Pro enrichment" in x.artifact)
+    assert "operator[secret]" in e.owner
+    assert e.cls == par.CLASS_OPERATOR_GATED

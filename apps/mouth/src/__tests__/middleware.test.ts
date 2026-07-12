@@ -6,7 +6,10 @@ import { proxy } from "../proxy";
  * Helper to create NextRequest with proper host header
  * NextRequest in test environment doesn't automatically set host header from URL
  */
-function createRequest(url: string, extraHeaders?: Record<string, string>): NextRequest {
+function createRequest(
+  url: string,
+  extraHeaders?: Record<string, string>,
+): NextRequest {
   const urlObj = new URL(url);
   return new NextRequest(url, {
     headers: {
@@ -525,6 +528,31 @@ describe("Middleware - Multi-domain Routing", () => {
 
       expect(response.status).not.toBe(302);
       expect(response.headers.get("x-pathname")).toBe("/dashboard");
+    });
+
+    // The ghost-route redirect is cross-origin (kita → mail/calendar/...), so
+    // an RSC prefetch of <Link href="/email"> must get 204, not a 302 that
+    // trips a console CORS error. The original ghost-route block redirected
+    // manually and skipped the RSC guard — this pins that it no longer does.
+    it("[guilt] returns 204 for an RSC prefetch of a ghost route (/email)", () => {
+      const request = createRequest("https://kita.balizero.com/email", {
+        accept: "text/x-component",
+      });
+      const response = proxy(request);
+
+      expect(response.status).toBe(204);
+    });
+
+    it("[innocence] still 302-redirects a real navigation to /email", () => {
+      const request = createRequest("https://kita.balizero.com/email", {
+        accept: "text/html,application/xhtml+xml",
+      });
+      const response = proxy(request);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe(
+        "https://mail.balizero.com/",
+      );
     });
   });
 

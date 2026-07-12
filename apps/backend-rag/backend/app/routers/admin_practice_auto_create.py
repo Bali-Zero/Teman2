@@ -4,7 +4,7 @@ Admin Auto-Practice Creation Router
 POST /api/admin/practice/auto-create
 
 Triggers auto-creation of visa renewal practices for visas expiring in ~60 days.
-Access: Requires X-API-Key (zantara-secret-2024) or ADMIN_API_KEY.
+Access: Requires X-API-Key (== NUZANTARA_API_KEY) or X-Debug-Key (== ADMIN_API_KEY).
 """
 
 import hmac

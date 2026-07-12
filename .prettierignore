@@ -103,3 +103,8 @@ docs/design/components-catalog.md
 # (gate: check-docs-sync; prettier fighting the generator = format deadlock, 2026-07-02)
 INDEX.md
 docs/runbooks/README.md
+
+# organs_registry.yaml — validate_organs_registry.py --update-checksum owns its
+# canonical format (internal sha256 checksum); prettier's list-indent fights the
+# generator = format deadlock, same class as INDEX.md above (2026-07-13).
+apps/organism/organism/organs_registry.yaml

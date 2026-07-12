@@ -15,6 +15,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
+import socket
 import smtplib
 import subprocess
 import sys
@@ -49,6 +51,10 @@ OVERDUE_DAYS = 0     # Already expired
 VERBOSE = False
 
 
+class ExpiryAlerterError(RuntimeError):
+    """Raised when the alerter cannot trust its CRM query result."""
+
+
 def log(msg: str) -> None:
     if VERBOSE:
         print(f"[alerter] {msg}", file=sys.stderr)
@@ -63,6 +69,78 @@ def _load_env() -> dict[str, str]:
                 key, _, value = line.partition("=")
                 env[key.strip()] = value.strip()
     return env
+
+
+def _is_local_fly_host() -> bool:
+    host = SSH_HOST.strip().lower()
+    local_hosts = {
+        "",
+        "local",
+        "localhost",
+        "127.0.0.1",
+        socket.gethostname().lower(),
+        socket.getfqdn().lower(),
+    }
+    return host in local_hosts or (
+        host == "pro" and socket.gethostname().lower().startswith("nuzantara")
+    )
+
+
+def _local_database_url() -> str:
+    for key in ("EXPIRY_ALERTER_DATABASE_URL", "DATABASE_URL_LOCAL"):
+        value = os.environ.get(key, "").strip()
+        if value:
+            return value
+
+    database_url = os.environ.get("DATABASE_URL", "").strip()
+    if "localhost" in database_url or "127.0.0.1" in database_url:
+        return database_url
+    return ""
+
+
+def _run_prod_python(encoded: str, timeout_s: int = 30) -> subprocess.CompletedProcess[str]:
+    python_command = f"import base64;exec(base64.b64decode(b'{encoded}'))"
+    local_db_url = _local_database_url()
+    if local_db_url:
+        env = os.environ.copy()
+        env["DATABASE_URL"] = local_db_url
+        try:
+            return subprocess.run(
+                [sys.executable, "-c", python_command],
+                capture_output=True,
+                text=True,
+                timeout=timeout_s,
+                env=env,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            raise ExpiryAlerterError(f"Local query runner failed: {exc}") from exc
+
+    fly_args = [
+        "fly",
+        "ssh",
+        "console",
+        "--app",
+        "nuzantara-rag",
+        "-C",
+        f"python3 -c {shlex.quote(python_command)}",
+    ]
+    try:
+        if _is_local_fly_host():
+            return subprocess.run(
+                fly_args,
+                capture_output=True,
+                text=True,
+                timeout=timeout_s,
+            )
+        remote_command = " ".join(shlex.quote(arg) for arg in fly_args)
+        return subprocess.run(
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", SSH_HOST, remote_command],
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise ExpiryAlerterError(f"Remote query runner failed: {exc}") from exc
 
 
 def _query_expiries() -> list[dict]:
@@ -142,15 +220,10 @@ asyncio.run(m())
 '''
     encoded = __import__("base64").b64encode(code.encode()).decode()
 
-    result = subprocess.run(
-        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", SSH_HOST,
-         f'fly ssh console --app nuzantara-rag -C "python3 -c \\"import base64;exec(base64.b64decode(b\'{encoded}\'))\\"" 2>/dev/null'],
-        capture_output=True, text=True, timeout=30,
-    )
+    result = _run_prod_python(encoded, timeout_s=30)
 
     if result.returncode != 0:
-        log(f"Query failed: {result.stderr[:200]}")
-        return []
+        raise ExpiryAlerterError(f"Query failed: {result.stderr[:200]}")
 
     output = result.stdout.strip()
     # Find the JSON line (last line starting with [)
@@ -158,7 +231,7 @@ asyncio.run(m())
         line = line.strip()
         if line.startswith("["):
             return json.loads(line)
-    return []
+    raise ExpiryAlerterError("Query returned no JSON payload")
 
 
 def _classify_urgency(expiry_str: str) -> tuple[str, int, str]:
@@ -373,15 +446,33 @@ asyncio.run(m())
         print(f"[DRY RUN] Would mark renewal_required for {len(client_ids)} clients: {ids_csv}")
         return
 
-    result = subprocess.run(
-        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", SSH_HOST,
-         f'fly ssh console --app nuzantara-rag -C "python3 -c \\"import base64;exec(base64.b64decode(b\'{encoded}\'))\\"" 2>/dev/null'],
-        capture_output=True, text=True, timeout=30,
-    )
+    try:
+        result = _run_prod_python(encoded, timeout_s=30)
+    except ExpiryAlerterError as exc:
+        log(f"CRM write-back failed: {exc}")
+        return
     if result.returncode == 0:
         log(f"CRM write-back: marked {len(client_ids)} clients renewal_required")
     else:
         log(f"CRM write-back failed: {result.stderr[:100]}")
+
+
+def _write_heartbeat(status: str = "ok") -> None:
+    import pathlib
+
+    state_dir = pathlib.Path.home() / ".agent" / "decisions" / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "expiry_alerter.last.json").write_text(
+        json.dumps(
+            {
+                "job": "expiry_alerter",
+                "ts": int(__import__("time").time()),
+                "status": status,
+                "host": __import__("socket").gethostname(),
+            },
+            separators=(",", ":"),
+        )
+    )
 
 
 def main() -> None:
@@ -394,14 +485,24 @@ def main() -> None:
     VERBOSE = args.verbose
 
     env = _load_env()
+    for key in ("EXPIRY_ALERTER_DATABASE_URL", "DATABASE_URL_LOCAL", "DATABASE_URL"):
+        if key in env and key not in os.environ:
+            os.environ[key] = env[key]
     bot_token = env.get("TELEGRAM_BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
     log("Querying CRM for expiries...")
-    raw_items = _query_expiries()
+    try:
+        raw_items = _query_expiries()
+    except ExpiryAlerterError as exc:
+        log(str(exc))
+        print(f"Expiry alerter failed: {exc}", file=sys.stderr)
+        _write_heartbeat(status="failed")
+        raise SystemExit(1) from exc
 
     if not raw_items:
         log("No expiries found in next 30 days")
         print("No expiries found.")
+        _write_heartbeat()
         return
 
     # Classify urgency
@@ -420,6 +521,7 @@ def main() -> None:
     if not items:
         log("No critical/warning expiries")
         print("No urgent expiries.")
+        _write_heartbeat()
         return
 
     log(f"Found {len(items)} expiries needing attention")
@@ -452,13 +554,7 @@ def main() -> None:
         print("\n--- TELEGRAM PREVIEW ---")
         print(tg_text)
 
-    # Sentinel heartbeat
-    import pathlib
-    state_dir = pathlib.Path.home() / ".agent" / "decisions" / "state"
-    state_dir.mkdir(parents=True, exist_ok=True)
-    (state_dir / "expiry_alerter.last.json").write_text(
-        f'{{"job":"expiry_alerter","ts":{int(__import__("time").time())},"status":"ok","host":"{__import__("socket").gethostname()}"}}'
-    )
+    _write_heartbeat()
 
 
 if __name__ == "__main__":

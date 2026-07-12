@@ -80,6 +80,25 @@ User writes **colloquial Italian** — translate to precise technical action int
 
 **Claude 5 routing (2026-07-02)**: interactive sessions = **Fable 5** (architect/orchestrator/final on-disk gate, max effort — the final gate never cascades to a weaker model; window dead → task SUSPENDS); implementer subagents/workflows = **Sonnet 5** (`claude-sonnet-5`, `model:"sonnet"`); grunt = Haiku 4.5. Cron tier-1: repo-side pins migrated to `claude-sonnet-5` on 2026-07-03 after per-agent probes (see `research/operations/2026-07-03-sonnet5-cron-migration.md`); LIVE HOME wrappers (`~/scripts/`) still on `claude-sonnet-4-6` until the operator applies the diffs in that doc (tracked in modus PENDING-ARMS). Exception: the nb-agents slug micro-prompt stays 4-6 (probe wobble). Full arsenal routing: `.claude/skills/modus/SKILL.md` §Arsenal.
 
+> **Fable-paid contingency — ACTIVE (Zero decision 2026-07-12: "non voglio pagare")** (research:
+> `research/operations/2026-07-11-fable-paywall-routing.md`, report + blind A/B, Codex adversarial
+> review). Scope is ONLY non-final-gate interactive work — architecture/red-team/council synthesis and
+> the general "which model answers this session" choice. **It does not touch, narrow, gate, condition,
+> or in any way apply to the final on-disk gate.** The final gate (line above: "the final gate never
+> cascades to a weaker model; window dead → task SUSPENDS") remains unconditionally Fable, with zero
+> classifier, novelty-check, or task-shape logic ever inserted in front of it — full stop, no exception
+> clause. **Rule for everything else: if/when Fable-5 becomes a metered/paid endpoint, do NOT pay for it
+> — route non-final-gate work to Sonnet+scaffold (or Opus-4.8 where Sonnet alone is thin) instead.** This
+> is a hard preference, not a cost/quality tradeoff to weigh case by case: the corrected A/B (§0.5 of the
+> report) found Fable and Opus-4.8 measured-indistinguishable on a real grounded/structured shape (KBLI,
+> 10/14 ties, 0 factual errors either side) — evidence that paying rarely buys anything on this class of
+> work, which is why "just don't pay" is a safe default rather than a corner being cut. The one shape the
+> report flagged as still-unproven-but-plausibly-Fable-favoring (WR2 lane-3, novel/uncatalogued
+> brand-voice judgment) is deliberately NOT special-cased here: use Sonnet/Opus-4.8+scaffold there too: no
+> exploration of a paid-Fable path for it. (An earlier draft edit to modus §Arsenal's final-gate row was
+> struck by adversarial review for breaching the invariant — do not reintroduce it in any form, including
+> indirect "narrows which shapes get X" phrasing.)
+
 **Anthropic SDK BANNED.** Never `from anthropic import Anthropic` or `ANTHROPIC_API_KEY`. Sole path: shell out to `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` (MAX-plan quota). Refuse any new tool/MCP/cron requiring `ANTHROPIC_API_KEY`. Reference: `apps/backend-rag/backend/llm/claude_oauth_client.py`.
 
 **Other paid per-token APIs (OpenRouter, OpenAI direct, Together, Fireworks, etc.) — require Zero's explicit authorization** (rule changed 2026-06-04, see `~/.claude/CLAUDE.md §Cost constraint`). Free-first by default (local Ollama → OAuth → free tier). Never install a paid key autonomously "to test" — surface to Antonello with cost + rationale, wait for explicit yes. **PII boundary absolute even when authorized**: LLM processing may use authorized operational context, but outputs, memories, logs, reports, skills, prompts saved for reuse, and shared artifacts must never transcribe client PII/OSINT in cleartext; use `client_id`, hashes, placeholders, or redaction (SYMBIOSIS Law 2 / UU PDP overrides cost). Pre-authorized non-PII: DeepSeek V4 Pro ($0.01/q), ChatGPT Pro Codex (unlimited).
@@ -180,7 +199,7 @@ Twitter (CRC broken), Google Chat (scaffold), Slack (scaffold) quarantined `.dis
 
 ## 13. Critical Operational Rules
 
-- **Email sending** (REGOLA FISSA): always `from=zantara@balizero.com` via Brevo `/api/notifications/send-email` + `X-API-Key: zantara-secret-2024`. Never `notifications@`/`subhi@`/personal addresses.
+- **Email sending** (REGOLA FISSA): always `from=zantara@balizero.com` via Brevo `/api/notifications/send-email` + `X-API-Key: <NOTIFICATIONS_API_KEY>` (the literal `zantara-secret-2024` was a public-repo admin key — rotated + revoked 2026-07-12; read the key from the env, never hardcode it). Never `notifications@`/`subhi@`/personal addresses.
 - **CRM RBAC**: Admin (`zero@`, `antonellosiano@`, `asya@balizero.com`) = all access. Team = only `assigned_to` matches.
 - **Team perimeter rule**: full roster in memory `reference_bali_zero_team.md`. Subhi probation 90gg (2026-04-30 → 2026-07-29), perimeter `apps/mouth/(blog|marketing|kbli|visa|property|tax-calendar)/**` + GA4/GSC only. NO backend RAG, NO secrets, NO organs_registry.yaml.
 - **OCR multi-page**: ALWAYS all pages — directors typically page 2-3 of akta. Timeout 120s for >3 pages. Vision: `qwen2.5vl:7b` ONLY.

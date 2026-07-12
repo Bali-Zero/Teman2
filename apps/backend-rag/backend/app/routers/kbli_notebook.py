@@ -10,6 +10,7 @@ Date: 2026-02-05
 
 import json
 import logging
+import re
 import time
 from inspect import isawaitable
 from typing import Annotated, Any
@@ -124,6 +125,35 @@ def _payload_value(payload: dict[str, Any], *keys: str, default: Any = None) -> 
         if metadata.get(key) not in (None, ""):
             return metadata[key]
     return default
+
+
+# The ingestion script (reindex_kbli_2025_final.py) stores the embedding text —
+# which opens with an internal "[CONTEXT: ...]" grounding header — as the payload
+# `content` field. That header exists for the embedding model, not for humans:
+# strip it before content is used as a user-facing snippet.
+_CONTEXT_HEADER_RE = re.compile(r"^\s*\[CONTEXT:[^\]]*\]\s*")
+
+_KBLI_CODE_RE = re.compile(r"^\d{4,5}$")
+
+
+def _clean_snippet(text: str | None) -> str:
+    """Strip the internal [CONTEXT: ...] embedding header from payload content."""
+    return _CONTEXT_HEADER_RE.sub("", text or "").lstrip()
+
+
+def _result_from_payload(payload: dict[str, Any], score: float) -> "KBLISearchResult":
+    """Build a KBLISearchResult from a flat/legacy Qdrant KBLI payload."""
+    return KBLISearchResult(
+        code=_payload_value(payload, "kode_kbli", "kode", "kode_kbli_2025", default="N/A"),
+        title=_payload_value(payload, "judul", "title_id", default="N/A"),
+        description=_clean_snippet(
+            _payload_value(payload, "content", "text", "description", default="") or "",
+        )[:200]
+        + "...",
+        score=round(score, 4),
+        pma_status=_payload_value(payload, "pma_status", default="UNKNOWN"),
+        risk_category=_payload_value(payload, "kategori_risiko", default="Unknown"),
+    )
 
 
 async def _resolve_embedding(search_service: Any, query: str) -> list[float]:
@@ -260,25 +290,29 @@ async def search_kbli(
     logger.info("🔍 KBLI Search Request: '%s' (limit: %s)", query, limit)
 
     try:
+        # Exact-code fast-path: a bare 4/5-digit query is a code lookup, not a
+        # semantic search — embedding a bare number ranks by noise (observed live
+        # 2026-07-08: "68111" did not surface 68111 in the top 5). Unknown codes
+        # fall through to semantic search so non-canonical forms (e.g. 68100)
+        # still get neighborly suggestions.
+        exact_result: KBLISearchResult | None = None
+        code_query = query.strip()
+        if _KBLI_CODE_RE.fullmatch(code_query):
+            exact_payload = await _get_kbli_payload_from_qdrant(code_query)
+            if exact_payload:
+                exact_result = _result_from_payload(exact_payload, score=1.0)
+
         embedding = await _resolve_embedding(search_service, query)
         results = await _search_kbli_qdrant(embedding, limit)
 
-        search_results = []
+        search_results: list[KBLISearchResult] = [exact_result] if exact_result else []
         for r in results:
-            p = r.get("payload", {})
-            search_results.append(
-                KBLISearchResult(
-                    code=_payload_value(p, "kode_kbli", "kode", "kode_kbli_2025", default="N/A"),
-                    title=_payload_value(p, "judul", "title_id", default="N/A"),
-                    description=(
-                        _payload_value(p, "content", "text", "description", default="") or ""
-                    )[:200]
-                    + "...",
-                    score=round(r.get("score", 0.0), 4),
-                    pma_status=_payload_value(p, "pma_status", default="UNKNOWN"),
-                    risk_category=_payload_value(p, "kategori_risiko", default="Unknown"),
-                ),
-            )
+            if len(search_results) >= limit:
+                break
+            candidate = _result_from_payload(r.get("payload", {}), score=r.get("score", 0.0))
+            if exact_result and candidate.code == exact_result.code:
+                continue
+            search_results.append(candidate)
 
         duration = (time.time() - start_time) * 1000
         logger.info(

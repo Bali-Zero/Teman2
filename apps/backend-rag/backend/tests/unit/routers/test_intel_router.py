@@ -21,12 +21,17 @@ def mock_services():
         patch("backend.app.routers.intel.intel_bulk_operation_items") as mock_bulk_items,
         patch("backend.app.routers.intel.intel_items_approved") as mock_approved,
         patch("backend.app.routers.intel.intel_items_rejected") as mock_rejected,
+        patch("backend.app.routers.intel.settings") as mock_settings,
     ):
         mock_actions.labels.return_value = MagicMock()
         mock_bulk_ops.labels.return_value = MagicMock()
         mock_bulk_items.labels.return_value = MagicMock()
         mock_approved.labels.return_value = MagicMock()
         mock_rejected.labels.return_value = MagicMock()
+        # bulk-approve/reject are admin-gated (Case OS R3). intel._require_intel_admin
+        # checks the caller email against settings.admin_emails_set; the test env
+        # leaves that set empty, so seed it with the admin identity used below.
+        mock_settings.admin_emails_set = frozenset({"zero@balizero.com"})
 
         yield {
             "staging": mock_staging,
@@ -47,6 +52,13 @@ def client(mock_services):
     from backend.app.utils.internal_api_auth import verify_internal_api_key
 
     app.dependency_overrides[verify_internal_api_key] = lambda: True
+
+    # bulk-approve is admin-gated (Case OS R3). intel._require_intel_admin
+    # checks the caller email against settings.admin_emails_set (NOT role),
+    # so supply an allow-listed admin email.
+    from backend.app.dependencies import get_current_user
+
+    app.dependency_overrides[get_current_user] = lambda: {"email": "zero@balizero.com"}
 
     # Override DB pool with proper async context manager
     from backend.app.dependencies import get_database_pool

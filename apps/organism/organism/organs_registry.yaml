@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 104a14e54a1201b379d174e288e00ae9488977def439652ec81c1043ef810d11
+checksum: 3991225d82ed05d2f72f1f4862fd90dcb74d5e16d40b2451a8725fdd971874dd
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -142,6 +142,40 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.agent/decisions/state/login_healthcheck.last.json
+    timestamp_field: ts
+    status_field: status
+- id: m5.auth_sentinel
+  runtime: air_launchd
+  type: cron
+  expected_hb_seconds: 25200
+  owner_module: scripts/auth_sentinel_cron.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.auth-sentinel.daily
+  severity_on_silence: warning
+  cicatrix_refs:
+  - 2026-06-16-W84-tcc-green-dead
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/auth-sentinel.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.modus_autoloop_nightly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 108000
+  owner_module: infra/launchagents/modus_autoloop_cron.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.modus.autoloop.nightly
+  severity_on_silence: warning
+  cicatrix_refs:
+  - 2026-07-12-modus-autoloop-append-only-reprocess
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/modus-autoloop.json
     timestamp_field: ts
     status_field: status
 - id: pro.fly_restart_loop_detector
@@ -687,6 +721,12 @@ organs:
 - id: mata_garuda.ner_worker_hourly.mini
   runtime: mini_launchd
   type: cron
+  enabled: false
+  disabled_reason: Retired 2026-07-12 (Zero GO). NER runs on Pro as com.matagaruda.ner.adaptive
+    (300s interval, same run_ner_worker.py entrypoint, log fresh) with kg-linker consuming
+    on Pro hourly. The Mini instance had Disabled:true baked in its plist since Jun
+    29 and was never reloaded; single-owner rule (superscar family 10). Plist archived
+    on Mini to ~/Library/LaunchAgents/.retired-20260712/.
   expected_hb_seconds: 7200
   owner_module: apps/mata-garuda/mata_garuda/workers/ner_worker.py
   dependencies:

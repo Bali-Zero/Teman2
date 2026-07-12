@@ -14,16 +14,29 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.agents.agents.client_value_predictor import ClientValuePredictor
 from backend.agents.agents.conversation_trainer import ConversationTrainer
 from backend.agents.agents.knowledge_graph_builder import KnowledgeGraphBuilder
+from backend.app.dependencies import get_current_user
+from backend.app.utils.crm_utils import is_crm_admin
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/autonomous-agents", tags=["autonomous-tier1"])
+
+
+def _require_agent_admin(user: dict[str, Any]) -> None:
+    """Gate agent triggers to admins. Raises 403 otherwise.
+
+    Firing an autonomous agent writes to the client book and (for the value
+    predictor) can message clients. Read-only status endpoints stay open to any
+    authenticated team member; the triggers do not.
+    """
+    if not is_crm_admin(user):
+        raise HTTPException(status_code=403, detail="Agent execution requires admin")
 
 # Agent execution status tracking
 agent_executions: dict[str, dict[str, Any]] = {}
@@ -108,6 +121,7 @@ async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> A
 async def run_conversation_trainer(
     background_tasks: BackgroundTasks,
     days_back: int = Query(default=7, ge=1, le=365, description="Days to look back (1-365)"),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> AgentExecutionResponse:
     """
     🤖 Run Conversation Quality Trainer Agent
@@ -120,6 +134,8 @@ async def run_conversation_trainer(
     Returns:
         Execution status (agent runs in background)
     """
+    _require_agent_admin(current_user)
+
     execution_id = f"conv_trainer_{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S_%f')}"
 
     agent_executions[execution_id] = {
@@ -190,17 +206,23 @@ async def _run_client_value_predictor_task(execution_id: str) -> None:
 
 
 @router.post("/client-value-predictor/run", response_model=AgentExecutionResponse)
-async def run_client_value_predictor(background_tasks: BackgroundTasks) -> AgentExecutionResponse:
+async def run_client_value_predictor(
+    background_tasks: BackgroundTasks,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> AgentExecutionResponse:
     """
     💰 Run Client LTV Predictor & Nurturing Agent
 
-    Scores all clients and sends personalized nurturing messages to:
+    Admin-only. Scores all clients and, when nurturing outbound is armed
+    (``CLIENT_NURTURING_OUTBOUND_ENABLED``), sends personalized messages to:
     - VIP clients (LTV > 80)
     - High-risk clients (LTV < 30 and inactive > 30 days)
 
     Returns:
         Execution status (agent runs in background)
     """
+    _require_agent_admin(current_user)
+
     execution_id = f"client_predictor_{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S_%f')}"
 
     agent_executions[execution_id] = {
@@ -287,6 +309,7 @@ async def run_knowledge_graph_builder(
     background_tasks: BackgroundTasks,
     days_back: int = Query(default=30, ge=1, le=365, description="Days to look back (1-365)"),
     init_schema: bool = Query(default=False, description="Initialize database schema"),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> AgentExecutionResponse:
     """
     🕸️ Run Knowledge Graph Builder Agent
@@ -300,6 +323,8 @@ async def run_knowledge_graph_builder(
     Returns:
         Execution status (agent runs in background)
     """
+    _require_agent_admin(current_user)
+
     execution_id = f"kg_builder_{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S_%f')}"
 
     agent_executions[execution_id] = {
@@ -474,6 +499,7 @@ async def extract_kg_sample(
 async def persist_kg_sample(
     collection: str = Query(default="legal_unified"),
     sample_size: int = Query(default=50, ge=10, le=200),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     💾 Persist KG sample to database (LIVE)
@@ -481,6 +507,8 @@ async def persist_kg_sample(
     Extracts and persists entities/relationships to PostgreSQL.
     Run /extract-sample first to review!
     """
+    _require_agent_admin(current_user)
+
     import re
 
     from backend.app.main_cloud import app
@@ -782,13 +810,18 @@ async def get_scheduler_status() -> dict[str, Any]:
 
 
 @router.post("/scheduler/task/{task_name}/enable")
-async def enable_scheduler_task(task_name: str) -> dict[str, Any]:
+async def enable_scheduler_task(
+    task_name: str,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """
-    ✅ Enable a scheduled task
+    ✅ Enable a scheduled task (admin-only)
 
     Args:
         task_name: Name of the task to enable
     """
+    _require_agent_admin(current_user)
+
     try:
         from backend.services.misc.autonomous_scheduler import get_autonomous_scheduler
 
@@ -810,13 +843,18 @@ async def enable_scheduler_task(task_name: str) -> dict[str, Any]:
 
 
 @router.post("/scheduler/task/{task_name}/disable")
-async def disable_scheduler_task(task_name: str) -> dict[str, Any]:
+async def disable_scheduler_task(
+    task_name: str,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """
-    ⏸️ Disable a scheduled task
+    ⏸️ Disable a scheduled task (admin-only)
 
     Args:
         task_name: Name of the task to disable
     """
+    _require_agent_admin(current_user)
+
     try:
         from backend.services.misc.autonomous_scheduler import get_autonomous_scheduler
 

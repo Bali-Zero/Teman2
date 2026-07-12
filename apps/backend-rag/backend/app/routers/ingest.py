@@ -10,8 +10,9 @@ import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 
+from backend.app.dependencies import get_current_user
 from backend.app.models import (
     BatchIngestionRequest,
     BatchIngestionResponse,
@@ -19,11 +20,22 @@ from backend.app.models import (
     BookIngestionResponse,
     TierLevel,
 )
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.core.qdrant_db import QdrantClient
 from backend.services.ingestion.ingestion_service import IngestionService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/ingest", tags=["ingestion"])
+
+
+def _require_ingest_admin(user: dict[str, Any]) -> None:
+    """Gate KB ingestion to admins. Raises 403 otherwise.
+
+    Ingestion writes directly to the shared knowledge base (Qdrant), so an
+    authenticated team member is not a sufficient principal (Case OS R3).
+    """
+    if not is_crm_admin(user):
+        raise HTTPException(status_code=403, detail="Ingestion requires admin")
 
 
 def save_upload_file_sync(path: Path, content: bytes) -> Any:
@@ -38,6 +50,7 @@ async def upload_and_ingest(
     title: str | None = None,
     author: str | None = None,
     tier_override: TierLevel | None = None,
+    current_user: dict = Depends(get_current_user),
 ) -> BookIngestionResponse:
     """
     Upload and ingest a single book.
@@ -47,6 +60,7 @@ async def upload_and_ingest(
     - **author**: Optional author name
     - **tier_override**: Optional manual tier (S/A/B/C/D)
     """
+    _require_ingest_admin(current_user)
     # Validate file type
     if not file.filename.endswith((".pdf", ".epub")):
         raise HTTPException(status_code=400, detail="Only PDF and EPUB files are supported")
@@ -87,7 +101,10 @@ async def upload_and_ingest(
 
 
 @router.post("/file", response_model=BookIngestionResponse)
-async def ingest_local_file(request: BookIngestionRequest) -> BookIngestionResponse:
+async def ingest_local_file(
+    request: BookIngestionRequest,
+    current_user: dict = Depends(get_current_user),
+) -> BookIngestionResponse:
     """
     Ingest a book from local file path.
 
@@ -96,6 +113,7 @@ async def ingest_local_file(request: BookIngestionRequest) -> BookIngestionRespo
     - **author**: Optional author name
     - **tier_override**: Optional manual tier classification
     """
+    _require_ingest_admin(current_user)
     # Validate file exists
     if not os.path.exists(request.file_path):
         raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
@@ -122,6 +140,7 @@ async def ingest_local_file(request: BookIngestionRequest) -> BookIngestionRespo
 async def batch_ingest(
     request: BatchIngestionRequest,
     _background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
 ) -> BatchIngestionResponse:
     """
     Process all books in a directory.
@@ -130,6 +149,7 @@ async def batch_ingest(
     - **file_patterns**: File patterns to match (default: ["*.pdf", "*.epub"])
     - **skip_existing**: Skip books already in database
     """
+    _require_ingest_admin(current_user)
     try:
         start_time = time.time()
 
@@ -213,18 +233,20 @@ async def get_ingestion_stats() -> dict[str, Any]:
 
     Returns total documents, tier distribution, and collection info.
     """
+    db = QdrantClient()
     try:
-        db = QdrantClient()
-        stats = db.get_collection_stats()
+        stats = await db.get_stats()
 
         return {
             "status": "success",
-            "collection": stats["collection_name"],
-            "total_documents": stats["total_documents"],
+            "collection": stats.get("collection_name", db.collection_name),
+            "total_documents": stats.get("total_documents", 0),
             "tiers_distribution": stats.get("tiers_distribution", {}),
-            "persist_directory": stats["persist_directory"],
+            "persist_directory": db.qdrant_url,
         }
 
     except Exception as e:
         logger.error("Stats error: %s", e)
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {e!s}") from e
+    finally:
+        await db.close()

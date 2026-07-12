@@ -55,6 +55,14 @@ vi.mock("next/server", () => ({
   NextResponse: { json: vi.fn() },
 }));
 
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    debug: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+  },
+}));
+
 // ---------------------------------------------------------------------------
 // Capture the headers the proxy actually sent to the upstream fetch
 // ---------------------------------------------------------------------------
@@ -63,9 +71,15 @@ function capturedHeaders(fetchMock: ReturnType<typeof vi.fn>): Headers {
   return init.headers as Headers;
 }
 
+function capturedTargetUrl(fetchMock: ReturnType<typeof vi.fn>): string {
+  const [targetUrl] = fetchMock.mock.calls[0] as [string, RequestInit];
+  return targetUrl;
+}
+
 // ---------------------------------------------------------------------------
 // Import the handlers AFTER mocking next/server
 // ---------------------------------------------------------------------------
+import { logger } from "@/lib/logger";
 import { DELETE, GET, PATCH, POST, PUT } from "./route";
 
 describe("proxy catch-all route — CSRF header promotion (Bug A)", () => {
@@ -190,5 +204,84 @@ describe("proxy catch-all route — CSRF header promotion (Bug A)", () => {
     expect(
       capturedHeaders(vi.mocked(global.fetch)).get("X-CSRF-Token"),
     ).toBeNull();
+  });
+});
+
+describe("proxy catch-all route — auth failure logging", () => {
+  beforeEach(() => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Not authenticated" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    process.env.NUZANTARA_API_URL = "https://nuzantara-rag.fly.dev";
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("does not emit an error log for an unauthenticated 401 without credentials", async () => {
+    const req = new MockNextRequest("http://localhost/api/dashboard/summary", {
+      method: "GET",
+    });
+
+    const response = await GET(req as never);
+
+    expect(response.status).toBe(401);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "[Proxy] Auth rejected 401 for GET /api/dashboard/summary without credentials",
+      expect.objectContaining({
+        action: "auth_rejected",
+      }),
+    );
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it("logs credentialed auth failures as warnings, not runtime errors", async () => {
+    const req = new MockNextRequest("http://localhost/api/auth/profile", {
+      method: "GET",
+      cookies: { nz_access_token: "stale-jwt" },
+    });
+
+    const response = await GET(req as never);
+
+    expect(response.status).toBe(401);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "[Proxy] Auth rejected 401 for GET /api/auth/profile with credentials",
+      expect.objectContaining({
+        action: "auth_rejected",
+      }),
+    );
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+});
+
+describe("proxy catch-all route — backend URL normalization", () => {
+  beforeEach(() => {
+    vi.mocked(global.fetch).mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("trims whitespace from the configured backend base URL before proxying", async () => {
+    process.env.NUZANTARA_API_URL = "https://nuzantara-rag.fly.dev\n";
+    const req = new MockNextRequest("http://localhost/api/health", {
+      method: "GET",
+    });
+
+    await GET(req as never);
+
+    expect(capturedTargetUrl(vi.mocked(global.fetch))).toBe(
+      "https://nuzantara-rag.fly.dev/api/health",
+    );
   });
 });

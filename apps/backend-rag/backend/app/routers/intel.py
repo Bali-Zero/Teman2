@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
 from backend.app.core.constants import IntelConstants
+from backend.app.dependencies import get_current_user
 from backend.app.metrics import (
     intel_bulk_operation_items,
     intel_bulk_operations_total,
@@ -214,8 +215,13 @@ async def preview_staging_item(type: str, item_id: str) -> Any:
 
 
 @router.post("/api/intel/staging/bulk-approve/{type}")
-async def bulk_approve_items(type: str, item_ids: list[str]) -> Any:
-    """Bulk approve multiple items"""
+async def bulk_approve_items(
+    type: str,
+    item_ids: list[str],
+    user: dict = Depends(get_current_user),
+) -> Any:
+    """Bulk approve multiple items (admin only — feeds the public-site publish pipeline)."""
+    _require_intel_admin(user)
     logger.info(
         "Bulk approval requested",
         extra={"type": type, "count": len(item_ids), "endpoint": "/api/intel/staging/bulk-approve"},
@@ -713,7 +719,7 @@ async def mark_step_done(
 from fastapi import status as http_status  # noqa: E402
 from pydantic import BaseModel as _BaseModel  # noqa: E402 — alias avoids redefinition
 
-from backend.app.dependencies import get_current_user  # noqa: E402
+# get_current_user imported at top of module (line 26 — needed by bulk_approve_items above)
 
 
 def _require_intel_admin(user: dict[str, Any]) -> None:

@@ -61,14 +61,21 @@ RENDERABLE_FAMILIES = {
     "statement-bomb",
     "elegant-close",
     "source-citation",
+    "stat-card-hero",
+    "numbered-forces-list",
 }
 
 # Families named in tokens.json layout_defaults but with NO skeleton yet
 # (GROUND gap #1). The composer must NEVER silently emit one of these — it would
 # produce a blank/broken slide. If a mapping would pick one, fall back + warn.
+# "stat-card-hero" REMOVED 2026-07-11: it now has a real skeleton
+# (layouts/stat-card-hero.md, bar-comparison chart support) and belongs in
+# RENDERABLE_FAMILIES only — it was previously listed in BOTH sets, which
+# meant an explicit pin was silently downgraded to photo-headline-yellow-sub
+# even though the RENDERABLE_FAMILIES check ran first (dead code path, never
+# actually exercised because no slides.json pinned it before this fix).
 UNDEFINED_FAMILIES = {
     "swiss-grid-asymmetry",
-    "stat-card-hero",
     "thin-red-rule-divider",
     "monospace-evidence-block",
     "three-verdicts",
@@ -250,7 +257,18 @@ def _hero_bg_to_img(html: str, hero_filename: str) -> str:
         "object-fit:cover;z-index:0;}\n"
         ".hero-scrim{position:absolute;inset:0;"
         "background:rgba(10,10,10,0.55);z-index:0;}\n"
-        "body > *:not(.hero-img):not(.hero-scrim){position:relative;z-index:1;}\n"
+        # :where(...) wraps the WHOLE selector so it carries 0 specificity and
+        # NEVER overrides a child's own `position` declaration (e.g.
+        # evidence-carved's `.content{position:absolute;left:...;right:...}`,
+        # which sets the slide's text-box width). Before this fix, the blanket
+        # `position:relative` here beat `.content`'s `position:absolute` on
+        # specificity+cascade order, silently dropping the left/right width
+        # constraint and letting long fact/body text overflow off-canvas
+        # (found 2026-07-11, evidence-carved slide overflow). NOTE: :where(*)
+        # alone (zeroing only the `*`) does NOT work — the :not() clauses
+        # outside :where() still count; the fix is to wrap the entire
+        # selector, verified via Playwright computed-style probe.
+        ":where(body > *:not(.hero-img):not(.hero-scrim)){position:relative;z-index:1;}\n"
     )
     html = html.replace("</style>", hero_img_css + "</style>", 1)
     img_tag = (
@@ -830,6 +848,14 @@ _FACT_LABEL_MAX_WORDS = 4
 # skeleton's .text-panel is already a flex column, so this is positioning-inert
 # for every other element. Selectors are defensive descendants of the
 # skeleton's .body slot; unused selectors are inert (same approach as levers).
+_BAR_ITEMS_BLOCK_CSS = (
+    "\n<style data-bar-items-block=\"1\">\n"
+    ".body{display:flex;flex-direction:column;gap:20px;}\n"
+    ".body-item{border-left:4px solid var(--color-accent-yellow);"
+    "padding-left:16px;}\n"
+    "</style>\n"
+)
+
 _FACTS_BLOCK_CSS = (
     "\n<style data-facts-block=\"1\">\n"
     ".text-panel{justify-content:center;}\n"
@@ -1004,12 +1030,140 @@ def _qa_dialogue_fields(slide: dict[str, Any]) -> dict[str, str]:
     return out
 
 
+# Token names storyboarder/critic use for heading_color/subhead_color →
+# the brand CSS custom property they resolve to. "yellow-accent" is an
+# alias seen on statement-bomb slides for the same accent token.
+_COLOR_TOKEN_VARS = {
+    "yellow": "var(--color-accent-yellow)",
+    "yellow-accent": "var(--color-accent-yellow)",
+    "white": "var(--color-text-white)",
+}
+
+# Typography micro-rules (Zero, 2026-07-12) — armed centrally in composer.py
+# rather than duplicated per-layout .md file, so the rule holds even when a
+# new layout family forgets to restate it. Always injected (unconditional,
+# unlike the color override above which only fires on a slide's explicit/
+# default color choice) — these are house-style constants, not per-slide
+# editorial choices, so there is nothing to preserve flexibility for.
+#
+# 1. UPPERCASE EVERYWHERE — supersedes the 2026-05-22 "Title Case body for
+#    word-count readability" exception (evidence-carved .fact/.take-text,
+#    editorial-text .body, stat-card-hero .body): Zero's ruling 2026-07-12
+#    is that restraint now comes from layout/color hierarchy, not case: all
+#    rendered text is uppercase, no exceptions.
+# 2. FONT-WEIGHT HIERARCHY — heading/headline always extrabold (800); body
+#    text never at or above that weight (capped at bold/700), so a body
+#    block can never flatten the visual hierarchy against its heading.
+# 3. SIZE FLOOR — checked separately (_check_body_font_size_floor below),
+#    NOT coerced via CSS here: a blanket `font-size: 22px !important` would
+#    fight each layout's own scale (a subhead is deliberately smaller than a
+#    heading, a .fact value deliberately larger than a .fact label) and a
+#    self-referential `max(22px, <inherited>)` can't recover the pre-!important
+#    value once the cascade already applied one !important rule. Floor
+#    violations are logged as a warning instead — visible, not silently
+#    coerced into a possibly-wrong size.
+#
+# Selectors are the common text-role classes shared across layout .md files
+# (grep-verified 2026-07-12): a selector that doesn't exist in a given
+# layout is simply inert there — no risk of breaking a family that doesn't
+# use it.
+_TYPOGRAPHY_GUARD_CSS = (
+    '\n<style data-typography-guard="1">\n'
+    ".heading,.headline,.subheading,.subhead,.body,.body-item,"
+    ".fact .text,.take-text,.item .label,.item .value,"
+    ".voice-a .quote,.voice-b .quote,.row-label,.row-value,"
+    ".label,.value,.text{text-transform:uppercase !important;}\n"
+    ".heading,.headline{font-weight:800 !important;}\n"
+    ".body,.body-item,.fact .text,.take-text,.item .value,"
+    ".voice-a .quote,.voice-b .quote,.text{font-weight:700 !important;}\n"
+    "</style>\n"
+)
+
+# Floor check: warn (never coerce — see comment above) when a layout's own
+# .md skeleton declares a body-role font-size below this px value. Checked
+# once per family at render time from the skeleton's raw CSS text, not
+# per-slide (the size is a template constant, not slide data).
+_BODY_FONT_SIZE_FLOOR_PX = 22
+_BODY_ROLE_SELECTORS_RE = re.compile(
+    r"\.(?:body|body-item|fact \.text|take-text|item \.value|"
+    r"voice-a \.quote|voice-b \.quote)\s*\{[^}]*font-size:\s*(\d+)px",
+)
+
+
+def _check_body_font_size_floor(skeleton_css: str, family: str) -> None:
+    """Warn if a layout's body-role text is authored below the IG-legibility
+    floor. Non-blocking (logger.warning only) — see _TYPOGRAPHY_GUARD_CSS
+    comment for why this isn't a CSS !important coercion.
+    """
+    for m in _BODY_ROLE_SELECTORS_RE.finditer(skeleton_css):
+        px = int(m.group(1))
+        if px < _BODY_FONT_SIZE_FLOOR_PX:
+            logger.warning(
+                "typography guard: %s body-role font-size %dpx is below the "
+                "%dpx IG-legibility floor",
+                family, px, _BODY_FONT_SIZE_FLOOR_PX,
+            )
+
+
+def _default_heading_subhead_colors(slide: dict[str, Any]) -> tuple[str, str]:
+    """Odd/even alternation default for heading_color / subhead_color.
+
+    Micro-rule (Zero, 2026-07-12): odd slide_number -> heading=yellow /
+    subhead=white; even -> inverted. This is a DEFAULT only — it fires
+    exclusively when the slide has NOT declared its own heading_color/
+    subhead_color, so a deliberate per-slide editorial choice (e.g. two
+    consecutive covers both wanting a yellow headline) always wins. The
+    alternation exists so an un-opinionated carousel still gets visual
+    rhythm across its slides instead of every slide defaulting to the same
+    layout-family palette.
+
+    Falls back to slide_number == 1 (odd) when slide_number is missing/
+    unparseable, matching the historical single-carousel default.
+    """
+    try:
+        n = int(slide.get("slide_number") or 1)
+    except (TypeError, ValueError):
+        n = 1
+    return ("yellow", "white") if n % 2 == 1 else ("white", "yellow")
+
+
+def _heading_color_override_css(slide: dict[str, Any]) -> str:
+    """Build a scoped !important <style> block for this slide's heading_color
+    / subhead_color. Each slide renders as its own standalone HTML file, so
+    an !important override here can never leak into another slide or
+    carousel — it only ever wins the cascade within this one document, on
+    top of whatever default the layout family's own <style> block already
+    set.
+
+    Precedence: an explicit heading_color/subhead_color on the slide always
+    wins (editorial flexibility preserved). Only the field(s) NOT explicitly
+    set fall back to the odd/even alternation default above — so a slide
+    that only sets heading_color still gets a sensible subhead_color default
+    instead of silently keeping the layout's hardcoded one.
+    """
+    default_heading, default_subhead = _default_heading_subhead_colors(slide)
+    heading_token = str(slide.get("heading_color") or "").strip().lower() or default_heading
+    subhead_token = str(slide.get("subhead_color") or "").strip().lower() or default_subhead
+
+    rules = []
+    heading_color = _COLOR_TOKEN_VARS.get(heading_token)
+    if heading_color:
+        rules.append(f".heading,.headline{{color:{heading_color} !important;}}")
+    subhead_color = _COLOR_TOKEN_VARS.get(subhead_token)
+    if subhead_color:
+        rules.append(f".subheading,.subhead{{color:{subhead_color} !important;}}")
+    if not rules:
+        return ""
+    return '\n<style data-heading-color-override="1">\n' + "\n".join(rules) + "\n</style>\n"
+
+
 def _fill_placeholders(
     html: str,
     slide: dict[str, Any],
     *,
     hero_filename: str | None,
     cover_family: bool = False,
+    family: str = "",
 ) -> str:
     """Fill {{placeholders}} + simple {{#if}} blocks from a slide dict.
 
@@ -1021,6 +1175,40 @@ def _fill_placeholders(
     # (Canva) drafts use heading/subheading. Read BOTH so an old-schema draft does
     # not render a blank cover (vision: "no editorial text").
     headline = (slide.get("headline") or slide.get("heading") or "").strip()
+    # An author-supplied " / " is an explicit line-break marker (the
+    # storyboarder's way of forcing a 2-line split at a specific word
+    # boundary, e.g. cover-photo's "IDR 2.815 TRILLION / FROM VISAS ALONE")
+    # — never meant to render as a literal slash. Convert to <br> FIRST,
+    # before any wrap/font-fit/de-orphan pass runs, so those passes see an
+    # already-<br>-wrapped headline (a case they already no-op on) instead
+    # of a raw " / " they don't know about. stat-card-hero overrides this
+    # below with its own richer split (adds a <span class="lead">).
+    # statement-bomb is EXCLUDED: its {{statement}} falls back to this same
+    # `headline` (below), and statement_emphasis_html HTML-escapes the whole
+    # string — a raw <br> would come back as literal "&lt;br&gt;" text. That
+    # family already wraps naturally in the browser (no explicit breaks
+    # needed, verified against the target), so leave " / " as a plain space
+    # there instead of injecting a tag its own downstream escaping can't carry.
+    if family not in ("stat-card-hero", "statement-bomb") and " / " in headline:
+        headline = "<br>".join(part.strip() for part in headline.split(" / "))
+    elif family == "statement-bomb" and " / " in headline:
+        headline = " ".join(part.strip() for part in headline.split(" / "))
+    # numbered-forces-list only: pull the leading integer off the headline
+    # ("3 FORCES BEHIND THE RISE" -> numeral "3", heading "FORCES\nBEHIND
+    # THE RISE") for the giant-numeral graphic, BEFORE the de-orphan pass
+    # below glues the numeral to its noun with &nbsp; (which would break
+    # this regex's plain-space match). The remainder wraps to two lines at
+    # the midpoint word boundary so it balances against the numeral the way
+    # the target design does; a headline with no leading integer renders
+    # with no numeral (empty {{numeral}}, heading unchanged).
+    numeral = ""
+    if family == "numbered-forces-list":
+        m = re.match(r"^(\d+)\s+(.*)$", headline)
+        if m:
+            numeral = m.group(1)
+            rest_words = m.group(2).split()
+            mid = (len(rest_words) + 1) // 2
+            headline = " ".join(rest_words[:mid]) + "\n" + " ".join(rest_words[mid:])
     # rebalance_wrap lever (designer loop): re-wrap the headline into balanced
     # lines via a <br>. Text-only — applied here BEFORE placeholder substitution
     # so the skeleton's {{heading}}/{{statement}} carry the <br> verbatim (the
@@ -1045,6 +1233,14 @@ def _fill_placeholders(
     # Deterministic number de-orphan (belt-and-suspenders): glue any remaining
     # bare numeral to its noun so the browser can never strand it.
     headline = _deorphan_numbers_in_headline(headline)
+    # stat-card-hero only: a headline authored as "UNIT / VALUE VS VALUE"
+    # (e.g. "IDR / 2.815T VS 2.645T") splits on the slash into a small white
+    # unit line + the big yellow comparison line, matching the target design
+    # where the currency unit reads as a caption above the accent numbers.
+    # No-op for every other family and for a headline with no " / ".
+    if family == "stat-card-hero" and " / " in headline:
+        lead, _, rest = headline.partition(" / ")
+        headline = f'<span class="lead">{_html_escape(lead)}</span><br>{_html_escape(rest)}'
     subhead = (slide.get("subhead") or slide.get("subheading") or "").strip()
     body = (slide.get("body") or slide.get("body_text") or "").strip()
     reg = (slide.get("regulation_code") or slide.get("primary_regulation_code") or "").strip()
@@ -1056,12 +1252,28 @@ def _fill_placeholders(
     # and NO facts CSS is injected → byte-identical to the legacy rendering.
     body_html = body
     facts_block = False
+    bar_items_block = False
     if body and not cover_family:
         body_wo_source, source_text = _split_source_line(body)
         pairs = _parse_fact_pairs(body_wo_source)
         if pairs:
             body_html = _facts_block_html(pairs, source_text)
             facts_block = True
+        elif family == "photo-headline-yellow-sub" and "\n\n" in body_wo_source:
+            # photo-headline-yellow-sub, 2-4 \n\n-separated statements: render
+            # as a yellow-bar-divided item stack (matches target design) instead
+            # of one run-on paragraph. Conservative — only when the body is
+            # ALREADY authored as blank-line-separated blocks (2-4 of them); a
+            # single-paragraph body for this family renders unchanged.
+            blocks = [b.strip() for b in body_wo_source.split("\n\n") if b.strip()]
+            if 2 <= len(blocks) <= 4:
+                body_html = "\n".join(
+                    f'<div class="body-item">{_emphasize_key_numbers(b)}</div>'
+                    for b in blocks
+                )
+                bar_items_block = True
+            else:
+                body_html = _emphasize_key_numbers(body_html)
         else:
             # Plain-paragraph body: yellow the crux regulatory number(s) so the
             # key fact pops (Art 6.9 anchor-highlight; option C 2026-06-24). The
@@ -1093,6 +1305,35 @@ def _fill_placeholders(
         else:
             statement_emphasis_html = f'<span class="emphasis">{words[0]}</span>'
 
+    # stat-card-hero's bar-comparison chart: flatten slide["chart"]["rows"] to a
+    # top-level "chart_rows" array (the {{#each}} expander only reads top-level
+    # slide keys, no dotted paths) and compute each row's bar width as a % of
+    # the max value in the set, so the two/three bars are proportionally
+    # comparable at a glance (mirrors the target design's grey-vs-yellow
+    # bar-comparison). Numeric value is parsed out of the row's display string
+    # (e.g. "IDR 2.645T" -> 2.645) — first float found, unit-agnostic since all
+    # rows in one chart share the same unit.
+    chart = slide.get("chart")
+    if isinstance(chart, dict) and isinstance(chart.get("rows"), list) and chart["rows"]:
+        rows = chart["rows"]
+        parsed = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            m = re.search(r"[\d.]+", str(row.get("value") or ""))
+            parsed.append(float(m.group()) if m else 0.0)
+        max_val = max(parsed) if parsed else 0.0
+        chart_rows = []
+        for row, val in zip(rows, parsed):
+            pct = round((val / max_val) * 100) if max_val > 0 else 0
+            chart_rows.append({
+                "label": row.get("label") or "",
+                "value": row.get("value") or "",
+                "bar_pct": max(pct, 4),  # floor so a near-zero row still shows a sliver
+                "is_max": val >= max_val and max_val > 0,
+            })
+        slide = {**slide, "chart_rows": chart_rows}
+
     # Expand {{#each <var>}} list blocks FIRST (dark-status-list / evidence-carved /
     # source-citation / timeline-pinboard) so the loop rows are materialized before
     # the scalar placeholder pass. Previously unhandled → raw mustache shipped.
@@ -1106,6 +1347,16 @@ def _fill_placeholders(
         "{{regulation_code}}": reg,
         "{{statement}}": statement,
         "{{statement_html_with_emphasis_span}}": statement_emphasis_html,
+        # evidence-carved "take" block scalars. Previously UNBOUND → the raw
+        # mustache ({{take_label}}/{{take_line}}) shipped to the renderer and
+        # leaked as literal text at the bottom of every evidence-carved slide
+        # that supplied a take (critic FAIL, 2026-07-11 revise-run S7). Default
+        # to empty so a slide with no take never leaks a placeholder either.
+        "{{take_label}}": _html_escape((slide.get("take_label") or "").strip()),
+        "{{take_line}}": _html_escape((slide.get("take_line") or "").strip()),
+        # numbered-forces-list giant numeral (extracted above from the
+        # headline's leading integer). Empty for every other family.
+        "{{numeral}}": numeral,
     }
     # qa-dialogue: map qa_pairs → the template's flat voice_a/voice_b fields.
     for fk, fv in _qa_dialogue_fields(slide).items():
@@ -1138,6 +1389,36 @@ def _fill_placeholders(
         else:
             html = html + font_css
 
+    # Per-slide heading/subhead color override. storyboarder emits
+    # heading_color/subhead_color (e.g. "yellow", "white", "yellow-accent")
+    # on every slide, but every layout family hardcodes its own default
+    # palette in the .md skeleton's <style> block (verified correct as the
+    # established GLOBAL default across other carousels — must not be
+    # edited). When a slide's value DIFFERS from that family's baked-in
+    # default, scope an !important override to this slide only, appended
+    # after the skeleton's own <style> so cascade order wins without
+    # touching the shared template. No-op (empty override) when the field
+    # is absent or already matches the default, so unrelated carousels are
+    # byte-identical.
+    color_css = _heading_color_override_css(slide)
+    if color_css:
+        if "</head>" in html:
+            html = html.replace("</head>", color_css + "</head>", 1)
+        elif "</body>" in html:
+            html = html.replace("</body>", color_css + "</body>", 1)
+        else:
+            html = html + color_css
+
+    # Typography micro-rules (uppercase everywhere, heading/body weight
+    # hierarchy) — unconditional, every slide gets this, see
+    # _TYPOGRAPHY_GUARD_CSS for the full rationale.
+    if "</head>" in html:
+        html = html.replace("</head>", _TYPOGRAPHY_GUARD_CSS + "</head>", 1)
+    elif "</body>" in html:
+        html = html.replace("</body>", _TYPOGRAPHY_GUARD_CSS + "</body>", 1)
+    else:
+        html = html + _TYPOGRAPHY_GUARD_CSS
+
     # Inject the facts-block styles ONLY when the stack was rendered, so a
     # non-parsing body stays byte-identical to the legacy paragraph output.
     if facts_block:
@@ -1147,6 +1428,15 @@ def _fill_placeholders(
             html = html.replace("</body>", _FACTS_BLOCK_CSS + "</body>", 1)
         else:
             html = html + _FACTS_BLOCK_CSS
+
+    # Same pattern for the photo-headline-yellow-sub bar-items body split.
+    if bar_items_block:
+        if "</head>" in html:
+            html = html.replace("</head>", _BAR_ITEMS_BLOCK_CSS + "</head>", 1)
+        elif "</body>" in html:
+            html = html.replace("</body>", _BAR_ITEMS_BLOCK_CSS + "</body>", 1)
+        else:
+            html = html + _BAR_ITEMS_BLOCK_CSS
 
     return html
 
@@ -1208,12 +1498,14 @@ async def compose_carousel(
                         logger.warning("slide %d hero download failed url=%s", plan.index, url)
 
             skeleton = _extract_skeleton(plan.family)
+            _check_body_font_size_floor(skeleton, plan.family)
             html = _normalize_skeleton(skeleton)
             if plan.expect_hero and hero_filename:
                 html = _hero_bg_to_img(html, hero_filename)
             html = _fill_placeholders(
                 html, plan.slide, hero_filename=hero_filename,
                 cover_family=(plan.family == "cover-photo"),
+                family=plan.family,
             )
             html = _apply_levers_to_html(html, plan.slide)  # designer-loop levers
 
@@ -1265,6 +1557,7 @@ async def materialize_slide_html(
     expect_hero = bool(slide.get("is_hero_image")) or index == 1
 
     skeleton = _extract_skeleton(family)
+    _check_body_font_size_floor(skeleton, family)
     html = _normalize_skeleton(skeleton)
     if expect_hero and hero_filename:
         html = _hero_bg_to_img(html, hero_filename)
@@ -1281,7 +1574,8 @@ async def materialize_slide_html(
             flags=re.DOTALL,
         )
     html = _fill_placeholders(
-        html, slide, hero_filename=hero_filename, cover_family=(family == "cover-photo")
+        html, slide, hero_filename=hero_filename, cover_family=(family == "cover-photo"),
+        family=family,
     )
     html = _apply_levers_to_html(html, slide)
 

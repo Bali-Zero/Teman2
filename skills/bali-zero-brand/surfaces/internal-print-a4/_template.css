@@ -33,7 +33,7 @@ html, body {
 /* ========== COLOR TOKENS — bali-zero-brand constitution Article 2 ========== */
 :root {
   /* Brand-cortex official tokens */
-  --bz-bg-dark: #2C2F38;          /* color.bg.antracite */
+  --bz-bg-dark: #373D42;          /* color.bg.antracite */
   --bz-bg-darker: #000000;        /* color.bg.black */
   --bz-text-light: #FFFFFF;       /* color.text.white */
   --bz-text-muted: #9CA3AF;       /* color.text.muted (sources, captions) */

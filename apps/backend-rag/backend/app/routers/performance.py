@@ -6,8 +6,10 @@ Exposes PerformanceMonitor and cache management via REST API endpoints
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from backend.app.dependencies import get_current_user
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.services.misc.performance_optimizer import (
     embedding_cache,
     perf_monitor,
@@ -17,6 +19,17 @@ from backend.services.misc.performance_optimizer import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/performance", tags=["performance"])
+
+
+def _require_cache_admin(user: dict[str, Any]) -> None:
+    """Gate cache-clearing endpoints to admins. Raises 403 otherwise.
+
+    These endpoints clear shared embedding/search caches for the whole
+    process, so an authenticated team member is not a sufficient
+    principal (Case OS R3).
+    """
+    if not is_crm_admin(user):
+        raise HTTPException(status_code=403, detail="admin required")
 
 
 @router.get("/metrics")
@@ -31,8 +44,11 @@ async def get_performance_metrics() -> dict[str, Any]:
 
 
 @router.post("/clear-cache")
-async def clear_caches() -> dict[str, Any]:
+async def clear_caches(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Clear all caches"""
+    _require_cache_admin(current_user)
     try:
         await embedding_cache.clear()
         await search_cache.clear()
@@ -43,8 +59,11 @@ async def clear_caches() -> dict[str, Any]:
 
 
 @router.post("/clear-cache/embedding")
-async def clear_embedding_cache() -> dict[str, Any]:
+async def clear_embedding_cache(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Clear embedding cache only"""
+    _require_cache_admin(current_user)
     try:
         await embedding_cache.clear()
         return {"success": True, "status": "embedding_cache_cleared"}
@@ -54,8 +73,11 @@ async def clear_embedding_cache() -> dict[str, Any]:
 
 
 @router.post("/clear-cache/search")
-async def clear_search_cache() -> dict[str, Any]:
+async def clear_search_cache(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Clear search cache only"""
+    _require_cache_admin(current_user)
     try:
         await search_cache.clear()
         return {"success": True, "status": "search_cache_cleared"}

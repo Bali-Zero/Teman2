@@ -75,12 +75,8 @@ describe("/codex PIN gate", () => {
 });
 
 describe("/codex door alert (guilt + innocence)", () => {
-  // Typed params so mock.calls[N] is [string, RequestInit] (not the empty tuple TS
-  // infers from a zero-arg impl) — lets the call-site destructuring type-check without
-  // an unsafe []→[string, RequestInit] cast.
   const fetchMock = vi.fn(
-    async (_url: string, _init: RequestInit) =>
-      new Response('{"messages":[{"id":"x"}]}', { status: 200 }),
+    async () => new Response('{"messages":[{"id":"x"}]}', { status: 200 }),
   );
 
   beforeEach(() => {
@@ -104,7 +100,10 @@ describe("/codex door alert (guilt + innocence)", () => {
     );
     expect(res.status).toBe(303);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
     expect(url).toContain("graph.facebook.com");
     const body = JSON.parse(String(init.body));
     expect(body.text.body).toContain("ENTRATO");
@@ -115,9 +114,11 @@ describe("/codex door alert (guilt + innocence)", () => {
     const res = await POST(postRequest("123", { "x-vercel-ip-country": "IT" }));
     expect(res.status).toBe(401);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const body = JSON.parse(
-      String((fetchMock.mock.calls[0] as [string, RequestInit])[1].body),
-    );
+    const [, init] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    const body = JSON.parse(String(init.body));
     expect(body.text.body).toContain("sbagliato");
   });
 

@@ -456,7 +456,7 @@ class TestPublishStagingItem:
     async def test_not_found(self) -> None:
         from fastapi import HTTPException
 
-        from backend.app.routers.intel_scraper import publish_staging_item
+        from backend.app.routers.intel_scraper import publish_staging_item_internal
 
         with (
             patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
@@ -466,14 +466,14 @@ class TestPublishStagingItem:
             mock_metric.labels.return_value.inc = MagicMock()
 
             with pytest.raises(HTTPException) as exc_info:
-                await publish_staging_item(type="news", item_id="nonexistent")
+                await publish_staging_item_internal("news", "nonexistent", actor="test")
             assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
     async def test_qdrant_failure(self) -> None:
         from fastapi import HTTPException
 
-        from backend.app.routers.intel_scraper import publish_staging_item
+        from backend.app.routers.intel_scraper import publish_staging_item_internal
 
         with (
             patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
@@ -491,7 +491,7 @@ class TestPublishStagingItem:
             mock_metric.labels.return_value.inc = MagicMock()
 
             with pytest.raises(HTTPException) as exc_info:
-                await publish_staging_item(type="news", item_id="item-1")
+                await publish_staging_item_internal("news", "item-1", actor="test")
             assert exc_info.value.status_code == 500
 
 

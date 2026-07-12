@@ -20,9 +20,19 @@ Ledger format (documented in the ledger's own header):
 
     - opened YYYY-MM-DD | artifact | missing arming step | owner (me|operator[<category>]) | proof-of-armed
 
-Entries live as markdown list items BEFORE a line starting with `## closed`; closed
-entries (after that heading, starting with `- closed `) are proof-of-armed history and
-are never read by this script.
+The parser also accepts "- open YYYY-MM-DD" (dropped "-ed") — a verb-tense drift found
+live in the real ledger that a bare "- opened " prefix check silently discarded as an
+unrelated list item instead of parsing it as debt.
+
+Entries are recognized ANYWHERE in the file by their own "- opened "/"- open " + date
+prefix — never gated by position relative to a `## closed` heading. `- closed ` lines
+(proof-of-armed history) are excluded by that same prefix check regardless of where
+they live, so no positional cutoff is needed to keep them out. This matters in
+practice: a strict "stop scanning at the first `## closed` heading" cutoff was found
+2026-07-11 to silently swallow 14 real open-debt lines that had been appended BELOW
+that heading over several sessions (mixed in with genuine closed history) — a
+positional guard is itself a family #3 under-match the moment reality stops matching
+the assumed document shape.
 
 PHANTOM-OPERATOR rule (Zero, 2026-07-06: "io sono te — non c'è nessun operatore"):
 sessions ARE the operator for all repo/infra work. An owner may say `operator` ONLY
@@ -63,8 +73,12 @@ from typing import Any, Dict, List, Optional, Sequence
 # in every report header so nobody mistakes it for hour-precision).
 OVERDUE_AGE_DAYS = 2
 
-OPENED_RE = re.compile(r"-\s*opened\s+(\d{4}-\d{2}-\d{2})")
-CLOSED_HEADING_PREFIX = "## closed"
+# Tolerates the 'opened'/'open' verb-tense drift seen in the real ledger (14 lines
+# written "- open YYYY-MM-DD" instead of "- opened YYYY-MM-DD") — a bare-prefix
+# entry-start check silently dropped every one of them (family #3 under-match: the
+# guard watched one literal spelling and let the real debt through unclassified).
+OPENED_RE = re.compile(r"-\s*open(?:ed)?\s+(\d{4}-\d{2}-\d{2})")
+ENTRY_START_RE = re.compile(r"^-\s*open(?:ed)?\s+\d{4}-\d{2}-\d{2}")
 
 CLASS_MALFORMED = "MALFORMED"
 CLASS_FIREBREAK = "FIREBREAK"
@@ -143,6 +157,54 @@ def _safe_get(parts: Sequence[str], idx: int) -> str:
         return ""
 
 
+def _split_pipe_fields(raw: str) -> List[str]:
+    """Split a raw ledger line on top-level '|' separators, ignoring '|' inside
+    backtick-quoted spans (shell commands, regex alternations).
+
+    A naive raw.split("|") breaks the moment the free-text body quotes a shell pipe
+    or a regex alternation in backticks — e.g. `launchctl list \\| grep -E
+    "canva-(oauth|renderer|apply)"` — because every '|' inside that quoted span
+    counts as a real field separator too. Falls back to a naive split when backticks
+    are unbalanced (odd count): an unbalanced backtick means the source markdown
+    itself is malformed in a way this heuristic cannot reason about, and treating the
+    rest of the line as one giant quoted span would be a worse guess than the
+    pre-existing naive behavior.
+    """
+    if raw.count("`") % 2 != 0:
+        return raw.split("|")
+    fields: List[str] = []
+    current: List[str] = []
+    in_backtick = False
+    for ch in raw:
+        if ch == "`":
+            in_backtick = not in_backtick
+            current.append(ch)
+        elif ch == "|" and not in_backtick:
+            fields.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    fields.append("".join(current))
+    return fields
+
+
+def _strip_trailing_empty_fields(parts: Sequence[str]) -> List[str]:
+    """Drop EMPTY trailing fields produced by a stray trailing '|' on the line.
+
+    A ledger line ending in '... proof text |' splits into 6 fields whose last
+    is '' — back-anchoring then reads proof='' and owner=<the real proof>,
+    silently re-bucketing the entry (found live 2026-07-13: the 'secrets audit
+    Pro enrichment' entry, whose owner operator[secret] landed in TECH-DEBT
+    because the anchor shifted one slot left). Guarded by len > 5 so a
+    well-formed 5-field entry whose PROOF is genuinely empty ('... | owner |')
+    is never eaten — only surplus trailing residue is.
+    """
+    core = list(parts)
+    while len(core) > 5 and not core[-1].strip():
+        core.pop()
+    return core
+
+
 def _extract_missing_step(parts: Sequence[str]) -> str:
     """Best-effort recovery of the 'missing arming step' field.
 
@@ -158,6 +220,33 @@ def _extract_missing_step(parts: Sequence[str]) -> str:
     return _safe_get(parts, 2)
 
 
+# A session appends a progress note to a live entry by writing another
+# '| **UPDATE ...**' segment after the proof field — a legitimate growth pattern
+# found live in the real ledger (2026-07-11 audit). Back-anchoring owner/proof
+# (parts[-2]/parts[-1]) gets this wrong the moment it fires: the anchor shifts onto
+# the appended note instead of the real owner/proof. Detecting and stripping ONLY
+# this specific, narrowly-recognizable trailing shape (rather than guessing that
+# any >5-field entry grew at the tail) avoids mis-anchoring entries that instead
+# grew a genuine EXTRA field in the MIDDLE (date/artifact/missing-step/[note]/owner/
+# proof — found live too, 'codex-redteam MCP server' entry) where back-anchoring
+# from the outside-in was already correct.
+_TRAILING_UPDATE_NOTE_RE = re.compile(r"^\*\*\s*UPDATE", re.IGNORECASE)
+
+
+def _split_trailing_update_notes(parts: Sequence[str]) -> tuple[List[str], List[str]]:
+    """Peel off trailing '**UPDATE ...**' fields, returning (core, notes).
+
+    Only pops from the end, and only while there are still enough fields left for
+    the peeled result to remain a plausible >=4-field entry (date/artifact/owner/
+    proof at minimum) — never eats into the fields a normal entry needs.
+    """
+    core = list(parts)
+    notes: List[str] = []
+    while len(core) > 4 and _TRAILING_UPDATE_NOTE_RE.match(core[-1].strip()):
+        notes.insert(0, core.pop())
+    return core, notes
+
+
 def _truncate(text: str, limit: int = 120) -> str:
     if len(text) <= limit:
         return text
@@ -165,23 +254,26 @@ def _truncate(text: str, limit: int = 120) -> str:
 
 
 def extract_open_entries(ledger_text: str) -> List[str]:
-    """Return the raw (continuation-concatenated) text of every open-section entry.
+    """Return the raw (continuation-concatenated) text of every open-ledger entry.
 
-    Only lines BEFORE the first line starting with '## closed' are considered. Within
-    that open section, an entry starts at a line starting with '- opened '; any
-    following line that is non-blank, doesn't start a new '- ' list item, and isn't a
-    heading/blockquote is treated as a wrapped continuation and appended (space-joined)
-    to the current entry. A blank line, a new '- ' item, or a heading/blockquote line
-    ends the current entry.
+    The WHOLE file is scanned — no positional cutoff at a '## closed' heading. An
+    entry starts at a line matching ENTRY_START_RE ('- opened ' or '- open '
+    immediately followed by a YYYY-MM-DD date; both verb forms are accepted, and the
+    date anchor keeps unrelated '- open ...' prose from being mistaken for a ledger
+    entry). '- closed ' lines (proof-of-armed history) never match that prefix, so
+    they're excluded wherever they live — no section boundary needed to keep them
+    out. Any line following an entry-start that is non-blank, doesn't start a new
+    '- ' list item, and isn't a heading/blockquote is treated as a wrapped
+    continuation and appended (space-joined) to the current entry. A blank line, a
+    new '- ' item, or a heading/blockquote line ends the current entry.
+
+    A positional cutoff was tried and dropped 2026-07-11: it silently discarded 14
+    real open-debt lines that sessions had appended below the '## closed' heading
+    (mixed in with genuine closed history) — verified as the same under-match
+    disease (family #3) as the 'opened' vs 'open' spelling drift this same fix
+    addresses, just expressed structurally instead of lexically.
     """
     lines = ledger_text.splitlines()
-
-    cutoff = len(lines)
-    for i, line in enumerate(lines):
-        if line.strip().startswith(CLOSED_HEADING_PREFIX):
-            cutoff = i
-            break
-    open_lines = lines[:cutoff]
 
     entries: List[str] = []
     current: Optional[str] = None
@@ -192,9 +284,9 @@ def extract_open_entries(ledger_text: str) -> List[str]:
             entries.append(current)
         current = None
 
-    for line in open_lines:
+    for line in lines:
         stripped = line.strip()
-        if stripped.startswith("- opened "):
+        if ENTRY_START_RE.match(stripped):
             finalize()
             current = stripped
         elif stripped.startswith("- "):
@@ -224,14 +316,17 @@ def parse_entry(raw: str, now: date) -> Entry:
     else:
         reasons.append("no 'opened YYYY-MM-DD' date found")
 
-    parts = raw.split("|")
-    if len(parts) < 3:
-        reasons.append(f"only {len(parts)} pipe-segment(s) (need >= 3)")
+    all_parts = _strip_trailing_empty_fields(_split_pipe_fields(raw))
+    if len(all_parts) < 3:
+        reasons.append(f"only {len(all_parts)} pipe-segment(s) (need >= 3)")
+
+    parts, trailing_notes = _split_trailing_update_notes(all_parts)
 
     artifact = _safe_get(parts, 1)
-    owner = _safe_get(parts, -2)
-    proof = _safe_get(parts, -1)
     missing_step = _extract_missing_step(parts)
+    owner = _safe_get(parts, -2)
+    proof_core = _safe_get(parts, -1)
+    proof = "|".join([proof_core, *trailing_notes]).strip() if trailing_notes else proof_core
 
     age_days: Optional[int] = None
     overdue = False

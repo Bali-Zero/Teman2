@@ -3,6 +3,21 @@
 > **TRIGGER WORD: `KBLIREGEN`** — when Zero types it at session start, this file is the resume
 > command. Count drafts, probe Codex quota on the Pro, and resume (steps in "HOW TO RESUME" below).
 
+## STATUS 2026-07-13 — ✅ REGEN COMPLETE: 1559/1559 drafts, writer + reconcile both exited clean
+
+- Pro writer (`gpt-5.6-terra`, `~/kbli-regen`) finished 2026-07-13 00:16 Pro-clock:
+  **`writer done: ok=742 fail=0 skip=0`** (log `_terrarun.out`).
+- M5 reconcile loop pulled the last batch, audit CLEAN, **committed checkpoint (1559 drafts)**
+  at 00:23 and exited (`ALL 1559 drafts present — done`). Worktree has all 1559 in
+  `editorial_drafts/`. The Pro job dir `~/kbli-regen` is now DISPOSABLE (all content banked
+  on the branch) — reap it when convenient.
+- Remaining TODO shrinks to: **(2) bali-cap audit on the 6 late codes → (3) final independent
+  grading pass (generator≠grader) → (4) apply → (5) LOOP-3 ship → (6) push/PR** — see the
+  numbered list below.
+- Same-day companion work (separate lanes): app-fleet sync hardened (install-3mac content
+  probe + check-fleet.sh receptor + team installer zip in `~/Desktop/kbli-navigator-app`),
+  monorepo drift notice PR #2356. Native-app refresh stays POST-merge (PENDING-ARMS 154).
+
 ## STATUS 2026-07-12 — Pro REBOOTED overnight, job rebuilt at DURABLE path
 
 - The Pro rebooted ~23:16-23:31 on 07-11: `/tmp/kbli-regen` wiped (macOS clears /tmp on

@@ -34,6 +34,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from backend.app.core.config import settings
+from backend.app.dependencies import get_current_user
 from backend.llm.deepseek_client import DeepSeekAuthError, DeepSeekError
 from backend.services.article_composer import (
     APIError,
@@ -747,14 +748,39 @@ aiOptimization:
 />'''
 
 
-@router.post("/publish", response_model=PublishResponse)
-async def publish_article(request: PublishRequest) -> PublishResponse:
+def _require_publish_admin(user: dict[str, Any]) -> None:
+    """Gate publish-to-public-website to admins. Raises 403 otherwise.
+
+    This endpoint pushes MDX to the public site repo and triggers a Vercel
+    deploy — the same R3 effect as ``/api/intel/staging/publish``. Gating only
+    the staging path would leave this one as an unlocked back door.
     """
-    Publish an enriched article to the Bali Zero website.
+    from backend.app.utils.crm_utils import is_crm_admin
+
+    if not is_crm_admin(user):
+        raise HTTPException(status_code=403, detail="Publish requires admin")
+
+
+@router.post("/publish", response_model=PublishResponse)
+async def publish_article(
+    request: PublishRequest,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> PublishResponse:
+    """
+    Publish an enriched article to the Bali Zero website. Admin-only.
 
     Creates MDX file and optionally uploads cover image via GitHub API.
     Triggers Vercel auto-deploy.
+
+    Internal callers (the intel staging-publish path, itself admin-gated) must
+    use :func:`publish_article_internal` — they carry their own authorization.
     """
+    _require_publish_admin(current_user)
+    return await publish_article_internal(request)
+
+
+async def publish_article_internal(request: PublishRequest) -> PublishResponse:
+    """Publish implementation. Callers are responsible for authorization."""
     from backend.services.integrations.github_publisher import (
         GitHubPublisherError,
         github_publisher,

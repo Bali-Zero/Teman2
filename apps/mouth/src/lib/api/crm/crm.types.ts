@@ -310,6 +310,9 @@ export interface Client {
   assigned_to?: string;
   tax_consultant?: string | null;
   avatar_url?: string;
+  /** True when the client has an avatar the list omitted for size;
+   *  fetch the image from GET /api/crm/clients/{id}/avatar. */
+  has_avatar?: boolean;
   company_name?: string;
   first_contact_date?: string;
   last_interaction_date?: string;

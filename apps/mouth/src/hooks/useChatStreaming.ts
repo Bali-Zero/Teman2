@@ -62,6 +62,7 @@ export function useChatStreaming(
       currentController.abort();
       abortControllerRef.current = null;
     }
+    setIsStreaming(false);
   }, [isAbortedRef]);
 
   const sendStreamingMessage = useCallback(

@@ -26,11 +26,15 @@ Patterns flagged (each is a known test-reward-hack):
 Usage:
     python3 scripts/lint_test_reward_hacking.py <path> [<path> ...]
     python3 scripts/lint_test_reward_hacking.py            # defaults to staged test files
-Exit 0 = clean (or no test files). Exit 1 = at least one finding.
+Exit 0 = clean (or no test files). Exit 1 = at least one FAIL finding.
+Async note (W95): `async def` tests are scanned too; RH005 on async functions
+is WARN-mode (printed, non-blocking) while the measured backlog is triaged —
+set RH_ASYNC_STRICT=1 to promote async RH005 to fail. RH004 fails everywhere.
 """
 from __future__ import annotations
 
 import ast
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -48,6 +52,10 @@ class Finding:
     line: int
     code: str
     message: str
+    # "fail" flips the exit code; "warn" prints but does not block.
+    # Only async RH005 is "warn" today — a DECLARED firebreak while the
+    # measured backlog (211 findings on 2026-07-13) is triaged. See lint_source.
+    severity: str = "fail"
 
     def __str__(self) -> str:
         return f"{self.file}:{self.line}: {self.code} {self.message}"
@@ -86,7 +94,26 @@ def _raises_is_broad(call: ast.Call) -> bool:
     return any(isinstance(a, ast.Name) and a.id in _BROAD_EXC for a in call.args)
 
 
-def _body_has_assertion(fn: ast.FunctionDef) -> bool:
+def _is_fixture(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """True if the function is decorated as a pytest fixture.
+
+    A fixture named `test_client` is a legitimate neighbour of the `test_*`
+    naming rule, not a test: it MUST NOT be required to assert. Without this,
+    RH005 fires on it — an over-match in the guard itself (family #3).
+
+    Matches `@pytest.fixture`, `@fixture`, `@pytest.fixture(...)`,
+    `@pytest_asyncio.fixture`, and `@pytest.fixture(scope=...)` alike.
+    """
+    for dec in fn.decorator_list:
+        target = dec.func if isinstance(dec, ast.Call) else dec
+        if isinstance(target, ast.Attribute) and target.attr == "fixture":
+            return True
+        if isinstance(target, ast.Name) and target.id == "fixture":
+            return True
+    return False
+
+
+def _body_has_assertion(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     """True if the test body contains an assert, a self.assert*, or pytest.raises."""
     for node in ast.walk(fn):
         if isinstance(node, ast.Assert):
@@ -104,7 +131,7 @@ def _body_has_assertion(fn: ast.FunctionDef) -> bool:
     return False
 
 
-def _has_early_sys_exit(fn: ast.FunctionDef) -> bool:
+def _has_early_sys_exit(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     """sys.exit(0) / exit(0) anywhere in a test fn (bail before the real assert)."""
     for node in ast.walk(fn):
         if isinstance(node, ast.Call):
@@ -117,7 +144,9 @@ def _has_early_sys_exit(fn: ast.FunctionDef) -> bool:
     return False
 
 
-def lint_source(path: Path, source: str) -> list[Finding]:
+def lint_source(
+    path: Path, source: str, *, async_rh005_strict: bool = False
+) -> list[Finding]:
     findings: list[Finding] = []
     try:
         tree = ast.parse(source, filename=str(path))
@@ -146,17 +175,41 @@ def lint_source(path: Path, source: str) -> list[Finding]:
             )
 
     # Function-level checks (only on test_* functions).
+    #
+    # A @pytest.fixture named `test_client` is NOT a test — it has no business
+    # asserting anything. Filtering on the `test_` prefix alone is the classic
+    # over-match (cicatrix family #3): it fires on a legitimate neighbour.
+    #
+    # ASYNC BRANCH (W95, activated 2026-07-13): `async def` tests ARE scanned
+    # now — the previous FunctionDef-only walk was blind to the MAJORITY of
+    # this repo's tests (under-match, family #3). RH004 on async fails like
+    # sync. RH005 on async is a DECLARED WARN-MODE FIREBREAK: 211 pre-existing
+    # findings across 88 files (0 RH004) measured live 2026-07-13 — failing
+    # them all at once would block every commit touching those files. Warnings
+    # print (visible, never silent — W82) but don't flip the exit code until
+    # the backlog is triaged; RH_ASYNC_STRICT=1 (env, read in main()) or
+    # async_rh005_strict=True promotes them to fail. Ledger: PENDING-ARMS
+    # "anti-reward-hacking linter BLIND TO ASYNC" line tracks triaged-vs-residual.
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name.startswith("test_")
+            and not _is_fixture(node)
+        ):
+            is_async = isinstance(node, ast.AsyncFunctionDef)
             if _has_early_sys_exit(node):
                 findings.append(
                     Finding(rel, node.lineno, "RH004",
                             f"`sys.exit/exit` inside test `{node.name}` (bails before asserting)")
                 )
             if not _body_has_assertion(node):
+                rh005_severity = (
+                    "warn" if (is_async and not async_rh005_strict) else "fail"
+                )
                 findings.append(
                     Finding(rel, node.lineno, "RH005",
-                            f"test `{node.name}` asserts nothing (no assert / self.assert* / raises)")
+                            f"test `{node.name}` asserts nothing (no assert / self.assert* / raises)",
+                            severity=rh005_severity)
                 )
     return findings
 
@@ -228,6 +281,7 @@ def main(argv: list[str]) -> int:
             print("anti-reward-hacking: no staged test files — nothing to check.")
             return 0
 
+    strict = os.environ.get("RH_ASYNC_STRICT", "") == "1"
     all_findings: list[Finding] = []
     for path in targets:
         if not path.is_file():
@@ -235,18 +289,34 @@ def main(argv: list[str]) -> int:
         if not _is_test_file(path):
             continue
         try:
-            all_findings.extend(lint_source(path, path.read_text(encoding="utf-8")))
+            all_findings.extend(
+                lint_source(
+                    path,
+                    path.read_text(encoding="utf-8"),
+                    async_rh005_strict=strict,
+                )
+            )
         except OSError as e:
             print(f"anti-reward-hacking: cannot read {path}: {e}", file=sys.stderr)
 
-    if all_findings:
+    fails = [f for f in all_findings if f.severity == "fail"]
+    warns = [f for f in all_findings if f.severity == "warn"]
+
+    if warns:
+        print("anti-reward-hacking: WARN (non-blocking, async RH005 firebreak — "
+              "backlog tracked in PENDING-ARMS; RH_ASYNC_STRICT=1 to enforce):")
+        for f in warns:
+            print(f"  WARN {f}")
+        print(f"  {len(warns)} async warn(s) — add the missing assertion when touching these tests.")
+    if fails:
         print("anti-reward-hacking: test-cheating patterns detected "
               "(first-level heuristic — see file docstring on evasion):")
-        for f in all_findings:
+        for f in fails:
             print(f"  {f}")
-        print(f"\n{len(all_findings)} finding(s). Fix the test(s) or justify in review.")
+        print(f"\n{len(fails)} finding(s). Fix the test(s) or justify in review.")
         return 1
-    print(f"anti-reward-hacking: clean ({len(targets)} test file(s) checked).")
+    print(f"anti-reward-hacking: clean ({len(targets)} test file(s) checked"
+          f"{f', {len(warns)} async warn(s)' if warns else ''}).")
     return 0
 
 

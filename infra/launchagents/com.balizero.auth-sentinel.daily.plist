@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.auth-sentinel.daily</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/balizero/.nuzantara-cron/auth_sentinel_cron.sh</string>
+    </array>
+    <!-- Cron puro: StartInterval, NO KeepAlive (scar #7 daemon-vs-cron).
+         21600s = ogni 6h → una credenziale morta viene scoperta entro 6h,
+         non "al prossimo cron che ci sbatte contro". -->
+    <key>StartInterval</key>
+    <integer>21600</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- Log FUORI da ~/Desktop (W84: launchd perde TCC su Desktop). -->
+    <key>StandardOutPath</key>
+    <string>/Users/balizero/.local/state/auth-sentinel/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/balizero/.local/state/auth-sentinel/launchd.err.log</string>
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

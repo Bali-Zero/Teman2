@@ -53,8 +53,6 @@ import logging
 import os
 import subprocess
 import sys
-import urllib.parse
-import urllib.request
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -170,6 +168,12 @@ def _save_cooldown(state: dict[str, float]) -> None:
 
 
 def _send_telegram(text: str) -> bool:
+    """Route via the tg_notify gateway (2026-07-11 migration, cohort-5).
+
+    p0 tier: this alarm only fires once liveness+grace+cooldown+business-hours
+    have ALL confirmed a paralyzed bridge (see module docstring) — actionable
+    now by construction, not a candidate for digest.
+    """
     if _DRY_RUN:
         print(f"[DRY RUN] Telegram: {text}")
         return True
@@ -177,13 +181,18 @@ def _send_telegram(text: str) -> bool:
     if not token:
         logger.warning("[wa_liveness] TELEGRAM_BOT_TOKEN not found; cannot alert")
         return False
+    gateway = Path(__file__).resolve().parent / "tg_notify.py"
+    if not gateway.is_file():
+        gateway = Path(os.path.expanduser("~/Desktop/nuzantara/scripts/tg_notify.py"))
     try:
-        data = urllib.parse.urlencode(
-            {"chat_id": TELEGRAM_OWNER_CHAT_ID, "text": text, "parse_mode": "HTML"}
-        ).encode()
-        urllib.request.urlopen(
-            f"https://api.telegram.org/bot{token}/sendMessage", data, timeout=10
+        proc = subprocess.run(
+            [sys.executable, str(gateway), "--tier", "p0",
+             "--source", "wa-mirror-bridge-liveness", "--", text],
+            capture_output=True, text=True, timeout=30,
         )
+        if proc.returncode != 0:
+            logger.warning("[wa_liveness] tg_notify exit=%s: %s", proc.returncode, proc.stderr[:200])
+            return False
         return True
     except Exception as exc:  # noqa: BLE001
         logger.warning("[wa_liveness] telegram send failed: %s", exc)

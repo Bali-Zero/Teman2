@@ -14,6 +14,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from backend.channels.base import ChannelMessage, ChannelResponse
+from backend.conversation._history import trim_self_echo
 from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -81,8 +82,11 @@ class ConversationEngine:
             # 1. Load conversation context
             context = await self._load_context(message.session_id)
 
-            # 2. Build conversation history
-            conversation_history = context.get("history", [])
+            # 2. Build conversation history. The router persists the inbound
+            # row BEFORE this point (audit-first), so on a Redis cache miss
+            # the DB fallback includes the CURRENT message — trim it or the
+            # LLM sees it twice (history + query).
+            conversation_history = trim_self_echo(context.get("history", []), message.text)
 
             # 2.3. Cross-channel memory: inject thread history from other channels
             thread_id = message.metadata.get("thread_id")

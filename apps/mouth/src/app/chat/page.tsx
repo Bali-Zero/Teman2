@@ -13,7 +13,7 @@ import {
   ChatMessageListVirtualized,
   ChatInputBar,
   ImageGenModal,
-  Toast
+  Toast,
 } from "@/components/chat";
 
 export default function ChatPage() {
@@ -46,8 +46,9 @@ export default function ChatPage() {
     handleAvatarChange,
     toggleClock,
     showToast,
+    handleStop,
     setShowUserMenu,
-    setImageModalOpen
+    setImageModalOpen,
   } = useChatPage();
 
   // 2. Gestione dello stato di caricamento iniziale (Blocking UI)
@@ -62,7 +63,6 @@ export default function ChatPage() {
   // 3. Rendering Puramente Dichiarativo
   return (
     <div className="flex h-screen bg-[var(--background)] text-white overflow-hidden">
-      
       <ChatSidebar
         isOpen={sidebar.sidebarOpen}
         onClose={sidebar.closeSidebar}
@@ -83,7 +83,7 @@ export default function ChatPage() {
           isClockLoading={teamStatus.isLoading}
           onToggleClock={toggleClock}
           messagesCount={displayMessages.length}
-          isWsConnected={true} 
+          isWsConnected={true}
           userName={userName}
           userAvatar={userAvatar}
           showUserMenu={showUserMenu}
@@ -101,9 +101,9 @@ export default function ChatPage() {
           thinkingElapsedTime={0} // Deleghiamo il processing interno
           userAvatar={userAvatar}
           messagesEndRef={messagesEndRef}
-          onFollowUpClick={(q) => { 
-            chatInput.setInput(q); 
-            handleSend(); 
+          onFollowUpClick={(q) => {
+            chatInput.setInput(q);
+            handleSend();
           }}
           onSetInput={chatInput.setInput}
           onOpenSearchDocs={sidebar.openSearchDocs}
@@ -114,8 +114,11 @@ export default function ChatPage() {
           setInput={chatInput.setInput}
           isLoading={isPending}
           showImagePrompt={chatInput.imageGenPrompt !== ""}
-          setShowImagePrompt={(val) => chatInput.setImageGenPrompt(val ? " " : "")}
+          setShowImagePrompt={(val) =>
+            chatInput.setImageGenPrompt(val ? " " : "")
+          }
           onSend={handleSend}
+          onStop={handleStop}
           onImageGenerate={() => setImageModalOpen(true)}
           showAttachMenu={showAttachMenu}
           setShowAttachMenu={setShowAttachMenu}

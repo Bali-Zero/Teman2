@@ -9,6 +9,7 @@ Functions:
 - release_lease_transient(conn, ...) — revert status='drafts_imaged_checked'
 - release_lease_permanent(conn, ..., status=...) — set terminal status
 - reset_stale_leases(conn, stale_after_minutes) — watchdog recovery
+- requeue_draft_for_rerender(conn, draft_id) — official re-render verb (DB leg)
 """
 
 from __future__ import annotations
@@ -64,6 +65,49 @@ async def fetch_pending_html_draft_ids(conn: asyncpg.Connection, limit: int = 3)
         limit,
     )
     return [r["id"] for r in rows]
+
+
+async def requeue_draft_for_rerender(conn: asyncpg.Connection, draft_id: UUID | str) -> bool:
+    """Official re-render verb (DB leg): put a finished draft back into the HTML lane.
+
+    The HTML-lane fetch gates on `drive_url IS NULL`, so once a draft has been
+    rendered+uploaded a fixed brief/layout can never re-enter the pipeline —
+    the row EXISTS but its refreshed content is unreachable (W82 exist-not-content).
+    This resets exactly the two fields that gate re-entry.
+
+    Guards:
+    - status whitelist: only drafts that already passed image-check may re-enter
+      ('rendered', 'render_failed', or a drive_url-starved 'drafts_imaged_checked');
+      a pre-image draft must never be jumped forward in the pipeline.
+    - CAS on `lease_owner IS NULL`: a draft mid-render is never yanked from
+      under its worker (same discipline as the stale-lease watchdog).
+    - `html_render_attempts` resets to 0: a re-render is a NEW retry budget —
+      without this, a draft that previously exhausted its attempts (or spent
+      some) re-enters with a burned circuit breaker and the first transient
+      error of the new cycle goes terminal (Codex review 2026-07-13).
+
+    Returns True when the draft re-entered the lane, False otherwise.
+    """
+    row = await conn.fetchrow(
+        """
+        UPDATE war_room_drafts
+           SET status = 'drafts_imaged_checked',
+               drive_url = NULL,
+               html_render_attempts = 0
+         WHERE id = $1
+           AND lease_owner IS NULL
+           AND status IN ('rendered', 'render_failed', 'drafts_imaged_checked')
+        RETURNING id
+        """,
+        draft_id,
+    )
+    if row is None:
+        logger.warning(
+            "requeue_draft_for_rerender: draft %s NOT requeued (leased or wrong status)", draft_id
+        )
+        return False
+    logger.info("requeue_draft_for_rerender: draft %s back in HTML lane", draft_id)
+    return True
 
 
 async def acquire_lease_and_fetch(
