@@ -165,6 +165,23 @@ organs:
       path: ~/.organism/last_seen/auth-sentinel.json
       timestamp_field: ts
       status_field: status
+  - id: pro.modus_autoloop_nightly
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 108000
+    owner_module: infra/launchagents/modus_autoloop_cron.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.balizero.modus.autoloop.nightly
+    severity_on_silence: warning
+    cicatrix_refs:
+      - 2026-07-12-modus-autoloop-append-only-reprocess
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/modus-autoloop.json
+      timestamp_field: ts
+      status_field: status
   - id: pro.fly_restart_loop_detector
     runtime: pro_launchd
     type: cron
