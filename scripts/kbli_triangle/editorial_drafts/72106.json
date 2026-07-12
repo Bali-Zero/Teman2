@@ -1,0 +1,23 @@
+{
+  "code": "72106",
+  "editorial": {
+    "headline": "Nuclear R&D: Nationally Open, Conditionally Registrable in Bali",
+    "standfirst": "A systematic nuclear-technology R&D activity with 100% national PMA openness—but a scope-sensitive Bali registration route.",
+    "body": "KBLI 72106 is for systematic, ongoing research and development connected to the use of nuclear technology, including research and development for the use of ionising radiation sources. It is a research activity, defined by the regularity and method of the work as much as by its technical subject. The stated scope excludes research-and-development service businesses connected with electric-power installations. For founders, that boundary matters: the registration should describe the nuclear-technology research and development actually undertaken, rather than allowing the code’s broad scientific language to carry work it does not state.\n\nRegistration is open to small, medium and large businesses. At the national level, the activity is open to foreign investment, with a foreign-ownership ceiling of 100%. That is a clear national position; it does not turn the technical scope into a general authorisation for work beyond the stated activity. The company’s operating description still has to stay within systematic research and development related to nuclear technology and, where relevant, the stated use of ionising-radiation sources. The cited national instruments provide the source for that opening, while the scope remains the measure of what the activity is.\n\nBali demands a more granular reading. This activity is not marked as categorically blocked for PMA registration there. Yet Bali’s status depends on scope because OSS assigns low risk at the large-business scale to some scopes and a higher risk to others. Under the Bali rule, low- and medium-low-risk KBLI activities are blocked for PMA on an island-wide, permanent basis. Accordingly, a PMA applicant can register this activity in Bali only by declaring the higher-risk scope; the exact activity must be verified in live OSS. That is not a Bali-side foreign-ownership cap. It is a scope-and-risk condition on whether PMA registration is available at all.\n\nThe practical question is therefore not whether national foreign ownership is open—it is—but whether the particular declared Bali scope lands inside the higher-risk route. Live OSS verification for the exact activity is expressly called for, and that caution is material rather than merely procedural. A national ownership ceiling and a Bali risk filter answer different questions: one concerns the permitted foreign stake; the other determines whether PMA registration is available in Bali.",
+    "pullQuote": "A national ownership ceiling and a Bali risk filter answer different questions: one concerns the permitted foreign stake; the other determines whether PMA registration is available in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}
