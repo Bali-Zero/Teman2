@@ -1,0 +1,27 @@
+{
+  "code": "93125",
+  "editorial": {
+    "headline": "Boxing Clubs: Nationally Open, Closed to PMA Registration in Bali",
+    "standfirst": "KBLI 93125 covers boxing clubs at every competitive level—open to foreign ownership nationally, but barred from PT PMA registration in Bali.",
+    "body": "A boxing club is more than a venue with a ring. This activity covers professional, semi-professional and amateur boxing organisations or clubs that give members the opportunity to take part in sport. It includes clubs whether or not they provide their own place and facilities for training or competition. The essential character is membership-based sporting participation: a club structure built around boxing, rather than a claim about a particular premises or format.\n\nThe available registration scales are Mikro and Kecil. That framing matters because it keeps the activity close to the operational reality of smaller boxing-club organisations. Nationally, the PMA position is clear: the activity is open, with a maximum foreign ownership ceiling of 100%. In the national framework, foreign investment is therefore not limited by a reduced ownership cap for this activity.\n\nBali presents a materially different registration outcome. A foreigner cannot register this activity in Bali today through a PT PMA. The barrier is not a national ownership restriction; it is the OSS-RBA scale gate. For this activity, the OSS record has no Usaha Besar row, listing only Mikro, Kecil and Menengah. A PT PMA is treated as Usaha Besar under the Omnibus Law framework, so it is barred by that scale-gating mechanism under Article 127 of Government Regulation 28/2025.\n\nThat conclusion sits within a stricter provincial setting as well. Bali permanently blocks PMA across low and medium-low risk KBLI activities on an island-wide basis under the Governor’s letter cited in the record. For a founder, the clean reading is straightforward: national openness and a 100% foreign-ownership ceiling do not create a usable PT PMA registration route in Bali when the applicable OSS scale structure excludes Usaha Besar. The activity remains nationally open, yet locally unavailable to PMA registration in Bali.",
+    "pullQuote": "National openness does not create a usable PT PMA registration route in Bali when the OSS scale structure excludes Usaha Besar.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Registration scales",
+        "value": "Mikro, Kecil"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}

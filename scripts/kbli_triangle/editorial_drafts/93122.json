@@ -1,0 +1,27 @@
+{
+  "code": "93122",
+  "editorial": {
+    "headline": "Foreign-Open Nationally, but Not Registrable in Bali",
+    "standfirst": "A golf-club activity can be wholly foreign-owned nationally, yet Bali’s OSS scale gate keeps a PT PMA from registering it there.",
+    "body": "For a foreign investor, a golf club cannot be registered in Bali today. That is the central practical fact, even though this activity is nationally open to foreign investment with a 100% ownership ceiling. National openness is real, but it does not make Bali registration available for a foreign-owned golf club. The distinction is not cosmetic: it determines whether a proposed club can enter the registration system on the island at all. Anyone assessing the activity should start with that jurisdictional divide, rather than treating the national ceiling as a Bali outcome.\n\nThe activity is broader than a particular course or clubhouse. It covers professional, semi-professional and amateur golf organisations or clubs that give members the opportunity to take part in sporting activity. A club may provide the venue and facilities for the sport, or it may operate without providing them. Membership and participation are the defining thread: the club exists to enable involvement in golf, whether or not it also places physical facilities at members’ disposal. That scope accommodates differing club structures without reducing the activity to a single physical setting.\n\nNationally, the record opens the activity to Micro and Small scales. The named national investment source is Perpres 10/2021 and 49/2021, and the national position allows foreign ownership of up to 100%. Those are distinct parts of the picture and need to be read together. The available scale rows describe the operating scope presented for the activity, while the ownership ceiling states the national PMA position. One does not displace the other; both shape how the activity can be understood in practice.\n\nBali’s restriction is explicit. The OSS record contains no Large-scale business row for this activity; it contains only Micro, Small and Medium rows. A PT PMA is treated as Large by law, so the OSS-RBA scale gate bars the foreign-investment company from registering this activity in Bali. The province also maintains a permanent, island-wide block on PMA across all low and medium-low risk activities. For this activity, however, the record already gives a direct registration-level reason for the closure: the missing Large scale row. A founder should read the national 100% ceiling as a national investment position—not as an assurance that Bali will accept the PMA registration.",
+    "pullQuote": "National openness is real, but it does not make Bali registration available for a foreign-owned golf club.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Mikro"
+      },
+      {
+        "label": "Open scale",
+        "value": "Kecil"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}

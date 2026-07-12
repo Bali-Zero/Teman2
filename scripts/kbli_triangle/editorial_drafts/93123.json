@@ -1,0 +1,27 @@
+{
+  "code": "93123",
+  "editorial": {
+    "headline": "Swimming Clubs: Nationally Open, but Not PMA-Registrable in Bali",
+    "standfirst": "This code covers swimming clubs of every competitive level, yet Bali’s OSS scale gate prevents PT PMA registration despite national foreign-investment openness.",
+    "body": "A swimming club is not defined here by the ownership of a pool, nor by elite competition alone. The activity covers professional, semi-professional and amateur swimming organisations or clubs that give members the opportunity to take part in sport. A club may provide a venue and sporting facilities, but it may also operate without them. The essential character is organised member participation in swimming.\n\nThe registration scales specified for this activity are Mikro and Kecil. Nationally, the activity is TERBUKA to foreign investment, with a foreign-ownership ceiling of 100%. That is a clear national position: foreign investment is permitted at the stated ceiling. It does not alter the practical importance of the listed business scales, which frame this activity as one open to Micro and Small enterprises.\n\nBali is where the picture changes decisively. A foreigner cannot register this activity through a PT PMA in Bali at present. The record identifies no Usaha Besar row in OSS for the activity; the available rows are Mikro, Kecil and Menengah. Because a PT PMA is treated as Besar by law, the OSS-RBA scale gate bars its registration. The record marks this conclusion as verified under NB-3 on June 30, 2026. This is not a Bali-specific reduction of the national 100% foreign-ownership ceiling. It is a registration barrier arising from the absence of the required scale row.\n\nThe provincial setting is stricter still: Bali blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. For a founder, the distinction is worth keeping exact. National openness describes the foreign-investment position for the activity; it does not create a route around Bali’s OSS scale-gating outcome. The honest reading is therefore straightforward: the activity is nationally open to full foreign ownership, but a PT PMA cannot be registered for it in Bali under the recorded Bali position.",
+    "pullQuote": "National openness does not create a route around Bali’s OSS scale-gating outcome.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}

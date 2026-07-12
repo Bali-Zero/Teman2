@@ -1,0 +1,27 @@
+{
+  "code": "93126",
+  "editorial": {
+    "headline": "Martial Arts Clubs: Nationally Open, Barred to PMA Registration in Bali",
+    "standfirst": "KBLI 93126 covers professional, semi-professional and amateur martial-arts clubs; it is nationally open to 100% foreign ownership but barred from PMA registration in Bali.",
+    "body": "**For a foreign investor, the immediate Bali answer is no:** KBLI 93126 cannot be registered there through a PMA today, even though its national position is open. The activity permits foreign ownership up to 100%, with Perpres 10/2021 and 49/2021 cited as the PMA source. This creates a clear distinction between the national ownership position and the Bali registration outcome. Bali’s record marks the activity as blocked for PMA and assigns it the status `CHIUSO_PMA_NO_BESAR`. The point is not a change in what the club does; it is a constraint in the recorded registration treatment.\n\nAt its centre, the classification is the martial-arts club as an organisation. Its scope covers professional, semi-professional and amateur martial-arts organisations or clubs that give members an opportunity to participate in sporting activities. It does not require a dedicated sporting setting. A club may provide a place and facilities for sport, or may give members that opportunity without providing either. That makes facilities relevant to the possible operating form, but not a prerequisite for falling inside the stated scope. The definition instead holds on to the club’s role: creating the opportunity for its members to take part in sport.\n\nThe national scale entry is narrow and explicit: Mikro and Kecil are open to the activity. Those labels identify the scales supplied by this record; they do not erase the separate Bali treatment for a foreign-investment company. The national entry is therefore fully open on foreign ownership while still being specific about the scales it lists. A reader considering this activity needs both parts of the record in view: its permitted national ownership ceiling and its named open scales.\n\nThat is where Bali becomes decisive. The Bali reason says there is no Usaha Besar scale row in OSS for the activity; it records only Mikro, Kecil and Menengah. A PT PMA is stated to be Usaha Besar under Omnibus UU 6/2023. The stated consequence is that OSS-RBA scale-gating, under PP 28/2025 Pasal 127, bars its registration. The recorded verification is from June 2026. Separately, the Bali record notes a permanent, island-wide rule blocking PMA for all KBLI classified Low or Medium-Low risk, citing Gubernur letter B.27.000/642/PM/DPMPTSP. For this activity, the stated decisive barrier is the missing Usaha Besar OSS row: national foreign openness cannot overcome Bali’s PMA scale gate.",
+    "pullQuote": "National foreign openness cannot overcome Bali’s PMA scale gate.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}
