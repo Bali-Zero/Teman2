@@ -191,7 +191,7 @@ litellm>=1.92.0  # Updated 2026-04-25: Gemini 2.5 + new provider fixes + securit
 setuptools>=78.1.1
 
 # Structured logging
-structlog>=24.1.0
+structlog>=26.1.0
 
 # Monorepo workspace package: cell-core (DNA-recording — Genome, Experience,
 # Skill, Metabolic, HGT). Editable install; path is resolved relative to the

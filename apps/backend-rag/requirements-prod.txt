@@ -88,7 +88,7 @@ loguru>=0.7.2
 pytz>=2024.2
 packaging>=23.2,<26
 psutil>=5.9.0  # Required for app/metrics.py performance monitoring
-structlog>=25.5.0  # Security and feature updates
+structlog>=26.1.0  # Security and feature updates
 slowapi>=0.1.10  # Rate limiting for FastAPI
 
 # Observability
