@@ -1,0 +1,27 @@
+{
+  "code": "78200",
+  "editorial": {
+    "headline": "Temporary Staffing: Open Nationally, Blocked for PMA in Bali",
+    "standfirst": "This code puts the provider—not the client—in the employer’s seat; it is open nationally to full foreign ownership, but PMA registration in Bali is blocked.",
+    "body": "A foreign investor cannot register this activity as PMA in Bali today. That is the decisive local fact, even though the activity is nationally open to foreign investment with a 100% foreign-ownership ceiling. The Bali record attributes the block to an island-wide, permanent moratorium covering low and medium-low risk activities. For this activity, every scope at the large-enterprise scale is assessed by OSS as low or medium-low risk; the May 2026 moratorium therefore prevents PMA registration in Bali.\n\nAt its centre, this is a staffing-provider activity. The provider supplies workers to a client for a specified period, whether the client is temporarily replacing staff or adding personnel. The provider, rather than the client, is the formal employer of the individual workers it places, taking responsibility for payroll, tax, fiscal and other human-resources matters. The client remains responsible for supervising the temporary personnel. The boundary is equally clear: the provider does not supply direct supervisors for workers placed with the client.\n\nThe scope also includes human-resources management services for employers: organising people and personnel administration, maintaining worker employment records in connection with wages, taxes, finance and other resources, and supplying workers or labour. It includes the placement of babysitters and child carers when those workers are employed by the staffing provider. The commercial centre of gravity is therefore the provider’s employer and personnel-management role, even where people perform their day-to-day work for a client.\n\nThe activity is open to micro, small, medium and large enterprises. Nationally, its open status and 100% ceiling mean that the foreign stake may reach full ownership. But that national position should not be mistaken for permission in Bali. The Bali status is blocked by risk class, and the stated permanent, island-wide moratorium means a foreign-owned company cannot register this activity there today. The clear reading is national openness in principle, set against a local PMA registration bar in Bali.",
+    "pullQuote": "The clear reading is national openness in principle, set against a local PMA registration bar in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

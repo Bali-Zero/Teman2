@@ -1,0 +1,27 @@
+{
+  "code": "77510",
+  "editorial": {
+    "headline": "Vehicle-Rental Intermediation: Nationally Open, Bali Scope-Sensitive",
+    "standfirst": "This is an introductions-and-reservations business, open nationally to full foreign ownership but subject to a scope-and-risk test for PMA registration in Bali.",
+    "body": "At its core, this is a business of introductions rather than vehicles. It covers arranging the rental and leasing of cars, motorhomes and trailers by bringing clients together with service providers for a fee or commission. The intermediary is not required to supply the rental or lease itself. That distinction matters: the commercial value lies in arranging access and reservations, including car-rental reservation services, while income may also include advertising revenue.\n\nThe introduction can be made through a digital platform, but it need not be. Face-to-face contact, door-to-door activity, telephone and correspondence all fall within the described formats. Commission or fees may be received from either the client or the rental and leasing provider. The record specifically identifies non-exempt electronic-trade-system operators and intermediary-facility operators, whether established within Indonesian jurisdiction or established abroad while conducting electronic-commerce business in Indonesia. It also places the activity beyond those operators and makes it available at Mikro, Kecil, Menengah and Besar scales.\n\nFor foreign capital, the national position is direct. The activity is TERBUKA, and the 100% national foreign-ownership ceiling means a foreign stake may reach full ownership. The source cited for that position is Perpres 10/2021, 49/2021. National openness, however, is not the end of the analysis for a business intending to register in Bali.\n\nBali is not recorded as a blanket block for this activity, but its status depends on the declared scope. The province permanently blocks all Low and Medium-Low risk KBLI for PMA. At the Besar scale, OSS risk is low for some scopes and higher for others; PMA registration in Bali is possible only by declaring the higher-risk scope, such as PPMSE in a platform-trade declaration. The practical conclusion is precise rather than sweeping: the business is nationally open, while a Bali PMA filing must be matched to the exact activity and verified in live OSS before it is treated as registrable.",
+    "pullQuote": "National openness does not settle the Bali question: the declared scope and its OSS risk determine whether PMA registration can proceed.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "78102",
+  "editorial": {
+    "headline": "Overseas Worker Placement, With Bali’s Risk Line in View",
+    "standfirst": "This activity covers the placement and protection of Indonesian migrant workers abroad, with full national foreign ownership permitted and no Bali moratorium block recorded at large scale.",
+    "body": "This activity is the operating framework for connecting Indonesian migrant workers with employers overseas. Its scope is deliberately broad: providing information, searching for personnel, registering and selecting candidates, arranging their placement, and protecting workers once they are employed abroad across different business sectors. It also includes the provision of overseas executive personnel. The crucial distinction is structural: the workers placed through the business are not employees of the placement company itself.\n\nThe activity therefore sits at the point where recruitment, placement and worker protection meet. It encompasses both branch offices and head offices for worker-placement operations, recognising that this is not simply a referral function but an organised service with responsibilities extending from initial information through to the protection of Indonesian migrant workers working abroad. Its permitted business scales run from Mikro and Kecil through Menengah and Besar, giving the activity a defined place for operations of very different sizes.\n\nNationally, the foreign-investment position is clear. The activity is TERBUKA, with a foreign-ownership ceiling of 100%. In practical terms, the record permits full foreign ownership at the national level; it does not present a reduced foreign-stake cap. That national openness should be read alongside the activity’s actual scope: the enterprise is concerned with the placement and protection process, while the people it places remain employed by the overseas employer rather than by the placement business.\n\nBali’s position is also more precise than a blanket warning would suggest. The provincial moratorium permanently blocks PMA registration for all Low and Medium-Low risk activities island-wide. This activity is not recorded as blocked by that moratorium. The stated reason is that, at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, placing it outside the moratorium’s Low and Medium-Low risk trigger. Bali is therefore recorded as OK_or_HIGHER_RISK, rather than as a prohibited PMA registration. The practical reading is straightforward: national foreign openness remains intact, and the Bali record does not impose a moratorium block on the activity at the Besar scale.",
+    "pullQuote": "National foreign openness remains intact, and Bali’s record does not impose a moratorium block on the activity at the Besar scale.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

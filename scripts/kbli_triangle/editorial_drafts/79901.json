@@ -1,0 +1,27 @@
+{
+  "code": "79901",
+  "editorial": {
+    "headline": "Tourism Information: Open Nationally, Closed to PMA Registration in Bali",
+    "standfirst": "This activity supplies the information layer of travel—open nationally to full foreign ownership, yet unavailable for PT PMA registration in Bali.",
+    "body": "Tourism information services are the practical information layer around a visitor’s journey. The activity covers providing information on tourist attractions and facilities, tourism services, transport, and other information travellers need. That information may be distributed through print, electronic media, or other communications channels, including information on booking services, accommodation, food, flights, land transport, and sea transport.\n\nThe registration scope is deliberately limited to Micro, Small, and Medium business scales. It is therefore an activity built around making travel choices legible: helping travellers find the services, places, and transport options relevant to a trip, rather than operating those underlying services itself.\n\nAt national level, the position is open to foreign investment, with a foreign-ownership ceiling of 100%. In other words, the national framework permits full foreign ownership for this activity. That openness is real, but it is not the whole answer for a business intending to register in Bali.\n\nIn Bali, a foreigner cannot register this activity through a PT PMA. OSS has no Large Business scale row for it, and the record treats the activity as reserved for UMKM. Since a PT PMA is legally a Large Business, it has no registration route under that structure. The Bali record also cites a permanent, island-wide provincial block on PMA registration for all Low and Medium-Low risk KBLI activities. National openness and a 100% ceiling do not overcome a Bali registration structure that has no route for a PT PMA.",
+    "pullQuote": "National openness and a 100% ceiling do not overcome a Bali registration structure that has no route for a PT PMA.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}
