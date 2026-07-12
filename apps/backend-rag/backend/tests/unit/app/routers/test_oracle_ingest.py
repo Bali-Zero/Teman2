@@ -152,7 +152,9 @@ async def test_ingest_known_collection_uses_collection_manager_get_collection(mo
         documents=[DocumentChunk(content="some legal text here", metadata={"law_id": "X"})],
     )
 
-    response = await ingest_documents(request=request, service=service)  # type: ignore[arg-type]
+    response = await ingest_documents(
+        request=request, service=service, user={"role": "admin"}
+    )  # type: ignore[arg-type]
 
     assert response.success is True
     assert response.documents_ingested == 1
@@ -169,7 +171,9 @@ async def test_ingest_unknown_collection_reports_not_found_without_attributeerro
         documents=[DocumentChunk(content="some legal text here", metadata={"law_id": "X"})],
     )
 
-    response = await ingest_documents(request=request, service=service)  # type: ignore[arg-type]
+    response = await ingest_documents(
+        request=request, service=service, user={"role": "admin"}
+    )  # type: ignore[arg-type]
 
     assert response.success is False
     assert response.message == "Collection not found"
