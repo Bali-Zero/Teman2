@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.modus.autoloop.nightly</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/nuzantara/.nuzantara-cron/modus_autoloop_cron.sh</string>
+    </array>
+    <!-- Cron puro: StartCalendarInterval 03:00 WITA, NO KeepAlive (scar #7). -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <!-- Log FUORI da ~/Desktop (W84: launchd perde TCC su Desktop). -->
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/.local/state/modus-autoloop/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/.local/state/modus-autoloop/launchd.err.log</string>
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Kill switch DEFAULT OFF: the installer/operator flips this true.
+             The wrapper also reads launchctl-setenv, so this is the fallback. -->
+        <key>MODUS_AUTOLOOP_ENABLED</key>
+        <string>false</string>
+        <key>MODUS_AUTOLOOP_MAX</key>
+        <string>5</string>
+    </dict>
+</dict>
+</plist>
