@@ -31,6 +31,22 @@ def fresh_api_key_auth():
         return APIKeyAuth()
 
 
+@pytest.fixture
+def admin_api_key_auth():
+    """Create APIKeyAuth with an explicitly-declared admin key.
+
+    `zantara-secret-2024` stopped being admin-by-legacy-allowlist once it was
+    rotated + revoked in prod (2026-07-12, #2296) — role is now identity-only
+    (`API_KEY_ROLES`), never inferred from a key's spelling. Tests that need
+    an admin-role key use this fixture instead of assuming the plain
+    `api_key_auth` fixture's key carries admin.
+    """
+    with patch("backend.app.services.api_key_auth.settings") as mock_settings:
+        mock_settings.api_keys = "zantara-secret-2024,zantara-test-2024"
+        mock_settings.api_key_roles = "zantara-secret-2024:admin"
+        return APIKeyAuth()
+
+
 # ============================================================================
 # Tests for __init__
 # ============================================================================
@@ -43,9 +59,9 @@ def test_init_creates_valid_keys(api_key_auth):
     assert "zantara-test-2024" in api_key_auth.valid_keys
 
 
-def test_init_creates_admin_key(api_key_auth):
+def test_init_creates_admin_key(admin_api_key_auth):
     """Test initialization creates admin key with correct properties"""
-    admin_key = api_key_auth.valid_keys["zantara-secret-2024"]
+    admin_key = admin_api_key_auth.valid_keys["zantara-secret-2024"]
     assert admin_key["role"] == "admin"
     assert admin_key["permissions"] == ["*"]
     # created_at is dynamically generated, just verify it's a valid ISO format
@@ -57,7 +73,7 @@ def test_init_creates_admin_key(api_key_auth):
 def test_init_creates_test_key(api_key_auth):
     """Test initialization creates test key with correct properties"""
     test_key = api_key_auth.valid_keys["zantara-test-2024"]
-    # Role is determined by key name: "test" doesn't contain "admin" or "secret", so it's "user"
+    # Role is "user": zantara-test-2024 is not in API_KEY_ROLES nor the (empty) legacy allowlist
     assert test_key["role"] == "user"
     assert test_key["permissions"] == ["read"]
     # created_at is dynamically generated, just verify it's a valid ISO format
@@ -98,9 +114,9 @@ def test_init_logs_initialization(fresh_api_key_auth):
 # ============================================================================
 
 
-def test_validate_api_key_success_admin(api_key_auth):
+def test_validate_api_key_success_admin(admin_api_key_auth):
     """Test successful validation of admin API key"""
-    result = api_key_auth.validate_api_key("zantara-secret-2024")
+    result = admin_api_key_auth.validate_api_key("zantara-secret-2024")
 
     assert result is not None
     assert result["id"] == "api_key_zantara-"
@@ -118,7 +134,7 @@ def test_validate_api_key_success_test(api_key_auth):
 
     assert result is not None
     assert result["id"] == "api_key_zantara-"
-    # Role is "user" because key doesn't contain "admin" or "secret"
+    # Role is "user": not in API_KEY_ROLES nor the (empty) legacy allowlist
     assert result["email"] == "user@zantara.dev"
     assert result["name"] == "API User (user)"
     assert result["role"] == "user"
@@ -299,9 +315,9 @@ def test_is_valid_key_does_not_update_last_used(api_key_auth):
 # ============================================================================
 
 
-def test_get_key_info_admin_key(api_key_auth):
+def test_get_key_info_admin_key(admin_api_key_auth):
     """Test getting info for admin key"""
-    info = api_key_auth.get_key_info("zantara-secret-2024")
+    info = admin_api_key_auth.get_key_info("zantara-secret-2024")
 
     assert info is not None
     assert info["role"] == "admin"
@@ -316,7 +332,7 @@ def test_get_key_info_test_key(api_key_auth):
     info = api_key_auth.get_key_info("zantara-test-2024")
 
     assert info is not None
-    # Role is "user" because key doesn't contain "admin" or "secret"
+    # Role is "user": not in API_KEY_ROLES nor the (empty) legacy allowlist
     assert info["role"] == "user"
     assert info["permissions"] == ["read"]
     # created_at is dynamically generated, just verify it's a valid ISO format
@@ -746,14 +762,14 @@ def test_metadata_usage_count_increments(api_key_auth):
     assert result2["metadata"]["usage_count"] == 2
 
 
-def test_different_roles_have_different_permissions(api_key_auth):
+def test_different_roles_have_different_permissions(admin_api_key_auth):
     """Test that different roles have different permissions"""
-    admin_result = api_key_auth.validate_api_key("zantara-secret-2024")
-    test_result = api_key_auth.validate_api_key("zantara-test-2024")
+    admin_result = admin_api_key_auth.validate_api_key("zantara-secret-2024")
+    test_result = admin_api_key_auth.validate_api_key("zantara-test-2024")
 
     assert admin_result["permissions"] != test_result["permissions"]
     assert admin_result["role"] == "admin"
-    # Role is "user" because key doesn't contain "admin" or "secret"
+    # Role is "user" — not in API_KEY_ROLES and not in the (now-empty) legacy allowlist
     assert test_result["role"] == "user"
 
 

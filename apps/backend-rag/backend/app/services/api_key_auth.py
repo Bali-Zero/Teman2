@@ -19,18 +19,15 @@ class APIKeyAuth:
     Designed for immediate testing relief while coordinating with colleague's API Key service
     """
 
-    # Keys that were historically admin because their NAME contained "admin"/
-    # "secret" — before role was resolved by identity instead of by spelling.
-    # They are exposed (hardcoded as defaults in the public repo) and MUST be
-    # rotated (operator[secret]); they stay admin here ONLY so the deploy of
-    # this fix does not break the internal services that already send them
-    # (newsletter publisher, reactivation campaign, admin_practice_auto_create).
-    # After rotation + `API_KEY_ROLES` is set for the replacements, delete this.
-    #
-    # This is NOT substring inference: it is a closed, explicit, auditable set.
-    _LEGACY_ADMIN_KEYS: frozenset[str] = frozenset(
-        {"zantara-secret-2024", "admin-key-2024"},
-    )
+    # Historically, `zantara-secret-2024` / `admin-key-2024` were admin here as
+    # an exit-ramp for the identity-based role fix (#2290) — they were exposed
+    # public-repo defaults, kept admin only so deploying that fix wouldn't break
+    # services still sending them. Both keys were rotated + revoked in prod
+    # 2026-07-12 (#2296; verified live: 401 from the internet) and `API_KEY_ROLES`
+    # now carries their replacements. Nothing in prod depends on this allowlist
+    # anymore, so it is empty — role resolution stays identity-only (explicit
+    # `API_KEY_ROLES` map, never substring inference on the key's spelling).
+    _LEGACY_ADMIN_KEYS: frozenset[str] = frozenset()
 
     @staticmethod
     def _parse_role_map(raw: str | None) -> dict[str, str]:
