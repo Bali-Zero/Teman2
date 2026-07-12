@@ -1,0 +1,27 @@
+{
+  "code": "49214",
+  "editorial": {
+    "headline": "Rural Passenger Transport, Within the Regency",
+    "standfirst": "This activity covers passenger journeys within one regency, outside urban transport routes, and is open to foreign investment nationally and not blocked by Bali’s PMA moratorium.",
+    "body": "This activity is the movement of passengers from one place to another within the same regency, provided the service does not overlap with an urban passenger-transport route. Its practical geography matters: the defining boundary is not simply that a journey is rural in character, but that it remains within a single kabupaten and outside the urban-route sphere.\n\nThe registration is open across every listed business scale: Mikro, Kecil, Menengah, and Besar. That breadth gives the activity a clear place in the formal economy, from smaller local operators to larger enterprises. The description remains deliberately focused on passenger movement, rather than adding operational assumptions that the classification does not state.\n\nNationally, the activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. In plain terms, the record permits full foreign ownership at the national level. The cited basis is Perpres 10/2021, 49/2021; it supports the ownership position, but does not add further conditions that are absent from this record.\n\nBali does not impose a PMA-registration block on this activity under its island-wide moratorium. The moratorium blocks Low and Medium-Low risk activities for PMA, while the record notes that OSS risk at the Besar scale is Menengah-Tinggi/Tinggi. That is why the Bali result is not a prohibition: the activity is marked OK_or_HIGHER_RISK, and the moratorium does not block it.",
+    "pullQuote": "Bali does not impose a PMA-registration block on this activity under its island-wide moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali OSS risk at Besar scale",
+        "value": "Menengah-Tinggi/Tinggi"
+      }
+    ]
+  }
+}

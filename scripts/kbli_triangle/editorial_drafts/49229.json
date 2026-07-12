@@ -1,0 +1,27 @@
+{
+  "code": "49229",
+  "editorial": {
+    "headline": "KBLI 49229: Intercity Passenger Transport, Nationally and in Bali",
+    "standfirst": "A clear route for other long-distance passenger transport, open nationally to full foreign ownership and not blocked by Bali’s PMA moratorium at the large-business risk classification.",
+    "body": "KBLI 49229 covers other long-distance, intercity passenger transport not classified elsewhere. Its practical centre of gravity is passenger carriage by land: services operating through urban or rural transport systems, running on regular routes and picking up and setting down passengers at designated places and times. The definition is deliberately broad, but not vague; it describes a transport activity organised around a route, a service pattern and the movement of passengers between places.\n\nThe activity is open across the full business spectrum: micro, small, medium and large. That matters because the code is not framed solely for a large transport operator. It gives a registration home to the same defined passenger-transport activity at each of those scales, while retaining the essential character of regular-route land carriage. The scope should therefore be read as an operational description, not as an invitation to stretch the activity beyond what the route-based passenger service actually covers.\n\nAt the national level, the foreign-investment position is direct. The PMA status is TERBUKA, with a maximum foreign ownership ceiling of 100%. In plain terms, a foreign investor can hold the entire business nationally within this activity code. The cited basis is Perpres 10/2021, 49/2021. There is no lower foreign-ownership cap in the record to obscure that position.\n\nBali requires a more exact reading, but the conclusion remains constructive. The province permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities. This activity is not blocked by that moratorium: at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, reflected in the Bali status OK_or_HIGHER_RISK. For a foreign-owned registration in Bali at that scale, the record’s point is clear: the provincial moratorium does not prevent it. National openness is therefore not merely theoretical here; the Bali-specific restriction described in the record does not close this activity at the stated large-business risk classification.",
+    "pullQuote": "National openness is therefore not merely theoretical here; the Bali-specific restriction described in the record does not close this activity at the stated large-business risk classification.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

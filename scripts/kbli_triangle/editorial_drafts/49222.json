@@ -1,0 +1,27 @@
+{
+  "code": "49222",
+  "editorial": {
+    "headline": "Intercity Passenger Transport Within a Province",
+    "standfirst": "A route-bound passenger service that is nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "This activity covers scheduled passenger transport between cities within a single Indonesian province, crossing regency or municipal boundaries while remaining tied to an established route. It also includes services linking directly adjoining regencies or municipalities that have not yet been served by intercity or urban routes. The scope reaches further still: pioneer intercity services within a province, typically serving remote, outermost and disadvantaged areas where commercial operation has not yet proved attractive. Border bus transport and provincial intercity bus transport sit within that same practical frame.\n\nThe code is open to businesses at Mikro, Kecil, Menengah and Besar scale. That breadth matters because the activity is defined by the character of the passenger service—intercity, within one province, and route-bound—rather than by a single business size. A prospective operator should therefore read the scope closely: the work is not simply moving people from place to place, but providing the specified form of passenger transport across local-government boundaries within the province.\n\nNationally, the activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. In plain terms, the record places no foreign equity cap below full ownership at the national level. Its stated basis is Perpres 10/2021, 49/2021. That national position is the starting point, but Bali requires its own reading rather than a reflexive assumption that every foreign-open activity is treated identically on the island.\n\nFor Bali, this activity is not blocked by the provincial PMA moratorium. The moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province on a permanent, island-wide basis; this activity falls outside that blocked category. At Besar scale, the OSS risk is Menengah-Tinggi/Tinggi—Medium-High/High—so the Bali assessment is OK_or_HIGHER_RISK. **For Bali, this activity is not blocked by the provincial PMA moratorium.** The result is a straightforward one: foreign investors may treat the national 100% ceiling as applicable here, while keeping the stated Large-scale OSS risk classification clearly in view.",
+    "pullQuote": "For Bali, this activity is not blocked by the provincial PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

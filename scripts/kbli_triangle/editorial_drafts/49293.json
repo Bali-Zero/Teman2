@@ -1,0 +1,27 @@
+{
+  "code": "49293",
+  "editorial": {
+    "headline": "Taxi Transport in Indonesia: Door-to-Door, Metered, and Regionally Bounded",
+    "standfirst": "This activity covers specially marked, meter-equipped passenger cars providing door-to-door taxi transport within a limited operating area.",
+    "body": "Taxi transport, under this activity, is defined with unusual clarity: it is the carriage of passengers in passenger cars bearing special identification and fitted with a taximeter. The service is door to door, but it is not without geographic limits; its operating area is restricted. In practical terms, the activity is the regulated business of metered taxi travel rather than a broad label for every form of passenger movement by car.\n\nThe registration scope is available across the full scale range recorded here: Mikro, Kecil, Menengah, and Besar. That breadth matters because the activity is not confined in the record to one business size. A small operator and a large enterprise sit within the same stated scale framework, provided the activity remains the specially marked, taximeter-equipped, door-to-door passenger service described in its scope.\n\nNationally, the position for foreign investment is open. The maximum foreign ownership is 100%, meaning a foreign investor may hold the full national foreign-ownership ceiling for this activity. The cited basis is Perpres 10/2021, 49/2021. That is the national position, and it should be read distinctly from Bali’s provincial PMA treatment rather than assumed to settle it automatically.\n\nIn Bali, this activity is not blocked by the province-wide PMA moratorium. The moratorium blocks Low and Medium-Low risk activities for PMA across the island, while the OSS risk at the Besar scale for this activity is Menengah-Tinggi/Tinggi. Bali’s recorded status is therefore OK_or_HIGHER_RISK: the activity is not stopped by that moratorium, but its Bali reading is tied to the higher risk classification recorded at the Besar scale. For a foreign-owned taxi business considering Bali, the honest conclusion is straightforward: the national 100% ceiling remains relevant, and Bali does not block PMA registration for this activity under the stated moratorium rule.",
+    "pullQuote": "Bali does not block PMA registration for this activity under the stated moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

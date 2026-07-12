@@ -1,0 +1,27 @@
+{
+  "code": "50112",
+  "editorial": {
+    "headline": "Pioneer Passenger Shipping for Indonesia’s Hardest-to-Reach Routes",
+    "standfirst": "This activity covers regular passenger sea links to remote and commercially underserved areas, with foreign ownership nationally limited to 49% and no Bali moratorium block recorded.",
+    "body": "**A public-connection service at sea.** This activity covers passenger maritime transport linking remote areas—and areas with potential that remain undeveloped or commercially unprofitable to serve—to more developed destinations. Its purpose is explicitly developmental: vessels are placed on routes to encourage the progress of remote regions rather than simply following already established commercial demand. The scope is built around fixed, regular liner routes, giving the activity a defined service character. It also includes chartering sea transport together with its operator.\n\n**Open across the stated business scales.** The activity is available at Mikro, Kecil, Menengah and Besar scale. That range matters because the code is not confined in the record to a single size of operator: the same pioneer passenger-transport purpose can be registered across the full listed scale spectrum. What remains constant is the nature of the work—moving passengers by sea on regular pioneer routes that connect places commercial shipping has not yet found profitable with areas that are already more developed.\n\n**Nationally, foreign investment is limited rather than fully open.** The PMA status is TERBATAS, with a national foreign-ownership ceiling of 49%. This is therefore not an activity available for 100% foreign ownership. The figure is a ceiling: foreign participation can extend only to 49% under the national position recorded here. The stated basis is Perpres 10/2021, 49/2021. For founders assessing a foreign-investment structure, the central national fact is plain: the activity is available within a limited foreign-ownership position, not as a wholly foreign-owned undertaking.\n\n**Bali does not add a moratorium block to that national limit.** The Bali status is OK_or_HIGHER_RISK, and the record does not mark the activity as blocked for PMA registration in the province. Bali’s island-wide, permanent moratorium blocks Low and Medium-Low risk KBLI activities for PMA; this activity is outside that block. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi—Medium-High/High—so the moratorium does not prevent registration on that basis. The Bali position does not remove the national 49% foreign-ownership ceiling; it means that, on the moratorium question recorded here, Bali is not the barrier.",
+    "pullQuote": "Bali does not remove the national 49% ceiling, but neither does its PMA moratorium block this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "49%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

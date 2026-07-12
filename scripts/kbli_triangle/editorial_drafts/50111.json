@@ -1,0 +1,27 @@
+{
+  "code": "50111",
+  "editorial": {
+    "headline": "Domestic Sea Passenger Transport, on Schedule or by Charter",
+    "standfirst": "This activity covers domestic sea passenger transport between Indonesian ports, from scheduled liner services to irregular tramper routes and crewed vessel charter.",
+    "body": "Domestic sea passenger transport is a broad operational category, but its centre of gravity is clear: moving passengers by sea between ports within Indonesia. It includes fixed, regular liner routes with published schedules and stated port calls, as well as tramper services whose routes are neither fixed nor regular. Government-operated and other privately operated passenger vessels fall within the scope, as does the charter of sea transport together with its operator. The category also reaches domestic people’s shipping for passengers using sailing vessels, traditional motor vessels and motor-sailing vessels of the specified size.\n\nThe activity is open across the stated business scales: Micro, Small, Medium and Large. That matters because the code describes a transport operation rather than a single commercial model. A scheduled inter-port passenger service, an irregular route, a charter arrangement with an operator, and qualifying people’s-shipping passenger transport may all sit inside the same activity description. The practical question is therefore whether the proposed operation genuinely concerns domestic passenger carriage by sea, rather than merely sharing some of its commercial features.\n\nNationally, the foreign-ownership position is restricted. PMA participation is permitted only up to a 49% foreign-ownership ceiling, so this is not an activity in which foreign investors may hold the entire business. That national limit is the essential starting point for a foreign-backed structure: the activity is available, but the ownership composition must remain within the stated ceiling.\n\nBali does not add a PMA-registration block for this activity in the record. The province’s permanent, island-wide moratorium blocks PMA registrations for all Low and Medium-Low risk KBLI activities. Here, however, the Large-scale OSS risk is recorded as Medium-High/High, meaning the activity is not blocked by that moratorium. That is a meaningful distinction, not a promise that every operating arrangement will be straightforward: nationally the foreign stake remains capped at 49%, while Bali’s recorded position is that this code is not caught by the Low and Medium-Low risk PMA block.",
+    "pullQuote": "Nationally, foreign participation is possible but capped at 49%; in Bali, the activity is not blocked by the province’s Low and Medium-Low risk PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "49%"
+      },
+      {
+        "label": "Business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

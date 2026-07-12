@@ -1,0 +1,27 @@
+{
+  "code": "49300",
+  "editorial": {
+    "headline": "The Infrastructure That Moves What Roads Cannot",
+    "standfirst": "This pipeline-transport activity carries energy, fluids and carbon through dedicated infrastructure—and remains open to foreign investment nationally and in Bali.",
+    "body": "Pipeline transport is the business of moving substances through fixed pipeline infrastructure: petroleum and natural gas, refined products, liquids, water, slurry, carbon dioxide and other commodities. Its reach also extends to natural gas moving from producers, production-sharing contractors or processing refineries into local distribution systems, as well as carbon transport for injection into geological formations. Increasingly relevant is the inclusion of carbon-free fuels used as energy carriers—hydrogen, ammonia and related compounds—alongside the operation of pumping stations that keep these systems moving.\n\nThe distinction is infrastructural as much as commercial. This is not a general label for any delivery of liquids, water or fuel. It concerns transport performed through pipelines, including the specialised movement of carbon for geological injection. The activity is therefore defined by the pipeline system itself: an enduring network capable of carrying conventional energy products, industrial materials, water and emerging low-carbon carriers. That breadth gives the classification a distinctly strategic character, spanning both established oil-and-gas logistics and the physical networks required for carbon-management and alternative-energy flows.\n\nThe activity is open at small, medium and large scale. Nationally, it is classified as open to foreign investment, with a foreign-ownership ceiling of 100%. In practical terms, a foreign investor may hold the entire enterprise within the national framework recorded here. There is no lower foreign-equity ceiling to interpret or work around in this activity’s national PMA position.\n\nBali presents no separate registration block for PMA today. The province’s standing is recorded as acceptable or higher-risk, rather than prohibited under its island-wide moratorium. That moratorium blocks low- and medium-low-risk KBLI activities for PMA; this pipeline-transport activity is not blocked by it. At large scale, the OSS risk is recorded as medium-high or high, which is the stated reason it remains outside that moratorium’s block. For founders, the honest reading is straightforward: national foreign ownership can reach 100%, and Bali does not impose a moratorium-based PMA prohibition on this activity.",
+    "pullQuote": "Pipeline transport is not blocked for PMA in Bali, while national foreign ownership can reach 100%.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Available scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

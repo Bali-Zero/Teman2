@@ -1,0 +1,23 @@
+{
+  "code": "49233",
+  "editorial": {
+    "headline": "Non-Motorised Freight: Nationally Open, Closed to PMA in Bali",
+    "standfirst": "Non-motorised freight is nationally open to full foreign ownership, yet PMA registration for a Bali address is closed by the island-wide moratorium.",
+    "body": "Freight does not always arrive under engine power. This activity covers the carriage of goods by non-motorised means, including carts, animal-drawn vehicles and pack animals. The examples make the operational boundary concrete: the activity is about cargo moved without a motor. Its boundary is equally clear. Passenger transport by non-motorised vehicle sits outside this remit, so the defining question is not merely how a vehicle moves, but whether it is carrying goods.\n\nThat scope is open across the full business-scale range named in the record: Mikro, Kecil, Menengah and Besar. It is therefore an activity for enterprises from the smallest scale through to large business, provided their work remains within non-motorised goods transport. At the national level, the PMA position is TERBUKA. Foreign ownership may reach 100%, which means the record sets no national foreign-ownership cap below full ownership for this activity. The national result is direct: PMA is open, and the ceiling is 100%.\n\nBali produces a different registration answer. For a Bali address, PMA registration is blocked, notwithstanding the national 100% ceiling. The record's Bali status is CHIUSO_MORATORIA_BALI, and its reason turns on the Besar scale being classified as Rendah, or Low risk. Bali's PMA moratorium applies island-wide and permanently to activities classified Low or Medium-Low risk. This activity consequently falls within the moratorium's reach for PMA registration in Bali. The point is not a lower Bali foreign-ownership percentage. The record describes a closed registration position under the moratorium.\n\nThe resulting picture needs both levels held together. Nationally, the activity is open to PMA and can be fully foreign-owned within the stated ceiling. In Bali, that national openness does not create a PMA registration route for a Bali address. The code remains a precise category of non-motorised freight, with four named scales open to it; the Bali result arises from the moratorium and the recorded Low-risk classification at Besar scale. For founders, the distinction is the substance: scope and national ownership remain clear, while the Bali PMA outcome is closed.",
+    "pullQuote": "For a Bali address, PMA registration is blocked, notwithstanding the national 100% ceiling.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_MORATORIA_BALI"
+      }
+    ]
+  }
+}
