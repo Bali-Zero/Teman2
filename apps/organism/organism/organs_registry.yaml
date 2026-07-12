@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 104a14e54a1201b379d174e288e00ae9488977def439652ec81c1043ef810d11
+checksum: 0bf382a16d27c759309f4cc3fe7b9d0aed563af90c7e41ee94bf5f40a9432bd7
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -142,6 +142,23 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.agent/decisions/state/login_healthcheck.last.json
+    timestamp_field: ts
+    status_field: status
+- id: m5.auth_sentinel
+  runtime: air_launchd
+  type: cron
+  expected_hb_seconds: 25200
+  owner_module: scripts/auth_sentinel_cron.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.auth-sentinel.daily
+  severity_on_silence: warning
+  cicatrix_refs:
+  - 2026-06-16-W84-tcc-green-dead
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/auth-sentinel.json
     timestamp_field: ts
     status_field: status
 - id: pro.fly_restart_loop_detector
