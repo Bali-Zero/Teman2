@@ -8,13 +8,17 @@ sources:
   - .claude/skills/modus/PENDING-ARMS.md line "ECONOMIA-NOTIFICHE" (opened 2026-07-06)
   - ssh pro / ssh mini live crontab + LaunchAgents (2026-07-11 session)
   - live smoke tests via TG_DRY_RUN (this session)
+adversarial_review: gpt-5.5
 ---
 
 # Notification economy — lane S1 (NOTIF-ECONOMY) findings, 2026-07-11
 
 **Mandate**: ECONOMIA-NOTIFICHE (PENDING-ARMS opened 2026-07-06, Zero: "sessione dedicata,
-problema serio e out of control"). 206 senders write to Telegram that nobody reads. Doctrine
-v1: disk state is the store, chat is a view, nothing may exist ONLY as a Telegram message.
+problema serio e out of control"). The opening ledger line cites "206 senders" as the scale of
+the problem — as this report's own §Meta-pattern section shows below, that figure is an
+unverified rough grep with no readership measurement behind it, not a proven count of ignored
+messages. Doctrine v1 stands regardless: disk state is the store, chat is a view, nothing may
+exist ONLY as a Telegram message.
 
 ## What already existed before this session
 
@@ -71,12 +75,19 @@ is a separate HOME payload, not declared in `infra/home-fork/declared-pairs.json
 `openclaw-children-watchdog.sh`, `qwen-code-review.sh`, `wr2-mark-published.sh`,
 `intel-lake-shadow-validate.sh`, `intel-lake-probe-cron.sh`, `audit-launchd-daily.sh`.
 
-**Real number of distinct direct-Telegram-sender surfaces the organism carries: at minimum
-162 (repo-canon) + 26 (Pro HOME-only, verified) + Mini's remainder = >190, likely closer to
-the original "206" figure once you count what the repo-canon count was silently missing.**
-The 206 in the ledger and the 162 in grandfathered.json were probably never the same set to
-begin with — 206 was likely a rougher earlier grep, 162 is the CI-enforceable subset. Neither
-was a HOME-fork-aware census.
+**These are two different populations, not addable into one total.** The 162 repo-canon count
+is a deliberately over-matched textual census (`lint_tg_direct_senders.py:32-36`: any file
+containing the literal string `api.telegram.org` counts as a hit, including comments,
+docstrings, and test fixtures — "the safe direction" per that file's own comment). The 26
+Pro HOME-only + Mini's remainder are a DIFFERENT kind of surface: live, cron/plist-armed
+copies verified to actually execute, found by grep + `crontab -l`/`LaunchAgents` cross-check,
+not a textual-mention census. Summing 162+26+Mini into ">190" mixes "files that mention the
+string" with "processes confirmed armed" — the sum is not a meaningful count of anything.
+What IS established: the repo-canon census is HOME-fork-blind by construction (superscar #1 —
+it walks `git ls-files`, which has zero visibility into `~/scripts/`), so 162 undercounts the
+organism's true direct-sender surface by at least the 26+Mini verified above. The "206"
+figure in the original ledger predates this session and was never reconciled against either
+count — it is neither confirmed nor refuted by this analysis, just not comparable to 162.
 
 This is not this lane's failure to close — extending `lint_tg_direct_senders.py`'s reach into
 `~/scripts/` on Pro/Mini is a repo-lint-can't-see-HOME limitation by design (it runs in GitHub
@@ -118,15 +129,38 @@ verifiable. Two things ARE operator-shaped, flagged not executed:
 | 4 | `scripts/job_health.py` | migrated `send_alert` to `tg_notify.py --tier p0` (dropped now-meaningless HTML markup — gateway sends plain text) | live TG_DRY_RUN smoke: `job-health@Air-M5` source tag, correct multi-line alert body |
 | 5 | `scripts/wa_mirror_bridge_liveness_alarm.py` | migrated `_send_telegram` to `tg_notify.py --tier p0` | live TG_DRY_RUN smoke via backend venv (asyncpg dependency): `wa-mirror-bridge-liveness@Air-M5` source tag |
 
-All 3 code migrations chose **p0 tier** deliberately: each only fires after its own internal
-escalation gate already decided "actionable now" (drive-watchdog's URGENT/CRITICAL tier,
-job_health's dead+critical filter, wa-liveness's 4-AND gate of DB-connected + process-dead +
-past-grace + business-hours). None of these three are digest-worthy noise — they were already
-low-frequency, high-signal P0s being sent the wrong way (direct HTTP instead of through the
-gateway's dedup/budget/relay machinery). The gain isn't "fewer messages", it's that these 3
-P0s now get the gateway's dedup (won't double-fire on flapping), the M5 relay path (works even
-without a local token), and land in the same `archive-p0.jsonl`/`pending.jsonl` audit trail as
-every other P0 instead of vanishing into Telegram-only history.
+All 3 code migrations chose **p0 tier** deliberately: each routes every alert it produces
+through the same tier, not only its most urgent one. **Correction**: drive-watchdog's gate is
+NOT limited to URGENT/CRITICAL — `classify_tier()` (`drive_token_watchdog.py:91-152`) also
+fires INFO at 30 days and WARNING at 14 days, and both flow through the identical
+`_send_telegram(message, ...)` → `tg_notify.py --tier p0` call at line 471; connection
+failures and `expires_at` parse errors (lines 398-434) bypass the tier system entirely and
+always alert via the same p0 path. job_health's dead+critical filter and wa-liveness's 4-AND
+gate (DB-connected + process-dead + past-grace + business-hours) remain accurately
+high-signal-only. None of the three are digest-worthy *volume* noise — they were already
+low-frequency sends going out the wrong way (direct HTTP instead of through the gateway's
+dedup/budget/relay machinery) — but "low-frequency" is a property of the underlying event
+rate, not proof every message the gate emits is CRITICAL-grade.
+
+The migration's real, verified gains: these P0s now land in the same
+`archive-p0.jsonl`/`pending.jsonl` audit trail as every other P0 instead of vanishing into
+Telegram-only history, and gain the M5 relay path — **but only when a local Telegram bot
+token IS present**. Both `drive_token_watchdog.py:_send_telegram()` (line ~250) and
+`wa_mirror_bridge_liveness_alarm.py:_send_telegram()` (line 180-183) early-exit with
+`return False` before ever invoking the gateway or the M5 relay if `bot_token`/`token` is
+empty — the "no token" case in these two adopters is a silent no-op, not a relay-covered
+path. (The gateway's own M5-relay-without-token capability, referenced at the top of this
+report, is real — it just isn't reached by these two callers when they have no token, since
+they never call into `tg_notify.py` in that case.)
+
+**Dedup caveat (not previously stated)**: the gateway derives its dedup key from
+`source + text[:160]` by default when no explicit `--dedup-key` is passed
+(`tg_notify.py:206`) — none of the 3 migrated adopters here pass one. Drive-watchdog's alert
+header embeds a timestamp (`f"🔔 <b>Drive Watchdog</b> — {timestamp}\n\n"`), so two alerts
+for the *same* underlying condition sent minutes apart hash to different keys and will NOT
+dedup against each other on flapping. job_health and wa-liveness were not checked for the
+same pattern in this session — flagged as a follow-up, not fixed here (out of scope for a
+report-only pass).
 
 grandfathered.json: **162 → 157** (repo-canon only; the ~26 Pro HOME-only orphans found above
 are a separate, uncounted surface — see §Meta-pattern).
@@ -154,3 +188,29 @@ migrating them correctly means updating their tests too, which is a bigger unit 
 the 3 untested files I picked for a 2-hour box. Good cohort-6 candidates given they're both
 digest/log-tier-shaped (nextdns weekly digest already digest-tier by name; expiry_alerter's
 tiers likely mirror drive_token_watchdog's pattern).
+
+## Adversarial review
+
+- Seat: gpt-5.5 (Codex CLI, fresh context, read-only sandbox) — 2026-07-12
+- Verdict as returned: REFUTED (5 findings)
+- (a) CONFIRMED → softened the mandate line: "206 senders" is now stated as an unverified
+  figure from the ledger, not asserted as fact; the report's own §Meta-pattern already
+  disclosed this, the mandate framing didn't match it.
+- (b) CONFIRMED → rewrote the ">190, likely closer to 206" sum: 162 (textual mention census,
+  deliberately over-matched per `lint_tg_direct_senders.py:32-36`) and 26+Mini (live
+  armed-process census) are different populations and are not addable; replaced with an
+  explicit statement that 162 undercounts by at least 26+Mini, without inventing a combined
+  total.
+- (c) CONFIRMED → corrected: `drive_token_watchdog.py` and `wa_mirror_bridge_liveness_alarm.py`
+  both early-exit with `return False` before reaching the gateway/M5-relay when no local
+  bot token is present — "works even without a local token" was false for these two adopters.
+- (d) CONFIRMED → corrected: drive-watchdog routes INFO (30d) and WARNING (14d) tiers, plus
+  connection/parse errors, through the same p0 send path as URGENT/CRITICAL — the report
+  had implied only URGENT/CRITICAL reached Telegram.
+- (e) CONFIRMED → softened "dedup impedisce doppio firing sul flapping" to an explicit caveat:
+  none of the 3 adopters pass a stable `--dedup-key`, and drive-watchdog's message includes a
+  variable timestamp that defeats the default text-derived dedup key on repeated firings.
+  **Follow-up lead (not fixed tonight, report-only mandate)**: give drive_token_watchdog.py
+  (and audit job_health.py/wa_mirror_bridge_liveness_alarm.py) a stable `--dedup-key` derived
+  from tier+source instead of the default text-hash, so repeated alerts for the same
+  underlying condition actually dedup across a flapping window.
