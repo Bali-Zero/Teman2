@@ -71,8 +71,13 @@ def gate_g2(ed: dict) -> str | None:
     if len(ed["standfirst"]) > 220:
         return f"G2 standfirst {len(ed['standfirst'])} chars > 220"
     words = len(ed["body"].split())
-    if not 300 <= words <= 700:
-        return f"G2 body {words} words outside 300-700"
+    # Floor 240, not 300 (Zero GO 2026-07-13, option A): after 3 Terra rounds ~5% of
+    # codes are genuinely thin (2-line uraian) and land at 240-295 words. The writer
+    # still AIMS 400-600 and hard-retries below 300 — this gate only decides what an
+    # honest-short draft is allowed to publish. Padding-to-pass is the v1 corpus
+    # disease; an honest 250-word editorial beats a fabricated 320-word one.
+    if not 240 <= words <= 700:
+        return f"G2 body {words} words outside 240-700"
     return None
 
 
