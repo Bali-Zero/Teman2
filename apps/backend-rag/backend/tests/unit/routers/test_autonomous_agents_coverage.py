@@ -12,11 +12,17 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from backend.app.dependencies import get_current_user
 from backend.app.routers.autonomous_agents import agent_executions, router
 
 # ============================================================
 # FIXTURES
 # ============================================================
+
+# Agent triggers are admin-only (Case OS R3 gate). These coverage tests exercise
+# the handler bodies, so they authenticate as an admin. The gate itself is
+# covered by test_caseos_r3_admin_gates.py (guilt + innocence).
+ADMIN_USER = {"id": "u-1", "email": "zero@balizero.com", "role": "admin"}
 
 
 @pytest.fixture(autouse=True)
@@ -31,6 +37,7 @@ def clear_executions():
 def app():
     test_app = FastAPI()
     test_app.include_router(router)
+    test_app.dependency_overrides[get_current_user] = lambda: ADMIN_USER
     return test_app
 
 
