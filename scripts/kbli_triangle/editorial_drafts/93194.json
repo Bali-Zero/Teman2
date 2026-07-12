@@ -1,0 +1,27 @@
+{
+  "code": "93194",
+  "editorial": {
+    "headline": "The Organisations Behind Sport’s Rules",
+    "standfirst": "Nationally, foreign ownership may reach 100%, but this framework for organised sport has no PMA registration route in Bali.",
+    "body": "Sport relies not only on competitors, but on the organisations that make competition legible and repeatable. This activity covers disability-sport organisations and other sporting organisations, regulatory bodies, and sports leagues. Their role is to provide the rules for matches or races and to run competition on a regular, tiered basis. The participants may be individuals, groups, or clubs; the format may be a week-long multi-event programme or a single-event sports championship. The defining feature is the structure around the contest: rules, recurrence, and an organised path for competition.\n\nThe scale boundary is central to the record. This activity is open at **Mikro** and **Kecil** scale. Those labels sit alongside a scope that can encompass recurring and tiered competition involving a number of people, groups, or clubs. Read together, they establish both sides of the classification: what the organisation does, and the business scales at which the activity is available for registration.\n\nAt the national level, the foreign-investment position is open. Foreign ownership may reach **100%**, under the source cited in the record, Perpres 10/2021, 49/2021. That is the national ownership ceiling for the activity. It is important, however, not to mistake a national ceiling for a guarantee that the same registration route exists in every location. The ownership position answers one question; the available scale rows and local registration position answer another.\n\nIn Bali, the result is decisive: a PMA company cannot register this activity today. The local record identifies a structural reason: OSS has no **Usaha Besar** scale row for the activity, leaving it reserved for UMKM. Because a PT PMA is, by law, an Usaha Besar business, it cannot register under this code in Bali. This sits alongside Bali’s island-wide, permanent rule blocking PMA across all low- and medium-low-risk KBLI, cited to the Governor’s letter B.27.000/642/PM/DPMPTSP. The honest reading is therefore straightforward: national openness and a 100% foreign-ownership ceiling do not create a Bali PMA registration path for this activity.",
+    "pullQuote": "A 100% national foreign-ownership ceiling does not create a PMA registration route in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Mikro"
+      },
+      {
+        "label": "Open scale",
+        "value": "Kecil"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}

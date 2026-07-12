@@ -1,0 +1,27 @@
+{
+  "code": "93294",
+  "editorial": {
+    "headline": "The Bali Test for Cave, Bathing and Adventure Tourism",
+    "standfirst": "Nationally open to full foreign ownership, this nature-tourism activity reaches a more conditional answer in Bali, where the precise declared scope and its OSS risk classification matter.",
+    "body": "At its core, this is a place-based nature-tourism and adventure business. It covers operating natural bathing sites and facilities whose principal business uses hot springs or waterfalls; managing cave tourism or cave exploration and traversal as the main activity within a defined area, potentially with guides; and managing tourism based on risk-bearing exploration or travel that calls for special skills and physical effort. Its stated terrain includes paragliding, paramotoring, hang gliding, bungee jumping, gliding, canyoning, orienteering, off-road trips and mountain biking. The defining question is whether these activities form the core managed offering.\n\nRegistrants are therefore operators for whom natural bathing, cave experiences or physical adventure tourism is the principal business—not an incidental amenity. The record opens the activity to Mikro, Kecil, Menengah and Besar enterprises. That breadth allows the business to be registered at the scale actually used, while keeping the declared activity tied to operating and managing the specified visitor experience. It does not turn every nature-connected tourism venture into this activity; its boundaries remain the stated core operations.\n\nNationally, the PMA position is direct. The activity is TERBUKA and carries a 100% foreign-ownership ceiling under the cited Presidential Regulations. In national terms, a foreign investor can hold the full permitted stake in an enterprise carrying out this activity. There is no lower ceiling in the record to qualify that reading. The practical discipline is to identify the real operating centre: natural bathing facilities, cave tourism and exploration, or the specified high-skill adventure management.\n\nBali requires a more exact reading. It is not marked as outright blocked, yet its status depends on scope. Bali’s permanent, islandwide moratorium blocks PMA registration where the OSS risk is Low or Medium-Low. For this activity, OSS risk at the Besar scale is low for some scopes and higher for others. A PMA registration in Bali is available only where the exact declared operation is the higher-risk scope, and the record expressly requires live OSS verification for the precise activity. National 100% openness is real, but it is not by itself a Bali registration answer; the declared scope and its OSS risk classification decide the route.",
+    "pullQuote": "National 100% openness is real, but it is not by itself a Bali registration answer; the declared scope and its OSS risk classification decide the route.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Kecil, Menengah, Besar, Mikro"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

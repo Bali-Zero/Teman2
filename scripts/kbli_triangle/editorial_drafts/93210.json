@@ -1,0 +1,27 @@
+{
+  "code": "93210",
+  "editorial": {
+    "headline": "A Permanent World of Attractions, With a Bali Registration Test",
+    "standfirst": "A permanent, ticketed park operation is nationally open to full foreign ownership, but in Bali the PMA route depends on the exact scope declared and its OSS risk level.",
+    "body": "At its core, this activity is the business of running a fixed, ticketed world of entertainment. It is defined by a permanent, location-based mix of attractions rather than a single attraction in isolation. Mechanical rides, carousels, games, shooting galleries, shows, themed exhibitions and picnic facilities may all belong within one centrally directed operation; water parks do, too. The physical setting matters: these parks are normally contained within a structurally bounded area, and customers enter against an admission ticket. The scope is concerned with the park as an integrated, place-based operation, joined by the economic and operational direction of a central operator.\n\nThe activity is open at Menengah, Besar, Mikro and Kecil scales. That broad scale listing does not dilute its defining shape. Whether organised at a Mikro, Kecil, Menengah or Besar scale, the record centres the same model: a central operator coordinating a permanent site, its attractions and the visitor’s paid entry. It also draws a boundary around the activity. Equipment that needs particular operating expertise, and rides described as extreme-risk, are outside the stated coverage.\n\nNationally, the foreign-investment position is unambiguous. The activity is TERBUKA, with foreign ownership permitted up to 100%. In practical terms, that national ceiling allows a fully foreign-owned registration. The 100% figure is the record’s national ceiling; it is not a separate Bali figure. It is nevertheless an ownership position, not a substitute for the place-specific and scope-specific reading required in Bali. The stated national basis is Perpres 10/2021 and 49/2021.\n\nBali requires more attention. The record does not mark the activity as universally blocked for PMA registration there; it marks it as dependent on scope. Bali’s standing provincial rule blocks PMA for all low- and medium-low-risk KBLI, island-wide and permanently. At the Besar scale, the OSS risk level is low for some scopes and higher for others. PMA registration in Bali is available only when the higher-risk scope is declared, so the exact activity must be checked live in OSS. Registration cannot be resolved from the activity title alone in Bali. This is neither a Bali-wide green light nor a categorical prohibition: the result turns on the scope and its risk classification.",
+    "pullQuote": "In Bali, PMA registration is available only when the higher-risk scope is declared.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Menengah, Besar, Mikro, Kecil"
+      },
+      {
+        "label": "National basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali registration status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}
