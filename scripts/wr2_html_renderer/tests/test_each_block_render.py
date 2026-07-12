@@ -93,6 +93,30 @@ def main() -> int:
     )
     passed &= _check("escaping: < and & escaped in row", "&lt;" in out5 and "&amp;" in out5)
 
+    # --- evidence-carved take-block scalar bind (2026-07-11 revise-run S7) -----
+    # GUILT: {{take_label}}/{{take_line}} were UNBOUND in _fill_placeholders →
+    # raw mustache leaked as literal text at slide bottom (critic FAIL).
+    take_tmpl = (
+        '<div class="take-label">{{take_label}}</div>'
+        '<div class="take-text">{{take_line}}</div>'
+    )
+    out_take = C._fill_placeholders(
+        take_tmpl,
+        {"take_label": "OUR READ", "take_line": "PRICED BY DECREE."},
+        hero_filename=None,
+    )
+    passed &= _check("take: label interpolated", "OUR READ" in out_take)
+    passed &= _check("take: line interpolated", "PRICED BY DECREE." in out_take)
+    passed &= _check("take: no raw {{take_label}}", "{{take_label}}" not in out_take)
+    passed &= _check("take: no raw {{take_line}}", "{{take_line}}" not in out_take)
+
+    # INNOCENCE: a slide with no take fields leaves NO placeholder behind.
+    out_no_take = C._fill_placeholders(take_tmpl, {"heading": "X"}, hero_filename=None)
+    passed &= _check(
+        "take innocence: absent fields → no leaked mustache",
+        "{{take_label}}" not in out_no_take and "{{take_line}}" not in out_no_take,
+    )
+
     print()
     print("RESULT:", "ALL PASS" if passed else "FAILURES")
     return 0 if passed else 1

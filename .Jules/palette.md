@@ -69,5 +69,11 @@
 **Action:** Always use `useChatLocale` for instructional text in chat-specific overlays and indicators.
 
 ## 2025-05-15 - [Stop Generation Pattern]
+
 **Learning:** In AI chat interfaces, the primary action button (Send) should transition to a 'Stop' button during streaming to provide users with control and an intuitive way to interrupt long or irrelevant responses. This requires carefully managing the 'disabled' state to ensure the button remains interactive while the background process is active.
 **Action:** Always implement a 'Stop Generation' toggle on the main input action button when dealing with streaming LLM responses. Use a clear visual cue like a 'Square' icon and ensure proper ARIA labels ('Stop generating') for accessibility.
+
+## 2026-06-25 - [Stable A11y IDs and Dynamic Avatar Context]
+
+**Learning:** Hardcoded IDs in reusable components can lead to duplicate IDs in the DOM, breaking accessibility associations. Using the `useId` hook ensures unique, stable IDs for linking triggers to menus via `aria-controls` and `aria-labelledby`. Additionally, providing dynamic, descriptive `alt` text for avatars (e.g., "Avatar for [Name]") instead of generic placeholders like "User avatar" provides better context for screen reader users when multiple users are present in an interface.
+**Action:** Use `useId` for all ARIA-linked elements within components. Always pass user-specific context to avatar `alt` text to ensure unique and helpful descriptions.

@@ -16,7 +16,7 @@ OAUTH_CLIENT_SECRET = "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"
 OAUTH_REFRESH_TOKEN = "1//0gbiun0bBkNVCCgYIARAAGBASNwF-L9IrGvLMkg0QQ7fz0x98C1zyFqsCvzyijl7NjxUXoJ8K_-BAN8t-ZuQyT5uIv2iVJUPSiMA"
 
 # L'ID della cartella "Company_CRM" di un'azienda reale.
-# Esempio: PT Predmet Development Bali
+# Esempio: PT Example Development Bali
 TEST_COMPANY_FOLDER_ID = "1TCJz0gE4YglNHYYHhlooQVd-V9120vPe"
 
 async def get_token(client: httpx.AsyncClient) -> str:

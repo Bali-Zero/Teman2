@@ -11,10 +11,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.core.config import settings
 from backend.app.core.constants import HttpTimeoutConstants, IntelConstants
+from backend.app.dependencies import get_current_user
 from backend.app.routers.intel import (
     INTEL_COLLECTIONS,
     IntelSearchRequest,
@@ -23,12 +24,24 @@ from backend.app.routers.intel import (
     get_embedder,
     staging_service,
 )
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.logging_utils import get_logger
 from backend.core.qdrant_db import QdrantClient
 
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["intel-analytics"])
+
+
+def _require_store_admin(user: dict[str, Any]) -> None:
+    """Gate direct Qdrant upserts to admins.
+
+    store_intel writes straight into the shared intel Qdrant collections
+    with no validation/staging step, so an authenticated team member is not
+    a sufficient principal (Case OS R3).
+    """
+    if not is_crm_admin(user):
+        raise HTTPException(status_code=403, detail="Store requires admin")
 
 
 # ─── System metrics ───────────────────────────────────────────────────────────
@@ -267,8 +280,12 @@ async def search_intel(request: IntelSearchRequest) -> dict[str, Any]:
 
 
 @router.post("/api/intel/store")
-async def store_intel(request: IntelStoreRequest) -> dict[str, Any]:
+async def store_intel(
+    request: IntelStoreRequest,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Store intel news item in Qdrant"""
+    _require_store_admin(current_user)
     try:
         collection_name = INTEL_COLLECTIONS.get(request.collection)
         if not collection_name:
