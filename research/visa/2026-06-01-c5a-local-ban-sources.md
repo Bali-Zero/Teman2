@@ -1,5 +1,6 @@
 ---
 date: 2026-06-01
+adversarial_review: exempt-citation-repoint
 domain: visa
 client_case: C5A content-creator visa — editorial piece on the local-work / non-monetary-barter prohibition (Bali Zero IG dispatch + client advisory)
 sources:
@@ -15,7 +16,7 @@ sources:
   - https://www.imigrasi.go.id/siaran_pers/ditjen-imigrasi-terapkan-kebijakan-terbaru-tentang-klasifikasi-visa (Kepmen press release, 13 Jun 2025)
   - https://balinews.id/imigrasi-perketat-pengawasan-konten-sponsor-dan-promosi-dengan-visa-turis-dilarang/ (Ditjen Imigrasi IG statement, 23 May 2026)
   - https://whatsnewindonesia.com/bali/feature/news/bali-tightens-immigration-rules-foreign-influencers-and-content-creators (25 May 2026)
-  - research/visa/2026-05-31-marc-buckner-c5a-e33g-barter-case.md (Bali Zero internal — NB-2 ground-truth extraction of C5A Larangan)
+  - Bali Zero internal client-case note, 2026-05-31 (NB-2 ground-truth extraction of the C5A Larangan) — removed from this public repo on 2026-07-13 and archived privately; the regulatory substance it carried is fully covered by the official sources listed above
 ---
 
 # C5A Local-Work Prohibition — Legal Sources (2026-06-01)
