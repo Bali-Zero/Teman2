@@ -188,6 +188,23 @@ def _split_pipe_fields(raw: str) -> List[str]:
     return fields
 
 
+def _strip_trailing_empty_fields(parts: Sequence[str]) -> List[str]:
+    """Drop EMPTY trailing fields produced by a stray trailing '|' on the line.
+
+    A ledger line ending in '... proof text |' splits into 6 fields whose last
+    is '' — back-anchoring then reads proof='' and owner=<the real proof>,
+    silently re-bucketing the entry (found live 2026-07-13: the 'secrets audit
+    Pro enrichment' entry, whose owner operator[secret] landed in TECH-DEBT
+    because the anchor shifted one slot left). Guarded by len > 5 so a
+    well-formed 5-field entry whose PROOF is genuinely empty ('... | owner |')
+    is never eaten — only surplus trailing residue is.
+    """
+    core = list(parts)
+    while len(core) > 5 and not core[-1].strip():
+        core.pop()
+    return core
+
+
 def _extract_missing_step(parts: Sequence[str]) -> str:
     """Best-effort recovery of the 'missing arming step' field.
 
@@ -299,7 +316,7 @@ def parse_entry(raw: str, now: date) -> Entry:
     else:
         reasons.append("no 'opened YYYY-MM-DD' date found")
 
-    all_parts = _split_pipe_fields(raw)
+    all_parts = _strip_trailing_empty_fields(_split_pipe_fields(raw))
     if len(all_parts) < 3:
         reasons.append(f"only {len(all_parts)} pipe-segment(s) (need >= 3)")
 
