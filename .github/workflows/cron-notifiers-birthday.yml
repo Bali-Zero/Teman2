@@ -1,7 +1,14 @@
-name: cron - notifiers birthday (daily 00:05 WITA)
+name: cron - notifiers birthday (DISARMED 2026-07-12 — manual only)
+# Zero's decision 2026-07-12 (Case OS Fase 0): the birthday notifier was the
+# only LIVE case of a machine emailing a client with no human in the loop.
+# The daily schedule is REMOVED so nothing sends autonomously. The endpoint and
+# workflow_dispatch remain, so the list can still be generated on demand and
+# handed to whoever owns the client — a human presses send.
+# To fully retire: delete this file + the endpoint. To re-arm: restore the
+# `schedule:` block below (an explicit, ratified decision — not a default).
 on:
-  schedule:
-    - cron: "5 16 * * *" # 16:05 UTC = 00:05 WITA next day
+  # schedule:  # DISARMED — do not re-add without an explicit R3 ratification
+  #   - cron: "5 16 * * *"  # 16:05 UTC = 00:05 WITA next day
   workflow_dispatch: {}
 
 concurrency:
