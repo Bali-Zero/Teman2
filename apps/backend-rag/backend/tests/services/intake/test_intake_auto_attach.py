@@ -481,3 +481,145 @@ async def test_try_direct_phone_auto_attach_noop_when_writer_off(monkeypatch):
     )
     assert out["committed"] is False
     assert out["skipped"] == "writer_off"
+
+
+# --------------------------------------------------------------------------- #
+# LEVA 3 — name-id concordance for NO-PHONE sources (Drive/Dropbox bulk).
+# Second signal = OCR-extracted subject name vs CRM client name; a present,
+# resolving sender phone is LEVA 2 territory and must NEVER be overruled here.
+# --------------------------------------------------------------------------- #
+def test_nameid_auto_attach_disabled_by_default(monkeypatch):
+    monkeypatch.delenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", raising=False)
+    assert auto_attach.nameid_auto_attach_enabled() is False
+
+
+def test_nameid_auto_attach_enabled_when_truthy(monkeypatch):
+    for val in ("1", "true", "yes", "on", "ON"):
+        monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", val)
+        assert auto_attach.nameid_auto_attach_enabled() is True
+
+
+def test_nameid_auto_attach_disabled_when_falsy(monkeypatch):
+    for val in ("0", "false", "no", "off", ""):
+        monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", val)
+        assert auto_attach.nameid_auto_attach_enabled() is False
+
+
+@pytest.mark.asyncio
+async def test_guilt_nameid_no_phone_strong_id_and_name_agree(monkeypatch):
+    """Drive doc: NO sender phone, strong-id→1 client, doc subject name matches
+    the client name (order-insensitive) → concordant. The one case LEVA 3 exists for."""
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="AUTO_ATTACH",
+        client_id=42,
+        sender_phone=None,
+        extracted_name="GARCIA MARIA",
+    )
+    assert v["concordant"] is True
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_resolving_phone_defers_to_leva2(monkeypatch):
+    """A sender phone that resolves to ANY client — even the SAME one, agreeing —
+    keeps this gate shut: phone concordance (LEVA 2) owns every present-phone
+    verdict (agree/disagree/shared) and name evidence never overrules it."""
+    _patch_phone(monkeypatch, [{"id": 42, "full_name": "Maria Garcia"}])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="AUTO_ATTACH",
+        client_id=42,
+        sender_phone="0812...",
+        extracted_name="GARCIA MARIA",
+    )
+    assert v["concordant"] is False
+    assert "phone" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_name_mismatch_abstains(monkeypatch):
+    """strong-id→client 42 but the document's subject is someone else → review."""
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="AUTO_ATTACH",
+        client_id=42,
+        sender_phone=None,
+        extracted_name="JOHN SMITH",
+    )
+    assert v["concordant"] is False
+    assert "name not concordant" in v["reason"]
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_no_extractable_name_abstains(monkeypatch):
+    """ktp/bank_statement carry no extractable subject name → unverifiable → review."""
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="AUTO_ATTACH",
+        client_id=42,
+        sender_phone=None,
+        extracted_name=None,
+    )
+    assert v["concordant"] is False
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_client_without_name_abstains(monkeypatch):
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name=None),
+        decision="AUTO_ATTACH",
+        client_id=42,
+        sender_phone=None,
+        extracted_name="GARCIA MARIA",
+    )
+    assert v["concordant"] is False
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_not_auto_attach_decision(monkeypatch):
+    """LINK_CANDIDATE/NO_MATCH never enter LEVA 3 — strong identifier is signal #1."""
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="LINK_CANDIDATE",
+        client_id=42,
+        sender_phone=None,
+        extracted_name="GARCIA MARIA",
+    )
+    assert v["concordant"] is False
+
+
+@pytest.mark.asyncio
+async def test_innocence_nameid_unresolved_client_abstains(monkeypatch):
+    _patch_phone(monkeypatch, [])
+    v = await auto_attach.evaluate_nameid_concordance(
+        _StubConn(client_name="Maria Garcia"),
+        decision="AUTO_ATTACH",
+        client_id=None,
+        sender_phone=None,
+        extracted_name="GARCIA MARIA",
+    )
+    assert v["concordant"] is False
+
+
+@pytest.mark.asyncio
+async def test_try_nameid_auto_attach_noop_when_killswitch_off(monkeypatch):
+    monkeypatch.delenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", raising=False)
+    proposal = {"id": 1, "routing": {"client_id": 42}, "entity_resolution": {"decision": "AUTO_ATTACH"}}
+    out = await auto_attach.try_nameid_auto_attach(proposal, pool=None)
+    assert out["committed"] is False
+    assert out["skipped"] == "nameid_killswitch_off"
+
+
+@pytest.mark.asyncio
+async def test_try_nameid_auto_attach_noop_when_writer_off(monkeypatch):
+    monkeypatch.setenv("INTAKE_NAMEID_AUTO_ATTACH_ENABLED", "1")
+    monkeypatch.delenv("INTAKE_WRITER_ENABLED", raising=False)
+    proposal = {"id": 1, "routing": {"client_id": 42}, "entity_resolution": {"decision": "AUTO_ATTACH"}}
+    out = await auto_attach.try_nameid_auto_attach(proposal, pool=None)
+    assert out["committed"] is False
+    assert out["skipped"] == "writer_off"
