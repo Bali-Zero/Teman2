@@ -1,0 +1,27 @@
+{
+  "code": "85104",
+  "editorial": {
+    "headline": "Faith-Based Preschooling, With a Clear Bali Address Test",
+    "standfirst": "KBLI 85104 covers faith-integrated preschool education for children aged four to six, nationally open to full foreign ownership, with Bali eligibility turning on the specific address.",
+    "body": "KBLI 85104 covers preschool education for children aged four to six, integrating Protestant, Catholic, Hindu, Buddhist or Confucian values into preparation for primary schooling. Its examples—seminary kindergartens, pratama widyalaya, pratama widya pasraman and nava dhamamasekha—clarify the activity’s character: early learning shaped by one of those religious traditions. The focus is the educational programme itself, preparing young children for the next level while embedding the stated religious values in learning.\n\nAt national level, the PMA status is open and foreign ownership is permitted up to 100%. That is a full foreign-ownership ceiling. The slim record names no business scales as open to this activity, so it provides no basis for attaching a micro, small, medium or large-business label. Nor does it supply a separate list of institutional forms or registrations. The reliable reading is narrower: an operator establishing the described religious preschool activity has an open national PMA position, with foreign ownership allowed to the stated ceiling.\n\nBali calls for a more address-conscious reading. The provincial moratorium blocks PMA registration for every low- and medium-low-risk KBLI, permanently and island-wide. This activity is marked medium-high/high risk in the Bali record and is therefore not blocked by that moratorium. Bali’s status is OK_or_HIGHER_RISK, but the record also says to verify per address. That does not reduce the national 100% ceiling or create a Bali-side foreign-ownership cap; it means the Bali result is not a blanket approval disconnected from location.\n\nThe distinction matters because the national and Bali entries answer different questions. The national entry concerns PMA openness and its ownership ceiling. The Bali entry concerns the effect of a province-wide moratorium tied to risk categories, then requires an address check for this medium-high/high-risk activity. Read together, they support a disciplined conclusion: the code is nationally open at the stated ceiling; in Bali it is outside the moratorium’s barred risk range, while its place-specific status still needs verification.",
+    "pullQuote": "Nationally open at 100%, this religious preschool activity is not blocked by Bali’s moratorium—but its status must still be verified at the address.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

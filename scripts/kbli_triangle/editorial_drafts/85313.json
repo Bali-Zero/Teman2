@@ -1,0 +1,27 @@
+{
+  "code": "85313",
+  "editorial": {
+    "headline": "Islamic Junior Secondary Education: Nationally Open, Bali Address by Address",
+    "standfirst": "This classification covers Islamic-oriented junior secondary education and equivalent programmes—open to foreign investment nationally and not barred by Bali’s moratorium, with address-level verification still required.",
+    "body": "At its centre, this classification is for junior-secondary education for learners aged 13–15, and related equivalent educational pathways rooted in Islamic studies. Its curriculum can encompass the Qur'an, hadith, fiqh, Islamic history and Arabic while continuing to include general knowledge and skills. The scope explicitly reaches Madrasah Tsanawiyah (MTs), wustha muadalah education, formal diniyah wustha education, wustha-level pesantren centred on kitab kuning study, and equivalent wustha-level education in salafiyah pesantren. It is a defined educational field whose religious orientation sits alongside general learning rather than replacing it. These details give the category its working identity.\n\nFor the question of who belongs in this category, the record points to providers of those named forms of education—whether delivering the mainstream junior-secondary route or one of the stated equivalent settings. No business scale is listed as open in the source. No scale category can therefore be represented as open on the basis of this record. That absence does not narrow the educational scope, which still includes the named madrasah, diniyah, muadalah and pesantren formats. It means the scale question is not supplied here and should not be filled with assumptions.\n\nNationally, this is an open PMA activity. Foreign ownership can reach the recorded 100% national ceiling. That is a direct statement of the national PMA treatment, not a claim about an institution's credentials or operating arrangement. For an investor considering the national proposition, it is an open field of education with a full foreign-ownership ceiling in the source. The national position is therefore clear: the activity is open, and the stated ceiling is complete foreign ownership.\n\nBali’s position is also clear, though it rests on a different question. The provincial moratorium is described as island-wide and permanent for all low- and medium-low-risk KBLI. This activity’s Bali assessment is medium-high/high risk and is explicitly not blocked by that moratorium. Bali’s recorded status is OK_or_HIGHER_RISK, with verification required for the specific address. In plain terms, foreign registration is not blocked in Bali on the moratorium ground recorded here, but the address still has to be verified. The national 100% ceiling remains national; the Bali record gives this activity an unblocked path without stating a separate Bali ownership cap.",
+    "pullQuote": "Bali does not block the activity under its moratorium, but the address still has to be verified.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
