@@ -69,7 +69,7 @@ VALID_ACTION = {"published", "rejected", "edited"}
 VALID_CHANNEL = {"instagram", "telegram", "email", "web"}
 VALID_STATUS_DRAFT = {"pass", "needs_human_edit"}
 VALID_REDTEAM_STATUS = {"PASS", "NEEDS_FIX", "BLOCK"}
-VALID_LEARNING_SOURCE = {"reflexion", "voyager", "ig-metrics-analyst", "competitor-monitor", "devils-advocate"}
+VALID_LEARNING_SOURCE = {"reflexion", "voyager", "ig-metrics-analyst", "competitor-monitor", "devils-advocate", "yield-optimizer"}
 
 
 def validate_payload(event_type: str, payload: dict[str, Any]) -> None:

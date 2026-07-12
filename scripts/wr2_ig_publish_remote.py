@@ -20,8 +20,8 @@ Flow (mirrors the server-side dry-run that PASSED 2026-06-26):
        - confirm=True  (--confirm): backend publishes the carousel
 
 LEGGE 5 — nothing posts without --confirm. The flag maps 1:1 to the backend's
-``confirm`` gate; a dry run exercises login, slide upload, request validation,
-and publisher validation, but the backend never calls ``publish()`` or Meta.
+``confirm`` gate; a dry run exercises upload + the real Graph carousel assembly
+(child + parent containers) but the backend never calls /media_publish.
 
 CREDENTIALS (no secret ever printed, none persisted by this CLI):
   WR2_PUBLISH_EMAIL  — admin email (default: zero@balizero.com)

@@ -795,6 +795,8 @@ research/nb-health/nb-inventory-live.json
 # S7 yield: local PII drafts staging (NEVER commit — UU PDP)
 s7-yield-drafts-local/
 research/crm/*-drafts-local/
+# yield-optimizer weekly report: client names/pitches - never commit, UU PDP
+research/commercial/*-yield-opportunities.md
 .agent-task.json
 
 # arm_keep_worktrees.py: human-readable quarantine receipts (recovery aid, never tracked)
