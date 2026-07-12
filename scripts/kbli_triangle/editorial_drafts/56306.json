@@ -1,0 +1,27 @@
+{
+  "code": "56306",
+  "editorial": {
+    "headline": "Mobile Drinks, Nationally Open but Closed to PMA Registration in Bali",
+    "standfirst": "This activity covers prepared drinks sold from mobile or non-permanent locations, open nationally to foreign investment but unavailable to PT PMA registration in Bali.",
+    "body": "Mobile and non-permanent drink provision is the business of preparing drinks for immediate consumption and selling them on the move. It includes services such as iced doger, iced grass-jelly drinks, and carried herbal-drink vending. The essential character is not simply the beverage itself, but the prepared-to-order or prepared-for-sale service delivered through a roaming or temporary trading format.\n\nThe activity is open to **Mikro** and **Kecil** business scales. That matters because the registration route is defined by the scale rows available for the activity, rather than by the apparent simplicity of selling a drink from a mobile setup. The national position is straightforward: it is **TERBUKA** to foreign investment, with a foreign-ownership ceiling of 100%. National openness, however, does not settle the practical registration question in every location.\n\nIn Bali, a foreigner cannot register this activity through a PT PMA today. The record identifies a structural reason: there is no **Usaha Besar** scale row in OSS, and the activity is therefore reserved for UMKM. A PT PMA is treated by law as **Usaha Besar**, so it cannot use this registration route. Bali's position is additionally framed by a permanent, island-wide provincial restriction on PMA registration for Low and Medium-Low risk KBLI activities.\n\nThe result is a clear distinction between national investment openness and Bali registration availability. At the national level, the activity permits up to full foreign ownership. In Bali, the available scale structure prevents a PT PMA from registering it, leaving the activity closed to PMA despite that national ceiling. For founders, the decisive question is therefore not whether mobile drinks can be foreign-owned in principle, but whether the intended operating location and legal vehicle can access the relevant registration scale.",
+    "pullQuote": "National openness does not override Bali's scale structure, which prevents a PT PMA from registering this activity.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scale",
+        "value": "Mikro"
+      },
+      {
+        "label": "Open business scale",
+        "value": "Kecil"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}
