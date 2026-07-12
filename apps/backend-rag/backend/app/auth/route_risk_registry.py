@@ -190,7 +190,7 @@ ROUTE_RISKS: tuple[RouteRisk, ...] = (
     RouteRisk("/api/voice/elevenlabs/kbli-audit", ('POST',), RiskLevel.R1_TEAM, gating_safe=True, owner="session",
               note="CONFIRMED. Read backend/app/routers/voice.py:785-799 in full: the entire handler body unconditionally raises HTTPException(410, ...) — no service call, no state touch, no branch th"),
     RouteRisk("/media/generate-image", ('POST',), RiskLevel.R1_TEAM, gating_safe=True, owner="session",
-              note="CONFIRMED. Read backend/app/routers/media.py:20-70 in full: zero Depends, calls ImageGenerationService(api_key='dummy') which is a stateless pollinations.ai proxy — no DB write, no"),
+              note="CONFIRMED. Read backend/app/routers/media.py:20-70 in full: zero Depends, calls ImageGenerationService with a placeholder credential which is a stateless pollinations.ai proxy — no DB write, no"),
     RouteRisk("/media/upload", ('POST',), RiskLevel.R2_ELEVATED, gating_safe=True, owner="session",
               note="CONFIRMED with one correction to the rationale text: read backend/app/routers/media.py:73-109 in full — it does write an arbitrary unvalidated file (no content-type/size check) to "),
 )
