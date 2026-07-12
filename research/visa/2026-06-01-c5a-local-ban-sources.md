@@ -1,5 +1,6 @@
 ---
 date: 2026-06-01
+adversarial_review: exempt-citation-repoint
 domain: visa
 client_case: C5A content-creator visa — editorial piece on the local-work / non-monetary-barter prohibition (Bali Zero IG dispatch + client advisory)
 sources:
