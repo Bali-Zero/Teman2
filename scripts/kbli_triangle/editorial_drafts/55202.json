@@ -1,0 +1,27 @@
+{
+  "code": "55202",
+  "editorial": {
+    "headline": "Youth Hostels: Nationally Open, Closed to PMA Registration in Bali",
+    "standfirst": "This short-stay tourism accommodation is nationally open to full foreign ownership, but Bali provides no PT PMA registration path.",
+    "body": "At its practical core, this activity is short-term accommodation for tourism. It covers rooms available for overnight stays, either shared with other guests or occupied individually. The stated purposes of that travel are recreation, broadening knowledge or experience, and the journey itself. The scope also expressly includes youth-lodging and youth-lodge activity. Read together, those elements describe an accommodation offer shaped by the way travellers stay: a guest can take a place in a shared room or stay alone, but the setting remains oriented to short-term tourism. The activity is therefore the provision of youth-hostel accommodation within that defined travel context.\n\nThe registration scales named for the activity are Micro, Small and Medium. This is a meaningful part of its regulatory identity, rather than an incidental business description. The Bali record turns precisely on the absence of another scale row in OSS, so the listed scales are central to the available registration picture. For operators, the category sits in an accommodation model serving overnight visitors while being framed at these stated business scales. No additional scale should be assumed beyond what the record identifies.\n\nAt the national level, the foreign-investment position is unambiguous: it is open, with a foreign-ownership ceiling of 100%. In practical ownership terms, the national rule permits the activity to be fully foreign-owned. That national position answers the ownership question, but it does not erase the separate Bali registration result recorded here. Keeping the two layers apart is essential. A national ceiling of 100% describes what foreign ownership may reach nationally; it is not, by itself, confirmation that a PT PMA can register the activity in Bali.\n\nIn Bali, a foreigner cannot register this activity through a PT PMA today. The block is structural: OSS has no Usaha Besar scale row, leaving the activity reserved for UMKM; a PT PMA is, by law, Usaha Besar and cannot register it. The Bali status is therefore closed to PMA in the absence of a Large Business scale. Separately, the record identifies a permanent, island-wide provincial block on PMA registration for all Low and Medium-Low risk KBLI activities. The conclusion does not need embellishment: the national rule is open and allows 100% foreign ownership, while Bali supplies no PT PMA registration path for this activity.",
+    "pullQuote": "A national ceiling of 100% describes what foreign ownership may reach nationally; it is not, by itself, confirmation that a PT PMA can register the activity in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}

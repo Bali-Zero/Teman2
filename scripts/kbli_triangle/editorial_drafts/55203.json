@@ -1,0 +1,27 @@
+{
+  "code": "55203",
+  "editorial": {
+    "headline": "Private Villas: Nationally Open, Closed to Bali PMA",
+    "standfirst": "This activity covers owner-managed private homes rented short-term to tourists—nationally open to full foreign ownership, yet unavailable for PT PMA registration in Bali today.",
+    "body": "This classification concerns a particular form of tourist stay: private houses made specifically available for short-term rental to the public, together with their facilities. The guests are tourists, and the property is managed by its owner. These are homes the record identifies as specially rented, not lodging described in generic terms. Read as an operating description, it is an owner-managed private villa placed in the short-stay market, with the owner’s management, the facilities and the rental purpose all forming part of the activity.\n\nThe scale frame is equally clear. Registration is open to Mikro, Kecil and Menengah businesses, and these are the only scale categories supplied in the record. An operator fitting this classification brings the elements together in one arrangement: a private house, a short stay for tourists, the related facilities and management by the owner. Each element comes from the stated scope; none needs to be supplied by a broader reading of the villa market.\n\nNationally, the foreign-investment position is open. The PMA status is TERBUKA and the maximum foreign ownership is 100%. In direct terms, the national ceiling allows full foreign ownership for this activity; the record states no lower national cap. Its cited PMA basis is Perpres 10/2021, 49/2021. The 100% figure is a national ownership ceiling, however, not a statement of whether registration is available in Bali.\n\nIn Bali, that path is closed today for a PT PMA. The record gives a structural reason: OSS has no Usaha Besar scale row, so the activity is reserved for UMKM; a PT PMA, being Usaha Besar by law, cannot register. It also records a permanent, island-wide Bali moratorium blocking PMA across low- and medium-low-risk KBLI activities. The careful conclusion is not that national openness disappeared. It is that a 100% national foreign-ownership ceiling does not produce a Bali PMA registration route where the scale structure prevents registration.",
+    "pullQuote": "A 100% national foreign-ownership ceiling does not produce a Bali PMA registration route where the scale structure prevents registration.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "55209",
+  "editorial": {
+    "headline": "Short-Stay Stays, Nationally Open but Closed to PMA in Bali",
+    "standfirst": "This activity covers a broad range of short-stay accommodation, yet Bali’s registration structure prevents a foreign-owned company from registering it there today.",
+    "body": "This activity is the home for short-stay accommodation that sits outside the more specifically defined accommodation categories. Its practical territory is varied: bungalows, cottages without daily housekeeping, mountain lodges and huts, hostels, bed-and-breakfast units, capsule hotels, tree houses, cabins and glamping all fall within its stated scope. The common thread is not a particular building style but the provision of a short stay, whether that stay is deliberately simple, nature-facing, communal or highly compact.\n\nThe registration scales open to it are Mikro, Kecil and Menengah. That matters because the category is framed around businesses operating at micro, small and medium scale, rather than as a generic container for every accommodation venture. An operator should therefore read the scope and the available scales together: the description identifies the kind of stay being provided, while the scale setting identifies the business band in which the activity is open for registration.\n\nNationally, the position is straightforward. The activity is TERBUKA to foreign investment, with a foreign-ownership ceiling of 100%. In national terms, that is full foreign ownership rather than a capped minority or majority stake. Bali is the material exception—and it is not a cosmetic qualification. A PT PMA is treated as Usaha Besar by law, but Bali’s OSS structure has no Usaha Besar scale row for this activity. The result is structural: the activity is reserved for UMKM, so a foreign-owned PT PMA cannot register it in Bali today.\n\nBali’s record also states a permanent, island-wide PMA block for low and medium-low risk classifications. Yet the decisive point for this activity is already clear from its own registration setting: no large-business row is available, while the PMA vehicle is legally large business. A founder may see a nationally open, fully foreign-ownable activity and reasonably expect that position to travel unchanged. Here it does not. The national ceiling remains 100%, but in Bali the available scale structure closes the registration path to PMA.",
+    "pullQuote": "The national ceiling remains 100%, but in Bali the available scale structure closes the registration path to PMA.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}

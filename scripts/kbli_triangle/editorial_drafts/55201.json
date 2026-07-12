@@ -1,0 +1,27 @@
+{
+  "code": "55201",
+  "editorial": {
+    "headline": "Homestays: Nationally Open, Yet Closed to PMA Registration in Bali",
+    "standfirst": "This code covers an owner-occupied home partly rented to travellers for short stays—an intimate accommodation model that is nationally open to foreign investment but unavailable to PMA registration in Bali.",
+    "body": "This activity is not simply the rental of a house. It covers short-term accommodation, paid daily or weekly, provided to the public by an individual using a residence they themselves occupy and making part of it available to guests. The defining feature is the home itself: travellers are given the opportunity to encounter everyday life alongside the owner, rather than checking into an impersonal lodging operation.\n\nThe code is therefore built around the individual resident-host and a lived-in property partly offered to visitors. It is open at Mikro, Kecil and Menengah scale. That scale setting matters because it describes the available route for this activity as recorded in the system: a home-based form of accommodation, operated within the owner’s residence and designed around direct contact between host and traveller.\n\nNationally, the position is clear. The activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. In national terms, foreign ownership is therefore not capped below full ownership for this code. The national source listed for that position is Perpres 10/2021, 49/2021.\n\nBali presents a materially different registration outcome. A foreign investor cannot register this activity through a PT PMA in Bali today. OSS provides no Usaha Besar scale row for the code; it records only Mikro, Kecil and Menengah. Because a PT PMA is treated as Besar by law, the OSS-RBA scale gate bars its registration under the cited rule. The provincial position is broader still: Bali permanently blocks PMA for all Low and Medium-Low risk KBLI across the island. For a prospective foreign-owned homestay, national openness does not create a Bali registration path.",
+    "pullQuote": "For a prospective foreign-owned homestay, national openness does not create a Bali registration path.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open enterprise scales",
+        "value": "Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}
