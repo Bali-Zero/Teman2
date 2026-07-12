@@ -2,6 +2,7 @@
 date: 2026-07-12
 domain: compliance
 client_case: n/a (infra/security — full-history PII/secret purge)
+adversarial_review: devils-advocate (2026-07-13, DeepSeek unavailable 402 — Sonnet-direct + live repo verification; 2 critical + 2 high findings, folded into the 2026-07-13 amendment section below)
 sources:
   - discovery_pii_client_record_public_docs_redacted_2026_07_12.md (memory)
   - discovery_caseos_r3_gates_and_apikey_substring_p0_2026_07_12.md (memory)
@@ -40,6 +41,75 @@ operation.
   reversible, and can be done autonomously — it never touches the real remote.
 - **Phase 3 (force-push to origin) requires an explicit, scoped GO from Zero**
   on the actual findings report — not a standing generic authorization.
+
+## AMENDMENT 2026-07-13 — adversarial review findings, folded in before execution
+
+A `devils-advocate` review of this plan (run before Phase 2/3, per project
+CLAUDE.md §6's 4-LLM-panel discipline for pre-execution critical-path plans)
+found real defects, not formalities. Folded in below; the original Phase 1/2/3
+text further down is superseded where it conflicts with this section.
+
+**1. Wrong tool for whole-file removal.** The original Phase 2 showed only
+`git filter-repo --replace-text ...` — that is a **content-substitution**
+operation (matches bytes inside a blob, replaces them). It does NOT remove a
+file from the tree, does not shrink the commit's file list, and for a file
+whose content differs byte-for-byte across historical revisions (normal for a
+multi-edit doc), a single replace-text rule cannot reliably match every past
+version. Whole-file removal from history needs a **separate, distinct
+filter-repo pass** using `--invert-paths --path <exact-path>` (or
+`--paths-from-file`), run and verified independently from the replace-text
+pass. Using replace-text for a file-removal target would leave the filename,
+its existence, its size history, and its commit metadata all still visible in
+history — "content scrambled," not "purged."
+
+**2. Scope is NOT 4 values — it's 4 credential values + 3 distinct file paths.**
+Re-scanning history (2026-07-13, this amendment) for every path variant of the
+known dossier found THREE, not one:
+  - `paco-pak-due-diligence-2026-05-22.html` (repo root, commit `e47949b7a3`) — dead in HEAD already (never re-added after an early rename)
+  - `research/property/paco-pak-due-diligence-2026-05-22.html` (removed from HEAD via PR #2329, 2026-07-12)
+  - `research/visa/clients/2026-06-03-paco-pak-S9-dossier.md` — found ONLY because this amendment's re-check followed the duplicate-path thread; led to discovering the entire `research/visa/clients/` directory (6 files, 2 named clients: paco-pak + **marc-buckner**, a second client not previously flagged) was live in HEAD — removed via PR #2332, 2026-07-12.
+
+  **Every one of these 3 paths needs its own `--invert-paths --path` rule** in
+  the Phase 2 filter-repo pass — a single rule for one path does not cover the
+  others; they are different blobs at different tree locations.
+
+**3. Fleet-coordination is now VERIFIED, not aspirational.** Before any Phase
+3 execution, the operator (Zero) must re-run (not assume) this two-part check:
+  ```bash
+  gh pr list --state open --json number,headRefName --limit 100
+  git worktree list   # on EVERY machine — M5 + Pro + Mini, via ssh pro/mini
+  ```
+  Then for each open branch, diff it against `origin/main` and confirm no
+  branch **modifies** (status `M`, not `A`) any of the 4 target files/values —
+  a branch that merely carries the pre-removal state of a file (status `A`
+  because the file existed on that branch before removal landed on main) is
+  harmless; a branch that actively edits the target file's content is not, and
+  must be resolved (merged, rebased, or explicitly excused) before force-push.
+  **This was actually run 2026-07-13**: 21 open PRs, 12 worktrees on M5 alone
+  — zero branches modify any target, all touches were the harmless `A` case.
+  Re-run this check again immediately before Phase 3 fires, since branches are
+  created continuously on this fleet (verified: multiple new PRs opened during
+  this same session).
+
+**4. "Scan once, purge once" is being knowingly overridden — say so, don't
+imply otherwise.** The operator authorized a **targeted purge** of exactly the
+values/paths confirmed live-or-recently-live today (2 rotated API keys + 1
+rotated Sentry token + 3 dossier file paths for 2 named clients) — NOT the
+full 6402-gitleaks + 206-trufflehog backlog from the Phase 1 scan, most of
+which remains untriaged. **This targeted purge is purge #1 of at least 2.** A
+second rewrite will be needed once that backlog is triaged (separate,
+lower-urgency lane — see `2026-07-13-full-history-scan-findings.md`). This
+fleet-disruption cost (force-push + fleet-wide re-clone) will be paid twice,
+not once, and that is accepted here as a reasonable urgency/cost trade-off,
+not an oversight.
+
+**5. GitHub-side caching — checked, not just noted.** Repo is confirmed
+`public: true` (`gh api repos/Balizero1987/Teman2 --jq '.private'` → `false`).
+Before declaring Phase 3 complete, also check fork count
+(`gh api repos/Balizero1987/Teman2 --jq '.forks_count'`) — if non-zero, forks
+may retain the purged blobs independent of the origin rewrite, and that's a
+residual-exposure fact to report to Zero, not something the purge itself can
+fix.
 
 ---
 
@@ -117,14 +187,37 @@ git clone --no-local ~/Desktop/nuzantara nuzantara-purge-test
 cd nuzantara-purge-test
 ```
 
-Build the `git-filter-repo` replacement rules from the Phase 1 findings (one
-rule per confirmed value — literal string replacement, e.g.
-`zantara-secret-2024==>REDACTED-ROTATED-KEY`, or the actual client field
-values ==> synthetic placeholders):
+**Two distinct operations, run as two distinct filter-repo passes (per the
+2026-07-13 amendment above — do not conflate them):**
 
+**Pass A — string replacement (for short credential values):**
 ```bash
+cat > /tmp/purge-replacements.txt <<'EOF'
+zantara-secret-2024==>REDACTED-ROTATED-KEY-2296
+admin-key-2024==>REDACTED-ROTATED-KEY-2296
+<sentry-token-value>==>REDACTED-ROTATED-SENTRY-TOKEN
+EOF
 git filter-repo --replace-text /tmp/purge-replacements.txt --force
 ```
+
+**Pass B — whole-file removal (for the 3 dossier file paths — run AFTER Pass A,
+same clone, filter-repo composes sequentially):**
+```bash
+git filter-repo --invert-paths \
+  --path paco-pak-due-diligence-2026-05-22.html \
+  --path research/property/paco-pak-due-diligence-2026-05-22.html \
+  --path research/visa/clients/2026-06-03-paco-pak-S9-dossier.md \
+  --path research/visa/clients/2026-06-03-marc-buckner-S9-dossier.md \
+  --path research/visa/clients/2026-05-31-marc-buckner-visa-guidance.html \
+  --path research/visa/clients/2026-05-31-marc-buckner-visa-guidance.pdf \
+  --path research/visa/clients/S9-cases-FROZEN.json \
+  --path research/visa/clients/_render_marc_buckner.py \
+  --force
+```
+
+Verify: `--invert-paths` removes the path (and the blob, once unreferenced)
+from every commit — confirm with `git log --all --follow -- <path>` returning
+nothing, not a scrambled-content file.
 
 Verify against the SAME scanners from Phase 1, on the rewritten clone — the
 findings list must go to zero:

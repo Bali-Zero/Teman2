@@ -2,6 +2,7 @@
 date: 2026-07-13
 domain: compliance
 client_case: n/a (infra/security — Phase 1 scan results, see purge plan)
+adversarial_review: devils-advocate (2026-07-13) — reviewed the purge plan this doc feeds into; findings led directly to discovering a 3rd dossier path variant + the research/visa/clients/ directory (removed via PR #2332), see amendment in 2026-07-12-git-history-pii-purge-plan.md
 sources:
   - 2026-07-12-git-history-pii-purge-plan.md (this same PR, Phase 1)
   - gitleaks 8.30.1 full-history scan (25m37s, 11217 commits, 2.38GB)
