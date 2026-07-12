@@ -17,6 +17,22 @@ CAROUSEL_SRC="/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/carousel"
 INTERVAL="${WR2_QUEUE_PULL_INTERVAL:-300}"
 mkdir -p "$DEST_DIR" "$AMEND_DEST" "$CAROUSEL_DEST"
 
+# Re-render reconcile (verb leg 3): steady-state --ignore-existing skips a carousel
+# whose PNGs were REPLACED IN PLACE on Pro (same filenames, new bytes) — after a
+# re-render the M5 mirror would show the STALE slides forever. WR2_PULL_CHECKSUM=1
+# swaps in --checksum: rsync compares content hashes and re-pulls changed files.
+# Still additive (no --delete), still --ignore-errors. Hashing both sides is
+# expensive — meant as a one-shot after a re-render (combine with --once), not
+# as the steady-state default.
+if [ "${WR2_PULL_CHECKSUM:-0}" = "1" ]; then
+  RSYNC_MODE="--checksum"
+else
+  RSYNC_MODE="--ignore-existing"
+fi
+# --once: run a single pass and exit (one-shot reconcile instead of daemon loop).
+ONCE=0
+[ "${1:-}" = "--once" ] && ONCE=1
+
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
 while true; do
@@ -71,7 +87,7 @@ while true; do
   # a per-dir --exclude doesn't scale. --ignore-errors lets rsync skip the tagged
   # file and continue the rest of the batch (already-synced files are unaffected
   # by --ignore-existing regardless).
-  if rsync -a --ignore-existing --ignore-errors \
+  if rsync -a "$RSYNC_MODE" --ignore-errors \
        -e "ssh -o ConnectTimeout=10 -o BatchMode=yes" \
        "pro:$CAROUSEL_SRC/" "$CAROUSEL_DEST/" >/dev/null 2>>"$LOG"; then
     : # silent on success (rsync is chatty enough on error)
@@ -79,5 +95,9 @@ while true; do
     echo "[$(ts)] WARN carousel rsync failed (Pro unreachable?)" >> "$LOG"
   fi
 
+  if [ "$ONCE" = "1" ]; then
+    echo "[$(ts)] one-shot pass done (mode $RSYNC_MODE), exiting" >> "$LOG"
+    break
+  fi
   sleep "$INTERVAL"
 done

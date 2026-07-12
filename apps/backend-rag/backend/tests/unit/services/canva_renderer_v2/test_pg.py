@@ -16,6 +16,7 @@ from backend.services.canva_renderer_v2._pg import (
     persist_html_result_and_enqueue_notifications,
     release_lease_permanent,
     release_lease_transient,
+    requeue_draft_for_rerender,
     reset_stale_html_leases,
     reset_stale_leases,
 )
@@ -273,3 +274,26 @@ async def test_persist_html_enqueues_per_recipient_and_skips_duplicate():
     assert report["+62B"]["enqueued"] is False
     assert report["+62B"]["duplicate"] is True
     assert report["+62B"]["window_open"] is False
+
+
+@pytest.mark.asyncio
+async def test_requeue_rerender_resets_gate_fields_with_guards():
+    """GUILT (W82): the requeue verb must clear BOTH re-entry gates (status +
+    drive_url) and carry the lease CAS + status whitelist in the same statement."""
+    conn = AsyncMock()
+    conn.fetchrow.return_value = {"id": "abc"}
+    assert await requeue_draft_for_rerender(conn, "abc") is True
+    sql = conn.fetchrow.call_args[0][0]
+    assert "SET status = 'drafts_imaged_checked'" in sql
+    assert "drive_url = NULL" in sql
+    assert "lease_owner IS NULL" in sql
+    assert "status IN ('rendered', 'render_failed', 'drafts_imaged_checked')" in sql
+
+
+@pytest.mark.asyncio
+async def test_requeue_rerender_refused_returns_false():
+    """INNOCENCE: a leased or pre-image draft is refused (0 rows) — the verb
+    reports False instead of pretending the draft re-entered the lane."""
+    conn = AsyncMock()
+    conn.fetchrow.return_value = None
+    assert await requeue_draft_for_rerender(conn, "abc") is False

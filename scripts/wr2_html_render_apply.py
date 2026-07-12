@@ -256,11 +256,35 @@ def _make_queue_entry(
     }
 
 
+# Content fields a re-render refreshes in place on the existing queue entry.
+# Identity fields (id, draft_id, topic_slug, topic, drafted_at) and review-state
+# fields (state, instagram_*, engagement_metrics) are deliberately NOT here:
+# the entry id feeds ref_code downstream, so it must survive a repoint.
+_REPOINT_FIELDS = (
+    "carousel_path",
+    "slides_dir",
+    "drive_url",
+    "slide_count",
+    "critic_overall_verdict",
+    "critic_summary",
+    "fact_check_status",
+)
+
+
 def _append_review_queue(entry: dict, *, queue_path: Path | None = None) -> bool:
     """Append `entry` to human-review-queue.json atomically (fcntl lock, tmp+rename).
-    Dedup by id AND by draft_id (a re-render must not double-queue). Returns True
-    when the entry landed (False on dedup-skip). Raises on IO/corrupt-JSON so the
-    caller can alert — a corrupt queue must be VISIBLE, never silently rebuilt."""
+
+    Dedup/repoint contract (re-render verb, W82 exist-not-content):
+    - exact id match (same render batch re-applied) -> skip, return False;
+    - same draft_id, existing entry still pre-publish (state == "drafted") ->
+      REPOINT: refresh content fields in place (new slides_dir/drive_url/critic),
+      keep the entry id (ref_code stability) and drafted_at, append a
+      state_history breadcrumb, return True. Before this existed, a re-rendered
+      draft kept its queue entry pointed at the OLD slides_dir forever;
+    - same draft_id but already published/archived -> history is immutable,
+      skip, return False.
+    Raises on IO/corrupt-JSON so the caller can alert — a corrupt queue must be
+    VISIBLE, never silently rebuilt."""
     import fcntl
     import json as _json
 
@@ -276,14 +300,28 @@ def _append_review_queue(entry: dict, *, queue_path: Path | None = None) -> bool
                     raise ValueError(f"review queue is not a JSON array: {qp}")
             else:
                 queue = []
+            repointed = False
             for item in queue:
                 if not isinstance(item, dict):
                     continue
-                if item.get("id") == entry["id"] or (
-                    entry.get("draft_id") and item.get("draft_id") == entry.get("draft_id")
-                ):
-                    return False
-            queue.append(entry)
+                if item.get("id") == entry["id"]:
+                    return False  # same render batch re-applied — pure dup
+                if entry.get("draft_id") and item.get("draft_id") == entry.get("draft_id"):
+                    if item.get("state") != "drafted":
+                        return False  # published/archived — history is immutable
+                    for fld in _REPOINT_FIELDS:
+                        item[fld] = entry.get(fld)
+                    item.setdefault("state_history", []).append(
+                        {
+                            "state": "drafted",
+                            "at": entry.get("drafted_at"),
+                            "by": "wr2-html-apply-rerender",
+                        }
+                    )
+                    repointed = True
+                    break
+            if not repointed:
+                queue.append(entry)
             tmp = qp.with_suffix(f".tmp.{os.getpid()}")
             tmp.write_text(_json.dumps(queue, indent=2, ensure_ascii=False), encoding="utf-8")
             os.replace(tmp, qp)

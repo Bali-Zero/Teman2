@@ -237,6 +237,12 @@
       "repo": "infra/launchagents/wrappers/cron-agent.sh",
       "_note": "W89 class-audit (2026-07-11, PENDING-ARMS ledger ~68): run_agent() gets BG-ceiling env + anti-background prompt sentence + provenance log line. Live crontab consumer of the 'agent' tier: weekly-dep-audit, seo-guardian-weekly, conversation-cleanup, indexing-daily, learning-pipeline (verified via `crontab -l` on Pro 2026-07-11).",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/bin/wr2-queue-pull.sh",
+      "repo": "infra/launchagents/wrappers/wr2-queue-pull.sh",
+      "_note": "M5 queue/carousel mirror puller (plist com.balizero.wr2.queue-pull; lives in ~/bin per W84 TCC-on-Desktop). Declared 2026-07-13 with the re-render verb PR (WR2_PULL_CHECKSUM one-shot mode) — was an UNDECLARED live payload (family #1).",
+      "machines": ["m5"]
     }
   ],
   "allow": [
