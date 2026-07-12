@@ -72,7 +72,8 @@ if [[ -f "${WA_MIRROR_ENV_FILE}" ]]; then
         INTAKE_CRM_PUSH_WRITE_KEY \
         INTAKE_CRM_PUSH_BASE_URL \
         INTAKE_CRM_PUSH_ENABLED \
-        INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED; do
+        INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED \
+        BZ_INTERNAL_PHONE_NUMBERS; do
         _line="$(grep -E "^${_k}=" "${WA_MIRROR_ENV_FILE}" | tail -1 || true)"
         if [[ -n "${_line}" ]]; then
             _value="${_line#*=}"

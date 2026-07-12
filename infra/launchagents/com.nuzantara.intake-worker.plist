@@ -1,95 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!--
-  com.nuzantara.intake-worker — Unified document-intake worker (FASE 2).
-
-  Drives the intake_queue (migration 206) stub stage machine. The worker has
-  its OWN internal claim->process->sleep loop (backend.services.intake.worker:
-  main); launchd KeepAlive here is ONLY a respawn-on-crash backstop, NOT the
-  cycle driver — this is the anti retry-storm pattern (cicatrix 2026-05-31).
-
-  Anti-storm guarantees:
-    - KeepAlive=true  : respawn ONLY if the process dies (crash recovery).
-    - ThrottleInterval=30 : launchd waits >=30s between respawns -> a crash
-      loop cannot flap the machine.
-    - The runner exits 0 on DB retry-exhaust (worker.DB_FAILURE_EXIT_THRESHOLD)
-      so a transient DB outage does NOT count as a crash; launchd respawns it
-      slowly instead of hammering.
-    - flock single-instance in the runner: overlapping launchd ticks never
-      spawn duplicate workers.
-    - W61 (DLQ re-add storm): a 'dead' job is TERMINAL and never re-enters the
-      claimable set, so dead-lettering cannot create a respawn storm.
-
-  PII (Law 2 / UU-PDP): worker talks ONLY to the LOCAL nuzantara_dev DB; no
-  cloud, no OCR/LLM (FASE 3). last_error is PII-masked before persistence.
-
-  Logs go to ~/logs (NOT /tmp — survives reboot, cicatrix P0-3).
-
-  Install (operator — NOT auto-installed):
-    cp infra/launchagents/com.nuzantara.intake-worker.plist ~/Library/LaunchAgents/
-    chmod 0444 ~/Library/LaunchAgents/com.nuzantara.intake-worker.plist
-    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.intake-worker.plist
-  Uninstall:
-    launchctl bootout gui/$(id -u)/com.nuzantara.intake-worker
--->
 <plist version="1.0">
 <dict>
-    <key>Label</key>
-    <string>com.nuzantara.intake-worker</string>
-
-    <key>ProgramArguments</key>
-    <array>
-        <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/backend/services/intake/intake-worker-run.sh</string>
-    </array>
-
-    <!-- Long-lived daemon: the worker loops internally. RunAtLoad starts it
-         once; KeepAlive respawns it ONLY if it dies. NO StartInterval — we do
-         NOT want launchd to re-trigger the cycle (anti-storm). -->
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-
-    <!-- Anti retry-storm: >=30s between respawns. A crash loop is throttled,
-         not allowed to flap the machine (cicatrix verified 2026-05-31). -->
-    <key>ThrottleInterval</key>
-    <integer>30</integer>
-
-    <!-- Background priority; never starve interactive dev work. -->
-    <key>ProcessType</key>
-    <string>Background</string>
-    <key>Nice</key>
-    <integer>5</integer>
-
-    <key>StandardOutPath</key>
-    <string>/Users/nuzantara/logs/intake-worker.launchd.out.log</string>
-    <key>StandardErrorPath</key>
-    <string>/Users/nuzantara/logs/intake-worker.launchd.err.log</string>
-
-    <!-- VADEMECUM §11: complete EnvironmentVariables (no implicit shell env). -->
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>HOME</key>
-        <string>/Users/nuzantara</string>
-        <key>PATH</key>
-        <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-        <key>INTAKE_REPO_ROOT</key>
-        <string>/Users/nuzantara/Desktop/nuzantara</string>
-        <!-- LOCAL DB only (Law 2). Override here, never hardcode in code. -->
-        <key>INTAKE_DATABASE_URL</key>
-        <string>postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev</string>
-        <key>INTAKE_LEASE_TTL_SECONDS</key>
-        <string>900</string>
-        <key>INTAKE_POLL_INTERVAL_SECONDS</key>
-        <string>2</string>
-        <key>INTAKE_LOG_LEVEL</key>
-        <string>INFO</string>
-        <key>PYTHONUNBUFFERED</key>
-        <string>1</string>
-    </dict>
-
-    <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara/apps/backend-rag</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>INTAKE_AUTO_ATTACH_ENABLED</key>
+		<string>true</string>
+		<key>INTAKE_CONCURRENCY</key>
+		<string>3</string>
+		<key>INTAKE_DATABASE_URL</key>
+		<string>postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev</string>
+		<key>INTAKE_DEDUP_WALL_ENABLED</key>
+		<string>true</string>
+		<key>INTAKE_DIRECT_PHONE_AUTO_ATTACH_ENABLED</key>
+		<string>true</string>
+		<key>INTAKE_LEASE_TTL_SECONDS</key>
+		<string>900</string>
+		<key>INTAKE_LOG_LEVEL</key>
+		<string>INFO</string>
+		<key>INTAKE_NAMEID_AUTO_ATTACH_ENABLED</key>
+		<string>true</string>
+		<key>INTAKE_POLL_INTERVAL_SECONDS</key>
+		<string>2</string>
+		<key>INTAKE_QUARANTINE_ENABLED</key>
+		<string>true</string>
+		<key>INTAKE_REPO_ROOT</key>
+		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
+		<key>INTAKE_WRITER_ENABLED</key>
+		<string>true</string>
+		<key>PATH</key>
+		<string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>PYTHONUNBUFFERED</key>
+		<string>1</string>
+	</dict>
+	<key>KeepAlive</key>
+	<true/>
+	<key>Label</key>
+	<string>com.nuzantara.intake-worker</string>
+	<key>Nice</key>
+	<integer>5</integer>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/nuzantara/Desktop/nuzantara-deploy/apps/backend-rag/backend/services/intake/intake-worker-run.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/intake-worker.launchd.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/intake-worker.launchd.out.log</string>
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
+	<key>WorkingDirectory</key>
+	<string>/Users/nuzantara/Desktop/nuzantara-deploy/apps/backend-rag</string>
 </dict>
 </plist>
