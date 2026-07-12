@@ -21,6 +21,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from backend.app.setup.route_walk import iter_leaf_routes
+
 # ── helpers ───────────────────────────────────────────────────────────
 
 
@@ -65,7 +67,7 @@ def test_router_mounts_at_documented_path():
     """Smoke check: router exposes /api/observed-shell/emit."""
     from backend.app.routers import observed_shell
 
-    paths = [r.path for r in observed_shell.router.routes]
+    paths = [r.path for r in iter_leaf_routes(observed_shell.router)]
     assert "/api/observed-shell/emit" in paths
 
 

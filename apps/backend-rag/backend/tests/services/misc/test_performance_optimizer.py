@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
+from backend.app.setup.route_walk import iter_leaf_routes
 from backend.services.misc import performance_optimizer as perf_module
 from backend.services.misc.performance_optimizer import (
     AsyncLRUCache,
@@ -153,7 +154,7 @@ async def test_optimized_search_service_caches_embeddings_and_search(monkeypatch
 
 def test_create_optimized_app_registers_expected_routes() -> None:
     app = create_optimized_app()
-    route_paths = {route.path for route in app.routes}
+    route_paths = {route.path for route in iter_leaf_routes(app)}
 
     assert app.title == "ZANTARA RAG API - Optimized"
     assert "/metrics" in route_paths
