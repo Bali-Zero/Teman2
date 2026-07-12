@@ -1,0 +1,27 @@
+{
+  "code": "47525",
+  "editorial": {
+    "headline": "Paint Retail, Open Nationally but Closed to PMA Registration in Bali",
+    "standfirst": "This activity covers the retail sale of construction paints and finishes, open to foreign ownership nationally yet blocked for PMA registration across Bali.",
+    "body": "Retail paint is more than a shelf of colour cards. This activity covers the sale of construction-oriented paints and other coatings: primers; paints for metal, wood and walls; enamel; putty; filler; varnish; and lacquer. The scope also refers to direct sales. In practical terms, it is the retail-facing trade in finishes and preparation materials used to protect, repair and complete built surfaces.\n\nThe activity is open across the full business-scale range recorded: Mikro, Kecil, Menengah and Besar. Nationally, it is classified as TERBUKA for foreign investment, with a foreign-ownership ceiling of 100%. That is a clear national position: foreign participation is not capped below full ownership for this activity under the cited investment-policy sources.\n\nBali requires a separate reading. A foreigner cannot register this activity in Bali today through PMA registration. The restriction is not presented as a narrower ownership cap or a project-specific qualification. At the Besar scale, the OSS risk assessment is Rendah or Menengah-Rendah across every scope, bringing the activity within Bali’s moratorium. The provincial rule blocks all Low and Medium-Low risk KBLI activities for PMA, island-wide and permanently; the record identifies the moratorium as taking effect in May 2026.\n\nThat makes the distinction decisive rather than technical. The national framework permits up to 100% foreign ownership, while Bali blocks PMA registration for the activity because of its risk-class treatment under the provincial moratorium. For founders, the code’s commercial scope remains straightforward—retailing paints, coatings and associated finishing materials—but the place of registration changes the legal picture completely. National openness does not override the Bali restriction recorded here.",
+    "pullQuote": "Nationally open to 100% foreign ownership, this activity is nevertheless blocked for PMA registration across Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National policy source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

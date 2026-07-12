@@ -1,0 +1,27 @@
+{
+  "code": "47522",
+  "editorial": {
+    "headline": "Sheet Glass Retail: Open Nationally, Blocked for PMA in Bali",
+    "standfirst": "This construction sheet-glass retail activity is open to 100% foreign ownership nationally, but PMA registration in Bali is blocked by the province’s permanent risk-based moratorium.",
+    "body": "Sheet glass retail is set out through the practical variations used in construction supply: clear sheet glass, opaque sheet glass, coloured clear sheet glass, and engraved sheet glass. KBLI 47522 covers their retail trade as construction materials, and the stated scope also notes direct sales. The classification stays closely tied to these specified sheet-glass products while recognising a tangible range of finishes and treatments within that construction-material setting.\n\nThe activity is open to Mikro, Kecil, Menengah, and Besar enterprises. This places the same retail activity across every scale named in the record: micro and small enterprises sit within its stated range, as do medium and large enterprises. The record does not assign different glass types to different business scales; it presents the full construction-glass retail scope alongside the complete four-tier range. For a founder, the practical reading is clear: eligibility runs from Mikro through Besar, with the stated subject remaining sheet glass for construction.\n\nAt the national level, the PMA position is direct. The status is TERBUKA, and the recorded maximum foreign ownership is 100%. A foreign-owned enterprise can therefore look to a national ownership ceiling of 100% for this activity. The cited national PMA basis is Perpres 10/2021, 49/2021. That national openness is a meaningful fact, but it is not the whole operational answer for a business proposing to register the activity in Bali.\n\nIn Bali, the answer changes completely. A foreigner cannot register this activity for PMA there today. Its Bali status is BLOCCATO_CLASSE_RISCHIO, and the stated reason is specific: at the Besar scale, OSS risk is Low/Medium-Low across every scope. Bali’s island-wide, permanent moratorium blocks all Low and Medium-Low risk KBLI for PMA. This is not a lower Bali-specific foreign-ownership percentage; it is a block on PMA registration. National openness is real, but it does not override Bali’s registration block.",
+    "pullQuote": "National openness is real, but it does not override Bali’s registration block.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

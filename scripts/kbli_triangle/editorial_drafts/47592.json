@@ -1,0 +1,27 @@
+{
+  "code": "47592",
+  "editorial": {
+    "headline": "Household Electrical Retail: Nationally Open, Blocked for PMA in Bali",
+    "standfirst": "Retail in household electrical goods, lighting and fittings is open nationally to 100% foreign ownership, but Bali’s permanent risk-based moratorium blocks PMA registration.",
+    "body": "KBLI 47592 is the retail activity for household electrical equipment, lighting equipment, and their fittings. Its practical territory is broad but coherent: washing machines and refrigerators; fans, vacuum cleaners and floor polishers; mixers, irons and blenders; and the lighting and electrical fittings that complete a domestic installation. Incandescent and fluorescent lamps, starters, ballasts, reflectors, cables, switches, sockets, fittings and fuses all sit within the stated scope. It is a retail classification built around the electrical equipment of the home and the components that illuminate and connect it.\n\nThe activity is available to operators at Mikro, Kecil, Menengah and Besar scale. That range matters because the description does not confine this retail work to a single size of enterprise: the same stated activity can be registered across those four scales. For a foreign-owned company, the national position is direct. The PMA status is TERBUKA and the national foreign-ownership ceiling is 100%. Under the national record, full foreign ownership is permitted for this activity, with Perpres 10/2021, 49/2021 cited as the source.\n\nBali changes the operative answer completely. A foreign investor cannot register this activity as PMA in Bali today. The Bali status is BLOCCATO_CLASSE_RISCHIO, and the record marks it as blocked. At the Besar scale, OSS assigns Low or Medium-Low risk across every scope, placing the activity within Bali’s moratorium. The provincial rule blocks PMA for all Low and Medium-Low risk KBLI island-wide, permanently. The moratorium identified in the record is dated the thirteenth of May 2026.\n\nThat creates a sharp but straightforward reading. National foreign investment openness does not translate into a PMA registration path in Bali for this retail activity. The 100% national ceiling remains the national figure; it is not a Bali entitlement. For founders considering this specific business, the relevant fact is the location-specific registration outcome: the national framework records it as open, while the Bali moratorium blocks it. The scope remains useful for understanding the business itself—appliances, lighting equipment and electrical fittings—but it does not override the Bali block.",
+    "pullQuote": "National foreign investment openness does not translate into a PMA registration path in Bali for this retail activity.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
