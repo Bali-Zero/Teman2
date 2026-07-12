@@ -3,41 +3,41 @@
 # Last updated: 2026-01-18 - Security updates: python-jose, fastapi, openai, requests
 
 # Core Framework
-fastapi>=0.135.2,!=0.136.3  # Upgraded for starlette 0.50+; exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep)
+fastapi!=0.136.3,>=0.139.0  # Upgraded for starlette 0.50+; exclude 0.136.3 (MAL-2026-4750 supply-chain malware injecting 'fastar' dep)
 starlette>=1.3.1,<1.4.0  # Security fix: CVE-2026-48818/48817 (fix 1.1.0), CVE-2026-54282 (1.3.0), CVE-2026-54283 (1.3.1); supersedes PYSEC-2026-161 / GHSA-86qp-5c8j-p5mr; keep prod on the suite-tested 1.x line.
-uvicorn[standard]>=0.40.0  # Upgraded for async improvements
+uvicorn[standard]>=0.51.0  # Upgraded for async improvements
 pydantic>=2.12.5
 pydantic-settings>=2.14.2
 python-multipart>=0.0.31  # Security fix: arbitrary file write
 
 # MCP Protocol (Critical for Client Handshake)
-mcp>=1.25.0
-anyio>=4.13.0
+mcp>=1.28.1
+anyio>=4.14.1
 
 # Vector Database
-qdrant-client>=1.13.3,<1.14.0  # Match Qdrant server 1.12.x; avoid client/server minor-drift warnings.
+qdrant-client>=1.18.0,<1.19.0  # Match Qdrant server 1.12.x; avoid client/server minor-drift warnings.
 
 # AI API Clients (optimized for resolution speed)
 openai>=2.45.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
-anthropic>=0.75.0  # Updated for httpx 0.28+ compatibility
-google-genai>=1.56.0  # Unified SDK (replaces google-generativeai)
-google-api-python-client>=2.100.0
-google-auth>=2.23.0
+anthropic>=0.116.0  # Updated for httpx 0.28+ compatibility
+google-genai>=2.11.0  # Unified SDK (replaces google-generativeai)
+google-api-python-client>=2.198.0
+google-auth>=2.55.2
 google-auth-oauthlib>=1.1.0
 google-auth-httplib2>=0.1.1
-google-cloud-storage>=2.10.0
+google-cloud-storage>=3.12.1
 
 # Tigris (S3-compatible) — used by scripts/wr2_image_generator.py +
 # scripts/wr2_draft_generator.py to upload hero images to the warroom
 # bucket. No backend module imports it; pinned here so production venv
 # rebuilds (Pro `nuzantara-deploy` worktree) stay self-sufficient.
-boto3>=1.43.0
+boto3>=1.43.46
 
 langchain>=1.3.13
 langchain-core>=1.4.9
 langchain-anthropic>=1.4.8
 langchain-openai>=1.3.5
-langgraph>=0.0.1
+langgraph>=1.2.9
 langgraph-checkpoint-postgres>=2.0.0
 
 # PII Detection (UU PDP compliance)
@@ -49,7 +49,7 @@ openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
 email-validator>=2.3.0
 pypdf>=6.13.3  # Security fix: CVE-2026-31826 memory exhaustion
 reportlab>=4.2.0  # PDF generation for invoices (lightweight alternative to WeasyPrint)
-beautifulsoup4>=4.14.3  # Security and stability updates
+beautifulsoup4>=4.15.0  # Security and stability updates
 python-magic>=0.4.27  # MIME type detection from file content
 rapidfuzz>=3.14.0  # Fuzzy name matching for accounting bank-statement reconciliation (P1)
 
@@ -76,8 +76,8 @@ passlib[bcrypt]>=1.7.4
 # Database
 asyncpg>=0.31.0  # Performance and security improvements
 psycopg2-binary>=2.9.9
-redis>=8.0.0  # Security updates and new features
-sqlmodel>=0.0.31  # Bug fixes and compatibility updates
+redis>=8.0.1  # Security updates and new features
+sqlmodel>=0.0.39  # Bug fixes and compatibility updates
 
 # Compression
 brotli-asgi>=1.4.0  # Brotli compression middleware (replaces GZip, ~20% better compression)
@@ -89,11 +89,11 @@ pytz>=2024.2
 packaging>=23.2,<26
 psutil>=5.9.0  # Required for app/metrics.py performance monitoring
 structlog>=25.5.0  # Security and feature updates
-slowapi>=0.1.9  # Rate limiting for FastAPI
+slowapi>=0.1.10  # Rate limiting for FastAPI
 
 # Observability
-prometheus-fastapi-instrumentator>=8.0.0
-sentry-sdk[fastapi]>=2.59.0  # Error monitoring
+prometheus-fastapi-instrumentator>=8.0.2
+sentry-sdk[fastapi]>=2.64.0  # Error monitoring
 
 # XML/HTML Processing
 lxml>=6.1.1
@@ -112,21 +112,21 @@ scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
 # Force rebuild 2026-02-13_00:12:41
 python-json-logger>=2.0.0
 orjson>=3.10.0  # 3-10× faster JSON serialization (FastAPI default response, hot path: pii_scanner, audit_logger, event_bus)
-aiosmtplib>=5.1.0
-apscheduler==3.11.2
+aiosmtplib>=5.1.2
+apscheduler==3.11.3
 
 # Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
 setuptools>=78.1.1
-langsmith>=0.8.18  # Observability: @traceable on RAG nodes + KG nodes
+langsmith>=0.10.2  # Observability: @traceable on RAG nodes + KG nodes
 
 # Langfuse + OpenInference instrumentation (PR #312, prod runtime — was
 # missing in requirements-prod.txt so observability silently no-op'd in
 # production even with LANGFUSE_*_KEY secrets set on Fly).
 # Phase 0 of OpenLLMetry expansion. See docs/oss-injections-2026-04-26.md.
-langfuse>=4.13.0,<5.0.0  # LLM observability, OTEL-based v2+
-openinference-instrumentation-anthropic>=0.1.14  # Anthropic SDK auto-trace
-openinference-instrumentation-google-genai>=0.1.16  # Auto-trace Gemini SDK
-openinference-instrumentation-openai>=0.1.45  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
+langfuse>=4.14.0,<5.0.0  # LLM observability, OTEL-based v2+
+openinference-instrumentation-anthropic>=1.0.6  # Anthropic SDK auto-trace
+openinference-instrumentation-google-genai>=1.2.0  # Auto-trace Gemini SDK
+openinference-instrumentation-openai>=0.1.52  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
 
 # Fuzzy name matching for accounting bank-statement reconciliation (P1).
 # MUST stay in sync with requirements.txt — the prod Docker image installs from
