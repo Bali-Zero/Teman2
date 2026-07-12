@@ -128,6 +128,14 @@ class Settings(BaseSettings):
     # quota fallback — a third-party endpoint with no DPA = PII hole. Flip via
     # OPENROUTER_ENABLED=true only with Zero's explicit authorization.
     openrouter_enabled: bool = False
+
+    # Autonomous outbound WhatsApp to real clients (client_value_predictor
+    # nurturing). Case OS R3: a machine talking to a client with no human in
+    # the loop. Kept fail-closed so that provisioning the transport secrets
+    # does NOT by itself arm the outbound — flipping this flag does, and that
+    # is Zero's decision. Flip via CLIENT_NURTURING_OUTBOUND_ENABLED=true.
+    client_nurturing_outbound_enabled: bool = False
+
     deepseek_api_key: str | None = Field(default=None, description="DeepSeek API Key")
     ollama_url: str = Field(
         default="http://localhost:11434",
