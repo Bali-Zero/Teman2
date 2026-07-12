@@ -1,0 +1,23 @@
+{
+  "code": "96100",
+  "editorial": {
+    "headline": "Laundry in Indonesia: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "This activity ranges from everyday laundry to linen care and reusable-diaper services—but a nationally open foreign-investment position does not make it registrable by PMA in Bali.",
+    "body": "This activity is the practical infrastructure of clean textiles: washing, dry cleaning and ironing every kind of clothing, including fur, as well as other textiles. It can be performed mechanically, by hand or through coin-operated machines, for the public or for industrial and commercial clients. Its reach also includes collection and delivery, carpet and rug washing, and the cleaning of curtains and drapes, whether at a client’s premises or elsewhere. The scope extends beyond a conventional laundry counter to combined rental-and-care services for items such as linen and work uniforms, and to reusable-diaper provision.\n\nThe boundary matters. Clothing repair and alteration are outside this activity, as is clothing rental outside the integrated work-uniform arrangement described in the record. What remains is a service defined by the care, cleaning and circulation of textiles—not by tailoring or a general clothing-hire business. That distinction gives the activity a clear operational centre: maintaining garments, household textiles and work-related linen in usable condition, from individual pieces to recurring commercial volumes.\n\nAt the national level, the activity is open to foreign investment, with foreign ownership permitted up to 100%. It is open at Mikro, Kecil and Menengah scales. Yet the Bali position is materially different. A foreign-owned company cannot register this activity in Bali today because the OSS record has no Usaha Besar scale row for it; the activity is therefore reserved for UMKM, while a PT PMA is treated by law as Usaha Besar. National openness does not override that structural registration barrier.\n\nBali’s record adds a wider, island-wide and permanent rule blocking PMA registration for all low- and medium-low-risk activities. The decisive point here, however, is already explicit: the absence of an Usaha Besar row prevents PMA registration. For a founder considering this activity in Bali, the national 100% ceiling is real, but it is not an available route to a Bali PMA registration under the recorded position.",
+    "pullQuote": "National openness does not override that structural registration barrier.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "Bali status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}

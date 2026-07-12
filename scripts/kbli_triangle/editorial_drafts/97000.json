@@ -1,0 +1,23 @@
+{
+  "code": "97000",
+  "editorial": {
+    "headline": "When a Household Is the Employer",
+    "standfirst": "This classification records the household itself as employer, with a national 100% foreign-ownership ceiling and a Bali status that remains unblocked by the provincial moratorium.",
+    "body": "A household can be an employer in its own right. This activity covers households that employ domestic workers: household assistants, cooks, cleaners, gardeners, personal drivers, house guards, child carers and personal assistants. It also includes teachers where they are employed by the household. The point is not to describe a commercial service business, but to identify the household as the employing unit behind work carried out for that household.\n\nThat distinction is central to the classification. It gives domestic workers a way to state their employer’s activity in a census or research setting even when the employer is an individual or a household rather than an organisation. The output of the activity is consumed by the employing household itself. It does not extend to independent or organisational providers supplying cleaning, ironing, cooking, garden care or home-care services to others, whether those providers operate for profit, without profit, publicly or on a self-employed basis.\n\nThe slim record identifies no scale categories open to this activity. Its defining feature is therefore the role of the registrant: a household acting as the employer of domestic workers, rather than a provider marketing domestic services. Nationally, the activity is classified as open to foreign investment, with foreign ownership permitted up to 100%. That is an unusually direct national position: the record sets no lower foreign-ownership ceiling for this activity.\n\nBali does not reverse that national position through its province-wide PMA moratorium. The moratorium blocks all Low and Medium-Low risk activities for PMA across the island on a permanent basis, but this activity is recorded as medium-high or high risk and is not blocked by that rule. In practical terms, it remains open for PMA registration in Bali today; the record nevertheless says the position must be verified for the relevant address. The honest reading is neither a Bali ban nor a special Bali ownership cap, but an open national classification whose address-specific registration position still merits confirmation.",
+    "pullQuote": "A household can be an employer in its own right, without becoming a commercial domestic-services business.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

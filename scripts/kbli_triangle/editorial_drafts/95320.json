@@ -1,0 +1,27 @@
+{
+  "code": "95320",
+  "editorial": {
+    "headline": "Motorcycle Care Is Nationally Open, but Bali PMA Registration Is Blocked",
+    "standfirst": "This motorcycle repair-and-care activity is nationally open to full foreign ownership, yet PMA registration in Bali is blocked under the island-wide risk moratorium.",
+    "body": "At its core, this activity is the repair-and-care side of motorcycle service. It includes repair and maintenance for conventional motorcycles and electric motorcycles alike. Its stated scope also encompasses spraying and painting motorcycles and their equipment, motorcycle-body repair, conversion, washing, polishing, and other care work. These are not presented as isolated add-ons: they are all named parts of the same activity. The result is a definition that covers a motorcycle’s maintenance and repair, its body work, its conversion, its painted finish and equipment, and its washing and polishing. The scope is therefore broad in the literal services it names, while staying focused on motorcycles throughout.\n\nRegistration is open at every scale named in the record: Mikro, Kecil, Menengah, and Besar—micro, small, medium, and large. Nationally, the PMA status is TERBUKA and the foreign-ownership ceiling is 100%. In clean ownership terms, that means full foreign ownership is permitted nationally for this activity; the record does not state a ceiling below 100%. The scale field is equally direct: each of the four listed scales is open to this activity. The cited national PMA basis is Perpres 10/2021, 49/2021. On the national record alone, the ownership and scale position is clear.\n\nBali is different, and this is where the registration question becomes decisive. A foreigner cannot register this activity in Bali today: its recorded Bali result is BLOCCATO_CLASSE_RISCHIO. The local restriction is not a Bali-specific foreign-ownership percentage, and it does not lower the national 100% ceiling. Rather, the record says that, at the Besar scale, OSS risk is Rendah or Menengah-Rendah for every scope of the activity—Low or Medium-Low risk. Bali’s island-wide, permanent moratorium, recorded in May 2026, blocks PMA registration for that risk classification. That is the stated basis for the block.\n\nThis produces a genuine national-versus-Bali split, rather than a qualification that can be read away. The national position remains TERBUKA, with full foreign ownership permitted up to 100%. But Bali’s PMA-registration result remains blocked under the island-wide permanent moratorium. For a founder assessing this motorcycle repair-and-care activity, both statements must remain visible at once: national openness answers the foreign-ownership question; the Bali block answers whether a PMA registration can be made on the island. The record supports no softer reading of that final point. In Bali, the condition is a block, not a reduced stake or a conditional local percentage.",
+    "pullQuote": "A national opening to 100% foreign ownership does not make PMA registration available in Bali for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

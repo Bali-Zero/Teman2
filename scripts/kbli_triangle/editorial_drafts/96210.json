@@ -1,0 +1,27 @@
+{
+  "code": "96210",
+  "editorial": {
+    "headline": "Hairdressing in Bali: Open Nationally, Closed to PMA Registration",
+    "standfirst": "Hair and facial-hair services are nationally open to full foreign ownership, but a PT PMA cannot register this activity in Bali under its current scale structure and provincewide restrictions.",
+    "body": "Code 96210 covers the hands-on work of putting hair and facial hair in order: washing, trimming and cutting hair; styling; colouring, dyeing, perming, straightening and similar treatments. It also includes hair styling in its own right, alongside shaving and tidying beards, moustaches and sideburns. The scope draws an important boundary: wig manufacture is excluded. Taken together, these statements define a grooming and treatment service by the work performed on hair and facial hair. They encompass both services that alter hair and the routine upkeep of cutting, styling and shaving.\n\nThe relevant operator is one whose actual activity falls within that stated service perimeter. The record opens the activity to the Mikro, Kecil and Menengah scales. Those are the scale labels supplied for this activity, and they frame the registration picture more precisely than a broad description of appearance or personal care services would. The scope is detailed enough to include hair treatment, styling and facial-hair grooming, while retaining its express exclusion for wig manufacture.\n\nAt national level, the foreign-investment position is explicit. The activity is marked TERBUKA, with a national foreign-ownership ceiling of 100%. In practical terms, that permits full foreign ownership nationally. Perpres 10/2021 and 49/2021 are named as the source for that position. National openness, however, describes the national ownership setting; it does not make a locally unavailable PMA registration route available in Bali.\n\nBali is the decisive practical breakpoint. A foreign investor using a PT PMA cannot register this activity in Bali today. The recorded reason is structural: OSS has no Usaha Besar scale row, leaving the route reserved for UMKM. Because a PT PMA is Usaha Besar by law, it cannot register under that structure. This sits alongside Bali’s permanent, island-wide rule blocking PMA across Low and Medium-Low risk KBLI. For Bali, this is not a reduced foreign-ownership ceiling; it is a bar on PMA registration despite national openness.",
+    "pullQuote": "For Bali, this is not a reduced foreign-ownership ceiling; it is a bar on PMA registration despite national openness.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "CHIUSO_PMA_NO_BESAR"
+      }
+    ]
+  }
+}

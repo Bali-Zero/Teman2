@@ -1,0 +1,27 @@
+{
+  "code": "96400",
+  "editorial": {
+    "headline": "Personal-Service Intermediation: Open Nationally, Conditional in Bali",
+    "standfirst": "This activity covers paid matching between clients and personal-service providers, with a fully open national PMA ceiling but a scope-dependent path in Bali.",
+    "body": "Personal-service intermediation is the business of making the connection, rather than delivering the underlying personal service. It brings clients and service providers together for a fee or commission, while the intermediary itself does not provide the service being matched. The model may operate through a digital platform or through non-digital channels: face-to-face contact, including door-to-door activity, telephone, or post. Commission may come from either the client or the personal-service provider, and revenue may also include other sources such as advertising. Laundry and dry-cleaning agency activity is included within the group.\n\nThe scope also expressly reaches qualifying electronic-trade system operators and intermediary-facility operators established either within Indonesia’s legal jurisdiction or outside it while conducting electronic-trade business in Indonesia. It separately accommodates businesses outside those operator categories. In practical terms, this is a classification for the intermediary role: organising introductions, transactions, or access between the two sides of a personal-service relationship, and being paid for that position in the chain.\n\nNationally, the activity is open to foreign investment, with foreign ownership permitted up to 100%. It is available at Micro, Small, Medium, and Large scale. That national position is clear, but it should not be mistaken for a simple Bali registration outcome. Bali’s provincial rule permanently blocks PMA registration for activities assessed as Low or Medium-Low risk across the island. For this activity, the Bali result depends on the exact declared scope and its risk level at Large scale: some scopes are low risk, while others carry a higher risk level.\n\nThe consequence is precise rather than absolute. Bali does not mark this activity as categorically blocked for PMA, but a PMA registration there is possible only where the declared scope is the higher-risk one. A low-risk scope cannot pass through that route under the province-wide rule. The classification therefore calls for a live OSS check against the exact activity being declared, not an assumption drawn from the national foreign-ownership position alone. The national ceiling remains 100%; the Bali question is whether the precise scope meets the higher-risk condition required for PMA registration.",
+    "pullQuote": "Nationally open does not make Bali automatic: the precise declared scope and its risk level determine whether PMA registration can proceed.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_DIPENDE_SCOPE"
+      }
+    ]
+  }
+}

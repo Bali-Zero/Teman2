@@ -1,0 +1,27 @@
+{
+  "code": "98100",
+  "editorial": {
+    "headline": "What a Household Makes for Itself",
+    "standfirst": "A self-provisioning household activity is nationally open to PMA at 100%, while Bali records no moratorium block but requires address verification.",
+    "body": "This is a classification for the domestic economy at its most literal: a household making the basic goods it needs for itself. Its scope includes hunting and gathering, agriculture, the provision of shelter and clothing, and other goods produced for the household’s own needs. The unifying idea is not one particular product, but self-provision: a household undertaking a range of goods-producing activities to sustain itself.\n\nThat boundary is central to reading the activity accurately. Where a household also takes part in producing goods that are marketed, the record directs that production into the appropriate goods-producing industry. Where its principal activity is the production of particular basic goods, it is likewise directed to the corresponding production industry. This activity therefore describes own-use production, not a catch-all label for everything made at home. The record identifies households as the participants and lists no open-to scale categories, so it offers no basis for assigning the activity to a stated business scale.\n\nNationally, the PMA position is open, with a foreign-ownership ceiling of 100%. That is a straightforward national setting for a foreign-owned registration: the record does not state a reduced foreign stake. But the ownership position does not alter the activity’s defining limit. It remains concerned with goods made by a household for its own needs, while the record preserves a clear distinction for marketed production and for production centred on particular basic goods.\n\nIn Bali, the immediate picture is not a blanket bar. The record marks the activity as medium-high/high risk and states that it is not blocked by the moratorium. Its Bali status is recorded as OK_or_HIGHER_RISK. There is nevertheless a specific instruction attached to that result: verify the position for the address. Bali is therefore open in the terms recorded here, with address verification remaining part of the practical reading.",
+    "pullQuote": "This activity describes own-use production, not a catch-all label for everything made at home.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "[]"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
