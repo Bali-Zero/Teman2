@@ -209,7 +209,9 @@ def main() -> int:
         print(f"written + synced; sha {sha[:16]}…")
 
     print(f"applied: {applied} | backfilled fields: {backfilled} | refused: {len(refused)}")
-    for c, why in refused[:40]:
+    # No display cap: a truncated refusal list reads as the WHOLE list downstream
+    # (2026-07-13: four consecutive audits "found exactly 40" — it was this cap).
+    for c, why in refused:
         print(f"  REFUSED {c}: {why}")
     return 0 if applied and not args.dry_run or args.dry_run else 1
 
