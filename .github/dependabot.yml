@@ -31,6 +31,17 @@ updates:
       # when presidio raises its cryptography ceiling.
       - dependency-name: "cryptography"
         versions: [">=47.0.0"]
+      # requirements.txt:152 deliberately ceilings protobuf <6.0.0 (OTEL /
+      # google-cloud-aiplatform compat, see the comment there). grpcio-status
+      # >=1.82 requires protobuf>=7.35, so any grpc-family bump makes the
+      # whole group ResolutionImpossible again (regenerated PR #2267 failed
+      # exactly there after the cryptography hold fixed the first conflict).
+      # The grpc family only moves TOGETHER with a deliberate protobuf major
+      # bump — drop these ignores in that PR.
+      - dependency-name: "grpcio"
+      - dependency-name: "grpcio-status"
+      - dependency-name: "grpcio-tools"
+      - dependency-name: "grpcio-health-checking"
     groups:
       # OpenAI-stack packages isolated into their own group so a breaking bump
       # (openai/langchain-openai sit near the frozen embedding path:
