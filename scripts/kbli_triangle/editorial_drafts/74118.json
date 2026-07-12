@@ -1,0 +1,27 @@
+{
+  "code": "74118",
+  "editorial": {
+    "headline": "Packaging Design: Nationally Open, Barred for Bali PMA",
+    "standfirst": "Packaging design is nationally open to full foreign ownership, but Bali’s permanent risk-based moratorium prevents PMA registration for this activity today.",
+    "body": "**A foreign investor cannot register this activity in Bali today.** That result sits beside a national position that is fully open to PMA: packaging-design activity is marked open, with foreign ownership available up to 100%. The contrast is decisive for a foreign-owned business considering this specific activity in Bali, even though the national framework otherwise permits it.\n\nThis activity is industrial design directed at creating packaging products. Its scope includes designs for bottles, tubes, containers and waste or scrap receptacles; for cans, drums, storage barrels and boxes; and for closures, baskets, wooden crates, pallets, bags and capsules. It is a design practice rather than the production of those items, and the record expressly recognises that the work is also carried out through specialised software.\n\nNationally, the activity is open to micro, small, medium and large enterprises. That broad availability does not erase the Bali PMA position. At the large scale, every listed scope is assessed in OSS as Low or Medium-Low risk. Bali’s island-wide, permanent moratorium blocks PMA registration where the applicable risk falls into either of those categories; the record therefore marks this activity as blocked for Bali PMA registration under the May 2026 moratorium.\n\nThe proper reading is neither that national openness is irrelevant nor that it settles the Bali question. Nationally, a foreign stake may reach the full 100% ceiling. In Bali, however, the risk classification activates the provincial moratorium and prevents a foreign investor from registering this activity through PMA today. The national ceiling remains a national fact; it is not a Bali clearance.",
+    "pullQuote": "National openness does not override the Bali moratorium: for this activity, a foreign investor cannot register in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open enterprise scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

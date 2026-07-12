@@ -1,0 +1,27 @@
+{
+  "code": "74991",
+  "editorial": {
+    "headline": "Weather Services: Open Nationally, Blocked for PMA Registration in Bali",
+    "standfirst": "Meteorological analysis, forecasting and specified weather-modification services are nationally open to full foreign ownership, but Bali currently blocks PMA registration for this activity.",
+    "body": "This activity concerns professional meteorological analysis of the atmosphere and the forecasting of weather processes and conditions. Forecasting is its most familiar expression, but the scope is wider: it also includes weather-modification services performed from the air, using aircraft, unmanned aircraft systems, balloons and other airborne vehicles. It further covers services using generators and other ground-based weather-modification equipment. The centre of gravity is technical and operational—the provision of meteorological analysis, forecasts and specified weather-modification services. Meteorological research and development sits outside this activity’s boundary.\n\nFor the business carrying out this work, the permitted registration scales run from Mikro and Kecil through Menengah to Besar. Nationally, the foreign-investment setting is TERBUKA, with a foreign-ownership ceiling of 100%. That is a clear national position: foreign capital may take the full permitted stake in a company registered for this activity. The stated PMA source is Perpres 10/2021, 49/2021. The key word, however, is nationally. A national ownership ceiling does not itself determine whether PMA registration is available in a particular province.\n\nIn Bali, the answer is stark. This activity is marked BLOCCATO_CLASSE_RISCHIO: at the Besar scale, its OSS risk is Low/Medium-Low across every scope. That brings it within Bali’s island-wide, permanent PMA moratorium, recorded in May 2026. The practical consequence is a registration block: a foreigner cannot register this activity for PMA in Bali today. The national 100% ceiling remains the national ceiling, but it does not override Bali’s registration barrier for this activity.\n\nFor a founder, that distinction belongs at the front of the decision, not in the footnotes. The work may be nationally open to full foreign ownership and available across all four listed scales, yet Bali turns on a separate factual question: whether PMA registration is allowed there. On this record, it is not. The responsible reading is therefore two-part and simultaneous—nationally open at up to 100% foreign ownership; in Bali, blocked for PMA registration because the applicable OSS risk classification at Besar triggers the provincial moratorium.",
+    "pullQuote": "The national 100% ceiling remains the national ceiling, but it does not override Bali’s registration barrier for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open company scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

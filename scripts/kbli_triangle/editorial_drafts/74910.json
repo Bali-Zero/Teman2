@@ -1,0 +1,27 @@
+{
+  "code": "74910",
+  "editorial": {
+    "headline": "KBLI 74910: Where Intellectual Property Rights Meet the Market",
+    "standfirst": "A nationally open activity for patent brokering and intellectual-property rights management, but unavailable for PMA registration in Bali.",
+    "body": "KBLI 74910 covers the commercial work that helps intellectual-property rights move, generate income, and remain properly managed. Its core activity is patent brokerage and marketing services, including arranging the purchase and sale of patent rights. The remit also reaches the management of copyright and the income it produces, the administration of industrial-property rights such as patents, licences, trademarks and franchises, and the work of collective rights-management bodies or organisations. It is an activity centred on managing and connecting rights, rather than exploiting those rights on one’s own account.\n\nThat boundary matters. The activity does not include renting intellectual property or similar products, nor does it include buying and selling patents or comparable intellectual-property rights in one’s own name. Within its stated scope, however, the category is open across Mikro, Kecil, Menengah and Besar scales. It therefore accommodates both smaller specialist operators and larger organisations whose work involves brokering, administering, or managing rights and the revenues connected to them.\n\nAt the national level, KBLI 74910 is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. That is a clear national position: foreign investment may hold the activity in full. But Bali presents a materially different registration reality. A foreign investor cannot register this activity as PMA in Bali today. The reason is not a lower national ownership ceiling; it is Bali’s province-wide, permanent moratorium on PMA for all KBLI activities classified as Low or Medium-Low risk.\n\nFor this activity, the OSS risk at the Besar scale is Low or Medium-Low across every scope. That places KBLI 74910 within Bali’s blocked class, under the moratorium recorded on May 13, 2026. The distinction is essential for founders assessing location as well as ownership: national openness and a 100% foreign-ownership ceiling remain real, while PMA registration for the same activity in Bali is blocked by the province’s risk-based rule. The national framework answers what foreign ownership may be; the Bali position determines whether that PMA registration can proceed on the island.",
+    "pullQuote": "National openness and full foreign ownership remain real, while PMA registration for the same activity in Bali is blocked by the province’s risk-based rule.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
