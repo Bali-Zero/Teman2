@@ -70,7 +70,14 @@ class WebChannelAdapter(BaseChannel):
         try:
             # Extract fields
             user_id = raw_event.get("user_id", "anonymous")
-            session_id = raw_event.get("session_id", "web_session_unknown")
+            session_id = str(raw_event.get("session_id") or "web_session_unknown")
+            # session_id is CLIENT-controlled on web: namespace it server-side
+            # so a forged "wa_session_<phone>" can never poison another
+            # channel's session-context history now that every persisted row
+            # carries session_id (Codex review 2026-07-13). Documented clients
+            # already send "web_session_*" — unchanged for them.
+            if not session_id.startswith("web_"):
+                session_id = f"web_{session_id}"
             text = raw_event.get("query", "")
 
             # Extract conversation history (if present)
