@@ -145,18 +145,47 @@ def _is_green(task: dict[str, Any]) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _collapse_by_job(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse an append-only queue to the LAST record per job.
+
+    The D2.3 queue is append-only: mark_resolved()/defer append a new
+    'resolved'/'deferred' row without mutating the original 'pending' row.
+    Reading raw would therefore still see the stale 'pending' row and
+    re-process a job forever (scar family #2 — blind heal-loop, cf. W81b DLQ
+    corpse-sweep). We must decide a job's live status by its NEWEST record.
+
+    `records` is newest-first (read_all_escalations sorts by ts desc), so the
+    first record seen for a given job IS its latest. A record without a `job`
+    key is kept as-is (can't be collapsed — treat as its own singleton).
+    """
+    latest: dict[str, dict[str, Any]] = {}
+    out: list[dict[str, Any]] = []
+    for rec in records:
+        job = rec.get("job")
+        if job is None:
+            out.append(rec)
+            continue
+        if job not in latest:  # newest-first → first seen is the latest
+            latest[job] = rec
+            out.append(rec)
+    return out
+
+
 def _read_pending_green_tasks() -> list[dict[str, Any]]:
-    """Read the queue, filter to pending + green. Fail-open on read errors."""
+    """Read the queue, collapse per-job to latest status, filter to
+    pending + green. Fail-open on read errors."""
     from sentinel_lib import escalations
 
     try:
-        pending = escalations.read_all_escalations(include_resolved=False)
+        # include_resolved=True so a job's resolution/defer record is visible
+        # and can override its earlier pending row during collapse.
+        all_records = escalations.read_all_escalations(include_resolved=True)
     except Exception as exc:  # noqa: BLE001 — never crash the launchd job on a read error
         logger.error("read_all_escalations() failed: %s (treating as empty queue)", exc)
         return []
 
     green: list[dict[str, Any]] = []
-    for task in pending:
+    for task in _collapse_by_job(all_records):
         if task.get("status") != "pending":
             continue
         if task.get("class") != "green":
