@@ -106,3 +106,23 @@ if [[ "$MODE" == "--check" ]]; then
   fi
   echo "All KBLI dataset consumers are in sync with canonical."
 fi
+
+# ── native-app fleet notice (local only — never CI, never --check) ─────────────────
+# The macOS KBLI Navigator (~/Desktop/kbli-navigator-app, OUTSIDE this repo) ships its
+# own copy of the dataset; its build refreshes from canonical, but only a deploy pushes
+# it to the 3-Mac fleet + the team zip. This block makes the drift VISIBLE at exactly
+# the moment canonical changes (this script is the mandatory step after any change),
+# instead of relying on someone remembering (superscar #2: costruito ≠ armato).
+APP_REPO="$HOME/Desktop/kbli-navigator-app"
+if [[ "$MODE" == "sync" && -z "${CI:-}" && -d "$APP_REPO" ]]; then
+  APP_COPY="$APP_REPO/Resources/KBLI_2025_FINAL_CLEAN.json"
+  if ! cmp -s "$CANONICAL" "$APP_COPY" 2>/dev/null; then
+    echo ""
+    echo "⚠︎ native app fleet NOT aligned with the new canonical. To align everything:"
+    echo "   $APP_REPO/deploy/install-3mac.sh        # build + deploy M5/Pro/Mini + content probe"
+    echo "   $APP_REPO/deploy/make-team-installer.sh # refresh the team zip"
+    echo "   $APP_REPO/deploy/check-fleet.sh         # verify (read-only)"
+  else
+    echo "native app Resources/ already matches canonical (deploy still needed if bundles are older — check-fleet.sh)"
+  fi
+fi
