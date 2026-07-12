@@ -1,0 +1,27 @@
+{
+  "code": "47743",
+  "editorial": {
+    "headline": "Second-Hand Personal Goods: Nationally Open, Closed to PMA in Bali",
+    "standfirst": "Retailing used watches, clocks and jewellery is nationally open to full foreign ownership, but Bali’s permanent PMA moratorium prevents registration there today.",
+    "body": "A foreign investor cannot register this retail activity in Bali today, even though it is open nationally to up to 100% foreign ownership. The activity is the retail sale of used personal accessories: notably pre-owned watches, clocks and jewellery. It is a focused retail classification, defined by the goods being second-hand personal items rather than by an expansive claim over the broader resale market.\n\nNationally, the position is direct. The activity is marked **TERBUKA**, with a maximum foreign ownership of 100%. It is also open across Mikro, Kecil, Menengah and Besar scales. For a business whose proposed operation falls within this scope, the national record therefore permits a fully foreign-owned PMA structure; there is no lower national foreign-ownership ceiling stated for this activity.\n\nBali changes that conclusion decisively. The Bali status is **BLOCCATO_CLASSE_RISCHIO**. At the Besar scale, OSS risk is Low or Medium-Low across every scope, and the activity is consequently blocked by Bali’s moratorium of May 13, 2026. The provincial rule blocks all Low and Medium-Low risk KBLI activities for PMA, island-wide and permanently. This is not a qualification to be managed around in the registration narrative: for PMA registration in Bali, the activity is blocked.\n\nThat split deserves to be read in the right order. The national framework says the activity is open and can carry 100% foreign ownership; Bali’s provincial PMA rule says it cannot be registered there today. Anyone considering this used-personal-goods retail activity should therefore distinguish the national ownership position from the Bali registration outcome, rather than treating national openness as permission to establish the PMA activity on the island.",
+    "pullQuote": "National openness permits 100% foreign ownership, but Bali’s permanent PMA rule blocks registration of this activity on the island.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

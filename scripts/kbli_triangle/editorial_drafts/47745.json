@@ -1,0 +1,27 @@
+{
+  "code": "47745",
+  "editorial": {
+    "headline": "Used Construction and Sanitary Goods: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "This activity covers retail trade in used building and sanitary materials, with full foreign ownership nationally but a permanent PMA block in Bali.",
+    "body": "KBLI 47745 is the retail activity for used construction and sanitary goods. Its scope includes second-hand building materials and used sanitary items such as washbasins, toilets and water tanks; it also expressly notes direct sales. The commercial centre of gravity is clear: this is a trade classification for selling previously used fixtures and materials to end buyers, rather than for their manufacture or installation.\n\nThe activity is open to businesses at every stated scale: Mikro, Kecil, Menengah and Besar. Nationally, its PMA status is TERBUKA, with a maximum foreign ownership level of 100%. In practical terms, the national classification permits full foreign ownership for this activity, subject to the scope described in the record.\n\nBali is the decisive qualification. A foreign investor cannot register this activity under PMA in Bali today. At the Besar scale, OSS risk is classified as Rendah or Menengah-Rendah across every scope, placing the activity within Bali’s permanent, island-wide moratorium on PMA registration for all Low and Medium-Low risk KBLI activities. The block is therefore not a question of the national ownership ceiling: it arises from Bali’s risk-based provincial restriction.\n\nFor founders, that distinction matters. The national framework says the activity is open and can be wholly foreign-owned; Bali’s framework says PMA registration is blocked. A plan centred on retailing used sanitary fixtures or construction materials in Bali must be read through that local constraint, not merely through the national foreign-ownership position.",
+    "pullQuote": "Nationally this activity permits full foreign ownership, but Bali’s risk-based moratorium blocks PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

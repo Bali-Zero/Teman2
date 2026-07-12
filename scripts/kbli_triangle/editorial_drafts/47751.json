@@ -1,0 +1,27 @@
+{
+  "code": "47751",
+  "editorial": {
+    "headline": "Pet-Animal Retail: Nationally Open, Closed to PMA Registration in Bali",
+    "standfirst": "This code covers retail trade in pet animals—from cats and dogs to snakes, rabbits and monitor lizards—open nationally across every business scale but blocked for PMA registration in Bali.",
+    "body": "KBLI 47751 is the retail activity for pet animals. Its scope is practical and specific: selling companion animals such as cats, dogs, snakes, rabbits and monitor lizards, among others. It is a retail classification centred on the animals themselves, including direct sales. The code gives a business a clear home when its commercial activity is the sale of pet animals rather than a broader, unnamed animal-related undertaking.\n\nThe activity is open to micro, small, medium and large businesses. That matters because the classification is not reserved for a single commercial scale: the same stated retail activity can be registered across the full range listed in the record. The operative question is therefore not whether a business is too small or too large to sit within this code, but whether its actual work remains the retail sale of pet animals described by the scope.\n\nAt the national level, the foreign-investment position is unambiguous. The code is marked open to PMA, with a foreign-ownership ceiling of 100%. In national terms, that means foreign ownership may reach 100% for this activity. The source cited for that position is Perpres 10/2021, 49/2021. This is a genuinely open national setting, not a partial opening concealed behind a lower foreign-equity cap.\n\nBali is the decisive exception. A foreigner cannot register this activity in Bali today under the PMA route. The Bali record marks it as blocked because, at the large-business scale, the OSS risk is Low or Medium-Low across every scope; those risk levels fall within Bali’s island-wide, permanent moratorium on PMA registration. The block is tied to the moratorium in force from May 13, 2026, rather than to the national foreign-ownership ceiling. In other words, national openness to 100% foreign ownership does not translate into PMA registration availability for this code in Bali.",
+    "pullQuote": "National openness to 100% foreign ownership does not translate into PMA registration availability for this code in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}

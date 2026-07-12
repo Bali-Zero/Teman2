@@ -1,0 +1,27 @@
+{
+  "code": "47729",
+  "editorial": {
+    "headline": "The Retail Trade Behind Pharmaceutical Inputs and Health Devices",
+    "standfirst": "This activity spans specialist retail in pharmaceutical ingredients, traditional-medicine raw materials, health devices and animal-health outlets—with a clear national and Bali PMA position.",
+    "body": "KBLI 47729 concerns the retail trade in specialist goods that sit behind health care and animal care. Its scope includes pharmaceutical-preparation ingredients and traditional-medicine raw materials—*simplisia*—for both people and animals, as well as other health devices. It also encompasses veterinary pharmacies, animal-medicine depots, pet shops, poultry shops and animal-medicine stores. The unifying idea is retail: businesses sell these inputs, devices and animal-health goods to the market rather than producing them.\n\nThe activity is open across every stated business scale: Micro, Small, Medium and Large. That breadth matters because the code describes a retail field with room for different operating models, from smaller specialist shops to larger businesses handling a wider commercial range. The record does not divide these activities into separate regulatory stories; it presents them together as one retail activity whose character is defined by its goods and outlets.\n\nNationally, the PMA status is open, with foreign ownership permitted up to 100%. For a foreign-investment business, that is the central national position: the activity is not presented as subject to a foreign-equity cap below full ownership. The cited basis is Perpres 10/2021 and 49/2021.\n\nBali requires a more precise reading, but not a pessimistic one. The provincial moratorium blocks PMA registration for all Low and Medium-Low risk KBLI activities, island-wide and permanently. This record is not marked as blocked in Bali. Its stated reason is that, at the Large scale, OSS risk is Medium-High/High, placing it outside that moratorium’s blocking criterion. The Bali status is therefore recorded as OK_or_HIGHER_RISK: a business should read the national openness and the Bali result together, with the applicable scale and its stated risk position at the centre of the assessment.",
+    "pullQuote": "Nationally open to 100% foreign ownership, this activity is not marked as blocked for PMA in Bali because its Large-scale OSS risk sits above the moratorium’s blocking threshold.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

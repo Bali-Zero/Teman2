@@ -1,0 +1,23 @@
+{
+  "code": "47728",
+  "editorial": {
+    "headline": "Pet Cosmetics Retail: Nationally Open, Bali PMA Blocked",
+    "standfirst": "A national 100% foreign-ownership ceiling meets a permanent, island-wide Bali block on PMA registration, making location—not scale—the decisive fact.",
+    "body": "**What the activity covers.** This is a retail classification for cosmetics made for animals: perfume, shampoo, soap, powder, cream and lotion. The scope is concrete about the stock a business sells, rather than leaving animal cosmetics as an abstract category. It also expressly includes the retail settings named in the record—veterinary pharmacies, animal-drug depots, pet shops, poultry shops and animal-drug stores. Read together, those details give the activity a clear commercial shape: retail trade in animal-care goods, with cosmetics specifically identified among them.\n\n**Who may register it.** The activity is open at every stated business scale: Mikro, Kecil, Menengah and Besar. That is a complete scale range in the record, not a category reserved for one narrow size of enterprise. For a founder, the important distinction is therefore not whether the business is micro or large, but where PMA registration is being contemplated. The listed scales establish the breadth of the activity; foreign ownership and local registration conditions determine the practical route.\n\n**Nationally, the position is straightforward.** The PMA status is TERBUKA, with a foreign-ownership ceiling of 100%. In plain English, the national record permits full foreign ownership for this activity. Its stated basis is Perpres 10/2021, 49/2021. There is no lower national foreign-stake cap in the record. Yet the national ceiling answers the ownership question; it does not by itself establish that PMA registration is available in every location.\n\n**Bali is the decisive exception.** A foreigner cannot register this activity in Bali today. Bali marks it BLOCCATO_CLASSE_RISCHIO: at the Besar scale, the OSS risk is Low or Medium-Low across every scope. That places it within Bali’s island-wide, permanent moratorium on PMA registration for all Low and Medium-Low risk KBLI activities, recorded here as the Bali moratorium of May 2026. The cited basis is Gubernur letter B.27.000/642/PM/DPMPTSP. National openness therefore remains real, but it does not create a PMA registration route in Bali for this activity.",
+    "pullQuote": "National openness permits full foreign ownership, but it does not create a PMA registration route in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "BLOCCATO_CLASSE_RISCHIO"
+      }
+    ]
+  }
+}
