@@ -326,7 +326,7 @@ class TestStoreIntel:
                 metadata={"title": "test"},
                 full_data={"key": "value"},
             )
-            result = await store_intel(request)
+            result = await store_intel(request, current_user={"role": "admin"})
 
         assert result["success"] is True
         assert result["collection"] == "bali_intel_visa"
@@ -344,7 +344,7 @@ class TestStoreIntel:
             full_data={},
         )
         with pytest.raises(HTTPException) as exc_info:
-            await store_intel(request)
+            await store_intel(request, current_user={"role": "admin"})
         # The inner HTTPException(400) is caught by the outer try/except
         # and re-raised as HTTPException(500), so we check for 500.
         assert exc_info.value.status_code == 500
