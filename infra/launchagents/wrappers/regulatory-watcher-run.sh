@@ -381,5 +381,27 @@ else
     organism_hb_set error "all tiers failed"
 fi
 
+
+# --- modus autoloop enqueue (PR #2307) ---
+# When regulatory-watcher confirmed a real delta on disk this run, deposit ONE
+# green-class task into the modus escalation queue so the autonomous loop can
+# capture it into research/regulatory/** (a low-risk, in-perimeter mandate — NOT
+# "apply the regulation", which would be a business/legal decision and NOT green).
+# One task per RUN (not per delta). Idempotent (modus_enqueue skips same pending
+# job). Fail-open: never break the watcher.
+if [ -f "$DELTA_JSON" ]; then
+    _mod_n=$(/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3 -c "import json;print(len(json.load(open('$DELTA_JSON')).get('deltas',[])))" 2>/dev/null || echo 0)
+    if [ "${_mod_n:-0}" -gt 0 ]; then
+        ( cd "$HOME/Desktop/nuzantara" && \
+          /Users/nuzantara/.pyenv/versions/3.11.11/bin/python3 scripts/modus_enqueue.py \
+            --job "regulatory-delta-capture-$DATE" \
+            --source "regulatory-watcher" \
+            --mandate "Capture today's $_mod_n regulatory delta(s) from $DELTA_JSON into a research/regulatory note; only record, do NOT apply or advise." \
+            --class green \
+            --perimeter "research/regulatory/**" \
+        ) >> "$LOG" 2>&1 || echo "[$(date)] modus_enqueue failed (non-fatal)" >> "$LOG"
+    fi
+fi
+
 rm -f "$TMPOUT"
 exit 0
