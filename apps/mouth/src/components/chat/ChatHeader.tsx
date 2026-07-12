@@ -231,58 +231,73 @@ export function ChatHeader({
                 </div>
 
                 {/* Menu Items */}
-                <div className="py-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      avatarInputRef.current?.click();
-                      onToggleUserMenu();
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)] focus-ring"
-                  >
-                    <Camera className="w-4 h-4" aria-hidden="true" />
-                    Change Avatar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onShowToast("Settings coming soon!", "success");
-                      onToggleUserMenu();
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)] focus-ring"
-                  >
-                    <Settings className="w-4 h-4" aria-hidden="true" />
-                    Settings
-                  </button>
-                  {api.isAdmin() && (
+                <ul className="py-1" role="none">
+                  <li role="none">
                     <button
                       type="button"
+                      role="menuitem"
                       onClick={() => {
-                        router.push("/admin");
+                        avatarInputRef.current?.click();
                         onToggleUserMenu();
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)] focus-ring"
                     >
-                      <Shield className="w-4 h-4" aria-hidden="true" />
-                      Admin Dashboard
+                      <Camera className="w-4 h-4" aria-hidden="true" />
+                      Change Avatar
                     </button>
+                  </li>
+                  <li role="none">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onShowToast("Settings coming soon!", "success");
+                        onToggleUserMenu();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)] focus-ring"
+                    >
+                      <Settings className="w-4 h-4" aria-hidden="true" />
+                      Settings
+                    </button>
+                  </li>
+                  {api.isAdmin() && (
+                    <li role="none">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          router.push("/admin");
+                          onToggleUserMenu();
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)] focus-ring"
+                      >
+                        <Shield className="w-4 h-4" aria-hidden="true" />
+                        Admin Dashboard
+                      </button>
+                    </li>
                   )}
-                </div>
+                </ul>
 
                 {/* Logout */}
-                <div className="border-t border-[var(--border)] py-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onToggleUserMenu();
-                      handleLogout();
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--error)]/10 transition-colors text-sm text-[var(--error)] focus-ring"
-                  >
-                    <LogOut className="w-4 h-4" aria-hidden="true" />
-                    Logout
-                  </button>
-                </div>
+                <ul
+                  className="border-t border-[var(--border)] py-1"
+                  role="none"
+                >
+                  <li role="none">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onToggleUserMenu();
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--error)]/10 transition-colors text-sm text-[var(--error)] focus-ring"
+                    >
+                      <LogOut className="w-4 h-4" aria-hidden="true" />
+                      Logout
+                    </button>
+                  </li>
+                </ul>
               </div>
             )}
           </div>
