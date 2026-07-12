@@ -328,8 +328,12 @@ env.production
 *.local.*
 research/personal/wa-corpus/
 # Client-PII research artifacts (named-client cases must NEVER reach cloud GitHub/Vercel).
-# Added 2026-06-05 after cc-setup self-audit found research/visa/clients/ un-ignored
-# holding a real client file (marc-buckner) one `git add -A` away from the cloud.
+# Added 2026-06-05 after a self-audit found research/visa/clients/ un-ignored, holding a
+# real client file one `git add -A` away from the cloud.
+# GOTCHA (2026-07-13): these patterns only stop NEW files — anything ALREADY TRACKED before
+# they landed stayed tracked and public. A named-client case file predating this block
+# survived here for 6 weeks and had to be git-rm'd by hand. When you add an ignore rule for
+# a leak class, ALSO sweep what is already tracked: `git ls-files | grep -E '<the pattern>'`.
 research/*/clients/
 research/**/*-case.md
 research/**/*-guidance.html
