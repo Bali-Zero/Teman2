@@ -134,10 +134,11 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
+          userName="Test User"
           userAvatar="data:image/png;base64,test"
         />,
       );
-      expect(screen.getByAltText("User avatar")).toBeInTheDocument();
+      expect(screen.getByAltText("Avatar for Test User")).toBeInTheDocument();
     });
   });
 

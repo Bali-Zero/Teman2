@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,7 @@ export function ChatHeader({
   onShowToast,
 }: ChatHeaderProps) {
   const router = useRouter();
+  const userMenuId = useId();
 
   // Close user menu on click-outside or Escape
   useEffect(() => {
@@ -104,9 +105,10 @@ export function ChatHeader({
             size="icon"
             onClick={onToggleSidebar}
             aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+            title={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
             className="flex-shrink-0 focus-ring"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-5 h-5" aria-hidden="true" />
           </Button>
           <Button
             onClick={onToggleClock}
@@ -114,12 +116,13 @@ export function ChatHeader({
             size="sm"
             disabled={isClockLoading}
             aria-label={isClockIn ? "Clock Out" : "Clock In"}
+            title={isClockIn ? "Clock Out" : "Clock In"}
             className={`gap-2 focus-ring ${isClockIn ? "bg-[var(--success)] hover:bg-[var(--success)]/90" : ""}`}
           >
             {isClockLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
             ) : (
-              <Clock className="w-4 h-4" />
+              <Clock className="w-4 h-4" aria-hidden="true" />
             )}
             <span className="hidden sm:inline">
               {isClockIn ? "Clock Out" : "Clock In"}
@@ -164,9 +167,10 @@ export function ChatHeader({
             size="icon"
             className="relative focus-ring"
             aria-label="Notifications"
+            title="Notifications"
             onClick={() => router.push("/notifications")}
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-5 h-5" aria-hidden="true" />
           </Button>
 
           {/* User Avatar with Dropdown Menu */}
@@ -186,12 +190,13 @@ export function ChatHeader({
               aria-label="User menu"
               aria-haspopup="true"
               aria-expanded={showUserMenu}
+              aria-controls={userMenuId}
             >
               <div className="w-8 h-8 rounded-full bg-[var(--accent)] flex items-center justify-center text-white font-medium overflow-hidden relative">
                 {userAvatar ? (
                   <Image
                     src={userAvatar}
-                    alt="User avatar"
+                    alt={userName ? `Avatar for ${userName}` : "User avatar"}
                     fill
                     className="object-cover"
                     sizes="32px"
@@ -199,17 +204,22 @@ export function ChatHeader({
                 ) : userName ? (
                   userName.charAt(0).toUpperCase()
                 ) : (
-                  <User className="w-4 h-4" />
+                  <User className="w-4 h-4" aria-hidden="true" />
                 )}
               </div>
               <ChevronDown
                 className={`w-4 h-4 text-[var(--foreground-muted)] hidden sm:block transition-transform ${showUserMenu ? "rotate-180" : ""}`}
+                aria-hidden="true"
               />
             </button>
 
             {/* User Dropdown Menu */}
             {showUserMenu && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+              <div
+                id={userMenuId}
+                role="menu"
+                className="absolute right-0 top-full mt-2 w-56 bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50"
+              >
                 {/* User Info */}
                 <div className="px-4 py-3 border-b border-[var(--border)]">
                   <p className="text-sm font-medium text-[var(--foreground)]">
@@ -230,7 +240,7 @@ export function ChatHeader({
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)] focus-ring"
                   >
-                    <Camera className="w-4 h-4" />
+                    <Camera className="w-4 h-4" aria-hidden="true" />
                     Change Avatar
                   </button>
                   <button
@@ -241,7 +251,7 @@ export function ChatHeader({
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)] focus-ring"
                   >
-                    <Settings className="w-4 h-4" />
+                    <Settings className="w-4 h-4" aria-hidden="true" />
                     Settings
                   </button>
                   {api.isAdmin() && (
@@ -253,7 +263,7 @@ export function ChatHeader({
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)] focus-ring"
                     >
-                      <Shield className="w-4 h-4" />
+                      <Shield className="w-4 h-4" aria-hidden="true" />
                       Admin Dashboard
                     </button>
                   )}
@@ -269,7 +279,7 @@ export function ChatHeader({
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--error)]/10 transition-colors text-sm text-[var(--error)] focus-ring"
                   >
-                    <LogOut className="w-4 h-4" />
+                    <LogOut className="w-4 h-4" aria-hidden="true" />
                     Logout
                   </button>
                 </div>
