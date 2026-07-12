@@ -1,10 +1,9 @@
-import hmac
-
 """
 API Key Authentication Service
 Provides simple API key validation to bypass database dependency for testing
 """
 
+import hmac
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -20,31 +19,81 @@ class APIKeyAuth:
     Designed for immediate testing relief while coordinating with colleague's API Key service
     """
 
+    # Keys that were historically admin because their NAME contained "admin"/
+    # "secret" — before role was resolved by identity instead of by spelling.
+    # They are exposed (hardcoded as defaults in the public repo) and MUST be
+    # rotated (operator[secret]); they stay admin here ONLY so the deploy of
+    # this fix does not break the internal services that already send them
+    # (newsletter publisher, reactivation campaign, admin_practice_auto_create).
+    # After rotation + `API_KEY_ROLES` is set for the replacements, delete this.
+    #
+    # This is NOT substring inference: it is a closed, explicit, auditable set.
+    _LEGACY_ADMIN_KEYS: frozenset[str] = frozenset(
+        {"zantara-secret-2024", "admin-key-2024"},
+    )
+
+    @staticmethod
+    def _parse_role_map(raw: str | None) -> dict[str, str]:
+        """Parse `API_KEY_ROLES` = `key:role,key:role` into {key: role}.
+
+        Explicit, opt-in, per-key. Any role other than a known one is ignored
+        (fails safe to the default `user`).
+        """
+        mapping: dict[str, str] = {}
+        if not isinstance(raw, str):
+            # None, or a MagicMock from a test that patches settings — treat as
+            # "no explicit map". Never infer anything from a non-string.
+            return mapping
+        for pair in raw.split(","):
+            pair = pair.strip()
+            if not pair or ":" not in pair:
+                continue
+            key, _, role = pair.rpartition(":")
+            key, role = key.strip(), role.strip().lower()
+            if key and role in ("admin", "user"):
+                mapping[key] = role
+        return mapping
+
+    def _role_for(self, api_key: str, role_map: dict[str, str]) -> str:
+        """Resolve a key's role by IDENTITY, never by the spelling of the key.
+
+        Precedence: explicit `API_KEY_ROLES` entry > legacy-admin allowlist >
+        default `user`. There is deliberately no path where an unknown key
+        becomes admin — adding a key grants read, never write, until someone
+        declares its role on purpose.
+        """
+        if api_key in role_map:
+            return role_map[api_key]
+        if api_key in self._LEGACY_ADMIN_KEYS:
+            return "admin"
+        return "user"
+
     def __init__(self) -> None:
         """Initialize API key service with valid keys and permissions from settings"""
         # Load API keys from environment variable (comma-separated)
         api_keys_str = settings.api_keys
         api_key_list = [key.strip() for key in api_keys_str.split(",") if key.strip()]
 
+        role_map = self._parse_role_map(getattr(settings, "api_key_roles", None))
+
         # Initialize valid_keys dictionary from environment variable
         self.valid_keys = {}
         for api_key in api_key_list:
-            # Default role and permissions - can be customized per key if needed
+            role = self._role_for(api_key, role_map)
             self.valid_keys[api_key] = {
-                "role": (
-                    "admin" if "admin" in api_key.lower() or "secret" in api_key.lower() else "user"
-                ),
-                "permissions": (
-                    ["*"] if "admin" in api_key.lower() or "secret" in api_key.lower() else ["read"]
-                ),
+                "role": role,
+                "permissions": ["*"] if role == "admin" else ["read"],
                 "created_at": datetime.now(timezone.utc).isoformat() + "Z",
                 "description": "API key loaded from environment variable",
             }
 
         self.key_stats = {key: {"usage_count": 0, "last_used": None} for key in self.valid_keys}
 
+        n_admin = sum(1 for v in self.valid_keys.values() if v["role"] == "admin")
         logger.info(
-            f"API Key service initialized with {len(self.valid_keys)} valid keys from environment",
+            "API Key service initialized: %d keys (%d admin) — role by identity, not by name",
+            len(self.valid_keys),
+            n_admin,
         )
 
     def validate_api_key(self, api_key: str) -> dict[str, Any] | None:
