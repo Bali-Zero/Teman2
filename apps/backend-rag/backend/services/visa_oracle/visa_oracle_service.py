@@ -127,7 +127,7 @@ SCORE_DURATION_FIT = 1.5
 SCORE_FAMILY_MATCH = 1.0
 
 WHATSAPP_NUMBER = "+62 821 3465 159"
-WHATSAPP_BASE_URL = "https://wa.me/6282210302328"
+WHATSAPP_BASE_URL = "https://wa.me/6282230102328"
 
 
 # ---------------------------------------------------------------------------

@@ -68,8 +68,8 @@ Write `apps/backend-rag/backend/data/bali_zero_official_prices_2026.json` with t
     "currency": "IDR",
     "contact": {
       "email": "zero@balizero.com",
-      "whatsapp": "+62 822 1030 2328",
-      "wa_link": "https://wa.me/6282210302328",
+      "whatsapp": "+62 822 3010 2328",
+      "wa_link": "https://wa.me/6282230102328",
       "location": "Kerobokan, Bali, Indonesia",
       "website": "balizero.com"
     },
@@ -196,7 +196,7 @@ print(f'Contact: {d[\"metadata\"][\"contact\"][\"whatsapp\"]}')
 "
 ```
 
-Expected: `Total services: 80` (give or take 2 — the count is approximate), all 10 categories listed, WhatsApp `+62 822 1030 2328`.
+Expected: `Total services: 80` (give or take 2 — the count is approximate), all 10 categories listed, WhatsApp `+62 822 3010 2328`.
 
 - [ ] **Step 4: Commit**
 
@@ -205,7 +205,7 @@ git add apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
 git commit -m "data(pricing): add 2026 Bali Zero price list JSON source
 
 Single source of truth for the 2026 price list — 80 services across 10
-categories, contacts updated to zero@balizero.com / +62 822 1030 2328 /
+categories, contacts updated to zero@balizero.com / +62 822 3010 2328 /
 Kerobokan, KITAP conflicts resolved (Investor 55M, Dependent 33M, no
 ACC), Akta Perubahan unified, new Tax & Accounting + Consultant Services
 sections added.
@@ -250,8 +250,8 @@ Write `scripts/pricelist_2026/tests/fixtures/minimal_prices.json`:
     "currency": "IDR",
     "contact": {
       "email": "zero@balizero.com",
-      "whatsapp": "+62 822 1030 2328",
-      "wa_link": "https://wa.me/6282210302328",
+      "whatsapp": "+62 822 3010 2328",
+      "wa_link": "https://wa.me/6282230102328",
       "location": "Kerobokan, Bali, Indonesia",
       "website": "balizero.com"
     },
@@ -406,8 +406,8 @@ from typing import Any
 
 CANONICAL_CONTACT = {
     "email": "zero@balizero.com",
-    "whatsapp": "+62 822 1030 2328",
-    "wa_link": "https://wa.me/6282210302328",
+    "whatsapp": "+62 822 3010 2328",
+    "wa_link": "https://wa.me/6282230102328",
     "location": "Kerobokan, Bali, Indonesia",
     "website": "balizero.com",
 }
@@ -1381,7 +1381,7 @@ def test_generate_html_smoke(fixture_data, stub_assets, tmp_path):
     assert "2.000.000 IDR" in html
     # Contact rendered
     assert "zero@balizero.com" in html
-    assert "+62 822 1030 2328" in html
+    assert "+62 822 3010 2328" in html
     # Logo embedded as base64 data URI
     assert 'src="data:image/png;base64,' in html
 
@@ -1397,7 +1397,7 @@ def test_generate_markdown_smoke(fixture_data, stub_assets, tmp_path):
     assert "# Bali Zero — Price List 2026" in md
     assert "C1 Tourism" in md
     assert "1.800.000 IDR – 2.000.000 IDR" in md
-    assert "wa.me/6282210302328" in md
+    assert "wa.me/6282230102328" in md
 
 
 def test_generate_rejects_invalid_json(stub_assets, tmp_path):
@@ -1952,7 +1952,7 @@ Confirm:
 
 - [ ] **Step 3: Test the QR code**
 
-Scan the QR code on the PDF closing page with a phone camera. It should open WhatsApp to a chat with `+62 822 1030 2328` (the canonical contact).
+Scan the QR code on the PDF closing page with a phone camera. It should open WhatsApp to a chat with `+62 822 3010 2328` (the canonical contact).
 
 - [ ] **Step 4: Final summary message to owner**
 

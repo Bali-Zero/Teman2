@@ -29,13 +29,13 @@ describe("parseJid — phone server (@s.whatsapp.net / @c.us)", () => {
   });
 
   it("strips the :<device> multi-device suffix", () => {
-    expect(parseJid("6282210302328:1@s.whatsapp.net")).toMatchObject({
+    expect(parseJid("6282230102328:1@s.whatsapp.net")).toMatchObject({
       kind: "phone",
-      phone: "+6282210302328",
+      phone: "+6282230102328",
     });
-    expect(parseJid("6282210302328:42@s.whatsapp.net")).toMatchObject({
+    expect(parseJid("6282230102328:42@s.whatsapp.net")).toMatchObject({
       kind: "phone",
-      phone: "+6282210302328",
+      phone: "+6282230102328",
     });
   });
 
@@ -103,7 +103,7 @@ describe("parseJid — empty / malformed", () => {
 
 describe("jidToPhone (legacy) — STRICTER post-v2 contract", () => {
   it("returns digits for phone JIDs", () => {
-    expect(jidToPhone("6282210302328:1@s.whatsapp.net")).toBe("6282210302328");
+    expect(jidToPhone("6282230102328:1@s.whatsapp.net")).toBe("6282230102328");
   });
 
   it("returns '' for @lid (BREAKING change from v1 — callers must migrate to parseJid)", () => {

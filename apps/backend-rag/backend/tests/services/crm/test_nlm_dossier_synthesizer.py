@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from backend.services.crm.nlm_dossier_synthesizer import (
     ClientDossier,
@@ -54,9 +55,9 @@ class TestPIIStripping:
         assert "[EMAIL-MASKED]" in out
 
     def test_full_phone_masked(self):
-        text = "Call +62 822 1030 2328 for confirmation"
+        text = "Call +62 822 3010 2328 for confirmation"
         out = strip_pii(text)
-        assert "+62 822 1030 2328" not in out
+        assert "+62 822 3010 2328" not in out
         assert "[PHONE-MASKED]" in out
 
     def test_efin_masked(self):
@@ -199,7 +200,7 @@ class TestClientDossierSchema:
         assert d.human_layer.operator_handoffs[0].reason == "tax escalation"
 
     def test_sentiment_constrained(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             HumanLayer(sentiment_trend="ecstatic")  # type: ignore[arg-type]
 
 

@@ -1,24 +1,28 @@
-import { CODEX_HTML } from './_codex-content';
+import { CODEX_HTML } from "./_codex-content";
+import { logger } from "@/lib/logger";
 
 // PIN-gated reading room for the Codex Akasha (private family page).
 // Server-side gate: the codex HTML never reaches the client before the PIN.
 // Gated responses must never be statically optimized or cached.
-export const dynamic = 'force-dynamic';
-const PIN = process.env.CODEX_PIN ?? '666';
-const COOKIE_NAME = 'codex_sig';
+export const dynamic = "force-dynamic";
+const PIN = process.env.CODEX_PIN ?? "666";
+const COOKIE_NAME = "codex_sig";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 const BASE_HEADERS: Record<string, string> = {
-  'Content-Type': 'text/html; charset=utf-8',
-  'X-Robots-Tag': 'noindex, nofollow',
-  'Cache-Control': 'no-store',
+  "Content-Type": "text/html; charset=utf-8",
+  "X-Robots-Tag": "noindex, nofollow",
+  "Cache-Control": "no-store",
 };
 
 async function sha256Hex(input: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(input),
+  );
   return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function expectedSig(): Promise<string> {
@@ -26,10 +30,10 @@ function expectedSig(): Promise<string> {
 }
 
 function getCookie(req: Request, name: string): string | null {
-  const header = req.headers.get('cookie') ?? '';
-  for (const part of header.split(';')) {
-    const [key, ...rest] = part.trim().split('=');
-    if (key === name) return rest.join('=');
+  const header = req.headers.get("cookie") ?? "";
+  for (const part of header.split(";")) {
+    const [key, ...rest] = part.trim().split("=");
+    if (key === name) return rest.join("=");
   }
   return null;
 }
@@ -79,14 +83,13 @@ function doorHtml(error = false): string {
   <h1>CODEX&nbsp;AKASHA</h1>
   <p class="q">Quis es? Da mihi signum.</p>
   <input name="pin" inputmode="numeric" autocomplete="one-time-code" maxlength="3" pattern="[0-9]{3}" aria-label="signum" autofocus>
-  ${error ? '<p class="err">Signum falsum est.</p>' : ''}
+  ${error ? '<p class="err">Signum falsum est.</p>' : ""}
   <button type="submit">Aperi</button>
   <p class="foot">liber vivit &middot; mmxxvi</p>
 </form>
 </body>
 </html>`;
 }
-
 
 // ---- door alert -------------------------------------------------------------
 // The door itself reports who knocked: Vercel stamps the client's geo on every
@@ -99,8 +102,8 @@ const ALERT_TIMEOUT_MS = 3000;
 
 function skipCountries(): Set<string> {
   return new Set(
-    (process.env.CODEX_ALERT_SKIP_COUNTRIES ?? 'US')
-      .split(',')
+    (process.env.CODEX_ALERT_SKIP_COUNTRIES ?? "US")
+      .split(",")
       .map((c) => c.trim().toUpperCase())
       .filter(Boolean),
   );
@@ -111,33 +114,47 @@ async function notifyDoor(req: Request, entered: boolean): Promise<void> {
     const token = process.env.CODEX_WA_TOKEN;
     const phoneId = process.env.CODEX_WA_PHONE_ID;
     if (!token || !phoneId) return; // alert not configured — door still works
-    const country = (req.headers.get('x-vercel-ip-country') ?? '??').toUpperCase();
+    const country = (
+      req.headers.get("x-vercel-ip-country") ?? "??"
+    ).toUpperCase();
     if (skipCountries().has(country)) return;
-    const city = decodeURIComponent(req.headers.get('x-vercel-ip-city') ?? '');
-    const when = new Intl.DateTimeFormat('it-IT', {
-      timeZone: 'Europe/Rome',
-      hour: '2-digit',
-      minute: '2-digit',
+    const city = decodeURIComponent(req.headers.get("x-vercel-ip-city") ?? "");
+    const when = new Intl.DateTimeFormat("it-IT", {
+      timeZone: "Europe/Rome",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(new Date());
     const where = city ? `${country} (${city})` : country;
     const text = entered
       ? `📜 CODEX — qualcuno è ENTRATO col segno giusto · ${where} · ${when} IT`
       : `📜 CODEX — segno sbagliato alla porta · ${where} · ${when} IT`;
-    const res = await fetch(`https://graph.facebook.com/v22.0/${phoneId}/messages`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: process.env.CODEX_ALERT_TO ?? '6282210302328',
-        type: 'text',
-        text: { body: text },
-      }),
-      signal: AbortSignal.timeout(ALERT_TIMEOUT_MS),
-    });
-    if (!res.ok) console.error('codex door alert failed:', res.status, await res.text());
-    else console.log(`codex door alert sent: ${entered ? 'entered' : 'wrong-pin'} from ${where}`);
+    const res = await fetch(
+      `https://graph.facebook.com/v22.0/${phoneId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: process.env.CODEX_ALERT_TO ?? "6282230102328",
+          type: "text",
+          text: { body: text },
+        }),
+        signal: AbortSignal.timeout(ALERT_TIMEOUT_MS),
+      },
+    );
+    if (!res.ok)
+      logger.error(
+        `codex door alert failed: ${res.status} ${await res.text()}`,
+      );
+    else
+      logger.info(
+        `codex door alert sent: ${entered ? "entered" : "wrong-pin"} from ${where}`,
+      );
   } catch (err) {
-    console.error('codex door alert error:', err);
+    logger.error(`codex door alert error: ${err}`);
   }
 }
 
@@ -151,17 +168,17 @@ export async function GET(req: Request): Promise<Response> {
 
 export async function POST(req: Request): Promise<Response> {
   const form = await req.formData().catch(() => null);
-  const pin = form?.get('pin');
-  if (typeof pin === 'string' && pin.trim() === PIN) {
+  const pin = form?.get("pin");
+  if (typeof pin === "string" && pin.trim() === PIN) {
     const sig = await expectedSig();
     await notifyDoor(req, true);
     return new Response(null, {
       status: 303,
       headers: {
-        Location: '/codex',
-        'Set-Cookie': `${COOKIE_NAME}=${sig}; Path=/codex; Max-Age=${COOKIE_MAX_AGE}; HttpOnly; Secure; SameSite=Lax`,
-        'X-Robots-Tag': 'noindex, nofollow',
-        'Cache-Control': 'no-store',
+        Location: "/codex",
+        "Set-Cookie": `${COOKIE_NAME}=${sig}; Path=/codex; Max-Age=${COOKIE_MAX_AGE}; HttpOnly; Secure; SameSite=Lax`,
+        "X-Robots-Tag": "noindex, nofollow",
+        "Cache-Control": "no-store",
       },
     });
   }
