@@ -9,6 +9,7 @@ Transport: stdio (for Claude Code / Cowork / OpenClaw local integration)
 
 import logging
 import os
+from pathlib import Path
 from typing import Any, Optional
 
 import httpx
@@ -19,9 +20,35 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 logger = logging.getLogger("nuzantara-mcp")
 
 # --- Configuration ---
+def _secret_from_env_file(name: str, path: Optional[Path] = None) -> str:
+    """Fallback for secrets the invoker's environment does not carry.
+
+    launchd/mcporter/interactive-session contexts often spawn this server
+    without NUZANTARA_API_KEY exported — after the default-deny authz gate
+    (#2304) every authed tool then 401s. The fleet keeps secrets in
+    ~/.nuzantara-secrets.env (0600); read the var by NAME, never log values.
+    Missing file or var -> "" (identical to pre-fallback behavior, fail-safe).
+    """
+    env_file = path if path is not None else Path.home() / ".nuzantara-secrets.env"
+    try:
+        for raw in env_file.read_text().splitlines():
+            line = raw.strip()
+            if line.startswith("export "):
+                line = line[len("export "):].lstrip()
+            if line.startswith(f"{name}="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return ""
+
+
 BACKEND_URL = os.getenv("NUZANTARA_BACKEND_URL", "https://nuzantara-rag.fly.dev")
-API_KEY = os.getenv("NUZANTARA_API_KEY", "")
-ADMIN_API_KEY = os.getenv("NUZANTARA_ADMIN_API_KEY") or os.getenv("ADMIN_API_KEY", "")
+API_KEY = os.getenv("NUZANTARA_API_KEY", "") or _secret_from_env_file("NUZANTARA_API_KEY")
+ADMIN_API_KEY = (
+    os.getenv("NUZANTARA_ADMIN_API_KEY")
+    or os.getenv("ADMIN_API_KEY", "")
+    or _secret_from_env_file("NUZANTARA_ADMIN_API_KEY")
+)
 TIMEOUT = int(os.getenv("NUZANTARA_TIMEOUT", "30"))
 LONG_TIMEOUT = int(os.getenv("NUZANTARA_LONG_TIMEOUT", "120"))
 
