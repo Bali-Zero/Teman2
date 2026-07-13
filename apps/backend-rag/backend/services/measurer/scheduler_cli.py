@@ -45,6 +45,24 @@ def _configure_logging() -> None:
     )
 
 
+def _resolve_graph_base() -> str | None:
+    """Pick the Graph API host matching the token family.
+
+    The only known-valid production token is INSTAGRAM-Login family
+    (wr2_ig_publish probe 2026-06-25): valid on graph.instagram.com ONLY —
+    MetaGraphSampler's facebook default answers 190 OAuthException for it.
+    IG_GRAPH_BASE wins when set; otherwise IG_TOKEN_FAMILY selects the host
+    (default instagram, mirroring ig_token_watchdog's default).
+    """
+    explicit = os.environ.get("IG_GRAPH_BASE")
+    if explicit:
+        return explicit
+    family = (os.environ.get("IG_TOKEN_FAMILY") or "instagram").strip().lower()
+    if family == "facebook":
+        return None  # keep MetaGraphSampler's facebook default
+    return "https://graph.instagram.com/v21.0"
+
+
 def _build_samplers() -> list:
     """Build the sampler list from what's reachable in this environment.
 
@@ -59,7 +77,7 @@ def _build_samplers() -> list:
         )
 
         try:
-            samplers.append(MetaGraphSampler())
+            samplers.append(MetaGraphSampler(graph_base=_resolve_graph_base()))
         except Exception as exc:
             logger.warning("MetaGraphSampler init failed: %s", exc)
     return samplers

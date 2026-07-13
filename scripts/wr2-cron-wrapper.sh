@@ -67,4 +67,30 @@ if [[ ! -x "$VENV_PY" ]]; then
     VENV_PY="python"
 fi
 
+# 3.5 Measurer only: keep the IG long-lived token alive before the sweep
+# (Task-30 watchdog, runbook docs/runbooks/ig-token-watchdog.md §Arming).
+# Token-tolerant: with no token configured the watchdog exits 2 and the
+# scheduler still runs (it degrades to "no samplers" on its own); the exit-2
+# line below is the standing NEEDS-OPERATOR alarm until a token lands.
+if [[ "$MODULE" == "backend.services.measurer.scheduler_cli" ]]; then
+    set +e
+    IG_TOKEN_ENV_FILE="$SECRETS_FILE" \
+    IG_TOKEN_STATE_FILE="$HOME/.nuzantara-ig-token-state.json" \
+    PYTHONPATH=. "$VENV_PY" -m backend.services.measurer.ig_token_watchdog
+    wd_rc=$?
+    set -e
+    if [[ $wd_rc -eq 2 ]]; then
+        echo "[measurer] ig-token-watchdog NEEDS OPERATOR (exit 2 — token missing or unrefreshable)" >&2
+    elif [[ $wd_rc -ne 0 ]]; then
+        echo "[measurer] ig-token-watchdog unexpected exit $wd_rc" >&2
+    fi
+    # Re-source so a just-refreshed token reaches scheduler_cli.
+    if [[ -f "$SECRETS_FILE" ]]; then
+        # shellcheck disable=SC1090
+        set -a
+        source "$SECRETS_FILE"
+        set +a
+    fi
+fi
+
 exec env PYTHONPATH=. "$VENV_PY" -m "$MODULE" "$@"
