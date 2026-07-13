@@ -24,10 +24,19 @@
 --     -f apps/backend-rag/backend/db/migrations_v2/242_conversation_messages_metadata_object_backfill.sql
 -- === FORWARD ===
 
-UPDATE conversation_messages
-SET metadata = (metadata #>> '{}')::jsonb
-WHERE jsonb_typeof(metadata) = 'string'
-  AND left(ltrim(metadata #>> '{}'), 1) IN ('{', '[');
+-- Guarded: conversation_messages is created by the PYTHON migration lineage
+-- (migration_070_conversation_history.py); a fresh database applying the SQL
+-- lineage alone (CI test DB) does not have it yet. Data repair only where the
+-- table exists.
+DO $$
+BEGIN
+    IF to_regclass('public.conversation_messages') IS NOT NULL THEN
+        UPDATE conversation_messages
+        SET metadata = (metadata #>> '{}')::jsonb
+        WHERE jsonb_typeof(metadata) = 'string'
+          AND left(ltrim(metadata #>> '{}'), 1) IN ('{', '[');
+    END IF;
+END $$;
 
 -- === ROLLBACK ===
 -- Intentionally none: re-double-encoding object rows back into string scalars
