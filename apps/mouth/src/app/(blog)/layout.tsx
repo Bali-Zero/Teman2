@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { NavShell, BZLogo } from "@balizero/core";
+import { MobileNav } from "@/app/v2/_components/MobileNav";
 import { ZantaraFAB } from "@/app/v2/_components/ZantaraFAB";
 import { Footer } from "@/app/v2/_components/Footer";
 import { I18nProvider } from "@/i18n";
@@ -36,6 +37,7 @@ export default function BlogLayout({ children }: { children: ReactNode }) {
             </Link>
           }
           items={BLOG_NAV_ITEMS}
+          slotAfter={<MobileNav items={BLOG_NAV_ITEMS} />}
           actions={
             <Link
               href="/contact"
