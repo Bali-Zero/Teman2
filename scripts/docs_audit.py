@@ -533,43 +533,59 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
 def apply_moves(repo: Path, rows: List[DocRow], use_git: bool = True) -> int:
     """Move files whose action starts with 'archive' into docs/archive/YYYY-MM-<slug>/. Return moved count.
 
-    All moves are issued as ONE batched `git mv` call (git supports multiple
-    sources + a destination directory in a single invocation) rather than one
+    Sources are grouped by their original subdirectory under docs/ (root
+    docs/*.md files form their own group) and each group is issued as ONE
+    batched `git mv <sources...> <dest-subdir>` call, rather than one
     subprocess per file. This closes the interruption window that produced
     the 2026-07-07 near-miss: a mid-loop timeout on a per-file subprocess
     left some `git mv` calls applied and others not, and — because the
     working tree was already dirty from earlier moves — a subsequent partial
     `git add` staged byte-duplicate copies under docs/archive/ instead of
-    clean renames (fixed in commit e6c5526696). Batching means the operation
-    is all-or-nothing at the git-mv step: either every listed file moves, or
-    the subprocess call fails/is killed before ANY of them are staged as
-    duplicates outside a single atomic git operation.
+    clean renames (fixed in commit e6c5526696). Batching per group means the
+    operation is all-or-nothing per group at the git-mv step.
+
+    Preserving the subdirectory under the archive slug (rather than a single
+    flat destination directory for every source) avoids a fatal `git mv`
+    collision when two orphans from different docs/ subdirectories share a
+    basename — e.g. docs/FOO.md and docs/architecture/FOO.md both moving
+    into one flat docs/archive/<slug>/ would collide on FOO.md. Confirmed by
+    a failed --apply run and fixed by hand (preserving subpaths) in #2309;
+    this closes the gap so future runs don't need a manual workaround.
     """
     slug = time.strftime("%Y-%m-orphans")
-    dest = repo / "docs" / "archive" / slug
-    dest.mkdir(parents=True, exist_ok=True)
+    dest_root = repo / "docs" / "archive" / slug
+    docs_root = repo / "docs"
 
-    sources: List[Path] = []
+    groups: Dict[Path, List[Path]] = {}
     for r in rows:
         if not r.action.startswith("archive: orphan"):
             continue
         src = repo / r.path
         if not src.exists():
             continue
-        sources.append(src)
+        try:
+            rel_dir = src.parent.relative_to(docs_root)
+        except ValueError:
+            rel_dir = Path(".")
+        groups.setdefault(rel_dir, []).append(src)
 
-    if not sources:
+    if not groups:
         return 0
 
-    if use_git:
-        subprocess.run(
-            ["git", "-C", str(repo), "mv", *[str(s) for s in sources], str(dest)],
-            check=True,
-        )
-    else:
-        for src in sources:
-            src.rename(dest / src.name)
-    return len(sources)
+    moved = 0
+    for rel_dir, sources in groups.items():
+        dest = dest_root if rel_dir == Path(".") else dest_root / rel_dir
+        dest.mkdir(parents=True, exist_ok=True)
+        if use_git:
+            subprocess.run(
+                ["git", "-C", str(repo), "mv", *[str(s) for s in sources], str(dest)],
+                check=True,
+            )
+        else:
+            for src in sources:
+                src.rename(dest / src.name)
+        moved += len(sources)
+    return moved
 
 
 def main() -> int:
