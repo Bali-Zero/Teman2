@@ -79,8 +79,10 @@ if [[ "$MODULE" == "backend.services.measurer.scheduler_cli" ]]; then
     PYTHONPATH=. "$VENV_PY" -m backend.services.measurer.ig_token_watchdog
     wd_rc=$?
     set -e
-    if [[ $wd_rc -eq 2 ]]; then
-        echo "[measurer] ig-token-watchdog NEEDS OPERATOR (exit 2 — token missing or unrefreshable)" >&2
+    if [[ $wd_rc -eq 1 || $wd_rc -eq 2 ]]; then
+        # exit 1 = no token in env at all; exit 2 = refresh needs the operator.
+        # Both are the standing starvation alarm, proven live 2026-07-13.
+        echo "[measurer] ig-token-watchdog NEEDS OPERATOR (exit $wd_rc — token missing or unrefreshable)" >&2
     elif [[ $wd_rc -ne 0 ]]; then
         echo "[measurer] ig-token-watchdog unexpected exit $wd_rc" >&2
     fi
