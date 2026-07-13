@@ -622,6 +622,67 @@ def test_apply_batches_single_git_mv_call(tmp_path, monkeypatch):
     assert len(archived) == 1
 
 
+def test_apply_preserves_subdirs_on_basename_collision(tmp_path):
+    """Two orphans sharing a basename in different docs/ subdirectories must
+    both move cleanly, preserving their original subpath under the archive
+    slug — not collide on a single flat destination directory.
+
+    Regression for #2309: docs_audit.py::apply_moves() previously batched
+    ALL orphan sources into one flat docs/archive/<slug>/ directory. `git mv
+    docs/ORPHAN_OLD.md docs/collide/ORPHAN_OLD.md docs/archive/<slug>/`
+    fatally collides on the shared basename ("fatal: fonti multiple per la
+    stessa destinazione" / "multiple sources for the same target"). The fix
+    groups sources by their subdirectory under docs/ and preserves that
+    subpath under the archive slug, so same-basename orphans from different
+    subdirectories land at distinct paths.
+    """
+    import shutil
+
+    sys.path.insert(0, str(AUDIT_SCRIPT.parent))
+    import docs_audit  # noqa: E402
+
+    tmp_repo = tmp_path / "repo"
+    shutil.copytree(FIXTURE_REPO, tmp_repo)
+
+    # NOTE: content must not mention the shared basename anywhere — refs_in
+    # is a basename-substring scan across all other docs (see
+    # compute_refs_in), so spelling out the filename here would count as a
+    # false inbound reference and disqualify the *other* same-named orphan.
+    collide_dir = tmp_repo / "docs" / "collide"
+    collide_dir.mkdir()
+    (collide_dir / "ORPHAN_OLD.md").write_text(
+        "# Unrelated subdir doc\n\nNo relation to any other file in this fixture.\n",
+        encoding="utf-8",
+    )
+
+    _init_git_repo(tmp_repo, backdate_days=120)
+
+    docs = docs_audit.walk_docs(tmp_repo)
+    rows = [
+        docs_audit.classify(d, tmp_repo, 90, ["docs/WHITELIST_KEEPER.md"], [], {})
+        for d in docs
+    ]
+    orphan_paths = {r.path for r in rows if r.action.startswith("archive: orphan")}
+    assert "docs/ORPHAN_OLD.md" in orphan_paths
+    assert "docs/collide/ORPHAN_OLD.md" in orphan_paths
+
+    moved = docs_audit.apply_moves(tmp_repo, rows, use_git=True)
+    assert moved == len(orphan_paths)
+
+    archive_root = tmp_repo / "docs" / "archive"
+    root_hits = list(archive_root.glob("*-orphans/ORPHAN_OLD.md"))
+    sub_hits = list(archive_root.glob("*-orphans/collide/ORPHAN_OLD.md"))
+    assert len(root_hits) == 1
+    assert len(sub_hits) == 1
+
+    # Both originals are gone, neither move overwrote or dropped the other.
+    assert not (tmp_repo / "docs" / "ORPHAN_OLD.md").exists()
+    assert not (tmp_repo / "docs" / "collide" / "ORPHAN_OLD.md").exists()
+    assert root_hits[0].read_text(encoding="utf-8") != sub_hits[0].read_text(
+        encoding="utf-8"
+    )
+
+
 def test_regen_only_flag_never_moves_files(tmp_path):
     """`--regen-only` must rewrite DOCS_INVENTORY.md but never touch docs/archive/."""
     import shutil
