@@ -1,0 +1,42 @@
+{
+  "run_at": "2026-07-14T07:04:23+08:00",
+  "today": "2026-07-14",
+  "yesterday_seen_count": 21,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (HTTP 403)",
+    "https://muc.co.id/article (HTTP 403)",
+    "https://ikpi.or.id/news/ (HTTP 404)",
+    "https://ortax.org/berita (200 but client-side rendered SPA, <title>Berita - Ortax</title>, no static article data extractable)",
+    "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026 (200 but JS-rendered results grid, no static PMK entries with date metadata extractable)",
+    "https://jdih.kemenkeu.go.id/peraturan (connection failed / timeout, HTTP 000)",
+    "https://jdih.kemnaker.go.id/peraturan (200, JS-rendered filter shell only, no static July 2026 Permenaker entries visible in raw HTML)",
+    "https://www.imigrasi.go.id (200, homepage is an Imtelligence AI-widget shell, no static press-release list extractable in raw HTML)"
+  ],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK 37/2025",
+    "Permendagri 6/2026",
+    "KMK 29/MK/EF.2/2026",
+    "PMK Nomor 44 Tahun 2026"
+  ],
+  "note": "NB-INTEL family (Regulation/Press/Immigration/Tax) all returned 'nessuna novita' for the 24-48h window. NB-INTEL-Press offered an unrelated follow-up about the 15 July LKPM semester-report deadline (already-known fact, not a new regulation, dropped per hard rule 2). NB-INTEL-Tax offered a follow-up about PMK 44/2026 restrictions on ex-Kemenkeu employees - that act is already in seen_citations from prior runs, not newly published, dropped. Primary web sources: Hukumonline/MUC still 403, IKPI still 404, Ortax /berita (path corrected from /news, which now 404s) is a client-side SPA with no extractable static article data. DDTC homepage newest content dated 2026-07-13 (routine DJP/Coretax operational news, no new regulation numbers) with one KEBIJAKAN PEMERINTAH story dated 2026-07-04 referencing an unspecified 'Permendagri Baru' for KTP-occupation/tax-integration - outside the 48h window and no verbatim citation number given in the headline/lede, dropped per hard rule 1 (verbatim citations only). Backup gov portals: peraturan.go.id newest entry still 07 Juli 2026 (unchanged vs yesterday, outside 48h window); pajak.go.id newest date-stamped content 2026-07-07 (same non-actionable routine weekly bea-masuk KMK class already seen, outside 48h window regardless); peraturan.bpk.go.id returned 200 but the PMK search results are JS-rendered (no static entries extractable, consistent with its unreliable-source class); imigrasi.go.id homepage is purely an Imtelligence AI-chat-widget shell in raw HTML with no static press-release list (degraded vs prior runs where nav/press text was at least partially extractable - flagged for follow-up but not treated as a positive signal either way); jdih.kemenkeu.go.id timed out (HTTP 000); jdih.kemnaker.go.id remained a JS filter shell with zero static July entries. No source contradicted the NB-reported null result. Zero new deltas today."
+}
