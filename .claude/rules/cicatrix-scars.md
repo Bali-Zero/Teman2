@@ -493,6 +493,18 @@ dichiarato è debito, un buco taciuto è una bugia. Regola: quando curi un over-
 gemello under-match nella stessa guardia** — W83→W84 e W91→W94 dicono che nasce nello stesso punto, e qui
 i due vivevano letteralmente sulla stessa riga.
 
+### ✅ RESOLVED: W96 — unisolated tests wrote fixtures into the PRODUCTION WR2 review queue (phantom micro-carousels in the Control app) (2026-07-13)
+
+_Discovered: 2026-07-13 07:20 WITA · Severity: RESOLVED · Status: Resolved (PR #2360 merged + cleanup verified by content)_
+
+**TRAUMA**: The WR2 Control app filled with "drafted" 1-slide carousels that opened to nothing. They were TEST FIXTURES: `test_apply_one_reconnects_before_terminal_write` (backend/tests/unit/scripts) drives the real `_apply_one` without mocking `_publish_visibility`, whose defaults resolve to the REAL runtime state (`WR2_OUTPUT_ROOT` → `$HOME/Desktop/nuzantara/apps/war-room/output`). Every `pytest backend/tests/` run — every pre-push, plus `coverage_trend.py` in Pro's crontab at 04:30 WITA daily — appended a junk entry (topic "", slug `carousel`, slide_count 1, drive_url `https://drive/x`), created a junk carousel dir (24 on Pro, 131 on M5) and spooled a spurious Telegram P0. The queue-pull sync then delivered the polluted queue to the app on M5.
+
+**ANTIBODY**: Four layers (PR #2360): (1) autouse conftest fixture in BOTH test trees redirects `WR2_OUTPUT_ROOT`+`TG_DRY_RUN`/`TG_SPOOL_DIR` to tmp_path — kills the whole class for any future forgetful test; (2) the leaking test now mocks `_publish_visibility`; (3) W96 guard in `_publish_visibility` refuses empty-topic/zero-slide drafts with a P1 alert; (4) immune organ `scripts/wr2_queue_hygiene.py` — entity-based quarantine (drafted + blank topic + never published → `queue-quarantine.json`) + content-verified junk-dir purge — runs on every `wr2_daily_reconciler` tick with a fail-visible TG p2. CI battery `wr2-queue-tests.yml` arms the queue test suite (separate PR, Zero merges).
+
+**GOTCHA**: (a) A library default of `Path.home()/...` makes every unisolated test a production writer — grep for `Path.home()` defaults when a phantom artifact appears with fixture-smelling fields (`https://drive/x` was the tell: it existed ONLY in test files). (b) The daily 20:39Z timestamps pointed to a Pro crontab coverage job, not a WR2 cron — junk cadence identifies the RUNNER, not the writer. (c) The recon lane proposed deleting `wr2_worktree_gc.py` as dead; the live probe showed its LaunchAgent LOADED on Pro — the final grep is never delegable (W65). (d) The /scar audit-log step (`~/.claude/state/`) is host-boundary-blocked for agents by design — the scar itself rides a PR from a worktree.
+
+**Reference**: PR #2360 (merged 2026-07-13) · scripts/wr2_queue_hygiene.py · memory discovery_wr2_micro_carousels_test_leak_w96_2026_07_13
+
 ## W97 — display-cap `[:40]` su liste di report lette come liste COMPLETE (3 strumenti nello stesso giorno) + `push | tail` che maschera l'exit del hook — 2026-07-13
 
 **TRAUMA:** campagna KBLI editorial regen. Tre strumenti indipendenti stampavano liste troncate

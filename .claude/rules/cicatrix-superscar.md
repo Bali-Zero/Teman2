@@ -297,6 +297,7 @@ Queste non sono famiglie ricorrenti; restano scar singole consultabili nel file 
 - **W39** — Dependabot bump (manutenzione di routine)
 - **Atlas migrate-lint paywall** — costo terze-parti, non bug
 - **Deploy crash / Dockerfile cell-core missing** — ordering di promozione nel monorepo CI
+- **W96** — test non isolati scrivono STATO DI PRODUZIONE (default `Path.home()` nei worker + test che non mocka la catena di visibilità → 24 fixture nella review-queue WR2 reale + TG P0 spurio a ogni pre-push, 2026-07-13; antidoto di classe: conftest autouse che redirige `WR2_OUTPUT_ROOT`/TG a tmp_path + immune-organ di quarantena nel reconciler; candidata 11ª famiglia "test-writes-prod" se recidiva su altra superficie)
 
 **→ dettaglio:** grep il W-number in `cicatrix-scars.md` / `cicatrix-scars-archive.md`.
 

@@ -35,6 +35,13 @@ ONCE=0
 
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
+# Merge helper (split-brain cure, 2026-07-13): the WR2 Control app writes
+# publish transitions LOCALLY (QueueWriter.markPublished) and a blind replace
+# reverted them within one poll cycle. The merge keeps Pro as SSOT but protects
+# local published* entries and emits a push-back list replayed into Pro via the
+# canonical wr2_queue_writer.py (exact ref-code, IG-URL validated writer-side).
+MERGE_PY="$HOME/Desktop/nuzantara/scripts/wr2_queue_pull_merge.py"
+
 while true; do
   for f in human-review-queue.json queue-archive.json; do
     # PID-suffixed tmp: a WR2_PULL_CHECKSUM one-shot may run while the daemon
@@ -43,7 +50,38 @@ while true; do
     if ssh -o ConnectTimeout=10 -o BatchMode=yes pro "cat '$SRC_DIR/$f'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
       # valida JSON prima di sostituire (mai clobberare con spazzatura)
       if python3 -c "import json,sys; json.load(open('$tmp'))" 2>/dev/null; then
-        if ! cmp -s "$tmp" "$DEST_DIR/$f" 2>/dev/null; then
+        if [ "$f" = "human-review-queue.json" ] && [ -f "$MERGE_PY" ] && [ -f "$DEST_DIR/$f" ]; then
+          # merge instead of clobber: local publish transitions survive the pull
+          report=$(python3 "$MERGE_PY" --remote "$tmp" --local "$DEST_DIR/$f" --out "$tmp.merged" 2>>"$LOG")
+          if [ -s "$tmp.merged" ]; then
+            if ! cmp -s "$tmp.merged" "$DEST_DIR/$f" 2>/dev/null; then
+              mv "$tmp.merged" "$DEST_DIR/$f"
+              echo "[$(ts)] merged $f ($report)" >> "$LOG"
+            else
+              rm -f "$tmp.merged"
+            fi
+            rm -f "$tmp"
+            # push protected publish transitions back to Pro (SSOT) via the
+            # canonical writer. ref/url are shell-safe by construction (strict
+            # regexes in the merge script); the writer re-validates on Pro.
+            echo "$report" | python3 -c 'import json,sys
+try: rep=json.load(sys.stdin)
+except Exception: rep={}
+for e in rep.get("push_back", []): print(e["ref_code"], e["ig_url"])' | \
+            while read -r ref url; do
+              if ssh -o ConnectTimeout=10 -o BatchMode=yes pro \
+                   "cd ~/Desktop/nuzantara && python3 scripts/wr2_queue_writer.py mark-published '$ref' '$url'" >>"$LOG" 2>&1; then
+                echo "[$(ts)] pushed back $ref -> published on Pro" >> "$LOG"
+              else
+                echo "[$(ts)] WARN push-back $ref failed (state not publishable on Pro yet?)" >> "$LOG"
+              fi
+            done
+          else
+            # merge failed → keep old local file, log, fall back to nothing
+            echo "[$(ts)] WARN merge of $f produced no output, kept old" >> "$LOG"
+            rm -f "$tmp" "$tmp.merged"
+          fi
+        elif ! cmp -s "$tmp" "$DEST_DIR/$f" 2>/dev/null; then
           mv "$tmp" "$DEST_DIR/$f"
           echo "[$(ts)] updated $f" >> "$LOG"
         else
