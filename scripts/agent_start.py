@@ -59,7 +59,14 @@ WORKTREES_DIR = REPO_ROOT / ".worktrees"
 TASK_METADATA_FILENAME = ".agent-task.json"
 # Broker-generated files that must NOT count as user WIP (otherwise every
 # freshly created worktree reads as dirty and is never cleanup-eligible).
-BROKER_GENERATED_FILES = frozenset({".agent-task.json", ".env.worktree"})
+# `node_modules` is a SYMLINK_TARGETS entry: .gitignore has `node_modules/`
+# (directory-only pattern) but no bare `node_modules` rule, and git's ignore
+# matching does not treat a symlink-to-a-directory as a directory — so the
+# broker's own symlink shows up as `?? node_modules` in every worktree,
+# permanently tripping the WIP guard and making `--cleanup` a no-op forever
+# (found live: 3 worktrees sat 5-14h past a 60min TTL, silently "WARN"-skipped
+# by the daily cron every run). Reproduced empirically before this fix.
+BROKER_GENERATED_FILES = frozenset({".agent-task.json", ".env.worktree", "node_modules"})
 LSOF_FALLBACK_PATHS: tuple[Path, ...] = (Path("/usr/sbin/lsof"),)
 
 # Lanes documented in CLAUDE.md + research synthesis.
