@@ -31,34 +31,22 @@ import argparse
 import json
 import os
 import re
-import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from deepseek_client import complete, DeepSeekBudgetExceeded, resolve_model  # noqa: E402
+
 WT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TARGET = f"{WT}/apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"
 
-URL = "https://api.deepseek.com/v1/chat/completions"
-MODEL = "deepseek-v4-pro"
+# Smart-spend 2026-07-14: translation/paraphrase is a bulk mechanical pass —
+# flash by default, pro is an explicit opt-in: DEEPSEEK_MODEL=deepseek-v4-pro.
+MODEL = resolve_model()
 PARAPHRASE_DATE = "2026-06-21"
 MIN_LEN = 40
 CANDIDATE_MARKER = "Kelompok"
-
-
-def key():
-    k = os.environ.get("DEEPSEEK_API_KEY")
-    if k:
-        return k
-    path = os.path.expanduser("~/.openclaw/workspace/.env.master")
-    for line in open(path):
-        line = line.strip()
-        if line.startswith(("export DEEPSEEK_API_KEY=", "DEEPSEEK_API_KEY=")):
-            return line.split("=", 1)[1].strip().strip('"').strip("'")
-    sys.exit("no DEEPSEEK key")
-
-
-KEY = key()
 
 SYS = (
     "You translate and paraphrase Indonesian business-activity descriptions (the official KBLI "
@@ -117,26 +105,15 @@ def fact_gate(english, kode, source):
 def call(rec):
     kode = rec["kode_kbli_2025"]
     src = source_text(rec)
-    payload = {
-        "model": MODEL,
-        "reasoning_effort": "low",
-        "stream": False,
-        "messages": [
-            {"role": "system", "content": SYS},
-            {"role": "user", "content": src},
-        ],
-    }
     for attempt in range(3):
-        r = subprocess.run(
-            ["curl", "-sS", "-m", "120", URL, "-H", "Content-Type: application/json",
-             "-H", f"Authorization: Bearer {KEY}", "-d", json.dumps(payload)],
-            capture_output=True, text=True,
-        )
         try:
-            content = json.loads(r.stdout)["choices"][0]["message"]["content"]
-            content = re.sub(r"^```[a-z]*|```$", "", content.strip()).strip().strip('"').strip()
+            result = complete(src, system=SYS, model=MODEL, reasoning_effort="low",
+                              timeout=120, purpose="kbli-paraphrase")
+            content = re.sub(r"^```[a-z]*|```$", "", result.text.strip()).strip().strip('"').strip()
             verdict = fact_gate(content, kode, src)
             return kode, content, verdict
+        except DeepSeekBudgetExceeded:
+            raise  # budget breaker fired — fail the whole run loudly, never grind on
         except Exception:
             if attempt == 2:
                 return kode, None, {"ok": False, "reason": "parse/api fail"}
