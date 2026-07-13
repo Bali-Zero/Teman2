@@ -825,7 +825,7 @@ async def _persist_audit_messages(
             await db_pool.execute(
                 """
                 INSERT INTO conversation_messages (channel, direction, sender_id, content, metadata)
-                VALUES ('whatsapp', $1, $2, $3, $4::jsonb)
+                VALUES ('whatsapp', $1, $2, $3, $4::text::jsonb)
                 """,
                 direction,
                 sender_id,

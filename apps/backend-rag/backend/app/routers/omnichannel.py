@@ -253,7 +253,7 @@ async def send_thread_message(
         """
         INSERT INTO conversation_messages
             (client_id, channel, direction, sender_id, content, metadata, thread_id)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
+        VALUES ($1, $2, $3, $4, $5, $6::text::jsonb, $7)
         RETURNING id
         """,
         thread_row["client_id"],
