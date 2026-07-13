@@ -7,9 +7,9 @@ from datetime import date
 import pytest
 
 from backend.services.accounting.bank_parser import (
+    _CONFIGS,
     BankConfig,
     BankParseError,
-    _CONFIGS,
     parse_csv,
     verify_balance,
 )

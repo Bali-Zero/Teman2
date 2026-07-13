@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 import backend.app.routers.auth as auth_module
 from backend.app.dependencies import get_database_pool
+from backend.app.setup.route_walk import iter_leaf_routes
 
 
 def _user_row(**overrides: object) -> dict[str, object]:
@@ -67,7 +68,7 @@ class TestRouterStructure:
 
     @pytest.mark.unit
     def test_router_exposes_expected_routes(self) -> None:
-        paths = {route.path for route in auth_module.router.routes}
+        paths = {route.path for route in iter_leaf_routes(auth_module.router)}
         assert "/api/auth/login" in paths
         assert "/api/auth/profile" in paths
         assert "/api/auth/logout" in paths
@@ -265,7 +266,7 @@ def _audit_mock() -> MagicMock:
 class TestMagicLink:
     @pytest.mark.unit
     def test_router_exposes_magic_link_routes(self) -> None:
-        paths = {route.path for route in auth_module.router.routes}
+        paths = {route.path for route in iter_leaf_routes(auth_module.router)}
         assert "/api/auth/request-magic-link" in paths
         assert "/api/auth/verify-magic/{token}" in paths
 

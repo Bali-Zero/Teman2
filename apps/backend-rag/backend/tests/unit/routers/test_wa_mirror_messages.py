@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.routers.wa_mirror_messages import router
+from backend.app.setup.route_walk import iter_leaf_routes
 
 EXPECTED_MESSAGE_KEYS = {
     "id",
@@ -261,8 +262,8 @@ def test_wa_mirror_router_registered_in_manifest_and_runtime() -> None:
 
     full = FastAPI()
     include_routers(full)
-    assert any(route.path == "/api/wa/messages" for route in full.routes)
+    assert any(route.path == "/api/wa/messages" for route in iter_leaf_routes(full))
 
     light = FastAPI()
     include_light_routers(light)
-    assert any(route.path == "/api/wa/messages" for route in light.routes)
+    assert any(route.path == "/api/wa/messages" for route in iter_leaf_routes(light))

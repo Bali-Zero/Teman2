@@ -12,6 +12,8 @@ import base64
 import pytest
 from fastapi import HTTPException
 
+from backend.app.setup.route_walk import iter_leaf_routes
+
 
 class TestClientResponseHasAvatar:
     def test_field_present_default_false(self):
@@ -25,7 +27,7 @@ class TestAvatarRouteRegistered:
     def test_route_registered(self):
         from backend.app.routers import crm_clients
 
-        paths = [r.path for r in crm_clients.router.routes]
+        paths = [r.path for r in iter_leaf_routes(crm_clients.router)]
         assert "/api/crm/clients/{client_id}/avatar" in paths
 
 

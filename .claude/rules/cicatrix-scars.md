@@ -530,3 +530,28 @@ LLM — tratta il visualizzato come l'insieme. La membership che cambia tra run 
 mai gli stessi) è il segnale-precoce distintivo.
 
 **Reference:** sessione KBLIREGEN 2026-07-13 (PR #2359) · memoria `scar_display_cap_truncated_report_2026_07_13` · famiglia #2 (il report mente come il verde).
+
+## W98 — Dependabot lock-regen bypassa il `!=` anti-malware di requirements.txt: fastapi 0.136.3 (MAL-2026-4750) arriva IN PROD con scanner verdi (famiglia #2 — Esiste ≠ Armato; il vincolo esiste nel manifest ma nessuno lo arma all'install) — 2026-07-13
+
+**TRAUMA:** PR #879 (storico) aveva escluso deliberatamente `fastapi!=0.136.3` da requirements.txt —
+release pubblicata da un attaccante che inietta la dipendenza malevola `fastar` (MAL-2026-4750).
+Il gruppo dependabot #2349 (93 update) ha RIGENERATO i lock scegliendo proprio 0.136.3 (la più alta
+sotto l'ignore `>=0.137` allora attivo): il lock-updater pip di dependabot **non legge i specifier del
+manifest**. La CI installa `-r requirements.lock.txt` senza mai ri-verificare requirements.txt; Snyk
+Docker e Socket Security restano VERDI; auto-merge a verde; fly-deploy al merge → **la wheel pubblicata
+dall'attaccante è andata in produzione** ed è rimasta in esecuzione ~2h. Salvati da un dettaglio non
+nostro: `fastar>=0.9.0; extra == "standard"` è extra-gated e noi installiamo fastapi liscio — payload
+MAI installato (provato live: `import fastar` → ModuleNotFoundError; pip list pulito).
+
+**ANTIBODY:** `backend/tests/test_lock_honors_requirements.py` — per ogni coppia manifest↔lock
+(requirements/-prod), ogni pin `name==ver` del lock deve soddisfare lo specifier del manifest
+(packaging.Requirement.contains, marker-aware); guilt+innocence inclusi (0.136.3 bocciata, 0.139.0
+passa, e il test fallisce se qualcuno DROPPA l'esclusione `!=0.136.3` dal manifest). Gira nel job
+Backend Tests → una rigenerazione lock che viola un vincolo deliberato ora è CI-rossa.
+
+**GOTCHA:** (1) il `!=` nel manifest è protezione SOLO alla compilazione del lock — all'install nessuno
+lo guarda: ogni difesa messa "nel manifest" va ri-armata anche sul percorso che installa il lock.
+(2) Gli scanner supply-chain (Snyk/Socket) non hanno flaggato una versione con advisory MAL nota —
+verde ≠ pulito, il gate deve essere NOSTRO. (3) La cura di un incidente della stessa famiglia (l'ignore
+`>=0.137` per il route-tree) ha CREATO il corridoio verso 0.136.3: ogni hold ristretta cambia la scelta
+del resolver — dopo ogni nuova hold, chiedersi "quale versione prenderà ADESSO?".

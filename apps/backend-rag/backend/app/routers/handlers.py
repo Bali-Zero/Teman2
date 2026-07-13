@@ -7,6 +7,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from backend.app.setup.route_walk import iter_leaf_routes
+
 # Initialize Router
 router = APIRouter(prefix="/api/handlers", tags=["handlers"])
 
@@ -16,7 +18,7 @@ def extract_handlers_from_router(module: Any) -> list[dict[str, Any]]:
     handlers = []
 
     if hasattr(module, "router"):
-        for route in module.router.routes:
+        for route in iter_leaf_routes(module.router):
             if hasattr(route, "endpoint"):
                 handlers.append(
                     {

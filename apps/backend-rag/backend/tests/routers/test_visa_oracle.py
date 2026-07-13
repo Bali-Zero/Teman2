@@ -21,6 +21,7 @@ from backend.app.routers.visa_oracle import (
     RecommendRequest,
     router,
 )
+from backend.app.setup.route_walk import iter_leaf_routes
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -58,23 +59,23 @@ class TestRouterStructure:
         assert router.tags == ["visa-oracle"]
 
     def test_router_has_recommend_route(self) -> None:
-        paths = [route.path for route in router.routes]
+        paths = [route.path for route in iter_leaf_routes(router)]
         assert any("recommend" in p for p in paths)
 
     def test_router_has_chat_route(self) -> None:
-        paths = [route.path for route in router.routes]
+        paths = [route.path for route in iter_leaf_routes(router)]
         assert any("chat" in p for p in paths)
 
     def test_router_has_handoff_route(self) -> None:
-        paths = [route.path for route in router.routes]
+        paths = [route.path for route in iter_leaf_routes(router)]
         assert any("handoff" in p for p in paths)
 
     def test_router_has_visa_types_route(self) -> None:
-        paths = [route.path for route in router.routes]
+        paths = [route.path for route in iter_leaf_routes(router)]
         assert any("visa-types" in p for p in paths)
 
     def test_router_has_visa_type_detail_route(self) -> None:
-        paths = [route.path for route in router.routes]
+        paths = [route.path for route in iter_leaf_routes(router)]
         assert any("{code}" in p for p in paths)
 
 

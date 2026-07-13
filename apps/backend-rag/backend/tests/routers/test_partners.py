@@ -26,6 +26,7 @@ from fastapi.testclient import TestClient
 
 import backend.app.routers.partners as partners_module
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.setup.route_walk import iter_leaf_routes
 from backend.services.crm.partners.models import Partner
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -159,7 +160,7 @@ class TestCreatePartner:
     @pytest.mark.unit
     def test_router_has_correct_prefix_and_routes(self) -> None:
         assert partners_module.router.prefix == "/api/partners"
-        paths = {route.path for route in partners_module.router.routes}
+        paths = {route.path for route in iter_leaf_routes(partners_module.router)}
         assert "/api/partners" in paths
         assert "/api/partners/{partner_id}" in paths
 
@@ -335,12 +336,12 @@ class TestListPartnersCata2:
     @pytest.mark.unit
     def test_require_team_or_admin_allows_team(self) -> None:
         user = {"role": "team", "permissions": []}
-        partners_module._require_team_or_admin(user)  # must not raise
+        assert partners_module._require_team_or_admin(user) is None  # no raise
 
     @pytest.mark.unit
     def test_require_team_or_admin_allows_admin(self) -> None:
         user = {"role": "admin", "permissions": ["finance.mark_paid"]}
-        partners_module._require_team_or_admin(user)  # must not raise
+        assert partners_module._require_team_or_admin(user) is None  # no raise
 
     @pytest.mark.integration
     def test_list_partners_forbidden_for_partner_role(self, partner_app) -> None:
@@ -1231,7 +1232,7 @@ class TestRequireFinance:
     def test_admin_with_finance_perm_passes(self) -> None:
         # CRIT-3: admin role alone no longer bypasses — must hold the explicit perm.
         user = {"role": "admin", "permissions": ["finance.mark_paid"]}
-        partners_module._require_finance(user)  # must not raise
+        assert partners_module._require_finance(user) is None  # no raise
 
     @pytest.mark.unit
     def test_admin_without_finance_perm_raises_403(self) -> None:
@@ -1246,7 +1247,7 @@ class TestRequireFinance:
     @pytest.mark.unit
     def test_non_admin_with_finance_perm_passes(self) -> None:
         user = {"role": "team", "permissions": ["finance.mark_paid"]}
-        partners_module._require_finance(user)  # must not raise
+        assert partners_module._require_finance(user) is None  # no raise
 
     @pytest.mark.unit
     def test_non_admin_without_finance_perm_raises_403(self) -> None:
@@ -1262,7 +1263,7 @@ class TestRequireFinance:
         # Anyone with the perm — regardless of role — should pass.
         for role in ("admin", "team", "finance", "accountant"):
             user = {"role": role, "permissions": ["finance.mark_paid"]}
-            partners_module._require_finance(user)  # must not raise
+            assert partners_module._require_finance(user) is None  # no raise
 
     @pytest.mark.unit
     def test_perm_check_tolerates_missing_permissions_key(self) -> None:
