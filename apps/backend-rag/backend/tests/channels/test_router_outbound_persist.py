@@ -271,3 +271,56 @@ async def test_stream_passthrough_unchanged():
     await router.route_message("instagram", {})
 
     assert seen == ["a", "ab"]
+
+
+@pytest.mark.asyncio
+async def test_persist_sql_casts_metadata_text_jsonb():
+    """GUILT (double-encoding, 2026-07-13 live probe): the app pools register a
+    jsonb codec whose encoder is json.dumps (app/core/database.py); a metadata
+    param inferred as jsonb gets the pre-serialized string dumped AGAIN and
+    lands as a jsonb STRING scalar — `metadata->>'session_id'` returns NULL and
+    the engine reader is blind (all 418 historical rows were). The INSERT must
+    type the param as text so the server parses it into an object."""
+    router = ChannelRouter(_make_engine([]))
+    router._db_pool = AsyncMock()
+
+    await router._persist_message(
+        channel="instagram",
+        direction="inbound",
+        sender_id="instagram_u1",
+        content="hi",
+        metadata={"mid": "m1"},
+        session_id="ig_session_u1",
+    )
+
+    sql = router._db_pool.execute.await_args[0][0]
+    assert "::text::jsonb" in sql
+
+
+def test_all_conversation_messages_writers_cast_metadata_text_jsonb():
+    """CLASS-GUARD (W89): every INSERT INTO conversation_messages in backend
+    prod code must cast its metadata param ::text::jsonb — a single sibling
+    writer left on the bare/::jsonb form silently re-introduces string-scalar
+    rows the readers cannot see. Scans source so future writers are covered."""
+    import re
+    from pathlib import Path
+
+    backend_root = Path(__file__).resolve().parents[2]
+    offenders = []
+    for py in backend_root.rglob("*.py"):
+        parts = set(py.parts)
+        if "tests" in parts or "migrations" in parts:
+            continue
+        src = py.read_text(encoding="utf-8", errors="replace")
+        for m in re.finditer(
+            r"INSERT\s+INTO\s+conversation_messages\s*\(([^)]*)\)\s*VALUES\s*\(([^)]*)\)",
+            src,
+            re.IGNORECASE,
+        ):
+            if "metadata" not in m.group(1):
+                continue
+            if "::text::jsonb" not in m.group(2):
+                offenders.append(str(py.relative_to(backend_root)))
+    assert offenders == [], (
+        f"conversation_messages INSERTs missing ::text::jsonb metadata cast: {offenders}"
+    )

@@ -14,10 +14,7 @@ from __future__ import annotations
 import pytest
 
 from backend.services.intake import classify as cls
-from backend.services.intake import extract
-from backend.services.intake import routing
-from backend.services.intake import writer
-
+from backend.services.intake import extract, routing, writer
 
 # --------------------------------------------------------------------------- #
 # classify — evidence surfaces the type                                       #

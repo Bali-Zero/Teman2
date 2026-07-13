@@ -21,6 +21,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from backend.app.setup.route_walk import iter_leaf_routes
+
 # ── helpers ───────────────────────────────────────────────────────────
 
 
@@ -65,7 +67,7 @@ def test_router_mounts_at_documented_path():
     """Smoke check: router exposes /api/observed-shell/emit."""
     from backend.app.routers import observed_shell
 
-    paths = [r.path for r in observed_shell.router.routes]
+    paths = [r.path for r in iter_leaf_routes(observed_shell.router)]
     assert "/api/observed-shell/emit" in paths
 
 
@@ -174,14 +176,14 @@ def test_router_registered_in_both_include_functions():
 
     full = FastAPI()
     include_routers(full)
-    full_paths = {r.path for r in full.routes if hasattr(r, "path")}
+    full_paths = {r.path for r in iter_leaf_routes(full)}
     assert "/api/observed-shell/emit" in full_paths, (
         "include_routers() does NOT mount /api/observed-shell/emit — Sprint 1.B cicatrix regression"
     )
 
     light = FastAPI()
     include_light_routers(light)
-    light_paths = {r.path for r in light.routes if hasattr(r, "path")}
+    light_paths = {r.path for r in iter_leaf_routes(light)}
     assert "/api/observed-shell/emit" in light_paths, (
         "include_light_routers() does NOT mount /api/observed-shell/emit — "
         "Sprint 1.B cicatrix regression"

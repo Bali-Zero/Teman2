@@ -55,16 +55,16 @@ from __future__ import annotations
 
 import re
 import warnings
-from typing import Iterable
+from collections.abc import Iterable
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.app.auth.public_endpoints import PUBLIC_ENDPOINTS, find_entry, is_public_path
-from backend.middleware.hybrid_auth import HybridAuthMiddleware
+from backend.app.setup.route_walk import iter_leaf_routes
 from backend.app.setup.router_registration import include_routers
-
+from backend.middleware.hybrid_auth import HybridAuthMiddleware
 
 _HEALTH_LIKE_RE = re.compile(r"/api/[^/]+/(?:health|heartbeat)/?$")
 
@@ -72,7 +72,7 @@ _HEALTH_LIKE_RE = re.compile(r"/api/[^/]+/(?:health|heartbeat)/?$")
 def _route_paths(app: FastAPI) -> set[str]:
     """Collect every mounted path string on the app."""
     paths: set[str] = set()
-    for route in app.routes:
+    for route in iter_leaf_routes(app):
         path = getattr(route, "path", None)
         if path:
             paths.add(path)
@@ -92,7 +92,7 @@ def _concrete_get_paths(app: FastAPI) -> Iterable[str]:
     reachability (so a HEAD-or-405 is fine), but we filter to GET-eligible
     paths to keep the assertion crisp.
     """
-    for route in app.routes:
+    for route in iter_leaf_routes(app):
         path = getattr(route, "path", None)
         methods = getattr(route, "methods", None) or set()
         if not path or not _is_concrete(path):
@@ -221,8 +221,10 @@ class TestHealthEndpointsCandidateForRegistry:
     def test_health_like_routes_appear_in_registry(
         self, app_with_middleware: FastAPI,
     ) -> None:
+        all_paths = _route_paths(app_with_middleware)
+        assert all_paths, "route enumeration returned nothing — walker blind?"
         candidates: list[str] = []
-        for path in _route_paths(app_with_middleware):
+        for path in all_paths:
             if not _is_concrete(path):
                 continue
             if not _HEALTH_LIKE_RE.match(path):

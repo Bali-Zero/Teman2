@@ -465,7 +465,7 @@ jobs:
     owner: pro
     family: balizero
     cluster: C_migrate_candidate
-    state: active
+    state: inactive
     side_effects: [canva]
     idempotent: false
     resource_class: cron_light
@@ -479,7 +479,7 @@ jobs:
     owner: pro
     family: balizero
     cluster: C_migrate_candidate
-    state: active
+    state: inactive
     side_effects: [canva]
     idempotent: false
     resource_class: cron_light
@@ -493,7 +493,7 @@ jobs:
     owner: pro
     family: balizero
     cluster: A_residence_pro
-    state: active
+    state: inactive
     side_effects: [canva]
     idempotent: false
     resource_class: cron_light

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from backend.app.deps import crm_access
 
-
 # --------------------------------------------------------------------------- #
 # get_crm_user_filter — admin sees all (None), non-admin scoped to own email   #
 # --------------------------------------------------------------------------- #

@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 import backend.app.routers.health as health_module
+from backend.app.setup.route_walk import iter_leaf_routes
 
 
 @pytest.fixture
@@ -28,7 +29,7 @@ class TestRouterStructure:
     @pytest.mark.unit
     def test_router_prefix_and_routes(self) -> None:
         assert health_module.router.prefix == "/health"
-        paths = {route.path for route in health_module.router.routes}
+        paths = {route.path for route in iter_leaf_routes(health_module.router)}
         assert "/health" in paths
         assert "/health/detailed" in paths
 
