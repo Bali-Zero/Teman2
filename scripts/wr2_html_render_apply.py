@@ -637,6 +637,11 @@ def _dump_designer_history(draft_id: str, slide_index: int, history: list[dict[s
 
 
 # ── render one carousel (per-slide designer loop, GO#3) ─────────────────────────
+# PNGs that _stage_assets copies into slides_dir for file:// resolution during
+# per-slide renders — assets, never slides. Excluded from the final slide glob.
+_STAGED_ASSET_PNGS = frozenset({"logo.png"})
+
+
 class WeakSlide(NamedTuple):
     """A slide that did NOT converge its designer loop but DID produce a usable
     best-effort PNG. Its PNG is still placed in the carousel (N-1 semantics,
@@ -678,7 +683,7 @@ async def _render_carousel(
                 f"carousel render gate failed: slides={result.slides_rendered} "
                 f"heroes={result.heroes_placed}/{result.heroes_expected} failures={result.failures}"
             )
-        return slides_dir
+        return slides_dir, []
 
     # --- per-slide designer loop with vision (GO#3 c5) ---
     from wr2_html_renderer.composer import (
@@ -774,6 +779,7 @@ async def _render_carousel(
 async def _heartbeat_loop(conn: asyncpg.Connection, draft_id: str, owner: str, stop: asyncio.Event, interval: int):
     """Renew the lease every `interval`s until stop. If the lease is no longer ours,
     set stop so the caller aborts before any irreversible Drive write (C4)."""
+    misses = 0
     while not stop.is_set():
         try:
             await asyncio.wait_for(stop.wait(), timeout=interval)
@@ -781,7 +787,17 @@ async def _heartbeat_loop(conn: asyncpg.Connection, draft_id: str, owner: str, s
             pass
         if stop.is_set():
             return
-        ok = await _pg.heartbeat_html_lease(conn, draft_id=draft_id, lease_owner=owner)
+        try:
+            ok = await _pg.heartbeat_html_lease(conn, draft_id=draft_id, lease_owner=owner)
+        except Exception as exc:  # noqa: BLE001 — a crashed heartbeat MUST abort (C4), never die silently
+            misses += 1
+            logger.warning("heartbeat error for draft %s (%d/2): %s", draft_id, misses, exc)
+            if misses >= 2:
+                logger.error("heartbeat errored twice for draft %s — signalling abort", draft_id)
+                stop.set()
+                return
+            continue
+        misses = 0
         if not ok:
             logger.error("heartbeat lost for draft %s — signalling abort", draft_id)
             stop.set()
@@ -863,7 +879,12 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                 slides_dir, weak_slides = await _render_carousel(
                     str(draft_id), norm_slides, work, vision_required
                 )
-            png_paths = sorted(slides_dir.glob("*.png"))
+            # _stage_assets copies logo.png INTO slides_dir in vision mode (per-slide
+            # HTML resolves file:// assets there) — a bare *.png glob shipped the
+            # brand logo as a bogus extra slide. Exclude staged assets by name.
+            png_paths = sorted(
+                p for p in slides_dir.glob("*.png") if p.name not in _STAGED_ASSET_PNGS
+            )
             if not png_paths:
                 raise RuntimeError("no PNGs after render")
 
@@ -893,7 +914,7 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
 
             if shadow:
                 # terminal shadow: drive_url_shadow + rendered_shadow, NO WA (C5)
-                await main_conn.execute(
+                res = await main_conn.execute(
                     """
                     UPDATE war_room_drafts
                        SET status = 'rendered_shadow', drive_url_shadow = $2,
@@ -903,6 +924,14 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
                     """,
                     draft_id, web, owner,
                 )
+                if res != "UPDATE 1":
+                    # lease stolen between render and terminal write — do not
+                    # claim shadow_done for a row this worker no longer owns.
+                    await _ops_alert(
+                        f"WR2 HTML SHADOW draft={draft_id}: terminal UPDATE matched "
+                        f"0 rows (lease stolen mid-render?) drive={web}"
+                    )
+                    return "shadow_race"
                 await _ops_alert(f"WR2 HTML SHADOW done draft={draft_id} drive={web} (no WA sent)")
                 return "shadow_done"
 
@@ -986,8 +1015,12 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             )
             logger.warning("draft %s vision transient (%s) — no attempt burned: %s", draft_id, type(exc).__name__, exc)
             return f"rate_limited:{exc}"
-        except RuntimeError as exc:
-            # transient render/Drive failure -> back to queue unless attempts exhausted.
+        except Exception as exc:
+            # transient render/Drive failure OR an unexpected bug — either way the
+            # attempt is burned and the lease released, so a poisoned draft can
+            # never loop forever holding 'rendering'. (Pre-fix only RuntimeError
+            # was caught here: any other exception escaped without burning an
+            # attempt, leaving the draft stuck until the stale-lease sweep.)
             # The render may have run long enough to kill main_conn — reconnect so
             # this failure path records its terminal status instead of crashing on
             # a closed connection and leaving the draft stuck in 'rendering'.

@@ -3493,3 +3493,187 @@ def test_drive_manifest_lists_current_slides_in_order(monkeypatch):
     assert data["draft_id"] == "draftC"
     assert [s["name"] for s in data["slides"]] == [f"{i:02d}.png" for i in range(1, 6)]
     assert all(s["file_id"] for s in data["slides"])
+
+
+# ── 2026-07-13 worker fixes (Armate recon, all adversarially CONFIRMED) ─────────
+# P0 logo-as-slide · P0 heartbeat crash · P1 bare-Path return · P1 except hole ·
+# P2 shadow row-count. Each fix gets guilt+innocence coverage here because this
+# file runs on every pre-push (the scripts/tests battery lands in CI separately).
+
+
+def _apply_one_scaffold(monkeypatch, tmp_path, slides_dir_files: list[str]):
+    """Shared mock harness driving _apply_one to the render-complete point."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import scripts.wr2_html_render_apply as html
+
+    conn = MagicMock()
+    conn.is_closed = MagicMock(return_value=False)
+    conn.execute = AsyncMock(return_value="UPDATE 1")
+    conn.fetchval = AsyncMock(return_value=0)
+    conn.close = AsyncMock()
+    monkeypatch.setattr(html.asyncpg, "connect", AsyncMock(return_value=conn))
+    monkeypatch.setattr(
+        html._pg, "acquire_html_lease_and_fetch",
+        AsyncMock(return_value={"slides_json": {"slides": [{"headline": "H"}]}}),
+    )
+    monkeypatch.setattr(html, "_heartbeat_loop", AsyncMock())
+    monkeypatch.setattr(html, "_normalize_heroes", lambda slides, *a, **k: slides)
+
+    class _Srv:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
+
+    async def _fake_render(draft_id, slides, work, vision_required):
+        d = work / "carousel" / "slides"
+        d.mkdir(parents=True, exist_ok=True)
+        for name in slides_dir_files:
+            (d / name).write_bytes(b"PNG")
+        return d, []
+    monkeypatch.setattr(html, "_render_carousel", _fake_render)
+    drive = AsyncMock(return_value="https://drive/x")
+    monkeypatch.setattr(html, "_drive_upload_carousel", drive)
+    monkeypatch.setattr(
+        html._pg, "persist_html_result_and_enqueue_notifications",
+        AsyncMock(return_value={}),
+    )
+    monkeypatch.setattr(html, "_log_ledger_best_effort", AsyncMock())
+    monkeypatch.setattr(html, "_publish_visibility", AsyncMock())
+    monkeypatch.setattr(html, "_ops_alert", AsyncMock())
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path / "wr2-out"))
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+    monkeypatch.delenv("WR2_HTML_SHADOW", raising=False)
+    return html, conn, drive
+
+
+@pytest.mark.asyncio
+async def test_slide_glob_excludes_staged_logo_asset(monkeypatch, tmp_path):
+    """P0 guilt: logo.png staged into slides_dir must NOT ship as a slide."""
+    import uuid as _uuid
+
+    html, _conn, drive = _apply_one_scaffold(
+        monkeypatch, tmp_path, ["01.png", "02.png", "logo.png"]
+    )
+    result = await html._apply_one("postgres://x", _uuid.uuid4(), "owner-1")
+    assert result.startswith("rendered")
+    uploaded = drive.await_args.args[1]
+    assert [p.name for p in uploaded] == ["01.png", "02.png"]
+
+
+@pytest.mark.asyncio
+async def test_slide_glob_keeps_all_real_slides(monkeypatch, tmp_path):
+    """P0 innocence: without staged assets every rendered PNG ships."""
+    import uuid as _uuid
+
+    html, _conn, drive = _apply_one_scaffold(
+        monkeypatch, tmp_path, ["01.png", "02.png", "03.png"]
+    )
+    result = await html._apply_one("postgres://x", _uuid.uuid4(), "owner-1")
+    assert result.startswith("rendered")
+    assert [p.name for p in drive.await_args.args[1]] == ["01.png", "02.png", "03.png"]
+
+
+@pytest.mark.asyncio
+async def test_render_carousel_default_branch_returns_tuple(monkeypatch, tmp_path):
+    """P1: the non-vision branch must honor the (slides_dir, weak) contract."""
+    import scripts.wr2_html_render_apply as html
+    import wr2_html_renderer.composer as composer
+
+    class _Res:
+        ok = True
+        slides_rendered = 1
+        heroes_placed = 0
+        heroes_expected = 0
+        failures: list = []
+
+    async def _fake_compose(slides, out_dir, topic, timeout_ms):
+        return _Res()
+    monkeypatch.setattr(composer, "compose_carousel", _fake_compose)
+    out = await html._render_carousel("d1", [{"headline": "X"}], tmp_path, False)
+    assert isinstance(out, tuple) and len(out) == 2
+    slides_dir, weak = out
+    assert slides_dir == tmp_path / "carousel" / "slides"
+    assert weak == []
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_loop_aborts_after_two_consecutive_errors(monkeypatch):
+    """P0 guilt: a heartbeat that CRASHES (vs returning False) must abort via
+    stop-event, not die silently leaving the C4 contract unenforced."""
+    import asyncio as _asyncio
+    from unittest.mock import AsyncMock
+
+    import scripts.wr2_html_render_apply as html
+
+    monkeypatch.setattr(
+        html._pg, "heartbeat_html_lease", AsyncMock(side_effect=RuntimeError("db down"))
+    )
+    stop = _asyncio.Event()
+    await _asyncio.wait_for(
+        html._heartbeat_loop(None, "d1", "owner-1", stop, interval=0), timeout=5
+    )
+    assert stop.is_set()
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_loop_tolerates_single_flap(monkeypatch):
+    """P0 innocence: ONE transient heartbeat error (network flap, family #8)
+    must not abort a 15-minute render; a healthy beat resets the counter."""
+    import asyncio as _asyncio
+
+    import scripts.wr2_html_render_apply as html
+
+    stop = _asyncio.Event()
+    beats = {"n": 0}
+
+    async def _beat(conn, *, draft_id, lease_owner):
+        beats["n"] += 1
+        if beats["n"] == 1:
+            raise RuntimeError("flap")
+        if beats["n"] >= 3:
+            stop.set()  # end the test loop from the outside
+        return True
+
+    monkeypatch.setattr(html._pg, "heartbeat_html_lease", _beat)
+    await _asyncio.wait_for(
+        html._heartbeat_loop(None, "d1", "owner-1", stop, interval=0), timeout=5
+    )
+    assert beats["n"] >= 3  # survived the flap and kept beating
+
+
+@pytest.mark.asyncio
+async def test_apply_one_unexpected_exception_burns_attempt(monkeypatch, tmp_path):
+    """P1: an exception OUTSIDE {RuntimeStale, VisionTransient, RuntimeError}
+    must burn an attempt and release the lease — not escape leaving the draft
+    stuck in 'rendering' until the stale-lease sweep."""
+    import uuid as _uuid
+    from unittest.mock import AsyncMock
+
+    import scripts.wr2_html_render_apply as html
+
+    html_mod, conn, _drive = _apply_one_scaffold(monkeypatch, tmp_path, ["01.png"])
+    monkeypatch.setattr(
+        html_mod, "_render_carousel", AsyncMock(side_effect=TypeError("boom"))
+    )
+    result = await html._apply_one("postgres://x", _uuid.uuid4(), "owner-1")
+    assert result.startswith("retry:1:")
+    release_sql = [
+        c.args[0] for c in conn.execute.await_args_list
+        if "html_render_attempts" in c.args[0]
+    ]
+    assert release_sql, "attempt-burning release UPDATE never executed"
+
+
+@pytest.mark.asyncio
+async def test_shadow_terminal_update_zero_rows_is_reported_as_race(monkeypatch, tmp_path):
+    """P2: shadow terminal UPDATE matching 0 rows (lease stolen) must not claim
+    shadow_done."""
+    import uuid as _uuid
+    from unittest.mock import AsyncMock
+
+    html, conn, _drive = _apply_one_scaffold(monkeypatch, tmp_path, ["01.png"])
+    conn.execute = AsyncMock(return_value="UPDATE 0")
+    monkeypatch.setenv("WR2_HTML_SHADOW", "1")
+    result = await html._apply_one("postgres://x", _uuid.uuid4(), "owner-1")
+    assert result == "shadow_race"
