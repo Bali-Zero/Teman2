@@ -557,6 +557,11 @@ async def test_apply_one_reconnects_before_terminal_write(monkeypatch):
         AsyncMock(return_value={}),
     )
     monkeypatch.setattr(html, "_log_ledger_best_effort", AsyncMock())
+    # W96: unmocked, the visibility chain wrote fixture entries (topic "",
+    # 1 slide, drive/x) into the PRODUCTION review queue on every pre-push.
+    # The autouse WR2_OUTPUT_ROOT isolation is the backstop; mocking here
+    # keeps this a pure reconnect-invariant unit test.
+    monkeypatch.setattr(html, "_publish_visibility", AsyncMock())
     monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
     monkeypatch.delenv("WR2_HTML_SHADOW", raising=False)
 

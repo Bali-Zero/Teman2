@@ -101,6 +101,23 @@ def mock_qdrant_client():
     return client
 
 
+@pytest.fixture(autouse=True)
+def _wr2_runtime_isolation(tmp_path, monkeypatch):
+    """Tests must NEVER touch the real WR2 runtime state (W96, 2026-07-13).
+
+    Any test that reaches wr2_html_render_apply's visibility chain (or any
+    other WR2 writer honoring WR2_OUTPUT_ROOT) without mocking it would land
+    fixture entries in the PRODUCTION human-review-queue.json and spool real
+    Telegram notifications — 24 phantom "micro carousels" reached the WR2
+    Control app this way. Redirect both to tmp_path unconditionally; a test
+    that needs its own root still wins by monkeypatching the env itself
+    (test-body setenv runs after this autouse fixture).
+    """
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path / "wr2-output"))
+    monkeypatch.setenv("TG_DRY_RUN", "1")
+    monkeypatch.setenv("TG_SPOOL_DIR", str(tmp_path / "tg-spool"))
+
+
 @pytest.fixture
 def mock_redis():
     """Standard mock Redis client."""
