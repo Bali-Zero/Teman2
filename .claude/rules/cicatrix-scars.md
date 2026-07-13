@@ -493,7 +493,7 @@ dichiarato è debito, un buco taciuto è una bugia. Regola: quando curi un over-
 gemello under-match nella stessa guardia** — W83→W84 e W91→W94 dicono che nasce nello stesso punto, e qui
 i due vivevano letteralmente sulla stessa riga.
 
-## W96 — Dependabot lock-regen bypassa il `!=` anti-malware di requirements.txt: fastapi 0.136.3 (MAL-2026-4750) arriva IN PROD con scanner verdi (famiglia #2 — Esiste ≠ Armato; il vincolo esiste nel manifest ma nessuno lo arma all'install) — 2026-07-13
+## W98 — Dependabot lock-regen bypassa il `!=` anti-malware di requirements.txt: fastapi 0.136.3 (MAL-2026-4750) arriva IN PROD con scanner verdi (famiglia #2 — Esiste ≠ Armato; il vincolo esiste nel manifest ma nessuno lo arma all'install) — 2026-07-13
 
 **TRAUMA:** PR #879 (storico) aveva escluso deliberatamente `fastapi!=0.136.3` da requirements.txt —
 release pubblicata da un attaccante che inietta la dipendenza malevola `fastar` (MAL-2026-4750).
