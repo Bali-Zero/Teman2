@@ -108,3 +108,34 @@ async def test_call_safe_returns_error_on_connection_error() -> None:
     assert result["error"] is True
     assert result["status"] == 0
     assert "Connection error" in result["detail"]
+
+
+def test_secret_from_env_file_reads_named_var(tmp_path) -> None:
+    """Fallback reads the exact var from a secrets env file (export-prefixed too)."""
+    from nuzantara_mcp.server import _secret_from_env_file
+
+    env_file = tmp_path / "secrets.env"
+    env_file.write_text(
+        "# comment\n"
+        "export OTHER_KEY=zzz\n"
+        'NUZANTARA_API_KEY="file-key"\n'
+    )
+
+    assert _secret_from_env_file("NUZANTARA_API_KEY", env_file) == "file-key"
+
+
+def test_secret_from_env_file_name_is_anchored(tmp_path) -> None:
+    """A var whose name merely prefixes the requested one must not match (family #3)."""
+    from nuzantara_mcp.server import _secret_from_env_file
+
+    env_file = tmp_path / "secrets.env"
+    env_file.write_text("NUZANTARA_API_KEY_OLD=stale\n")
+
+    assert _secret_from_env_file("NUZANTARA_API_KEY", env_file) == ""
+
+
+def test_secret_from_env_file_missing_file_is_empty(tmp_path) -> None:
+    """Absent/unreadable file -> '' (fail-safe: identical to no fallback)."""
+    from nuzantara_mcp.server import _secret_from_env_file
+
+    assert _secret_from_env_file("NUZANTARA_API_KEY", tmp_path / "absent.env") == ""
