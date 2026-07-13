@@ -493,7 +493,7 @@ dichiarato è debito, un buco taciuto è una bugia. Regola: quando curi un over-
 gemello under-match nella stessa guardia** — W83→W84 e W91→W94 dicono che nasce nello stesso punto, e qui
 i due vivevano letteralmente sulla stessa riga.
 
-## W96 — display-cap `[:40]` su liste di report lette come liste COMPLETE (3 strumenti nello stesso giorno) + `push | tail` che maschera l'exit del hook — 2026-07-13
+## W97 — display-cap `[:40]` su liste di report lette come liste COMPLETE (3 strumenti nello stesso giorno) + `push | tail` che maschera l'exit del hook — 2026-07-13
 
 **TRAUMA:** campagna KBLI editorial regen. Tre strumenti indipendenti stampavano liste troncate
 con slicing "per leggibilità": `refused[:40]` nell'applier, la finestra del grader, `blocking[:40]`
