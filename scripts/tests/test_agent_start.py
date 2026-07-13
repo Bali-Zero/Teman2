@@ -153,6 +153,60 @@ def test_create_symlinks_only_when_targets_exist(fake_repo):
     assert not (out / "node_modules").exists()
 
 
+def test_node_modules_symlink_not_counted_as_wip(fake_repo):
+    """node_modules is a SYMLINK_TARGETS entry; .gitignore's `node_modules/`
+    (directory-only pattern) does not match a symlink-to-a-directory, so the
+    broker's own symlink read as `?? node_modules` (untracked) in every
+    worktree — permanently tripping the WIP guard. Regression for a bug found
+    live: 3 worktrees sat 5-14h past a 60min TTL because `--cleanup` always
+    saw "WIP" and WARN-skipped (exit 0, never loud) every single run.
+    """
+    mod, repo = fake_repo
+    (repo / "node_modules").mkdir()
+    (repo / "node_modules" / "placeholder.txt").write_text("x\n")
+    (repo / ".gitignore").write_text("node_modules/\n")
+    _commit_in_worktree(repo, mod, ".gitignore", "add gitignore")
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True, capture_output=True)
+
+    wt = mod.cmd_create("wr2", "nm-innocent", ttl_minutes=5)
+    assert (wt / "node_modules").is_symlink()
+    assert mod._worktree_has_wip(wt) is False
+
+
+def test_node_modules_symlink_does_not_mask_real_wip(fake_repo):
+    """Guilt case: the node_modules exemption must not swallow genuine WIP."""
+    mod, repo = fake_repo
+    (repo / "node_modules").mkdir()
+    (repo / "node_modules" / "placeholder.txt").write_text("x\n")
+    (repo / ".gitignore").write_text("node_modules/\n")
+    _commit_in_worktree(repo, mod, ".gitignore", "add gitignore")
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True, capture_output=True)
+
+    wt = mod.cmd_create("wr2", "nm-guilty", ttl_minutes=5)
+    (wt / "real_work.py").write_text("# uncommitted\n")
+    assert mod._worktree_has_wip(wt) is True
+
+
+def test_cleanup_reaps_expired_worktree_with_only_node_modules_symlink(fake_repo, capsys):
+    """Integration-level: --cleanup must actually reap a TTL-expired worktree
+    whose only 'dirty' porcelain entry is the broker's own node_modules
+    symlink — this is the exact class that silently accumulated orphans."""
+    mod, repo = fake_repo
+    (repo / "node_modules").mkdir()
+    (repo / ".gitignore").write_text("node_modules/\n")
+    _commit_in_worktree(repo, mod, ".gitignore", "add gitignore")
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True, capture_output=True)
+
+    wt = mod.cmd_create("wr2", "nm-cleanup", ttl_minutes=5)
+    _backdate_metadata(wt, mod, minutes=120)
+    _backdate_worktree_mtime(wt, minutes=120)
+    rc = mod.cmd_cleanup()
+    assert rc == 0
+    assert not wt.exists()
+    out = capsys.readouterr().out
+    assert "nm-cleanup" in out
+
+
 def test_create_rejects_unknown_lane_by_default(fake_repo):
     mod, _ = fake_repo
     with pytest.raises(SystemExit) as exc:
