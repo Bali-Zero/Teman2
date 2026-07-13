@@ -1,0 +1,64 @@
+# WR2 queue-surface test battery (closes PENDING-ARMS 2026-07-13 W81 line).
+#
+# WHY: the CI batteries enumerate scripts/tests per-file (immune-enforcement,
+# verify-the-verifiers, docs-sync, …) and the WR2 queue tests were never added
+# anywhere — visibility-chain / re-render repoint / queue locking / hygiene
+# regressions merged green, dev-run only. W96 (2026-07-13) proved the cost:
+# a test-fixture leak into the production review queue shipped 24 phantom
+# micro-carousels to the WR2 Control app.
+#
+# Dependency footprint probed empirically 2026-07-13: pytest pytest-asyncio
+# asyncpg numpy pydantic httpx is the minimal set that runs the full battery
+# (asyncpg/pydantic/httpx via wr2_html_render_apply → backend _pg/llm chain,
+# numpy via the renderer's critic_signals).
+name: wr2-queue-tests
+
+on:
+  pull_request:
+    paths:
+      - "scripts/wr2_html_render_apply.py"
+      - "scripts/wr2_daily_reconciler.py"
+      - "scripts/wr2_queue_hygiene.py"
+      - "scripts/wr2_queue_writer.py"
+      - "scripts/wr2_rerender_local.py"
+      - "scripts/wr2_html_renderer/**"
+      - "scripts/tests/test_wr2_queue_hygiene.py"
+      - "scripts/tests/test_wr2_visibility_chain.py"
+      - "scripts/tests/test_wr2_rerender_requeue.py"
+      - "scripts/tests/test_wr2_queue_locking.py"
+      - "scripts/tests/test_wr2_pipeline_consolidation.py"
+      - "scripts/tests/test_wr2_daily_reconciler.py"
+      - "scripts/tests/conftest.py"
+      - "apps/backend-rag/backend/services/canva_renderer_v2/_pg.py"
+      - ".github/workflows/wr2-queue-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wr2-queue-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install battery dependencies
+        run: python -m pip install --quiet pytest pytest-asyncio asyncpg numpy pydantic httpx
+
+      - name: Run WR2 queue test battery
+        env:
+          PYTHONPATH: apps/backend-rag
+        run: |
+          python -m pytest \
+            scripts/tests/test_wr2_queue_hygiene.py \
+            scripts/tests/test_wr2_visibility_chain.py \
+            scripts/tests/test_wr2_rerender_requeue.py \
+            scripts/tests/test_wr2_queue_locking.py \
+            scripts/tests/test_wr2_pipeline_consolidation.py \
+            scripts/tests/test_wr2_daily_reconciler.py \
+            -q
