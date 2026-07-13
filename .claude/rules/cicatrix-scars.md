@@ -504,3 +504,29 @@ _Discovered: 2026-07-13 07:20 WITA · Severity: RESOLVED · Status: Resolved (PR
 **GOTCHA**: (a) A library default of `Path.home()/...` makes every unisolated test a production writer — grep for `Path.home()` defaults when a phantom artifact appears with fixture-smelling fields (`https://drive/x` was the tell: it existed ONLY in test files). (b) The daily 20:39Z timestamps pointed to a Pro crontab coverage job, not a WR2 cron — junk cadence identifies the RUNNER, not the writer. (c) The recon lane proposed deleting `wr2_worktree_gc.py` as dead; the live probe showed its LaunchAgent LOADED on Pro — the final grep is never delegable (W65). (d) The /scar audit-log step (`~/.claude/state/`) is host-boundary-blocked for agents by design — the scar itself rides a PR from a worktree.
 
 **Reference**: PR #2360 (merged 2026-07-13) · scripts/wr2_queue_hygiene.py · memory discovery_wr2_micro_carousels_test_leak_w96_2026_07_13
+
+## W97 — display-cap `[:40]` su liste di report lette come liste COMPLETE (3 strumenti nello stesso giorno) + `push | tail` che maschera l'exit del hook — 2026-07-13
+
+**TRAUMA:** campagna KBLI editorial regen. Tre strumenti indipendenti stampavano liste troncate
+con slicing "per leggibilità": `refused[:40]` nell'applier, la finestra del grader, `blocking[:40]`
+nel dataset-lint. Quattro audit consecutivi hanno "trovato esattamente 40 item" con membership che
+CAMBIAVA tra un run e l'altro — la lista vera era 105. Un intero round di retry (R1) ha rigenerato
+SOLO i primi 40 visualizzati, convinto che fossero tutti. Stesso genere, stessa giornata: un
+`git push … | tail` in background ha riportato il task "completed (exit 0)" mentre il push era
+stato BOCCIATO dal hook pre-push — la pipe maschera l'exit code, e il verde memorizzato mente
+(famiglia #2). Scoperto solo ri-leggendo l'OUTPUT: `error: push di alcuni riferimenti…`.
+
+**ANTIBODY:** (1) MAI slicing (`[:N]`, `| head`, `| tail`) su una lista che un passo successivo o
+un audit consumerà come completa — stampare tutto, o dichiarare `N di M (troncato)` con M esplicito.
+(2) Su comandi in background il cui exit conta (push/deploy/migrazioni): mai chiudere la pipeline
+con un filtro — catturare l'RC esplicito (`cmd > log 2>&1; echo RC=$?`) e leggere il log, mai
+fidarsi dello status "completed" del task. (3) Euristica di sospetto: un audit che "trova
+esattamente N" con N tondo che ricorre tra run diversi è un cap, non una coincidenza — grep lo
+slicing nello strumento prima di fidarsi del numero.
+
+**GOTCHA:** il cap non è un bug di logica ma di VERITÀ: nasce innocuo in fase di sviluppo
+("stampiamone solo 40 sennò intasa") e diventa letale appena un consumatore a valle — umano o
+LLM — tratta il visualizzato come l'insieme. La membership che cambia tra run (i "40" non sono
+mai gli stessi) è il segnale-precoce distintivo.
+
+**Reference:** sessione KBLIREGEN 2026-07-13 (PR #2359) · memoria `scar_display_cap_truncated_report_2026_07_13` · famiglia #2 (il report mente come il verde).
