@@ -1,0 +1,27 @@
+{
+  "code": "19204",
+  "editorial": {
+    "headline": "Base Lubricating Oil, Before the Additives Enter the Story",
+    "standfirst": "KBLI 19204 covers petroleum processing into base lubricating oil, nationally open to foreign ownership and not blocked for PMA registration in Bali under this record.",
+    "body": "KBLI 19204 is a narrow industrial classification with a clear point in the lubricant chain. It covers the processing of petroleum into base lubricating oil, the raw lubricant material that will later be processed into lubricating oil before certain additives are introduced. That distinction matters. The activity described here is not the final branded lubricant as a market object; it is the base oil stage, where petroleum is converted into the foundational material from which lubricant products can subsequently be made.\n\nThe record opens this activity across the full range of business scales: Mikro, Kecil, Menengah, and Besar. In practical registration language, that means the classification is not confined in the record to only one scale tier. A founder reading the code should understand it as available from the smallest listed scale through large-scale industrial registration, subject only to what the record itself says. The scope is industrial and specific, but the scale access in the record is broad.\n\nThe national PMA picture is straightforward. The activity is marked TERBUKA, and the foreign-ownership ceiling is 100%. Put plainly, the national record treats this activity as open to foreign investment without a foreign-share cap below full ownership. The cited PMA source is Perpres 10/2021, 49/2021. There is no basis in the slim record to add a minimum capital figure, a special licence, a tax treatment, a timeline, or a separate compliance threshold. The only national ownership number in the record is 100%, and that is the number to use.\n\nBali does not change that into a block on this record. The Bali status is OK_or_HIGHER_RISK, with l4_bali_blocked marked false. The reason is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently, but this classification is not blocked here because the record’s Bali-side reasoning places the large-scale OSS risk at Menengah-Tinggi/Tinggi. The honest conclusion is therefore clean: nationally, KBLI 19204 is open to PMA up to 100% foreign ownership, and under the Bali fields supplied here it is not blocked by the Bali moratorium.",
+    "pullQuote": "The honest conclusion is clean: nationally open to 100% foreign ownership, and not blocked by the Bali moratorium under this record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

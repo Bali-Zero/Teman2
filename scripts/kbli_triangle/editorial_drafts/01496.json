@@ -1,0 +1,27 @@
+{
+  "code": "01496",
+  "editorial": {
+    "headline": "Worm Cultivation With a Clear Bali PMA Path",
+    "standfirst": "This activity covers worm cultivation and breeding for seed stock, meat, and other outputs, with national PMA openness and no Bali moratorium block on the record.",
+    "body": "Worm cultivation and breeding sits in a plain but important corner of the primary-production economy. The scope is not ornamental or advisory: it is the activity of cultivating and breeding worms to produce seed stock, meat, and other outputs. In practical terms, the code is about the controlled raising and propagation of worms as a productive activity, not a vague environmental service or a downstream trading label.\n\nThe record opens this activity across the full business-size spectrum: Mikro, Kecil, Menengah, and Besar. That matters because the code is not reserved in the slim record for only one end of the market. A small operator can read it as an activity category for a modest cultivation setup, while a larger operator can also see a pathway within the same code, provided the registered activity is still the cultivation and breeding described in the scope.\n\nNationally, the PMA position is clean. The activity carries TERBUKA status, and its foreign-ownership ceiling is 100%. There is no foreign-share cap to qualify or dilute in the record; the ceiling is complete foreign ownership. The source field points to Perpres 10/2021, 49/2021, but the practical reading for founders is simpler: on the national investment list, this activity is open to PMA at the stated ceiling.\n\nThe Bali picture is also unusually direct. The record does not block this code for PMA registration in Bali. Its Bali status is OK_or_HIGHER_RISK, and the reason is explicit: OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not caught by the province’s moratorium. That moratorium blocks all Low and Medium-Low risk KBLI for PMA across Bali, island-wide and permanently, but this record says the activity is not blocked on that basis. The honest conclusion is therefore not a warning disguised as caution: for this slim record, a foreign-owned setup can treat the code as nationally open and not blocked by the Bali moratorium.",
+    "pullQuote": "The honest conclusion is therefore not a warning disguised as caution: for this slim record, a foreign-owned setup can treat the code as nationally open and not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "10302",
+  "editorial": {
+    "headline": "Fruit and Vegetable Pulping With a Clear Bali Position",
+    "standfirst": "This activity covers preserved fruit and vegetable products made through pulping, from jams and jellies to purees, nut pastes, and ground chili.",
+    "body": "This activity is the industrial language for a familiar kind of food work: preserving fruit and vegetables by turning them into pulp-based products. The record names both packaged and unpackaged forms, so the defining feature is not the container but the process. Mango jam, orange marmalade, mulberry jelly, fruit and vegetable purees, nut pastes, and ground chili all sit inside the same practical idea: produce that has been processed into a spread, paste, puree, jelly, or crushed preparation.\n\nThat makes the code broader than a single product line, but still quite disciplined. It is not a general food-trading description and it is not every possible fruit or vegetable activity. The centre of gravity is preservation through pulping, with the finished output taking forms that can move from household-style staples to larger prepared-food production. A founder reading this should recognise the activity by asking what actually happens to the raw material. If the business is built around pulping fruit or vegetables into the kinds of products named in the record, this is the relevant commercial shape.\n\nThe scale position is unusually open in the record. Mikro, Kecil, Menengah, and Besar are all listed as open, which means the classification is not reserved only for larger industrial operators. A small producer of ground chili, a medium prepared-food operation, or a larger facility producing purees and jams can all sit within the same activity description, provided the underlying work remains the preservation of fruit or vegetables by pulping. The editorial point is simple: the code follows the activity and product form, not the founder's ambition level.\n\nThe national-vs-Bali picture is also clean. Nationally, the record marks PMA status as TERBUKA and gives a foreign-ownership ceiling of 100%, so the national reading is foreign-open up to full ownership. Bali does not add a separate ownership percentage in this record. Instead, Bali is recorded as OK_or_HIGHER_RISK, and the Bali reason says: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule still matters as context, because Bali province blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently, but this record does not mark the activity as blocked. On the slim record alone, the honest conclusion is that this activity is nationally open and not blocked for PMA registration in Bali.",
+    "pullQuote": "On the slim record alone, the honest conclusion is that this activity is nationally open and not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

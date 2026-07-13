@@ -1,0 +1,27 @@
+{
+  "code": "01193",
+  "editorial": {
+    "headline": "Cut Flowers, Open Capital, and Bali’s Cleaner Registration Signal",
+    "standfirst": "KBLI 01193 covers cut-flower and flower-bud farming, open across business scales and foreign ownership nationally, with Bali not blocking PMA registration under its moratorium record.",
+    "body": "KBLI 01193 is the farming of flowers for harvest as cut flowers and flower buds. Its scope is practical and agricultural rather than decorative retail: land preparation, planting, maintenance, harvesting, and post-harvest handling are treated as one production chain. The record names orchids, carnations, gerbera, gladiolus, chrysanthemums, roses, jasmine, tuberose, and other flowers grown for the flowers themselves. The decisive point is the output. This activity is for flowers and buds taken from the plant; it is not the farming of live flowering plants as the final product.\n\nThat makes the code relevant for founders building a production-side floriculture operation rather than a nursery of living ornamental plants. It can describe a farm that grows flowers for cutting, manages the crop cycle, harvests the flowers, and handles the immediate post-harvest work as part of the same agricultural activity. The scope is broad enough to cover the named flower types and similar flowers harvested for their blooms, but it stays anchored to cultivation and production. It should not be stretched into downstream trade, floristry, or live-plant production unless those activities are separately supported by their own classification record.\n\nOn scale, the record is unusually straightforward. It is open to Mikro, Kecil, Menengah, and Besar operators, so the activity is not reserved in the record for only one business size. At the national level, PMA is classified TERBUKA and foreign ownership may reach 100%. For a foreign-owned setup, that means the national investment rule shown here does not impose a partial foreign-share cap. The cited source for that national position is Perpres 10/2021, 49/2021, and there is no extra threshold, licence, capital minimum, or timing rule in the slim record to add beyond that.\n\nThe Bali reading is also clean, but for a different reason. Under the record’s Bali moratorium, PMA is permanently barred province-wide from every Low and Medium-Low risk KBLI. For this activity, however, the Bali status is marked OK_or_HIGHER_RISK, and the reason states that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore not a hidden caveat: a foreign investor can read this record as nationally open up to 100% foreign ownership, and not blocked for PMA registration in Bali under the stated moratorium logic.",
+    "pullQuote": "The honest conclusion is therefore not a hidden caveat: this cut-flower farming activity is nationally open to 100% foreign ownership and not blocked for PMA registration in Bali under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

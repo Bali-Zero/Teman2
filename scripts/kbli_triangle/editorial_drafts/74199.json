@@ -1,0 +1,27 @@
+{
+  "code": "74199",
+  "editorial": {
+    "headline": "Special Design Work, and the Bali Registration Divide",
+    "standfirst": "This special-design planning activity is nationally open to foreign ownership, but its Bali registration position is decisively narrower.",
+    "body": "This activity is a home for special-design planning that does not sit elsewhere in the stated classification. It also includes planning for other creative content not otherwise covered by that scope. The practical thread is planning: shaping a design or creative-content direction where the work is specialised but cannot be placed in a more specific activity. It is therefore a deliberately broad category, defined by the nature of the planning work and by what remains unclassified within the stated scope.\n\nThe permitted business scales are Mikro and Kecil. That matters because scale is not decorative metadata here; it frames who can enter the activity through the available registration structure. A founder should read the category as one intended for micro and small enterprises, rather than assume that a broad description of creative or design work automatically creates a broad corporate-registration route.\n\nNationally, the activity is marked TERBUKA, with a foreign-ownership ceiling of 100%. In plain terms, the national record does not impose a foreign-equity cap below full ownership. That is the national investment position, supported in the record by Perpres 10/2021, 49/2021. But a national foreign-ownership setting is not the final answer for a business intending to register in Bali: the local registration architecture still determines whether a PT PMA can enter the activity there.\n\nIn Bali, the answer is clear: a foreigner cannot register this activity through a PT PMA today. The Bali status is closed to PMA because there is no Usaha Besar scale row in OSS; the activity is reserved for UMKM, while a PT PMA is Usaha Besar by law. National openness does not overcome the local registration architecture that keeps a PT PMA out of this activity in Bali. The provincial backdrop is also permanent and island-wide: Bali blocks all low- and medium-low-risk KBLI from PMA registration. For this activity, however, the immediate recorded obstacle is structural—the absence of the large-enterprise registration row required for a PT PMA.",
+    "pullQuote": "National openness does not overcome the local registration architecture that keeps a PT PMA out of this activity in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales open to",
+        "value": "Mikro, Kecil"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "Closed to PMA (no Besar scale)"
+      }
+    ]
+  }
+}

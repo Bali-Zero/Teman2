@@ -1,0 +1,27 @@
+{
+  "code": "01629",
+  "editorial": {
+    "headline": "The Quiet Infrastructure Behind Animal Care",
+    "standfirst": "KBLI 01629 covers contracted support work around livestock and animal care, nationally open to PMA and not blocked for Bali registration under the stated moratorium check.",
+    "body": "KBLI 01629 is not the farm itself, but the practical support layer around animal husbandry. Its scope covers livestock-support services carried out for a fee or under contract: shearing, attaching or giving livestock identity, cleaning animal enclosures, grass-finding services, animal maintenance and care, and herding. It also includes farrier work and animal castration. In plain English, this is the operational labour and specialist handling that keeps livestock-related activity functioning without necessarily being the primary owner of the animals or the farm.\n\nThat makes the code relevant for businesses built around service provision rather than production. A company registering under this activity would be positioning itself as a contracted provider of animal-support work: cleaning, care, grooming or handling services, field assistance, or technical tasks such as shoeing horses. The slim record states that the activity is open across Mikro, Kecil, Menengah, and Besar scales, so the registered form is not limited in the record to one narrow business size. The key is that the commercial activity remains service-based and traceable to the listed forms of support.\n\nAt the national level, the foreign-investment position is clear-cut. Its PMA status is TERBUKA, while the recorded foreign-ownership ceiling stands at 100%. That means the national record treats this activity as open to foreign ownership up to the full stated ceiling, with the cited basis being Perpres 10/2021, 49/2021. There is no lower cap in the slim record, so none should be invented. For a foreign-owned setup, the national reading is therefore clean: this is an open activity at the recorded ceiling, across the listed scales.\n\nThe Bali picture is also clear, and importantly it does not overturn the national position in this record. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province, but this activity is marked l4_bali_blocked: false. The reason given is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. In practical editorial terms, KBLI 01629 should be read as nationally foreign-open and, on the slim record provided, not blocked for PMA registration in Bali. The honest conclusion is not a warning disguised as analysis: this activity is open, including in Bali under the stated moratorium check.",
+    "pullQuote": "KBLI 01629 is the practical support layer around animal husbandry, not the farm itself.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

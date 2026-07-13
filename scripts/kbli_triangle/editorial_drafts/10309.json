@@ -1,0 +1,27 @@
+{
+  "code": "10309",
+  "editorial": {
+    "headline": "A Versatile Code for Fruit, Vegetable, and Nut Processing",
+    "standfirst": "KBLI 10309 covers preservation and processing work where produce and legumes become prepared foods, short-life products, soy-based items, or roasted nuts.",
+    "body": "KBLI 10309 is a broad but still clearly bounded activity code for businesses that process and preserve fruit, vegetables, soybeans, legumes, and nuts in forms that sit outside the more narrowly defined preservation lanes. In plain English, it is for the workshop or factory where produce is turned into food products: fruit- or vegetable-based preparations, short-life salads made from fruit or vegetables, selected soybean and legume products such as natto, yuba, fu zhu, douchi, tempe gembus, and tempe bongkrek, and the roasting of nuts such as peas, salted nuts, egg-coated nuts, bogor nuts, atom nuts, cashews, and enting-enting.\n\nThat makes the code useful for founders whose real business is not farming or retailing, but transformation: taking perishable or raw ingredients and giving them a processed food identity. The record also draws the boundary by exclusion: processed foods from vegetables are not inside this activity when they fall under the separate subcategory named in the source record. For this code, the editorial point is not romance about food manufacturing; it is classification discipline. The activity is about preservation, preparation, soybean and legume processing, and nut roasting, not every possible food product that happens to include fruit or vegetables.\n\nOn registration scale, the code is unusually open. The slim record lists Mikro, Kecil, Menengah, and Besar as open scales, so the same activity can describe a small local operator or a larger processing business, provided the registered activity still matches the scope. Nationally, the PMA position is also clean: the record marks the activity as TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. There is no partial foreign cap in the record, so the national reading is straightforward: for foreign investment purposes, this activity is open up to full foreign ownership.\n\nThe Bali picture is also clear, and it is important not to overcomplicate it. The record does include the province-wide moratorium rule: Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But this activity is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” In practical editorial terms, the honest conclusion is that KBLI 10309 is nationally open and, on the provided Bali record, not blocked for PMA registration in Bali today.",
+    "pullQuote": "The honest conclusion is that KBLI 10309 is nationally open and, on the provided Bali record, not blocked for PMA registration in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

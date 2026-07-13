@@ -1,0 +1,27 @@
+{
+  "code": "36002",
+  "editorial": {
+    "headline": "Raw Water Supply With a Scope-Dependent Bali Gate",
+    "standfirst": "This activity covers raw-water storage and delivery for industry, power generation, irrigation networks, and certain fixed marine-water uses, with Bali PMA registration depending on exact scope.",
+    "body": "KBLI 36002 is about raw water before it becomes a downstream service or another commercial product. Its core field is the provision of raw water for industrial use, power generation, and other non-domestic needs, including activity carried out inside forest areas. It also reaches the management of irrigation networks, so the category is not limited to pipes and tanks; it can include the organised control of water movement through a larger supply system.\n\nThe scope is deliberately specific about what belongs here and what does not. It includes the procurement and channeling of raw seawater where marine space is used on a fixed basis for at least thirty days, whether or not the water is processed, when the purpose is industry, power generation, or similar uses. It also includes storage and distribution of raw water from surface water other than seawater. But it does not cover irrigation services such as agricultural spraying, and it does not cover the use of raw water as an aquaculture medium when that use is part of an integrated fish-farming activity.\n\nNationally, the record is straightforward: this activity is marked open to PMA, with foreign ownership shown at 100%. The same record shows it open across Mikro, Kecil, Menengah, and Besar scales, which means the registration question is not confined to large infrastructure sponsors. A small operator, a medium-scale supplier, or a larger water-infrastructure company would all read the national position from the same baseline: the activity is open, and the foreign-ownership ceiling shown in the record is full foreign ownership.\n\nBali is where the reading becomes more exacting. The Bali status is scope-dependent rather than a flat block, and the record says it is not blocked outright. The reason is that, at Besar scale, OSS risk can be low for some scopes but higher for others. Bali’s moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently, so a foreign-owned registration in Bali depends on declaring an exact activity scope that carries the higher-risk pathway in OSS. In practical terms, the honest position is this: KBLI 36002 may be nationally open, but in Bali a PMA filing cannot be treated as automatically available across the whole description. It is registrable only if the declared scope places the activity outside the Low or Medium-Low risk route caught by the Bali moratorium, and that must be checked live in OSS against the exact activity being registered.",
+    "pullQuote": "KBLI 36002 may be nationally open, but in Bali a PMA filing cannot be treated as automatically available across the whole description.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Kecil, Menengah, Besar, Mikro"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

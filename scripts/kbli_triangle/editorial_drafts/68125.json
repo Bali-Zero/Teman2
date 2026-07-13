@@ -1,0 +1,27 @@
+{
+  "code": "68125",
+  "editorial": {
+    "headline": "Running the Commercial Destination",
+    "standfirst": "This activity is nationally open to full foreign ownership; in Bali it is not blocked by the moratorium, though the address must be verified.",
+    "body": "KBLI 68125 concerns the business of creating and running defined commercial areas: places arranged for the trade of goods or services rather than a single shop or tenant operation. Its scope includes developing, buying, selling, leasing and operating such areas. Malls, plazas, rest areas and food centres are all examples named within that scope. The common thread is the commercial destination as a managed whole—an area assembled, made available and kept in operation for trading activity.\n\nThe activity is open to businesses operating at the `Menengah` and `Besar` scales. That matters because the code describes a broad commercial-area role, encompassing both the transactions around the area and its continuing operation. A registrant may be involved in developing the site, acquiring or disposing of it, leasing its spaces, operating it, or a combination of those functions. The scope is intentionally practical: it follows the commercial area through the work of putting it into use and keeping it available for goods and service trade.\n\nNationally, the PMA position is `TERBUKA`, with a foreign-ownership ceiling of 100%. In plain terms, the activity is open to full foreign ownership at the national level. There is no partial foreign-ownership ceiling in this record to soften or reinterpret: the stated national maximum is complete ownership by foreign investors.\n\nBali requires its own reading. The record places the activity in an `OK_or_HIGHER_RISK` position and states that medium-high or high risk is not blocked by the provincial moratorium, with verification required for the particular address. Bali's island-wide, permanent rule blocks PMA for low and medium-low risk activities; this recorded position sits outside that block. At the national level, full foreign ownership is permitted; in Bali, the activity is not blocked by the moratorium but its address still needs verification. The national 100% ceiling remains the relevant ownership figure here.",
+    "pullQuote": "At the national level, full foreign ownership is permitted; in Bali, the activity is not blocked by the moratorium but its address still needs verification.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Eligible scale",
+        "value": "Menengah"
+      },
+      {
+        "label": "Eligible scale",
+        "value": "Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

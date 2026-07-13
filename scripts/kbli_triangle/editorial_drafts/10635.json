@@ -1,0 +1,27 @@
+{
+  "code": "10635",
+  "editorial": {
+    "headline": "Rice and Corn Sweeteners With a Clear Bali Path",
+    "standfirst": "KBLI 10635 covers the making of rice- and corn-based sweeteners, with all business scales open and the record marking both national PMA access and Bali registration as open.",
+    "body": "KBLI 10635 is a manufacturing activity, not a trading label. Its scope is the making of sweeteners from rice and corn, with the record naming fructose, glucose, maltose, sucrose, and dextrose as examples. The useful way to read it is therefore quite concrete: this is about producing sweetening ingredients from those two agricultural bases, rather than merely distributing finished sweetener products or operating a general food business.\n\nThe scale picture is unusually straightforward. The record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, so the classification is not reserved only for industrial-scale operators. A small producer and a large manufacturer sit inside the same stated scale band, provided the registered activity is still the manufacture of sweeteners from rice and corn. That breadth matters because the activity can appear in very different commercial forms: a focused ingredient producer, a larger processing facility, or a business whose main registered work is the production of named sweetener types.\n\nNationally, the PMA position is clean. The record marks the activity as TERBUKA and gives the foreign-ownership ceiling as 100%. In plain English, the national data says this KBLI is open to foreign-owned registration up to that ceiling. There is no smaller foreign-stake cap in the record, and there is no additional national condition stated here beyond the fields supplied. For a founder reading the classification, the central national point is that this is not a closed activity in the slim record.\n\nThe Bali reading is also clean, but it needs to be stated carefully. According to the record, Bali’s moratorium permanently bars PMA from every Low and Medium-Low risk KBLI anywhere in the province. This KBLI is not blocked on the Bali side: `l4_bali_blocked` is false, and the stated reason is “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That means the honest national-vs-Bali picture is aligned here. The activity is nationally open for PMA, and the Bali status does not turn it into a blocked Bali registration case under the moratorium data supplied.",
+    "pullQuote": "For this activity, the national PMA position and the Bali moratorium reading point in the same direction: open, not blocked.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

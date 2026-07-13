@@ -83,6 +83,7 @@ export interface KBLIRawCode {
     youllAlsoNeed?: string;
     whoThisIsFor?: string;
     coverImage?: string | null;
+    editorial?: KBLIEditorialContent;
     // Legacy field names (older enrichment batches)
     legacy_bridge?: string;
     bali_nuance?: string;
@@ -206,9 +207,25 @@ export interface KBLICode {
     youllAlsoNeed?: string;
     whoThisIsFor?: string;
     coverImage?: string | null;
+    editorial?: KBLIEditorialContent;
   };
   /** L4 — Bali sovereign-local status (moratorium 2026-05-13). National PMA openness != Bali registrability. */
   baliL4?: KBLIBaliL4;
+}
+
+/**
+ * LOOP-2 editorial layer — the per-code magazine article (mandate 2026-07-08:
+ * "un editoriale di classe e intelligente per ogni kbli"). Written by the
+ * editorial wave (Sonnet writers + adversarial verifiers), applied only through
+ * scripts/kbli_apply_editorials.py deterministic gates. Every number in these
+ * fields is derivable from the record itself — enforced by lint L10/L11.
+ */
+export interface KBLIEditorialContent {
+  headline: string;
+  standfirst: string;
+  body: string;
+  pullQuote?: string;
+  byTheNumbers?: { label: string; value: string }[];
 }
 
 /** L4 Bali status — the sovereign-local layer (moratorium B.27.000/642, 2026-05-13). */

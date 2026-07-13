@@ -1,0 +1,27 @@
+{
+  "code": "10739",
+  "editorial": {
+    "headline": "Non-Chocolate Confectionery, With a Clear Path Through Bali",
+    "standfirst": "This activity covers other confectionery made without chocolate, from caramel and nougat to chewing gum, cough sweets and pastilles.",
+    "body": "This activity is about the manufacture of confectionery that sits outside chocolate. The record names caramel, cachous, nougat, fondant, marzipan, chewing gum, cough sweets and pastilles, which gives the category a practical breadth: it is not a single sweet, but a production lane for many finished sugar-based products. The important boundary is equally clear. The activity described here is other confectionery **not made from chocolate**, so the editorial focus belongs on non-chocolate sweets and related products rather than on the wider food industry.\n\nFor founders, the scale picture is unusually broad. The record opens this activity to **Mikro, Kecil, Menengah and Besar** operators, meaning it can describe anything from a small formal producer to a larger industrial manufacturer, so long as the activity remains within the stated scope. That matters because the same KBLI heading can support very different business realities: a compact confectionery workshop, a growing packaged-sweets producer, or a larger operation making multiple non-chocolate product lines. The code is therefore best read as a manufacturing classification, not as a retail or distribution label.\n\nNationally, the investment signal is straightforward. The PMA status is **TERBUKA**, and the foreign-ownership ceiling in the record is **100%**. In plain English, the national record treats this activity as open to foreign ownership up to full foreign participation. The source given is **Perpres 10/2021, 49/2021**, so the national position is not being inferred from market custom or general sector logic; it comes from the stated PMA source in the record. There is no basis in the slim record to add a lower cap, a local-partner requirement, a minimum capital figure, or a special threshold.\n\nThe Bali picture is also clean, and it should not be made more complicated than the record makes it. Bali’s status is **OK_or_HIGHER_RISK**, and `l4_bali_blocked` is false. The reason is explicit: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The moratorium rule itself is still important context, because Bali province blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis, according to **Gubernur letter B.27.000/642/PM/DPMPTSP**. But this activity is not marked as blocked in Bali. The honest reading is therefore simple: nationally open, foreign ownership up to 100%, and not blocked for PMA registration in Bali under the Bali-side status recorded here.",
+    "pullQuote": "The honest reading is simple: nationally open, foreign ownership up to 100%, and not blocked for PMA registration in Bali under the record’s Bali-side status.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

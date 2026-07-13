@@ -1,0 +1,27 @@
+{
+  "code": "25200",
+  "editorial": {
+    "headline": "Weapons and Ammunition Manufacturing, Open Nationally and Usable in Bali",
+    "standfirst": "This code covers the industrial manufacture of military, police, civilian, sporting, and protective firearms, ammunition, explosives, and ballistic missile systems.",
+    "body": "KBLI 25200 is the manufacturing category for weapons and ammunition. Its centre of gravity is not retail, training, security services, or equipment brokerage, but production: military artillery, cannons, rocket launchers, flamethrowers, grenade launchers, torpedo tubes, machine guns, heavy projectile weapons, light firearms such as pistols, revolvers, rifles, and shotguns, and the ammunition that serves them. The record also includes gas rifles, spring rifles, air rifles, war ammunition, shotgun, revolver, and pistol bullets, and military explosive devices such as bombs, grenades, torpedoes, mines, rockets, and missiles.\n\nThe scope is broader than a narrow defence-factory label. It also covers the manufacture of firearms and ammunition for hunting, sport, or protection, and it expressly reaches intercontinental ballistic missiles. That makes the code industrially precise but commercially wide: the activity is defined by making the weapon, ammunition, explosive, or missile system, not by the eventual user alone. A founder reading this should see a production classification for arms and munitions, spanning military-grade systems through certain civilian-use firearms and ammunition, all inside one activity record.\n\nOn business scale, the record is unusually broad: Mikro, Kecil, Menengah, and Besar are all listed as open. Nationally, the PMA status is TERBUKA, with pma_max_asing at 100. Put plainly, the national investment line in this record treats the activity as open to foreign ownership up to 100%, sourced to Perpres 10/2021, 49/2021. There is no lower foreign-ownership ceiling in the slim record, and there is no separate Bali percentage to add beside it.\n\nThe Bali picture is also clear. In the record, l4_bali_blocked is marked false, while the Bali status is given as OK_or_HIGHER_RISK. Its stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule itself blocks all Low and Medium-Low risk KBLI for PMA across Bali, island-wide and permanently, under the listed governor-letter source. This activity is not caught by that Bali moratorium according to the record supplied. So the honest reading is not a hidden Bali prohibition: nationally it is open, the foreign-ownership ceiling shown is 100%, and the Bali moratorium field does not block PMA registration for this code.",
+    "pullQuote": "The honest reading is not a hidden Bali prohibition: nationally it is open, and the Bali moratorium field does not block PMA registration for this code.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "10305",
+  "editorial": {
+    "headline": "Canning Fruit and Vegetables as a Preservation Business",
+    "standfirst": "KBLI 10305 covers airtight canning with retort or pasteurisation, open across all business scales and nationally open to full foreign ownership.",
+    "body": "KBLI 10305 is for the industrial preservation of fruit and vegetables through airtight packaging or canning, with a retort or pasteurisation process as part of the activity. In plain English, this is not a code for simply putting produce into containers. The record defines it as processing and preserving fruit and vegetables so the finished product can stand as a canned food product: canned pineapple, canned rambutan, canned beans, canned mushrooms, and canned carrots are all examples named in the scope.\n\nThat distinction matters because the centre of the activity is preservation. The can, jar, or airtight pack is not merely a retail wrapper; it is part of the method by which the food is treated and made stable. A founder using this code should therefore be describing a production activity that changes the condition of the fruit or vegetable through canning, retort, or pasteurisation. The language of the record is broad enough to cover both fruit and vegetable lines, but it stays anchored in this specific processing method.\n\nThe registration scale is unusually wide. The slim record marks the activity as open to Mikro, Kecil, Menengah, and Besar businesses, so the code can be used from a very small production setup through to a large operation, provided the registered activity remains within the canning and preservation scope. For a foreign-owned company, the national investment picture is also direct: the PMA status is TERBUKA, and the foreign-ownership ceiling in the record is 100%, sourced to Perpres 10/2021, 49/2021.\n\nThe Bali reading is not the same as a hidden local cap. The record does not give Bali its own foreign-ownership percentage, partnership formula, quota, or special capital condition. It marks Bali status as OK_or_HIGHER_RISK and says: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule itself blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this record says KBLI 10305 is not blocked by that rule. The honest conclusion is therefore clean: nationally, this activity is open to PMA up to 100%; in Bali, this slim record does not mark it as blocked by the provincial moratorium.",
+    "pullQuote": "The honest conclusion is clean: nationally, this activity is open to PMA up to 100%; in Bali, this slim record does not mark it as blocked by the provincial moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

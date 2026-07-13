@@ -1,0 +1,27 @@
+{
+  "code": "66143",
+  "editorial": {
+    "headline": "Payment-System Support Is Infrastructure, Not a Footnote",
+    "standfirst": "From card personalisation and terminals to data centres and routing, this activity supports payment processing—and remains open to full foreign ownership nationally and unblocked in Bali by the stated moratorium.",
+    "body": "Payment systems are often noticed only at the moment a customer taps a card or an online transaction is approved. This activity concerns the enabling work that lets that moment be processed at all. It covers services supporting payment-service providers and payment-system infrastructure operators in processing payment transactions. In practical terms, that includes card printing, payment personalisation, data centres and disaster-recovery centres, terminals, security features for payment instruments or transactions, contactless-transaction technology, and routing data that supports transaction processing.\n\nThe definition marks out a broad supporting function. Its subject is the operational and technical layer around payment processing: the equipment, data pathways, resilience arrangements and security features that help payment systems function. The examples range from physical card production and terminals to data-centre provision, disaster recovery, contactless technology and routing. What joins them is their role in supporting the processing of payment transactions and the associated payment-system infrastructure.\n\nThe activity is open at the Mikro, Kecil, Menengah and Besar scales. Nationally, it is TERBUKA to foreign investment, with a foreign-ownership ceiling of 100%. The national position is recorded under Perpres 10/2021, 49/2021. For a founder considering the activity across Indonesia, the essential point is clear: foreign ownership is not capped below full ownership. The stated scale range is equally significant, placing this supporting activity within the record from Mikro through Besar rather than confining it to one business scale.\n\nBali requires its own reading, but it does not reverse that national position. The provincial moratorium permanently blocks PMA registration island-wide for Low and Medium-Low risk KBLI. This activity is not blocked by that moratorium. The recorded reason is specific: at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi—Medium-High/High—outside the moratorium’s stated Low and Medium-Low reach. For this activity, the Bali question turns not on a blanket ban but on how its risk position sits outside the provincial moratorium. In plain terms, foreign-owned registration is not blocked in Bali today on the moratorium ground recorded here.",
+    "pullQuote": "For this activity, the Bali question turns not on a blanket ban but on how its risk position sits outside the provincial moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Registration scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

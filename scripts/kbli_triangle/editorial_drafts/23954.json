@@ -1,0 +1,27 @@
+{
+  "code": "23954",
+  "editorial": {
+    "headline": "Asbestos Goods Manufacturing, Open Nationally and Not Moratorium-Blocked in Bali",
+    "standfirst": "This activity covers asbestos-containing building and industrial goods, with national PMA access up to full foreign ownership and Bali registration not blocked by the moratorium.",
+    "body": "KBLI 23954 covers the manufacturing of goods that contain asbestos, with the record centering the activity on building-material and industrial uses. In practical English, this means production of items such as corrugated asbestos fibre board, flat asbestos fibre board, pressurised asbestos pipe, layered asbestos products, and other asbestos-containing goods for the uses named in the scope. The important editorial point is that this is not a general construction, trading, or installation category; the activity described is manufacturing.\n\nThe scale position is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar enterprises, so the code is not framed as belonging only to large industrial operators. A founder reading the classification should still treat the scale as a registration fact rather than a business-model shortcut: the listed scales say who may register the activity, while the scope says what the registered activity must actually do. Here, the common thread is the making of asbestos-containing goods, not the downstream sale or use of every material that might appear in a construction supply chain.\n\nNationally, the PMA signal is clear. The status is TERBUKA, and the maximum foreign ownership field is 100%. That means the national record does not impose a foreign-shareholding cap below full ownership for this activity. The source attached to that position is Perpres 10/2021, 49/2021. There is no basis in the slim record to add a minimum capital rule, sector licence, tax treatment, timing expectation, or extra threshold; those facts are simply not present here.\n\nBali is also unusually clean in this record. The province's moratorium rule blocks all Low and Medium-Low risk activities for PMA registration across Bali on a permanent basis, but this activity is not marked as blocked. The Bali status is OK_or_HIGHER_RISK, and the reason given is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest reading is therefore not a warning that Bali is closed, but a precise distinction: nationally open, full foreign ownership allowed, and not caught by Bali's Low or Medium-Low PMA moratorium on the facts supplied.",
+    "pullQuote": "The honest reading is nationally open, full foreign ownership allowed, and not caught by Bali's Low or Medium-Low PMA moratorium on the facts supplied.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

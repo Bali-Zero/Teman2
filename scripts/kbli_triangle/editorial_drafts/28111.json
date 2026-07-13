@@ -1,0 +1,27 @@
+{
+  "code": "28111",
+  "editorial": {
+    "headline": "Industrial Power Machinery With a Bali Scope Test",
+    "standfirst": "KBLI 28111 covers the making of steam, turbine, wind, water, and gas or air power machinery, nationally open to foreign ownership but scope-sensitive in Bali.",
+    "body": "KBLI 28111 is a manufacturing activity for power-driving machinery that is not an internal-combustion engine. In plain English, the record places here the making of steam engines, turbines and their parts, steam turbines and similar turbines, hydraulic turbines, water wheels and their regulators, wind turbines, gas or air turbines, boiler-turbine sets, generator-turbine sets, and windmills. It also includes milling machinery, while the record expressly excludes turbojets or turboprops for aircraft. The activity is industrial and mechanical in character: it is about making the machines and assemblies that convert steam, water, wind, gas, or air into motive power.\n\nThe registration profile is broad. The record says this activity is open at every listed business scale: Mikro, Kecil, Menengah, and Besar. That matters because the activity is not framed only as a large-plant industrial category; the slim record keeps the door open across the scale ladder. A founder reading the code should therefore begin with the actual declared manufacturing scope, not with an assumption that turbine-related work automatically belongs only to a single scale or a single industrial format. The scope text is the anchor: the activity must stay inside the manufacturing of the machinery and parts described there.\n\nNationally, the foreign-investment position is clean. The PMA status is TERBUKA, and the record gives a maximum foreign ownership figure of 100%, sourced to Perpres 10/2021, 49/2021. There is no lower foreign-share cap in the slim record, so none should be added. The national reading is therefore that this KBLI can support a wholly foreign-owned PMA setup, provided the declared activity remains the activity described by the code. That is the simple national picture: open status, full foreign-ownership ceiling, and no invented capital, licensing, tax, or timing condition attached to the record.\n\nBali is more careful. The record does not mark this activity as outright blocked in Bali: `l4_bali_blocked` is false. But the Bali status is `Blocked (scope-dependent)`, and the reason says: “OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope — verify live OSS per exact activity.” The moratorium rule in the record is blunt: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest Bali reading is not a separate percentage cap, and not a blanket no. It is scope-dependent: national PMA openness exists, but Bali registration turns on the exact activity and the live OSS risk classification for that activity.",
+    "pullQuote": "Nationally this is a fully foreign-open machinery manufacturing code, but in Bali the decisive question is the exact declared scope.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

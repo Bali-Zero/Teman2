@@ -1,0 +1,27 @@
+{
+  "code": "66121",
+  "editorial": {
+    "headline": "Securities Brokerage in Bali: Open to Foreign Investment",
+    "standfirst": "A securities-brokerage activity with a national 100% foreign-ownership ceiling and no Bali moratorium block for PMA registration.",
+    "body": "This activity is securities brokerage other than carbon units: carrying out securities transactions for another party or client, including the work of a securities broker-dealer intermediary established specifically within a province. It also encompasses a party transacting in securities for its own interest and for others, marketing securities for another securities company, and other activities determined or approved by the Financial Services Authority (OJK). In practical terms, it is a regulated intermediary role in the securities market, rather than a generic trading business.\n\nThe activity is open across the full business-scale range recorded here: Mikro, Kecil, Menengah and Besar. Its provincial formulation is particularly specific. A securities company holding an OJK business licence may operate as a broker-dealer intermediary that administers customers’ securities accounts and is established specifically within a provincial area. That licence is not a decorative detail; it is part of the activity’s stated character and places the business within the OJK-regulated securities-company framework.\n\nNationally, the activity is marked TERBUKA for PMA, with a foreign-ownership ceiling of 100%. That means foreign investment is permitted up to full ownership under the cited national basis. The record does not present a lower national cap, a partnership condition, or a separate ownership threshold for this activity. Its openness is therefore direct, while its operational identity remains tied to the stated OJK licensing and securities-account administration role.\n\nBali does not reverse that national position. A foreign investor can register this activity in Bali today: it is not blocked by the province’s permanent, island-wide PMA moratorium for Low and Medium-Low risk activities. At the Besar scale, the OSS risk position is Menengah-Tinggi/Tinggi, which is why the activity sits outside that moratorium block. This is an important distinction: the Bali result is not an exemption invented around a foreign-ownership cap, but a recorded conclusion that the activity is not blocked by the moratorium.",
+    "pullQuote": "A foreign investor can register this activity in Bali today because it is not blocked by the provincial PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

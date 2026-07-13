@@ -1,0 +1,27 @@
+{
+  "code": "07295",
+  "editorial": {
+    "headline": "Nickel Ore Mining, Open Nationally and Not Moratorium-Blocked in Bali",
+    "standfirst": "KBLI 07295 covers nickel ore mining and preparation, open across all business scales with full foreign ownership nationally and no Bali PMA moratorium block recorded.",
+    "body": "KBLI 07295 is the activity line for **nickel ore mining and preparation**. The slim record describes it in direct terms: it covers mining activity and the preparation of nickel ore. That makes the code industrial and upstream in character, centred on extracting the ore and readying it within the mining activity itself, rather than describing downstream manufacturing or trading. The record also places the activity beside two mining-business terms: IUPK Exploration and extension of an IUP at the Production Operation stage. Those terms are part of the record’s own scope note, so they should be read as context for the kind of mining activity this classification is designed to hold.\n\nThe registration scale picture is unusually broad. The record marks this activity as open to **Mikro, Kecil, Menengah, and Besar**. In plain English, it is not reserved in the slim record for one narrow size of operator. A small registered business and a large registered business sit in the same scale list, though the activity itself remains defined by nickel ore mining and preparation. That distinction matters: the scale field tells us who the classification is open to by size category, while the scope field tells us what the classification actually covers. This code should not be stretched beyond that mining-and-preparation perimeter.\n\nNationally, the foreign-investment picture is clear. The PMA status is **TERBUKA**, and the maximum foreign ownership value is **100%**, with the source stated as **Perpres 10/2021, 49/2021**. There is no foreign share cap below full ownership in the slim record. For a foreign-owned setup, that means the national classification data does not impose a reduced foreign-equity ceiling for this activity. The clean reading is therefore simple: at national level, KBLI 07295 is open to PMA, up to full foreign ownership.\n\nThe Bali reading is also explicit, and it is important not to overcomplicate it. The record says **l4_bali_blocked** is false and gives the Bali status as **OK_or_HIGHER_RISK**. The reason is that the OSS risk at **Besar** scale is **Menengah-Tinggi/Tinggi**, so it is not blocked by the Bali moratorium. The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, permanently; this activity is not captured by that block according to the provided status and reason. The honest conclusion is that KBLI 07295 is nationally foreign-open and, on this record, not blocked for PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is that KBLI 07295 is nationally foreign-open and, on this record, not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

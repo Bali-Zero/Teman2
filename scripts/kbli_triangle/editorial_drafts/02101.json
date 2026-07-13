@@ -1,0 +1,27 @@
+{
+  "code": "02101",
+  "editorial": {
+    "headline": "Forest Management, Carbon Stewardship, and the Bali PMA Reality",
+    "standfirst": "KBLI 02101 covers forest management, replanting, conservation, and natural carbon sequestration, with national PMA access and no Bali moratorium block in this record.",
+    "body": "KBLI 02101 is a forestry activity code for the active management of forests and timber land. Its scope is not limited to keeping land untouched. The record describes planting, replanting, conservation of forests and wooded land, and the management of forest areas for natural carbon sequestration. It also includes the sale of carbon credits or emission-reduction certificates when those outputs arise from the forest-management activity itself. In practical terms, this is the code for operators whose business is the stewardship of forest assets, including natural, semi-natural, and plantation forests, where the environmental outcome is part of the managed activity.\n\nThe same scope draws an important boundary. This code does not cover third-party inventorying or recording of forest carbon sequestration. That exclusion matters because the commercial substance here is management, not merely measurement. The record also places within the scope the use of areas in protected forest and the use of environmental services in protected forest. So the center of gravity is land and forest management: planting, restoring, conserving, and turning recognised forest-management outcomes into carbon-credit or emission-reduction-certificate value where the underlying activity produces them.\n\nFor scale, the code is unusually broad. The slim record opens it to Mikro, Kecil, Menengah, and Besar. That means the activity is not described only as a large-company domain; the classification itself recognises participation across the full registered scale ladder. Nationally, the PMA position is also clear: the status is TERBUKA, with a foreign-ownership ceiling of 100%. There is no partial foreign-share cap in the record. A foreign-owned company reading the national line would therefore see this as open, not capped below full foreign ownership, subject only to the facts actually stated in the record.\n\nThe Bali position is the point that needs precision. The province-wide moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But this record does not mark KBLI 02101 as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is that the OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest reading is therefore neither alarmist nor casual: nationally it is open to PMA up to 100%, and in Bali this record does not show a moratorium block, because the relevant risk position sits above the Low and Medium-Low category that Bali blocks.",
+    "pullQuote": "The honest reading is neither alarmist nor casual: nationally it is open to PMA up to 100%, and this record does not show a Bali moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

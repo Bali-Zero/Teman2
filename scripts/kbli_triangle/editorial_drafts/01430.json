@@ -1,0 +1,27 @@
+{
+  "code": "01430",
+  "editorial": {
+    "headline": "Camel and Camelid Farming Under Indonesia's KBLI 2025",
+    "standfirst": "This activity is nationally open to foreign ownership, including at large scale, and the Bali record does not show a moratorium block for PMA registration.",
+    "body": "Camel and similar-animal farming is a narrow but complete livestock activity. The record covers cultivation to produce slaughter camels, dairy camels, and comparable camelids such as llamas, alpacas, vicunas, and guanacos. It also reaches breeding work: producing breeding stock, semen, and embryos. Milk production from camels and similar animals sits inside the same activity, so the code is not only about keeping animals on land; it covers the productive chain around meat, milk, and genetic propagation.\n\nThat breadth matters for founders because the activity is not framed around one end product. A business may be oriented toward dairy output, meat production, breeding supply, or the biological inputs that support breeding. The Indonesian scope uses the language of cultivation and breeding, which means the core identity is agricultural production, not retail, logistics, food service, or veterinary work. The discipline in registration is therefore to keep the declared business activity anchored to the animals and outputs named in the scope, without importing side activities that the record does not state.\n\nThe scale picture is unusually broad: Mikro, Kecil, Menengah, and Besar are all open in the record. That makes the activity available across the formal size ladder, from small operators to large-scale livestock ventures. Nationally, the PMA status is TERBUKA, and the maximum foreign ownership figure is 100%, so the record does not show a foreign-share cap. For a foreign-owned setup, the national reading is therefore clean: the activity is open, and the cited ownership ceiling is full foreign ownership.\n\nThe Bali picture is also clean, but for a different reason than many founders expect. Bali's provincial moratorium blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently. Here, however, the Bali status is OK_or_HIGHER_RISK, and the record says the OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is not that every operational detail is resolved; the record does not give permits, site rules, livestock-health requirements, timelines, tax treatment, or capital figures. It simply says that, on the fields provided, this activity is nationally foreign-open and not shown as blocked for PMA registration in Bali by the moratorium.",
+    "pullQuote": "On the fields provided, this activity is nationally foreign-open and not shown as blocked for PMA registration in Bali by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

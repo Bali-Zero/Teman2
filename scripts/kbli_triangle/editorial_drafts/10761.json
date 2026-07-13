@@ -1,0 +1,27 @@
+{
+  "code": "10761",
+  "editorial": {
+    "headline": "Coffee Processing With a Clear National and Bali Path",
+    "standfirst": "KBLI 10761 covers the industrial transformation of coffee into roasted, ground, instant, decaffeinated, extracted, and related products.",
+    "body": "KBLI 10761 is the processing side of coffee: the work that turns coffee into a finished or semi-finished product rather than simply selling it as a bean or drink. The slim record defines the activity through drying, roasting, grinding, and extraction, with the output ranging from roasted coffee and ground coffee to instant coffee, decaffeinated coffee, coffee extracts, coffee essences, other coffee products, and coffee substitutes. Its boundary is also clear: it does not include grinding coffee powder at the premises of a coffee trader.\n\nThat makes this a manufacturing-style classification for founders who are building the production layer of a coffee business. It is not just a cafe identity, a retail counter, or a branding exercise. The activity belongs where coffee is materially processed: dried, roasted, milled, extracted, or turned into a product that can be packaged, supplied, or distributed. The record opens the code across the full scale ladder: Mikro, Kecil, Menengah, and Besar. In practical editorial terms, that means the classification is not reserved only for large plants; it can also describe smaller operators, provided the registered activity is truly coffee processing as defined in the scope.\n\nNationally, the investment picture is straightforward. For national investment purposes, the record lists the PMA status as TERBUKA, with a foreign-ownership ceiling of 100%. There is no lower cap in the slim record, and no extra condition should be read into it. For a foreign-owned company choosing the right activity code at national level, KBLI 10761 therefore reads as an open coffee-processing classification, supported in the record by Perpres 10/2021, 49/2021.\n\nThe Bali layer is also unusually clear. In Bali, the record shows no block on this activity: l4_bali_blocked is false, and its Bali status is OK_or_HIGHER_RISK. It gives a specific rationale: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province. For this code, however, the recorded Bali result is not a prohibition. The honest conclusion is that KBLI 10761 is nationally open to full foreign ownership and, on the Bali record supplied here, not blocked by the provincial PMA moratorium.",
+    "pullQuote": "The honest conclusion is that KBLI 10761 is nationally open to full foreign ownership and, on the Bali record supplied here, not blocked by the provincial PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

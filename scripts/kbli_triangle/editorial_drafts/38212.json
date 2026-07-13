@@ -1,0 +1,27 @@
+{
+  "code": "38212",
+  "editorial": {
+    "headline": "Organic Compost, Open Nationally, Stopped in Bali",
+    "standfirst": "This activity covers compost made from organic waste and plant ash; nationally it is TERBUKA for PMA, but Bali blocks PMA registration under its moratorium.",
+    "body": "Code 38212 describes a modest but exact production activity: making compost from organic waste and plant ash, framed in the record as natural organic fertilizer. The scope is not expansive prose; it gives a material input and a resulting product. That restraint matters. A serious reading should not add adjacent waste work, retail work, environmental services, or any licence condition that is not written here. The activity is simply the production of organic compost from the organic-waste and plant-ash inputs named in the slim record.\n\nThe scale picture is unusually clean. For Mikro, Kecil, Menengah, and Besar, the record indicates the activity is open. That does not create a separate story for each scale; it says the listed scale range is open. It also does not give capital thresholds, turnover tests, employee counts, or special scale-based conditions. For registration analysis, the only defensible sentence is the narrow one: this activity is available across the four scales named in the record.\n\nNationally, the PMA line is also clean. The status is TERBUKA, and the national foreign-ownership ceiling is 100%, with the source given as Perpres 10/2021, 49/2021. Read plainly, the national record treats this activity as open to foreign ownership up to that ceiling. That 100% figure is a national figure. It is not a Bali-specific allowance, and it should not be converted into a Bali cap, quota, or partnership condition. There is no second Bali percentage in the record.\n\nThe Bali result is the hard part and the practical answer for a foreigner looking at Bali PMA registration. The record marks `l4_bali_blocked` as true and gives the reason verbatim: `OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026`. The moratorium rule is equally direct: `Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)`, with the source `Gubernur letter B.27.000/642/PM/DPMPTSP`. The Bali result is not a lower foreign cap; it is a block. So the honest conclusion is that this activity is nationally open to PMA, yet blocked for PMA registration in Bali under the Bali-side rule recorded here.",
+    "pullQuote": "The Bali result is not a lower foreign cap; it is a block.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "93291",
+  "editorial": {
+    "headline": "When the Dance Floor Is the Main Event",
+    "standfirst": "This activity covers venues built around dancing, music and light shows—open nationally to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "This activity is for operating venues and facilities where dancing is the main attraction: a dance floor animated by music and light-show performances. Food and drink may be served, but they are not the principal activity. The scope expressly includes nightclubs and discotheques, placing the emphasis on the operation of the dancing venue itself rather than on hospitality as the core business.\n\nThe registration is open across the full stated business-scale range: Mikro, Kecil, Menengah and Besar. That breadth matters because the activity is not confined in the record to a single size of operator. Whether the venture begins at a smaller scale or is structured as a larger operation, the defining commercial character remains the same: a place and facilities organised for dancing, with music and lighting integral to the experience.\n\nNationally, the PMA position is straightforward. The activity is marked TERBUKA, with a maximum foreign ownership of 100%. In plain terms, the record permits full foreign ownership at the national level; there is no lower foreign-equity ceiling stated for this activity. The cited national basis is Perpres 10/2021, 49/2021. That openness should be read as a fact about this activity’s national PMA classification, not as a substitute for details the record does not provide.\n\nBali’s position is also materially more favourable than a blanket assumption about island-wide restrictions might suggest. The provincial rule recorded here permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities across the island. This activity, however, is not marked as blocked by that moratorium. At the Besar scale, its OSS risk is recorded as Menengah-Tinggi/Tinggi, which is why it falls outside the moratorium block. The Bali status is therefore OK_or_HIGHER_RISK: a foreign-owned operator is not shut out of Bali registration for this activity by the stated moratorium. The honest conclusion is clear—nationally it is fully foreign-open, and in Bali the cited risk position means the island-wide Low and Medium-Low risk PMA block does not stop it.",
+    "pullQuote": "Nationally it is fully foreign-open, and Bali’s stated risk position keeps it outside the island-wide PMA moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

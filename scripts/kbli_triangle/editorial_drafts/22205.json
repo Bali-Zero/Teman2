@@ -1,0 +1,27 @@
+{
+  "code": "22205",
+  "editorial": {
+    "headline": "Plastic Household Goods Manufacturing, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 22205 covers plastic household equipment, from mats and buckets to kitchenware, toilet goods, and durable floor coverings.",
+    "body": "KBLI 22205 is a manufacturing classification for household equipment and fittings made from plastic, excluding furniture. Its scope is practical and domestic: mats, carpets, buckets, vases, toothbrushes, plastic baby bottles, tableware, kitchen equipment, plastic toilet goods, and durable floor coverings such as vinyl and linoleum. In plain English, this is the code for making plastic household goods that end up in bathrooms, kitchens, floors, and everyday home use.\n\nThe record opens this activity across the full business-scale range: Mikro, Kecil, Menengah, and Besar. That matters because the code is not framed only for a narrow factory profile. A small producer making plastic household fittings and a larger industrial operation making durable floor coverings can both sit within the same activity description, provided the actual registered business is manufacturing the goods described in the scope. The scope is not retail, distribution, furniture, or a general plastics category; its center of gravity is the making of household-use plastic equipment and supporting goods.\n\nNationally, the PMA position is clean. The record marks the activity as TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the national classification is not the obstacle: the activity is open, and the stated ceiling reaches full foreign ownership. There is no lower ownership cap in the record, and no separate national condition, licence, threshold, capital rule, or timeline is stated here.\n\nThe Bali picture is also relatively clear, but for a different reason. For Bali, the record shows no block: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason given is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. Bali’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is not caught by that block on the record supplied. So the honest reading is straightforward: KBLI 22205 is nationally open to PMA up to 100%, and the Bali record does not block it under the stated moratorium logic.",
+    "pullQuote": "The honest reading is straightforward: KBLI 22205 is nationally open to PMA up to 100%, and the Bali record does not block it under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

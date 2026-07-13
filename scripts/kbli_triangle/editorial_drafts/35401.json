@@ -1,0 +1,27 @@
+{
+  "code": "35401",
+  "editorial": {
+    "headline": "Electricity Sales Intermediation Without Owning the Grid",
+    "standfirst": "KBLI 35401 is for electricity brokers and sales agents, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 35401 sits in the commercial layer of the electricity market, not the physical one. Its subject is brokerage and agency work in electricity sales through a power distribution system operated by another party. In plain terms, this is the activity of selling, arranging, or intermediating electricity transactions where the registered business is not itself the operator of the distribution system. The record also brings electricity token sales into the same frame, which makes the code relevant to businesses working at the retail and agency end of electricity access rather than at the infrastructure-owning end.\n\nThe scope is broader than a simple point-of-sale activity. It also includes sales agency activity for electricity operations, and for the exchange of distribution and transmission capacity for electric power. That wording matters because it points to a market-facing intermediary role: the business may be involved in connecting demand, sales channels, operational rights, or capacity arrangements, while the underlying electricity system is operated by someone else. Just as important, the scope draws a boundary around what this is not. It does not cover storage, distribution, or the supply of electricity to users through a main system by a producer using its own system. The code is therefore best read as agency and brokerage around electricity sales, not ownership or operation of the core power supply chain.\n\nThe registration audience is unusually wide. The record states that the activity is open across Mikro, Kecil, Menengah, and Besar scales. It also expressly captures domestic electronic commerce operators and intermediary-service providers that are not exempt, as well as comparable operators based outside Indonesia's jurisdiction when they conduct electronic trading activity in Indonesia. The final scope line makes clear that the activity is not limited to those platform and intermediary categories, so a conventional non-platform sales agent can still sit within the same activity if its work matches the electricity brokerage or agency scope.\n\nThe national foreign-investment position is clean: the activity is marked TERBUKA, with a pma_max_asing of 100 under the cited source, Perpres 10/2021, 49/2021. That means the record gives no national foreign-share cap below full ownership. Bali is also workable on the information provided, but for a specific reason. The province's moratorium blocks all Low and Medium-Low risk KBLI for PMA across Bali, yet this record says the OSS risk at Besar scale is Medium-High/High, so it is not blocked by that moratorium. The honest reading is therefore straightforward: a foreign investor is not barred from registering this activity in Bali by the Bali moratorium, while the national record treats the activity as fully open to foreign ownership.",
+    "pullQuote": "This is the commercial agency layer of electricity sales, not ownership or operation of the power system itself.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

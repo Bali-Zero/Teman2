@@ -1,0 +1,27 @@
+{
+  "code": "10503",
+  "editorial": {
+    "headline": "Ice Cream Manufacturing With a Clear National and Bali Path",
+    "standfirst": "A concise editorial reading of KBLI 10503: dairy-based ice cream and premix manufacturing, open across business scales and nationally available to foreign ownership.",
+    "body": "KBLI 10503 is about the industrial making of ice cream whose principal material is milk. The record places both finished ice cream and ice-cream premix inside the same activity, whether that premix is prepared as a powder or as a liquid. In practical terms, this is the manufacturing home for operators whose commercial product is built around dairy-based frozen dessert production, including the upstream preparation of a ready base for that production.\n\nThe scale picture is unusually straightforward. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses, so it can accommodate anything from a small formal producer to a larger manufacturing operation. That range matters because the code is not written only for artisanal retail identity or only for industrial plants; it is broad enough to hold the business activity itself, provided the activity remains within the dairy-based ice cream and premix manufacturing scope described in the record.\n\nNationally, the foreign-investment position is also clear. The activity is marked TERBUKA, with pma_max_asing recorded at 100. That means the national foreign-ownership ceiling stated in the record is 100%, sourced to Perpres 10/2021, 49/2021. There is no basis in this slim record to add a separate licensing threshold, capital figure, phased timeline, or special operating condition; the useful point is simpler and stronger: at the national level, the record treats this activity as open to full foreign ownership.\n\nThe Bali reading is honest but not negative. The Bali moratorium rule in the record says the province blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. This activity, however, is not marked as blocked in Bali. Its l4_bali_status is OK_or_HIGHER_RISK, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. So the editorial conclusion is clean: for this record, the national PMA position is open, and the Bali-side moratorium does not block registration on the information provided.",
+    "pullQuote": "For this record, the national PMA position is open, and the Bali-side moratorium does not block registration on the information provided.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

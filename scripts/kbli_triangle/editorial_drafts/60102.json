@@ -1,0 +1,27 @@
+{
+  "code": "60102",
+  "editorial": {
+    "headline": "Digital Radio Broadcasting: Open Nationally, Viable in Bali at Scale",
+    "standfirst": "Digital radio broadcasting is open to full foreign ownership nationally and is not caught by Bali’s PMA moratorium when operating at the stated higher-risk large scale.",
+    "body": "Digital radio broadcasting is the business of bringing radio programming to listeners through digital signals: from the broadcasting studio and transmission facilities to the public, affiliates or subscribers, delivered by terrestrial transmission, cable or satellite. It also includes linear radio broadcasting over the internet—programming transmitted as a scheduled stream rather than selected by a user on demand. The essential character is broadcasting: a continuous service designed to reach an audience, not a catalogue of audio available for individual selection.\n\nThe activity is open across every stated business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the code describes an operating activity rather than a narrow format or distribution channel. A registrant may run the technical and editorial infrastructure of digital radio broadcasting, provided the activity remains within that defined broadcast model. Its scope reaches public-facing transmission as well as services directed to affiliates or subscribers, while retaining the common thread of digital radio signals and linear delivery.\n\nNationally, the position is direct. The activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100% under the stated national basis. There is therefore no national foreign-equity cap below full ownership in this record. For founders assessing the activity at the national level, the ownership position is not qualified by a partial stake: the record states full foreign ownership may be held.\n\nBali requires the more specific reading. The province permanently blocks PMA for all Low and Medium-Low risk KBLI activities, island-wide. This activity is not blocked by that moratorium. The stated reason is that, at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi; Bali records its status as OK_or_HIGHER_RISK. In practical terms, a foreign investor cannot treat the Bali rule as irrelevant, but neither should they mistake it for a blanket prohibition here. At the stated large scale, this digital-radio activity sits outside the moratorium’s blocked Low and Medium-Low risk categories.",
+    "pullQuote": "Bali’s PMA moratorium is real, but this digital-radio activity is not blocked by it at the stated large scale.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

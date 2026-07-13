@@ -1,0 +1,27 @@
+{
+  "code": "01121",
+  "editorial": {
+    "headline": "Hybrid Rice Farming Without the Bali Moratorium Barrier",
+    "standfirst": "This activity covers the full hybrid-rice farming cycle, from land preparation to grain or seed output, and is open nationally and in Bali for foreign-owned registration.",
+    "body": "Hybrid rice farming under this activity is not a narrow planting label. It covers an integrated agricultural cycle: preparing the land, sowing, planting, maintaining the crop, harvesting, and carrying out post-harvest work when those steps form one continuous operation until unhusked rice is produced. The record also makes room for hybrid-rice seed production, where the crop is planted to produce seed in the form of grain. In plain English, this is for operators whose business is the cultivation of hybrid rice itself, including the disciplined upstream work needed to bring a hybrid crop from field preparation to a defined agricultural output.\n\nThe defining point is the hybrid character of the rice. The scope describes hybrid rice as the first-generation offspring produced from crosses between two or more parent lines and/or homozygous inbred lines, with examples such as Bernas Super, Bernas Prima, Sembada B3, Sembada 626, Sembada 989, SL 11 SHS, Bridantara 3, and PP5. It also draws an important boundary: descendants of hybrid rice are not treated as hybrid rice for this activity. That matters because this registration is tied not simply to rice as a commodity, but to the specific biological and production logic of hybrid rice and, where relevant, hybrid-rice seed businesses that carry the process through to dry grain meeting seed-quality standards.\n\nThe scale profile is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so it can fit anything from a small farming setup to a larger agricultural enterprise, provided the registered activity genuinely follows the scope. Foreign ownership is also clear at national level: the activity is marked TERBUKA, with a foreign-ownership ceiling of 100% under the stated national source. There is no foreign stake cap below full ownership in the record, so the national reading is straightforward rather than conditional.\n\nThe Bali reading is equally direct, and unusually clean. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this activity is not blocked in the record. Its Bali status is OK_or_HIGHER_RISK, with the reason given that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore not a warning disguised as nuance: a foreign-owned company can register this activity in Bali, subject to the activity staying within the hybrid-rice farming and seed-production scope described here.",
+    "pullQuote": "The honest conclusion is therefore not a warning disguised as nuance: a foreign-owned company can register this activity in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

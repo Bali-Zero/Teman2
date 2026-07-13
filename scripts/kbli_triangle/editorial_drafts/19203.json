@@ -1,0 +1,27 @@
+{
+  "code": "19203",
+  "editorial": {
+    "headline": "Turning Used Lubricating Oil Back Into Productive Use",
+    "standfirst": "KBLI 19203 covers the manufacture of usable products from waste petroleum material, with national PMA openness and no Bali moratorium block in this record.",
+    "body": "KBLI 19203 is a focused industrial classification for making usable products from waste petroleum material. In plain English, the activity is about taking used lubricating oil and processing it back into something that can be used again, including fuel or lubricating oil. The record frames the scope as manufacturing, not trading, collection, consulting, or general waste management. Its centre of gravity is the conversion of used lubricating oil into a product with renewed utility.\n\nThe scale profile is unusually broad: the activity is open across Mikro, Kecil, Menengah, and Besar. That means the classification is not reserved in this record for one operating size only. A smaller manufacturing setup and a large industrial operation can both sit inside the same activity description, provided the actual business remains within the stated scope: making products from waste petroleum material, with the example given of used lubricating oil becoming fuel or lubricating oil.\n\nNationally, the investment picture is straightforward. The record marks PMA status as TERBUKA and gives a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. Put plainly, the national foreign-ownership ceiling shown here is 100%. There is no lower cap, minimum-capital rule, licence timeline, tax treatment, or additional national condition in the slim record, so none should be read into the classification. For a foreign-owned setup, the usable national signal is therefore simple: this activity is nationally open to PMA at the stated ceiling.\n\nThe Bali reading is also clear, but for a different reason. Bali’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This activity, however, is not marked as blocked: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason is given as: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The honest conclusion is that, on this record, KBLI 19203 is nationally open and not blocked for PMA registration in Bali by the stated moratorium logic.",
+    "pullQuote": "The honest conclusion is that, on this record, KBLI 19203 is nationally open and not blocked for PMA registration in Bali by the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

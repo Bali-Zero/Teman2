@@ -1,0 +1,27 @@
+{
+  "code": "10722",
+  "editorial": {
+    "headline": "Brown Sugar Manufacturing With a Clear National and Bali Path",
+    "standfirst": "KBLI 10722 covers pure brown sugar production from cane or palm sap, open nationally to PMA and not marked as blocked for Bali registration.",
+    "body": "KBLI 10722 is a manufacturing code for **pure brown sugar**. The record defines it through the making of gula merah from sap as the raw material, whether the sap comes from sugarcane or from palm plants such as aren, coconut, and similar sources. The finished product can take several forms: moulded blocks, powder or granules, or liquid sugar. That makes the code less about retailing a sweetener and more about the production activity itself: transforming nira into a brown sugar product that remains within this defined manufacturing scope.\n\nThe scale picture is unusually broad. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** operators, so it can describe a small producer formalising a traditional process as well as a larger industrial operation. The important point is that the code is organised around the activity and its raw material, not around a particular brand position, distribution model, or market segment. A business registering under this code should therefore be able to connect its declared operation back to the making of pure brown sugar from cane or palm sap, in one of the product forms named in the scope.\n\nNationally, the PMA position is clear: the record marks the code as **TERBUKA**, with `pma_max_asing` at **100%**. In plain English, the national record treats this activity as open to foreign investment up to full foreign ownership. That is the clean national reading, and it should not be diluted by invented caveats. The supporting PMA source is given as Perpres 10/2021, 49/2021, while the scales open to the activity run from micro through large business scale.\n\nBali requires a separate reading, because the record also includes the province-side moratorium rule: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” For this activity, however, `l4_bali_blocked` is **false** and the Bali status is **OK_or_HIGHER_RISK**. The stated reason is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest national-vs-Bali picture is not a contradiction. Nationally, the code is PMA-open up to 100%. In Bali, the record does not mark it as blocked by the moratorium, because the relevant large-scale OSS risk sits above the low and medium-low band described by the rule.",
+    "pullQuote": "Nationally, the code is PMA-open up to 100%, and in Bali the record does not mark it as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

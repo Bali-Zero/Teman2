@@ -1,0 +1,27 @@
+{
+  "code": "42202",
+  "editorial": {
+    "headline": "Water Infrastructure Construction With a Clean PMA Path in Bali",
+    "standfirst": "KBLI 42202 covers the civil works behind clean-water capture, treatment, storage and distribution, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 42202 is the construction activity behind clean-water infrastructure: the physical civil works that take raw water from intake to treatment, storage and distribution. The scope covers building, maintaining and rebuilding raw-water intake and conveyance structures, raw-water treatment buildings, drinking-water treatment buildings, drinking-water towers, drinking-water reservoirs, clean-water distribution pipe networks, drinking-water tanks and other supporting drinking-water facilities. In plain English, this is not bottled-water retail or general plumbing; it is the civil-construction category for the built systems that make clean-water supply possible.\n\nThe record opens this activity across the full scale range: Mikro, Kecil, Menengah and Besar. That matters because the code is not framed as a narrow large-project category only. It can be registered by operators at different business scales, provided the registration follows the activity as described in the scope: construction, maintenance or reconstruction of clean-water civil infrastructure and its supporting facilities. The record also notes two construction sub-classification references, BS005 and ST002, both tied to this same clean-water civil-building activity.\n\nNationally, the PMA picture is direct. The record marks the code as TERBUKA, with `pma_max_asing` at 100, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the national foreign-ownership ceiling in this record is 100%. There is no lower foreign-stake cap stated here, and no extra ownership condition appears in the slim record, so none should be added by interpretation.\n\nBali is also clean in this record, but for a specific reason. The province-wide moratorium rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. KBLI 42202 is not marked as blocked: `l4_bali_blocked` is false, and the Bali reason states, \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.\" The honest reading is therefore neither alarmist nor casual: nationally this activity is foreign-open, and in Bali the record does not block PMA registration under the moratorium because the large-scale OSS risk sits above the blocked risk bands.",
+    "pullQuote": "Nationally this activity is foreign-open, and in Bali the record does not block PMA registration under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

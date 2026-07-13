@@ -1,0 +1,27 @@
+{
+  "code": "08102",
+  "editorial": {
+    "headline": "Limestone Quarrying With a Clear Bali Path",
+    "standfirst": "This activity covers limestone extraction and processing, with national PMA openness and no Bali moratorium block under the record’s stated risk position.",
+    "body": "KBLI 08102 is the quarrying activity for limestone, known in Indonesian practice as batu kapur or gamping. Its scope is not limited to taking stone out of the ground. The record includes the immediate preparation work that makes quarried limestone usable: breaking, crushing, screening, and grinding. In plain business terms, this is the activity of extracting limestone and reducing it into workable material, rather than selling a finished construction service or manufacturing a downstream product.\n\nThe scope text also identifies extension activity for operation-production stage IUP in rock, and extension activity for operation-production stage IUP in certain non-metallic minerals. Those phrases matter because they place this code inside a quarrying and mineral-material context, not a generic trading or building-material retail category. The editorial point is narrow but important: the code is about the extraction and physical preparation of limestone itself. Anyone registering it should be looking at an upstream quarrying profile, where the core business is the source material and its primary mechanical processing.\n\nOn scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar scales, which means the activity is not framed only as a large industrial operation in the slim record. A small quarrying operator and a larger corporate operator both sit inside the same activity description, provided the actual business remains within the recorded scope. Nationally, the foreign-investment position is also clear: PMA status is TERBUKA, and the recorded foreign ownership ceiling is 100%. There is no partial cap to soften or explain; under this record, the national ceiling is full foreign ownership.\n\nThe Bali reading is the practical one founders will care about. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this record is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore clean: a foreign investor looking at this limestone quarrying activity is not facing the Bali PMA moratorium block on the facts given here. That does not add any licence, timeline, tax, land, or capital assumption; it simply reads the record as written.",
+    "pullQuote": "The honest conclusion is therefore clean: a foreign investor looking at this limestone quarrying activity is not facing the Bali PMA moratorium block on the facts given here.",
+    "byTheNumbers": [
+      {
+        "label": "KBLI code",
+        "value": "08102"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

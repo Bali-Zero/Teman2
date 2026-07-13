@@ -1,0 +1,27 @@
+{
+  "code": "26490",
+  "editorial": {
+    "headline": "Audio-Video Electronics Manufacturing With a Clean Bali Reading",
+    "standfirst": "A manufacturing code for speakers, microphones, amplifiers, karaoke machines, consoles, VR headsets, and home-theater equipment, open nationally and not blocked for PMA in Bali.",
+    "body": "KBLI 26490 covers the making of other electronic audio and video equipment for household, personal, and entertainment use. In practical terms, the record points to products such as loudspeakers for conveying information, amplifiers for musical instruments, microphones, speakers and loudspeakers, headphones for radio, stereo, and computer use, karaoke machines, video game consoles, personal audio-video devices such as VR headsets, and home-theater equipment. The center of gravity is clear: this is a manufacturing activity, not a retail description, service activity, or content business.\n\nThat matters because the scope is broad but still technical. A founder using this code should be describing a production setup for physical electronic equipment: assembling, manufacturing, or otherwise making the devices named in the record. The examples range from practical sound systems to consumer entertainment hardware, which gives the code a useful spread across audio, gaming, immersive devices, and domestic video systems. The editorial reading is not that every electronics idea belongs here; it is that the products listed share a manufacturing logic around audio and video equipment intended for use by individuals, households, performers, or entertainment spaces.\n\nOn scale, the record is unusually open. The activity is open to Mikro, Kecil, Menengah, and Besar scales, so the KBLI can describe anything from a small production operation to a large industrial setup, provided the real activity remains inside the recorded scope. Nationally, the investment position is also clean: the PMA status is TERBUKA, with pma_max_asing recorded as 100 under Perpres 10/2021, 49/2021. Put plainly, the national record does not impose a foreign-ownership cap below full ownership for this activity.\n\nThe Bali reading is where many KBLI notes become less straightforward, but this record is comparatively direct. Bali is marked OK_or_HIGHER_RISK, and l4_bali_blocked is false. Its stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this activity is not treated as blocked on the supplied Bali field. The honest conclusion is therefore not a warning disguised as advice: for this slim record, a foreign-owned registration is nationally open and not marked as blocked in Bali today.",
+    "pullQuote": "For this slim record, a foreign-owned registration is nationally open and not marked as blocked in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

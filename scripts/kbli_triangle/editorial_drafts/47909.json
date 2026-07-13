@@ -1,0 +1,27 @@
+{
+  "code": "47909",
+  "editorial": {
+    "headline": "Retail Intermediation: Nationally Open, Bali Depends on Scope",
+    "standfirst": "This category covers specified retail-brokerage services, with full national foreign ownership but a scope-sensitive PMA route in Bali.",
+    "body": "KBLI 47909 covers retail intermediation services that do not fall within another specified retail category. In practical terms, it includes brokerage for retail transactions conducted by mail or telephone; auction-house activity for third-party goods, whether new or used, including online auctions; and retail motor-vehicle trade agents. Its boundary matters: the scope expressly excludes the specified non-exempt electronic-commerce-system operators and intermediary-facility providers, whether established in Indonesia or operating e-commerce activity there from abroad.\n\nThe category is available at every listed business scale: Mikro, Kecil, Menengah, and Besar. That breadth suits an activity defined by its role in connecting transactions, rather than by a single channel or product type. The registration should therefore follow the precise service actually being performed—mail or telephone brokerage, third-party auctions, online auctions, or motor-vehicle retail agency work—because the scope is detailed and its exclusions are explicit.\n\nNationally, the position is straightforward. The activity is TERBUKA to PMA, with a maximum foreign ownership level of 100%. A foreign investor may therefore hold the business in full under the national classification. The governing source recorded for that position is Perpres 10/2021, 49/2021. The national openness is meaningful, but it is not the whole practical answer for a business intending to register in Bali.\n\nBali’s position is scope-dependent, reflected in the status Blocked (scope-dependent). The province permanently blocks PMA registration for all low- and medium-low-risk KBLI activities across the island. For this category, the OSS risk at the Besar scale is low for some scopes and higher for others. Registration as PMA in Bali is available only where the declared activity falls within the higher-risk scope; the record identifies PPMSE in platform-trade situations as an example. National openness is real, but Bali eligibility turns on the exact scope declared in OSS. The live OSS result must therefore be checked against the precise activity before treating a Bali PMA registration as available.",
+    "pullQuote": "National openness is real, but Bali eligibility turns on the exact scope declared in OSS.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

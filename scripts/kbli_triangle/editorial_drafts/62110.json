@@ -1,0 +1,27 @@
+{
+  "code": "62110",
+  "editorial": {
+    "headline": "The Business of Building Video Games",
+    "standfirst": "This activity covers the practical work of building and sustaining video-game software—and remains open to foreign ownership nationally and in Bali.",
+    "body": "Video-game development is the work of taking a game from its structure and content into computer code that can be made and implemented. The activity includes designing that structure and content; writing the code; modifying it, including updates and patches; tailoring it; testing it; and supporting it. It reaches beyond the game software itself to video-game applications, support software and middleware. The common thread is hands-on development and maintenance of the software required to create and implement a game.\n\nFor a business choosing this activity, the scale field is notably broad: Mikro, Kecil, Menengah, and Besar are each open. That breadth matters because the record describes a working discipline with several stages—design, code writing, modification, customisation, testing and support—rather than a single technical task. A registration should therefore reflect the actual software-development work being undertaken, whether it concerns the game’s core software, its applications, its supporting software or its middleware. At every listed scale, the activity remains defined by development of the software needed to create and implement a video game.\n\nNationally, the foreign-investment reading is direct. Its PMA status is TERBUKA, and foreign ownership may reach 100%. In other words, the national record presents a fully foreign-owned registration as available for this activity; there is no lower foreign-ownership ceiling in the supplied record. The national PMA setting is sourced to Perpres 10/2021, 49/2021. That national opening should still be read alongside Bali’s province-wide PMA moratorium rule: Bali permanently blocks all Low and Medium-Low risk activities for PMA across the island. A national opening does not by itself erase that local screen.\n\nFor this activity, however, the Bali result is not a block. Bali marks it OK_or_HIGHER_RISK, while the record specifically says that at Besar scale the OSS risk is Menengah-Tinggi/Tinggi—medium-high/high—and therefore not blocked by the moratorium. That is the honest Bali conclusion: a foreign investor can register this activity in Bali today, within the national ceiling of 100%, because it is not caught by the stated Low and Medium-Low risk ban. The record resolves the Bali question through its stated risk position at the Besar scale.",
+    "pullQuote": "For this activity, however, the Bali result is not a block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

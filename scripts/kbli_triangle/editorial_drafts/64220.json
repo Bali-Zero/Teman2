@@ -1,0 +1,27 @@
+{
+  "code": "64220",
+  "editorial": {
+    "headline": "Conduit Financing: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "A group funding vehicle may be nationally open to full foreign ownership, yet the Bali PMA route is closed by the province’s permanent moratorium.",
+    "body": "Conduit financing is a tightly defined group funding function. A unit formed within a financial or non-financial group gathers or borrows funds—mainly from open markets—and sends them onward to a parent company or another entity in the same corporate group. The code’s focus is the conduit itself: a dedicated vehicle through which a group raises or collects money before directing it within its own structure. It describes the flow of funds as an internal group arrangement, with the unit serving as the channel between the funding source and related group entities.\n\nThat can take more than one corporate form. The scope expressly includes captive financial institutions engaged in loans between entities in the same group. It also includes brass plate companies involved in gathering funds and channelling them to their parent company. These may be directly or indirectly owned by non-resident units; most of their balance sheets can consist of claims and liabilities with non-resident units, while they may have few or no employees and little or no physical presence in the jurisdiction where the company sits. The code thus accommodates a corporate funding vehicle whether it is embedded in a financial group or a non-financial one.\n\nAt the national level, the registration position is unambiguous. The activity is TERBUKA to PMA, with a national foreign-ownership ceiling of 100%. Its permitted scale listing spans Mikro, Kecil, Menengah and Besar. That means the national record does not reserve the activity to a single size of undertaking; it records access across each of those four scales. For the group establishing the vehicle, the central test is whether its actual role matches the stated conduit function: raising or borrowing funds and routing them to a parent or another group entity. The cited PMA source is Perpres 10/2021, 49/2021.\n\nThat national openness does not translate to a Bali address. The activity is marked Closed (Bali moratorium) and blocked for PMA registration. The stated reason is that its Besar scale is Low risk, which brings it within the provincial PMA moratorium: all Low- and Medium-Low-risk KBLI are blocked for a Bali address, island-wide and permanently. A national 100% ownership ceiling is not, in itself, permission to register the activity as PMA in Bali. For this activity, the practical conclusion is direct: a foreigner cannot register it as PMA in Bali today. The national entry remains open, but the Bali PMA route is closed by the moratorium.",
+    "pullQuote": "A national 100% ownership ceiling is not, in itself, permission to register the activity as PMA in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Closed (Bali moratorium)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "08991",
+  "editorial": {
+    "headline": "Gemstone Mining Is Open Nationally, and Not Moratorium-Blocked in Bali",
+    "standfirst": "KBLI 08991 covers gemstone mining and quarrying, including sorting and cleaning, with full foreign ownership allowed nationally and a Bali status that is not blocked by the PMA moratorium.",
+    "body": "KBLI 08991 is a mining classification for precious stones and gemstones. Its Indonesian scope is direct: it covers the mining and quarrying of batu mulia and batu permata, including diamonds, and it includes separation, sorting and cleaning carried out by other methods on those stones. The centre of gravity is extraction and the immediate handling of mined gemstones. The scope text also names extensions of IUP operation-production stages for rock and for certain non-metal minerals, so the classification should be read as sitting inside a mining-administration context, not as a lifestyle label for a gem business.\n\nWho uses it is defined more by the activity than by a narrow company size. The record opens it to Mikro, Kecil, Menengah and Besar scales, which means the scale field does not reserve this classification only for large operators. A smaller registered activity and a large-scale mining operation are both within the scale range shown, so the practical question is not whether the scale label itself is closed. The practical question is whether the planned activity truly falls within gemstone mining, quarrying, separation, sorting or cleaning as described in the scope.\n\nNationally, the PMA reading is straightforward. The status is TERBUKA, the listed foreign-ownership ceiling is 100%, and the cited basis is Perpres 10/2021, 49/2021. Put plainly, the slim record does not show a foreign-share cap below full ownership. For a foreign-owned setup, that matters: the national investment line is open rather than restricted, and the ownership ceiling in the data reaches all the way to 100%. There is no basis in this record for adding a minimum capital figure, timeline or special threshold beyond those fields.\n\nThe Bali position is the important nuance. Bali province blocks all Low and Medium-Low risk KBLI for PMA across the island on a permanent basis, but this record does not mark 08991 as blocked. The record assigns it the Bali status OK_or_HIGHER_RISK because OSS risk at Besar scale is Menengah-Tinggi/Tinggi; it is therefore not blocked by the moratorium. That does not turn the classification into a casual green light for every project; it simply means the Bali moratorium, as captured in this record, is not the barrier. The honest conclusion is therefore clean: nationally open, 100% foreign ownership, open across the listed scales, and in Bali not blocked by the PMA moratorium.",
+    "pullQuote": "The honest conclusion is therefore clean: nationally open, 100% foreign ownership, open across the listed scales, and in Bali not blocked by the PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

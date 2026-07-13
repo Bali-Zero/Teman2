@@ -1,0 +1,27 @@
+{
+  "code": "16293",
+  "editorial": {
+    "headline": "Wood Carving That Is Nationally Open, But Not Registerable in Bali",
+    "standfirst": "KBLI 16293 covers non-furniture wooden craft and carving production, open nationally to foreign ownership but blocked for PMA registration in Bali.",
+    "body": "KBLI 16293 is a manufacturing activity for wooden craft and carved objects that are not furniture. The record describes the activity through its products: reliefs, masks, statues, wayang, flower vases, frames, lampshades, souvenirs, ashtrays, tissue boxes, jewelry boxes, wall-decoration products, and name boards. In practical terms, this is the code for makers whose output is decorative, cultural, gift-oriented, or object-based rather than furniture-based. The centre of gravity is the making of crafted and carved wooden goods, not a retail shop, not a gallery, and not a furniture line.\n\nThe scale picture is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar scales, so it can describe anything from a very small producer to a large manufacturing operation, provided the activity remains within this non-furniture wooden craft and carving scope. That matters because this code is not limited to one size of enterprise in the national classification record. A founder reading the scope should therefore focus less on the aesthetic style of the goods and more on whether the business is actually producing the listed kinds of wooden craft or carving products.\n\nNationally, the PMA signal is clean. According to Perpres 10/2021, 49/2021, the record lists the activity as TERBUKA, with a pma_max_asing of 100. For a foreign-owned setup, that means the national record treats this activity as open up to a 100% foreign-ownership ceiling. There is no lower foreign-share cap in the slim record, and no separate national qualification, licence threshold, or capital figure is stated here. The national answer, standing alone, is therefore straightforward: this activity is foreign-open at the maximum percentage shown in the record.\n\nBali is the decisive complication. The same record marks l4_bali_blocked as true and gives the Bali status as Blocked (risk class). The reason is explicit: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, and the Bali moratorium blocks it. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, with the source listed as Gubernur letter B.27.000/642/PM/DPMPTSP. So the honest conclusion is not that this activity is nationally closed; it is nationally open. The honest conclusion is sharper: a foreigner cannot register this PMA activity in Bali today because the Bali-side record blocks it under the moratorium.",
+    "pullQuote": "This activity is nationally open to full foreign ownership, but the Bali-side record blocks PMA registration under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

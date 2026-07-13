@@ -1,0 +1,27 @@
+{
+  "code": "30303",
+  "editorial": {
+    "headline": "Spacecraft Manufacturing, Open Nationally and Not Blocked in Bali",
+    "standfirst": "KBLI 30303 covers the making or assembly of spacecraft and related machines, with national PMA ownership at 100% and Bali marked OK_or_HIGHER_RISK rather than blocked.",
+    "body": "**KBLI 30303** is a manufacturing and assembly classification for space vehicles and related machines. The scope names spacecraft for passengers or goods, space launch vehicles, rockets that orbit satellites, satellites, planetary exploration craft, orbital stations, and space shuttles. The record is unusually specific: it is concerned with the object being made or assembled, not with a general technology label. A business using this activity code should therefore be anchored in those space-vehicle and machine categories, because that is the entire scope the slim record gives.\n\nThe scale reading is broader than the activity may sound. The record opens the code to Mikro, Kecil, Menengah, and Besar registrations. That does not add any hidden threshold, capital figure, tax treatment, or timeline; none appears in the slim record. It simply means the scale field itself is open across the listed categories. The disciplined reading is narrow: the classification can sit at those registration scales, while the record stays silent on everything outside its own activity scope, ownership field, scale field, and Bali-status field.\n\nNationally, the PMA signal is direct. The status is TERBUKA, and the recorded foreign-ownership ceiling is 100%. No smaller foreign stake cap appears in this record. The result is a clean national reading for a foreign-owned setup: the activity is open under the PMA field, with the maximum foreign ownership rendered at the full recorded percentage. The source field for that national position is carried separately in the record, and no other national limitation is supplied here.\n\nFor Bali, the important distinction is that the record gives a status, not a local percentage: OK_or_HIGHER_RISK. It also sets l4_bali_blocked to false. The reason is stated as: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.\" The moratorium rule in the same record blocks all Low + Medium-Low risk KBLI for PMA, island-wide and permanent; this entry is not marked as caught by that block. For a foreign founder reading this record, the decisive point is simple: the national PMA door is open to the full 100%, and Bali is not marked as closed by the moratorium.",
+    "pullQuote": "For a foreign founder reading this record, the decisive point is simple: the national PMA door is open to the full 100%, and Bali is not marked as closed by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

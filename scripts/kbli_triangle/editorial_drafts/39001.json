@@ -1,0 +1,27 @@
+{
+  "code": "39001",
+  "editorial": {
+    "headline": "Carbon Capture as an Industrial Service Code",
+    "standfirst": "KBLI 39001 covers carbon-capture services for industrial emissions, direct air capture, and temporary carbon handling before transport.",
+    "body": "KBLI 39001 is a service code for the technical act of capturing carbon emissions before they are released into the atmosphere. Its centre of gravity is industrial and engineered: power plants, manufacturing facilities, pre-combustion capture, post-combustion capture, oxy-fuel combustion capture, and direct capture from the surrounding air. The record also places within scope the separation, compression, and temporary storage of captured carbon before it is transported. In plain English, this is not a general environmental consultancy label. It is the operating lane for businesses whose work is to intercept carbon as a handled material in an engineered process.\n\nThat distinction matters because the scope is active, technical, and infrastructure-adjacent. The activity is not framed as natural absorption or natural carbon storage, which the record expressly excludes. Nor does the record add downstream claims about permanent storage, credits, certification, trading, or wider climate-finance obligations. The only safe reading is narrower and more precise: the business captures emissions from identified sources or directly from air, then prepares the captured carbon through separation, compression, and temporary storage before onward movement.\n\nOn scale, the record is equally direct. This code is open to the Besar scale. That fits the character of the work described: carbon capture is not presented here as a light retail or advisory activity, but as a substantial service category built around industrial sources and capture technologies. A founder registering under this code should therefore think of it as a large-scale operational activity, not as a broad umbrella for every business with a carbon or sustainability angle. The registration story begins with the activity itself: capture, technical processing, and temporary holding before transport.\n\nThe national foreign-investment position is clean. The record marks the code as TERBUKA and gives a pma_max_asing of 100, under Perpres 10/2021, 49/2021. In practical editorial terms, that means the national record allows full foreign ownership for this activity. Bali does not reverse that position in this slim record: l4_bali_blocked is false, and the stated Bali reason is “medium-high/high risk → not blocked by moratorium (verify per address)”. The honest reading is therefore not a hidden prohibition, but an open national code that is not blocked by Bali’s listed moratorium rule, with the address-level verification caveat carried exactly by the record.",
+    "pullQuote": "The honest reading is an open national code that is not blocked by Bali’s listed moratorium rule, with address-level verification still carried by the record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scale open to",
+        "value": "Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

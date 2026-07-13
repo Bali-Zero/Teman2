@@ -1,0 +1,27 @@
+{
+  "code": "55102",
+  "editorial": {
+    "headline": "Four-Star Hotels: Nationally Open, Bali Scope-Dependent",
+    "standfirst": "Four-star hotel activity is nationally open to full foreign ownership, but a Bali PMA registration turns on the exact scope and risk declared in live OSS.",
+    "body": "This activity covers four-star hotels providing short-stay accommodation, ordinarily on a daily or weekly basis, in part or all of a building. The accommodation may include furnished living rooms and suites, with direct on-site customer service as a defining feature. It can also include the familiar operational fabric of a hotel stay: daily cleaning and bed-making, food and beverage service, laundry, and conference or convention facilities. The record recognises this activity both for buildings of up to 6,000 square metres and for those exceeding that area.\n\nIt is open to small, medium, and large businesses. Nationally, the position is clear: the activity is open to foreign investment, with a foreign-ownership ceiling of 100%. That is an unusually clean national starting point for a founder considering a four-star hotel operation. The applicable source recorded for that position is Perpres 10/2021, 49/2021.\n\nBali requires more care. The record does not mark this activity as categorically blocked for PMA registration in the province, but it does make the result dependent on the exact scope declared. Some scopes at the large-business scale are assessed as low risk in OSS, while others carry a higher risk. Bali’s permanent province-wide rule blocks PMA for every low- and medium-low-risk KBLI activity. For this activity, the record says PMA registration in Bali is possible only where the declared scope is the higher-risk one, and it directs founders to verify the live OSS result for the precise activity being registered.\n\nThe practical point is not that the national 100% ceiling disappears in Bali; it is that the Bali registration outcome is shaped by the risk classification attached to the declared scope. A four-star hotel proposal therefore needs its exact OSS scope checked before the ownership structure is treated as registrable in Bali. The national door is open, while Bali’s door remains conditional on the live classification of the activity declaration.",
+    "pullQuote": "The national door is open, while Bali’s door remains conditional on the live classification of the activity declaration.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "46721",
+  "editorial": {
+    "headline": "The Trade Behind Indonesia’s Metal Supply Chain",
+    "standfirst": "KBLI 46721 covers wholesale trade in metal ores and concentrates, open nationally to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "Wholesale trading in metal ores and concentrates is the commercial activity at the upstream edge of the metals economy: moving raw mineral materials and concentrated metal-bearing products through trade channels rather than describing their extraction or processing. KBLI 46721 covers both ferrous and non-ferrous ores and concentrates, including nickel, copper, aluminium, iron and gold, as well as other precious metals such as silver and platinum. Its subject is therefore a defined wholesale market in mineral inputs and concentrates.\n\nThe activity is open across the full business-scale range recorded for it: Mikro, Kecil, Menengah and Besar. That breadth matters because the code is not framed around a single company size or a narrow market position. It describes the wholesale trade itself, whether conducted at a micro, small, medium or large scale. The practical distinction is the nature of the goods being traded—metal ores and concentrates—rather than an implied restriction to one class of enterprise.\n\nFor foreign investment, the national position is direct. TERBUKA status applies to the activity, and its foreign-ownership ceiling is 100%. In plain terms, foreign investment is nationally open up to full ownership for this activity. That is the relevant national position for a foreign-owned company considering registration under this code; the record supplies no additional national threshold, licence condition or capital requirement, so none should be inferred.\n\nBali’s position is also clear, but it rests on the province’s risk-based moratorium rather than on a separate ownership cap. Bali permanently blocks PMA registration for Low and Medium-Low risk activities across the island. This activity is not blocked by that moratorium: at the Besar scale, its OSS risk is classified as Menengah-Tinggi or Tinggi. For a foreign-owned business registering this activity in Bali today, the honest conclusion is that the provincial moratorium does not prevent PMA registration under this code. Nationally, full foreign ownership remains available; in Bali, the activity is not among those stopped by the Low and Medium-Low risk restriction.",
+    "pullQuote": "Nationally open to full foreign ownership, this metal-trading activity is also not blocked by Bali’s PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

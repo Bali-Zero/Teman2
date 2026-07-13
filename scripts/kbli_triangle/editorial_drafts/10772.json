@@ -1,0 +1,27 @@
+{
+  "code": "10772",
+  "editorial": {
+    "headline": "Iodised Salt Processing, Open Nationally but Blocked in Bali",
+    "standfirst": "This activity covers processing salt into iodised consumer salt, open across all business scales nationally but unavailable for PMA registration in Bali under the recorded moratorium.",
+    "body": "This KBLI activity is narrow and practical: it covers the processing of salt into iodised salt for consumption. The record’s Indonesian scope points to transformation rather than trade or extraction: the business activity is the handling of salt so that it becomes iodised consumer salt. That makes the classification useful for founders who need the registration to match the productive step itself, not a broader food, retail, or distribution activity.\n\nNationally, the code is marked **TERBUKA** for PMA, with a foreign-ownership ceiling of **100%**. The record also opens the activity across **Mikro, Kecil, Menengah, and Besar** scales, so the national picture is unusually straightforward: the activity is not confined to a single business size, and the stated PMA ceiling is full foreign ownership. The cited national source is **Perpres 10/2021, 49/2021**, and there is no additional national cap, threshold, licence, tax, timeline, or capital figure in the slim record.\n\nBali changes the answer completely. The record marks the Bali status as **Blocked (risk class)**, with `l4_bali_blocked` set to true. The stated reason is: **OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026**. In plain English, the national PMA openness does not translate into a usable Bali PMA registration path today. A foreign founder reading only the national ceiling would see 100%; the Bali-side record says the registration is blocked because the activity falls under the province’s moratorium treatment for low and medium-low risk KBLI.\n\nThat distinction is the core planning point. For Indonesia as a whole, this is a foreign-open iodised consumer salt processing activity. For Bali, the same activity is blocked for PMA registration under the recorded rule: **Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)**, with the moratorium source identified as **Gubernur letter B.27.000/642/PM/DPMPTSP**. The clean reading is therefore not that Bali has a lower percentage ceiling, or a special foreign-share formula, or a local partnership condition. The record gives none of those. It says nationally open at 100%, but Bali-blocked under the risk-class moratorium.",
+    "pullQuote": "A foreign founder reading only the national ceiling would see 100%; the Bali-side record says the registration is blocked.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

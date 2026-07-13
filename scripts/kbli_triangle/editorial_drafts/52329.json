@@ -1,0 +1,27 @@
+{
+  "code": "52329",
+  "editorial": {
+    "headline": "Passenger Transport Intermediation, Without Running the Journey",
+    "standfirst": "A business of booking, brokering and coordinating passenger movement—nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 52329 is for the business that makes passenger transport possible without operating the transport itself. Its centre of gravity is intermediation: an online platform for booking ride-sharing, brokering passenger seats on ships or aircraft, arranging carpools and vanpools, or coordinating non-emergency medical transport without providing social-assistance services. It also reaches taxi-call intermediation where the intermediary does not itself provide the ride, along with passenger reservations, travel-schedule management, travel-document handling and representation for passengers or transport operators. The activity is therefore about the connective tissue around a journey, rather than the physical act of carrying someone.\n\nThat distinction gives the code a broad commercial character. It suits businesses whose value lies in matching, reserving, organising, documenting or representing passenger transport arrangements. The record opens it at every stated business scale: Mikro, Kecil, Menengah and Besar. At the national level, its PMA status is TERBUKA and the foreign-ownership ceiling is 100%. In plain terms, the national record allows full foreign ownership for this activity; there is no stated minority-share requirement within the material provided.\n\nBali is where the reading needs care, because the province permanently blocks PMA registration for all low- and medium-low-risk KBLI activities. This activity, however, is not marked as blocked. The Bali record identifies the OSS risk at the Besar scale as medium-high or high, and expressly says that it is not blocked by the moratorium. For a foreign investor considering this particular activity in Bali, the record’s answer is therefore affirmative: PMA registration is not barred there today. That conclusion is specific to this activity and rests on the stated Bali risk position, not on a general exemption from the province’s rule.\n\nThe result is a code with a clear operational boundary and a comparatively direct ownership picture. It accommodates the businesses that organise access to passenger transport—digital or otherwise—while keeping the transport operation itself outside its defining role. At the national level, the ownership ceiling is complete; in Bali, the moratorium does not block the activity on the record supplied. For founders, the important discipline is to keep the registered activity aligned with that intermediary function: arranging the journey is the point of the code.",
+    "pullQuote": "In Bali, the moratorium does not block an activity whose role is to arrange the journey rather than operate it.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali PMA position",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

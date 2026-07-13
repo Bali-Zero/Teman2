@@ -1,0 +1,27 @@
+{
+  "code": "07102",
+  "editorial": {
+    "headline": "Iron Ore Mining With a Clean National and Bali Path",
+    "standfirst": "This activity covers iron ore extraction, upgrading, and agglomeration, with national PMA openness and no Bali moratorium block in the slim record.",
+    "body": "**Iron ore mining is a primary extractive activity, not a trading label or a downstream manufacturing shortcut.** The scope covers the mining of iron ore itself, and it expressly includes work that improves the quality of the ore and agglomerates iron ore and its concentrates. In practical editorial terms, the centre of gravity is the mineral activity: finding, extracting, concentrating, and preparing iron ore material within the boundaries described by the record. The slim record also names Izin Usaha Pertambangan Khusus (IUPK) Eksplorasi and Perpanjangan IUP Tahap Operasi Produksi, so the activity sits in a mining-rights context rather than a general commercial-services context.\n\nThe registration profile is broad by scale. The record lists Mikro, Kecil, Menengah, and Besar as open scales, which means the classification is not presented here as reserved only for a large enterprise category. That does not make every real-world project simple; mining is naturally capital-heavy, site-specific, and operationally serious. But those are business realities, not extra legal thresholds supplied by this record. The editorially safe point is narrower and clearer: within the slim record, the activity is open across all four listed scales, from micro through large.\n\nNationally, the foreign-investment position is unambiguous. PMA is classified as TERBUKA, with a 100% foreign ownership ceiling. There is no partial foreign-cap in the record to soften or qualify; the ceiling should be read plainly as full foreign ownership being allowed at the national classification level. The cited national basis is Perpres 10/2021, 49/2021. That source line matters because it is the record’s only stated basis for the PMA position, and nothing outside it should be imported into the explanation.\n\nFor Bali, the honest picture is also clean: the record does not block this activity for PMA registration under the Bali moratorium. The moratorium rule in the slim record blocks all Low and Medium-Low risk KBLI for PMA across the province, but this activity is marked OK_or_HIGHER_RISK, with the reason stating that OSS risk at Besar scale is Menengah-Tinggi/Tinggi and therefore not blocked by the moratorium. So the national and Bali readings point in the same direction here: foreign-open nationally, and not moratorium-blocked in Bali on the record provided.",
+    "pullQuote": "The national and Bali readings point in the same direction here: foreign-open nationally, and not moratorium-blocked in Bali on the record provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

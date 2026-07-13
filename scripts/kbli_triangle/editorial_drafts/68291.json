@@ -1,0 +1,27 @@
+{
+  "code": "68291",
+  "editorial": {
+    "headline": "Real-Estate Appraisal: Open Nationally, Not Barred in Bali",
+    "standfirst": "Real-estate appraisal is open to PMA nationally, with full foreign ownership permitted; in Bali, its higher-risk large-scale profile leaves it outside the permanent PMA moratorium.",
+    "body": "Real-estate appraisal is the business of providing services to assess the value of real-estate property. That is the centre of gravity of this activity: not property ownership, but the service of establishing a property’s value. The category is therefore best read from the work being offered. Where a business’s stated activity is the appraisal of real-estate value, this is the classification that describes that work. Its plain scope is useful precisely because it keeps the commercial proposition focused on valuation services.\n\nThe record opens the activity to micro, small, medium and large enterprises. In classification terms, that breadth matters: the stated scale options extend from Mikro through Besar, so the activity is not limited in the record to one size of undertaking. The national investment position is equally direct. Its PMA status is TERBUKA, and the maximum foreign ownership is 100%. In plain English, the national foreign-ownership ceiling permits complete foreign ownership for this activity. The cited national source is Perpres 10/2021, 49/2021.\n\nBali is where an otherwise simple reading requires a more exact sentence. The province has a permanent, island-wide PMA moratorium for all Low and Medium-Low risk KBLI activities. Yet this activity is not recorded as blocked in Bali. The reason given is specific: at the large scale, its OSS risk is Medium-High/High, placing it outside that moratorium. The local outcome is therefore non-blocking, rather than a Bali-specific ban.\n\nThe result is a clean national-versus-Bali conclusion, without pretending the two layers are the same question. Nationally, PMA is open with a 100% foreign-ownership ceiling. In Bali, this activity is not blocked under the province’s permanent rule because of the stated large-scale risk position. A foreign investor considering a real-estate appraisal business can read the record plainly: it is available across every listed scale and remains registrable for PMA in Bali under the rule described here.",
+    "pullQuote": "In Bali, this activity is not blocked under the permanent PMA moratorium because its large-scale OSS risk is Medium-High/High.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open enterprise scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

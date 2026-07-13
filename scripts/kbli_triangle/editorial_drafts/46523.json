@@ -1,0 +1,27 @@
+{
+  "code": "46523",
+  "editorial": {
+    "headline": "Telecom Equipment Wholesale: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "Wholesale telecom equipment can be wholly foreign-owned nationally, but Bali’s permanent PMA moratorium prevents a foreign registration there today.",
+    "body": "Wholesale telecommunications equipment is a broad wholesale-trade activity rather than a label confined to a single device. Its stated scope includes telephone equipment, including phones for cellular networks and other wireless networks; equipment for transmitting or receiving voice, images or other data; communications equipment for wired or wireless networks; modems; and radio and television broadcasting equipment. Read as a whole, the description follows the equipment layer of communication: devices that connect a call, move a signal or data, receive it, or support radio and television broadcasting. The range is expansive, but every item remains within the same wholesale frame.\n\nThe code is open at every scale shown in the record: Mikro, Kecil, Menengah and Besar. That matters because the scope is not confined in the record to a particular business-size band. The scale field reaches from Mikro through Besar, while the scope keeps attention on the same family of equipment. A registration under this activity is understood first by what it wholesales—telephone equipment, transmission and reception devices, network communications equipment, modems, or broadcast equipment—and then by the scale at which it is recorded.\n\nAt the national level, this activity carries TERBUKA PMA status, with foreign ownership permitted up to 100%. In plain terms, the national setting permits full foreign ownership of the activity. That conclusion comes with a source explicitly stated in the record, Perpres 10/2021, 49/2021, and it should be kept distinct from Bali’s local PMA position. A national 100% ceiling answers the question of foreign ownership at the national level; it does not itself establish that an activity can be registered for PMA in Bali.\n\nIn Bali, the practical outcome is different and definitive: a foreigner cannot register this activity there today. At the Besar scale, the OSS risk classification across every scope is Rendah or Menengah-Rendah. Bali’s island-wide, permanent moratorium blocks all Low and Medium-Low risk KBLI for PMA, and the record identifies the moratorium as the reason for the block, with 13 May 2026 as its stated date. The contrast is not a contradiction: the activity remains nationally open to 100% foreign ownership, yet the Bali moratorium prevents its PMA registration on the island. For a founder weighing place as carefully as ownership, that is the controlling distinction.",
+    "pullQuote": "The activity remains nationally open to 100% foreign ownership, yet the Bali moratorium prevents its PMA registration on the island.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

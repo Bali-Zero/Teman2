@@ -1,0 +1,27 @@
+{
+  "code": "13133",
+  "editorial": {
+    "headline": "Batik Cloth Manufacturing, Open Nationally and Workable in Bali",
+    "standfirst": "This activity covers batik cloth made with wax-resist techniques, open across all business scales and nationally available for foreign ownership up to 100%.",
+    "body": "KBLI 13133 is the industrial activity of making batik cloth. The defining process is not simply printing a pattern, but using *malam* or wax as a resist medium so colour can be held back and motifs can be formed on fabric. The record recognises batik made by the written method, the stamped method, or a combination of both. In plain English, this is the code for producing batik fabric through the classic wax-resist logic that gives the cloth its pattern and identity.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses, which means it can describe a small producer as well as a larger industrial operation, provided the registered activity is still the manufacture of batik cloth. That breadth matters because batik production often sits across different business realities: workshop, craft-led production, scaled manufacturing, or a larger textile operation. The code is anchored by the activity itself, not by a single business size.\n\nNationally, the foreign-investment reading is clean. The PMA status is TERBUKA, and the maximum foreign ownership stated in the record is 100%, with Perpres 10/2021, 49/2021 as the source. There is no smaller national cap in the record, so the national position should be stated plainly: this activity is foreign-open up to 100% under the record provided. That does not add a licence, threshold, timeline, or tax rule; it simply reads the PMA fields as they stand.\n\nThe Bali picture is also direct, but it needs precision. The record marks Bali as OK_or_HIGHER_RISK and says it is not blocked. It has a specific basis: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not marked as blocked here. So the honest conclusion is not a hidden caveat: for this record, batik cloth manufacturing is nationally open to foreign ownership up to 100% and is not marked as blocked for PMA registration in Bali.",
+    "pullQuote": "For this record, batik cloth manufacturing is nationally open to foreign ownership up to 100% and is not marked as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "16299",
+  "editorial": {
+    "headline": "Wood, Cork, Rattan, and Bamboo Goods That Bali Blocks for PMA",
+    "standfirst": "This activity is nationally open to foreign ownership, but the record marks it as blocked for PMA registration in Bali under the province’s risk-class moratorium.",
+    "body": "For KBLI 16299, the activity is a broad manufacturing lane for wood, cork, rattan, bamboo, straw, and similar goods that sit outside the more specifically named categories. The record’s Indonesian scope is intentionally practical rather than poetic: it covers the making of miscellaneous wooden items, including weaving tools, shoe lasts and shoe trees, clothes hangers, toothpicks, slate pencils, dowels, abacuses, rulers, blackboards, and wooden work tools such as plastering tools, hammers, wooden plane bodies, tool handles, pallets, washboards, and similar goods. It also covers cork articles such as sheets, stoppers, discs, rings, liners, and floats.\n\nThe commercial shape of the code is unusually wide. The slim record says it is open to Mikro, Kecil, Menengah, and Besar scale businesses, so it can describe anything from a small maker operation to a larger manufacturing setup, provided the activity remains within the stated scope. That breadth matters because the code is not about one signature product. It is about a class of making: small functional goods, workshop implements, household or industrial accessories, and cork-based components, all tied together by material and by the fact that they are not covered elsewhere in the record.\n\nNationally, the foreign-investment picture is clean. The record marks the PMA status as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021 and 49/2021. In plain English, the national line is that foreign ownership can reach 100% for this activity. That is the part a founder might notice first, and it is real. But it is not the whole operational answer for Bali, because the Bali-side status in the same record is blocked.\n\nThe honest Bali reading is therefore direct: a foreigner cannot register this as a PMA activity in Bali today. The reason given is specific: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026”. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, with the listed source as Gubernur letter B.27.000/642/PM/DPMPTSP. So the practical conclusion is not that the code is nationally closed. It is nationally open, but Bali blocks the PMA registration pathway because of the province’s moratorium logic.",
+    "pullQuote": "The practical conclusion is not that the code is nationally closed; it is nationally open, but Bali blocks the PMA registration pathway.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

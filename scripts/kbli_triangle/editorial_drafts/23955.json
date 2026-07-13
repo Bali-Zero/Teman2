@@ -1,0 +1,27 @@
+{
+  "code": "23955",
+  "editorial": {
+    "headline": "Ready-Mix Concrete and Mortar, Open Nationally and Workable in Bali",
+    "standfirst": "This code covers non-fire-resistant mortar and ready-mix concrete manufacturing, open to all business scales and not blocked for PMA registration in Bali.",
+    "body": "For KBLI 23955, the activity is industrial production of nonrefractory mortar and ready-mix concrete. In plain terms, this is the making of mortar that is not fire-resistant, together with ready-to-use concrete formats and related surface-finishing materials. The record names dry mixed mortar, ready mixed concrete, dry mixed concrete, plaster skim coat, white skim coat, and grey skim coat as examples of what sits inside the scope. That gives the code a practical, materials-focused identity: it is about manufacturing prepared cementitious products, not about contracting, installation, distribution, or project delivery.\n\nThe scale picture is unusually broad. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, so the code is not reserved only for large industrial operators. A small producer of finishing plaster and a larger ready-mix concrete operation are both within the scale universe described by the record, provided the registered activity remains the manufacture of the covered products. The editorial distinction matters because the scope is defined by what is made: non-fire-resistant mortar, ready-mix or dry-mix concrete, and the listed plaster or skim-coat materials.\n\nNationally, the PMA position is clean: the activity is marked TERBUKA, with a foreign-ownership ceiling of 100%. For a foreign-owned setup, that means the national record does not impose a reduced foreign-equity cap for this code. The cited basis is Perpres 10/2021, 49/2021. Nothing in the slim record adds a special national threshold, minimum capital number, extra timeline, or sector-specific licence condition, so the honest reading should not invent one. The national story is simply that this manufacturing activity is open to PMA up to full foreign ownership.\n\nBali is also workable on the record provided, but for a specific reason. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across Bali, yet this code is not blocked because the Bali reason says OSS risk at Besar scale is Menengah-Tinggi/Tinggi. In English: at large scale, the recorded OSS risk level is medium-high or high, so the Bali moratorium does not stop PMA registration for this activity. The Bali status is therefore not a contradiction of the national openness; it is the local risk-filter result that allows the national PMA openness to remain usable in Bali.",
+    "pullQuote": "The national story is full PMA openness, and the Bali story is that the moratorium does not block it because the recorded large-scale risk sits above the Low and Medium-Low band.",
+    "byTheNumbers": [
+      {
+        "label": "PMA foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

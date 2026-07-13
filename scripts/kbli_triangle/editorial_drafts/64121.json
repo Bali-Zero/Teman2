@@ -1,0 +1,27 @@
+{
+  "code": "64121",
+  "editorial": {
+    "headline": "Conventional Commercial Banking: Open Nationally, Clear of Bali’s PMA Block",
+    "standfirst": "KBLI 64121 defines conventional commercial banking across deposits, credit and payment services, with foreign ownership open nationally up to 100% and no Bali moratorium block.",
+    "body": "KBLI 64121 places conventional commercial banking at the centre of a defined financial function: collecting funds from the public through deposits and similar forms, then channelling those funds back to the public through credit and/or other forms. It also includes services conducted within the payment system. This is not a label for one product or one funding source. Deposits are the stated intake, credit and other forms are the stated channels back to the public, and payment-system services are a further named part of the activity.\n\nThe description also reaches conventional collections through current accounts and other forms used for margin, compensation funds and guarantee funds. At the same time, it expressly separates general conventional bank business from named roles involving the storage or custody of margin/customer funds, compensation funds, futures-centre funds and guarantee funds. That distinction gives the category its proper edge: conventional commercial banking is described broadly, but it is not presented as a loose catch-all for every named fund-storage role.\n\nRegistration is open at every stated enterprise scale: Micro, Small, Medium and Large. That wide scale range sits beside a national PMA status of open and a maximum foreign ownership figure of 100%, recorded under Perpres 10/2021, 49/2021. In ownership terms, the national position is direct: foreign investment is open, and the stated ceiling reaches 100%. The scale list is equally explicit, extending from Micro through Large rather than limiting the activity to a single size of enterprise.\n\nBali requires its own reading, but not because this activity is stopped. The province-wide rule blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. This activity is explicitly marked as not blocked by that moratorium. Its Bali status is OK_or_HIGHER_RISK, with the stated reason that OSS risk at Large scale is Medium-High/High. The honest comparison is therefore straightforward: nationally, the activity is open to foreign investment up to 100%; in Bali, it is not caught by the permanent PMA moratorium because of the stated higher-risk treatment at Large scale.",
+    "pullQuote": "Nationally, the activity is open to foreign investment up to 100%; in Bali, it is not caught by the permanent PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open enterprise scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

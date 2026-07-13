@@ -1,0 +1,27 @@
+{
+  "code": "14200",
+  "editorial": {
+    "headline": "KBLI 14200: Finished Goods from Fur-Bearing Leather",
+    "standfirst": "A narrow manufacturing code for finished fur-bearing leather goods, nationally open to PMA and not blocked by Bali’s moratorium record.",
+    "body": "KBLI 14200 is a manufacturing activity for finished goods made from fur-bearing leather. The record points to a concrete, material-led scope: ready-made clothing and clothing accessories such as fur coats; assembled fur-bearing leather forms such as dropped fur, plates, mats, doormats, and strips; and other finished articles including rugs, unfilled pouffes, and industrial glossy cloth. Its center of gravity is not trading, farming, or raw material production. It is the making of finished articles after the material has already become fur-bearing leather.\n\nThat distinction matters because the record also draws the edges of the activity. It excludes raw fur-bearing skin production, raw leather and hide production, imitation fur made through weaving or knitting, fur hats, tanning and dyeing of fur-bearing leather, and boots or shoes with fur-containing parts. Read plainly, this is a code for businesses whose output is a finished fur-bearing leather product or assembly, not the upstream capture of the skin, the chemical finishing stage, or footwear and headwear activities that sit outside this record’s scope.\n\nOn scale, the record is unusually broad: Mikro, Kecil, Menengah, and Besar are all open. That means the activity is not framed here as belonging only to industrial-scale operators; it can cover a small workshop making specific finished articles as well as a larger manufacturer producing fur-bearing leather assemblies or goods. The same scope still governs each scale. A business should be able to point to the finished article it makes and show that the activity remains within the material and product boundary described by the record.\n\nThe national-vs-Bali picture is clean. Nationally, the PMA status is TERBUKA, with a foreign-ownership ceiling of 100% under Perpres 10/2021, 49/2021. Bali does not add a separate foreign-ownership cap in this record. Its Bali status is marked OK_or_HIGHER_RISK, and the reason given is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. So the honest reading is that this activity is nationally foreign-open, and the Bali moratorium record does not block it for PMA registration today. The caveat is not a hidden Bali percentage or partnership condition; it is simply the record’s own risk-based note.",
+    "pullQuote": "So the honest reading is that this activity is nationally foreign-open, and the Bali moratorium record does not block it for PMA registration today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

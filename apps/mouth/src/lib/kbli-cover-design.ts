@@ -308,3 +308,185 @@ export function fingerprintsEqual(a: CodeFingerprint, b: CodeFingerprint): boole
 export function sectionGradient(visual: SectionVisual, angleDeg = 135): string {
   return `linear-gradient(${angleDeg}deg, ${visual.hueA} 0%, ${visual.hueB} 100%)`;
 }
+
+// -----------------------------------------------------------------------------
+// Motif layer (Super Ultra v2) — per-section abstract geometry, deterministic
+// from the code fingerprint. Pure data: the OG route / hero canvas map these
+// primitives to absolutely-positioned elements. No randomness, no rasters.
+// -----------------------------------------------------------------------------
+
+/** One primitive of the motif background layer. Coordinates in px on 1200×630. */
+export interface MotifShape {
+  kind: "circle" | "rect" | "line";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Border-radius px (circles ignore it — always fully round). */
+  r: number;
+  opacity: number;
+  rotateDeg: number;
+  /** true = outlined (1.5px border), false = filled. */
+  outline: boolean;
+}
+
+const CANVAS_W = 1200;
+const CANVAS_H = 630;
+
+function seededFrac(code: string, salt: string): number {
+  return (hashString(`${code}|${salt}`) % 10000) / 10000;
+}
+
+/**
+ * Deterministic motif geometry for a section+code. Every section renders a
+ * DIFFERENT family of shapes (terraced fields, modular grid, layered strata,
+ * wave bands, dot-lattice circuit, concentric arcs, scatter) and every CODE
+ * perturbs that family through its fingerprint — same section reads coherent,
+ * no two covers are identical.
+ */
+export function motifShapes(visual: SectionVisual, fp: CodeFingerprint): MotifShape[] {
+  const code = fp.code;
+  const shapes: MotifShape[] = [];
+  const push = (s: Partial<MotifShape> & Pick<MotifShape, "kind" | "x" | "y" | "w" | "h">) =>
+    shapes.push({
+      r: 0,
+      opacity: 0.05,
+      rotateDeg: 0,
+      outline: false,
+      ...s,
+    });
+
+  switch (visual.motif) {
+    case "organic": {
+      // terraced-field ellipses drifting across the lower canvas
+      for (let i = 0; i < 6; i++) {
+        const f = seededFrac(code, `org${i}`);
+        push({
+          kind: "circle",
+          x: -150 + f * 500,
+          y: 240 + i * 72 + f * 30,
+          w: 700 + f * 380,
+          h: 120 + f * 60,
+          opacity: 0.035 + f * 0.04,
+          outline: i % 2 === 0,
+        });
+      }
+      break;
+    }
+    case "grid": {
+      // modular manufacturing grid — cells lit by digit parity
+      const cell = 86;
+      fp.bars.forEach((bar, i) => {
+        for (let row = 0; row < 3; row++) {
+          const f = seededFrac(code, `g${i}:${row}`);
+          if ((bar.digit + row) % 2 === 0) {
+            push({
+              kind: "rect",
+              x: 640 + i * cell + f * 8,
+              y: 60 + row * cell,
+              w: cell - 12,
+              h: cell - 12,
+              r: 10,
+              opacity: 0.04 + f * 0.05,
+              outline: (bar.digit + row) % 4 === 0,
+            });
+          }
+        }
+      });
+      break;
+    }
+    case "waves": {
+      // hospitality/water — long rounded bands, gently rotated
+      for (let i = 0; i < 5; i++) {
+        const f = seededFrac(code, `w${i}`);
+        push({
+          kind: "rect",
+          x: -100,
+          y: 120 + i * 96 + f * 40,
+          w: CANVAS_W + 260,
+          h: 40 + f * 26,
+          r: 999,
+          opacity: 0.035 + f * 0.045,
+          rotateDeg: -4 + f * 8,
+        });
+      }
+      break;
+    }
+    case "circuit": {
+      // dot lattice + connector lines, seeded by digits
+      fp.bars.forEach((bar, i) => {
+        for (let j = 0; j < 3; j++) {
+          const f = seededFrac(code, `c${i}:${j}`);
+          const x = 620 + i * 108 + f * 22;
+          const y = 90 + j * 150 + f * 46;
+          push({ kind: "circle", x, y, w: 10 + (bar.digit % 4) * 4, h: 10 + (bar.digit % 4) * 4, opacity: 0.1 + f * 0.1 });
+          if ((bar.digit + j) % 2 === 0) {
+            push({
+              kind: "line",
+              x,
+              y: y + 5,
+              w: 90 + f * 60,
+              h: 2,
+              opacity: 0.06 + f * 0.05,
+              rotateDeg: (bar.digit % 3) * 45,
+            });
+          }
+        }
+      });
+      break;
+    }
+    case "arc": {
+      // transport/motion — concentric outlined circles sweeping off-canvas
+      for (let i = 0; i < 5; i++) {
+        const f = seededFrac(code, `a${i}`);
+        const d = 260 + i * 170 + f * 70;
+        push({
+          kind: "circle",
+          x: CANVAS_W - d / 2 - 60,
+          y: CANVAS_H - d / 2 - 20,
+          w: d,
+          h: d,
+          opacity: 0.05 + f * 0.05,
+          outline: true,
+        });
+      }
+      break;
+    }
+    case "strata": {
+      // mining/geology — offset horizontal layers
+      for (let i = 0; i < 7; i++) {
+        const f = seededFrac(code, `s${i}`);
+        push({
+          kind: "rect",
+          x: (i % 2 === 0 ? -80 : 60) + f * 120,
+          y: 80 + i * 78,
+          w: 500 + f * 420,
+          h: 34 + f * 22,
+          r: 6,
+          opacity: 0.035 + f * 0.05,
+        });
+      }
+      break;
+    }
+    case "scatter":
+    default: {
+      // generic services — seeded constellation
+      for (let i = 0; i < 14; i++) {
+        const f1 = seededFrac(code, `p${i}`);
+        const f2 = seededFrac(code, `q${i}`);
+        const d = 6 + Math.round(f1 * 26);
+        push({
+          kind: "circle",
+          x: 80 + f1 * (CANVAS_W - 220),
+          y: 60 + f2 * (CANVAS_H - 180),
+          w: d,
+          h: d,
+          opacity: 0.05 + f2 * 0.08,
+          outline: d > 22,
+        });
+      }
+      break;
+    }
+  }
+  return shapes;
+}

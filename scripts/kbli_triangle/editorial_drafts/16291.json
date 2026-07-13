@@ -1,0 +1,27 @@
+{
+  "code": "16291",
+  "editorial": {
+    "headline": "Rattan and Bamboo Weaving Meets a Bali PMA Block",
+    "standfirst": "This activity is nationally open to foreign ownership, but the Bali record marks it blocked for PMA registration under the province’s risk-class moratorium.",
+    "body": "This KBLI activity is for making woven goods whose main material is rattan or bamboo. The record’s scope is practical and material-led: mats, webbing, lampit, hand fans, woven wall panels, and woven bags, including women’s bags and laptop bags. Its centre of gravity is not general craft trading or a broad lifestyle label; it is manufacturing, where the defining feature is the woven article and the principal input is rattan or bamboo.\n\nThat makes the registration question more specific than it first appears. The code is available across the full range of business scales listed in the record: Mikro, Kecil, Menengah, and Besar. A small workshop producing hand fans and woven panels, a growing bag producer, and a larger woven-goods manufacturer can all sit inside the same activity description if the actual production remains within the stated scope. The record also draws a boundary away from footwear and woven headwear, so the clean reading is to keep this code for rattan-and-bamboo woven goods themselves, not every product that happens to use a woven element.\n\nNationally, the investment message is straightforward. The record marks the PMA status as TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. On the national layer alone, this is therefore not a capped foreign-investment activity: the record allows full foreign ownership. For founders reading from Jakarta outward, that looks like a clean green light, especially because the activity is open at every listed scale.\n\nBali changes the operating conclusion. The record says l4_bali_blocked is true and marks the Bali status as Blocked (risk class). Its reason is explicit: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule in the record is broader still: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” So the honest reading is this: the activity is nationally open to PMA, but a foreigner cannot register it as a PMA activity in Bali today under the Bali-side record. That is not a separate Bali ownership cap, and it should not be read as a negotiable percentage limit. It is a provincial block tied to the recorded risk-class moratorium.",
+    "pullQuote": "The activity is nationally open to full foreign ownership, but the Bali-side record turns that green light into a PMA registration block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

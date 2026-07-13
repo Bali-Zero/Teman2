@@ -1,0 +1,27 @@
+{
+  "code": "27409",
+  "editorial": {
+    "headline": "Other Lighting Equipment, Open Nationally and Clear in Bali",
+    "standfirst": "KBLI 27409 covers the making of non-standard lighting equipment, from chandeliers and street-light fittings to solar lighting and electrical lamp components.",
+    "body": "KBLI 27409 is a manufacturing classification for lighting equipment that sits outside the basic, familiar idea of simply making lamps. The record describes ceiling- and wall-mounted lighting equipment, including chandeliers, table lamps, standing floor lamps, decorative chain lights, electric fireplace logs, lanterns using carbide, electricity, gas, petrol, or kerosene, street-lighting equipment other than traffic signs, and solar-powered lighting equipment. It also includes electrical lamp components such as starters, filaments, and reflectors, as well as lamps using or containing radioactive substances.\n\nThat breadth matters because this is not a retail classification and not a design-only activity. The centre of gravity is production: making the equipment itself and, where the record says so, making the components that allow electric lamps to function. The scope also draws one important boundary around ballast manufacturing, which is not included here. For founders, the practical reading is that this code belongs to businesses whose registered activity is the manufacture of these lighting products or components, not merely trading, installing, or advising on them.\n\nOn scale, the record is unusually clear. The activity is open to Mikro, Kecil, Menengah, and Besar. That means the classification is not confined to a narrow enterprise size in the slim record: it can describe a small producer of decorative fittings, a medium manufacturer of street-light equipment, or a larger industrial lighting operation, provided the activity remains within the manufacturing scope described above. The foreign-investment position is also clean at national level. The record marks the PMA status as TERBUKA, with a maximum foreign ownership figure of 100%, sourced to Perpres 10/2021, 49/2021.\n\nThe Bali picture follows the same direction, with one precise caveat from the record rather than a hidden local percentage. Bali is not marked as blocked for this activity. The Bali status is OK_or_HIGHER_RISK, and the reason given is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule itself blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this record says KBLI 27409 is not blocked by that rule. So the honest conclusion is straightforward: nationally, this activity is foreign-open up to 100%, and in Bali the record does not block PMA registration under the stated moratorium logic.",
+    "pullQuote": "Nationally, this activity is foreign-open up to 100%, and in Bali the record does not block PMA registration under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "20124",
+  "editorial": {
+    "headline": "Organic Fertilizer and Growing Media, with a Bali Scope Check",
+    "standfirst": "This code covers soil-focused manufacturing that is nationally open to foreign ownership, but Bali registration depends on the exact activity declared in OSS.",
+    "body": "For KBLI 20124, the activity is the industrial making of inputs that improve soil, feed plants, or form the medium in which plants are grown. The record defines it around three practical families: fertilizers containing microorganisms or formulas made from industrial by-products where micronutrients are the main component; growing media built around fertile soil or peat, including mixtures of natural soil, sand, clay, and minerals; and ameliorant materials used to correct or improve soil, such as agricultural lime, phosphate lime, dolomite, zeolite, and organic-bearing soil improvers.\n\nThat makes this a manufacturing code, not a general trading label and not a broad agriculture service category. Its center of gravity is formulation and production: turning biological, mineral, or soil-based inputs into products used to support cultivation. A founder using it should be able to connect the registered activity to the making of organic fertilizer, biological fertilizer, growing media, or soil-improvement materials as described in the scope. The language is technical, but the commercial shape is clear: this is for businesses that produce the physical inputs behind healthier planting media and amended soils.\n\nNationally, the record is straightforward. At the national level, PMA is classified as TERBUKA, with foreign ownership permitted up to 100%. The code is also open across Mikro, Kecil, Menengah, and Besar scales. In plain English, the national record does not present this as a closed activity for foreign investment, and it does not impose a partial foreign-equity cap in the data supplied here. The relevant source named in the record is Perpres 10/2021, 49/2021, but no additional licence, tax, timeline, capital threshold, or operational condition appears in the slim record, so none should be inferred from it.\n\nThe Bali reading is more careful. The record does not mark the activity as automatically blocked in Bali, but it gives the Bali status as Blocked (scope-dependent) and says: \"OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity\". It also states the moratorium rule: \"Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)\". The honest conclusion is therefore conditional rather than binary: nationally this code is open up to 100% foreign ownership, but for Bali PMA use the exact declared scope and OSS risk treatment matter. A founder should not treat the national openness as the final Bali answer until the precise activity has been checked live in OSS.",
+    "pullQuote": "National openness is clear, but in Bali the decisive question is the exact scope declared in OSS.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

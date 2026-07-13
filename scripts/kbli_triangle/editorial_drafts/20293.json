@@ -1,0 +1,27 @@
+{
+  "code": "20293",
+  "editorial": {
+    "headline": "Ink Manufacturing With a Clear National and Bali Opening",
+    "standfirst": "KBLI 20293 covers the making of writing inks and specialised inks, with registration open across all business scales and no Bali moratorium block recorded for PMA.",
+    "body": "KBLI 20293 is a manufacturing code for ink. Its scope is direct: the activity is the making of various inks, including writing ink and specialised ink. That makes this a production activity rather than a trading label, a design service, or a general office-supply category. The record does not divide the field into subtypes beyond those examples, so the clean reading is that the code sits around the industrial act of producing ink in its different forms.\n\nThe scale picture is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, so it is not reserved only for larger factories or only for small producers. A small ink producer and a larger manufacturing setup both sit within the same registration frame, provided the activity being registered is still the making of ink as described in the scope. That breadth matters because it keeps the code anchored in the activity itself, not in a single business size.\n\nNationally, the PMA position is also clear. The record marks the activity as TERBUKA, with a pma_max_asing of 100. In plain English, the national foreign-ownership ceiling shown here is 100%, with the source given as Perpres 10/2021, 49/2021. There is no lower foreign-share cap in the record, and there is no special threshold or capital figure supplied, so none should be read into it. For a foreign-owned structure, the national signal is therefore open rather than capped.\n\nThe Bali picture does not reverse that conclusion. The record says l4_bali_blocked is false and gives the Bali status as OK_or_HIGHER_RISK. The reason is specific: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the Bali moratorium rule in the record blocks all Low + Medium-Low risk KBLI for PMA, island-wide and permanently. This activity is not marked as blocked by that rule. The honest reading is therefore straightforward: KBLI 20293 is nationally open to foreign ownership up to 100%, and the Bali-side record does not show a PMA moratorium block.",
+    "pullQuote": "The honest reading is straightforward: KBLI 20293 is nationally open to foreign ownership up to 100%, and the Bali-side record does not show a PMA moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

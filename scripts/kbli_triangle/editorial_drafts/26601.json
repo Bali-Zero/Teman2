@@ -1,0 +1,27 @@
+{
+  "code": "26601",
+  "editorial": {
+    "headline": "Precision Radiation Equipment, Open Nationally and Clear for Bali",
+    "standfirst": "KBLI 26601 covers the manufacture of irradiation and ionising-radiation equipment for industry, medicine, research, and scientific use.",
+    "body": "KBLI 26601 sits in a technically demanding corner of manufacturing: equipment built around ionising radiation. The record describes the making of irradiation equipment and tubes based on X-ray, alpha, beta, gamma, or other ionising radiation. Its uses are not narrow. The same activity can serve industrial applications, medical diagnosis, medical therapy, research, and scientific work. In plain English, this is the code for businesses that manufacture the physical equipment through which controlled radiation becomes a working industrial or medical tool.\n\nThe scope is broader than a single machine type. It includes equipment for ionising-radiation sources used in non-destructive testing, gauging, well logging, irradiation, goods scanning, and analysis. It also includes related radiation-generating accessories tied to radiation safety and image quality, including control panels and screens or image receptors. The record also names decommissioning and operation of Category III irradiator facilities using radioactive sources, which gives the activity a facility-side dimension as well as a manufacturing one. The common thread is not the customer segment, but the technical basis: equipment and facilities organised around ionising radiation.\n\nFor registration scale, the record is unusually wide. It is open to small, medium, and large businesses: **Kecil**, **Menengah**, and **Besar**. That matters because the activity is not framed in the record as only a large industrial category, even though its subject matter is specialised. A founder reading this code should understand it as a manufacturing and facility activity whose formal scale availability spans the full recorded range. The scale labels are the only scale facts in the record; they do not themselves add capital thresholds, licensing steps, or operating timelines.\n\nThe national foreign-investment picture is clean. The PMA status is **TERBUKA**, with a recorded maximum foreign ownership of **100%**, sourced to **Perpres 10/2021, 49/2021**. Bali does not change that into a separate percentage or ownership cap in this record. Its Bali-side status is **OK_or_HIGHER_RISK**, and the reason given is: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province, but this activity is not marked as blocked. So the honest reading is direct: nationally, KBLI 26601 is fully foreign-open; in Bali, the record does not block PMA registration under the moratorium.",
+    "pullQuote": "The honest reading is direct: nationally, KBLI 26601 is fully foreign-open; in Bali, the record does not block PMA registration under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

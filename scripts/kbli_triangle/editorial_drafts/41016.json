@@ -1,0 +1,27 @@
+{
+  "code": "41016",
+  "editorial": {
+    "headline": "Educational Building Construction, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 41016 covers conventional construction work for education buildings, from schools and course facilities to laboratories, renovations, and rebuilding.",
+    "body": "KBLI 41016 is the construction code for conventional educational buildings. The record describes a practical, physical scope: building, maintaining, and rebuilding structures used for education, including school buildings, course venues, and laboratories. It also includes changes and renovations to educational buildings. In plain English, this is not an education-service code; it is the construction activity behind the facilities where education happens.\n\nThe construction method matters because the record is specific: this code is for conventional building construction. It carries the education-building construction subclassification references GT006 and BG006, and its scope stays inside the built environment of education facilities. A company using this code should be registering for the work of constructing, maintaining, reconstructing, altering, or renovating those buildings, not for operating a school, running a course, or providing laboratory services.\n\nThe scale picture is unusually broad. The slim record marks this activity as open to Besar, Mikro, Kecil, and Menengah, so the activity is not framed only for large contractors. It can describe education-building construction activity across the listed business scales, provided the registered activity remains faithful to the scope. That breadth should not be confused with a free pass to add adjacent education or service activities; the record only supports the construction work named here.\n\nNationally, the PMA position is straightforward. The record marks KBLI 41016 as TERBUKA, with a maximum foreign ownership figure of 100%, sourced to Perpres 10/2021, 49/2021. The Bali-side picture is also clear: this record does not mark the activity as blocked. The stated reason for its OK_or_HIGHER_RISK Bali status is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule still matters as background because Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent, but this record says KBLI 41016 is not blocked by that rule. For a foreign-owned setup, the honest reading is therefore clean: nationally open, 100% foreign ownership allowed, and not blocked for PMA registration in Bali on the facts supplied here.",
+    "pullQuote": "For a foreign-owned setup, the honest reading is therefore clean: nationally open, 100% foreign ownership allowed, and not blocked for PMA registration in Bali on the facts supplied here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Besar, Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

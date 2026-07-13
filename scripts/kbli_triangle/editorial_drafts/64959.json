@@ -1,0 +1,27 @@
+{
+  "code": "64959",
+  "editorial": {
+    "headline": "Credit Beyond the Usual Categories: KBLI 64959",
+    "standfirst": "A broad credit-activity classification spanning conventional and sharia financing, open nationally to full foreign ownership and not blocked by Bali’s PMA moratorium.",
+    "body": "KBLI 64959 covers other credit-granting activities not classified elsewhere. Its practical territory includes investment financing, working-capital financing and multipurpose financing, whether conducted conventionally or under sharia principles. The scope also expressly includes moneylending. This is therefore a classification with a wide financing remit, but one defined by the forms of credit activity set out in its scope rather than by a single product or customer segment.\n\nThe classification also accommodates financing companies operating on a conventional basis. Their activities may include financing goods and/or services through investment, working-capital and multipurpose financing, as well as other financing activities approved by the Financial Services Authority. Within the stated scope, a conventional financing company may also undertake operating leases and fee-based activities, provided these do not conflict with financial-services laws and regulations. A company whose entire business is sharia financing may undertake sale-and-purchase financing, investment financing and service financing.\n\nThe registration field is broad in terms of business scale: micro, small, medium and large enterprises are all listed as open to this activity. For a foreign investor, the national position is straightforward: ownership may reach 100%. That national ceiling is supported by the stated Presidential Regulation sources, and it means the record does not describe a foreign-equity cap below full ownership for this activity at the national level.\n\nBali does not reverse that conclusion. The province permanently blocks PMA registration for activities assessed as Low or Medium-Low risk, island-wide. This activity is not marked as blocked: at the large-enterprise scale, its OSS risk is Medium-High or High, placing it outside that moratorium’s stated reach. Bali’s status is therefore recorded as OK or Higher Risk—not as a prohibition. The distinction matters: national openness is real here, and the Bali record does not impose a separate foreign-ownership figure or partnership condition; it identifies the risk classification as the reason the moratorium does not block PMA registration.",
+    "pullQuote": "For a foreign investor, the national position is straightforward: ownership may reach 100%.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "01252",
+  "editorial": {
+    "headline": "Edible Nut Orchards With a Clear Bali PMA Path",
+    "standfirst": "This activity covers the full farming cycle for edible nut-bearing fruit crops, and it is open nationally and not blocked for PMA registration in Bali.",
+    "body": "KBLI 01252 is a farming classification for edible nut-bearing fruit crops. Its scope is not limited to the final crop itself: it covers the practical agricultural chain that makes the crop possible, from land preparation and planting through maintenance, harvesting, and post-harvest work when those activities are carried out as one integrated sequence. The record names almonds, cashews, chestnuts, walnuts, hazelnuts, and pistachios as examples of the kind of edible nut crops included here.\n\nThe scope also reaches nursery and seedling activity for these nut-bearing crops. That matters because this is not merely a trading or processing label; it is an agricultural registration for operators whose business is rooted in cultivation. A founder using this code should be looking at an activity where the land, the crop cycle, and the production sequence are central to the business description. The Indonesian scope points to cultivation work that begins before the plant is in the ground and continues through harvest and post-harvest handling as part of the same agricultural activity.\n\nOn scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar, so the classification can describe anything from a small agricultural operation to a larger farming business, provided the activity remains inside this edible nut-crop farming scope. Nationally, the foreign-investment position is also clean: the PMA status is TERBUKA, and the foreign-ownership ceiling is 100%. There is no lower foreign-stake cap in the slim record, so the plain reading is that foreign ownership is allowed up to the full stated ceiling under the cited national source.\n\nThe Bali picture is also direct. Bali's moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province, on a permanent island-wide basis. But this record does not mark the activity as blocked in Bali. The record assigns it Bali status OK_or_HIGHER_RISK because OSS risk at Besar scale is Menengah-Tinggi/Tinggi, leaving it outside the moratorium block. The honest conclusion is therefore not a warning but a distinction: nationally this code is foreign-open up to 100%, and in Bali it is not blocked for PMA registration under the moratorium rule stated in the record.",
+    "pullQuote": "The honest conclusion is therefore not a warning but a distinction: nationally this code is foreign-open up to 100%, and in Bali it is not blocked for PMA registration under the moratorium rule stated in the record.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

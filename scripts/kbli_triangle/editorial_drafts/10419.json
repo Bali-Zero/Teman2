@@ -1,0 +1,27 @@
+{
+  "code": "10419",
+  "editorial": {
+    "headline": "The Residual Oils and Fats Code With a Clear National Opening",
+    "standfirst": "KBLI 10419 covers specialised processing of non-coconut and non-palm crude oils and fats, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 10419 sits in a precise manufacturing corner: the processing of crude oils and fats from plant and animal sources outside the named coconut and palm-oil lanes. The slim record describes work such as making shortening from various vegetable oils, including coconut and palm oil inputs, producing cotton linter, and handling oilcake, pulp, and other residues from oil production and refining from fish and marine mammals. In plain English, this is not retail trading, farming, or a generic food-service activity. It is industrial processing around oils, fats, and the by-products left after extraction or refining.\n\nThe registration profile is unusually broad on scale. The record opens it to Mikro, Kecil, Menengah, and Besar operators, so the code is not framed only for large industrial capital. A small processor and a larger manufacturing operation can both fall within the scale language, provided the actual activity remains within the recorded scope. That breadth matters because the economic substance of the code can vary: one business may focus on a specialised fat product such as shortening, while another may be organised around residues from marine oil refining. What ties them together is the processing character, not a single finished consumer product.\n\nNationally, the foreign-investment position is clean. The record marks the PMA status as TERBUKA and gives the foreign-ownership ceiling as 100%, sourced to Perpres 10/2021, 49/2021. That means the national record does not show a foreign-share cap below full ownership for this activity. For a foreign-owned setup, the central point is therefore straightforward: the code is nationally open, and the national maximum foreign ownership value in the record is 100%.\n\nBali does not add a separate percentage or ownership ceiling in this record. Its local status is marked OK_or_HIGHER_RISK, and the Bali-blocked flag is false. The reason is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule itself is broad, blocking all Low and Medium-Low risk KBLI for PMA across Bali, but this record does not place KBLI 10419 inside that block. The honest national-vs-Bali picture is therefore not a contradiction: nationally open, and, on this slim record, not blocked for PMA registration in Bali by the listed moratorium.",
+    "pullQuote": "The honest national-vs-Bali picture is therefore not a contradiction: nationally open, and, on this slim record, not blocked for PMA registration in Bali by the listed moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

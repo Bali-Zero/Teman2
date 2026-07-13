@@ -1,0 +1,27 @@
+{
+  "code": "35402",
+  "editorial": {
+    "headline": "Natural Gas Sales Agency, Without Owning the Pipes",
+    "standfirst": "KBLI 35402 covers gas-sales agents that arrange fuel-gas sales through distribution systems operated by other parties, with national PMA access and no Bali moratorium block.",
+    "body": "KBLI 35402 is not a natural-gas producer, storage operator, pipeline owner, or direct supplier through a principal system. Its center of gravity is agency work: arranging the sale of gas fuel through a gas distribution system run by someone else. In practical terms, this is the commercial layer around distribution rather than the physical operation of the gas network itself. The scope also reaches agents involved in the sale of commodity-capacity exchange and distribution arrangements for gas fuel, which places the activity in the world of organized gas-market intermediation rather than infrastructure ownership.\n\nThat distinction matters because the registration is built around the broker or sales-agent role. The slim record also brings electronic commerce into the frame: domestic PPMSE and intermediary-platform operators that are not exempted, as well as foreign-domiciled PPMSE and intermediary-platform operators conducting PMSE business in Indonesia, are expressly mentioned. The wording then makes clear that the activity is not limited to those electronic-commerce operators. The code can sit with micro, small, medium, and large-scale businesses, so the scale door is broad: Mikro, Kecil, Menengah, and Besar are all open categories in the record.\n\nNationally, the foreign-investment reading is straightforward. The PMA status is TERBUKA, and the maximum foreign ownership is 100%. That means the record does not impose a national foreign-share cap below full ownership for this activity. Perpres 10/2021, 49/2021 is the cited basis for that national position. For a foreign-owned setup, the clean national point is therefore not ambiguity but access: this activity is open to PMA at the recorded ceiling, subject only to facts actually stated in the slim record.\n\nBali does not reverse that conclusion on the facts provided. The province’s moratorium rule is severe in general: it blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, according to the listed governor letter source. But this particular record is marked as not blocked in Bali. The reason is specific: at Besar scale, the OSS risk classification is Menengah-Tinggi/Tinggi, or Medium-High/High, so it is not caught by that moratorium block. The honest national-versus-Bali picture is therefore unusually clean: nationally open up to 100% foreign ownership, and in Bali not blocked by the stated PMA moratorium because the recorded risk position sits above the blocked Low and Medium-Low band.",
+    "pullQuote": "The honest national-versus-Bali picture is unusually clean: nationally open up to 100% foreign ownership, and in Bali not blocked by the stated PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

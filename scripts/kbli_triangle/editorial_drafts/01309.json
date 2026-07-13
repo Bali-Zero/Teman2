@@ -1,0 +1,27 @@
+{
+  "code": "01309",
+  "editorial": {
+    "headline": "Other Plant Propagation, Read as a Real Production Activity",
+    "standfirst": "KBLI 01309 covers the practical nursery work behind living planting material, and it is open nationally and in Bali for foreign-owned registration.",
+    "body": "KBLI 01309 is not a generic farming label. It is the activity of producing plant material for further propagation: vegetative seed production, cut stems, plant pieces, seedlings, grafting stock, cuttings, layers, tubers, roots, mushroom spawn and plant nurseries. In plain English, this is the business of preparing living plant material so another planting cycle can happen. The record also places chilli seedling activity inside this scope, which matters because it keeps the code anchored in nursery and propagation work rather than broad crop cultivation.\n\nThe commercial shape of the code is wide. It is open to Mikro, Kecil, Menengah and Besar scales, so the same activity can describe a small propagation operation, a growing nursery business, or a larger production setup. That scale range should not be read as permission to stretch the activity beyond its stated scope. The centre of gravity remains the production and preparation of plant material for replanting, multiplication, grafting or nursery use. A founder registering this code should be able to explain the actual propagation process, the living plant outputs, and the role those outputs play in continued plant production.\n\nNationally, the PMA picture is straightforward. The record marks the activity as TERBUKA and gives a foreign-ownership ceiling of 100%. That means the code is open to foreign-owned registration at the national level, with no foreign equity cap shown in the slim record. For a foreign founder, the honest reading is therefore not a partial-access code or a minority-stake category: on the national PMA line, it is open up to full foreign ownership.\n\nBali does not change that answer into a block. The provincial moratorium described in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this activity is marked OK_or_HIGHER_RISK rather than blocked. The reason is also explicit: at Besar scale, the OSS risk is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The practical editorial conclusion is clean: a foreign investor can read KBLI 01309 as nationally open and not Bali-blocked, while still treating the registered activity as the specific propagation and nursery production work described in the scope.",
+    "pullQuote": "The practical editorial conclusion is clean: a foreign investor can read KBLI 01309 as nationally open and not Bali-blocked.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

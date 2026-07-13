@@ -1,0 +1,27 @@
+{
+  "code": "17019",
+  "editorial": {
+    "headline": "The Paper Code for Specialist, Smaller-Batch Manufacturing",
+    "standfirst": "KBLI 17019 covers non-standard paper production, from magnetic and crepe paper to cellulose wadding, and is nationally open to foreign ownership.",
+    "body": "**KBLI 17019 is not the broad story of ordinary paper.** The record defines it as a home for more specialised paper manufacturing: magnetic paper, crepe or crinkled paper, laminated and foil products when the lamination is with paper or paperboard, cellulose wadding and cellulose webs made from cellulose fibre, handmade paper, and carbon or stencil paper in rolls or large sheets. In plain English, this is the activity code for producers working at the edges of paper as a material: technical paper, converted paper, craft paper, and paper-based inputs that are not described here as packaging, publishing, or stationery retail.\n\nThe scale picture is unusually straightforward. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** operators, so the same classification can frame a small handmade-paper workshop, a mid-sized cellulose-web producer, or a larger industrial operation making more technical paper products. That range matters because the activity is defined by what is made, not by a single factory profile. A founder should therefore read the scope carefully: the anchor is manufacturing, and the listed products are the boundary of the code’s logic.\n\nNationally, the foreign-investment position is clean. The record marks the PMA status as **TERBUKA** and gives a maximum foreign ownership figure of **100%**. That means the national line in this slim record is not a minority cap, not a partial ceiling, and not a special-condition narrative. The source field is limited to the stated presidential regulations, so the editorial point should remain disciplined: for this activity, the national record says foreign investment is open up to the recorded ceiling.\n\nThe Bali reading is also direct, but for a different reason. The Bali status is **OK_or_HIGHER_RISK**, and the record says it is **not blocked** by the province’s PMA moratorium because OSS risk at scale Besar is **Menengah-Tinggi/Tinggi**. The moratorium text in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not captured by that block on the facts provided here. The practical conclusion is therefore simple: KBLI 17019 is nationally foreign-open, and the Bali-side record does not block it under the stated moratorium rule.",
+    "pullQuote": "KBLI 17019 is nationally foreign-open, and the Bali-side record does not block it under the stated moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

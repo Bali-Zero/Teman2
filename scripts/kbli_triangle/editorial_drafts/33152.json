@@ -1,0 +1,27 @@
+{
+  "code": "33152",
+  "editorial": {
+    "headline": "Rail Rolling Stock Maintenance, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 33152 covers the repair and maintenance of locomotives, railway carriages, and other rail-track vehicles, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 33152 is a narrowly industrial activity: the repair and maintenance of locomotives, railway carriages, and other vehicles that run on rail tracks. Its scope is not the rebuilding or alteration industry, which the record expressly excludes, but the service work that keeps rail vehicles in operating condition. In plain English, this is the maintenance side of rail rolling stock: technical, asset-heavy, and tied to vehicles whose function is defined by the railway system itself.\n\nThe registration picture is unusually broad by scale. The slim record marks this activity as open to Mikro, Kecil, Menengah, and Besar, which means it is not confined to one size of business in the classification record. A smaller workshop-style registration and a larger industrial maintenance operation sit under the same activity description, provided the registered business is still doing what the scope says: repair and maintenance of locomotives, railway carriages, or other rail-road vehicles, not manufacturing-style reconstruction or conversion.\n\nNationally, the foreign-investment position is clean. The record lists the PMA status as TERBUKA and sets its maximum foreign ownership figure at 100%. That is the only ownership ceiling stated here, and it is a national figure sourced to Perpres 10/2021, 49/2021. The practical editorial point is simple: this KBLI is nationally open to foreign ownership in the data provided. For a foreign-owned company, the national classification signal is open rather than capped below full ownership.\n\nBali does not add a separate ownership percentage in this record, and none should be inferred. The Bali-side status is OK_or_HIGHER_RISK, with l4_bali_blocked marked false. The stated reason is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently, but this activity is not blocked under the given Bali reason. So the honest national-vs-Bali reading is not a contradiction: KBLI 33152 is nationally open to PMA up to 100%, and the Bali record does not mark it as blocked by the island-wide moratorium.",
+    "pullQuote": "The honest national-vs-Bali reading is not a contradiction: KBLI 33152 is nationally open to PMA up to 100%, and the Bali record does not mark it as blocked by the island-wide moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

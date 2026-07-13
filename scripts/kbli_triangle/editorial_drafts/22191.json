@@ -1,0 +1,27 @@
+{
+  "code": "22191",
+  "editorial": {
+    "headline": "Rubber Household Goods, With a Clear National and Bali Path",
+    "standfirst": "A manufacturing code for everyday rubber goods, open across all business scales and not blocked for PMA registration in Bali under the record supplied.",
+    "body": "This activity is the manufacturing of rubber goods intended for household use. In practical terms, it covers the making of rubber carpets and mats, rubber hoses, tubes, pipes and water hoses, rubber thread and cord, knitted or woven thread, rubber-coated fabric, rubber covers for roller frames, inflatable rubber mattresses and balloons, sponge or foam rubber, rubber brushes, and rubber waterbed mattresses. The scope also includes rubber doormats, bucket ropes, and flower pots. It is a broad but coherent manufacturing lane: household-use objects where rubber is the defining material, not a decorative or incidental input.\n\nThe record opens this activity to every stated business scale: Mikro, Kecil, Menengah, and Besar. That matters because the code is not presented as a narrow large-industry category only, nor as a protected small-enterprise lane. A small producer making rubber household items and a larger factory producing the same class of goods both sit within the stated scale range, provided the actual activity remains inside the scope described above. The scale field does not add a licence or a threshold; it simply says which sizes of business the record recognises as open for this activity.\n\nNationally, the PMA picture is straightforward. The record marks the activity as TERBUKA and gives a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. That means the national field supplied here treats the activity as open to foreign investment up to the full stated ceiling. There is no partial cap in the record, and no additional national condition is supplied, so the clean reading is that the national position is open rather than restricted.\n\nBali is also not blocked on this record, but the reason is important. The moratorium text says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. This activity is not caught by that block because the Bali reason states: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest Bali reading is neither a hidden local percentage nor a separate foreign-share cap. The record marks Bali as OK_or_HIGHER_RISK, with l4_bali_blocked set to false, because the supplied risk reasoning keeps it outside the moratorium block.",
+    "pullQuote": "The clean reading is that this rubber household-goods activity is nationally foreign-open and, on the supplied Bali record, not blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

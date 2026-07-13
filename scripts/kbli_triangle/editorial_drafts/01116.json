@@ -1,0 +1,27 @@
+{
+  "code": "01116",
+  "editorial": {
+    "headline": "Field Beans With a Clear Path for Bali PMA Registration",
+    "standfirst": "KBLI 01116 covers the full farming cycle for assorted horticultural beans, and the record shows it is open nationally and not blocked for PMA in Bali.",
+    "body": "KBLI 01116 is a farming activity for assorted beans other than soybeans, peanuts, and mung beans. In practical terms, it is the cultivation of horticultural bean crops such as buncis, long beans, red beans, peas, winged beans, lentils, lupin, pigeon peas, cow peas, and other comparable varieties named in the record. Its scope is not a single field task. It covers the agricultural chain when handled as one integrated activity: land preparation, seeding or nursery work, planting, maintenance, harvesting, and post-harvest handling.\n\nThat integrated character matters. A founder using this activity code is not simply describing trade in beans or a detached post-harvest service. The record points to farming itself, including nursery and seedling activities for assorted horticultural beans, and the field operations that make cultivation complete. It is a suitable frame for operators whose business identity is rooted in growing these crops, whether the operation is modest, expanding, or already structured at larger scale.\n\nThe scale picture is unusually straightforward. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar. That means the code is not reserved only for large agribusiness, nor confined to smallholders. It can describe a business across the full scale ladder recorded here, provided the registered activity remains within the stated farming scope: assorted bean cultivation, nursery or seedling work, and the connected land, planting, maintenance, harvest, and post-harvest sequence.\n\nThe foreign-investment picture is also clean. Nationally, the PMA status is TERBUKA, with a maximum foreign ownership figure of 100%. In Bali, the record does not show a PMA block. The Bali moratorium rule blocks Low and Medium-Low risk KBLI for PMA across the province, but this record’s Bali reason says the OSS risk at Besar scale is Menengah-Tinggi/Tinggi and therefore not blocked by the moratorium. The honest reading is simple: for this activity, the record supports a foreign-owned setup nationally, and it does not mark Bali as closed today.",
+    "pullQuote": "The honest reading is simple: for this activity, the record supports a foreign-owned setup nationally, and it does not mark Bali as closed today.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

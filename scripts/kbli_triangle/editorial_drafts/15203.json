@@ -1,0 +1,27 @@
+{
+  "code": "15203",
+  "editorial": {
+    "headline": "Industrial Footwear Built for Real Worksites",
+    "standfirst": "KBLI 15203 covers the making of specialist field and industrial shoes, nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 15203 is a manufacturing activity, but a very specific one: the production of footwear made for technical field use and industrial needs. The record points to shoes designed for demanding settings rather than ordinary retail footwear. It includes the making of the shoes themselves and the making of their parts, with materials ranging across leather, imitation leather, rubber, textile, and plastic. The examples in the scope are practical and physical: chemical-resistant shoes, heat-resistant shoes, and safety shoes.\n\nThat scope matters because this is not a broad fashion category dressed up in industrial language. The activity is anchored in protective and functional footwear: shoes built around exposure, durability, and workplace risk. A founder using this code would be registering a production activity for specialist footwear and components, not merely trading finished goods or operating a general shoe brand. The natural centre of gravity is manufacture: turning specified materials into shoes or shoe parts for field, safety, or industrial purposes.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar enterprises, which means it is not reserved only for large factories. A small workshop, a growing mid-sized producer, or a large industrial manufacturer can all sit within the registered scale range, provided the activity remains within the recorded scope. That breadth is important for founders because the code can describe both early production capacity and more formal industrial expansion without changing the essential nature of the activity.\n\nThe national-versus-Bali reading is clean. Nationally, the record marks the activity as TERBUKA, with a foreign-ownership ceiling of 100% under Perpres 10/2021, 49/2021. Bali does not add a separate foreign-ownership percentage in this record, and it is not marked as blocked: l4_bali_blocked is false. The Bali status is OK_or_HIGHER_RISK, with the reason stated as: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule still matters as background, because Bali province blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently, but this record’s own Bali reading does not place KBLI 15203 inside that block. In plain terms, this is a nationally foreign-open industrial footwear manufacturing code, and the slim record does not block it for PMA registration in Bali.",
+    "pullQuote": "This is a nationally foreign-open industrial footwear manufacturing code, and the slim record does not block it for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

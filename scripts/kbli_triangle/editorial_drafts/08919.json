@@ -1,0 +1,27 @@
+{
+  "code": "08919",
+  "editorial": {
+    "headline": "Chemical and Fertiliser Minerals With a Clear Bali Path",
+    "standfirst": "KBLI 08919 covers specialised mineral extraction for chemical and fertiliser inputs, open nationally to full foreign ownership and not blocked for PMA in Bali.",
+    "body": "KBLI 08919 is the classification for mining mineral materials whose main use is chemical or fertiliser-related, where the activity is not better captured by a more specific mineral category in the record. In practical English, this is a broad home for specialised extraction: natural barium sulphate and carbonate such as barite and witherite, natural borates, natural magnesium sulphate, natural pigments or earth colours, fluorspar, bentonite, dolomite, magnesite, pyrophyllite, alum, diatomite, and other minerals primarily used as chemical materials. It also includes guano mining, where the fertiliser material comes from bird or bat droppings.\n\nThe scope is not limited to digging the material from the ground. The record expressly includes cleaning, separating, and sorting these minerals, which matters because this code is about a mining activity with basic preparation steps attached to the extracted material. It also carries references to extension of IUP Production Operation stage for rock mining and for certain types of non-metal mineral mining. Those lines do not turn the editorial into a licensing manual, but they signal that this is a serious extractive classification, not a light trading or distribution activity.\n\nFor business registration, the scale picture is unusually broad. Mikro, Kecil, Menengah, and Besar are all permitted scales under the record. That means the classification is not reserved only for large operators in the slim record; it is available across the listed business scales. The substance, however, remains industrial: founders should read the activity as extraction and preparation of chemical or fertiliser minerals, not as retail sale, laboratory formulation, commodity brokerage, or general fertiliser commerce.\n\nThe foreign-investment position is clean. Nationally, the status is TERBUKA, with a foreign ownership ceiling of 100 under Perpres 10/2021, 49/2021. In Bali, the record does not block PMA registration: l4_bali_blocked is false, and the stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the province’s moratorium on Low and Medium-Low risk KBLI for PMA. The honest conclusion is therefore straightforward: this activity is foreign-open nationally, and the Bali screen in this record does not close the door today.",
+    "pullQuote": "The honest conclusion is straightforward: this activity is foreign-open nationally, and the Bali screen in this record does not close the door today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

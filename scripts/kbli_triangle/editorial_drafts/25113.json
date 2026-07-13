@@ -1,0 +1,27 @@
+{
+  "code": "25113",
+  "editorial": {
+    "headline": "Structural Steel for Heavy Construction, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 25113 covers the fabrication of major steel structural products, from bridges and hangars to power towers and water gates.",
+    "body": "KBLI 25113 is a manufacturing activity for structural steel products used in heavy construction. Its scope is not ordinary metalwork in a loose sense; the record points to steel structures made for demanding built assets: bridges, hangar buildings, high-voltage electricity towers, and water gates. The common thread is scale, structural function, and the production of steel components that become part of large infrastructure or heavy building works.\n\nThat makes this code most naturally relevant to businesses whose main activity is fabrication rather than design, contracting, trading, or installation. A founder registering it should be comfortable describing the business as an industrial producer of steel structural products. The scale field is broad: the record opens the activity to Mikro, Kecil, Menengah, and Besar businesses. In plain terms, the classification is not reserved only for large industrial groups, even though the examples in the scope clearly sit in the world of heavy construction.\n\nNationally, the PMA position is straightforward. The record marks the activity as TERBUKA, with `pma_max_asing` at 100. That means the national foreign-ownership ceiling shown in the record is 100%. There is no lower foreign-stake cap in the supplied data, and no separate licence, capital threshold, tax condition, or timeline is stated here. The source field is also explicit: Perpres 10/2021, 49/2021. For a foreign-owned setup, the national picture is therefore clean: this is recorded as open, and the ceiling is full foreign ownership.\n\nThe Bali reading is also unusually clear. The record does not mark this activity as blocked in Bali. Its Bali status is `OK_or_HIGHER_RISK`, and the stated reason is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. Here, the record says the activity is not blocked by that moratorium. So the honest national-vs-Bali conclusion is not a contradiction: nationally this is foreign-open, and on the Bali side the supplied record does not block PMA registration for this activity.",
+    "pullQuote": "The honest national-vs-Bali conclusion is not a contradiction: nationally this is foreign-open, and on the Bali side the supplied record does not block PMA registration for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

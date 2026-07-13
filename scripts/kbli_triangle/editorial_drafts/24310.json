@@ -1,0 +1,27 @@
+{
+  "code": "24310",
+  "editorial": {
+    "headline": "Iron and Steel Casting With a Clear Bali Opening",
+    "standfirst": "KBLI 24310 covers the foundry work of melting, blending, and casting iron and steel into rough cast products, with all business scales open in the record.",
+    "body": "KBLI 24310 is a foundry activity: the melting, mixing, casting, or pouring of iron and steel into rough cast products. The record frames the output as cast iron, cast steel, and alloy cast steel, not finished retail goods or downstream installation services. Its scope also reaches semi-finished iron and steel castings, grey cast iron, spheroidal graphite cast iron, malleable cast iron, cast-steel products, cast-iron tubes, pipes, hollow profiles, tube and pipe fittings, seamless steel tubes and pipes made through centrifugal casting, and fittings made from cast steel.\n\nThat makes this a production code for operators whose business is the casting process itself. The scale picture is broad: the record lists Mikro, Kecil, Menengah, and Besar as open to this activity. In plain terms, the classification is not written only for heavy industrial players; it can sit across the whole scale range in the slim record. The commercial substance, however, remains specific: iron and steel are melted or cast into rough or semi-finished forms, including tube, pipe, profile, and fitting outputs when those outputs arise from the casting activity described.\n\nNationally, the foreign-investment position is clean. The record marks the PMA status as TERBUKA and gives pma_max_asing as 100%, sourced to Perpres 10/2021, 49/2021. A foreign investor reading only the national field would see a fully open national ceiling. There is no lower percentage cap in the record, and no extra threshold, capital rule, or licensing condition appears in the slim data, so none should be implied.\n\nThe Bali side is also clear, but it should be read for what it actually says. The province-wide moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, but this activity is not marked as blocked in Bali. Its l4_bali_status is OK_or_HIGHER_RISK, and the stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” For this code, the honest national-vs-Bali reading is therefore aligned: it is nationally open to PMA up to 100%, and the Bali record does not block PMA registration under the moratorium field provided.",
+    "pullQuote": "For this code, the honest national-vs-Bali reading is therefore aligned: it is nationally open to PMA up to 100%, and the Bali record does not block PMA registration under the moratorium field provided.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "27202",
+  "editorial": {
+    "headline": "Electric Accumulator Manufacturing: Open Nationally, Blocked in Bali",
+    "standfirst": "This activity covers the making of electric accumulators and their components, with full-scale national openness but a clear Bali PMA block.",
+    "body": "**KBLI 27202 is about manufacturing electric accumulators, not merely trading or installing them.** The record describes the activity as the making of various electric accumulators and their components, including 6 V or 12 V batteries with power of 200 A or less. It also reaches into the physical parts that make the accumulator work: battery plates, separators, containers, covers or wrapping, poles, and toothed battery clamps. In plain English, this is the industrial code for producing the battery unit and its core components, from the casing to the conductive and connecting parts.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so it is not framed only as a large-factory category. A small producer, a medium industrial operator, or a larger manufacturing company can all sit within the formal scale range described by the record, provided the registered activity is the manufacture of electric accumulators and the listed components. That breadth matters because the code’s scope is technical but not narrow: it covers the finished accumulator and the parts that define its industrial production chain.\n\nNationally, the foreign-investment picture is clean. The record marks the activity as **TERBUKA**, with `pma_max_asing` at **100%**, sourced to **Perpres 10/2021, 49/2021**. That means the national record treats this activity as open to full foreign ownership. There is no lower national ceiling in the slim record, and there is no additional national condition supplied here. The honest national reading is therefore straightforward: for Indonesia as a whole, this activity is foreign-open up to the full percentage stated in the record.\n\nBali is the decisive exception. The same record marks the Bali status as **Blocked (risk class)** and sets `l4_bali_blocked` to true. The stated reason is that OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, which is blocked by the Bali moratorium in May 2026. The moratorium rule is even broader in wording: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, with the source given as **Gubernur letter B.27.000/642/PM/DPMPTSP**. So the practical editorial lede is not the national openness; it is the Bali block. A foreign-owned company may see a 100% national ceiling in the record, but for Bali PMA registration today this activity is marked as blocked.",
+    "pullQuote": "A foreign-owned company may see a 100% national ceiling in the record, but for Bali PMA registration today this activity is marked as blocked.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

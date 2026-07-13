@@ -1,0 +1,27 @@
+{
+  "code": "25910",
+  "editorial": {
+    "headline": "Where Metal Takes Its Finished Shape",
+    "standfirst": "KBLI 25910 covers forging, pressing, shaping, rolling and powder-metallurgy metal work, open across every business scale and nationally open to foreign ownership.",
+    "body": "KBLI 25910 is the industrial code for the point at which metal is physically formed into usable shape. Its scope covers forging, pressing, moulding and making metal from steel, iron and non-ferrous metals into forged, pressed or rolled forms. It also includes making metal objects directly from metal powder through heating or pressing: the powder-metallurgy process named in the record. This is not the extraction of metal, nor the making of metal powder itself; it is the shaping and formation stage, including cutting or descaling after the forming process when there is no further processing.\n\nThat makes the activity broad, but not vague. A founder registering under this code is describing a business whose core work is metal transformation by force, pressure, heat or forming technology. The registered scale can be Mikro, Kecil, Menengah or Besar, so the record does not reserve this activity for only large industrial operators. It can describe a small metal-forming workshop as well as a larger production business, provided the activity remains within the stated scope: forging, pressing, moulding, rolling, powder metallurgy, and the limited post-forming cleaning or cutting allowed by the classification text.\n\nThe national foreign-investment picture is straightforward. The record marks the activity as TERBUKA, with pma_max_asing at 100. In plain English, the national framework treats this code as open to foreign ownership up to 100%, using the source stated in the record. There is no lower cap in the slim record, and no special threshold, licence, capital figure or timeline is stated here; those should not be inferred from the classification alone.\n\nBali does not change that into a closure on this record. The Bali status is OK_or_HIGHER_RISK and l4_bali_blocked is false. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. Because this record’s Bali reason places the large-scale OSS risk at Menengah-Tinggi/Tinggi, the activity is not blocked by that moratorium. The honest reading is therefore clean: nationally open, 100% foreign ownership in the record, and not marked as blocked for PMA registration in Bali.",
+    "pullQuote": "The honest reading is clean: nationally open, 100% foreign ownership in the record, and not marked as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

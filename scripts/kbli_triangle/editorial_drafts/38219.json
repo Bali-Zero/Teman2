@@ -1,0 +1,27 @@
+{
+  "code": "38219",
+  "editorial": {
+    "headline": "Non-Hazardous Waste Treatment With a Clear Bali Path",
+    "standfirst": "KBLI 38219 is for operators handling non-hazardous waste disposal and treatment, nationally open to PMA and not blocked by Bali’s moratorium.",
+    "body": "**KBLI 38219 sits in the practical infrastructure of waste management:** the operation of land used for disposing of non-hazardous waste and rubbish, and the treatment of non-hazardous waste through heat, burning, incineration, or other methods. The record also includes organic waste treatment for disposal, and thermal treatment of non-hazardous waste that does not produce electricity. In plain English, this is not a general recycling label and not an energy-generation category. It is the business activity for handling non-hazardous waste and bringing it to disposal or treatment, with the possible output of industrial raw materials or other by-products, but expressly outside electricity production.\n\nThat distinction matters because the code is grounded in process and operating responsibility. A company registering this activity is presenting itself as an operator of disposal land, thermal handling, incineration, or comparable treatment methods for waste that the record defines as non-hazardous. The scope is not limited to one business size: the record opens it to Mikro, Kecil, Menengah, and Besar scales. In registration terms, that means the activity can sit across the full range of business scales recorded here, from micro operations through large-scale operators, without the slim record excluding any scale category.\n\nThe national foreign-investment picture is unusually clean. The PMA status is TERBUKA, with pma_max_asing recorded at 100, sourced to Perpres 10/2021, 49/2021. Said plainly, the national record treats this activity as open to foreign ownership up to 100%. There is no foreign-share cap below full ownership in the data supplied, and there is no extra threshold, licence, capital figure, tax condition, or timeline stated in the record. For a foreign-owned setup, the reliable national reading is therefore direct: this code is open, and the recorded foreign-ownership ceiling is 100%.\n\nBali does not change that into a hidden local cap. With l4_bali_blocked remaining false, the Bali-side status is OK_or_HIGHER_RISK. The record’s reason is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule itself blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently, but this record does not mark KBLI 38219 as blocked in Bali. The honest national-versus-Bali conclusion is therefore aligned rather than contradictory: nationally foreign-open, and not blocked for PMA registration in Bali under the Bali moratorium data provided.",
+    "pullQuote": "The honest national-versus-Bali conclusion is therefore aligned rather than contradictory: nationally foreign-open, and not blocked for PMA registration in Bali under the Bali moratorium data provided.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

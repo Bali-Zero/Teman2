@@ -1,0 +1,27 @@
+{
+  "code": "28179",
+  "editorial": {
+    "headline": "Office Equipment Manufacturing, Without a Bali Moratorium Block",
+    "standfirst": "KBLI 28179 covers the manufacture of office equipment such as toner cartridges, writing boards, and dictation machines, and is nationally open to PMA ownership.",
+    "body": "KBLI 28179 is a manufacturing classification for office equipment. The record describes it as covering the production of several kinds of office equipment, including toner cartridges, white boards and marker boards with writing and drawing surfaces, and dictation machines. In plain English, this is not a retail or office-services activity. It is the industrial making of physical office-use products: the consumables, presentation surfaces, and equipment that support daily administrative work. The scope is modest but concrete, and that matters because the code is defined by manufacture, not by distribution, installation, repair, or general office supply trading.\n\nThe activity is open across the full scale ladder recorded for the code: Mikro, Kecil, Menengah, and Besar. That means the classification is not framed only for a large factory profile, even though industrial manufacturing can naturally reach that scale. A founder reading this code should first ask whether the planned business is truly making the products described in the scope. If the commercial plan is centred on producing toner cartridges, writing boards, marker boards, or dictation machines, the record supports this code as the relevant activity. If the business is doing something outside that manufacturing scope, the record gives no permission to stretch this code to cover it.\n\nNationally, the PMA position is straightforward. The code is marked TERBUKA, with a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. Put plainly, the national record treats this activity as open to foreign investment up to 100% foreign ownership. There is no lower foreign-equity ceiling in the slim record, and there is no stated special threshold, minimum capital figure, licence condition, or timeline to add. For editorial purposes, the important national point is therefore simple: this code is foreign-open nationally, and the recorded ownership ceiling reaches the full 100%.\n\nThe Bali picture does not reverse that conclusion. For Bali, the entry sets l4_bali_blocked to false and assigns the status OK_or_HIGHER_RISK. Its reason is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The Bali moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this code is not recorded as blocked by that moratorium. So the honest national-versus-Bali reading is clean: KBLI 28179 is nationally open to PMA ownership at 100%, and the slim Bali record does not mark it as blocked for PMA registration in Bali.",
+    "pullQuote": "The honest reading is clean: KBLI 28179 is nationally open to PMA ownership at 100%, and the Bali record does not mark it as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

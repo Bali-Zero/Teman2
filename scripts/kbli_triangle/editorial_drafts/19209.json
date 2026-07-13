@@ -1,0 +1,27 @@
+{
+  "code": "19209",
+  "editorial": {
+    "headline": "Beyond Fuel: The Industrial By-Products of Refining",
+    "standfirst": "This activity covers the manufacture of non-fuel refinery-derived products, from bitumen and petroleum coke to waxes, white spirit, and petroleum jelly.",
+    "body": "This activity is not about selling fuel. It is the manufacturing category for the other material outputs of petroleum refining: asphalt or tar, rubber-modified asphalt, bitumen, and waxes used for surfaces and coatings such as roads, roofs, wood, and paper. It also reaches into heavier and more specialised refinery derivatives, including petroleum coke, products for the petrochemical industry, white spirit, vaseline, paraffin wax, and petroleum jelly. The record also includes products made from petroleum-waste materials other than lubricating oil, such as sludge oil.\n\nThat range gives the code a deliberately industrial character. It is for operators turning refinery outputs into usable intermediate or finished materials, not for a narrow retail or distribution activity. A company registering under it should be able to recognise itself in the act of making these products: processing, formulating, or producing refinery-derived goods for construction, industrial, petrochemical, or material-use contexts. The scope is broad, but it is still anchored in one clear idea: manufacture of other products from petroleum refinery results.\n\nThe scale position is unusually open. The slim record marks the activity as open to Mikro, Kecil, Menengah, and Besar. In plain English, the registration window is not limited to large industrial players only; the scale field recognises the full span of business sizes listed in the record. That does not create extra licences, capital figures, or operational permissions by itself. It simply means that, for this activity, the record’s scale field does not exclude micro, small, medium, or large registration categories.\n\nThe foreign-ownership picture is also clear. Nationally, the activity is marked TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. For a PMA reading the record, that means the national foreign-ownership ceiling is 100%. The Bali-side result does not contradict that national ceiling. The record says l4_bali_blocked is false and gives the reason as: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record remains strict — Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent) — but this activity is not marked as blocked in Bali. The honest conclusion is therefore direct: nationally open to foreign ownership up to 100%, and not blocked for PMA registration in Bali under the Bali status recorded here.",
+    "pullQuote": "The honest conclusion is direct: nationally open to foreign ownership up to 100%, and not blocked for PMA registration in Bali under the Bali status recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "25934",
+  "editorial": {
+    "headline": "General Metal Hardware, Open Nationally and Not Moratorium-Blocked in Bali",
+    "standfirst": "KBLI 25934 covers the making of everyday metal hardware, with national PMA openness and a Bali record that does not block it under the moratorium.",
+    "body": "KBLI 25934 is a practical manufacturing category: the making of general metal equipment that sits inside buildings, furniture, and everyday fitted objects. The slim record names keys, padlocks, door locks, hinges, bolts, and similar metal fittings as examples. In plain English, this is not a broad lifestyle or retail activity; it is the production side of common metal hardware, the kind of component manufacturing that supports construction, interiors, furniture, security, and related uses.\n\nThe activity is open across the full scale range recorded here: Mikro, Kecil, Menengah, and Besar. That matters because the category is not framed only for one size of operator. A small workshop making hinges and locks can sit inside the same activity description as a larger industrial setup, provided the business is genuinely manufacturing this kind of general metal equipment. The editorial discipline is important: the record gives the product scope and the eligible scales, but it does not add special permits, technical thresholds, timelines, tax treatment, or capital rules. Those cannot be inferred from the title alone.\n\nNationally, the PMA picture is clean. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, meaning the foreign-ownership ceiling should be rendered as 100%. The cited source is Perpres 10/2021, 49/2021. For a foreign-owned structure, the national reading is therefore not a partial opening or a closed lane: on the record provided, this activity is foreign-open up to the stated ceiling. That conclusion comes directly from the PMA fields, not from any neighbouring classification or assumed industry pattern.\n\nBali is the more important check, because the island-wide moratorium can block PMA registration for activities that are otherwise open nationally. Here, the record does not mark KBLI 25934 as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says Bali province blocks all Low + Medium-Low risk KBLI for PMA, island-wide and permanent; this activity is not caught by that block on the provided Bali assessment. The honest reading is therefore straightforward: nationally open, and not blocked for PMA registration in Bali by the moratorium record supplied.",
+    "pullQuote": "The honest reading is therefore straightforward: nationally open, and not blocked for PMA registration in Bali by the moratorium record supplied.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

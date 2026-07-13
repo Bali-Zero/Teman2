@@ -1,0 +1,27 @@
+{
+  "code": "47302",
+  "editorial": {
+    "headline": "Fuel Retail Beyond Filling Stations: The National and Bali Position",
+    "standfirst": "This activity covers retail fuel distribution beyond filling-station premises, from fuel agents to specified LPG agents, with national foreign ownership open up to 100%.",
+    "body": "This activity is for retail trade in petroleum fuel, gaseous fuels and other fuels conducted outside fuel-filling facilities. Its scope includes fuel oil, LPG, LNG, CNG and other fuel types supplied for land, sea and air transport, whether or not lubricant sales accompany the trade. In practical terms, it speaks to the agent model: fuel agents and specified LPG agents, including agents for 3 kg LPG.\n\nIt is an activity available across the full business-scale range recorded here: micro, small, medium and large. That breadth matters because the classification is not confined to a single size of operator. The common thread is the retail supply of fuel outside filling-station premises, rather than a particular corporate form, sales channel or commercial ambition beyond the scope stated in the record.\n\nNationally, the position is open to foreign investment. The foreign-ownership ceiling is 100%, under the cited presidential regulations. That is a clear national setting, but Bali requires its own reading rather than an automatic assumption. The Bali status is recorded as OK_or_HIGHER_RISK, and the activity is not marked as blocked for PMA registration. For large-scale operations, the OSS risk assessment is medium-high or high; the record therefore states that it is not blocked by Bali’s moratorium.\n\nThe distinction is material because Bali’s permanent, island-wide rule blocks PMA registration for all low- and medium-low-risk KBLI activities. This activity is not placed in that blocked position in the record. A foreign investor considering fuel-agent or specified-LPG-agent retail activity in Bali can therefore read the result plainly: national ownership is open up to 100%, and Bali does not block this activity under the stated moratorium basis. The operative caution is not a hidden prohibition, but the need to keep the business within the actual fuel-retail scope described here and to recognise the recorded higher-risk position at large scale.",
+    "pullQuote": "National ownership is open up to 100%, and Bali does not block this activity under the stated moratorium basis.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

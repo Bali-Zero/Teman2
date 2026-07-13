@@ -1,0 +1,27 @@
+{
+  "code": "20125",
+  "editorial": {
+    "headline": "Biostimulants Sit Squarely Inside Industrial Manufacturing",
+    "standfirst": "KBLI 20125 covers the making of biostimulants, including seaweed-based products and plant-growth promoters, with a clean national and Bali registration picture.",
+    "body": "KBLI 20125 is a manufacturing activity, not a loose agricultural service or a trading label. The slim record defines it as the making of biostimulants, including biostimulants made from seaweed, and it explicitly includes the making of plant-growth promoters. That is the core commercial substance of the code: the activity is about production. A founder using this classification should therefore understand it as a factory-side or processing-side category for products intended to stimulate plant growth, with seaweed named as one example of the underlying material.\n\nThe scale picture is unusually broad. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** scales, which means the classification is not reserved only for large industrial operators. It can describe a small producer as well as a bigger manufacturing platform, provided the registered activity remains the making of biostimulants within the stated scope. The important editorial point is not that every scale has the same operational reality, but that the record itself recognises the activity across the full scale ladder.\n\nNationally, the PMA position is clear. The record marks the activity as **TERBUKA**, and the stated maximum foreign ownership is **100%**. In plain English, the national record treats this code as open to foreign ownership up to the full stated ceiling. There is no separate cap in the record below that figure, and there is no basis here to add a hidden ownership condition, capital threshold, licensing timeline, or special local-shareholding rule. The source field given for that national position is Perpres 10/2021, 49/2021, and that is as far as the record goes.\n\nThe Bali layer is also clear, but it needs to be read precisely. Bali’s moratorium rule in the record blocks **all Low and Medium-Low risk KBLI for PMA**, island-wide and permanently. This code, however, is not marked as blocked in Bali. Its Bali status is **OK_or_HIGHER_RISK**, and the reason is stated directly: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. So the honest national-vs-Bali picture is not a contradiction. Nationally, KBLI 20125 is foreign-open up to 100%; in Bali, the record does not mark it as blocked by the moratorium because the stated Besar-scale OSS risk sits above the Low and Medium-Low band that Bali blocks.",
+    "pullQuote": "Nationally, KBLI 20125 is foreign-open up to 100%; in Bali, the record does not mark it as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "13913",
+  "editorial": {
+    "headline": "Knitted Artificial Fur Manufacturing, Open Nationally and in Bali",
+    "standfirst": "KBLI 13913 covers knitted artificial fur manufacturing, open across all business scales with a full national PMA ceiling and no Bali moratorium block in the record.",
+    "body": "KBLI 13913 is a narrow manufacturing classification: the making of artificial fur produced by knitting. The activity is not framed as trading, finishing, or a broad textile catch-all in the record; its centre of gravity is the production process itself. For a founder, that matters because the code describes an industrial activity with a specific material outcome: knitted imitation fur, made as a manufactured product rather than treated as a general garment or retail category.\n\nThe record opens this activity to every listed business scale: Mikro, Kecil, Menengah, and Besar. That range gives the code a wide registration profile, from small operators through larger industrial setups, without the slim record adding any separate threshold, capital rule, or extra scale condition. The editorial reading should therefore stay disciplined: the scale story is broad, but only because the record says each of those four scales is open.\n\nNationally, the PMA position is clean. The status is TERBUKA, and the foreign-ownership ceiling is 100%. In plain English, the record treats this as fully open to foreign ownership at the national level. There is no partial cap to explain, no minority ceiling to soften, and no hidden percentage to infer. The source line for that national position is recorded as Perpres 10/2021, 49/2021, but the operational takeaway is simpler: for this activity code, the national PMA field does not constrain the foreign stake below full ownership.\n\nThe Bali picture is also open on the facts given. Bali’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province, but this code is not marked as blocked. The Bali status is OK_or_HIGHER_RISK, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. That is the honest national-versus-Bali conclusion here: KBLI 13913 is nationally open to PMA up to 100%, and the record does not block PMA registration in Bali under the provincial moratorium.",
+    "pullQuote": "The honest national-versus-Bali conclusion is that KBLI 13913 is fully open nationally and not blocked by Bali’s moratorium in the record.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

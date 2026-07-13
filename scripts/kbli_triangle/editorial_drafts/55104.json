@@ -1,0 +1,27 @@
+{
+  "code": "55104",
+  "editorial": {
+    "headline": "Two-Star Hotels: Nationally Open, Bali Depends on the Declared Scope",
+    "standfirst": "For two-star hotel stays, nationwide foreign ownership may reach 100%; in Bali, PMA registration rests on the exact scope and its live OSS risk treatment.",
+    "body": "KBLI 55104 is the operating category for two-star hotels that provide short-stay accommodation, usually by the day or week, using part or all of a building. It concerns a stay of limited duration. The accommodation can include furnishings in living areas and suites. The scope also permits a broader service layer: daily cleaning and bed-making, food and beverage service, laundry, and conference or convention facilities may be provided. Direct, on-site customer service is identified as the characteristic way the activity is generally delivered. The record expressly covers both buildings of up to 6,000 square metres and buildings above that area. Whether the whole building or only part is used, the short-stay hotel activity remains within the stated scope.\n\nThe registration field is open to Kecil, Menengah and Besar scales. All three appear in the record as permitted scales for this activity. The scope can therefore be read alongside a registration opening that reaches small, medium and large scales. Nationally, the PMA status is TERBUKA, with a 100% foreign-ownership ceiling. That is the national ownership position recorded for the activity, and the record attributes it to Perpres 10/2021, 49/2021. It is an unambiguous national position for a foreign-owned project. The Bali layer is different: the provincial rule permanently blocks PMA registration across the island for all KBLI activities assessed as low or medium-low risk.\n\nIn Bali, however, the record does not treat this activity as an unconditional block. Its status is scope-dependent, and at Besar scale the OSS risk is low for some scope declarations and higher for others. PMA registration is possible only when the higher-risk scope is declared, with live OSS verification required for the precise activity. This is the central practical distinction: the national 100% ceiling does not automatically produce a registrable PMA outcome in Bali; a low- or medium-low-risk declaration remains inside the island-wide block. Nor does the Bali record state a universally closed result, because a higher-risk scope may be registrable. The exact scope declaration and its live OSS risk treatment therefore determine the Bali answer. Live verification is expressly tied to the exact activity, not a broad category.",
+    "pullQuote": "The national 100% ceiling does not automatically produce a registrable PMA outcome in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

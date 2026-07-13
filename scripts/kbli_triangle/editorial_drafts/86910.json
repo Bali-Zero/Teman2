@@ -1,0 +1,27 @@
+{
+  "code": "86910",
+  "editorial": {
+    "headline": "The Business of Connecting Patients and Providers",
+    "standfirst": "This code covers health-service intermediation—not the delivery of medical care—and gives Bali a scope-dependent PMA answer.",
+    "body": "KBLI 86910 is not the provision of medical, dental, or other human-health services. It is the business of bringing clients together with those providers for a fee or commission, while the intermediary does not itself deliver the service being arranged. The activity can operate through a digital platform or through non-digital channels: face-to-face contact, door-to-door work, telephone, letters, and similar routes. Telemedicine is among the examples given. Booking appointments for medical visits is expressly within the group. Income may come from clients or providers, and may also include sources such as advertising revenue. Intermediation for residential care is outside this activity.\n\nThe code is open to Mikro, Kecil, Menengah, and Besar businesses. Its scope specifically addresses non-exempt PPMSE and Penyelenggara Sarana Perantara operators established within Indonesia, as well as non-exempt operators established outside Indonesia that conduct PMSE business in Indonesia. It also extends beyond those operator categories. The practical centre of gravity is therefore the intermediary role: organising the connection between a client and a health-service provider, rather than becoming the provider of care.\n\nAt the national level, PMA is TERBUKA and permits foreign ownership up to 100%. That makes this an activity with full foreign ownership available at the national level under the cited presidential regulations. The ceiling matters because it describes the national PMA position for this activity; it does not, by itself, answer whether a particular declaration can be registered in Bali.\n\nBali’s position is conditional on scope rather than simply blocked. The provincial rule permanently blocks PMA registration for all Low and Medium-Low risk KBLI island-wide. For this activity, the record says that OSS risk at the Besar scale is low for some scopes and higher for others. PMA registration in Bali is available only by declaring the higher-risk scope, with PPMSE for platform-trade codes given as an example, and the exact activity must be checked in live OSS. A national 100% foreign-ownership ceiling does not, on its own, settle the Bali registration question.",
+    "pullQuote": "A national 100% foreign-ownership ceiling does not, on its own, settle the Bali registration question.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA maximum",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

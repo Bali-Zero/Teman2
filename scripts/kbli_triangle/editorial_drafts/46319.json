@@ -1,0 +1,23 @@
+{
+  "code": "46319",
+  "editorial": {
+    "headline": "Wholesale Trade in Agricultural Foods, Drinks, Spices and Seasonings",
+    "standfirst": "This wholesale activity is nationally open to full foreign ownership, yet Bali’s permanent PMA moratorium means it cannot be registered there today.",
+    "body": "KBLI 46319 concerns the wholesale trade in other food and beverage products of agricultural origin. Its stated scope expressly includes seasoning plants and spices, placing these products at the centre of the activity’s commercial description. The operative language is wholesale trade: the record defines a business activity built around wholesale dealing in that category of agricultural food and drink. It does not provide a broader catalogue, so the stated examples are the clearest guide to what belongs within the classification. Seasoning plants and spices are the concrete examples supplied to make the category legible.\n\nThe code is open to registrations at Mikro, Kecil, Menengah and Besar scales. On the national investment position, it is TERBUKA, with a foreign-ownership ceiling of 100%. Perpres 10/2021 and 49/2021 are the sources listed for that position. The result is unambiguous at national level: foreign investment may hold the activity up to the stated full ceiling. That national conclusion is an ownership setting, not a Bali registration guarantee; it answers the national ceiling for foreign participation, while a regional rule can still decide PMA registrability in Bali.\n\nBali is where a founder must draw a hard line between national openness and local registrability. The Bali status marks the activity blocked on risk-class grounds: a PMA applicant cannot register it in Bali today. The reason is given in operational terms. At Besar scale, every scope is assessed in OSS as Rendah or Menengah-Rendah — Low or Medium-Low risk — and Bali’s island-wide, permanent PMA moratorium blocks registrations in those risk bands. The record ties that block to May 13, 2026.\n\nThat does not reduce the national foreign-ownership ceiling; it changes the answer to registration in Bali. Someone reading only the national status could correctly see an activity open to 100% foreign ownership and still reach the wrong conclusion for Bali. The accurate reading holds both facts together: nationally the activity is open to PMA, while in Bali the moratorium blocks a PMA registration because of the specified risk treatment at the stated scale. For any Bali plan, that local block is the controlling fact.",
+    "pullQuote": "National openness does not create a PMA registration path in Bali while the moratorium applies.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

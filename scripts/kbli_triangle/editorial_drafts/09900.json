@@ -1,0 +1,27 @@
+{
+  "code": "09900",
+  "editorial": {
+    "headline": "Mining Support Work That Stops Short of Operating the Mine",
+    "standfirst": "KBLI 09900 covers contracted support services around mining and quarrying, nationally open to foreign investment and not marked as Bali-moratorium blocked.",
+    "body": "KBLI 09900 is for the work that surrounds a mine or quarry without becoming the mine or quarry operator itself. The record defines it as support services supplied for a fee or under contract, needed in mining and quarrying activity. In practical English, this is the technical and operational help around extraction: exploration support, traditional ore sampling, geological observation at prospective mine locations, pumping and drying mined output, trial excavation, trial drilling of wells or mining fields, and other site-side support tasks.\n\nThe scope is deliberately industrial and hands-on. It also includes third-party agglomeration and concentration of iron ore, securing mine shafts and tunnels, and demolishing structures or dismantling components and equipment inside underground mining facilities. That makes the code broad, but not unlimited. The record draws a boundary around it: it does not cover operating a mine or quarry under contract, specialist repair of mining machinery, or geophysical survey services supplied under contract. The centre of gravity is support, preparation, handling, safety, and dismantling around mining infrastructure, not taking over the extraction business itself.\n\nOn the registration side, the scale picture is unusually complete. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar scale businesses. Nationally, the foreign-investment position is also plain: the PMA status is TERBUKA, and the maximum foreign ownership figure in the record is 100%. The cited national source is Perpres 10/2021, 49/2021. There is no smaller national ceiling in the record, so the editorial point should not be softened into uncertainty: as recorded here, this activity is nationally open to foreign ownership up to the stated ceiling.\n\nThe Bali reading is more specific, and it matters because the Bali moratorium is not a general mood but a rule applied through the record’s risk logic. The moratorium text says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. KBLI 09900, however, is not marked as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the reason given is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. So the honest national-vs-Bali picture is clean: this is a nationally open PMA activity with a 100% foreign-ownership ceiling, and the Bali-side record does not mark it as blocked by the moratorium.",
+    "pullQuote": "The honest national-vs-Bali picture is clean: this is nationally open to PMA and not marked as Bali-moratorium blocked.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

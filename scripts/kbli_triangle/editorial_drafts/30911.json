@@ -1,0 +1,27 @@
+{
+  "code": "30911",
+  "editorial": {
+    "headline": "Two- and Three-Wheel Vehicle Manufacturing, Without a Bali Block",
+    "standfirst": "KBLI 30911 covers complete manufacturing and assembly of motorcycles, scooters, mopeds and similar two- or three-wheel vehicles, open nationally to full foreign ownership.",
+    "body": "KBLI 30911 is the industrial category for making and fully assembling two- and three-wheel motor vehicles. The record describes a broad manufacturing scope: motorcycles, mopeds, scooters, bemo, side-cars, skateboards and similar vehicles, whether driven by spark-ignition piston engines, rotary engines, or electric motors. It also includes the making and remaking of multipurpose two- and three-wheel motor vehicles. In plain English, this is not a retail, workshop, or distribution activity; it is the production-side category for building the vehicle itself.\n\nThe registration profile is unusually wide. The slim record opens this activity to every listed business scale: Mikro, Kecil, Menengah and Besar. That matters because the category is not framed only for a large industrial plant. A smaller domestic-scale manufacturer and a larger production operation both sit within the scale range stated in the record, provided the registered activity remains inside the manufacturing and complete-assembly scope described above.\n\nNationally, the foreign-investment position is clear. The PMA status is TERBUKA, and the maximum foreign ownership figure is 100%. There is no partial ceiling in this record, no local shareholder percentage stated, and no special ownership formula to infer. Perpres 10/2021, 49/2021 is the cited source for that national position. On the record provided, the correct national reading is therefore straightforward: KBLI 30911 is open for foreign-owned registration up to full foreign ownership.\n\nThe Bali reading is also cleaner than many founders expect. The record does include Bali’s moratorium rule: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” But this activity is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, `l4_bali_blocked` is false, and the stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest national-vs-Bali picture is this: KBLI 30911 is nationally open to PMA, and the record does not block it for PMA registration in Bali under the moratorium logic supplied. That is not a promise about site approvals, industrial suitability, or operational permits; it is simply the registration reading traceable to this slim record.",
+    "pullQuote": "The honest reading is that KBLI 30911 is nationally open to full foreign ownership and is not marked as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

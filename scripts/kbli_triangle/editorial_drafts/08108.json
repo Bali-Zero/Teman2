@@ -1,0 +1,27 @@
+{
+  "code": "08108",
+  "editorial": {
+    "headline": "Pumice Quarrying, Open Nationally and Not Bali-Blocked",
+    "standfirst": "KBLI 08108 covers pumice excavation and cleaning, open across business scales with full foreign ownership nationally and no PMA moratorium block in Bali.",
+    "body": "KBLI 08108 is a mining-and-quarrying activity with a very specific material at its centre: batu apung, or pumice. The record defines it as a light-coloured rock containing froth formed from glass-walled bubbles, commonly understood as a volcanic silicate glass rock. In plain terms, this code is for the extraction of that material from the ground, and it also includes the cleaning work attached to the quarrying activity. It is not a general stone-trading code and it is not an all-purpose construction-material category; the scope is anchored to pumice excavation and its immediate cleaning process.\n\nThe record also places the activity in the language of rock mining administration. It names IUP Tahap Eksplorasi Batuan and Perpanjangan IUP Tahap Operasi Produksi Batuan in the slim scope, so the activity sits within the rock exploration and production-operation vocabulary used for this kind of quarrying. That matters editorially because the code is not merely describing a commercial product; it is describing an extractive activity whose regulatory identity is tied to the quarry itself. The available business scales are broad: Mikro, Kecil, Menengah, and Besar are all open to this code, which means the classification is not reserved only for large operators in the record.\n\nAcross Indonesia, the foreign-investment path is clear. With PMA status marked TERBUKA, foreign ownership may reach 100%. On the record provided, there is no partial foreign-stake cap to soften or explain away: this is nationally open to full foreign ownership, with the cited source listed as Perpres 10/2021, 49/2021. For a foreign-owned setup, the important point is precision. The opening is national, it applies to this activity as recorded, and the permitted foreign percentage is the full ceiling stated in the data.\n\nBali does not reverse that result on this record. The Bali status is OK_or_HIGHER_RISK, and the stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The moratorium rule itself is still severe: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But this record says KBLI 08108 is not caught by that block. The honest reading is therefore clean: a foreign investor can treat this code as nationally open and, on the Bali moratorium field supplied here, not blocked for PMA registration in Bali today.",
+    "pullQuote": "The honest reading is therefore clean: a foreign investor can treat this code as nationally open and, on the Bali moratorium field supplied here, not blocked for PMA registration in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

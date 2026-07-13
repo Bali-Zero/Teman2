@@ -1,0 +1,27 @@
+{
+  "code": "64210",
+  "editorial": {
+    "headline": "A Holding Company’s Narrow Mandate Meets Bali’s PMA Stop",
+    "standfirst": "A holding company may own and consolidate subsidiaries; national foreign ownership is open, but Bali blocks its PMA registration under a permanent risk-based moratorium.",
+    "body": "This activity is for the parent at the top of a corporate group: a company that holds and manages equity interests in one or more subsidiaries and bears responsibility as their owner. Its role is ownership, not the daily command of the businesses beneath it. It may exercise control, consolidate financials and take responsibility for subsidiary activity, but the record draws a firm line at active management. Strategic planning, decision-making and head-office administration are not the work described here; neither are own-account financial-market trading or asset management performed for a fee or under contract.\n\nThis makes it an appropriate registration for a group structure where the parent’s essential task is to own the subsidiaries, rather than to sell management services back to them. A company with equity stakes may sit above a single subsidiary or several, but it cannot use this activity as a broad mandate to run their operations. The activity is open across Micro, Small, Medium and Large scales. That breadth speaks to the size at which the activity may be registered, while the defining test remains its narrow ownership function.\n\nAt the national level, the position is straightforward: PMA status is open and the foreign-ownership ceiling is 100%. For a foreign-owned parent that otherwise belongs within this ownership-only role, the supplied record sets no lower foreign-stake cap. But Bali requires a separate, more exact reading. In Bali today, this activity cannot be registered as a PMA by a foreigner. At the Large scale, OSS assigns Low or Medium-Low risk across every scope, which brings it within Bali’s province-wide, permanent moratorium on PMA registrations for every Low and Medium-Low risk activity, recorded in May 2026.\n\nThe distinction is not a technical footnote. It determines whether a founder is choosing a holding-company format for ownership and financial consolidation, or assuming that national openness automatically translates into a Bali registration route. Here it does not. The activity remains precisely bounded by what the parent does not do—no services to the subsidiaries it owns and no active management of them—and its Bali PMA outcome is plainly blocked by the moratorium.",
+    "pullQuote": "In Bali today, this activity cannot be registered as a PMA by a foreigner.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Eligible scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

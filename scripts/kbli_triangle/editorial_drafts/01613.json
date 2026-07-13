@@ -1,0 +1,27 @@
+{
+  "code": "01613",
+  "editorial": {
+    "headline": "Harvesting as a Contracted Agricultural Service",
+    "standfirst": "KBLI 01613 is for businesses paid or contracted to harvest crops and collect the crop yield at agreed locations, with national PMA access and no Bali moratorium block recorded.",
+    "body": "KBLI 01613 covers a practical but commercially important slice of agriculture: crop harvesting carried out for a fee or under contract. The activity is not the farming of the crop itself, and it is not framed as trading the harvest. Its centre of gravity is the service work at the point of harvest: taking crops from the field or agreed site, gathering the resulting yield, and doing so because another party has engaged the business to perform that work.\n\nThat makes the code relevant for operators whose business model is built around harvest execution rather than land ownership or crop production. A company under this activity may be paid on a service basis, or contracted around an agreed harvesting job and collection point. The scope is narrow enough to be clear: it is about harvesting plants and collecting the harvested output at the location agreed with the client. It does not need decorative language, because the commercial substance is already there: a specialised agricultural service delivered where the harvest happens.\n\nThe scale picture is broad. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar, so it is not confined to one size of Indonesian enterprise. A small local operator can sit naturally inside the same activity definition as a larger service provider, provided the registered business is genuinely performing harvesting and harvest collection for compensation or under contract. For founders, that scale range matters because it describes the legal room in which the activity can be registered; it does not, by itself, add permits, capital thresholds, or operating promises that are not in the record.\n\nThe foreign-investment picture is also unusually clean. Nationally, the PMA status is TERBUKA, and the listed foreign-ownership ceiling is 100%. In plain English, the record treats this activity as open to foreign ownership up to the full stated ceiling. Bali does not reverse that conclusion in the record: the Bali status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason given is precise: at Besar scale, OSS risk is Menengah-Tinggi/Tinggi, so the Bali moratorium does not block it. That moratorium is still important context because Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently. But for this activity, the recorded outcome is not a Bali block. The honest reading is therefore direct: a foreign investor can treat KBLI 01613 as nationally open, with no Bali PMA moratorium block recorded for this code.",
+    "pullQuote": "The honest reading is therefore direct: a foreign investor can treat KBLI 01613 as nationally open, with no Bali PMA moratorium block recorded for this code.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

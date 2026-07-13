@@ -1,0 +1,27 @@
+{
+  "code": "11030",
+  "editorial": {
+    "headline": "Malt-Based Alcohol Production With a Clean National Opening",
+    "standfirst": "KBLI 11030 covers malt-based alcoholic beverages, from beer to stout, and the record marks it nationally open to foreign investment across every listed business scale.",
+    "body": "**KBLI 11030 is the manufacturing lane for alcoholic drinks made from malt.** The Indonesian scope names beer, ale, porter, and stout, and it also includes the making of beer with low alcohol or without alcohol. In plain English, this is not a bar, a distributor, or a hospitality activity; it is the activity of producing malt-based beverages themselves. The scope is narrow enough to be useful: it turns on the material and process described in the record, namely beverages made from malt, including the familiar beer-family styles named there.\n\nThe scale picture is unusually broad. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** operators, so the classification is not reserved only for large producers. A founder reading the record should still keep the distinction clear: the scale field says who the activity is open to in the classification data, while the record does not add any separate operating licence, tax threshold, production limit, facility rule, or timeline. Those details cannot be assumed from this slim record. What can be said is that the activity is available across the full scale range listed in the record.\n\nNationally, the foreign-investment signal is clean. The PMA status is **TERBUKA**, and the maximum foreign ownership figure is **100%**, sourced in the record to **Perpres 10/2021, 49/2021**. That means the national field does not describe a partial cap for this activity; it records a full foreign-ownership ceiling. For a foreign-owned setup, that is the central national fact: the activity is marked open, and the ceiling shown in the record reaches one hundred percent.\n\nThe Bali reading is also important, but it should not be inflated beyond the record. Bali’s moratorium rule in the data says the province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, with the source listed as **Gubernur letter B.27.000/642/PM/DPMPTSP**. This record, however, marks **l4_bali_blocked** as false and gives the Bali status as **OK_or_HIGHER_RISK**. Its stated reason is: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. So the honest national-versus-Bali picture is not a contradiction. Nationally, the activity is foreign-open up to 100%; in Bali, this record does not mark it as blocked by the moratorium because of the risk-status reasoning stated above.",
+    "pullQuote": "Nationally, the activity is foreign-open up to 100%; in Bali, this record does not mark it as blocked by the moratorium because of the risk-status reasoning stated above.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

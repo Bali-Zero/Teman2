@@ -1,0 +1,27 @@
+{
+  "code": "49120",
+  "editorial": {
+    "headline": "Freight Rail, Open Nationally and Clear of Bali’s PMA Moratorium",
+    "standfirst": "This activity covers rail freight from industrial goods to energy carriers, with national foreign ownership open to 100% and no Bali moratorium block at large scale.",
+    "body": "Freight rail transport is the business of moving goods by rail: over long-distance routes or short dedicated freight lines. Its remit spans agricultural output, mining and quarrying products, petroleum fuels and processed products, LPG, LNG and CNG, carbon-free energy carriers such as hydrogen and ammonia, dangerous goods, hazardous and toxic waste, and industrial products. The transport may concern gases, solids or liquids, according to the cargo’s storage needs and conditions. Freight carried by cable or suspended railway, as well as long-distance traction services, also sits within this activity.\n\nThe natural registrant is an operator whose commercial work is the rail carriage of those goods. The code is open at medium and large business scales, reflecting a transport activity that can serve varied cargo types and rail configurations rather than a single commodity niche. Its breadth matters: it can accommodate both conventional industrial freight and cargo that demands particular care because of its form, energy role or hazardous character.\n\nNationally, the PMA position is straightforward. Foreign investment may hold up to 100% ownership in the activity. In Bali, the equally important point is that a PMA registration is not blocked by the province’s moratorium. Bali permanently blocks PMA registrations for all Low and Medium-Low risk activities across the island, but this activity’s OSS risk at the large scale is Medium-High or High, placing it outside that moratorium block.\n\nThat makes the Bali reading more precise than a generic statement that rail freight is foreign-open. The national position permits full foreign ownership, while the Bali record confirms that the province’s specific moratorium does not close the door for this activity at the large scale. For a founder, the practical significance is clear: this is a rail-freight operating activity available at medium and large scales, with no additional Bali moratorium block recorded for PMA.",
+    "pullQuote": "National openness and Bali’s position align here: full foreign ownership is permitted, and the provincial moratorium does not block the activity at the large scale.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Menengah"
+      },
+      {
+        "label": "Open scale",
+        "value": "Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

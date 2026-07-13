@@ -1,0 +1,27 @@
+{
+  "code": "38211",
+  "editorial": {
+    "headline": "Turning Non-Hazardous Waste Into Power and Bioenergy",
+    "standfirst": "KBLI 38211 covers non-hazardous waste processing that produces energy outputs, with full national PMA openness and no Bali moratorium block in the slim record.",
+    "body": "KBLI 38211 is an energy-and-waste activity, not a general recycling label. The slim record describes the disposal or processing of non-hazardous waste through incineration or other methods where the output is energy: electricity, steam, renewable fuel oil, bioenergy, ash, or other energy products. Its centre of gravity is therefore conversion. The business activity begins with waste or non-hazardous residual material and ends with a usable energy product, including bioenergy, renewable fuel oil, or electricity.\n\nThat scope matters because it gives the code a specific industrial profile. A founder registering this activity is not simply collecting waste, sorting materials, or providing a civic cleaning service. The record frames the activity around treatment that produces something energetically useful. It also expressly includes non-hazardous waste processing for bioenergy and/or renewable fuel oil, and non-hazardous waste and refuse processing that produces electricity. In plain English, this is the KBLI for a waste-to-energy activity when the material is non-hazardous and the commercial point is the energy output.\n\nThe record opens the activity across every listed scale: Mikro, Kecil, Menengah, and Besar. That breadth is important, because the same KBLI can describe a small-scale operator as well as a large project, provided the registered activity remains inside the stated scope. The foreign-investment position is also clean at the national level. The record classifies PMA as TERBUKA and sets maximum foreign ownership at 100%. On the national reading, this is therefore not a closed activity for foreign ownership under the data supplied here.\n\nThe Bali picture is also unusually direct. The record does include Bali's island-wide moratorium rule: Bali blocks all Low and Medium-Low risk KBLI for PMA. But this specific record is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the reason given is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The honest conclusion is narrow but useful: based only on this slim record, KBLI 38211 is nationally foreign-open up to 100%, and it is not blocked by the Bali moratorium recorded here. That does not create any extra Bali percentage, quota, partnership condition, or operational promise; it simply means the Bali-side blocker in this record is not triggered.",
+    "pullQuote": "Based only on this slim record, KBLI 38211 is nationally foreign-open up to 100%, and it is not blocked by the Bali moratorium recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "72101",
+  "editorial": {
+    "headline": "The Business of Systematic Natural-Science Research",
+    "standfirst": "This activity code frames research and development in the natural sciences as a registered business, open nationally to foreign investment and not blocked by Bali’s moratorium.",
+    "body": "This activity covers regular, systematic research and development in the natural sciences. Its field is deliberately broad: mathematics, physics, biology, chemistry, astronomy, geology, botany and zoology all sit within its stated scope. It also expressly includes work in life sciences, chemical sciences, computer and information science, earth and environmental science, mathematics and physics. The common thread is not a single discipline, but an organised research-and-development activity rooted in natural science.\n\nThat makes the code suitable where research is the activity being registered rather than an incidental feature of another operation. The record describes work undertaken regularly and systematically, a useful distinction for founders whose enterprise is built around sustained investigation and development across one or more of the listed scientific fields. It is open to small, medium and large business scales, so the classification does not reserve this activity for only the largest institutional research settings.\n\nAt the national level, the position is clear: the activity is open to foreign investment, with a foreign-ownership ceiling of 100%. In practical terms, the record places no national foreign-equity cap below full ownership for this activity. That openness rests on the cited investment framework, while the underlying business description remains anchored in research and development rather than a broader claim about every possible scientific or commercial undertaking.\n\nBali requires the more local reading. The record classifies the Bali position as OK or higher risk and says the activity is medium-high risk; it is therefore not blocked by the provincial moratorium. That moratorium permanently blocks PMA registration for low- and medium-low-risk activities across the island, but this activity is outside that blocked category on the supplied record. The remaining instruction is address-specific verification: Bali is not presented as closed to this activity, yet the relevant address should still be checked before relying on the local position. The honest conclusion is that the activity is nationally foreign-open and, in Bali, not barred by the moratorium.",
+    "pullQuote": "The activity is nationally foreign-open and, in Bali, not barred by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National investment source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

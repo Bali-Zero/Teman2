@@ -1,0 +1,27 @@
+{
+  "code": "07221",
+  "editorial": {
+    "headline": "Gold and Silver Mining With a Clear Bali Green Light",
+    "standfirst": "KBLI 07221 covers the mining, cleaning, and separation of gold and silver ore, with national foreign ownership open up to 100% and no Bali PMA moratorium block.",
+    "body": "KBLI 07221 is a mining classification in the most literal sense: it covers the extraction of gold and silver ore, along with the cleaning and separation work that turns mined material into a more defined mineral output. The Indonesian scope is direct and industrial, not ornamental. It is about the activity of taking gold and silver ore from the ground and processing it through the basic cleaning and separation stages named in the record. The same scope also references Izin Usaha Pertambangan Khusus (IUPK) Eksplorasi and Perpanjangan IUP Tahap Operasi Produksi, so the classification sits squarely inside the mining-rights vocabulary used for exploration and production-stage continuation.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar scales. That does not turn every mining project into the same kind of business in practice, but it does mean the classification itself is not restricted to one scale band in the slim record. A founder reading this code should therefore separate two questions. First, what does the classification describe? Gold and silver ore mining, cleaning, and separation. Second, at what registered business scales is it open? All four listed scales: Mikro, Kecil, Menengah, and Besar.\n\nFor foreign ownership, the national signal is clean. The PMA status is TERBUKA, and the maximum foreign ownership value given in the record is 100%. In plain English, this record does not show a foreign-shareholding cap below full ownership. Its stated PMA source is Perpres 10/2021, 49/2021. Nothing in the slim record adds a minimum capital number, a special tax treatment, a processing threshold, or a timeline, so none should be read into the classification from this editorial. The defensible conclusion is narrower and stronger: nationally, KBLI 07221 is foreign-open, with the record showing a 100% ceiling.\n\nThe Bali position is also clear, and it is not a hidden local veto. The record marks l4_bali_blocked as false and gives the status as OK_or_HIGHER_RISK. The stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, which means it is not blocked by the Bali moratorium described in the record. That moratorium blocks all Low and Medium-Low risk KBLI for PMA across Bali on a permanent island-wide basis, but this activity is not caught by that block on the facts provided. The honest Bali lede is therefore straightforward: a foreign-owned company can treat this code as nationally open and not blocked by the Bali PMA moratorium, while still staying within the exact mining activity described here.",
+    "pullQuote": "The honest Bali lede is therefore straightforward: this foreign-open mining code is not blocked by the Bali PMA moratorium on the facts provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

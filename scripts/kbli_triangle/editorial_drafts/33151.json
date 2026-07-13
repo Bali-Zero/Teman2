@@ -1,0 +1,27 @@
+{
+  "code": "33151",
+  "editorial": {
+    "headline": "Ship and Floating-Structure Repair With a Clear Bali Path",
+    "standfirst": "This activity covers repair, maintenance, and modification work for vessels and floating offshore structures, nationally open to foreign ownership and not blocked in Bali.",
+    "body": "KBLI 33151 is the repair-and-maintenance home for marine transport assets: ships, boats, yachts, recreational or sports craft, and comparable vessels. Its scope also reaches the repair, maintenance, and modification of offshore floating structures, which gives the activity a practical breadth beyond ordinary dockside fixes. The common thread is not trading vessels or operating voyages; it is keeping vessels and floating structures serviceable, maintained, repaired, or modified.\n\nThat makes the code relevant to operators whose business is technical service rather than transport itself. A workshop repairing boats, a maintenance provider handling yachts, or a specialist working on floating offshore structures would read this scope as a repair-and-care activity. The record opens registration across Mikro, Kecil, Menengah, and Besar scales, so the classification is not limited to one business size. It can describe a small repair operation as well as a large-scale marine maintenance business, provided the actual activity remains within the stated repair, maintenance, and modification scope.\n\nThe national foreign-investment position is clean: the activity is marked TERBUKA, with a foreign ownership ceiling of 100%. In plain English, the national record treats this as fully open to PMA ownership, rather than imposing a lower foreign-share cap. The cited national source is Perpres 10/2021, 49/2021. For founders, the key editorial point is that the foreign-ownership question should not be blurred with the operational description: the code covers repair and maintenance work, and nationally the investment status is open up to the full stated ceiling.\n\nBali does not reverse that position in this record. The Bali status is OK_or_HIGHER_RISK, and the activity is not marked as blocked by the island-wide moratorium. The reason is specific: at Besar scale, the OSS risk is Menengah-Tinggi/Tinggi, so it is not caught by Bali province’s moratorium that blocks Low and Medium-Low risk KBLI for PMA. The honest Bali reading is therefore positive but still precise: a foreign-owned setup is not blocked in Bali under the moratorium described here, because the recorded risk basis keeps it outside the blocked Low and Medium-Low category.",
+    "pullQuote": "The honest Bali reading is positive but precise: a foreign-owned setup is not blocked under the moratorium described here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

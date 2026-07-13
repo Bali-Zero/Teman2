@@ -1,0 +1,27 @@
+{
+  "code": "13993",
+  "editorial": {
+    "headline": "Nonwoven Fabric as a Full-Scale Manufacturing Category",
+    "standfirst": "KBLI 13993 covers the industrial making of nonwoven fabric, nationally open to foreign ownership and not blocked for PMA registration in Bali under the record supplied.",
+    "body": "KBLI 13993 is a manufacturing category for fabric made without weaving or knitting. Its centre of gravity is the production of nonwoven cloth: material formed from fibres into a web or sheet, then consolidated into usable fabric. The record names felt cloth, felting cloth, and laken cloth as examples, and it makes clear that the fibre base may be new or recycled. This is not a tailoring or garment activity in the record; it is the industrial making of the fabric itself, before any downstream product story begins.\n\nThe technical breadth matters. The record describes several ways the web or sheet can be consolidated: mechanical techniques such as needle punch, hydro entanglement, and stitch bonding; thermal techniques such as thermo bonding; polymerisation or spunlaid techniques such as spunbonded and meltblown; and chemical bonding. In plain English, this code is for operators whose business is to make fabric structure without the traditional interlacing of threads. The activity is defined by process as much as by output: fibres are arranged, bonded, and stabilised into cloth.\n\nOn scale, the record is unusually clean. It is open across Mikro, Kecil, Menengah, and Besar. That means the slim record does not reserve this activity only for a large industrial player, nor does it confine it to a small-enterprise lane. A founder reading this should treat the scale statement as part of the basic registration picture: this activity can be registered at every scale named in the record, while the actual business model still has to match what the activity says it does.\n\nThe national and Bali picture is also clean. Nationally, the PMA status is TERBUKA, with a foreign-ownership ceiling of 100% under the source named in the record. Bali does not add a separate percentage, and the record does not describe a local quota or partnership condition. Instead, Bali is marked OK_or_HIGHER_RISK, with the reason given as: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not marked blocked here. The honest reading is therefore straightforward: for this record, a foreign-owned registration is nationally open, and Bali is not flagged as blocked by the moratorium.",
+    "pullQuote": "The honest reading is straightforward: this activity is nationally open to PMA and not flagged as blocked in Bali by the record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

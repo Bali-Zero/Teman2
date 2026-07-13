@@ -149,7 +149,6 @@ export async function cropToSquare(
   });
 }
 
-
 /**
  * Same center-crop + resize as cropToSquare, but returns a Blob (for multipart
  * upload) instead of a base64 data URL. Avatars are uploaded to storage, so the

@@ -1,0 +1,27 @@
+{
+  "code": "30912",
+  "editorial": {
+    "headline": "Motorcycle Component Manufacturing With a Clear Bali Path",
+    "standfirst": "KBLI 30912 covers the industrial making and finishing of parts for two- and three-wheeled motor vehicles, nationally open to foreign ownership and not blocked in Bali by the record.",
+    "body": "KBLI 30912 is a manufacturing code for the parts economy behind two- and three-wheeled motor vehicles. The record describes the making of components and spare parts such as internal combustion engines, suspension, brakes, gearboxes, road wheels, silencers, exhaust pipes, mirror covers, body covers, and fenders. It also expressly includes inverters for two- and three-wheeled motor vehicles, which places the activity not only in conventional motorcycle supply chains but also within the component base that can serve electric vehicle architecture.\n\nThe scope is not limited to forming or assembling hard mechanical parts. It also includes the finishing of plastic parts and components for two- and three-wheeled motor vehicles, including coating with metal or other coating substances and painting. That matters because the activity is broader than a narrow workshop label: it can cover component manufacturing and the surface treatment that turns parts into usable, finished inputs for vehicle production or replacement markets. The record’s own wording is industrial in character, but it is not confined to one material, one component, or one stage of finishing.\n\nOn scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar, meaning the same activity can be registered across the full scale ladder recorded here. A small operator finishing plastic body covers sits inside the same activity description as a larger factory producing gearboxes, brakes, exhaust-related components, or inverters, provided the business remains within the component-and-spare-part scope stated in the record. The editorial point is simple: this code is about manufacturing and finishing motorcycle and three-wheeler components, not trading them, repairing them, or describing the finished vehicle itself.\n\nThe national foreign-investment picture is clean. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, so the foreign-ownership ceiling should be read as 100% at the national level. Bali does not add a separate percentage in this record. Instead, Bali is described by status and reason: l4_bali_status is OK_or_HIGHER_RISK, l4_bali_blocked is false, and the reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. For this code, however, the record does not mark Bali as blocked. The honest reading is therefore direct: nationally open, open up to 100% foreign ownership, and not blocked for PMA registration in Bali on the data provided.",
+    "pullQuote": "The honest reading is direct: nationally open, open up to 100% foreign ownership, and not blocked for PMA registration in Bali on the data provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

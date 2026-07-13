@@ -1,0 +1,27 @@
+{
+  "code": "35133",
+  "editorial": {
+    "headline": "Charging Infrastructure, Open Nationally and Viable in Bali",
+    "standfirst": "This activity covers standalone charging operations for electric mobility and everyday devices, with broad scale access and no Bali PMA moratorium block in the record.",
+    "body": "KBLI 35133 is the operating code for charging infrastructure rather than electricity generation itself. Its centre of gravity is practical: running facilities or stations where electric vehicles can recharge, including cars, motorcycles, scooters and electric bicycles, as well as public EV charging stations that are not integrated with a power plant. The scope also reaches smaller-format charging facilities for electrical equipment such as mobile phones and laptops. In plain terms, this is the business of making charging available and operational as a service point, without folding the activity into power-generation operations.\n\nThat distinction matters because the code is about the station or facility as an operating business. A founder using it should be looking at the day-to-day activity of keeping charging access available to users, whether the customer is an EV rider, a car owner, or someone charging portable equipment. The record does not add technical thresholds, licence names, site rules, grid requirements, tariff formulas or capital tests, so none should be read into it. The editorially useful point is narrower and clearer: this is a standalone charging-operation activity, and its official scope is broad enough to cover both vehicle charging and device-charging facilities.\n\nOn scale, the record is unusually open. Micro, small, medium and large enterprises are all listed as open to this activity, so the code is not reserved only for utility-scale or large-network operators. It can describe a modest facility as well as a bigger charging-station business, provided the registered activity remains within the stated scope. Nationally, the PMA status is open, and the recorded foreign-ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. That means the national reading in this record is clean: foreign ownership is not capped below full ownership.\n\nThe Bali position is also important, because the island applies a moratorium that blocks all low and medium-low risk KBLI for PMA. This record, however, does not mark the activity as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, with the reason that OSS risk at large scale is medium-high/high and therefore not blocked by the moratorium. For a foreign founder, the honest conclusion is that this activity is nationally open to PMA up to 100% foreign ownership and, on the Bali fields provided here, not blocked by the Bali moratorium today. The honest conclusion is that this activity is nationally open and, on the Bali fields provided here, not blocked by the Bali moratorium today.",
+    "pullQuote": "The honest conclusion is that this activity is nationally open and, on the Bali fields provided here, not blocked by the Bali moratorium today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

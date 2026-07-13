@@ -1,0 +1,27 @@
+{
+  "code": "21023",
+  "editorial": {
+    "headline": "Natural-Medicine Manufacturing for Animals, Open Nationally but Blocked in Bali",
+    "standfirst": "This activity covers processed natural-medicine products for animals, across all business scales, with a clear national opening and a decisive Bali PMA block.",
+    "body": "**KBLI 21023 is a manufacturing activity for natural-medicine products made for animals.** The record describes the processing of products whose ingredients may come from plants, animal materials, mineral materials, galenic preparations, or mixtures of those sources. It also gives the physical range with useful specificity: powders, sliced or chopped preparations, pills, dodol or jenang forms, pastilles, tablets, capsules, liquids, solutions, emulsions and suspensions, ointments, creams and gels, and suppositories. In plain English, this is not a general animal-care label. It is the industrial preparation of natural-origin medicinal products for animals, covering both traditional solid formats and more modern pharmaceutical-style presentations.\n\nThe registration picture is broad on business scale. The record opens the activity to Mikro, Kecil, Menengah, and Besar operators, so the code is not reserved only for large factories. A small producer and a larger industrial manufacturer sit within the same recorded scale spectrum, provided the activity itself remains the processing of the listed natural-medicine products for animals. That matters because the scope is defined by the product and manufacturing activity, not by a single facility size, packaging style, or sales channel. The useful boundary is the one the record gives: ingredients from the listed natural sources, processed into the listed forms, for animals.\n\nNationally, the foreign-investment signal is straightforward. The PMA status is TERBUKA, and the maximum foreign ownership recorded is 100%, with the source stated as Perpres 10/2021, 49/2021. On the national reading alone, that is a clean foreign-open result: the record does not show a lower cap, staged threshold, special percentage split, or scale-specific foreign ceiling. A founder reading the national column would therefore see this as a fully open PMA activity at the national level.\n\nBali changes the practical conclusion. The record marks the Bali side as blocked, with the reason: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, and that is blocked by the Bali moratorium from May 2026. The moratorium rule is even plainer: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest lede is not that this is merely complicated in Bali. It is that a foreigner cannot register this activity as a PMA in Bali today, even though the same record shows it as nationally open with a 100% foreign-ownership ceiling.",
+    "pullQuote": "A founder reading only the national column would see a fully open PMA activity, but the Bali record turns that opening into a registration block.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

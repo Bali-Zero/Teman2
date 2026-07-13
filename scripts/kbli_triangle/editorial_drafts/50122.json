@@ -1,0 +1,27 @@
+{
+  "code": "50122",
+  "editorial": {
+    "headline": "Specialised Domestic Sea Freight, With a 49% Foreign Ownership Ceiling",
+    "standfirst": "KBLI 50122 covers specially designed vessels carrying defined cargoes within Indonesia, including energy products, hazardous goods and fisheries support.",
+    "body": "KBLI 50122 is for domestic sea freight carried by vessels purpose-built for a particular kind of cargo. Its scope reaches beyond conventional goods movement: dangerous goods, hazardous and toxic waste, fuel oil, petroleum and processed petroleum products, LPG, LNG and CNG all sit within its stated terrain. So do fish and other aquatic life, alongside the dedicated vessels that move fishing gear and supporting equipment. The common thread is specialisation: the vessel is designed around the cargo it is meant to carry.\n\nThat specialisation also extends to newer energy-carrier distribution. The activity includes domestic distribution by sea of carbon-free fuels in gaseous, solid or liquid form, including hydrogen, ammonia and related compounds, when purpose-designed ships are used. In fisheries, it embraces transport from fishing grounds, transport between ports, and sea transport supporting capture-fishing and aquaculture operations. Chartering the vessel together with its operator is included as well. This is therefore a broad operational category for specialised domestic maritime carriage, but its boundaries remain anchored in the defined cargoes and specially designed vessels described in the scope.\n\nThe activity is open across the full business-scale range: Micro, Small, Medium and Large. Nationally, however, it is classified as restricted for foreign investment. Foreign ownership is capped at 49%, which means a PMA structure cannot be wholly foreign-owned under this activity. That ceiling is the central ownership fact in the record; it should be read as a limit on the foreign stake, not as a statement about the technical character of the shipping operation.\n\nBali presents a clearer picture than the province-wide moratorium might initially suggest. The moratorium permanently blocks PMA registration for low- and medium-low-risk KBLI activities across the island. This activity is not blocked by that rule. At the Large scale, its OSS risk is recorded as medium-high or high, placing it outside the moratorium’s blocked risk bands. A foreign investor can therefore register this activity in Bali within the national 49% foreign-ownership ceiling. Bali does not add a separate ownership percentage or partnership condition in this record; its practical distinction is that the activity remains outside the moratorium rather than being barred by it.",
+    "pullQuote": "A foreign investor can register this activity in Bali within the national 49% foreign-ownership ceiling.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "49%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "18112",
+  "editorial": {
+    "headline": "Special Printing for Indonesia’s Most Sensitive Paper Trails",
+    "standfirst": "A precise KBLI for printing stamps, secure documents, financial papers, passports and airline tickets, nationally open to PMA and not blocked in Bali.",
+    "body": "Special printing is not ordinary commercial printing dressed in formal language. The record defines this activity around items that carry public trust, financial value, official identity, or controlled circulation: postal stamps, tax stamps, documents, cheques and other confidential papers, revenue stamps, banknotes, cheque forms, giro forms, shares, bonds, stock certificates, passports, and airline tickets. In plain English, this is the printing of sensitive instruments where the object being printed is part of an administrative, fiscal, financial, travel, or securities system.\n\nThat scope gives the code its character. A business registering this activity is not simply producing brochures, packaging, or general stationery. It is positioning itself in the specialised production of controlled paper-based instruments and official-format documents. The slim record opens the activity across every listed scale: Mikro, Kecil, Menengah, and Besar. That matters because the code is not confined to a single business size in the record; it can describe a small specialised operator as well as a larger printing facility, provided the activity remains within the defined special-printing scope.\n\nThe national investment picture is clean. The PMA status is TERBUKA, while the recorded foreign-ownership ceiling remains 100%. There is no partial cap to soften or interpret here: nationally, the record treats this activity as open to foreign investment up to full foreign ownership, with the stated source being Perpres 10/2021, 49/2021. That is the national baseline, and it should be read exactly as such, without adding extra licensing assumptions, capital figures, or operational thresholds that the record does not provide.\n\nBali adds a separate but, in this case, non-blocking filter. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently. This record, however, marks Bali as not blocked: l4_bali_blocked is false, the Bali status is OK_or_HIGHER_RISK, and the reason given is “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The honest conclusion is therefore straightforward: this activity is nationally open to PMA up to 100%, and the Bali record does not block it under the stated moratorium.",
+    "pullQuote": "This is not ordinary commercial printing; it is the production of sensitive instruments where the printed object carries administrative, fiscal, financial, travel, or securities value.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

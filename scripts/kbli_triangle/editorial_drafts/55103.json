@@ -1,0 +1,27 @@
+{
+  "code": "55103",
+  "editorial": {
+    "headline": "A Three-Star Hotel Is More Than a Building",
+    "standfirst": "This activity covers short-stay, three-star accommodation with direct on-site service—and a national PMA opening that requires care in Bali.",
+    "body": "KBLI 55103 covers the provision of short-stay accommodation, generally offered by the day or week, in premises that meet the requirements of a three-star hotel. The activity may use part or all of a building, and its stated scope applies both to buildings of up to 6,000 square metres and those above that size. The defining proposition is accommodation for a short stay, delivered as a hotel rather than merely as space.\n\nThe guest experience described here is correspondingly fuller than a room alone. Accommodation may include furnished living rooms and suites, while additional services can include daily cleaning and bed-making, food and beverage service, laundry, and conference or convention facilities. Most importantly, the activity is generally marked by direct, on-site customer service. Those details give the classification its practical shape: it is an accommodation operation with a service relationship visibly present at the property.\n\nRegistration is open at small, medium, and large scale. Nationally, the PMA status is open, with a foreign-ownership ceiling of 100%. That is the national position set out in the record, and it should be read as exactly that: the activity is open to PMA nationally, without a lower stated foreign-share cap.\n\nBali requires a more exact reading. The provincial rule permanently blocks PMA for all low- and medium-low-risk KBLI across the island. This activity is not recorded as categorically blocked, however; its Bali status depends on scope. At large scale, some declared scopes carry low OSS risk while others carry higher risk. PMA registration in Bali is available only by declaring the higher-risk scope, so the exact activity must be verified in live OSS. The honest conclusion is neither a blanket Bali prohibition nor an automatic national opening: the national 100% position remains clear, while Bali registration turns on the risk classification of the scope actually declared.",
+    "pullQuote": "Nationally open at 100%, this activity still demands a scope-specific OSS reading before PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

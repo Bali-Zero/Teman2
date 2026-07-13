@@ -1,0 +1,27 @@
+{
+  "code": "13999",
+  "editorial": {
+    "headline": "The Open Field of Miscellaneous Textile Manufacturing",
+    "standfirst": "KBLI 13999 covers textile manufacturing that sits outside named categories, with national foreign ownership open and no Bali moratorium block in the record.",
+    "body": "KBLI 13999 is the classification for textile manufacturing that the record treats as residual but not minor. Its Indonesian scope covers the making of textile products not already captured elsewhere: rubber thread, metal thread, shoelaces, decorative ornaments such as braids, tassels and pompons, and badges. In practical terms, this is the code for a producer whose work is still textile manufacturing, but whose output does not fit a narrower named activity in the record.\n\nThat residual character matters. This is not a trading label, a design service, or a general fashion business in the slim record; it is about making physical textile items. The examples are small in format but specific in production logic: threads, cords, shoe fastenings, trims, ornaments and badges. A founder using this classification would need the registered activity to match that manufacturing scope, because the code’s own description is the only ground available here.\n\nThe scale picture is broad. The record opens the activity to Mikro, Kecil, Menengah and Besar scales, so it is not framed as a classification reserved only for one size of operator. A small workshop making shoelaces or decorative textile ornaments and a larger manufacturer producing the same type of listed goods both sit within the scale range stated in the record. What the record does not do is add thresholds, investment figures, licensing steps or production-capacity tests, so none should be read into the code from outside.\n\nThe ownership and Bali reading are unusually clean. Nationally, the activity is marked TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. Bali also does not close it in this record: l4_bali_blocked is false, and the stated reason is “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this activity is not caught by that block on the record provided. The honest conclusion is therefore simple: for this code, the national foreign-ownership position is open, and the Bali moratorium field does not block PMA registration.",
+    "pullQuote": "For this code, the national foreign-ownership position is open, and the Bali moratorium field does not block PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

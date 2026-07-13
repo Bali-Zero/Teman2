@@ -1,0 +1,27 @@
+{
+  "code": "61201",
+  "editorial": {
+    "headline": "Telecom Resale: Nationally Open, Scope-Dependent in Bali",
+    "standfirst": "This code covers the resale of telecommunications services under a provider’s framework—open to full foreign ownership nationally, but dependent on the exact risk scope declared in Bali.",
+    "body": "At its core, this is a telecommunications-service resale activity. The business obtains services through cooperation with a Telecommunications Service Provider and sells them on again, including resold internet access delivered through a network that the relevant ISP does not own or operate. The commercial role is therefore defined by resale within a provider-led service arrangement, rather than by an independent service framework of its own.\n\nThat arrangement is deliberately structured. The Telecommunications Service Provider must ensure continuity of service; the reseller uses the provider’s trade mark, although it may add its own. The reseller must meet the prescribed service-quality standards, while all revenue is recorded as the provider’s revenue and billing is issued in the provider’s name. For internet-protocol-based services, the reseller must use the provider’s public IP addresses and Autonomous System Number. These details matter because they describe not merely a sales channel, but the operational boundaries of the activity itself.\n\nThe code is open nationally to businesses at Mikro, Kecil, Menengah, and Besar scale. Its foreign-investment status is TERBUKA, with a national foreign-ownership ceiling of 100%. In national terms, that is a clear opening: foreign ownership is not capped below full ownership for this activity. The applicable source cited in the record is Perpres 10/2021, 49/2021.\n\nBali requires a more exact reading. The activity is not marked as absolutely blocked for PMA registration, but its Bali status is scope-dependent. Across Bali, PMA registration is permanently blocked for every Low and Medium-Low risk KBLI activity. The record says that some scopes at Besar scale may carry low OSS risk while others carry higher risk; PMA registration in Bali is available only by declaring the higher-risk scope. The practical conclusion is precise rather than dramatic: national openness remains real, but a Bali registration depends on the exact activity scope and must be verified in live OSS before relying on it.",
+    "pullQuote": "National openness remains real, but a Bali registration depends on the exact activity scope declared in live OSS.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

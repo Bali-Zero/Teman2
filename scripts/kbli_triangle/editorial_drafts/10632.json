@@ -1,0 +1,27 @@
+{
+  "code": "10632",
+  "editorial": {
+    "headline": "Corn Shelling as a Full-Scale Processing Activity",
+    "standfirst": "KBLI 10632 covers the drying, shelling, milling, and cleaning of corn, with full national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 10632 is a processing code, not a trading label. The activity begins with wet corn and turns it into dried shelled corn. The record also brings the surrounding industrial work into view: milling, cleaning, and handling all parts of the corn plant within the same activity scope. In practical terms, the code describes the post-harvest step where corn is prepared into a cleaner, drier, more usable industrial form.\n\nThat scope matters because it is broad enough to cover both the central transformation and the supporting handling around it, but still specific in its object: corn. A business registering under this code is not merely identifying with agriculture in general. It is placing itself in the processing of corn after harvest, where moisture, shelling, cleaning, and milling define the work. The Indonesian scope is compact, but its commercial meaning is clear: this is a corn-processing activity built around making pipilan kering from jagung basah.\n\nThe scale picture is unusually straightforward. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses. That means the code is not reserved only for large industrial operators, nor is it limited to small production. It can describe a modest processing business as well as a larger operation, provided the registered activity remains within the recorded scope. The same code can therefore sit across the full scale ladder without needing to imply a different business activity.\n\nThe national PMA position is also clean. The record marks the code as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. Stated plainly, the national foreign-ownership ceiling is 100%. Bali does not add a separate percentage in this record. Its local status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The Bali moratorium rule blocks Low and Medium-Low risk KBLI for PMA across the province, but this record says this activity is not blocked by that moratorium. For this code, the honest reading is therefore open nationally and not blocked for PMA registration in Bali by the recorded moratorium logic.",
+    "pullQuote": "For this code, the honest reading is therefore open nationally and not blocked for PMA registration in Bali by the recorded moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

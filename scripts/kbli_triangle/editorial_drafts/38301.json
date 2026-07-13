@@ -1,0 +1,27 @@
+{
+  "code": "38301",
+  "editorial": {
+    "headline": "Metal Recovery as an Industrial Raw-Material Business",
+    "standfirst": "KBLI 38301 covers the recovery of used metal goods and metal waste into secondary raw materials, with full scale access and foreign ownership nationally open.",
+    "body": "KBLI 38301 is not about making new metal products. Its centre of gravity is the recovery stage: taking used metal goods and remnants of metal goods, then processing them into secondary raw materials. The record describes the output in practical terms as recycled or recovered metal feedstock in various forms, including pieces and metal shavings. That makes this code part of the upstream material-recovery economy, where value is created before any later manufacturing step begins.\n\nThe operational scope is broad, but it stays within the logic of recovery. It covers separating and sorting metal waste, mechanically crushing it, reducing it by mechanical means, dismantling it, cutting it, and slicing it. The same scope also includes ship breaking and the dismantling of other floating equipment. What matters is the transformation of metal waste and used metal goods into secondary raw material. Once a business starts manufacturing new metal goods from that material, the record says that activity belongs in the appropriate manufacturing category, not here.\n\nOn scale, the record is unusually inclusive. KBLI 38301 is open to Mikro, Kecil, Menengah, and Besar operators. In plain English, the code can describe anything from a smaller recovery operation to a large-scale material-processing business, as long as the registered activity remains within the recovery of metal goods and metal remnants into secondary raw materials. The scale range is important because the same business description can sit across very different operating footprints, but the defining activity remains the recovery and processing of metal waste, not downstream metal-product manufacturing.\n\nThe national foreign-investment picture is clean. The record marks the PMA status as TERBUKA and gives a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. The Bali picture is also clear, but for a different reason than many founders expect: the record does not mark this code as blocked in Bali. It lists the Bali status as OK_or_HIGHER_RISK and explains that the OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the Bali moratorium. The moratorium rule in the record blocks Low and Medium-Low risk KBLI for PMA across Bali, but this record’s Bali reason places KBLI 38301 outside that block. The honest reading is therefore simple: nationally, foreign ownership is open up to 100%, and in Bali the record does not mark the activity as blocked by the moratorium.",
+    "pullQuote": "The honest reading is simple: nationally, foreign ownership is open up to 100%, and in Bali the record does not mark the activity as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

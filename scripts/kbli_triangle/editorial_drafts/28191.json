@@ -1,0 +1,27 @@
+{
+  "code": "28191",
+  "editorial": {
+    "headline": "The Machinery Behind Bottles, Cans, Boxes and Labels",
+    "standfirst": "KBLI 28191 covers packaging, bottling and canning machinery that is nationally open to PMA, but blocked for PMA registration in Bali under the record’s moratorium rule.",
+    "body": "KBLI 28191 is not about the packaged goods themselves. It is the industrial activity behind the machines that prepare those goods for market: equipment for wrapping, bottling and canning, including machines that fill, close, seal, wrap and label bottles, cans and boxes. The record also brings in machinery for drying and cleaning beverage bottles, as well as machines that mix air into drinks and similar equipment. In plain English, this is a manufacturing code for the machinery that sits on or around a packaging line, turning containers and products into sealed, labelled, sale-ready units.\n\nThat makes the code broad in scale but specific in function. The slim record marks it as open to Mikro, Kecil, Menengah and Besar operators, so it is not reserved for one size of business. A small manufacturer of specialised packaging equipment and a larger industrial machinery producer both sit within the same activity frame, provided the business is making the machines described in the scope: packaging, bottling, canning, filling, closing, sealing, wrapping, labelling, bottle-cleaning, bottle-drying, carbonation-related machinery and similar equipment. The common thread is the machine, not the drink, can, box or bottle being processed.\n\nNationally, the PMA picture is simple. The record classifies the activity as TERBUKA and gives a foreign-ownership ceiling of 100, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the national record treats this activity as open to foreign investment up to a full 100% foreign shareholding. There is no lower national cap in the slim record, and there is no additional national condition stated here that should be inferred. On the national layer alone, KBLI 28191 reads as a straightforward foreign-open manufacturing activity.\n\nBali is the decisive exception. The same record marks `l4_bali_blocked` as true and gives the Bali status as Blocked (risk class). Its reason is that OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, and that this is blocked by the Bali moratorium dated May 2026. The moratorium rule in the record is blunt: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, with the source listed as Gubernur letter B.27.000/642/PM/DPMPTSP. So the honest reading is this: KBLI 28191 may be nationally open to 100% foreign ownership, but a foreign investor cannot register this activity as a PMA in Bali today under the Bali-side rule recorded here.",
+    "pullQuote": "KBLI 28191 is nationally open to full foreign ownership, but the Bali record blocks PMA registration for this activity today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

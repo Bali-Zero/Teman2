@@ -1,0 +1,27 @@
+{
+  "code": "24206",
+  "editorial": {
+    "headline": "Nuclear Fuel Manufacturing, With Bali Still Open on the Record",
+    "standfirst": "KBLI 24206 covers uranium and thorium fuel-cycle manufacturing at large scale, nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 24206 is not a generic metalworking activity. The record defines it around the industrial production of nuclear fuel materials: making uranium metal and related compounds from pitchblende or other ores, producing uranium alloys and dispersions including cermet, forming ceramic products and mixtures containing natural uranium or its compounds, and smelting or refining uranium metal from uranium-bearing ores. It also includes uranium and thorium enrichment as one integrated chain of activity for producing nuclear fuel.\n\nThe scope then extends beyond material processing into the small final-cycle side of non-reactor nuclear installations. The record includes both operation and construction of small non-reactor final-cycle nuclear installations. In plain English, this is a highly specialised nuclear-fuel and nuclear-installation activity, not a broad manufacturing bucket. A founder reading the code should treat the uranium, thorium, enrichment, smelting, refining, and non-reactor installation language as the centre of the classification.\n\nOn scale, the record is narrow. The only scale open to this activity is **Besar**. That matters because the code is not presented as a micro, small, or medium activity in the slim record; it is framed as a large-scale business activity. Nationally, the PMA status is **TERBUKA**, and the foreign-ownership ceiling is **100%**, sourced to **Perpres 10/2021, 49/2021**. On the national layer alone, the record therefore describes a foreign-open activity with no reduced foreign-share cap.\n\nThe Bali picture is also explicit, and it should not be made more dramatic than the record allows. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province, but this record marks KBLI 24206 as **OK_or_HIGHER_RISK**, with **l4_bali_blocked** set to false. Its stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The honest reading is that, on this record, a foreign investor is not blocked from PMA registration in Bali by the provincial moratorium. The limitation visible here is not a Bali ownership cap; it is simply the record’s own combination of large scale, national openness, and Bali non-blocked status.",
+    "pullQuote": "The honest reading is that, on this record, a foreign investor is not blocked from PMA registration in Bali by the provincial moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

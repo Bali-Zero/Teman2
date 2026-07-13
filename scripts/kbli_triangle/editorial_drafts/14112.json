@@ -1,0 +1,27 @@
+{
+  "code": "14112",
+  "editorial": {
+    "headline": "Leather and Imitation-Leather Garments, Ready to Wear",
+    "standfirst": "KBLI 14112 covers cut-and-sewn apparel from leather or imitation leather, nationally open to PMA and not blocked by Bali’s moratorium in this record.",
+    "body": "KBLI 14112 is a manufacturing activity, not a trading label. Its center of gravity is the making of ready-to-wear garments from leather or imitation leather: material is cut, stitched, and finished into clothing that can be worn as a completed product. The record names jackets, coats, vests, trousers, skirts, and sportswear, and it also brings in leather clothing accessories such as a welder’s leather apron. That gives the code a clear industrial character: it is about confection-style garment production using leather or leather substitute as the principal material.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar scale businesses, so it can describe anything from a small garment workshop to a larger manufacturing operation, provided the activity remains within the stated scope. The common thread is not the size of the operator but the nature of the work: cutting and sewing leather or imitation leather into finished apparel and related clothing equipment. A founder registering this code should therefore read it through the production process first, and only then through the commercial model around it.\n\nNationally, the investment position is clear. The slim record marks the PMA status as TERBUKA and gives the foreign-ownership ceiling as 100%, with the source stated as Perpres 10/2021, 49/2021. In plain English, this record treats the activity as open nationally to foreign investment up to full foreign ownership. There is no lower cap in the data, and no separate threshold, permit, minimum capital figure, or timeline stated here. The responsible reading is narrow but useful: for the national PMA question, the record says open, with a 100% ceiling.\n\nThe Bali side is also explicit, and it matters because Bali applies a moratorium rule that can block PMA for certain low-risk and medium-low-risk KBLI. For this activity, however, the record does not mark a Bali block. Its Bali status is OK_or_HIGHER_RISK, and the reason is stated directly: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That means the honest national-versus-Bali picture is not a hidden contradiction. On this record, the activity is nationally open to PMA, and Bali’s moratorium does not block it.",
+    "pullQuote": "On this record, the activity is nationally open to PMA, and Bali’s moratorium does not block it.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

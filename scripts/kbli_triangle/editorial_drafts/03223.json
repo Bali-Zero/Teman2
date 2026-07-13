@@ -1,0 +1,27 @@
+{
+  "code": "03223",
+  "editorial": {
+    "headline": "Freshwater Plants, Carbon Value, and a Bali Door That Remains Open",
+    "standfirst": "KBLI 03223 covers non-protected freshwater plant cultivation, from ornamentals and microalgae to carbon-linked cultivation, with PMA access still workable in Bali.",
+    "body": "KBLI 03223 is for the cultivation of **non-protected freshwater plants**. In practical terms, it covers the care, grow-out, and harvesting of freshwater plant species, including ornamental aquatic plants and microalgae. The record names Anubias spp., java moss, and java fern as examples, and it also includes seed or nursery activity for freshwater plants. The defining medium is freshwater: the activity may take place on land, in water bodies, or in artificial facilities that use freshwater as the cultivation medium.\n\nThe scope is broader than a simple plant-growing label. It also recognises freshwater plant cultivation aimed at natural carbon absorption and storage, including the sale of carbon credits or emission-reduction certificates when those outputs arise from the cultivation activity itself. That makes the code relevant not only to operators growing aquatic plants for commercial supply, but also to businesses whose cultivation model is tied to measurable carbon value. The key boundary remains the same: the plants are freshwater plants and they are not protected.\n\nOn scale, the code is open across the full business-size spectrum listed in the record: **Mikro, Kecil, Menengah, and Besar**. That matters because the activity is not framed as only a household-scale cultivation trade or only an industrial facility category. It can support small operators, mid-sized cultivation businesses, and larger facilities, provided the registered activity remains within the stated scope.\n\nThe foreign-investment picture is unusually clean. Nationally, the activity is **TERBUKA**, with a foreign-ownership ceiling of **100%** under the cited presidential-regulation source. Bali does not change that result for this record. The provincial moratorium blocks PMA registration for Low and Medium-Low risk KBLI island-wide, permanently, but this code is marked **not blocked**: at Besar scale, the OSS risk is Menengah-Tinggi/Tinggi, so the Bali moratorium does not catch it. The honest reading is therefore straightforward: a foreign-owned setup can treat this code as nationally open and not currently blocked for PMA registration in Bali, while still staying inside the precise activity described here.",
+    "pullQuote": "The honest reading is straightforward: this freshwater-plant cultivation code is nationally open to full foreign ownership and not currently blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

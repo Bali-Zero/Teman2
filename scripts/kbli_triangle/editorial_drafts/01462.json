@@ -1,0 +1,27 @@
+{
+  "code": "01462",
+  "editorial": {
+    "headline": "Layer Chicken Egg Farming With a Clear PMA Path in Bali",
+    "standfirst": "This activity covers commercial layer chicken cultivation for egg production, open nationally and not blocked for PMA registration in Bali under the listed moratorium rule.",
+    "body": "**01462 is the activity of cultivating commercial layer chickens to produce eggs for consumption and related egg output.** In practical terms, the centre of the code is not general poultry trading or a broad agricultural label; it is the managed raising of layer chicken breeds where the economic purpose is egg production. The Indonesian scope is compact, but clear: the activity is budi daya ayam ras, specifically for telur konsumsi and other egg results within that same production frame.\n\nThe scale position is unusually straightforward. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** operators. That means the classification can sit across the full scale ladder named in the record, from micro and small operators through medium and large businesses. For founders, the important editorial point is that the activity is not reserved in the record for only one size of operator. Its scale access is broad, and the same activity description remains anchored in layer chicken cultivation for eggs.\n\nNationally, the foreign-investment reading is also clear. The PMA status is **TERBUKA**, with a stated foreign ownership ceiling of **100%**, sourced to **Perpres 10/2021, 49/2021**. There is no partial cap in the slim record, so the correct national reading is that foreign ownership is open up to the full percentage shown. The editorial discipline here matters: nothing in the record adds a special licence, capital threshold, tax treatment, or timing rule, so none should be read into the code.\n\nFor Bali, the honest picture is not a hidden prohibition. The record says **l4_bali_blocked is false** and gives the status as **OK_or_HIGHER_RISK**. The reason is specific: at **Besar** scale, the OSS risk is **Menengah-Tinggi/Tinggi**, so it is **not blocked by moratorium**. The Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently, but this activity is not caught by that blocker on the record provided. So the clean conclusion is this: for this code, a foreign-owned setup is nationally open and, on the Bali fields supplied here, not blocked for PMA registration in Bali today.",
+    "pullQuote": "For this code, a foreign-owned setup is nationally open and, on the Bali fields supplied here, not blocked for PMA registration in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

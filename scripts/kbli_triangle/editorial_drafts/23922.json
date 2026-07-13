@@ -1,0 +1,27 @@
+{
+  "code": "23922",
+  "editorial": {
+    "headline": "Clay and Ceramic Roof Tiles, Open Nationally and Not Blocked in Bali",
+    "standfirst": "KBLI 23922 covers the making of clay or ceramic roof tiles, with access across all business scales and a clear foreign-ownership ceiling nationally.",
+    "body": "KBLI 23922 is a manufacturing classification for roof tiles made from clay or ceramic. Its scope is practical and material-specific: pressed tiles, ordinary tiles, kodok-style tiles, and glazed tiles all sit inside the activity. The record is not describing retail trade, installation work, building contracting, or a broader ceramics business. It is about making the tiles themselves, from clay or ceramic inputs into finished roofing products.\n\nThat makes the code relevant for founders whose Indonesian company will operate a production activity rather than merely distribute building materials. The eligible business scales are broad: Mikro, Kecil, Menengah, and Besar are all open in the record. In plain terms, the classification is not reserved only for a small workshop or only for a large industrial plant. The same activity description can support a registered operation across the full scale spectrum, provided the actual business remains within the stated roof-tile manufacturing scope.\n\nNationally, the PMA position is straightforward. The activity is marked TERBUKA, with a maximum foreign ownership figure of 100%. For a foreign-owned setup, that is the key national reading: the record treats the activity as open to PMA and does not state a foreign-share cap below full ownership. The cited national basis is Perpres 10/2021, 49/2021. Nothing in the slim record adds a separate minimum capital number, special licence, operating threshold, or staged timeline, so those should not be inferred from this classification note.\n\nBali needs its own reading because the province applies a moratorium rule that blocks PMA registration for all Low and Medium-Low risk KBLI island-wide. For this activity, however, the Bali field is not blocked. The reason is that at Besar scale, the OSS risk level is Menengah-Tinggi/Tinggi, so it is not caught by the moratorium described in the record. The honest conclusion is therefore clean: a foreign investor can read KBLI 23922 as nationally open, with a 100% foreign-ownership ceiling, and the Bali record does not block PMA registration on the moratorium ground. The caution is simply editorial discipline: keep the registered activity tightly aligned with clay or ceramic roof-tile manufacturing, because the favourable reading belongs to this specific activity and its stated scope.",
+    "pullQuote": "A foreign investor can read KBLI 23922 as nationally open, with a 100% foreign-ownership ceiling, and the Bali record does not block PMA registration on the moratorium ground.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

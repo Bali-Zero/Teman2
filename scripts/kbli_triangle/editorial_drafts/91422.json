@@ -1,0 +1,23 @@
+{
+  "code": "91422",
+  "editorial": {
+    "headline": "National Parks: Open Nationally, Address-Specific in Bali",
+    "standfirst": "National-park management with nature-tourism facilities in utilization zones is nationally foreign-open to 100%; in Bali it is not blocked by the PMA moratorium, with address verification specified.",
+    "body": "National-park management is a rare activity where conservation stewardship and visitor infrastructure meet. The classification covers managing nature-conservation areas with original ecosystems, organized through zoning, so that nature-tourism facilities can be provided in the designated utilization zone. Its stated purpose is to increase the use of natural phenomena, uniqueness and natural beauty. The examples cited include Gunung Gede Pangrango, Gunung Leuser, Kelimutu, Komodo, Gunung Palung and Bromo Tengger Semeru. The common thread is clear: this is management of a conservation landscape, with tourism facilities situated in its utilization zone—not an undifferentiated tourism proposition.\n\nThe national foreign-investment position is equally clear. The activity is marked TERBUKA, with a maximum foreign-ownership ceiling of 100%. For a foreign investor, the national record therefore permits full foreign ownership of a company registered for this activity; there is no lower national foreign cap to read into it. The entry is also precise about what it does not classify. Its scales_open_to field lists no business-scale categories. The record makes no stated distinction among scales, so it should not be stretched into a scale-based entitlement or exclusion that is not actually provided.\n\nBali presents a more nuanced picture, but not a closed one. The Bali status is OK_or_HIGHER_RISK; the record places the activity in the medium-high or high-risk range and states that it is not blocked by the provincial PMA moratorium. That moratorium applies island-wide and permanently to Low and Medium-Low risk KBLI activities for PMA, a category this record does not assign here. The local instruction is narrower and more practical: verify the position for the particular address.\n\nNational openness is real, Bali’s non-blocking status is real, and location verification is the final fact the record insists upon. The Bali entry does not state a different foreign-ownership ceiling, a partnership condition or an additional approval requirement. The clean reading for a founder is therefore straightforward: the activity may be fully foreign owned at the national ceiling, is not barred in Bali by the stated moratorium, and still calls for address-specific verification.",
+    "pullQuote": "National openness is real, Bali’s non-blocking status is real, and location verification is the final fact the record insists upon.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

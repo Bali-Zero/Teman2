@@ -1,0 +1,27 @@
+{
+  "code": "28171",
+  "editorial": {
+    "headline": "Manual Office Machines, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 28171 covers the manufacture of manual office and accounting machines, with national PMA openness but a Bali-side registration block for foreign investors.",
+    "body": "**KBLI 28171 is an old-mechanics manufacturing category with a surprisingly precise scope.** It covers the making of manual office and accounting machines: manual calculators, typewriters, stencil machines, pencil sharpeners, abacuses, postage meters, mail-handling machines, stenography machines, binding tools, coin counters and sorters, staplers, voting machines, tape dispensers, paper punch machines, and similar equipment. The record also brings components and spare parts into the same industrial frame, so the activity is not limited to finished machines alone. Its centre of gravity is physical manufacture, not service work around the machines after they exist.\n\nFor registration purposes, the scale profile is broad. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** scales, which means it can describe anything from a small workshop producing simple manual office tools to a larger manufacturing operation making a wider set of office or accounting equipment. That breadth matters because the activity is defined by what is made, not by a single product line. A company does not need to be making every item named in the scope; the scope reads as a family of manual office, accounting, mailing, binding, counting, fastening, and paper-handling machines, together with their parts.\n\nThe national PMA picture is clean: the record marks the activity **TERBUKA**, with `pma_max_asing` at **100** and the source listed as **Perpres 10/2021, 49/2021**. In plain English, the national record treats this activity as open to foreign ownership up to a 100% ceiling. There is no lower national cap in the slim record, and no extra national threshold, licence, capital figure, or timing rule is stated here. The only responsible reading is therefore narrow but clear: nationally, this is a foreign-open manufacturing activity at the full recorded ceiling.\n\nBali is the decisive complication. The same record says `l4_bali_blocked` is **true** and gives the reason as: **“OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.”** It also states the moratorium rule directly: **“Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).”** So the honest lede for a foreign-owned setup in Bali is not that the code is merely sensitive or partially open; it is that a foreigner cannot register this activity as PMA in Bali today, even though the national PMA line is open. That is the national-vs-Bali split founders need to see before building plans around the code.",
+    "pullQuote": "Nationally, this is a foreign-open manufacturing activity, but the Bali record blocks PMA registration today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

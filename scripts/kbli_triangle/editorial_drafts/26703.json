@@ -1,0 +1,27 @@
+{
+  "code": "26703",
+  "editorial": {
+    "headline": "Optical Lenses Beyond Eyewear: KBLI 26703 in Bali",
+    "standfirst": "This is a precision manufacturing code for non-eyeglass optical lenses, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 26703 covers the manufacture of optical lenses that are not eyeglass lenses. Its field is specialised and technical: lenses for photography, cinematography, medicine, industry, and scientific work. The record names camera lenses, projector lenses, microscope lenses, telescope lenses, spectrometer lenses, and similar optical products. It also includes objective lenses for cameras and projectors, camera zoom lenses, and coated lenses that have been ground.\n\nThe practical identity of the code is therefore not retail eyewear, lens fitting, or general optical trade. It is manufacturing: the production of optical components used inside instruments, imaging systems, projection systems, laboratory tools, and industrial or medical equipment. A founder using this code should be describing a business that makes these lenses, not merely imports, sells, repairs, or installs them. The scope is narrow in the useful sense: it tells the market, OSS, and counterparties that the business is operating in the industrial production of non-eyeglass optical lenses.\n\nThe scale picture is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar. That means the code is not reserved only for large manufacturers; it can describe a smaller optical production activity as well as a larger industrial operation, provided the actual activity remains within the manufacturing scope described above. The code can therefore fit a workshop-scale producer of specialised optical lenses, a mid-sized manufacturer making camera or projection lens components, or a larger facility serving scientific, medical, industrial, or imaging applications.\n\nThe national foreign-ownership position is clean: the record marks the activity as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national record allows full foreign ownership. The Bali picture is also unusually clear: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The recorded reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA in Bali, island-wide and permanently, but this code is not marked as blocked under that rule. So the honest conclusion is straightforward: nationally, KBLI 26703 is foreign-open, and on this record it is not blocked for PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is straightforward: nationally, KBLI 26703 is foreign-open, and on this record it is not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

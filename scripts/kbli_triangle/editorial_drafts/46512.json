@@ -1,0 +1,27 @@
+{
+  "code": "46512",
+  "editorial": {
+    "headline": "Ready-Made Software Wholesale: Open Nationally, Blocked in Bali",
+    "standfirst": "This wholesale activity is nationally open to full foreign ownership, yet Bali’s permanent PMA moratorium blocks registration on the island.",
+    "body": "At its core, this activity is wholesale trade in ready-made software. It includes video games, but only where the software is supplied on physical media with a permanent right of use. The definition is deliberately specific: its subject is software already made and sold wholesale in a physical format, rather than a broad claim over every way software may be accessed or used. Each element matters to the description: what is traded, the medium in which it is supplied, and the durability of the usage right.\n\nThe registration field is broad in business scale, not in the activity’s object. It is open to Mikro, Kecil, Menengah and Besar enterprises. That places the same described wholesale activity within the available scale range, from micro through large business. The scale labels should be read alongside the precise product-and-rights boundary: ready-made software, physical media, and permanent use rights. The record gives no other scale limitation. For a registering business, the scale range is part of the code’s stated access, while the scope remains defined by the product, medium, and usage right.\n\nAt national level, the foreign-investment position is unambiguous. The status is TERBUKA—open—and the foreign ownership ceiling is 100%. In plain terms, the record allows full foreign ownership nationally for this activity; it does not present a national foreign-share cap below full ownership. The legal source cited for that national position is Perpres 10/2021, 49/2021. For a founder assessing the classification nationally, this is the operative ownership picture. The 100% figure is the national ceiling, not a Bali-specific condition.\n\nBali changes the practical answer decisively. Today, a foreigner is unable to register this activity as PMA in Bali. The Bali status is blocked because of its risk class: at the Besar scale, every scope is Low or Medium-Low risk. Bali’s rule blocks all Low and Medium-Low risk KBLI from PMA registration across the island, permanently. The stated reason identifies the Bali moratorium of May thirteenth, two thousand twenty-six as the immediate blocker. National openness and a 100% national ceiling remain real facts, but they do not override this island-wide PMA registration block.",
+    "pullQuote": "National openness and a 100% foreign-ownership ceiling do not override Bali’s island-wide PMA registration block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open enterprise scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

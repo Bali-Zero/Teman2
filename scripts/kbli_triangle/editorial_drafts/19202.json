@@ -1,0 +1,27 @@
+{
+  "code": "19202",
+  "editorial": {
+    "headline": "Lubricant Manufacturing, Open Nationally and Clear for Bali",
+    "standfirst": "KBLI 19202 covers oil-based lubricating oils, oils and greases, with all recorded scales open and no Bali PMA block in the slim record.",
+    "body": "KBLI 19202 is the manufacturing category for lubricants: the making of lubricating oil, oil and grease that are oil-based. The scope is product-led and industrial in character. It does not describe trading, repair, distribution or advisory work; the activity in the record is the making of the lubricant materials themselves. That gives the code a fairly clean editorial centre: this is about producing oil-based lubricant goods, not merely handling them after manufacture.\n\nThe scale field is broad in the record. KBLI 19202 is open to Mikro, Kecil, Menengah and Besar, so the activity is not confined to one recorded business scale. A founder reading the code should treat those scale names as the operative scale language, because they are the only scale categories supplied. The record does not add extra operating conditions, thresholds or technical qualifications, so the careful reading is limited to what is stated: all four listed scales are open for this activity.\n\nNationally, the PMA status remains TERBUKA, with a foreign-ownership ceiling of 100%. In plain English, the national record presents this activity as open to foreign ownership up to the full recorded ceiling. The cited source is Perpres 10/2021, 49/2021, but the practical editorial point is the combination of status and ceiling: open nationally, with no reduced foreign percentage stated in the slim record.\n\nBali is often the harder reading because the province applies a separate moratorium rule to PMA for Low and Medium-Low risk KBLI, island-wide and permanent. Here, however, the Bali field does not block PMA registration: l4_bali_blocked is false, and the reason is exactly, \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi -> not blocked by moratorium\". The important point is that the Bali filter does not turn a nationally open activity into a closed one here. On this record, KBLI 19202 remains nationally open and is not marked as blocked for PMA in Bali.",
+    "pullQuote": "The important point is that the Bali filter does not turn a nationally open activity into a closed one here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

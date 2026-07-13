@@ -1,0 +1,27 @@
+{
+  "code": "52232",
+  "editorial": {
+    "headline": "The Operating System of Air Navigation",
+    "standfirst": "A clear reading of this aviation-navigation activity, its all-scale availability, and why Bali’s PMA moratorium does not block it—while address verification still matters.",
+    "body": "Flight navigation is the connective operating layer that keeps aircraft movements informed, coordinated and supported. This activity covers air traffic services: air traffic guidance, flight information and alerting; aeronautical telecommunications, including fixed and mobile aeronautical systems and aeronautical radio navigation; and aeronautical information services. Its defined information work includes aeronautical information and flight charts, publication and dissemination of notices to airmen (NOTAM), and airport aeronautical information. Aviation meteorological information and search-and-rescue information are part of the same scope, placing operational information alongside communications and navigation rather than treating any one of them in isolation.\n\nThe definition also reaches the physical and operational systems around air traffic. It includes the provision of operations and support for air traffic movements, including control towers and coordination relating to flight-traffic activity. It covers work connected with air-traffic services and aeronautical telecommunications, flight-navigation telecommunications construction, installation of flight-navigation equipment, and related flight information. It also includes operating facilities or equipment for flight navigation, aeronautical telecommunications, aeronautical information, aviation meteorology and search-and-rescue information. Supporting facilities and equipment can involve mechanical, electrical, electronic and information-technology systems. That breadth matters: the activity describes an integrated service and support environment for air navigation, from the control-tower setting to the systems that carry, publish and support aviation information.\n\nA business may register this activity at every listed scale: Micro, Small, Medium and Large. Nationally, its PMA status is open, with foreign ownership permitted up to 100%. That is a complete foreign-ownership ceiling, not a partial stake. Yet Bali must be read on its own terms. The province has a permanent, island-wide PMA block for Low and Medium-Low risk activities. This activity is identified as medium-high risk, so it does not fall within those blocked risk bands. For that reason, it is not blocked by Bali’s moratorium.\n\nFor a foreign investor looking at Bali, the honest conclusion is neither a ban nor an unconditional site-level assurance. The Bali position recorded here is OK-or-higher-risk, and the record says the activity is not blocked by the moratorium. It also says to verify the position per address. That last qualification deserves to remain visible: national openness allows up to 100% foreign ownership, while Bali’s moratorium does not exclude this activity, but the address-specific reading needs to be checked. The result is a clear national opening and a Bali route that remains outside the named moratorium, subject to that address verification.",
+    "pullQuote": "National openness allows up to 100% foreign ownership, while Bali’s moratorium does not exclude this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Eligible scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

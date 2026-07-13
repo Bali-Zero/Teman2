@@ -1,0 +1,27 @@
+{
+  "code": "20297",
+  "editorial": {
+    "headline": "Liquid Biofuel, Nationally Open and Not Blocked in Bali",
+    "standfirst": "This liquid biofuel activity covers biomass-based fuels and BBN trade across every scale, with a 100% national foreign-ownership ceiling and no Bali PMA block in this record.",
+    "body": "KBLI 20297, in this record, is the liquid biofuel industry: the making of plant-based liquid fuel from biomass feedstock, including biodiesel, bioethanol, aviation biofuel, and biohydrocarbons such as plant-based diesel, plant-based gasoline, and plant-based jet fuel. The scope is broader than factory production alone. It also covers Bahan Bakar Nabati, or BBN, trade: processing, purchasing, selling, export and import, transport, storage, and marketing of liquid biofuel products meant for fuel use. The clean reading is industrial and commercial, but tightly anchored to liquid renewable fuel.\n\nWho registers it is also clear. The activity is open to Mikro, Kecil, Menengah, and Besar scale businesses, so it can fit a smaller registered operator dealing in BBN products as well as a large manufacturing or trading company, provided the actual activity remains inside this liquid biofuel scope. That matters because the record is not a general energy label. A founder should read the title through the operational verbs in the scope: make, process, buy, sell, export, import, transport, store, and market liquid biofuel products.\n\nNationally, the position is clean: PMA status is TERBUKA and the foreign-ownership ceiling is 100%. The record therefore treats this activity as open to foreign investment up to full ownership, with its national source given as Perpres 10/2021, 49/2021. The only ownership ceiling in this slim record is national. Bali has no separate foreign-ownership percentage here, so the Bali analysis should not be turned into a second cap, quota, or implied local condition.\n\nBali is the decisive cross-check, and here the record stays open rather than closing the door. The Bali status is OK_or_HIGHER_RISK, the Bali block flag is false, and the stated reason is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.\" The moratorium rule still matters: Bali province blocks all Low and Medium-Low risk PMA activity island-wide and permanently. But this record places the Besar-scale OSS risk above that blocked band. The honest conclusion is narrow but useful: based only on this slim record, a foreign-owned company can treat this liquid biofuel activity as nationally open and not blocked in Bali.",
+    "pullQuote": "The honest conclusion is narrow but useful: based only on this slim record, a foreign-owned company can treat this liquid biofuel activity as nationally open and not blocked in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

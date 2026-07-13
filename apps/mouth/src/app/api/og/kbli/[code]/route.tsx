@@ -5,7 +5,9 @@ import {
   getSectionVisual,
   codeFingerprint,
   sectionGradient,
+  motifShapes,
   type FingerprintBar,
+  type MotifShape,
 } from "@/lib/kbli-cover-design";
 
 /**
@@ -110,6 +112,7 @@ export async function GET(
   const visual = getSectionVisual(kbli.section);
   const fp = codeFingerprint(kbli.code);
   const chip = statusChip(kbli);
+  const motif = motifShapes(visual, fp);
 
   const fingerprintZoneWidth = WIDTH / 3;
   const laneWidth = fingerprintZoneWidth / Math.max(fp.bars.length, 1);
@@ -130,6 +133,29 @@ export async function GET(
           padding: "64px",
         }}
       >
+        {/* Motif layer (Super Ultra v2) — per-section deterministic geometry,
+            seeded by the code fingerprint. Sits behind everything. */}
+        {motif.map((s: MotifShape, i: number) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: `${s.x}px`,
+              top: `${s.y}px`,
+              width: `${s.w}px`,
+              height: `${s.h}px`,
+              borderRadius: s.kind === "circle" ? "9999px" : `${s.r}px`,
+              background: s.outline ? "transparent" : visual.accent,
+              border: s.outline ? `1.5px solid ${visual.accent}` : "none",
+              opacity: s.opacity,
+              display: "flex",
+              // satori rejects `transform: undefined` — only emit the property
+              // when there is an actual rotation (found live 2026-07-08)
+              ...(s.rotateDeg ? { transform: `rotate(${s.rotateDeg}deg)` } : {}),
+            }}
+          />
+        ))}
+
         {/* Fingerprint motif — the code charted as five bars on a baseline,
             anchored to the right third above the footer. */}
         <div

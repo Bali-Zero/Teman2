@@ -1,0 +1,27 @@
+{
+  "code": "60202",
+  "editorial": {
+    "headline": "Digital Television Broadcasting: Open Nationally, Clear in Bali",
+    "standfirst": "Digital television programming and broadcasting is open to foreign investment nationally, with Bali’s moratorium not blocking this activity.",
+    "body": "Digital television is treated here as an operating activity, not merely a programme idea. It covers running television programming and broadcasting services with digital signals from television-broadcast studios and transmission facilities. The intended recipients may be the public, affiliates or subscribers; delivery can run through terrestrial, cable or satellite channels. Live theatre broadcasts also sit within the activity. The code therefore concerns the business of putting a digital television service on air and carrying it to its audience, from programming through transmission.\n\nThe relevant registrant is a television operator with the studio and transmission function described in the record, whether working at Mikro, Kecil, Menengah or Besar scale. The scale range is broad, yet it does not dilute the nature of the activity: registration follows a digital television broadcasting and programming operation. The record also identifies a permit for a private digital television broadcasting operator. The practical focus is an organised broadcasting service, built around facilities, programming and a defined relationship with its audience.\n\nFor a foreign investor, the national picture is straightforward. The activity is TERBUKA, and its foreign ownership ceiling is 100%. In plain terms, national treatment permits foreign investment up to full ownership within this activity’s stated scope. The cited basis is Perpres 10/2021, 49/2021. That conclusion comes from the record’s stated maximum, rather than an assumption drawn from the general label of the business.\n\nBali’s conclusion is equally clear, but rests on a specific reason. The province’s permanent, island-wide moratorium blocks PMA only for activities assessed at Low or Medium-Low risk. This activity is not flagged as blocked. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi—Medium-High/High—so the record says it is not blocked by the moratorium. Bali therefore presents an open PMA-registration position for this activity, marked OK_or_HIGHER_RISK, rather than a foreign-ownership prohibition. The record gives no separate Bali ownership percentage or partnership condition; its Bali explanation is the risk classification and moratorium outcome.",
+    "pullQuote": "For a foreign investor, the national picture is straightforward: the activity is open up to a 100% ownership ceiling.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

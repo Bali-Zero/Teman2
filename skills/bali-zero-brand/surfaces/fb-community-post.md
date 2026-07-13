@@ -42,6 +42,7 @@ Per constitution Article 12.2, every FB post inherits:
 ### Typography (image overlay only)
 
 Same as `carousel-ig` surface for any text laid on image:
+
 - Montserrat 700 for headings.
 - Montserrat 500 for body callouts.
 - NEVER use FB native font picker — produces generic system Helvetica that breaks brand consistency.
@@ -50,6 +51,7 @@ Same as `carousel-ig` surface for any text laid on image:
 ### Palette (image overlay)
 
 Subset of full brand palette — FB feed crops dark images visually:
+
 - Background overlay: `#373D42` antracite at 70-85% opacity over photo OR `#FFFFFF` flat for "explainer" posts.
 - Text on antracite overlay: `#FFFFFF`.
 - Text on white: `#1A1A1A`.
@@ -59,59 +61,70 @@ Subset of full brand palette — FB feed crops dark images visually:
 ### Post types (closed set — 5 archetypes)
 
 #### Type 1 — Regulatory micro-update
+
 **When**: new regulation published or amended (Permenkumham, PMK, PP, Perpres).
 **Body**: 2-3 sentences. (a) verbatim citation of regulation number + date; (b) what it changes in 1 sentence; (c) who is affected in 1 sentence.
 **Image**: solid antracite background with regulation number in yellow Montserrat 700, 80px size, centered.
 **Voice register**: `analitico`.
 **First comment**: link to full Bali Zero blog article on balizero.com.
 **Example body** (ID):
+
 > Permenkumham No. 22 Tahun 2023 mengganti kode visa B211A menjadi C1 (Visa Kunjungan) dan C312 menjadi E23 (Working KITAS). Berlaku sejak 2023, masih banyak agen yang menggunakan kode lama dalam materi marketing. Jika kamu mengurus visa, pastikan dokumen referensimu sudah update.
 
 #### Type 2 — Concrete data callout
+
 **When**: stat, deadline, fee change, official number worth knowing.
 **Body**: 3-4 sentences. Lead with the number ("Rp 150.000" / "31 Mei 2026" / "183 hari"). Explain context. State implication for user.
 **Image**: white flat background with the number in `#1A1A1A` Montserrat 700 80-120px, single line of context below in 24px Montserrat 500.
 **Voice register**: `tecnico` or `pedagogico`.
 **First comment**: source URL (official site — DJP, BKPM, Imigrasi, JDIH).
 **Example body** (ID):
+
 > SPT Tahunan PPh Orang Pribadi TP2025 diperpanjang sampai 30 April 2026 (sebelumnya 31 Maret), bebas sanksi administrasi. Hanya untuk WP OP, Badan tidak termasuk. Berdasarkan KEP-55/PJ/2026 yang dipublikasikan DJP 27 Maret 2026, terkait implementasi penuh sistem CoreTax.
 
 > **Source verbatim NB-4 (2026-05-18 verification)**: KEP-55/PJ/2026, scope WP OP only, deadline 30 April 2026. Earlier draft of this spec cited "KEP-71" + corporate scope + 31 May — both wrong, corrected after NB-4 query d4b2eedb-9863-4a1a-81ff-a11b0b45d853.
 
 #### Type 3 — Pedagogical short-form
+
 **When**: explaining a concept, process, or common misunderstanding.
 **Body**: 4-6 sentences. Frame as question or common belief, then unpack. Use "kalau kamu..." / "if you..." conversational opener.
 **Image**: photo of a real-world artifact (akta, NPWP card placeholder mockup, SIMBG screenshot redacted) with light overlay band containing the post title in 36px Montserrat 700.
 **Voice register**: `pedagogico-divulgativo`.
 **First comment**: link to deeper Bali Zero article OR "Tanya kami di WhatsApp [link]" (only when topic naturally maps to consultation, not as default).
 **Example body** (ID):
+
 > "Aku sudah lebih dari 183 hari di Indonesia tahun ini, jadi aku pajak resident, kan?" Tidak selalu. Pasal 2 UU PPh 36/2008 + PP 23/2018 melihat 3 hal: (a) jumlah hari, (b) niat untuk tinggal, (c) pusat kepentingan ekonomi. Kalau kamu masih punya rumah + pendapatan utama + keluarga di luar negeri, kamu bisa tetap non-resident meskipun lewat 183 hari. Kasus per kasus.
 
 #### Type 4 — Community / civic
+
 **When**: Bali Zero comments on broader civic, cultural, regional events. NON-commercial. Reaffirms positioning as part of community, not extractive service.
 **Body**: 3-5 sentences. Observation + value + (optional) what Bali Zero is doing/thinking about it.
 **Image**: photo (Bali landscape, local event, regulatory office, NOT stock palms-and-beaches) OR no image (text-only posts OK on FB for civic posts).
 **Voice register**: `community-warm` (defined below — register added specifically for this surface).
 **First comment**: usually none. Civic post is not a funnel.
 **Example body** (ID):
+
 > Minggu lalu Pemkab Badung mengumumkan moratorium PBG baru untuk vila komersial di Pecatu. Kami baca dokumen Perbup-nya sore ini. Kesan awal: bukan stop total, tapi review per-kasus dengan tim teknis baru. Akan kami tulis penjelasan lengkap minggu ini.
 
 #### Type 5 — News-flash editorial
+
 **When**: a major regulatory or political event happened in the last 24h that affects Bali Zero clients.
 **Body**: 2-3 sentences. Lead with what happened, then "kami sedang baca dokumennya" / "we are reading the document". This is **provisional positioning** — signals Bali Zero is on the ball without making premature claims.
 **Image**: solid red `#C8102E` background with "BREAKING" or "FRESH" or news source name in white Montserrat 700, plus the event verbatim. Use red sparingly — overuse breaks the signal.
 **Voice register**: `militante` (only register that fits the urgency, but kept under 3 sentences to avoid melodrama).
 **First comment**: link to original source (NOT Bali Zero blog yet — blog post comes later).
 **Example body** (ID):
+
 > Pemerintah baru saja membatalkan moratorium izin properti asing yang diumumkan kemarin. Pengumuman dari Menteri ATR/BPN, sumber: detik.com. Kami sedang baca dokumen aslinya — update follow-up dalam 24 jam.
 
 ### Voice register additions (FB-specific)
 
 In addition to the 7 voice registers in `voice/register-examples.md`, FB surface introduces:
 
-**community-warm**: warm, observational, first-person plural ("kami"). Acknowledges Bali Zero is *part of* the community, not external observer. Sentence rhythm: medium-length (15-25 words), conversational. NO marketing CTA. NO data-density (that's `analitico`). Use only for Type 4 posts.
+**community-warm**: warm, observational, first-person plural ("kami"). Acknowledges Bali Zero is _part of_ the community, not external observer. Sentence rhythm: medium-length (15-25 words), conversational. NO marketing CTA. NO data-density (that's `analitico`). Use only for Type 4 posts.
 
 **Example community-warm**:
+
 > Hari ini upacara Hari Suci Saraswati di Bali. Kantor kami buka, tapi tim Bali siang ini lebih tenang. Kalau kamu butuh dokumen mendesak, WhatsApp tetap aktif. Selamat hari Saraswati untuk semua keluarga, klien, kolega Indonesia.
 
 ### Banned FB patterns

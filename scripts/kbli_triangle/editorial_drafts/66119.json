@@ -1,0 +1,23 @@
+{
+  "code": "66119",
+  "editorial": {
+    "headline": "The Operating System Behind the Market",
+    "standfirst": "KBLI 66119 covers the administration and infrastructure that support financial, commodity futures, money and rupiah foreign-exchange market transactions.",
+    "body": "KBLI 66119 concerns the administrative architecture behind financial markets, commodity futures markets and similar markets not otherwise classified. It covers business entities or institutions that provide and organise infrastructure for capital-market transactions, as well as infrastructure operators for money-market and rupiah foreign-exchange transactions not otherwise classified. Its subject is market infrastructure itself: the institutional and operational framework identified in the scope, rather than a generic back-office service.\n\nThe remit is broad, but the record is precise about its functions. It includes providing transaction facilities; clearing and risk management; settlement; transaction administration, recording and reporting; securities valuation to establish a fair market price; operating and managing investor-protection funds; financing securities transactions; and providing, managing and operating open electronic-network securities-offering services through which issuers sell securities directly to investors. Together, these functions describe the practical systems through which the listed market transactions can be organised and administered.\n\nRegistration is open at the Mikro, Kecil, Menengah and Besar scales. Nationally, the activity is TERBUKA to PMA, with foreign ownership permitted up to 100%. That position is expressly stated for this activity: the foreign-ownership ceiling is not something to infer from the character of the market infrastructure or the scale at which it operates.\n\nBali does not reverse that national position. The Bali status is `OK_or_HIGHER_RISK`. The province’s permanent moratorium blocks PMA registration for activities carrying Low or Medium-Low risk, island-wide. Here, however, the Bali assessment records OSS risk at the Besar scale as Medium-High/High and expressly states that the activity is not blocked by the moratorium. In practical terms, a foreign investor can register this activity in Bali today, with a national foreign-ownership ceiling of 100%. The Bali record sets out no separate local ownership cap or partnership condition; the scale-specific risk assessment is the reason the provincial moratorium does not interrupt the national opening.",
+    "pullQuote": "For this activity, Bali aligns with the national opening because its recorded risk position does not trigger the provincial PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

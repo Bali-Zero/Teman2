@@ -1,0 +1,27 @@
+{
+  "code": "10299",
+  "editorial": {
+    "headline": "Where Other Aquatic Processing Becomes an Industrial Activity",
+    "standfirst": "KBLI 10299 covers non-standard processing and preservation of aquatic biota, open nationally to PMA and not blocked by Bali’s moratorium.",
+    "body": "KBLI 10299 sits in a very specific corner of Indonesia’s aquatic-processing economy: the treatment and preservation of crustaceans, molluscs, echinoderms, and other aquatic biota by methods outside the more ordinary named categories. The record gives examples that make the scope concrete rather than abstract: shrimp flour, shellfish flour, frog flour, and processing or preservation of other aquatic biota through radiation using an irradiator. This is not a general seafood-trading activity. It is a production and preservation classification for specialised aquatic inputs, including forms that may be intermediate materials rather than finished consumer products.\n\nThe activity is open across every business scale listed in the record: Mikro, Kecil, Menengah, and Besar. That matters because the code is not reserved in the record for one narrow enterprise size. A small processor and a larger industrial operator can both find a scale pathway here, provided the actual activity remains within the stated scope: processing and preserving the relevant aquatic biota by the methods described. The clean editorial test is practical: if the business is transforming or preserving those aquatic materials, including into flour-like outputs or by irradiation, this code is plausible; if the business is merely selling, farming, importing, or serving aquatic products, those facts are not supplied by this record and should not be folded into this classification.\n\nNationally, the PMA picture is straightforward. The record marks the code as TERBUKA, with pma_max_asing at 100, under Perpres 10/2021, 49/2021. In plain English, the national foreign-ownership ceiling recorded here is 100%. There is no lower foreign-share cap in the slim record, and none should be invented. For a foreign-owned setup, the important point is that the national investment list does not close this activity to PMA on the information provided here.\n\nBali is also clear, but for a different reason. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, according to the stated governor-letter source. This code, however, is not marked as blocked in Bali. The Bali status is OK_or_HIGHER_RISK, and the reason is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. That does not create a separate Bali ownership percentage, partnership rule, or quota. It simply means the record does not block PMA registration in Bali under the moratorium logic supplied here.",
+    "pullQuote": "Nationally the code is foreign-open, and in Bali the record does not block it under the moratorium logic supplied here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

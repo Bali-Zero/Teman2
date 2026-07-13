@@ -1,0 +1,27 @@
+{
+  "code": "10733",
+  "editorial": {
+    "headline": "Preserved Fruit and Dried Vegetables, With Bali Still Open",
+    "standfirst": "KBLI 10733 covers sweetened and dried plant-based preserves, nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 10733 is a food-processing activity built around preservation by sweetness and dryness. The record describes the work as preserving fruit, nuts, fruit peel, and other parts of plants through sweetening and drying, whether the result is packaged or unpackaged. The examples are concrete: sweetened nutmeg and dried sweetened mango. That gives the code a clear commercial center of gravity: not farming the crop, not retailing the finished snack, but the industrial act of transforming plant material into a preserved fruit or vegetable product.\n\nThe scale profile is broad. The record opens this activity to **Mikro**, **Kecil**, **Menengah**, and **Besar** operators, which means the classification can serve very different business shapes, from small production to larger manufacturing. The important editorial point is that the code is defined by the process and product, not by the size of the factory or whether the goods are sold loose or in packaging. A founder reading the scope should therefore focus on the actual activity: sweetening and drying fruit, nuts, peel, or other plant parts into preserved food products.\n\nNationally, the investment picture is straightforward. The record marks the PMA status as **TERBUKA**, with `pma_max_asing` at **100%**, sourced to **Perpres 10/2021, 49/2021**. In plain English, the national record treats this activity as open to foreign ownership up to the full stated ceiling. There is no smaller cap in the slim record, and there is no separate national condition listed here beyond the fields provided. For a foreign-owned setup, the national signal is therefore clean: this is not presented as a closed activity in the record.\n\nBali does not add a blockage on the record supplied here. The Bali status is **OK_or_HIGHER_RISK**, and `l4_bali_blocked` is false. The reason is specific: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. That matters because the record also states the moratorium rule: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. This activity, on the supplied record, sits outside that block because of the stated Bali-side risk reasoning. The honest conclusion is narrow but useful: nationally open, full foreign-ownership ceiling in the record, and not blocked for PMA registration in Bali on the Bali moratorium field supplied.",
+    "pullQuote": "The honest conclusion is narrow but useful: nationally open, full foreign-ownership ceiling in the record, and not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

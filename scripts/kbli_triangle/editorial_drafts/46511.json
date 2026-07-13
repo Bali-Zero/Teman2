@@ -1,0 +1,27 @@
+{
+  "code": "46511",
+  "editorial": {
+    "headline": "Computer Wholesale Is Nationally Open—but Closed to PMA in Bali",
+    "standfirst": "Code 46511 covers wholesale computers and connected peripherals; it is nationally open to foreign investment, but Bali’s permanent moratorium blocks PMA registration.",
+    "body": "For a foreign investor considering Code 46511, the central fact is immediate: this activity cannot be registered as a PMA business in Bali today. Nationally, the code is open to foreign investment with a 100% foreign-ownership ceiling. In Bali, however, the applicable provincial moratorium blocks PMA registration. The contrast is not a technicality; it is the practical boundary around this activity on the island.\n\nThe activity is wholesale trade in computers and computer peripheral equipment. Its stated scope includes printers, multifunction printers that print, scan, copy and send faxes, and which can generally connect to computers and networks. It also includes interactive whiteboards and video-conferencing equipment. Read as a commercial category, this is the wholesale side of supplying the hardware and connected equipment that sits around computer use, communication and collaboration.\n\nThe code is open across the full stated business-scale range: Mikro, Kecil, Menengah and Besar. That breadth matters nationally because the activity is not confined in the record to one size of operator. Yet the Bali result turns on the risk position recorded for the Besar scale: across every scope, OSS risk is Rendah or Menengah-Rendah. Bali blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis, and this code is therefore marked Blocked (risk class) under the moratorium introduced in May 2026.\n\nThis leaves a clean but demanding reading of the record. The national rule permits full foreign ownership for this wholesale activity; the Bali rule prevents PMA registration for it. Neither fact cancels the other. A founder looking at Indonesia at large can rely on the national openness stated for the code, while a founder planning a Bali PMA must treat the provincial block as decisive. The relevant question is not whether computer wholesale is nationally foreign-open, but whether the intended registration sits in Bali—and for PMA, the record’s answer is no.",
+    "pullQuote": "National openness does not override Bali’s decisive block on PMA registration for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Eligible scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National policy basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

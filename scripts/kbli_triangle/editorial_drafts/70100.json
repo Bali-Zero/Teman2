@@ -1,0 +1,27 @@
+{
+  "code": "70100",
+  "editorial": {
+    "headline": "Head-Office Activity: Open Nationally, Unregistrable for PMA in Bali",
+    "standfirst": "Head-office work is nationally open to full foreign ownership, but Bali’s scale structure means a PT PMA cannot register it there today.",
+    "body": "A foreigner cannot register this activity in Bali today. That conclusion matters because the national position initially appears straightforward: head-office activity is open to foreign investment, with foreign ownership permitted up to 100%. Bali, however, reaches a different registration outcome through its available business-scale structure. The result is not a minor local qualification; for a PT PMA seeking to register this activity in Bali, the record is clear that registration is blocked.\n\nIn practical terms, this is the work of directing the centre of an enterprise rather than carrying out the trade, manufacturing, financing, or other work performed by its operating units. It covers supervising and managing other units within a company or group of companies; setting strategic or organisational plans; making decisions on company or enterprise policy; maintaining operational control; and managing the day-to-day operation of related units. The character of that head-office work remains the same regardless of what the managed units themselves do. Central administrative offices, incorporated offices, district or regional offices, and branch-management offices all sit within this scope.\n\nThe national scale setting is also specific. The record opens the activity at Micro, Small, and Medium scale. In Bali, there is no Usaha Besar scale row for it, and the activity is therefore reserved for UMKM. That is decisive for a PT PMA, which the record identifies as Usaha Besar by law: without an Usaha Besar row, it cannot register this activity in Bali. The wider provincial context is equally firm. Bali records an island-wide, permanent PMA block for low- and medium-low-risk activities, reinforcing a regulatory environment in which local registration must be read from Bali’s own structure, not inferred from the national foreign-ownership ceiling.\n\nFor founders, the useful distinction is between what the activity is and where it can be registered in the intended corporate form. Nationally, the activity can accommodate 100% foreign ownership. In Bali, the applicable scale structure prevents a PT PMA registration. The activity remains a defined category of enterprise coordination and control; what changes is the route available to a foreign-investment company on the island. Treating the national opening as a guarantee of Bali registration would miss the point entirely.",
+    "pullQuote": "In Bali, the decisive fact is simple: a PT PMA is Usaha Besar, while this activity has no Usaha Besar scale row.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Mikro"
+      },
+      {
+        "label": "Open scale",
+        "value": "Kecil"
+      },
+      {
+        "label": "Open scale",
+        "value": "Menengah"
+      }
+    ]
+  }
+}

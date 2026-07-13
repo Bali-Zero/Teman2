@@ -1,0 +1,27 @@
+{
+  "code": "47523",
+  "editorial": {
+    "headline": "Retailing Tools, and Bali’s PMA Line",
+    "standfirst": "Nationally open to full foreign ownership, this tools retailer nevertheless cannot be registered as PMA in Bali under the island-wide moratorium.",
+    "body": "Retailing tools is a deceptively precise trade. KBLI 47523 covers the retail sale of tools and equipment for tradespeople, whether operated by hand or powered by electricity. The examples supplied—hammers, saws and screwdrivers—give the classification a practical centre of gravity: it concerns the equipment itself, sold at retail, rather than a vague notion of construction or workmanship. The scope makes clear that both hand-operated and electrically powered equipment belong inside the activity. The result is a retail classification with a defined merchandise focus: tools and equipment for the trade.\n\nWho can register it? The record does not confine the activity to a single business size. It opens the classification to Mikro, Kecil, Menengah and Besar scales. That breadth is material: the same defined retail activity is available across the stated scale range, while the description remains anchored in the sale of the specified tools and equipment. For founders, the scale field is a clear signal about eligibility by size, not a reason to stretch the underlying scope. A business should still be intelligible as a retailer of the tool and trade-equipment range described here.\n\nAt national level, the PMA position is equally direct. The status is TERBUKA, with maximum foreign ownership of 100%, and the cited basis is Perpres 10/2021, 49/2021. In plain English, the national record allows this activity to be held by a PMA with full foreign ownership. There is no national foreign-equity cap below full ownership in the supplied data. That conclusion is important because it identifies the national position clearly—but it does not decide where such a PMA may be registered.\n\nBali changes the answer decisively. The Bali status is Blocked (risk class): a foreign investor cannot register this activity as PMA in Bali today. The stated reason is not a foreign-ownership percentage or a local-partnership term. It is risk classification at the Besar scale: every scope is recorded as Rendah/Menengah-Rendah, bringing the activity within Bali’s moratorium. The rule in the record is island-wide and permanent, blocking all Low and Medium-Low risk KBLI for PMA. So the honest reading holds both facts at once: nationally, 100% foreign ownership is open; in Bali, the PMA registration route is blocked.",
+    "pullQuote": "Nationally, 100% foreign ownership is open; in Bali, the PMA registration route is blocked.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

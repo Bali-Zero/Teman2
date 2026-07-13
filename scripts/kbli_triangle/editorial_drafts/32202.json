@@ -1,0 +1,27 @@
+{
+  "code": "32202",
+  "editorial": {
+    "headline": "Nontraditional Musical Instruments, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 32202 covers the making of modern acoustic and electronic instruments, with full national PMA openness but a Bali registration block for foreign investors.",
+    "body": "**KBLI 32202 is the manufacturing lane for nontraditional musical instruments.** Its scope is broad but still specific: instruments played by plucking, bowing, blowing, or striking, including guitars, basses, trumpets, saxophones, clarinets, harmonicas, violins, cellos, double basses, drums, xylophones, metallophones, pianos, organs, pianicas, accordions, and tuning forks. It also reaches into electronic sound, covering instruments whose sound is produced or amplified electronically, such as digital pianos and synthesizers.\n\nThat makes the activity a manufacturing classification, not a retail, performance, recording, or audio-equipment category. The record also draws a boundary around what is outside the activity: microphones, loudspeakers, headphones, similar components, and toy musical instruments are not part of this scope. In practical terms, the code is for a business that makes the instrument itself, whether the object is an acoustic string instrument, a brass or woodwind instrument, a percussion instrument, or an electronic keyboard-based product.\n\nNationally, the investment picture is clean. The record marks the activity as **TERBUKA**, with a foreign-ownership ceiling of **100%**, under **Perpres 10/2021, 49/2021**. It is also open across all listed business scales: Mikro, Kecil, Menengah, and Besar. On the national register, then, this is not a partially capped activity. A PMA structure is not being squeezed by a foreign-share limit inside the slim record; the ceiling is the full figure shown there.\n\nBali changes the answer completely. The record says `l4_bali_blocked` is true, and gives the reason plainly: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule is equally direct: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” So the honest reading is this: KBLI 32202 is nationally foreign-open, but a foreign investor cannot register it as a PMA activity in Bali today under the Bali-side block recorded here. The contradiction is not in the activity itself; it is between the national openness and the province-level moratorium applied to the recorded OSS risk profile.",
+    "pullQuote": "KBLI 32202 is nationally foreign-open, but a foreign investor cannot register it as a PMA activity in Bali today under the Bali-side block recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

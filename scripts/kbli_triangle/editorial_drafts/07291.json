@@ -1,0 +1,27 @@
+{
+  "code": "07291",
+  "editorial": {
+    "headline": "Tin Ore Mining With a Clear PMA Door",
+    "standfirst": "This activity covers tin ore mining and preparation, nationally open to foreign ownership and not blocked for PMA registration in Bali under the stated moratorium rule.",
+    "body": "Tin ore mining under KBLI 07291 is a mineral extraction activity, but the record frames it more narrowly than a general mining label. Its scope covers the mining and preparation of tin ore: the work of taking tin-bearing material from the ground and preparing that ore as the activity’s commercial object. The scope also names two licensing contexts attached to the activity: a Special Mining Business Licence for Exploration, and an extension of a Mining Business Licence at the Production Operation stage. That makes the activity both operational and administrative in character: it is not merely the idea of trading in tin, but the registered mining activity around tin ore itself.\n\nThe scale picture is unusually broad in the record. The activity is open across Mikro, Kecil, Menengah, and Besar. That does not mean every operator will look the same; it means the classification is not confined, in this record, to one business-size lane. A founder reading it should therefore separate the commercial size of the company from the legal character of the activity. The code describes tin ore mining and preparation, while the scale field says the registration lane can exist from micro through large scale. Nothing in the record adds a capital threshold, a timeline, or a separate operational condition, so none should be assumed beyond the named scope and licensing references.\n\nNationally, the foreign-investment signal is direct. PMA status is TERBUKA, with a foreign ownership ceiling of 100%, under the cited Perpres framework. In plain English: the national investment classification does not impose a foreign-share cap on this activity. For a foreign-owned company, that is the central national reading of the slim record. It should not be softened into vague encouragement, and it should not be expanded into promises about approvals. The record says open, and it says the ceiling is 100%; it does not say more.\n\nThe Bali reading is also clear, and it matters because Bali applies an island-wide PMA moratorium to Low and Medium-Low risk KBLI. This activity is not blocked by that moratorium in the record. The stated reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it falls outside the Low and Medium-Low risk group blocked for PMA. The honest conclusion is therefore not a hidden warning but a clean distinction: nationally this activity is foreign-open up to 100%, and in Bali it is marked OK_or_HIGHER_RISK rather than blocked by the moratorium. The registration question remains serious because tin ore mining is a defined mining activity with named mining-licence contexts, but the Bali moratorium field itself does not close the door.",
+    "pullQuote": "The honest conclusion is therefore not a hidden warning but a clean distinction: nationally this activity is foreign-open up to 100%, and in Bali it is marked OK_or_HIGHER_RISK rather than blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

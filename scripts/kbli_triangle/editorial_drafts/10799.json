@@ -1,0 +1,27 @@
+{
+  "code": "10799",
+  "editorial": {
+    "headline": "The Wide, Practical World of Other Prepared Food Manufacturing",
+    "standfirst": "KBLI 10799 covers finished food products that sit outside narrower categories, and the record treats it as nationally foreign-open and not blocked for PMA in Bali.",
+    "body": "KBLI 10799 is a broad manufacturing home for prepared food products that are real, finished, and industrially identifiable, but not classified elsewhere in the record. Its scope stretches from soups and broths to imitation honey and caramel, from short-life foods such as sandwiches and raw pizza to collagen, cellulose, animal-intestine, and other sausage casings. It also includes probiotics, yeast, meat and seafood extracts and juices, egg products such as salted eggs and egg albumin, artificial concentrates such as essences, plant-protein food products, food additives derived from plants, animals, or microorganisms such as pectin, artificial sweeteners such as stevia, and other food products not already covered, including cincau.\n\nThe editorial importance of this code is its breadth. It is not describing a restaurant, a farm, or a trading activity; it is describing manufacturing: the making of food products. A founder would look here when the product is a prepared food item or ingredient-like food output that does not fit a narrower classification in the supplied scope. The record opens the activity across every listed business scale: Mikro, Kecil, Menengah, and Besar. That matters because the code is not presented as only a large-factory category or only a small-producer category; the slim record places the activity across the full scale ladder it provides.\n\nNationally, the investment picture is clean. The record marks the activity as TERBUKA and gives pma_max_asing as 100, so the foreign-ownership ceiling is 100%. In plain English, the national line in the record is that PMA participation is open up to full foreign ownership. The supporting source named in the record is Perpres 10/2021, 49/2021. There is no separate percentage, threshold, capital rule, timeline, licence, or tax position in the slim record, so none should be read into the classification.\n\nBali does not add a hidden ownership cap in this record. The Bali field is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason is stated directly: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That is the honest national-vs-Bali reading: this is nationally foreign-open, and the supplied Bali moratorium rule does not block PMA registration for this activity. The record’s Bali moratorium rule blocks all Low + Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is recorded as not blocked by that rule.",
+    "pullQuote": "That is the honest national-vs-Bali reading: this is nationally foreign-open, and the supplied Bali moratorium rule does not block PMA registration for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

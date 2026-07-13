@@ -1,0 +1,27 @@
+{
+  "code": "85549",
+  "editorial": {
+    "headline": "Religious Education Beyond the Formal Track",
+    "standfirst": "KBLI 85549 covers non-formal religious education other than Islamic education: nationally open to foreign investment, with Bali’s PMA position shaped by its risk-based moratorium screen.",
+    "body": "KBLI 85549 describes a distinct non-formal education activity: religious education units other than Islamic religious education. Its subject is not a general school category, but education provided on the non-formal pathway, whether organised in levels or without levels. That distinction is central. The activity concerns the delivery of such non-formal religious education itself, framing the code as a setting for organised learning rather than as a broad label for every faith-related undertaking. The scope also expressly includes non-formal education units created and managed through cooperation between a foreign educational institution accredited or recognised in its home country and an Indonesian educational institution, provided they operate on the non-formal pathway in line with applicable legislation.\n\nRegistration is open at every scale named in the record: Mikro, Kecil, Menengah, and Besar. That wide scale availability sits alongside an activity that may be arranged with or without educational levels, while remaining within a defined non-formal route. For an operator approaching Indonesia through a foreign-investment structure, the national position is direct: the status is TERBUKA, and the foreign-ownership ceiling is 100%. There is no national foreign-share cap below full ownership stated for this activity. The national reference recorded for that position is Perpres 10/2021, 49/2021.\n\nBali calls for a careful reading, not an invented warning. The provincial rule in the record permanently blocks PMA for Low and Medium-Low risk activities across the island. KBLI 85549 is not marked as blocked by that moratorium. Its Bali status is OK_or_HIGHER_RISK, and the stated explanation is that, at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi — Medium-High/High — which is why the moratorium does not block it. Nationally, then, the activity is open to 100% foreign ownership; in Bali, the record does not present a PMA-registration block under the permanent Low and Medium-Low risk moratorium. This is not a basis for adding conditions the record does not give. The useful conclusion is narrower: the Bali screen does not close this activity on the moratorium ground identified here.",
+    "pullQuote": "In Bali, the record does not show a PMA-registration block for this activity under the permanent Low and Medium-Low risk moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National reference",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

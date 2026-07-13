@@ -1,0 +1,27 @@
+{
+  "code": "47729",
+  "editorial": {
+    "headline": "Retailing Pharmaceutical Inputs and Medical Devices in Bali",
+    "standfirst": "This retail activity is nationally open to full foreign ownership and remains available for PMA registration in Bali, including at larger operational scale.",
+    "body": "This activity covers the retail sale of pharmaceutical-preparation inputs, traditional-medicine raw materials known as *simplisia*, and other medical devices. Its scope extends across products for both people and animals, giving it a practical reach into specialist health-related retail rather than a single consumer category. It also encompasses veterinary pharmacies, animal-medicine depots, pet shops, poultry shops, and animal-medicine stores.\n\nThe code is open to businesses at Mikro, Kecil, Menengah, and Besar scale. That breadth matters: the activity is not confined to a particular size of operator in the record. A founder considering this line of business should therefore understand the code as a retail framework for specified pharmaceutical and animal-health inputs, medical devices, and the listed veterinary and animal-retail formats, rather than as a general description of the wider health economy.\n\nAt the national level, PMA is classified as TERBUKA and its foreign-ownership ceiling stands at 100%. In plain terms, the record allows full foreign ownership at the national level. There is no lower foreign-share cap recorded for this activity, and the national reference cited is Perpres 10/2021, 49/2021.\n\nBali does not reverse that national position. The Bali status is OK_or_HIGHER_RISK, and the record states that operations at Besar scale carry Menengah-Tinggi/Tinggi OSS risk, placing them outside the province-wide permanent PMA block for Low and Medium-Low risk activities. The result is straightforward: this activity is not blocked by Bali’s moratorium for PMA registration. The distinction is important because Bali’s restriction is broad for the risk bands it names, while this record expressly places the larger-scale case beyond that block.",
+    "pullQuote": "Nationally open to 100% foreign ownership, this activity is not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

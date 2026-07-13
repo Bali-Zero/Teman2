@@ -1,0 +1,27 @@
+{
+  "code": "49214",
+  "editorial": {
+    "headline": "Rural Passenger Transport, With a Clear Bali Reading",
+    "standfirst": "This activity covers passenger travel within one regency beyond urban-route overlap, open at every business scale and nationally to up to 100% foreign ownership.",
+    "body": "Rural passenger transport is defined here with useful precision: carrying passengers from one place to another within a single regency, on services that do not intersect with urban passenger-transport routes. That boundary is the centre of the activity. The point is not merely that journeys occur outside a city, but that they remain within one regency and sit apart from urban routes. For a founder, the practical reading is straightforward: the registered activity should describe a passenger-transport operation whose service pattern genuinely fits that geographical and route-based scope. It is a focused description, and its limits matter as much as its promise.\n\nIndonesia’s scale treatment is notably broad: micro, small, medium and large businesses are each open to this activity. That makes the code relevant across different operating footprints without changing what the activity itself is. The scope remains passenger transport inside a single regency and outside intersecting urban routes; business size does not extend that scope. The record also marks the activity as open to foreign investment, with a national foreign-ownership ceiling of 100%. In plain terms, foreign ownership may reach 100% nationally for this activity.\n\nBali needs a separate reading, and this record supports a positive one rather than an automatic ban. Its Bali status is recorded as OK_or_HIGHER_RISK, and it is not blocked for foreign-investment registration under the provincial moratorium. The stated reason is specific: at the Large scale, its OSS risk is Medium-High/High. Bali’s permanent, island-wide rule blocks foreign investment for all Low and Medium-Low risk activities. Because the recorded risk position at the Large scale is Medium-High/High, this activity is not blocked by that moratorium. The record gives no separate Bali foreign-ownership ceiling; the national 100% ceiling is the figure stated for foreign ownership.\n\nTaken together, the record offers a clean sequence of questions. Does the proposed service carry passengers between places within one regency while avoiding intersection with urban transport routes? At which of the four open scales will it operate? And does its investment structure fit the nationally open foreign-investment position and its 100% ceiling? In Bali, the answer supplied by this record is that there is no moratorium-driven foreign-investment block, resting on the Medium-High/High OSS risk recorded for Large-scale operation.",
+    "pullQuote": "In Bali, this activity is not blocked for foreign-investment registration under the provincial moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "46206",
+  "editorial": {
+    "headline": "The Wholesale Trade Behind Indonesia’s Living Aquatic Supply Chain",
+    "standfirst": "KBLI 46206 covers wholesale trade in live aquatic stock not intended for consumption, from fish seed and ornamental fish to pearl shell and sponges.",
+    "body": "**KBLI 46206** is for wholesale trade in live fish and other living aquatic biota that are not intended for consumption. Its territory is therefore distinct in purpose: the activity concerns living stock moving through trade channels rather than food products. The stated examples give the category its practical shape—fish seed, ornamental fish, pearl shell and sponges—all handled as live aquatic goods in a wholesale setting.\n\nThe activity is open to businesses operating at **Menengah** and **Besar** scale. That matters because the code is not framed as a general catch-all for every form of aquatic commerce; it is a defined wholesale activity with a clear non-consumption focus. A business registering it should be able to see its commercial role in that description: trading live aquatic organisms and related stock at the scales expressly listed in the record.\n\nAt the national level, the position for foreign investment is straightforward. The code is marked **TERBUKA**, with a foreign-ownership ceiling of **100%** under the cited Presidential Regulations. In plain terms, national policy allows full foreign ownership for this activity. There is no lower ownership cap recorded here, so the national ceiling is not an abstract signal of openness but the full percentage stated for foreign participation.\n\nBali requires a separate reading, and in this case it does not reverse the national position. Across the island, the province permanently blocks PMA registration for every Low and Medium-Low risk KBLI activity. This code, however, is not blocked by that moratorium: at the **Besar** scale, its OSS risk is recorded as Medium-High/High. Its Bali status is therefore **OK_or_HIGHER_RISK**, meaning a foreign investor can register this activity in Bali today rather than being stopped by the provincial moratorium. The important qualification is not a hidden ownership restriction, but the risk position recorded at the large-business scale that places it outside the moratorium’s blocked categories.",
+    "pullQuote": "Its Bali status is therefore OK_or_HIGHER_RISK, meaning a foreign investor can register this activity in Bali today rather than being stopped by the provincial moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scale",
+        "value": "Menengah"
+      },
+      {
+        "label": "Open business scale",
+        "value": "Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

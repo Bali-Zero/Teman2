@@ -1,0 +1,27 @@
+{
+  "code": "11051",
+  "editorial": {
+    "headline": "Packaged Drinking Water, Fully Open Nationally and Clear for Bali PMA",
+    "standfirst": "KBLI 11051 covers the processing of raw water into packaged drinking water, with national PMA ownership open up to 100% and no Bali moratorium block in the record.",
+    "body": "KBLI 11051 is the industrial code for packaged drinking water. Its scope is the processing of raw water into drinking water that is packaged and ready for direct consumption. The record is broad on formulation: the finished product may contain minerals or not, may include added gas such as oxygen or carbon dioxide, and may also be produced with or without added minerals. The common thread is not the flavour profile or the marketing claim, but the activity itself: taking raw water through an industrial process so it becomes packaged drinking water ready to consume.\n\nThat makes this a practical manufacturing classification rather than a narrow product label. A business registering under this code is anchoring itself in the production of bottled or otherwise packaged drinking water, including mineral and non-mineral variants, still or gas-added versions, and mineral-added forms when those are part of the same processing activity. The available scale range is unusually straightforward in the slim record: Mikro, Kecil, Menengah, and Besar are all open. In plain English, the code is not confined to a single business size; the record allows it across the full stated scale ladder.\n\nThe national PMA position is equally clear. The record marks KBLI 11051 as TERBUKA and gives a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the national foreign-ownership ceiling in this record is 100%. There is no lower national cap stated here, and no additional threshold, licence, capital rule, or timeline appears in the slim record, so none should be read into the classification. The national picture is open, and the ownership number is explicit.\n\nThe Bali-side reading does not reverse that conclusion. For Bali, l4_bali_blocked is recorded as false, while the status is OK_or_HIGHER_RISK. Its reason is specific: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this code is not marked as blocked. The honest conclusion is therefore clean: nationally, KBLI 11051 is open to PMA up to 100%; in Bali, the record does not show a moratorium block for PMA registration.",
+    "pullQuote": "The honest conclusion is therefore clean: nationally, KBLI 11051 is open to PMA up to 100%; in Bali, the record does not show a moratorium block for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

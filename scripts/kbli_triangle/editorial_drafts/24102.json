@@ -1,0 +1,27 @@
+{
+  "code": "24102",
+  "editorial": {
+    "headline": "Steel Rolling With a Clear National and Bali Reading",
+    "standfirst": "KBLI 24102 covers the rolling of steel into bars, beams, sheets, rails, wire and related formed products, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 24102 is the industrial activity of rolling steel, both hot and cold. In plain English, the record places this code around the transformation of steel into rolled products: steel wire rod, round bar, flat bar, reinforcing bar, structural profiles such as H-beams and I-beams, strip, rail, plate, hot-rolled sheet and cold-rolled sheet. The scope also reaches coated and uncoated steel sheets, the rolling of steel scrap, and the making of hot-rolled billets or pieces where the activity remains inside this steel-rolling family.\n\nThe texture of the scope matters because this is not a narrow trading label or a generic metalworking description. It includes open sections made by hot rolling, solid sections produced through cold drawing, grinding and turning, and open sections formed progressively through rolling machines, press folding, or flat-steel rolling. It also includes steel wire, whether single wire or strand, when produced through cold drawing, tempering and stressing. The record extends to steel sheet piles or welded open steel sections, and steel railway material in the form of rails that are not yet installed. The centre of gravity is therefore clear: this is manufacturing capacity for rolled steel forms, from bar and profile to sheet, wire and rail material.\n\nOn scale, the code is broadly available in the record. It is open to Mikro, Kecil, Menengah and Besar business scales, so the registration frame is not confined to one size of operator. A smaller workshop, a medium industrial operation, or a large-scale mill may all sit within the scale vocabulary given here, provided the registered activity is genuinely the rolling and forming described in the scope. The editorial point is that the code should be read by activity, not by ambition: what matters is whether the business is making these rolled steel products, including the specified hot-rolled, cold-rolled, drawn, formed, coated or uncoated outputs.\n\nThe national PMA picture is straightforward. Under Perpres 10/2021, 49/2021, the record lists the activity as TERBUKA and gives pma_max_asing as 100. Rendered commercially, that means the national foreign-ownership ceiling shown by the record is 100%. The Bali layer is also unusually clean compared with activities that are caught by the province’s Low and Medium-Low risk moratorium. Here, l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The stated basis is specific: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule still matters as background because the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this activity is not marked as blocked by that rule in the supplied record. The honest reading is therefore: nationally open to PMA up to 100%, and not blocked for Bali PMA registration by the Bali moratorium field in this record.",
+    "pullQuote": "The honest reading is therefore: nationally open to PMA up to 100%, and not blocked for Bali PMA registration by the Bali moratorium field in this record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

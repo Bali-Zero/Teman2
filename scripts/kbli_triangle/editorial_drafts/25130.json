@@ -1,0 +1,27 @@
+{
+  "code": "25130",
+  "editorial": {
+    "headline": "Steam-Generation Manufacturing With a Scope-Dependent Bali Check",
+    "standfirst": "KBLI 25130 covers industrial steam-generation equipment and is nationally open to foreign ownership, but Bali registration depends on the exact risk profile declared in OSS.",
+    "body": "KBLI 25130 sits in a heavy-industrial corner of manufacturing: the making of steam generators and other steam-generation systems, together with their components and supporting equipment. The record’s scope is broad but still specific. It covers steam generators, central-heating radiators that do not use electricity, condensers for steam-power units, and auxiliary installations used with steam generators, including condensers, superheaters, steam collectors, and accumulators. It also reaches marine boilers, power boilers, and nuclear reactors with their components and equipment, while excluding isotope separators.\n\nThat makes this code a registration home for businesses whose real activity is manufacturing serious steam or power-generation hardware, not merely trading equipment or installing generic heating appliances. The activity can be registered across the full business-scale ladder shown in the record: Mikro, Kecil, Menengah, and Besar. In practice, the commercial profile will often depend on the declared industrial scope, because the covered outputs range from components and accessories to complete generators, condensers, boilers, and reactor-related equipment.\n\nNationally, the foreign-investment picture is clean. The record marks the code as TERBUKA and gives a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. In plain English, the national rule in this slim record allows a PMA company to hold the activity up to full foreign ownership. There is no lower national cap in the data, and there is no separate minimum-capital, licence, tax, timeline, or technical-permit detail provided here to add.\n\nBali is more conditional. The record does not mark this activity as outright blocked in Bali, but it does mark the Bali status as Blocked (scope-dependent). The reason is that OSS risk at scale Besar is low on some scopes and higher on others, and the record says registration as PMA in Bali must be verified live in OSS against the exact declared activity. This matters because the Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. So the honest reading is not that KBLI 25130 is simply closed in Bali, nor that it is automatically safe there. It is nationally open, but Bali registration turns on the precise scope and OSS risk classification declared at the time of filing.",
+    "pullQuote": "KBLI 25130 is nationally open to full foreign ownership, but in Bali the decisive question is the exact activity and risk profile declared in OSS.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "46593",
+  "editorial": {
+    "headline": "Nationally Open, but Closed to PMA Registration in Bali",
+    "standfirst": "Wholesale trading in non-car, non-motorcycle land transport equipment is nationally open to foreign ownership, yet Bali’s permanent PMA moratorium blocks registration for this activity.",
+    "body": "For a foreign investor, the Bali conclusion comes first: this activity cannot be registered for PMA in Bali at present. The restriction does not overturn its national foreign-investment position; it reflects Bali’s island-wide, permanent moratorium on PMA registration for KBLI activities classified as Low or Medium-Low risk. For this activity, every scope at the Large scale falls into that Low or Medium-Low OSS risk range, bringing it within the moratorium.\n\nThe commercial territory is wholesale trade in a broad range of land transport equipment, whether powered or unpowered, excluding cars, motorcycles, and similar vehicles. It expressly includes items such as locomotives and railcars, alongside wholesale trading in their various spare parts and accessories. In practical terms, the registered enterprise is positioned as a wholesale trader of those transport assets and their supporting components—not merely of one named item, but across the category described by the activity’s scope.\n\nNationally, the position is straightforward. The activity is marked **TERBUKA**, with foreign ownership permitted up to 100% under the cited presidential regulations. It is also open across Mikro, Kecil, Menengah, and Besar scales. Those two facts matter together: the national framework permits full foreign ownership and does not limit the activity to a single enterprise-size category. A founder assessing an Indonesian business structure can therefore read the national position as fully open on ownership.\n\nBali requires a separate reading. The obstacle is not a reduced foreign-ownership ceiling in Bali; it is the prohibition on PMA registration created by the permanent moratorium. Because the record identifies Low or Medium-Low OSS risk across every scope at the Besar scale, a nationally open, 100%-foreign-owned company still cannot register this activity as PMA in Bali. The distinction is essential: national openness describes the ownership ceiling, while the Bali rule determines whether PMA registration is available on the island at all.",
+    "pullQuote": "National openness may permit 100% foreign ownership, but it does not create a PMA registration route in Bali for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open enterprise scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "22203",
+  "editorial": {
+    "headline": "Plastic Pipe Manufacturing With a Clean Bali Position",
+    "standfirst": "KBLI 22203 covers the making of plastic pipes, hoses, tubes, and fittings, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 22203 is a manufacturing activity, not a trading or installation category. The record defines it around the making of pipes and hoses from plastic, including plastic tubes and pipe fittings. It also identifies the permitted material families in plain industrial terms: polyvinyl chloride, polyethylene, and polypropylene. That gives the code a clear production character: it is about turning plastic materials into pipe, hose, tube, and fitting products.\n\nThe registration picture is unusually broad on business scale. The record opens the activity to Mikro, Kecil, Menengah, and Besar scales, so the code is not framed only for large factories. A smaller producer and a larger industrial operator sit within the same recorded scale range, provided the activity being registered remains the manufacture of the plastic pipe, hose, tube, or fitting goods described in the scope. The editorial boundary matters here: the record supports manufacturing those goods; it does not add separate claims about distribution, installation, certification, or downstream permits.\n\nNationally, the PMA position is straightforward. The record marks the activity as TERBUKA and gives a pma_max_asing value of 100, which means the foreign-ownership ceiling is 100%. The cited PMA source is Perpres 10/2021, 49/2021. On the national reading alone, this is therefore not a capped foreign-shareholding activity in the record; it is foreign-open up to the full percentage stated there.\n\nBali does not add a separate percentage, quota, or local-partner condition in the record. In Bali, the status is OK_or_HIGHER_RISK, while l4_bali_blocked remains false. The reason is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule still matters as context because the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. But for this code, the recorded Bali result is not a block. The honest national-vs-Bali conclusion is clean: nationally it is open up to 100% foreign ownership, and in Bali the record does not mark it as blocked by the moratorium.",
+    "pullQuote": "The honest national-vs-Bali conclusion is clean: nationally it is open up to 100% foreign ownership, and in Bali the record does not mark it as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

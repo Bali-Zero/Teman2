@@ -1,0 +1,27 @@
+{
+  "code": "06100",
+  "editorial": {
+    "headline": "Crude Oil Mining, Without the Bali Moratorium Trap",
+    "standfirst": "This activity covers crude oil extraction, condensate production, and related bituminous or shale-oil mining, open nationally to PMA at full foreign ownership.",
+    "body": "**KBLI 06100 is the upstream oil activity itself.** Its scope is the mining of crude petroleum: searching for oil content, drilling, extraction, separation, containment, and the production of crude oil and condensate. The record also places within this activity the processing steps needed to obtain crude oil through containment, filtering, drying, stabilization, and similar handling. It is not written as a light trading or advisory activity. It is the industrial act of bringing crude petroleum, condensate, bituminous sands, shale oil, and tar sands into usable crude form when those processes are tied to the mining operation.\n\nThat breadth matters for registration. The activity is open across every listed business scale: Mikro, Kecil, Menengah, and Besar. In practice, the substance of the scope reads as heavy upstream extraction, but the slim record does not restrict the code to one scale only. A registrant choosing it is describing a business whose center of gravity is petroleum mining and the directly connected production of crude oil or condensate, including the physical processes of excavation, drilling, crushing, washing, filtering, mixing, and storage where those processes belong to the mining operation.\n\nFor foreign ownership, the national signal is unusually clear. The PMA status is **TERBUKA**, and the recorded foreign ownership ceiling is **100%**. That means the record does not show a foreign-share cap below full ownership. The source given for that national position is Perpres 10/2021, 49/2021, so the editorial reading should stay narrow: nationally, this activity is foreign-open at the stated ceiling, and no additional capital threshold, licence, timeline, or sectoral condition can be added unless it appears in the source record.\n\nThe Bali picture is also clear, but in the opposite way from many low-risk activities. The Bali moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province, yet this record marks the Bali status as **OK_or_HIGHER_RISK** and says it is **not blocked** because the OSS risk at Besar scale is Menengah-Tinggi/Tinggi. So the honest conclusion is not that Bali is closed to this PMA registration today. On the slim record provided, the activity is nationally open to full foreign ownership and is not caught by Bali's PMA moratorium. The real caution is precision: this conclusion rests only on the registered activity described here, not on any neighbouring support, exploration, refining, or downstream activity outside the record.",
+    "pullQuote": "On the slim record provided, the activity is nationally open to full foreign ownership and is not caught by Bali's PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Besar, Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

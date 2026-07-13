@@ -1,0 +1,27 @@
+{
+  "code": "10307",
+  "editorial": {
+    "headline": "Soybean Tempe Production Is Open Nationally, But Blocked in Bali",
+    "standfirst": "This activity covers the making of soybean tempe, open across business scales and foreign-owned nationally, yet unavailable for PMA registration in Bali today.",
+    "body": "**This KBLI activity is deliberately narrow: it covers the making of tempe from soybeans.** The record does not frame it as a broad fermented-food category, a general protein-manufacturing activity, or a catch-all for every product called tempe. Its scope is the production activity itself, anchored in one raw material: kedelai, or soybeans. That precision matters because the commercial identity of the product may feel familiar, even domestic, but the registration question is still technical. The code is about what is being made, from what input, and under which registered industrial activity.\n\nFor operators, the scale picture is unusually straightforward. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses. In practical registration language, that means the activity is not reserved only for cottage producers or only for large industry; it can sit across the full scale ladder recorded here. A founder setting up a small production unit, a growing local processor, or a larger manufacturing operation would all read the same scale field before moving on to the ownership and location question.\n\nNationally, the ownership position is also clean. The PMA status is TERBUKA, and the foreign-ownership ceiling recorded here is 100%. In plain English, the national rule set in this slim record treats soybean tempe production as open to foreign ownership up to the full recorded ceiling. The stated source for that national position is Perpres 10/2021, 49/2021. Nothing in the record adds a separate capital threshold, special licence, staged timeline, tax condition, or operational permit, so none should be read into the activity from this editorial.\n\nThe decisive complication is Bali. The same record marks Bali as blocked for PMA registration: l4_bali_blocked is true, with the reason given as “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026”. The moratorium rule is broader and blunt: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide, permanent. So the honest reading is not that the activity is nationally closed; it is not. It is nationally open, with a 100% recorded foreign-ownership ceiling, but a foreign investor cannot register this activity as PMA in Bali today under the Bali-side block recorded here.",
+    "pullQuote": "This is nationally open soybean tempe production, but the Bali record turns that openness into a practical PMA stop sign on the island.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

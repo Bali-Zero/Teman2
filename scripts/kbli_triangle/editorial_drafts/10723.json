@@ -1,0 +1,27 @@
+{
+  "code": "10723",
+  "editorial": {
+    "headline": "Syrup Manufacturing With a Clear National and Bali Path",
+    "standfirst": "KBLI 10723 covers the standalone conversion of sugar into syrup, open across all business scales and not blocked for PMA registration in Bali.",
+    "body": "KBLI 10723 is a manufacturing activity with a narrow, concrete center of gravity: the processing of sugar into syrup. The record names sugar syrup, syrup, and maple sugar as examples, so this is not a general food-and-beverage trading category or a broad sweetener business. It is about the industrial act of turning sugar into a syrup product, provided the activity can stand as its own registration line rather than disappearing inside an inseparable sugar-factory process.\n\nThat practical boundary matters. A founder using this code should be registering a business whose actual activity is syrup production as a distinct operation. The record opens the activity to **Mikro, Kecil, Menengah, and Besar** scales, which means the classification is not reserved only for large plants or only for small producers. Its scale range is broad, but the registered activity should still remain faithful to the described scope: sugar is processed, and the output is syrup or the named syrup-related product.\n\nNationally, the position is straightforward. The PMA status is **TERBUKA**, and the foreign-ownership ceiling is **100%**. In plain English, the national record treats this as open to foreign investment, with no lower ownership cap stated in the slim record. The cited source for that national position is **Perpres 10/2021, 49/2021**. There is no basis here to add a hidden permit story, a capital threshold, a tax condition, or a staged approval timeline. The record gives the foreign-ownership answer, and that answer is fully open at the national level.\n\nThe Bali picture is also clear, but it has to be read carefully. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province, island-wide and permanent, according to the record. This code, however, is not marked as blocked: `l4_bali_blocked` is false, and the Bali status is **OK_or_HIGHER_RISK**. The stated reason is: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. So the honest conclusion is not that Bali imposes a separate percentage cap, and not that a foreign investor needs an invented local partnership. The conclusion is simpler: for this slim record, KBLI 10723 is nationally open at 100% foreign ownership and is not blocked for PMA registration in Bali by the listed moratorium logic.",
+    "pullQuote": "For this slim record, KBLI 10723 is nationally open at 100% foreign ownership and is not blocked for PMA registration in Bali by the listed moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

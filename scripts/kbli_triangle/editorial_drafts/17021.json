@@ -1,0 +1,27 @@
+{
+  "code": "17021",
+  "editorial": {
+    "headline": "Corrugated Paperboard Is an Industrial Code With a Clear Bali Path",
+    "standfirst": "This activity covers the making of construction paper, packaging paper, and board products, and the record treats it as nationally open and not blocked in Bali.",
+    "body": "KBLI 17021 is not a retail paper trade or a general printing category. The slim record defines it as manufacturing: the making of construction papers such as insulating paper, condenser paper, roofing board, and building board; wrapping and packaging papers such as kraftliner, corrugating medium, ribbed kraft paper, kraft paper, machine-glazed paper, and machine-finished paper; and a wide board family including postcard card stock, londen paper, plywood-style board, multiplex board, bristol, straw board, chip board, duplex, ivory or boxboard, art board, and art paper. In plain English, this is the industrial layer behind packaging stock, board material, and paperboard inputs used before they become finished boxes, panels, or printed goods.\n\nThe record opens the activity across the full scale ladder: Mikro, Kecil, Menengah, and Besar. That matters because the code is not framed only for large mills or capital-heavy manufacturers, even though the product family naturally points toward production facilities, machinery, material handling, and supply-chain customers. A small or medium operator may sit closer to specialised board or paper processing; a larger operator may be closer to integrated industrial output. The record does not add operational thresholds, licence timing, production capacity, or capital figures, so those should not be read into the classification. What it does say is simpler: this activity is open to all listed business scales.\n\nNationally, the foreign-investment position is clear. The PMA status is TERBUKA, and the maximum foreign ownership value in the record is 100%. That means the national entry shown here is fully open on the foreign-ownership field provided by the record, with its source given as Perpres 10/2021, 49/2021. There is no smaller foreign cap in the slim record and no conditional percentage attached to Bali. A founder reading this code should separate the national ownership field from every other operational question: the record supplies a national PMA ceiling, not a complete factory-readiness checklist.\n\nThe Bali picture is also clean, but for a different reason. The record does include Bali's island-wide moratorium rule: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. For this specific activity, however, `l4_bali_blocked` is false, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. So the honest reading is not that Bali creates a special percentage cap, partnership quota, or local carve-out. It is that the record marks this code as not blocked in Bali under the stated moratorium logic, while nationally preserving a 100% foreign-ownership ceiling.",
+    "pullQuote": "The honest reading is not that Bali creates a special percentage cap, but that this code is not blocked under the moratorium logic shown in the record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

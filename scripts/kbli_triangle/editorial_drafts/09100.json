@@ -1,0 +1,27 @@
+{
+  "code": "09100",
+  "editorial": {
+    "headline": "The Contract Backbone of Oil and Gas Field Work",
+    "standfirst": "KBLI 09100 covers specialist oil-and-gas support services performed for a fee or under contract, and the record treats it as nationally open to PMA.",
+    "body": "KBLI 09100 is not the business of owning or operating an oil or gas field. It is the contracted support layer around extraction: the technical services that make exploration, drilling, well work, field logistics, and emergency response possible. The record describes services performed for a fee or under contract, from geological observation in prospective mining areas to drilling and re-drilling, installing drilling equipment on site, cementing oil and gas wells, making well channels, plugging and closing wells, and carrying out trial drilling connected with petroleum and gas refining.\n\nIts scope is practical and field-facing. The activity also includes pumping and mine-distribution services carried out on a fee or contract basis, plus natural-gas liquefaction and regasification when done at the mining site for transport needs. The record expressly includes oil-and-gas field firefighting services, which gives the code a broader support character than routine drilling assistance alone. In plain English, this is the KBLI for companies hired to support oil-and-gas exploration and exploitation operations, rather than companies registering as the field operator itself.\n\nThe scale picture is unusually straightforward. The record opens this activity to **Kecil**, **Menengah**, and **Besar** scales, so the code is not reserved only for large corporate vehicles. A registrant still has to match its real activity to the technical scope: the business should be providing oil-and-gas mining support services for remuneration or contract, not general equipment repair, off-site gas transport processing, platform installation work, or geophysical survey work outside this stated scope. The editorial point is simple: the registered activity must sit inside the service perimeter described by the record, because this code is defined by what is done at or around the oil-and-gas mining operation.\n\nFor foreign investment, the national reading is clear. The record marks PMA status as **TERBUKA** and gives a foreign-ownership ceiling of **100%**, with the source listed as **Perpres 10/2021, 49/2021**. Bali does not change that into a separate percentage or quota in this record. The Bali-side status is **OK_or_HIGHER_RISK**, and the stated reason is: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. That matters because the moratorium rule in the record blocks low and medium-low risk KBLI for PMA across Bali; this activity is not marked as blocked. On the record provided, KBLI 09100 is nationally open and not blocked for PMA registration in Bali today.",
+    "pullQuote": "On the record provided, KBLI 09100 is nationally open and not blocked for PMA registration in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

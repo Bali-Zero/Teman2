@@ -1,0 +1,27 @@
+{
+  "code": "14131",
+  "editorial": {
+    "headline": "Textile Accessories Manufacturing With Room for PMA in Bali",
+    "standfirst": "A manufacturing code for sewn textile accessories, nationally open to full foreign ownership and not blocked by Bali’s PMA moratorium.",
+    "body": "This activity is about making finished clothing accessories from textile or fabric, not about general garment production in the broadest sense. The record describes a workshop or factory that cuts and sews woven, knitted, or nonwoven material into ready-to-use accessory products. Its examples are practical and specific: hats, peci, head coverings, ties, sarongs, gloves, mukena, shawls, kerudung, belts, scarves, hair bands, tuxedo ties, and hair nets. The scope also reaches modest textile footwear without an applied sole, such as bedroom slippers, together with parts of the products named in the record.\n\nThe texture of the category matters. It covers accessories made from fabric remnants and embroidery, as well as woven hats, so the activity can fit both small craft-led production and more formal industrial manufacturing. The defining idea is the transformation of textile material into finished wearable accessories through cutting and sewing, with the finished item ready for use. That makes the code relevant to businesses whose core output is accessory manufacturing rather than retailing, importing, branding, or merely trading someone else’s stock.\n\nOn scale, the record is unusually broad: Mikro, Kecil, Menengah, and Besar are all open to this activity. A founder reading this should treat scale as part of the registration picture, not as a decorative label. The same KBLI can be used by a micro-scale producer making embroidered accessories and by a larger manufacturer producing textile accessories at industrial scale, provided the actual business activity remains inside the recorded scope.\n\nThe national foreign-investment picture is clean. The record marks the activity as TERBUKA, with pma_max_asing at 100, meaning the foreign-ownership ceiling is 100% at the national level. Bali does not add a separate percentage in this record. Instead, the Bali-side status is recorded as OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason is explicit: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium text in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is not blocked under the record supplied here. The honest reading is therefore straightforward: nationally open, fully open to foreign ownership as recorded, and not presently blocked for PMA registration in Bali by the moratorium logic stated in the record.",
+    "pullQuote": "The honest reading is straightforward: nationally open, fully open to foreign ownership as recorded, and not presently blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

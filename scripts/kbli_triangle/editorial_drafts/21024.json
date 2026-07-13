@@ -1,0 +1,27 @@
+{
+  "code": "21024",
+  "editorial": {
+    "headline": "Natural-Medicine Inputs for Animal Remedies, With a Clear Bali Path",
+    "standfirst": "KBLI 21024 covers the making of raw and supporting materials used in natural medicines for animals, open nationally to PMA and not blocked in Bali.",
+    "body": "KBLI 21024 sits in a precise part of the animal-health supply chain: not the retail counter, and not a general veterinary service, but the industrial preparation of materials used to make natural medicines for animals. The record describes the activity as processing many kinds of extracts and *simplisia*, galenic preparations, additives, and other materials. Some may carry an active benefit, some may not. Some may be transformed in processing, while others may remain essentially unchanged. What matters is their destination: they are used in the processing of natural medicines for animals, including by producers of traditional animal medicines.\n\nThat makes this code a manufacturing classification for upstream substance preparation. A founder using it should be able to explain the business as the handling and preparation of inputs for animal natural-medicine products, rather than stretching the activity into unrelated animal-care, trading, or clinical territory. The Indonesian scope is broad enough to include extracts, prepared botanical or natural-material inputs, galenic forms, and supporting materials; it is also disciplined by its stated use, which is the processing of natural medicine for animals. The editorial line is therefore simple: this is an industrial raw-material and preparation code for animal natural-medicine production.\n\nOn scale, the record is unusually straightforward. It is open to Mikro, Kecil, Menengah, and Besar businesses. That matters because the classification is not confined to one size of operator in the slim record: small producers and larger industrial setups are both within the scale language provided. Nationally, the PMA position is also clear. The activity is marked TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. There is no lower cap in the record, and no special national caveat supplied here. For a foreign-owned company, the national reading is therefore direct: the classification is open, and the recorded maximum foreign ownership is full ownership.\n\nThe Bali picture is equally important, because this Navigator is not only asking whether the code is open in Indonesia generally. Bali’s moratorium rule, as recorded, blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently. This record, however, does not mark KBLI 21024 as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The honest conclusion is not that Bali adds a separate percentage, quota, or partnership condition; none appears in the record. The conclusion is narrower and stronger: nationally, this code is open to PMA up to 100%, and in Bali the record does not block PMA registration under the stated moratorium logic.",
+    "pullQuote": "The honest conclusion is narrower and stronger: nationally, this code is open to PMA up to 100%, and in Bali the record does not block PMA registration under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

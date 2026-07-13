@@ -1,0 +1,27 @@
+{
+  "code": "31011",
+  "editorial": {
+    "headline": "Wood Furniture Manufacturing Is Nationally Open, but Blocked in Bali",
+    "standfirst": "KBLI 31011 covers wooden household and office furniture, open nationally to all business scales and full foreign ownership, but unavailable for PMA registration in Bali.",
+    "body": "KBLI 31011 is the manufacturing category for furniture made from wood and wood-based panels. The record describes household and office furniture: tables, chairs, stools, beds, wardrobes, shelves, cabinets, room dividers, and similar items. The practical test is material-led. A piece belongs here when its frame is wood, or, where there is no frame, when wood is the largest component.\n\nThat makes this a production code rather than a retail or design label. It is for businesses that actually make the furniture, including items built from plywood, particle board, and other wood-panel materials named in the scope. The activity can serve domestic, office, and general furnishing demand, but the defining feature remains the manufacturing of the object itself: wooden furniture as a physical product.\n\nOn the national register, the picture is broad. The record marks the PMA status as **TERBUKA**, with a foreign-ownership ceiling of **100%** under **Perpres 10/2021, 49/2021**. It is also open across every listed scale: **Mikro, Kecil, Menengah, Besar**. In plain English, the national classification does not reserve this activity only for local capital, nor does it limit the code to one business size. A foreign-owned company can read the national line as open.\n\nBali is the decisive exception. The same record marks **l4_bali_blocked** as true and gives the reason: **OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026**. The moratorium rule is broader still: **Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent)**, with the source listed as **Gubernur letter B.27.000/642/PM/DPMPTSP**. So the honest reading is simple: nationally, this wood-furniture manufacturing code is foreign-open; in Bali, a foreigner cannot register it as a PMA today. There is no separate Bali percentage in the record, and no Bali-side ownership cap to quote. The Bali issue is not a reduced ceiling. It is a registration block.",
+    "pullQuote": "Nationally, this wood-furniture manufacturing code is foreign-open; in Bali, a foreigner cannot register it as a PMA today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

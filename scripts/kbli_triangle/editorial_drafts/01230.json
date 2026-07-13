@@ -1,0 +1,27 @@
+{
+  "code": "01230",
+  "editorial": {
+    "headline": "Citrus Farming, Open Nationally and Not Blocked in Bali",
+    "standfirst": "KBLI 01230 covers citrus cultivation from land preparation to post-harvest work, including seed production, and is open across business scales.",
+    "body": "KBLI 01230 is the activity code for citrus fruit farming. Its scope is not limited to picking fruit from an existing orchard; it covers the full cultivation chain as one connected agricultural activity. The record includes land preparation, planting, maintenance, harvesting, and post-harvest handling for citrus crops. It also includes planting citrus plants to produce seed in the form of biji, as well as nursery and seedling activities for citrus fruit plants.\n\nIn practical English, this is the code for businesses whose core activity is growing citrus: pomelo, lemon, lime, limau, orange, siam citrus, keprok, mandarin, tangerine, clementine, and other citrus fruit named in the scope. The emphasis is agricultural production, not a separate downstream story. A founder using this code should be looking at an orchard or cultivation operation where the field work, plant care, harvest, and immediate post-harvest steps belong to the same farming activity.\n\nThe scale picture is broad. The slim record says the activity is open to Mikro, Kecil, Menengah, and Besar. That matters because the code is not framed only for large plantation-style operators; it can also describe smaller registered agricultural businesses, provided the activity remains within the citrus-farming scope. Nationally, the investment position is also clear: the PMA status is TERBUKA, with pma_max_asing at 100. Rendered plainly, that means foreign ownership is not capped below full ownership in the record for this activity.\n\nThe Bali reading is equally important, and here the answer is clean rather than dramatic. For Bali, l4_bali_blocked is recorded as false, while the Bali status is listed as OK_or_HIGHER_RISK. Its reason is specific: OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the Bali moratorium, even though that moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province. For a foreign-owned setup in Bali, the honest editorial conclusion is therefore that KBLI 01230 is nationally open and, on this record, not blocked for Bali PMA registration by the stated moratorium rule.",
+    "pullQuote": "For a foreign-owned setup in Bali, the honest editorial conclusion is therefore that KBLI 01230 is nationally open and, on this record, not blocked for Bali PMA registration by the stated moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

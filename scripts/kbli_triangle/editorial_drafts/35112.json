@@ -1,0 +1,27 @@
+{
+  "code": "35112",
+  "editorial": {
+    "headline": "Non-Emitting Power Generation Stands Open Nationally and in Bali",
+    "standfirst": "This KBLI covers non-renewable power generation without emissions, open to every business scale and not blocked for PMA registration in Bali.",
+    "body": "This activity is for the operation of power-generation facilities that produce electricity from non-renewable sources which do not generate emissions. The record gives nuclear, hydrogen, and ammonia as the defining examples, so the centre of gravity is not ordinary fuel switching or a broad clean-energy label; it is electricity production from a specified class of non-renewable, non-emitting sources. The scope also reaches the sale of carbon-credit units when that activity is carried out by the power-generation company itself, tying the credit activity to the generator rather than treating it as a free-standing trading business.\n\nThe practical registrant is therefore a company operating the generating facility, or a generating company whose own carbon-credit sales sit alongside that power activity. The record opens the code across all listed business scales: Mikro, Kecil, Menengah, and Besar. That breadth matters because the classification is not reserved in the record for a single size of operator. A founder should still read the scale language as a registration fact, not as a promise about project economics, grid access, financing, land, technology readiness, or operational approvals; none of those details appears in the slim record, so they should not be inferred from the KBLI text.\n\nNationally, the foreign-investment position is clean. The PMA status is TERBUKA, with a maximum foreign ownership figure of 100%, sourced to Perpres 10/2021, 49/2021. In plain English, the national classification is open to foreign ownership up to the full stated ceiling. Because the ceiling is not below 100%, the record does not create a foreign-share cap lower than full ownership. The editorial point is simple but important: for this activity, the national investment field does not show a restriction inside the data provided here.\n\nBali tells the same direction, with a specific local reason. The island-wide moratorium blocks all Low and Medium-Low risk KBLI for PMA, but this activity is not blocked in Bali because the OSS risk at Besar scale is Menengah-Tinggi/Tinggi. The Bali status is OK_or_HIGHER_RISK and l4_bali_blocked is false. That means the honest Bali reading is not that the activity is off-limits to foreign investors today; it is that this non-emitting, non-renewable power-generation code sits outside the Bali moratorium block described in the record. The useful conclusion for founders is disciplined: nationally open to PMA up to 100%, open across the listed scales, and not moratorium-blocked for PMA registration in Bali on the reason stated.",
+    "pullQuote": "The useful conclusion is disciplined: nationally open to PMA up to 100%, open across the listed scales, and not moratorium-blocked in Bali on the reason stated.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

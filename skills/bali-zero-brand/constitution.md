@@ -17,24 +17,26 @@
 
 2.1 Colors are referenced by **token name only**, never hex. Token namespace is closed; anything outside fails.
 
-| Token | Hex | Role |
-|---|---|---|
-| `color.bg.antracite` | `#373D42` | Primary background |
-| `color.bg.black` | `#000000` | Secondary background, hero overlay |
-| `color.text.white` | `#FFFFFF` | Body text, headlines |
-| `color.accent.yellow` | `#F4C430` | Data, sub-headlines, key numbers |
-| `color.status.red` | `#C8102E` | Logo, "STOPPED", "CRIMINAL", critical alerts |
-| `color.text.muted` | `#9CA3AF` | Sources, captions, footer (rare use) |
+| Token                 | Hex       | Role                                         |
+| --------------------- | --------- | -------------------------------------------- |
+| `color.bg.antracite`  | `#373D42` | Primary background                           |
+| `color.bg.black`      | `#000000` | Secondary background, hero overlay           |
+| `color.text.white`    | `#FFFFFF` | Body text, headlines                         |
+| `color.accent.yellow` | `#F4C430` | Data, sub-headlines, key numbers             |
+| `color.status.red`    | `#C8102E` | Logo, "STOPPED", "CRIMINAL", critical alerts |
+| `color.text.muted`    | `#9CA3AF` | Sources, captions, footer (rare use)         |
 
 2.2 **Banned colors in TEXT zones and UI elements**: green (any shade), blue (any shade), purple (any shade), pastels, beige, brown. Hard fail.
 2.3 **Region-aware pixel adherence**:
-- **TEXT zones** (heading, body, sub-headline, list items, captions, source footers, status badges): ≥95% of pixels in palette tokens (color.bg.* + color.text.* + color.accent.* + color.status.*). Hard fail.
+
+- **TEXT zones** (heading, body, sub-headline, list items, captions, source footers, status badges): ≥95% of pixels in palette tokens (color.bg._ + color.text._ + color.accent._ + color.status._). Hard fail.
 - **HERO PHOTO zones**: NO palette pixel constraint. Photo can use natural cinematic grading (35mm teal-amber Villeneuve/Deakins). Critic does NOT measure pixel-palette ratio inside hero bounding box.
 - **GRADIENT OVERLAY zones**: where text sits over photo, dark gradient `color.overlay.darken-60` (rgba(0,0,0,0.6)) MUST be present at ≥0.6 opacity for legibility — see Article 5.5.
-2.4 **Critic enforcement**: critic agent receives the layout JSON which declares for each element its `zone_type` (text | hero-photo | overlay | logo). Palette check applies only to `text` and `logo` zones. Photo bounds are skipped.
-2.5 **Reason for region-aware rule**: a hard-blanket palette rule (the prior version) made teal-amber photo grading impossible (teal = blue-green). Region-aware preserves brand visual identity (cinematic photo treatment) without compromising text-zone legibility.
+  2.4 **Critic enforcement**: critic agent receives the layout JSON which declares for each element its `zone_type` (text | hero-photo | overlay | logo). Palette check applies only to `text` and `logo` zones. Photo bounds are skipped.
+  2.5 **Reason for region-aware rule**: a hard-blanket palette rule (the prior version) made teal-amber photo grading impossible (teal = blue-green). Region-aware preserves brand visual identity (cinematic photo treatment) without compromising text-zone legibility.
 
-2.6 **Total-black flat-bg restraint** (added 2026-05-09 after Antonello aesthetic critique on QA + statement-bomb slides): pure `#000000` flat background WITHOUT texture/gradient/photo is permitted ONLY when text occupies ≥35% of canvas area visually. Below threshold the slide reads as "placeholder/unfinished" rather than "minimalist editorial". When text is sparse (statement-bomb ≤8 words, qa-dialogue, elegant-close), one of the following MUST be present:
+  2.6 **Total-black flat-bg restraint** (added 2026-05-09 after Antonello aesthetic critique on QA + statement-bomb slides): pure `#000000` flat background WITHOUT texture/gradient/photo is permitted ONLY when text occupies ≥35% of canvas area visually. Below threshold the slide reads as "placeholder/unfinished" rather than "minimalist editorial". When text is sparse (statement-bomb ≤8 words, qa-dialogue, elegant-close), one of the following MUST be present:
+
 - radial gradient (warm 5% center → black 100% edge), OR
 - micro paper-grain texture (rgba opacity ≤2%), OR
 - darkened photo backdrop (filter brightness ≤0.5), OR
@@ -46,48 +48,51 @@ Lesson: the WR2 reference set's all-black slides worked because they had heavy t
 ## Article 3 — Typography
 
 3.1 **Single family rule**: one geometric sans-serif throughout the carousel. Approved stack:
+
 - Primary: Montserrat 700/800
 - Fallback: Inter 700/800
 - Secondary fallback: Poppins 700/800
-3.2 **Banned font categories** (with one decorative exception): serif (any), script, display, handwritten, monospace (except IBM Plex Mono in source-citation footers — see 3.6). **Exception 3.2.1 — decorative serif at ultra-low opacity**: Cormorant Garamond OR Times New Roman serif allowed for decorative typographic ornaments (giant quote marks, oversized numerals, paragraph-mark glyphs) at opacity ≤8% as background visual flourish only, NEVER for any text the reader is meant to read. Added 2026-05-09 after qa-dialogue layout needed atmospheric quote marks. Use sparingly — max 1 layout family per carousel uses this.
-3.3 **Case**: titles UPPERCASE always. Body case per Article 6.1.1 (UPPERCASE ≤35 words OR Title Case ≤50 words, NOT both in same carousel). Sentence case = hard fail in titles.
-3.4 **Letter-spacing**: 0.02em titles, 0em body.
-3.5 **Hierarchy**: heading must be visually topmost on each slide; body second-topmost. Decorative/source/footer below.
-3.6 **Source citations** (rare): IBM Plex Mono 400 11px, `color.text.muted`, bottom-right corner.
+  3.2 **Banned font categories** (with one decorative exception): serif (any), script, display, handwritten, monospace (except IBM Plex Mono in source-citation footers — see 3.6). **Exception 3.2.1 — decorative serif at ultra-low opacity**: Cormorant Garamond OR Times New Roman serif allowed for decorative typographic ornaments (giant quote marks, oversized numerals, paragraph-mark glyphs) at opacity ≤8% as background visual flourish only, NEVER for any text the reader is meant to read. Added 2026-05-09 after qa-dialogue layout needed atmospheric quote marks. Use sparingly — max 1 layout family per carousel uses this.
+  3.3 **Case**: titles UPPERCASE always. Body case per Article 6.1.1 (UPPERCASE ≤35 words OR Title Case ≤50 words, NOT both in same carousel). Sentence case = hard fail in titles.
+  3.4 **Letter-spacing**: 0.02em titles, 0em body.
+  3.5 **Hierarchy**: heading must be visually topmost on each slide; body second-topmost. Decorative/source/footer below.
+  3.6 **Source citations** (rare): IBM Plex Mono 400 11px, `color.text.muted`, bottom-right corner.
 
 ## Article 4 — Logo
 
 4.1 `3 ALI ZERO` mark — official PNG asset at `~/.claude/skills/bali-zero-brand/assets/logo.png` (940×940 RGBA: black circle, red `3`, white `ALI ZERO`, ॐ symbol bottom-right). The renderer copies this file into each carousel's `slides/logo.png` and CSS references via `background-image: url('logo.png')` in `_base.css`. Do NOT recreate the logo with text/SVG — always use the asset.
 4.2 Position: centered bottom, 60-80px from bottom edge. Diameter:
+
 - **80px** default (most layouts)
 - **110px** allowed in `statement-bomb` and `elegant-close` layouts where the canvas is high-negative-space and the small logo would feel orphaned (added 2026-05-09).
 - Diameter outside [80, 110] = hard fail.
-4.3 Present on **every slide** without exception. Hard fail if missing.
-4.4 The logo appears identical on every slide regardless of background color (black-circle wraps any background). NO inversions, NO color modifications, NO transparency adjustments.
+  4.3 Present on **every slide** without exception. Hard fail if missing.
+  4.4 The logo appears identical on every slide regardless of background color (black-circle wraps any background). NO inversions, NO color modifications, NO transparency adjustments.
 
 ## Article 5 — Imagery
 
 5.1 **Style**: editorial 35mm film cinematic. Chiaroscuro lighting. Teal-amber color grading (Villeneuve / Roger Deakins reference). Low saturation outside palette.
 5.2 **Cameras (for AI prompts)**: ARRI Alexa Mini LF, Hasselblad X2D, RED V-Raptor, Leica M11.
 5.3 **Banned visual content** (anti-cliché, hard fail):
+
 - Palm trees, beaches, infinity pools
 - Sunsets / sunrises (unless storm/dramatic)
 - Smiling team photos / handshakes / corporate stock
 - Boho aesthetic / pastel filters / Instagram-influencer look
 - Clipart, vector flat illustrations, icons-as-hero, meme images
 - AI-art fingerprints (extra fingers, melted faces, impossible architecture)
-5.4 **Faces**: no faces of real people unless verified Bali Zero stockphoto with consent. AI-generated faces must be ambiguous/back-turned/silhouette.
-5.5 **Photo overlay**: when photo is hero with text overlay, dark gradient overlay (`color.bg.black` 0.6 opacity, top→bottom) always present on text zone for legibility.
+  5.4 **Faces**: no faces of real people unless verified Bali Zero stockphoto with consent. AI-generated faces must be ambiguous/back-turned/silhouette.
+  5.5 **Photo overlay**: when photo is hero with text overlay, dark gradient overlay (`color.bg.black` 0.6 opacity, top→bottom) always present on text zone for legibility.
 
-5.6 **Anchor reference cascade** (added 2026-05-08, revised same day): every hero image generation MUST start from the domain anchor at `~/.claude/skills/bali-zero-brand/anchors/<domain>-anchor.jpg` as style reference. Slide 1 inherits domain anchor style; slides 2..N inherit slide-1 style. This guarantees both cross-carousel domain mood consistency and per-carousel internal consistency. Missing domain anchor falls back to pure slide-1 anchor with logged warning. Decision rationale: see `_canonical-anchor-decision.md`.
+  5.6 **Anchor reference cascade** (added 2026-05-08, revised same day): every hero image generation MUST start from the domain anchor at `~/.claude/skills/bali-zero-brand/anchors/<domain>-anchor.jpg` as style reference. Slide 1 inherits domain anchor style; slides 2..N inherit slide-1 style. This guarantees both cross-carousel domain mood consistency and per-carousel internal consistency. Missing domain anchor falls back to pure slide-1 anchor with logged warning. Decision rationale: see `_canonical-anchor-decision.md`.
 
-5.7 **Domain taxonomy (closed set)**: 5 production domains for carousel-ig surface — `visa`, `tax`, `property`, `regulatory` (covers HR/labor/BPJS/Permenaker), `health` (public health, outbreaks). Plus optional `brand` (about Bali Zero itself, rare). Adding a new domain requires constitutional amendment per Article 11. HR was merged into `regulatory` 2026-05-08 because labor/BPJS topics are infrequent and conceptually overlap with regulatory.
+  5.7 **Domain taxonomy (closed set)**: 5 production domains for carousel-ig surface — `visa`, `tax`, `property`, `regulatory` (covers HR/labor/BPJS/Permenaker), `health` (public health, outbreaks). Plus optional `brand` (about Bali Zero itself, rare). Adding a new domain requires constitutional amendment per Article 11. HR was merged into `regulatory` 2026-05-08 because labor/BPJS topics are infrequent and conceptually overlap with regulatory.
 
-5.8 **Image style mode (per slide)**: 9 closed-set modes — `desk-document`, `event-photo`, `architecture-or-texture`, `provocation-photo`, `human-silhouette`, `object-comparison`, `calendar-photo`, `data-visualization`, `cultural-photo`. Each carousel declares dominant + secondary mode (Article 13.4). **Anti-monotone rule — see Article 10.6 for the binding form** (amended 2026-06-05): the old "NO two consecutive same dominant mode" wording here CONTRADICTED Article 13.4's "max 2 back-to-back". Article 10.6 (same-domain 14-day window, must differ in register AND/OR image-mode) SUPERSEDES both and is the law the critic enforces against `topic_type_log`. This clause is now descriptive (declare a dominant mode; vary it); the binding constraint lives in 10.6. `topic_type_log` is live on the production path as of 2026-06-05 (migration 216). Lesson from S11 (2026-05-09): 12 consecutive desk-document carouseli became visually indistinguishable; users perceive the brand as "always the same dark desk".
+  5.8 **Image style mode (per slide)**: 9 closed-set modes — `desk-document`, `event-photo`, `architecture-or-texture`, `provocation-photo`, `human-silhouette`, `object-comparison`, `calendar-photo`, `data-visualization`, `cultural-photo`. Each carousel declares dominant + secondary mode (Article 13.4). **Anti-monotone rule — see Article 10.6 for the binding form** (amended 2026-06-05): the old "NO two consecutive same dominant mode" wording here CONTRADICTED Article 13.4's "max 2 back-to-back". Article 10.6 (same-domain 14-day window, must differ in register AND/OR image-mode) SUPERSEDES both and is the law the critic enforces against `topic_type_log`. This clause is now descriptive (declare a dominant mode; vary it); the binding constraint lives in 10.6. `topic_type_log` is live on the production path as of 2026-06-05 (migration 216). Lesson from S11 (2026-05-09): 12 consecutive desk-document carouseli became visually indistinguishable; users perceive the brand as "always the same dark desk".
 
-5.9 **Anchor reference cascade — implementation requirement**: when a domain anchor exists at `~/.claude/skills/bali-zero-brand/anchors/<domain>-anchor.jpg`, the slide-1 image generation MUST pass it as `--reference-image` to Codex `$imagegen` (or equivalent backend reference flag). Slide 2..N hero generations then chain-reference slide-1 of the current carousel. The previous loose interpretation ("include camera anchor in prompt text") is INSUFFICIENT — text-only reference produces drift. Lesson from S11: 12 carouseli with identical text-anchor produced visually identical mood, indicating text reference does NOT propagate style as image-reference does.
+  5.9 **Anchor reference cascade — implementation requirement**: when a domain anchor exists at `~/.claude/skills/bali-zero-brand/anchors/<domain>-anchor.jpg`, the slide-1 image generation MUST pass it as `--reference-image` to Codex `$imagegen` (or equivalent backend reference flag). Slide 2..N hero generations then chain-reference slide-1 of the current carousel. The previous loose interpretation ("include camera anchor in prompt text") is INSUFFICIENT — text-only reference produces drift. Lesson from S11: 12 carouseli with identical text-anchor produced visually identical mood, indicating text reference does NOT propagate style as image-reference does.
 
-5.8.1 **Empirical mode ranking (added 2026-05-12, source: `_empirical-metrics-2026-05-12.md`)**: the 9 image-style modes are NOT equal in IG performance. Based on 7 top-performing past carouseli (@balizero0) ranked by Saves+Shares+Reach:
+  5.8.1 **Empirical mode ranking (added 2026-05-12, source: `_empirical-metrics-2026-05-12.md`)**: the 9 image-style modes are NOT equal in IG performance. Based on 7 top-performing past carouseli (@balizero0) ranked by Saves+Shares+Reach:
 
 - **Tier 1 — preferred for COVER slides**:
   - `event-photo` (aerial drone documentary — 37k_villa 47K reach, mangrove 25K reach, traffic 23K reach)
@@ -98,7 +103,8 @@ Lesson: the WR2 reference set's all-black slides worked because they had heavy t
 - **Tier 3 — rare, justified only**:
   - `human-silhouette`, `data-visualization`, `desk-document`, `object-comparison`, `calendar-photo` — context-dependent, not for COVER without specific narrative reason
 
-5.8.2 **Banned visuals — surreal/abstract (added 2026-05-12, empirical)**: hard fail for COVER if image is:
+    5.8.2 **Banned visuals — surreal/abstract (added 2026-05-12, empirical)**: hard fail for COVER if image is:
+
 - Surreal Dalí-style figures (melting objects, distorted bodies, dream-state composition) — `cepaka` (lowest performer of the 7)
 - Abstract geometric metaphor (shattering locks, exploding blocks, color-block conceptual) — predicted negative based on cepaka pattern
 - Pergamena/parchment/wax seal/scroll — template trap S11 already documented + zero presence in top-7 performers
@@ -135,6 +141,7 @@ Hard fail if a non-always-untranslated ID term appears on first use without Engl
 6.4 **Regulatory citations verbatim**: `PP 18/2021`, `Permenkumham 22/2023`, `KEP-71/PJ/2026`, `UU No. 26/2007`. Paraphrasing ("a recent law", "new spatial planning regulation") = hard fail.
 6.5 **Bilingual lexicon untranslated**: KITAS, KITAP, PT PMA, KBLI, SHGB, hak pakai, KKPR, BATARA, konsultan pajak, PPJK, Permenkumham, NPWP, Coretax, OSS RBA. Acronyms UPPERCASE, bahasa lower (`hak pakai`).
 6.6 **Sentence-bomb closings**: closing slide MUST be single-line bold centered statement. NO CTA hard-sell. Specifically banned ("hard-sell"):
+
 - "DM US NOW" / "MESSAGE US"
 - "BOOK A FREE CONSULTATION"
 - "LIMITED OFFER ENDS [DATE]"
@@ -144,11 +151,13 @@ Hard fail if a non-always-untranslated ID term appears on first use without Engl
 - "👉" or any directional emoji
 - "LINK IN BIO" on a slide (acceptable in IG caption only)
 
-6.6.1 **Elegant CTA allowed** (added 2026-05-09, revised same day): a single optional `elegant-close` slide MAY follow statement-bomb (so the carousel ends statement-bomb → elegant-close at slides N-1, N). Elegant-close uses soft consultant language, NOT sales language. Permitted patterns:
+  6.6.1 **Elegant CTA allowed** (added 2026-05-09, revised same day): a single optional `elegant-close` slide MAY follow statement-bomb (so the carousel ends statement-bomb → elegant-close at slides N-1, N). Elegant-close uses soft consultant language, NOT sales language. Permitted patterns:
+
 - TWO reach lines: email `ZANTARA@BALIZERO.COM` + WhatsApp `+62 821 3107 363` (both = same Bali Zero Zantara front-desk, listing both is informational not pushy)
 - A soft conditional invite: "IF YOUR CASE TOUCHES THIS — A 30-MIN CALL CONFIRMS NEXT STEPS." or "WHEN YOU'RE READY — WE'VE WALKED THIS PATH 5,000 TIMES."
 
 Forbidden in elegant-close:
+
 - imperative verbs ("CALL NOW", "BOOK", "CONTACT", "TAP", "CLICK")
 - urgency language ("TODAY", "SOON", "DON'T MISS", "ENDS")
 - benefit-claim language ("BEST", "FAST", "EASY", "GUARANTEED")
@@ -156,16 +165,18 @@ Forbidden in elegant-close:
 - emoji directional arrows
 - "FOLLOW @balizero0" / "SAVE THIS POST" / "SHARE WITH A FRIEND"
 - trust-marker / credentials line (removed 2026-05-09 — credentials live in IG bio + caption, not on slide; the slide is for contact + invite only)
-6.7 **No emoji** in titles or body. Ever.
-6.8 **No corporate disclaimer**: "this is not legal advice", "consult a professional", "we are not lawyers" — hard fail. Bali Zero IS the lawyers (konsultan pajak + PPJK registered).
+  6.7 **No emoji** in titles or body. Ever.
+  6.8 **No corporate disclaimer**: "this is not legal advice", "consult a professional", "we are not lawyers" — hard fail. Bali Zero IS the lawyers (konsultan pajak + PPJK registered).
 
-6.9 **Saves-over-Likes optimization (added 2026-05-12, empirical)**: Bali Zero IG carousel KPI is **Saves and Shares**, NOT Likes. Reference dataset: `_empirical-metrics-2026-05-12.md`.
+  6.9 **Saves-over-Likes optimization (added 2026-05-12, empirical)**: Bali Zero IG carousel KPI is **Saves and Shares**, NOT Likes. Reference dataset: `_empirical-metrics-2026-05-12.md`.
 
 **Top 2 performers** by Save/Like ratio:
+
 - `villa_ota` (Save/Like = **2.20**, Share/Like = **2.69**) — explains a rule (OTA license) with monetary consequence
 - `37k_villa` (Save/Like = 1.12, Share/Like = 2.03) — concrete number (37,881) with verdict
 
 **Common structure of S-pattern (Save magnet) carouseli — required**:
+
 1. Cover headline contains a **concrete number, regulation code, OR named scope** (`37,881`, `KEP-71/PJ/2026`, `$7B`, `2 floors / built 7`)
 2. Cover sub-headline is **location-specific OR time-specific OR contains categorical verdict** (`KEROBOKAN KELOD`, `AFTER THE SEPTEMBER 10TH FLOODS`, `MANGROVES WON`)
 3. Body slides MUST teach: **1 rule + 1 consequence + 1 actionable next step** (or set of N where N matches a count promise per Article 6.3.1)
@@ -185,6 +196,7 @@ A cover is **valid** if the heading+subhead together carry AT LEAST ONE of these
 **Soft fail (Article 6.9.warn)** — body slides without a single "what should YOU do" thread by slide N-1.
 
 6.10 **Distribution-aware design (added 2026-05-12, empirical)**: top performers in @balizero0 dataset reached audience via **From Home + Other (DM peer-share)**, NOT via Explore algorithm. Implications:
+
 - Design for **share-by-follower** (something a follower wants to forward to a peer)
 - NOT for click-bait Explore push (sensationalist hooks underperform — `cepaka` Dalí cover, `respect` cultural-only)
 - A good test before publishing: "would a Bali Zero follower send this to their accountant / business partner / lawyer?"
@@ -225,6 +237,7 @@ The following phrases are absolutely banned. Soft-match (case-insensitive substr
 ## Article 9 — Layout discipline
 
 9.1 **Layout family pool** (closed set, current revision 2026-05-09):
+
 - `cover-photo`
 - `photo-headline-yellow-sub`
 - `qa-dialogue` (two voices, two colors)
@@ -235,48 +248,49 @@ The following phrases are absolutely banned. Soft-match (case-insensitive substr
 - `statement-bomb`
 - `elegant-close` (soft CTA slide, follows statement-bomb when carousel needs contact invite — added 2026-05-09)
 - `source-citation` (dedicated SOURCES slide N-1 for regulatory/visa/tax/property with slide_count ≥ 7 — added 2026-05-12 per Article 14.3 amendment pending, SOTA pattern #11 from `_external-bench-2026-05.md`)
-9.2 **Variety rule**: a single carousel may use at most **5 distinct layout families** (revised 2026-05-08 from 3 → 5 after first production run KEP-71-SPT showed regulatory carousels with FACTS/TAKE frame + Q&A pivot + statement-bomb closing genuinely benefit from 5 families). Soft cap: prefer ≤4 unless the topic warrants high information density (regulatory dossiers, multi-deadline pieces). Avoid Frankenstein patchwork — each family should serve a narrative function, not just visual variety.
-9.3 **Cover slide**: always `cover-photo` family. Hard fail otherwise.
-9.4 **Frame slide** (slide 3 typically — shifted from slide 2 on 2026-05-12 per Article 14.2 framing-question rule): often `dark-status-list` styled as "FACTS (SOURCED) VS OUR TAKE". Recommended, not mandatory. Slide 2 is now reserved for the framing-question transition per Article 14.2 (SOTA pattern #13). The legacy convention "slide 2 = frame" applied before Article 14.2 was adopted.
-9.5 **Closing slide**: always `statement-bomb` family. Hard fail otherwise.
+  9.2 **Variety rule**: a single carousel may use at most **5 distinct layout families** (revised 2026-05-08 from 3 → 5 after first production run KEP-71-SPT showed regulatory carousels with FACTS/TAKE frame + Q&A pivot + statement-bomb closing genuinely benefit from 5 families). Soft cap: prefer ≤4 unless the topic warrants high information density (regulatory dossiers, multi-deadline pieces). Avoid Frankenstein patchwork — each family should serve a narrative function, not just visual variety.
+  9.3 **Cover slide**: always `cover-photo` family. Hard fail otherwise.
+  9.4 **Frame slide** (slide 3 typically — shifted from slide 2 on 2026-05-12 per Article 14.2 framing-question rule): often `dark-status-list` styled as "FACTS (SOURCED) VS OUR TAKE". Recommended, not mandatory. Slide 2 is now reserved for the framing-question transition per Article 14.2 (SOTA pattern #13). The legacy convention "slide 2 = frame" applied before Article 14.2 was adopted.
+  9.5 **Closing slide**: always `statement-bomb` family. Hard fail otherwise.
 
 ## Article 10 — Process guardrails
 
 10.1 **Critic panel mandatory**: every carousel must pass `wr2-critic` before output. Skip = hard fail at orchestrator level.
 10.2 **Human-in-loop on publish**: agent never publishes to Instagram. Damar publishes manually. (Owner-binding decision OB-1, 2026-05-07.)
 10.3 **No autonomous skill writes to main**: skill changes go to `_proposed/`. Antonello commits to main weekly.
-10.4 **Cost = zero**: only OAuth Claude (subagents), free Gemini CLI, NotebookLM, DeepSeek API ($0.01/q OK). Never use ANTHROPIC_API_KEY, OpenAI API, Vertex AI billed runtime. (CLAUDE.md HARD RULE.)
-10.5 **Idempotency of FACTS + STRUCTURE only** (amended 2026-06-04 after WR2 autopsy): re-running the same brief must keep the *verifiable* layer stable — same key numbers, same legal citations, same slide count, same archetype. It must NOT force the *expressive* layer (register, image-style mode, layout family, copy phrasing, hero composition) to be identical. Drift in facts/structure = hard fail; drift in expression is EXPECTED and good. (Prior wording made expressive variety itself a hard fail — that rewarded the monotony this constitution now forbids in 10.6.)
+10.4 **Cost = zero**: only OAuth Claude (subagents), free Gemini CLI, NotebookLM, DeepSeek API ($0.01/q OK). Never use ANTHROPIC*API_KEY, OpenAI API, Vertex AI billed runtime. (CLAUDE.md HARD RULE.)
+10.5 **Idempotency of FACTS + STRUCTURE only** (amended 2026-06-04 after WR2 autopsy): re-running the same brief must keep the \_verifiable* layer stable — same key numbers, same legal citations, same slide count, same archetype. It must NOT force the _expressive_ layer (register, image-style mode, layout family, copy phrasing, hero composition) to be identical. Drift in facts/structure = hard fail; drift in expression is EXPECTED and good. (Prior wording made expressive variety itself a hard fail — that rewarded the monotony this constitution now forbids in 10.6.)
 
 10.6 **Anti-sameness across a domain window** (added 2026-06-04, WR2 autopsy P-3): two carousels published in the SAME domain (visa / tax / company / property / culture) within a 14-day window MUST differ in BOTH (a) dominant register AND (b) image-style mode. Identical register+mode on consecutive same-domain carousels = **hard fail**. This is the positive counterweight to 10.5: facts stay fixed, the telling must vary. Enforced via `topic_type_log` (last-2-published lookup) once that table is live on the production path; until then, the critic asserts it from the running session's prior outputs.
 
 ## Article 11 — Amendment process
 
 11.1 Constitution is amended only by Antonello, via git commit to `~/.claude/skills/bali-zero-brand/constitution.md`.
-11.2 The reflective loop (weekly cron) may *propose* amendments by writing to `~/.claude/skills/bali-zero-brand/_proposed-amendments/<date>-<slug>.md`. Antonello reviews and merges.
+11.2 The reflective loop (weekly cron) may _propose_ amendments by writing to `~/.claude/skills/bali-zero-brand/_proposed-amendments/<date>-<slug>.md`. Antonello reviews and merges.
 11.3 All amendments must include: rule number, change, rationale (why), date, link to triggering carousel(s).
 
 ## Article 13 — Editorial archetypes (closed taxonomy)
 
 13.1 Every carousel belongs to ONE of 8 archetypes. The archetype determines slide_count range, dominant register, layout pool, image style mode. No archetype = no carousel. (Added 2026-05-09 after S11 produced 12 carouseli all in single regulatory-explainer mode — the rest of the taxonomy must be available.)
 
-| Archetype | Slide count | Dominant register | Layout pool | Image style mode |
-|---|---|---|---|---|
-| `regulatory-explainer` | 8-10 | tecnico + analitico | cover-photo + evidence-carved + photo-headline-yellow-sub + qa-dialogue + statement-bomb | desk-document |
-| `news-flash` | 4-6 | analitico + militante | cover-photo + dark-status-list + statement-bomb | event-photo |
-| `quote-led` | 6-8 | rituale + poetico | cover-photo + statement-bomb (heavy) | architecture-or-texture |
-| `anti-cliche` | 5-7 | ironico + militante | cover-photo + statement-bomb (heavy) + qa-dialogue | provocation-photo |
-| `story-driven` | 8-10 | pedagogico + tecnico | cover-photo + photo-headline-yellow-sub + timeline-pinboard | human-silhouette + document |
-| `comparison` | 7-9 | analitico + pedagogico | cover-photo + dark-status-list + qa-dialogue + statement-bomb | object-comparison |
-| `calendar-tracker` | 6-8 | analitico | cover-photo + timeline-pinboard (dominant) + statement-bomb | calendar-photo |
-| `testimonial-data` | 5-7 | rituale + tecnico | cover-photo + dark-status-list (numbers) + statement-bomb | data-visualization |
-| `cultural-insight` | 7-9 | poetico + pedagogico | cover-photo + photo-headline-yellow-sub + statement-bomb | cultural-photo |
+| Archetype              | Slide count | Dominant register      | Layout pool                                                                              | Image style mode            |
+| ---------------------- | ----------- | ---------------------- | ---------------------------------------------------------------------------------------- | --------------------------- |
+| `regulatory-explainer` | 8-10        | tecnico + analitico    | cover-photo + evidence-carved + photo-headline-yellow-sub + qa-dialogue + statement-bomb | desk-document               |
+| `news-flash`           | 4-6         | analitico + militante  | cover-photo + dark-status-list + statement-bomb                                          | event-photo                 |
+| `quote-led`            | 6-8         | rituale + poetico      | cover-photo + statement-bomb (heavy)                                                     | architecture-or-texture     |
+| `anti-cliche`          | 5-7         | ironico + militante    | cover-photo + statement-bomb (heavy) + qa-dialogue                                       | provocation-photo           |
+| `story-driven`         | 8-10        | pedagogico + tecnico   | cover-photo + photo-headline-yellow-sub + timeline-pinboard                              | human-silhouette + document |
+| `comparison`           | 7-9         | analitico + pedagogico | cover-photo + dark-status-list + qa-dialogue + statement-bomb                            | object-comparison           |
+| `calendar-tracker`     | 6-8         | analitico              | cover-photo + timeline-pinboard (dominant) + statement-bomb                              | calendar-photo              |
+| `testimonial-data`     | 5-7         | rituale + tecnico      | cover-photo + dark-status-list (numbers) + statement-bomb                                | data-visualization          |
+| `cultural-insight`     | 7-9         | poetico + pedagogico   | cover-photo + photo-headline-yellow-sub + statement-bomb                                 | cultural-photo              |
 
 13.2 **Archetype declaration mandatory** in `slides.json`: top-level `archetype: "<name>"` field. Critic checks slide_count + register + layout pool against archetype rules — out-of-archetype = soft fail.
 
 13.3 **Archetype is a REQUIRED, JUSTIFIED choice — no static default** (amended 2026-06-04, WR2 autopsy P-3): there is NO fallback archetype. The brief-interpreter MUST pick one of the 8 archetypes for THIS topic and record a one-line rationale. Picking `regulatory-explainer` reflexively for every visa/tax/company topic is the documented S11 failure (12 identical carousels) and the cause of the "always the driest register" complaint — it is now disallowed as an unjustified default. Guidance, not a default: breaking-news → news-flash; cultural pieces → cultural-insight; single-statement provocations → anti-cliche; a genuine rules-explainer with no stronger angle MAY still be `regulatory-explainer`, but only with a rationale stating why no other archetype fits better. A missing or rote ("default") rationale = soft fail.
 
 13.4 **Image style modes** (Article 5.8 below):
+
 - `desk-document`: paper/seal/lamp/dark wood (current S11 norm)
 - `event-photo`: subject in real environment (street, office, building)
 - `architecture-or-texture`: monolithic structure, building edge, stone, fabric — no text or document
@@ -293,14 +307,15 @@ Each archetype maps to 1-2 default image modes. Variation enforced: max 2 carous
 
 12.1 This brand cortex governs **4 surfaces**. Each surface inherits cross-surface rules (Articles 2, 3, 6.3-6.7, 7, 8) and adds surface-specific rules.
 
-| Surface | Spec location | Aspect / format |
-|---|---|---|
-| `carousel-ig` | constitution.md Articles 1-11 + layouts/ | 1080×1350 portrait, 7-10 slides, PNG export |
-| `internal-print-a4` | `surfaces/internal-print-a4.md` + `surfaces/internal-print-a4/_template.css` | A4 PDF, multi-page, zero-margin print |
-| `web-mouth` | `apps/mouth/CLAUDE.md` + `packages/core/styles/bz-tokens.css` | Next.js frontend (separate stack — referenced not maintained here) |
-| `email-template` | TBD (open backlog) | Brevo HTML email |
+| Surface             | Spec location                                                                | Aspect / format                                                    |
+| ------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `carousel-ig`       | constitution.md Articles 1-11 + layouts/                                     | 1080×1350 portrait, 7-10 slides, PNG export                        |
+| `internal-print-a4` | `surfaces/internal-print-a4.md` + `surfaces/internal-print-a4/_template.css` | A4 PDF, multi-page, zero-margin print                              |
+| `web-mouth`         | `apps/mouth/CLAUDE.md` + `packages/core/styles/bz-tokens.css`                | Next.js frontend (separate stack — referenced not maintained here) |
+| `email-template`    | TBD (open backlog)                                                           | Brevo HTML email                                                   |
 
 12.2 **Cross-surface mandatory rules** (apply to every surface):
+
 - Article 2 (palette, region-aware enforcement)
 - Article 3 (single-family Montserrat)
 - Article 6.3 (numbers concrete)
@@ -311,9 +326,9 @@ Each archetype maps to 1-2 default image modes. Variation enforced: max 2 carous
 - Article 7 (forbidden phrases closed list)
 - Article 8 (spelling + acronym verification)
 
-12.3 **Surface-specific overrides allowed only** for typography sizing (e.g., A4 brief uses larger headline scale than 1080×1350) and layout constraints (e.g., A4 brief has cover + interior page distinction; carousel has cover + closing). NEVER override palette tokens, voice rules, forbidden phrases, or regulatory citation discipline.
+  12.3 **Surface-specific overrides allowed only** for typography sizing (e.g., A4 brief uses larger headline scale than 1080×1350) and layout constraints (e.g., A4 brief has cover + interior page distinction; carousel has cover + closing). NEVER override palette tokens, voice rules, forbidden phrases, or regulatory citation discipline.
 
-12.4 **Adding a new surface** requires constitutional amendment (Article 11.1). Proposing in `_proposed-amendments/` is open to any agent; merging requires Antonello git-commit.
+  12.4 **Adding a new surface** requires constitutional amendment (Article 11.1). Proposing in `_proposed-amendments/` is open to any agent; merging requires Antonello git-commit.
 
 ## Article 14 — SOTA Adoption Rules (added 2026-05-12, partial merge — subset 14.1/14.2/14.4 approved; 14.3/14.5 deferred)
 
@@ -338,6 +353,7 @@ Slide 2 MUST be a single-sentence framing answering "why this carousel exists fo
 **Rationale**: The SOTA editorial stack (NYT, Atlantic, Vox, WSJ) treats slide 2 as transition between hook (cover) and evidence (slide 3+). Bali Zero's previous convention skipped this and cost swipe-through rate.
 
 **Format**:
+
 - Question-form (preferred): `Bagaimana ini terjadi?` / `Apa artinya untuk PT PMA kamu?` / `What this means for your PT PMA.`
 - Statement-form (when question would sound rhetorical): `Your annual return deadline just shifted by 31 days.`
 
@@ -374,6 +390,7 @@ Status: deferred pending smoke test + server-side QR generator implementation (q
 ### 14.6 — Rule promotion process (added 2026-05-12)
 
 Deferred rules (14.3, 14.5) graduate to APPROVED via the standard amendment process (Article 11.1):
+
 1. A/B test on ≥3 carouseli where deferred rule is opt-in active via brief field
 2. Measure Save/Like and Share/Like delta vs `_empirical-metrics-2026-05-12.md` baseline after 14 days
 3. If delta is positive AND not contradicted by `_external-bench-YYYY-MM.md` next monthly run, propose promotion in `_proposed-amendments/`

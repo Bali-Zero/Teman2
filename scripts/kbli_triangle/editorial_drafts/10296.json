@@ -1,0 +1,27 @@
+{
+  "code": "10296",
+  "editorial": {
+    "headline": "Milled Seafood Processing with a Clear Bali Path",
+    "standfirst": "KBLI 10296 covers minced and ground aquatic-biota products, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 10296 sits in a practical corner of Indonesia’s seafood-processing economy: the transformation and preservation of aquatic biota through milling or grinding. The record describes crustaceans, molluscs, echinoderms, and other aquatic biota being processed into products such as minced squid, minced shrimp, shrimp balls, squid balls, crab balls, and shrimp kaki naga. In plain English, this is not a fishing activity and not a restaurant category. It is a processing activity: taking aquatic raw material and turning it into shaped, minced, or ground-value products that can move through the food supply chain with a defined industrial identity.\n\nThe scale profile is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators, which means it can describe anything from a very small formal processor to a larger production setup, as long as the activity remains within the recorded scope. That breadth matters editorially because the code is not limited to a single business size. A founder reading this should focus first on whether the actual activity is truly the milling, grinding, processing, and preservation of the listed aquatic biota products, rather than being distracted by brand format or sales channel.\n\nNationally, the foreign-investment position is clear. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, so the national reading is that it is foreign-open up to 100%. There is no lesser foreign-ownership ceiling in the slim record, and no additional capital threshold or special operating condition is stated here. The clean conclusion is therefore simple: at the national level, this is a fully open PMA activity according to the cited source field.\n\nThe Bali picture is also clean, but for a different reason. The record does not block the activity in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. Its reason is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That matters because the moratorium rule in the record blocks ALL Low + Medium-Low risk KBLI for PMA across Bali, while this activity is not caught by that block on the record presented. So the honest national-vs-Bali picture is not a hidden contradiction: KBLI 10296 is nationally foreign-open, and Bali is not marked as blocked for PMA registration in this slim record.",
+    "pullQuote": "The honest reading is straightforward: KBLI 10296 is nationally foreign-open, and Bali is not marked as blocked for PMA registration in this record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

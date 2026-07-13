@@ -1,0 +1,27 @@
+{
+  "code": "06202",
+  "editorial": {
+    "headline": "Geothermal Undertaking With a Clear PMA Path in Bali",
+    "standfirst": "This geothermal activity is nationally open to full foreign ownership and is not caught by Bali’s PMA moratorium at the higher-risk large-scale level.",
+    "body": "**Pengusahaan Tenaga Panas Bumi** is the upstream business of geothermal energy. Its scope is not simply desk research or a broad energy label: it covers the search for geothermal resources, geothermal drilling, and related work that carries the resource through to the place where it will be used. The record is explicit that the activity may include locations in forest areas, and it also includes the separation of associated minerals arising from geothermal undertaking. Just as importantly, the boundary is clear: this activity stops before the conversion of geothermal energy into electricity.\n\nThat makes this a code for operators working in the exploration, exploitation, or utilization stages of geothermal resources, rather than a generic renewable-energy registration. The practical profile is field-heavy and resource-linked: identifying a geothermal prospect, drilling it, developing the geothermal undertaking around it, and handling the mineral by-products that come from that undertaking. It is therefore a serious industrial activity, but the scale gate in the record is broad. Micro, small, medium, and large businesses are all listed as open scales, so the registration pathway is not reserved only for large companies in the national classification itself.\n\nNational rules leave the foreign-investment position unambiguous. The PMA status is open, and the foreign ownership ceiling is 100%. In plain English, the record supports a fully foreign-owned PMA structure for this activity at the national level, subject to the normal reading of the cited PMA source. There is no ownership cap below full control in the slim record, so this is not a case where a foreign investor must stop at a minority or joint-venture threshold based on the data provided here.\n\nThe Bali picture is also unusually clean, but for a different reason. Bali’s moratorium blocks all Low and Medium-Low risk activities for PMA across the province on a permanent, island-wide basis. This activity is not marked as blocked: its Bali status is OK_or_HIGHER_RISK, and the reason given is that the OSS risk at large scale is Medium-High/High, so it is not blocked by the moratorium. The honest conclusion is therefore not that Bali is closed to this PMA activity. Based only on this record, a foreigner can register this geothermal undertaking in Bali today, with the important caveat that its higher-risk character is exactly why it falls outside the moratorium rather than inside it.",
+    "pullQuote": "Based only on this record, a foreigner can register this geothermal undertaking in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

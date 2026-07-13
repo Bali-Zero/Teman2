@@ -9,7 +9,10 @@ export const runtime = "nodejs";
 export const maxDuration = 300; // 5 minutes max for agentic RAG
 
 function normalizeBackendBaseUrl(url: string): string {
-  return url.trim().replace(/\/+$/, "").replace(/\/api$/, "");
+  return url
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/api$/, "");
 }
 
 function getBackendBaseUrl(): string {

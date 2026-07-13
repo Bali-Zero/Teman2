@@ -1,0 +1,27 @@
+{
+  "code": "58290",
+  "editorial": {
+    "headline": "The Publishing Business Behind Ready-Made Software",
+    "standfirst": "This activity covers publishers of ready-made software—from operating systems to AI tools—open to foreign investment nationally, while Bali registration turns on the precise scope declared and its OSS risk.",
+    "body": "This activity is about publishing ready-made software rather than software produced to order. Its territory is wide: operating systems, business applications, financial-technology and distributed-ledger software, cybersecurity tools, modelling, design and multimedia software, Internet of Things software, and artificial-intelligence software all sit within the stated scope. It also includes marketplaces for software downloads, intermediation services for publishing software other than video games, and software made or produced by the publisher itself.\n\nThe defining idea is publication: bringing a ready-to-use software product into the market. That can mean a publisher whose product is a foundational operating system, a specialist security tool, a business application, or software built around AI or connected devices. It can also mean a publisher operating the route through which software is made available for download, or an intermediary supporting publication outside the video-game field. The record makes room for publishers that create their own software as well as those whose work is centred on publishing it.\n\nAcross Indonesia, foreign investment is permitted for this activity, subject to a 100% foreign-ownership ceiling. It is available at Mikro, Kecil, Menengah and Besar scale. In practical terms, the national position is unambiguous: a foreign investor can hold the full permitted stake in a company carrying out this publishing activity. The operative source listed for that foreign-investment position is Perpres 10/2021, 49/2021.\n\nBali requires a more exact reading. This is not recorded as an outright PMA block, but as a position that depends on scope. At the Besar scale, OSS risk is low for some scopes and higher for others; PMA registration in Bali is possible only where the higher-risk scope is declared for the exact activity. That distinction is consequential because Bali permanently blocks PMA registration island-wide for Low and Medium-Low risk KBLI. A publisher therefore cannot treat the national 100% ceiling as an automatic Bali outcome: the declared scope and its live OSS classification determine whether the activity can be registered there as PMA.",
+    "pullQuote": "A publisher cannot treat the national 100% ceiling as an automatic Bali outcome: the declared scope and its live OSS classification determine whether the activity can be registered there as PMA.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "33203",
+  "editorial": {
+    "headline": "Installing Indonesia’s Weather, Climate, and Geophysical Eyes",
+    "standfirst": "KBLI 33203 covers the installation of meteorological, climatological, and geophysical equipment, nationally open to PMA and not blocked in Bali under the recorded risk position.",
+    "body": "KBLI 33203 is for the practical installation layer behind weather, climate, and geophysical observation. Its scope is not research, forecasting, or data interpretation as such; the record defines it around putting equipment in place. That includes small, medium, or large installations such as automatic weather stations, humidity measuring devices, and volcanic-activity monitors. The slim record also identifies the relevant installation subclassification as IN014 for meteorological, climatological, and geophysical installation, which helps frame this as a technical installation activity rather than a broad environmental consultancy.\n\nThe commercial profile is unusually broad on scale. The activity is open to Mikro, Kecil, Menengah, and Besar operators, so it can fit a small specialist installer as well as a larger engineering contractor handling more substantial deployments. That matters because the equipment named in the scope can sit in very different operating contexts: a compact humidity measurement setup, an automated weather station, or a monitoring system tied to volcanic activity. The common thread is installation competence, not the ownership of the data network or the public authority that may ultimately use the information.\n\nNationally, the foreign-investment picture is clean. Perpres 10/2021, 49/2021 is the cited basis for the record’s TERBUKA status and pma_max_asing of 100. In plain English, a PMA structure can hold up to 100% foreign ownership at the national level for this activity. The same record does not add a reduced foreign-share ceiling, a mandatory local partner, a minimum capital figure, or a sector-specific licence condition, so none should be read into it. For founders, the important editorial point is that this is a nationally foreign-open technical installation code across all listed business scales.\n\nBali requires a separate reading because the island’s moratorium blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, according to the recorded gubernatorial source. KBLI 33203 is not blocked in Bali on the slim record, because the Bali reason states that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, and therefore it is not caught by that moratorium. That is the honest national-versus-Bali picture: this activity is nationally open up to full foreign ownership, and the Bali-side status is OK_or_HIGHER_RISK rather than blocked. The Bali entry does not give a separate local foreign-ownership cap or partnership condition, so the Bali conclusion should stay disciplined: not blocked by the stated moratorium, with the recorded higher-risk position doing the work.",
+    "pullQuote": "That is the honest national-versus-Bali picture: this activity is nationally open up to full foreign ownership, and the Bali-side status is OK_or_HIGHER_RISK rather than blocked.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

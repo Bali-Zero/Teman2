@@ -1,0 +1,27 @@
+{
+  "code": "20116",
+  "editorial": {
+    "headline": "Basic Petrochemical Chemistry With a Clear Bali Reading",
+    "standfirst": "KBLI 20116 covers core organic chemical manufacturing from petroleum, natural gas, or coal, and the record treats it as nationally foreign-open and not Bali-blocked.",
+    "body": "KBLI 20116 is an industrial chemistry code, not a trading or service label. Its scope is the manufacture of basic organic chemicals whose raw materials come from petroleum, natural gas, or coal. In practical terms, the record places this activity in the upstream chemical layer that produces cyclic hydrocarbons such as benzene, toluene, xylene, ethylbenzene, and styrene; acyclic hydrocarbons made through processes including pyrolysis, such as ethylene, propylene, butadiene, methanol, and synthetic ethanol; and functional compounds produced through oxidation, alkylation, halogenation, hydration, or hydrogenation, including ethylene dichloride, ethylene oxide, cyclohexane, terephthalic acid, synthetic glycerol, and caprolactam. It also includes coal-tar distillation.\n\nThe record is equally important for what it excludes. The scope text names many specific chemical industries as excluded from this grouping, which means KBLI 20116 should be read as a defined basic-chemical manufacturing bucket, not a catch-all for every named petrochemical product. The safe editorial reading is therefore narrow and technical: this code is for factories making basic organic chemical substances from fossil raw materials, with process chemistry at the centre of the activity. It is not a downstream brand, a retail channel, or a general chemical business description.\n\nOn scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar, so the registration surface is not limited in the slim record to one business size. That does not create any extra permission, capital, tax, or operating conclusion; it simply says the activity is recorded as available across those scales. A founder or adviser reading the code should therefore separate the scale field from the operational reality of the activity. The KBLI scope describes heavy basic chemical manufacturing, but the record’s scale field still lists every scale category as open.\n\nThe national-vs-Bali picture is clear. Nationally, the PMA status is TERBUKA, with a foreign-ownership ceiling of 100% under the stated source. Bali does not add a separate percentage in this record. The Bali-side status is OK_or_HIGHER_RISK, and the activity is not marked as blocked. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That matters because the record also states the Bali moratorium rule: Bali province blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently. For this code, however, the record’s own Bali reading is not blocked, so the honest conclusion is simple: KBLI 20116 is nationally open to PMA up to 100%, and the slim record does not mark it as blocked for PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is simple: KBLI 20116 is nationally open to PMA up to 100%, and the slim record does not mark it as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

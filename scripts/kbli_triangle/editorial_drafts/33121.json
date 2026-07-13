@@ -1,0 +1,27 @@
+{
+  "code": "33121",
+  "editorial": {
+    "headline": "The Essential Work of General Machinery Repair",
+    "standfirst": "KBLI 33121 covers the repair and maintenance of general-purpose machinery, from pumps and compressors to office machines, industrial burners, lifting equipment, and vending machines.",
+    "body": "KBLI 33121 is the practical code for keeping general-purpose machinery in working order. Its scope is repair and maintenance, not the manufacture or sale of machinery. The record places within it a broad industrial and commercial field: marine or railway machinery, pumps, compressors and related equipment, steam or liquid power machinery, valves, gears and steering equipment, industrial process burners, lifting and handling equipment, powered hand tools, cooling and air-cleaning equipment, scales, vending machines, and office machines except computers and their peripherals. In plain English, this is the activity code for businesses whose core service is maintaining the machinery that lets factories, offices, transport systems, and service operations keep running.\n\nThe breadth of the record matters because this is not a niche workshop category. It can cover a repair business serving industrial equipment, a maintenance provider for pumps and compressors, a service operation for lifting and handling machinery, or a specialist maintaining cash registers, photocopiers, calculators, typewriters, scales, and vending machines. The unifying test is functional rather than decorative: the business repairs and maintains general-purpose machinery within the stated scope. If the activity is centered on computers and their peripherals, the record expressly leaves that outside this code. If the work is the repair and maintenance of the machines named in the scope, this code is the natural editorial home.\n\nOn scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar, so it can fit anything from a small maintenance outfit to a larger service company. That does not mean the operating reality is identical at every scale; it means the slim record marks all four scales as open for registration. A founder reading this code should therefore focus less on forcing the business into a particular size label and more on whether the declared activity truly matches the machinery-repair scope described above.\n\nThe national-vs-Bali picture is clean. Nationally, the activity is marked TERBUKA, with a foreign-ownership ceiling of 100% under the cited PMA source. Bali does not add a separate percentage in this record. Its Bali-side status is marked OK_or_HIGHER_RISK, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule recorded here says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; for this code, however, the record does not mark it as blocked. The honest reading is therefore straightforward: KBLI 33121 is nationally foreign-open, and the Bali record does not block PMA registration under the moratorium.",
+    "pullQuote": "The honest reading is therefore straightforward: KBLI 33121 is nationally foreign-open, and the Bali record does not block PMA registration under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "42102",
+  "editorial": {
+    "headline": "Bridge and Flyover Construction With a Clear Bali Position",
+    "standfirst": "KBLI 42102 covers the civil construction work behind bridges, elevated roads, flyovers, and underpasses, with national PMA openness and no Bali moratorium block in this record.",
+    "body": "KBLI 42102 is a civil-infrastructure activity code, not a generic building-construction bucket. Its centre of gravity is the construction, maintenance, and rebuilding of bridge structures, including railway bridges, together with elevated roads, underpasses, and flyovers. The scope also reaches the practical works that make those structures usable and legible: retaining fences or walls, road drainage, markings, and traffic signs when they accompany the bridge or elevated-road work.\n\nThat makes this code relevant to operators whose registered activity is the physical delivery and upkeep of these transport structures. The slim record also identifies subclassification references for this activity as ST001 and BS002, both tied to civil buildings for bridges, elevated roads, flyovers, and underpasses. In plain English, the code is for the contractor-side activity of making these crossings, grade separations, and supporting road elements exist, function, and continue functioning.\n\nThe scale picture is unusually broad. The record opens this KBLI to Besar, Mikro, Kecil, and Menengah scales, so it is not framed here as a code reserved only for one business size. That does not mean every operator will face the same project profile or operational reality; it simply means the record lists all four scales as open. The editorial point is narrower and more important: registration scale should be read from the record, not inferred from the infrastructure-heavy nature of the work.\n\nNationally, the PMA position is clean. The record marks the activity as TERBUKA and gives the foreign-ownership ceiling as 100%, with Perpres 10/2021, 49/2021 as the source. Bali does not add a separate ownership percentage in this record. Instead, the Bali-side status is OK_or_HIGHER_RISK, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The province’s moratorium rule blocks Low and Medium-Low risk KBLI for PMA, but this record does not mark KBLI 42102 as blocked in Bali. The honest reading is therefore straightforward: this is nationally open to PMA up to the stated ceiling, and the Bali moratorium does not block it on the facts provided here.",
+    "pullQuote": "The honest reading is straightforward: this is nationally open to PMA up to the stated ceiling, and the Bali moratorium does not block it on the facts provided here.",
+    "byTheNumbers": [
+      {
+        "label": "KBLI code",
+        "value": "42102"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Besar, Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

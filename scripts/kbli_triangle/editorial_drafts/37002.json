@@ -1,0 +1,27 @@
+{
+  "code": "37002",
+  "editorial": {
+    "headline": "Wastewater Treatment That Stays Open in Bali",
+    "standfirst": "KBLI 37002 covers wastewater and septage treatment facilities, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 37002 is the practical infrastructure code for handling wastewater after it leaves homes, buildings, and service networks. Its scope covers the operation of wastewater treatment facilities, the treatment of wastewater through channels, and the cleaning of wastewater drains and their disposal channels. In plain English, this is not a general environmental-services label; it is about running the systems that receive, process, clean, and discharge wastewater safely through dedicated facilities and lines.\n\nThe record also brings two facility types into the frame. First, it includes domestic wastewater treatment plants, including their supporting facilities, with capacity serving up to 20,000 per day. Second, it includes septage sludge treatment plants, again with supporting facilities, where capacity is below 50 cubic metres per day. Those details matter because they keep the activity anchored in operational treatment infrastructure, rather than consultancy, trading, construction, or broad sanitation work.\n\nFor company formation, the scale picture is unusually broad. The activity is open across Mikro, Kecil, Menengah, and Besar scales, so the record does not reserve it only for a large operator. A smaller registered undertaking and a larger infrastructure operator can both sit within the same activity definition, provided the actual business is the operation, treatment, and cleaning work described in the scope. The key is fidelity to the activity: founders should read this as a code for wastewater-processing operations and their supporting facility context, not as a catch-all for every water or drainage-related business.\n\nThe national-versus-Bali position is also clear. Nationally, the code is marked TERBUKA for PMA, with foreign ownership permitted up to 100% under Perpres 10/2021, 49/2021. Bali does not block it under the province-wide moratorium described in the record. The reason is specific: at Besar scale, the OSS risk level is medium-high or high, so the Bali PMA moratorium that blocks low and medium-low risk activities does not apply here. The honest reading is therefore not a hidden prohibition, and not a Bali-only cap. For this slim record, KBLI 37002 is foreign-open nationally and remains available for PMA registration in Bali under the stated risk-based moratorium logic.",
+    "pullQuote": "The honest reading is therefore not a hidden prohibition, and not a Bali-only cap.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to registration",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

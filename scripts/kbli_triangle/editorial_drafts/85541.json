@@ -1,0 +1,27 @@
+{
+  "code": "85541",
+  "editorial": {
+    "headline": "Other Nonformal Pesantren Education: Bali’s Registration Picture",
+    "standfirst": "This nonformal pesantren activity is open to foreign investment nationally and is not blocked by Bali’s moratorium, with a higher OSS risk profile recorded at Large scale.",
+    "body": "KBLI 85541 concerns other pesantren education delivered through the nonformal education pathway, whether arranged in levels or delivered without a graded sequence. The record frames it as an “other” category for pesantren educational units within that pathway. It expressly includes Pesantren Takhassus Al-Qur’an and other Pesantren Takhassus. The word *nonformal* is significant here: it defines the route of provision and accommodates both sequential and non-sequential forms of delivery.\n\nMikro, Kecil, Menengah, and Besar are all permitted operating scales for this activity. Its scope also identifies a cross-border institutional form: a nonformal education unit may be organised and managed through cooperation between a foreign educational institution accredited or recognised in its home country and an Indonesian educational institution. That cooperation sits within the nonformal pathway and is described as operating in accordance with applicable legal provisions. The relevant enterprise is therefore a nonformal pesantren educational unit, including one established through this stated institutional cooperation.\n\nNationally, the PMA status is recorded as TERBUKA, with maximum foreign ownership of 100%. In plain English, the record presents the activity as fully open to foreign ownership at the national level: no foreign-share ceiling below full ownership is stated. That national position should be read alongside the Bali entry, which addresses whether the provincial moratorium closes the PMA registration route.\n\nBali requires a more exact reading, but it is not a shutdown message. The provincial rule blocks PMA registration for all Low and Medium-Low risk KBLI activities, island-wide and permanently. This record, however, is not marked as blocked. Its Bali reason states that, at Besar scale, the OSS risk is Medium-High/High; consequently, the moratorium does not block this activity. The record therefore supports a clear conclusion: it is nationally open with 100% foreign ownership and is not barred by Bali’s stated moratorium. No separate Bali ownership cap or partnership condition is supplied, so none should be inferred.",
+    "pullQuote": "The activity is nationally open with 100% foreign ownership and is not barred by Bali’s stated moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

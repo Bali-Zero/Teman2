@@ -1,0 +1,27 @@
+{
+  "code": "10298",
+  "editorial": {
+    "headline": "Seaweed Processing With a Conditional Bali Gate",
+    "standfirst": "KBLI 10298 covers processing and preserving seaweed, nationally open to full foreign ownership but requiring careful Bali scope verification before PMA registration.",
+    "body": "KBLI 10298 is the activity code for processing and preserving seaweed. In plain terms, the record points to work that turns harvested seaweed into a processed form, especially drying it into dry seaweed, and also covers other seaweed-processing outputs within the stated scope. It is not a broad food-manufacturing category. Its editorial importance is more specific: it sits at the point where a raw coastal commodity becomes a tradable processed product.\n\nThe code is open across business scales: Mikro, Kecil, Menengah, and Besar all appear in the record as scales open to registration. That matters because the activity can describe very different operating realities, from small drying and preservation work to larger-scale processing. The scope, however, stays anchored in seaweed treatment and preservation. A founder using this code should therefore describe the actual processing activity precisely, because the Bali-side treatment in the record depends on the exact declared scope rather than on a generic reading of the title.\n\nNationally, the position is clear. The record marks PMA status as TERBUKA, with pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. In practical editorial English, that means the national foreign-ownership ceiling shown in the record is 100%. There is no lower ownership cap in the slim record, and no additional national threshold or capital condition is supplied here. The national story is therefore not the difficult part: this is a foreign-open activity at the national level, according to the data provided.\n\nBali is more nuanced. The record does not mark this code as outright blocked in Bali: l4_bali_blocked is false. But the Bali status is Blocked (scope-dependent), and the reason says that OSS risk at scale Besar is low on some scopes but higher on others, making it registrable as PMA in Bali only by declaring the higher-risk scope and verifying live OSS for the exact activity. That sits against the stated Bali moratorium rule: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest reading is conditional rather than casually open. Nationally, KBLI 10298 is foreign-open up to 100%; in Bali, the registration outcome depends on the exact seaweed-processing scope and its live OSS risk classification.",
+    "pullQuote": "Nationally, KBLI 10298 is foreign-open up to 100%; in Bali, the registration outcome depends on the exact seaweed-processing scope and its live OSS risk classification.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Kecil, Menengah, Besar, Mikro"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

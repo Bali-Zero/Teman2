@@ -1,0 +1,27 @@
+{
+  "code": "01114",
+  "editorial": {
+    "headline": "Peanut Farming with a Clear PMA Path in Bali",
+    "standfirst": "This activity covers peanut cultivation as an integrated farm operation, and the record treats it as open nationally and not blocked for PMA registration in Bali.",
+    "body": "Peanut farming under this activity is a practical agricultural classification: the growing of peanuts from land preparation through planting, maintenance, harvesting, and post-harvest work when those steps are carried out as one continuous operation. The record also brings seed production into the same frame when it follows that integrated chain for peanut plants. In plain English, this is not merely the moment of harvest or a loose trading activity around peanuts. It is the farm-side cultivation cycle itself, including the preparatory and finishing work that belongs to a single peanut-growing enterprise.\n\nThat integrated nature matters for founders choosing how to register the activity. A business using this classification is describing a peanut cultivation operation, potentially including the seed-business side, so long as the work remains tied to the cultivation sequence described in the record. The activity is open across Mikro, Kecil, Menengah, and Besar scales, which makes it unusually broad in the way it can fit different operating sizes. A small grower, a mid-sized agricultural operator, or a larger farming venture can all sit inside the scale range shown here, without the record forcing the activity into only one end of the business spectrum.\n\nThe national foreign-investment position is also straightforward. The record marks the activity as TERBUKA, with a foreign-ownership ceiling of 100% under the stated Perpres source. That means the national reading is not a capped minority position; the record does not impose a reduced foreign-stake ceiling. For a PMA planning exercise, the clean national conclusion is therefore that this peanut-farming activity is foreign-open at the full percentage shown in the record, subject only to facts that are actually recorded here.\n\nThe Bali picture is often where agricultural classifications become more delicate, but this record gives a clear answer. Bali's moratorium rule blocks Low and Medium-Low risk KBLI for PMA across the province, yet this activity is not marked as blocked. The stated reason is that OSS risk at the Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. In practical terms, the honest lede is not a warning that foreigners cannot register it in Bali today. It is the opposite: on the slim record provided, this activity is nationally open to PMA and has a Bali status of OK_or_HIGHER_RISK, with no Bali PMA block recorded.",
+    "pullQuote": "On the slim record provided, this activity is nationally open to PMA and has no Bali PMA block recorded.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "62199",
+  "editorial": {
+    "headline": "When Programming Means Building to Fit",
+    "standfirst": "This activity covers the practical work of building, adapting and supporting software—and it is not blocked for PMA registration in Bali.",
+    "body": "At its core, this is the work of making software function in the real world. The activity covers designing program structure and content, then writing, modifying, updating, patching, customising, testing and supporting the code needed to create and implement software systems and applications not otherwise captured. Its scope reaches from system software, including operating systems and middleware, to applications for the Internet of Things, cybersecurity, business, finance, databases, graphics, modelling, websites and other specialised purposes. It also includes modifying and configuring applications so they operate within a user’s or client’s information-system environment.\n\nThe defining thread is not simply authorship of a new program. The scope follows software through its working life: building it, changing it, patching it, testing it, supporting it, or configuring it for the environment in which a user or client actually operates. This is a substantial programming remit, but not an undefined one. The record expressly excludes information-systems consultancy or planning, as well as software adaptation performed as an inseparable part of a software sale. Registration is open at every listed scale—Mikro, Kecil, Menengah and Besar—rather than being confined to a particular size of business.\n\nNationally, the PMA position is direct: TERBUKA, with a maximum foreign ownership of 100%. That is the stated national ceiling for this activity, not a reduced foreign-share cap. For a foreign-owned software business whose work falls within this scope, the record’s national position is therefore fully open. The source cited for that position is Perpres 10/2021, 49/2021; beyond the status and ownership ceiling, this slim record does not add procedural detail.\n\nBali still deserves its own reading. The provincial moratorium blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This activity, however, is not marked as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is specific: at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi—medium-high/high—so the moratorium does not block it. The honest Bali conclusion is clear: the record does not treat this activity as barred for PMA registration in Bali.",
+    "pullQuote": "The honest Bali conclusion is clear: the record does not treat this activity as barred for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

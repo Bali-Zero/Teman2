@@ -1,0 +1,27 @@
+{
+  "code": "53301",
+  "editorial": {
+    "headline": "A Digital Gateway to Indonesia’s Delivery Networks",
+    "standfirst": "This activity covers the online portals that connect customers with postal, courier and food-delivery ordering services—nationally open to full foreign ownership, but scope-sensitive in Bali.",
+    "body": "KBLI 53301 concerns the digital layer between a customer and a postal or courier provider. It is an intermediary service: a platform or portal that enables customers to access delivery services offered by multiple postal and courier companies, rather than carrying goods or documents itself. Its practical terrain includes ordering, tracking and payment through an online portal. The scope also includes an online platform through which the public can order food delivery.\n\nThis is therefore an activity for the operator of the digital marketplace or portal, not the physical delivery provider. The recorded scope expressly reaches non-exempt PPMSE and PSP operators established within Indonesia’s jurisdiction, as well as non-exempt operators established outside it when they conduct electronic-trading activity within Indonesia. The activity is open at Mikro, Kecil, Menengah and Besar scale, placing the platform model within every listed business scale rather than reserving it for a single size of enterprise.\n\nAt the national level, the position is straightforward: the activity is TERBUKA to PMA, with a foreign-ownership ceiling of 100%. That is a full foreign-ownership ceiling, not a partial one. The legal source recorded for that national position is Perpres 10/2021, 49/2021. For an investor considering a portal that coordinates booking, tracking and payment across delivery providers—or enables food-delivery ordering—the national record supports a foreign-owned structure within that ceiling.\n\nBali requires more careful reading. The record does not mark the activity as categorically blocked, but gives it a scope-dependent status. At Besar scale, OSS risk may be Low for some declared scopes and higher for others. Bali’s permanent, island-wide rule blocks PMA registration for activities assessed Low or Medium-Low risk. The recorded route to PMA registration in Bali is therefore conditional: the business must declare the higher-risk scope, such as the relevant PPMSE scope for platform-trade activity, and verify the live OSS position for the exact activity. The national 100% ceiling remains the national ceiling; it does not remove this Bali registration condition.",
+    "pullQuote": "Nationally open to 100% foreign ownership, this platform activity becomes a question of exact declared scope in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

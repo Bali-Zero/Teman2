@@ -1,0 +1,27 @@
+{
+  "code": "15112",
+  "editorial": {
+    "headline": "Leather Tanning With a Clear National and Bali Path",
+    "standfirst": "KBLI 15112 covers the tanning of pre-tanned hides into finished and semi-finished leathers, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 15112 is about the industrial transformation of leather after it has already passed through pre-tanning. The record describes tanning carried out with synthetic materials, including chromium, or with vegetable materials, turning the material into tanned leather. Its scope is not a retail category or a broad fashion trade description; it is the production activity that changes prepared hides into recognised leather outputs.\n\nThe examples in the record give the practical shape of the activity: wet blue, wet white, crust, sole leather, vache raam, box leather, velvet-like leather, glace leather, decorative leather, furred leather, laminated leather, patent leather, jacket leather, glove leather, and chamois. In plain English, this is the workshop or factory activity behind leather as an industrial input and finished material, where the defining act is the tanning process itself rather than the later sale or assembly of leather goods.\n\nOn business scale, the record is broad. KBLI 15112 is open to Mikro, Kecil, Menengah, and Besar. That matters because the code is not confined in the record to either small craft production or large industrial operation. A founder reading it should see a scale ladder that spans the full set listed in the data, while still keeping the activity anchored to the same core function: tanning pre-tanned leather into the forms named in the scope.\n\nThe national investment picture is also direct. The record marks the PMA status as TERBUKA and gives a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. For Bali, the honest point is that the record does not mark this code as blocked: `l4_bali_blocked` is false, and the Bali status is `OK_or_HIGHER_RISK`. The stated reason is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium text in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently; this record places KBLI 15112 outside that block on the stated Bali reasoning.",
+    "pullQuote": "The record’s practical message is that leather tanning under KBLI 15112 is nationally open to PMA and not marked as blocked by Bali’s moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

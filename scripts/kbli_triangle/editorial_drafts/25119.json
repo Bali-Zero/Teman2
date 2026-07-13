@@ -1,0 +1,27 @@
+{
+  "code": "25119",
+  "editorial": {
+    "headline": "Other Structural Metal Products, Open Nationally and Workable in Bali",
+    "standfirst": "KBLI 25119 covers specialised structural metal products for construction, open to every business scale and, on this record, not blocked for PMA registration in Bali.",
+    "body": "KBLI 25119 sits in a practical corner of construction manufacturing: the making of other structural metal products used in building and infrastructure work. The record describes it as structural metal product manufacturing for construction, including non-steel structural metal products for heavy construction. In plain English, this is not a trading code and not a design consultancy. It is a manufacturing activity tied to the physical production of structural metal components for construction purposes, with the emphasis on products that fall outside the narrower structural metal categories named elsewhere in the classification system.\n\nThe scale profile is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, which means the classification is not reserved only for large industrial operators. A small workshop and a larger manufacturing plant may both sit inside the scale map, provided the registered activity remains within the scope: making structural metal products for construction. That breadth matters because the same KBLI can describe very different operational realities, from modest fabrication capacity to heavier construction-oriented production. The editorial point is not that all scales face the same operational pathway, but that the record itself does not close the activity to any of the listed scales.\n\nNationally, the PMA picture is clear. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, which means the foreign-ownership ceiling is 100%. There is no reduced national cap in the data, and no additional ownership condition is stated in the slim record. For a foreign-owned setup, the honest national reading is therefore straightforward: this activity is open, and the record supports full foreign ownership at the national level under the cited PMA source.\n\nThe Bali reading is also relatively clean, but for a different reason. For Bali, the record shows l4_bali_blocked as false, with the Bali status recorded as OK_or_HIGHER_RISK rather than blocked. The reason given is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province. Here, the record’s Bali-side conclusion is not a separate Bali ownership percentage, and it is not a partnership quota. It is simply that, on this record, the activity is not blocked by the moratorium because the relevant risk reading at large scale is above the blocked risk band.",
+    "pullQuote": "The honest reading is that KBLI 25119 is nationally open to full foreign ownership and, on this record, not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

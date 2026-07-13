@@ -1,0 +1,27 @@
+{
+  "code": "53100",
+  "editorial": {
+    "headline": "Postal Activity: Nationally Open, Not Moratorium-Blocked in Bali",
+    "standfirst": "This universal-service postal activity is open nationally to full foreign ownership and, at Besar scale, is not blocked by Bali’s PMA moratorium.",
+    "body": "Postal activity here means the public-serving postal system operated under a universal-service obligation by one or more appointed universal-service providers. Its premise is reach: the government-guaranteed service must extend across the domestic territory, allowing people to send and/or receive consignments between locations in Indonesia and elsewhere in the world. This is an activity defined by that obligation and by the service network built to meet it. Its listed work joins physical infrastructure with the handoff of consignments across those routes.\n\nThat network is concrete. It uses universal-service infrastructure: retail locations, sorting and processing facilities, and delivery routes used to collect and deliver letters. The operational chain spans collection, sorting, transport and delivery, within Indonesia or internationally. It can employ one or more transport modes, using the operator’s own transport or public transport; movement is not confined to one method. Collection may start at public letter boxes or post offices. The consignments named in the record range from letters and postcards to printed documents—newspapers, magazines, advertising material and specially bagged printed matter—along with small packets, postal parcels, sekograms and other goods or documents. Supporting services necessary for the universal-service obligation are part of the activity as well.\n\nBusinesses may register at the Mikro, Kecil, Menengah and Besar scale. The scale designation runs from Mikro through Besar, rather than identifying a single business size. Nationally, the PMA position is TERBUKA, with a maximum foreign ownership of 100%. In practical ownership terms, the national record places no foreign-share cap below full foreign ownership. Its cited basis is Perpres 10/2021, 49/2021.\n\nOn Bali, the record does not mark the activity as blocked for PMA registration. It assigns the status **OK_or_HIGHER_RISK** and notes that, at Besar scale, the OSS risk is Menengah-Tinggi/Tinggi. That is why it is not blocked by Bali’s island-wide, permanent moratorium on Low and Medium-Low risk KBLI for PMA. The distinction matters: national openness and Bali’s result are both affirmative in this record, while Bali’s conclusion is expressly tied to the recorded Besar-scale risk treatment. No Bali-specific foreign-ownership ceiling or partnership condition is stated.",
+    "pullQuote": "Nationally, it is open to 100% foreign ownership; in Bali, it is not moratorium-blocked because of its recorded Besar-scale risk treatment.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

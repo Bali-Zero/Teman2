@@ -1,0 +1,27 @@
+{
+  "code": "47403",
+  "editorial": {
+    "headline": "Software Retail Is Nationally Open, but Blocked for PMA in Bali",
+    "standfirst": "Retailing physical, perpetual-use software is open to foreign ownership nationwide, yet Bali’s permanent risk-based moratorium blocks PMA registration for the activity.",
+    "body": "A foreign investor cannot register this software-retail activity in Bali today through PMA. The record attributes the block to Bali’s island-wide, permanent moratorium, dated 13 May 2026, for PMA activities classified Low or Medium-Low risk. That local restriction creates a sharp boundary around an activity the national record otherwise marks as open to PMA. The national and provincial readings need to be kept distinct from the start.\n\nAt its core, the activity is specialised retail sale of software supplied in physical form with perpetual rights of use. The category is defined by those two details: a physical format and a continuing right of use. The scope also expressly refers to direct sales, without further qualification. Its practical centre is a retail transaction in a tangible software product for which the customer receives a non-expiring right to use it.\n\nThe activity is available to businesses at the Mikro, Kecil, Menengah and Besar scales. That broad formal range is important context, but it does not erase the Bali outcome. The record identifies the OSS risk at Besar scale as Rendah or Menengah-Rendah across every scope. In Bali, that classification falls within the stated moratorium, which blocks PMA registration for all activities carrying Low or Medium-Low risk. The block follows the risk class rather than an implied commercial distinction.\n\nAcross Indonesia, the PMA status is TERBUKA, with maximum foreign ownership set at 100%. In plain terms, a foreign investor may hold the full ownership stake nationally for this activity. Bali does not present a lower ownership percentage here; it presents a block on PMA registration. The result is therefore two-level: national openness establishes the foreign-ownership ceiling, while the Bali moratorium prevents PMA registration for this activity on the island. The national setting is sourced to Perpres 10/2021, 49/2021; Bali’s rule is attributed to Gubernur letter B.27.000/642/PM/DPMPTSP.",
+    "pullQuote": "National openness establishes the ownership ceiling, while Bali’s moratorium stops the PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

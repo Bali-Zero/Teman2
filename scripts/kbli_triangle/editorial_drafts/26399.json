@@ -1,0 +1,27 @@
+{
+  "code": "26399",
+  "editorial": {
+    "headline": "The Communications Equipment Code Behind Broadcast, Data, and IoT Hardware",
+    "standfirst": "KBLI 26399 covers the manufacture of specialised communications equipment, from broadcast studio systems to routers, smart watches, IoT modules, set top boxes, EDC devices, and CCTV.",
+    "body": "KBLI 26399 is a manufacturing classification for communications equipment that sits beyond the most familiar consumer-device categories. The slim record describes it as the making of other communications transmission equipment: private branch exchange equipment, data-communication devices such as bridges, routers and gateways, cable-television equipment, transmitting and receiving antennas, television and radio studio equipment, broadcast equipment including television cameras, carrier modems, radio and television transmitters, and equipment using infrared signals such as remote controls. In plain English, this is the code for businesses that manufacture the hardware through which signals are transmitted, routed, received, recorded, or converted.\n\nThe scope is deliberately broad, but it is not vague. It includes broadcast-studio machinery such as reproduction equipment used in broadcasting, commercial video cameras, transmitting and receiving antennas, and studio systems for television and radio. It also reaches into the connected-device layer: smart watches, Bluetooth transmission equipment or modules, radio-frequency modules, GSM modules, and other connectivity equipment used in the internet of things. The same record includes terrestrial and satellite set top boxes, closed-circuit television cameras, and electronic data capture equipment. What unifies the category is not the final user, but the industrial act: manufacturing communications equipment and related transmission, receiving, studio, connectivity, or data-capture hardware.\n\nThe record opens this activity across all listed business scales: Mikro, Kecil, Menengah, and Besar. That means the classification can be relevant both to small manufacturers and to larger industrial operators, provided the activity being registered matches the manufacturing scope described in the record. The foreign-investment position is equally direct at the national level. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, with the national source stated as Perpres 10/2021, 49/2021. In practical editorial terms, the national file presents this as fully open to foreign ownership, not merely conditionally open or capped below full ownership.\n\nThe Bali picture is important because this Navigator is not just a national taxonomy; it is read by founders who need to know whether a national opening survives local registration reality. Here, the record does not mark Bali as blocked. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, with the cited source being Gubernur letter B.27.000/642/PM/DPMPTSP. For KBLI 26399, however, the record’s conclusion is clean: the activity is nationally open up to 100 percent foreign ownership, and the Bali-side status recorded here is not blocked by that moratorium.",
+    "pullQuote": "For KBLI 26399, the record’s conclusion is clean: the activity is nationally open up to 100 percent foreign ownership, and the Bali-side status recorded here is not blocked by that moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

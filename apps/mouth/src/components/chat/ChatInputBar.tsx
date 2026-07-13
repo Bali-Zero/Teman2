@@ -290,11 +290,7 @@ export function ChatInputBar({
 
             <Button
               onClick={
-                isLoading
-                  ? onStop
-                  : showImagePrompt
-                    ? onImageGenerate
-                    : onSend
+                isLoading ? onStop : showImagePrompt ? onImageGenerate : onSend
               }
               disabled={!isLoading && !input.trim()}
               size="icon"

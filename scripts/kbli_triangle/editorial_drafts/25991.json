@@ -1,0 +1,27 @@
+{
+  "code": "25991",
+  "editorial": {
+    "headline": "Metal Safes and Office Security Built for Every Scale",
+    "standfirst": "KBLI 25991 covers the manufacture of metal office security goods, nationally open to PMA ownership and not blocked for PMA in Bali.",
+    "body": "KBLI 25991 is a manufacturing code for metal office equipment where security and storage are the point. The record places safes, filing cabinets, strongboxes, armoured doors, and similar metal products inside the activity. It also draws one important boundary: this is not the manufacture of metal furniture. The centre of the code is therefore not general furnishing, but the production of office-use metal goods designed to hold, protect, organise, or secure.\n\nThat scope gives the code a practical industrial character. A business registering this activity is not simply trading in finished security goods; it is making them. The slim record describes fabrication of metal office items, including safes and filing cabinets, and extends the field to strongboxes, armoured doors, and other similar products. The word “Seluruh” in the scope reinforces that the activity is treated broadly within that described manufacturing field, while still staying inside the stated boundary and outside metal furniture.\n\nThe registration scale is unusually straightforward. The activity is open across Mikro, Kecil, Menengah, and Besar. In plain terms, the record does not reserve this manufacturing line for only large industrial players, nor does it describe it as available only to small operators. It can sit at any of the listed business scales, from micro through large, provided the registration follows the activity as defined: metal office security and storage products, not neighbouring activities and not a broader furniture business.\n\nThe ownership picture is also clean. Nationally, the PMA status is TERBUKA, with the foreign-ownership ceiling recorded as 100% under Perpres 10/2021, 49/2021. On the Bali side, the record does not mark the code as blocked: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That matters because the Bali moratorium rule in the record blocks Low and Medium-Low risk KBLI for PMA, island-wide and permanently. For this code, the record’s conclusion is that the moratorium does not block PMA registration in Bali.",
+    "pullQuote": "For this code, the record’s conclusion is that the moratorium does not block PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

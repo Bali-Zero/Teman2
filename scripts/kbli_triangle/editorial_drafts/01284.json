@@ -1,0 +1,27 @@
+{
+  "code": "01284",
+  "editorial": {
+    "headline": "Aromatic Crop Farming With a Clear PMA Opening",
+    "standfirst": "KBLI 01284 covers integrated aromatic-crop farming; nationally it is PMA-open up to 100%, and Bali is not marked as blocking it under the moratorium record.",
+    "body": "KBLI 01284 is the agricultural frame for aromatic and freshening plants: serai wangi, nilam, menthol, kenanga, ilang-ilang, gandapura, lawang, gaharu, and kayu putih grown for its leaves. The record defines the activity as a farm sequence, starting with land preparation and moving through sowing, nursery work, planting, maintenance, harvesting, and post-harvest work when those steps are carried as a continuous activity. It can also cover the same aromatic-crop farming inside forest areas.\n\nRegistration is open across the full scale ladder recorded here: Mikro, Kecil, Menengah, and Besar. That makes the code usable for a business whose registered activity is the production-side agriculture itself, whether the record is framed as seedling and seed production or as cultivation. The scope separately names Produksi Benih for seedling and seed activity, and Budi Daya for the cultivation of essential-oil plantation crops. Taken together, the named crop list and the process list make the activity concrete: plants, land, nursery, cultivation, maintenance, harvest, and post-harvest as an integrated farm cycle.\n\nNationally, the PMA signal is clean. The record marks the activity TERBUKA, sets pma_max_asing at 100, and cites Perpres 10/2021, 49/2021. Put plainly, the foreign stake is not capped below full ownership in the slim record: the national ceiling is 100%. That is the most important national reading for a foreign founder or investor choosing a business activity. The registration analysis still has to stay inside the scope: the business being registered must be the agricultural activity described here, not an imagined adjacent activity.\n\nFor Bali, the record is direct. l4_bali_blocked is false, and l4_bali_status is OK_or_HIGHER_RISK. The reason given is narrow: OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so the Bali moratorium does not block PMA registration for this activity. The moratorium described in the record is island-wide and permanent for all Low + Medium-Low risk KBLI for PMA, with the source listed as Gubernur letter B.27.000/642/PM/DPMPTSP. On this record, 01284 is genuinely open: foreign ownership is allowed up to 100% nationally, and Bali is not marked as blocking PMA registration.",
+    "pullQuote": "On this record, 01284 is genuinely open: foreign ownership is allowed up to 100% nationally, and Bali is not marked as blocking PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

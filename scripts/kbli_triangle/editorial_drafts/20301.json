@@ -1,0 +1,27 @@
+{
+  "code": "20301",
+  "editorial": {
+    "headline": "Filament Fiber Manufacturing With a Clean PMA Line",
+    "standfirst": "KBLI 20301 covers synthetic and artificial filament fiber or strip made in tow rolls for further processing, open nationally to PMA at 100% and not blocked in Bali by the moratorium.",
+    "body": "KBLI 20301 is a manufacturing classification for synthetic and artificial filament fiber or strip, specifically in tow-roll form, made for further processing. The record names the base materials clearly: polyamide, polyester, polypropylene, acrylic, rayon, cellulose acetate, and similar inputs. In plain English, this is not the retail end of a product story. It is the making of the man-made fiber or strip that another operation will later process into something else.\n\nThat scope matters because the registration profile is broad. The activity is open to Mikro, Kecil, Menengah, and Besar scales, so the record does not reserve it for one size of operator. A small manufacturer and a large industrial operator are both within the scale language given here. The discipline is to keep the classification narrow: the activity is the making of those filament fibers or strips in tow rolls, not a wider promise about every downstream use of those materials.\n\nNationally, the PMA picture is direct. The status is TERBUKA, and the foreign-ownership ceiling is 100%, with the source line given as Perpres 10/2021, 49/2021. For a foreign-owned company reading the code nationally, that means the record does not impose a lower foreign-equity cap. There is no need to soften the point: on the national fields supplied here, this activity is open to full foreign ownership.\n\nBali does not reverse that conclusion in this record. The moratorium rule stated here blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently. But KBLI 20301 is not marked as blocked: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The record's reason is precise: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". So the honest national-vs-Bali reading is clean: nationally open at 100%, and not blocked for PMA registration in Bali under the moratorium field supplied.",
+    "pullQuote": "So the honest national-vs-Bali reading is clean: nationally open at 100%, and not blocked for PMA registration in Bali under the moratorium field supplied.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

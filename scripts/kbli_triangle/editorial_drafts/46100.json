@@ -1,0 +1,27 @@
+{
+  "code": "46100",
+  "editorial": {
+    "headline": "The Broker’s Business: Foreign Ownership and Bali’s Risk Test",
+    "standfirst": "A wholesale intermediary can be wholly foreign-owned nationally, but Bali registration turns on the exact declared scope and its OSS risk.",
+    "body": "This is the business of making wholesale trade happen without becoming the owner of what changes hands. It covers an intermediary that brings seller and buyer together for orders, acting for a fee or commission rather than supplying, holding title to, or taking ownership of the goods and services being intermediated. The work may take place through a digital platform or through conventional channels; payment may come from either side of the transaction, and intermediary income may also include sources such as advertising.\n\nIn practice, that places commission agents, goods brokers and other wholesale representatives squarely within the activity when they act for another party without rights over the goods. It also accommodates businesses that connect counterparties, transact on a company’s behalf—including online—operate a purchasing centre solely as an intermediary, run a wholesale auction house, provide commission agency for radioactive substances and ionising-radiation generators, or organise a commodity auction market for wholesale trade. The distinction is not decorative: the activity is defined by facilitation, not by proprietary control of the subject matter being traded.\n\nNationally, the activity is open to foreign investment with a foreign-ownership ceiling of 100%, and is open at Mikro, Kecil, Menengah and Besar scales. That is a clear national position, but it should not be mistaken for an automatic Bali outcome. Bali’s provincial rule permanently blocks PMA registration for all Low and Medium-Low risk KBLI across the island. For this activity, the Bali position is therefore dependent on the scope actually declared and the risk assigned to it in OSS.\n\nThe record identifies an important practical divide at the Besar scale: some scopes carry low risk, while others carry a higher risk. PMA registration in Bali is possible only where the filing declares the higher-risk scope, such as the relevant platform-trade scope where applicable. The proper conclusion is neither a blanket Bali prohibition nor a blanket approval. A founder must match the proposed operation precisely to its declared activity and verify the live OSS treatment before relying on the national foreign-ownership position.",
+    "pullQuote": "Nationally the activity can be wholly foreign-owned, but in Bali the precise declared scope and its OSS risk determine whether PMA registration is possible.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "Blocked (scope-dependent)"
+      },
+      {
+        "label": "Open scale",
+        "value": "Besar"
+      }
+    ]
+  }
+}

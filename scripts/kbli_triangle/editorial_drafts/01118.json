@@ -1,0 +1,27 @@
+{
+  "code": "01118",
+  "editorial": {
+    "headline": "Non-Edible Oilseed Farming That Bali Leaves Open to PMA",
+    "standfirst": "This activity covers integrated farming and seed production for non-edible oil-bearing grains, with national PMA openness and no Bali moratorium block in the slim record.",
+    "body": "KBLI 01118 is a farming activity, but its focus is narrow and industrial rather than culinary. It covers oil-bearing grains that are not grown for cooking oil: cottonseed, flaxseed, mustard seed, niger seed, castor seed, and comparable non-edible oilseed crops named in the scope. The agricultural chain is also part of the definition. Land preparation, planting, maintenance, harvesting, and post-harvest work all sit within the activity when they are carried out as one integrated sequence. The same record also places nursery and seed-production activity for these non-edible oilseed plants inside the scope.\n\nThat matters because this is not merely a label for a crop. It is a registration home for operators whose business is the cultivation system around those crops, from seed or seedling activity through the field cycle and into post-harvest handling when those steps form one business line. The record opens the activity to Mikro, Kecil, Menengah, and Besar scales, so it is not reserved only for a single enterprise size. A small grower, a medium operator, or a larger agricultural company can all read the scale field as part of the same activity frame, provided the business remains within the stated non-edible oilseed scope.\n\nNationally, the PMA position is clean: the record marks the activity as TERBUKA, with a foreign ownership ceiling of 100%. In practical editorial terms, that means the slim record does not impose a foreign-share cap below full ownership for this activity. The relevant source field is Perpres 10/2021, 49/2021, and there is no separate number in the record that narrows the ceiling. The honest reading is therefore not a half-open category or a capped foreign stake; on the national data given here, this activity is open to foreign ownership up to the stated maximum.\n\nThe Bali picture is also unusually direct. The province-wide moratorium described in the record blocks PMA for all Low and Medium-Low risk KBLI, but this activity is not marked as blocked. The reason given is specific: at Besar scale, the OSS risk is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The national door and the Bali door are aligned here: the activity is foreign-open nationally, and the slim record does not put it inside Bali's PMA moratorium block. That does not add any permit, timeline, tax, or capital conclusion beyond the record; it simply means the Bali status field does not close the activity to PMA registration.",
+    "pullQuote": "The national door and the Bali door are aligned here: the activity is foreign-open nationally, and the slim record does not put it inside Bali's PMA moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

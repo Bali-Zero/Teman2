@@ -1,0 +1,27 @@
+{
+  "code": "20211",
+  "editorial": {
+    "headline": "The Active-Ingredient Layer Behind Pest-Control Manufacturing",
+    "standfirst": "KBLI 20211 is for manufacturing pesticide raw materials: nationally foreign-open, and not blocked for PMA in Bali under the record supplied.",
+    "body": "KBLI 20211 sits at the upstream end of pest-control manufacturing. It is not framed as retail, distribution, application service, or farm advisory work; the record defines it as the making of raw materials for pesticides, the active substances that sit behind finished pest-control products. The scope names examples such as buthyl phenyl methyl carbamate (BPMC), methyl isopropyl carbamate (MIPC), diazinon, carbofuran, glyphosate, monocrotophos, arsenic trioxide, and copper sulphate. In plain English, this is a manufacturing classification for chemical active ingredients used in pesticide production.\n\nThat makes the code narrower, and more industrial, than the title alone may suggest. A founder choosing it should be looking at the production of active pesticide inputs themselves, not merely at trading, packaging, consulting, or using pest-control goods. The Indonesian scope is chemical and ingredient-led: it points to specific compounds, not to a general business story around agriculture or pest management. The useful reading is therefore precise: this code is for the factory-side making of pesticide raw materials, with the named substances serving as the guide to its technical centre of gravity.\n\nOn scale, the record is unusually broad. It lists **Mikro, Kecil, Menengah, and Besar** as open, so the classification is not confined in the record to only a large industrial operator. That does not turn every small chemical activity into this code; it simply means the scale field itself is open across the full set shown. The decisive question remains whether the registered activity is genuinely the manufacture of pesticide raw materials as described in the scope, rather than a downstream or adjacent commercial activity.\n\nThe national foreign-investment position is clean: PMA status is **TERBUKA**, with `pma_max_asing` at **100%**, sourced to **Perpres 10/2021, 49/2021**. On the Bali side, the supplied record does not mark it as blocked. Its Bali status is **OK_or_HIGHER_RISK**, and the reason given is: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently; this code is not blocked under that supplied Bali assessment. The honest read is therefore direct: nationally, the activity is open to up to 100% foreign ownership, and in Bali the record does not block PMA registration for it.",
+    "pullQuote": "The honest read is direct: nationally, the activity is open to up to 100% foreign ownership, and in Bali the record does not block PMA registration for it.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

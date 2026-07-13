@@ -1,0 +1,27 @@
+{
+  "code": "61902",
+  "editorial": {
+    "headline": "Premium SMS Content Services: Open Nationally, Clear of Bali’s Moratorium",
+    "standfirst": "This activity covers paid content delivered by mobile SMS, from polls to interactive subscriptions, with national foreign ownership open to 100% and no Bali moratorium block.",
+    "body": "Premium SMS Content Services covers the organisation and provision of content sent through mobile-network text messaging, including premium SMS. Its commercial mechanism is explicit: customers pay by a deduction from prepaid credit or through postpaid billing. The content may be written material, sound, images, animation, or a combination. Polls, quizzes, personalised ringback tones, subscription information and other interactive services are named examples. Taken together, these details define an activity built around paid content delivered in messages on a cellular mobile network, with both the message medium and the billing route forming part of the stated scope.\n\nThe registration is open at the micro, small, medium and large scales. That breadth is significant because the record does not confine the activity to one content form: a text offer, sound, imagery, animation or a combination can all sit within the described service when delivered through SMS. Nor is the scope limited to one interaction model; polling, quizzes, personalised ringback tones, subscription information and other interactive services all appear in its examples. The common thread is not a particular creative output but the provision of content over mobile SMS with the stated charging method.\n\nNationally, the status is open and the foreign-ownership ceiling is 100%. Put plainly, foreign ownership may reach full ownership for this activity at the national level; the record supplies no lower national ceiling. The PMA basis listed is Perpres 10/2021, 49/2021. This is the essential national position for a foreign-owned setup: the activity is recorded as open, rather than as an arrangement in which the foreign share is capped below 100%. That conclusion concerns ownership access; the activity itself remains defined by the provision of paid SMS content described above.\n\nBali requires a separate reading. The province’s permanent, island-wide moratorium blocks PMA registration for all low- and medium-low-risk KBLI activities. This activity is not blocked by that moratorium. The record gives a specific reason: at the large scale, the OSS risk is medium-high/high, so the moratorium does not block it; the Bali status is OK_or_HIGHER_RISK. The Bali conclusion is therefore direct, but limited to what the record says: a foreign investor is not prevented from registering this activity in Bali by the stated moratorium. No local percentage or partnership condition is given here, so the national 100% ceiling remains the ownership figure stated for the activity.",
+    "pullQuote": "Foreign ownership may reach full ownership for this activity at the national level; the record supplies no lower national ceiling.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

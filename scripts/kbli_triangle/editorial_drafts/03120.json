@@ -1,0 +1,27 @@
+{
+  "code": "03120",
+  "editorial": {
+    "headline": "Freshwater Capture, Open Nationally and Usable in Bali",
+    "standfirst": "This activity covers commercial capture of freshwater fish and other inland aquatic life, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "This code is about commercial capture in inland freshwater, not aquaculture, processing, retail, or marine fishing. The scope points to activity on land-based freshwater bodies: lakes, rivers, reservoirs, swamps, standing water, and similar inland waters. It covers catching finfish and taking other freshwater biota, including crustaceans, molluscs, amphibians, reptiles, aquatic plants, and freshwater materials. In plain English, this is the business of harvesting freshwater fish and living freshwater resources from natural or managed inland waters for commercial purposes.\n\nThe record is unusually broad in the biological range it names. It includes everyday freshwater finfish, freshwater crustaceans such as prawns and shrimps, and other aquatic animals and plants. It also recognises that some captured freshwater species may be protected, listed under CITES, or otherwise restricted under applicable law. That matters editorially because the business description is not only about ordinary inland catch; it also reaches into sensitive species categories. The slim record does not provide thresholds, procedures, or separate approval steps, so those should not be invented. What can be said is narrower and more solid: the scope itself includes both ordinary freshwater capture and certain protected or restricted freshwater biota categories.\n\nOn scale, the activity is open across the full range shown in the record: Mikro, Kecil, Menengah, and Besar. That means the classification can describe anything from a small local freshwater capture operation to a larger commercial freshwater harvesting business, provided the activity remains within the scope described. The important point is that the scale field does not reserve this activity to one narrow class of operator. The code is written to accommodate the activity at micro, small, medium, and large scale.\n\nThe national-versus-Bali picture is clean but still worth stating carefully. Nationally, the PMA status is TERBUKA, and the foreign ownership ceiling is 100%. There is no foreign stake cap in the slim record. In Bali, the record does not mark this activity as blocked for PMA registration: l4_bali_blocked is false. The reason given is that, at Besar scale, the OSS risk sits in Menengah-Tinggi/Tinggi, so it is not blocked by the Bali moratorium rule that blocks Low and Medium-Low risk KBLI for PMA across the province. The honest conclusion is therefore straightforward: on this record, a foreign-owned company can use this activity nationally and it is not blocked for PMA registration in Bali today.",
+    "pullQuote": "The honest conclusion is therefore straightforward: on this record, a foreign-owned company can use this activity nationally and it is not blocked for PMA registration in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

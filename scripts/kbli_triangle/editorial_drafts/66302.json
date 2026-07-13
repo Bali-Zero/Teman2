@@ -1,0 +1,27 @@
+{
+  "code": "66302",
+  "editorial": {
+    "headline": "Sharia Investment Management: Open Nationally, Clear in Bali",
+    "standfirst": "This activity covers sharia-based portfolio management for individual or collective clients, open to foreign investment nationally and not blocked for PMA registration in Bali.",
+    "body": "Sharia investment management in financial markets is the business of managing securities portfolios, collective investments and other investment portfolios for either a group of clients or an individual client, according to sharia principles. It also encompasses an investment manager whose constitutional documents state that its business activities, management methods and services are conducted under sharia principles in the capital market. The code is therefore defined by both the work itself—portfolio management—and the principles on which that work is conducted.\n\nThe activity is open across the full business-scale range recorded here: Mikro, Kecil, Menengah and Besar. Its national investment position is equally direct. It is classified as TERBUKA, with a foreign-ownership ceiling of 100%. For a foreign investor, that means the national framework permits full foreign ownership of this activity; there is no lower national ceiling to read into the record.\n\nBali does not reverse that national position. The province’s standing moratorium blocks PMA registration for all Low and Medium-Low risk KBLI activities across the island, on a permanent basis. This activity is not blocked by that rule. At the Besar scale, its OSS risk is recorded as Menengah-Tinggi/Tinggi, which places it outside the moratorium’s stated reach. Bali’s status is consequently OK_or_HIGHER_RISK: viable for PMA registration under the record’s Bali test, while carrying the higher-risk classification noted for the large-business scale.\n\nThat distinction matters because the national and Bali readings reach the same practical conclusion here, but for different recorded reasons. Nationally, the activity is open to up to 100% foreign ownership. In Bali, it is not exempted by a special foreign-ownership figure; rather, it is not among the Low or Medium-Low risk activities caught by the province-wide PMA moratorium. The result is a clear position: a sharia-based investment-management business within this defined scope is nationally open and not blocked for PMA registration in Bali.",
+    "pullQuote": "The activity is nationally open to 100% foreign ownership and is not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

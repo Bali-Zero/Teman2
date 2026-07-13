@@ -1,0 +1,27 @@
+{
+  "code": "41013",
+  "editorial": {
+    "headline": "Industrial Building Construction With a Clear Bali Opening",
+    "standfirst": "KBLI 41013 covers conventional industrial building work, nationally open to PMA and not blocked for Bali registration under the record supplied.",
+    "body": "**KBLI 41013 is about the physical making and remaking of industrial buildings.** The record defines it as conventional construction for facilities used by industry: factory and manufacturing buildings, workshops, and industrial plant buildings used for the management and processing of nuclear materials. It also reaches beyond new construction into maintenance, rebuilding, alteration, and renovation of industrial buildings. In practical terms, this is not a general trading or consulting activity; it is a construction classification for the built industrial shell itself.\n\nThe scale picture is unusually broad. The activity is open across **Mikro, Kecil, Menengah, and Besar**, so the record does not confine it to one size of operator. That matters because industrial construction can sit on very different business models: a small contractor handling limited renovation work, a mid-sized firm maintaining workshop buildings, or a larger operator taking on industrial-factory construction. The slim record does not add any separate licence condition, capital threshold, project-size threshold, or timeline, so none should be read into the classification here. The only scale facts are the four scales explicitly listed.\n\nNationally, the PMA position is straightforward: the record marks the activity **TERBUKA**, with `pma_max_asing` at **100** and source listed as **Perpres 10/2021, 49/2021**. For a foreign-owned setup, that means the national classification is presented as open up to a full foreign-ownership ceiling. There is no lower national cap in this record. The cleaner way to read it is simple: as a national KBLI position, this activity can be used for a PMA structure at up to 100% foreign ownership, subject only to whatever is actually outside this slim record and therefore not stated here.\n\nThe Bali side is also clear, but for a different reason. The province’s moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This activity, however, is not marked as blocked. Its Bali status is **OK_or_HIGHER_RISK**, and the reason given is: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. That does not create a separate Bali ownership percentage, quota, or partnership condition; the record gives none. It simply means the supplied record does not treat KBLI 41013 as barred from PMA registration in Bali under that moratorium logic.",
+    "pullQuote": "The honest reading is that KBLI 41013 is nationally open to full PMA ownership and, on this record, not blocked for Bali registration.",
+    "byTheNumbers": [
+      {
+        "label": "PMA maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

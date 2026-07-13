@@ -1,0 +1,27 @@
+{
+  "code": "33112",
+  "editorial": {
+    "headline": "Where Weapon Repair Stands Open, Including Bali",
+    "standfirst": "KBLI 33112 covers repair and maintenance of weapon and ammunition products, with full national foreign ownership and no Bali moratorium block in the record.",
+    "body": "KBLI 33112 is a repair-and-maintenance activity, not a manufacturing description or a trading category. Its stated scope is the repair and maintenance of weapon and ammunition products, including firearms and cannon or artillery. The record also makes room for weapons used in sporting or recreational activity, so the practical centre of the code is the technical servicing of these products rather than a broad retail or defence-services story.\n\nThe registration surface is unusually broad in scale terms. The slim record marks the activity as open to Mikro, Kecil, Menengah, and Besar operators. That means the code is not framed only for large establishments in the classification record; it can be used across the full scale ladder listed in the source. The activity remains specific, however: it is about reparasi dan pemeliharaan, repair and maintenance, of the weapon and ammunition products named in the scope.\n\nNationally, the PMA position is clean. The record marks the activity as TERBUKA and gives pma_max_asing as 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national foreign-ownership ceiling in this record is 100%. There is no lower percentage to explain, no special ownership split to infer, and no extra capital or licensing condition supplied here. The only ownership number available is the national PMA ceiling, and it points to full foreign openness at the national level.\n\nThe Bali picture is also direct, but it needs to be stated carefully. Bali's moratorium rule in the record says the province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. For this code, however, l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The record's reason is explicit: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". So the honest reading is not that Bali creates a separate ownership cap, quota, or partnership requirement. It is that this activity is nationally open to PMA at 100%, and the Bali-side record does not block it under the stated moratorium reason.",
+    "pullQuote": "The honest reading is that this activity is nationally open to PMA at 100%, and the Bali-side record does not block it under the stated moratorium reason.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

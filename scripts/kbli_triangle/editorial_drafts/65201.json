@@ -1,0 +1,27 @@
+{
+  "code": "65201",
+  "editorial": {
+    "headline": "Conventional Reinsurance: Open Nationally, Clear in Bali",
+    "standfirst": "For conventional reinsurance, the national ceiling permits 100% foreign ownership, and Bali’s risk treatment leaves the activity outside its PMA moratorium.",
+    "body": "Conventional reinsurance is the provision of repeat risk cover for risks faced by insurance companies, guarantee companies and other reinsurance companies. Its scope is precise: it concerns conventional reinsurance services, not a generic financial-services label. The activity sits where an existing risk exposure faced by one of those named companies is itself given reinsurance protection. The same core description appears twice in the record, once as the group scope and again as the conventional reinsurance business, underscoring that re-covering risk is the defining work.\n\nA business may register this activity at Micro, Small, Medium and Large scales. That range matters because the record expressly opens the classification across all four listed scales rather than naming only one. The scale list describes who may enter the classification; it does not add a capital, licensing, tax or timing rule, and none should be inferred from it. What remains constant across those scales is the focus of the activity: providing reinsurance services connected to risk faced by the specified industry counterparties.\n\nOn national foreign investment, the answer is direct. The activity is marked TERBUKA, or open, for PMA, and the national foreign-ownership ceiling is 100%. A foreign investor is therefore not constrained to a minority stake by the national ceiling recorded here. The supporting PMA source is Perpres 10/2021, 49/2021. This is the national investment reading attached to this activity: it supplies a full foreign-ownership ceiling without adding any separate, unstated obligation.\n\nBali does not reverse that conclusion. Its status is OK or higher risk, and the activity is not marked as blocked for PMA. The province’s permanent, island-wide moratorium blocks PMA for low- and medium-low-risk activities. For conventional reinsurance, the record’s specific reasoning is that, at the Large scale, OSS risk is Medium-High/High; it is therefore not blocked by that moratorium. The decisive Bali fact is straightforward: a foreign investor can register this activity in Bali today.",
+    "pullQuote": "The decisive Bali fact is straightforward: a foreign investor can register this activity in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

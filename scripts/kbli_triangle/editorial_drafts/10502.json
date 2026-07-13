@@ -1,0 +1,27 @@
+{
+  "code": "10502",
+  "editorial": {
+    "headline": "Powdered and Condensed Milk Manufacturing, With Bali Open at Scale",
+    "standfirst": "KBLI 10502 covers processed milk in powder, condensed, evaporated, and solid forms, open nationally to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 10502 is a manufacturing activity for milk that has been processed into shelf-stable or concentrated forms. The record describes powdered milk, condensed milk or thick creamer, evaporated milk, and milk or cream processed into solid form, whether sweetened or unsweetened. In plain English, this is not the sale of milk as a retail category, and it is not a broad food-and-beverage catch-all. Its center of gravity is the industrial processing of milk and cream into powder, condensed, evaporated, or solid products.\n\nThe scale picture is unusually straightforward. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses, so it is not written only for large plants or only for small producers. A founder reading the code should understand it as a formal manufacturing classification that can sit across the full size ladder shown in the record. What changes with a real business will be the concrete operation, capacity, and risk handling inside OSS, but those details are not supplied here; the editorial point is simply that the slim record does not reserve the activity for one scale band.\n\nNationally, the investment position is also clean. The PMA status is TERBUKA, and the foreign-ownership ceiling recorded here is 100%. The national position cites Perpres 10/2021, 49/2021 as its source. That means the national reading of the record is foreign-open, not capped below full foreign ownership. There is no separate local-shareholder condition, no minimum capital figure, and no extra numerical threshold in the record, so none should be inferred.\n\nBali is where many KBLI readings become less simple, but this one remains open on the facts provided. The Bali status is recorded as OK_or_HIGHER_RISK, and the record says it is not blocked. The stated reason is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record blocks Low and Medium-Low risk KBLI for PMA across Bali, permanently, but this activity is marked outside that blocked lane because of the stated OSS risk position at Besar scale. The honest conclusion is therefore direct: for this record, a foreign-owned setup is nationally open and not blocked for PMA registration in Bali.",
+    "pullQuote": "The honest conclusion is therefore direct: for this record, a foreign-owned setup is nationally open and not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

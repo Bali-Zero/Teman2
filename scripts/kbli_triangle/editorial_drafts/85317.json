@@ -1,0 +1,27 @@
+{
+  "code": "85317",
+  "editorial": {
+    "headline": "Islamic Upper-Secondary Education: The National and Bali Reading",
+    "standfirst": "This activity covers Islamic-oriented upper-secondary and equivalency education, with national foreign ownership open to 100% and no Bali moratorium block on the record’s risk reading.",
+    "body": "Islamic religious upper-secondary education is, in this record, an education activity for learners aged 16 to 18, together with related equivalency education. Its centre of gravity is Islamic scholarship: Qur’anic studies, hadith, fiqh, Islamic history and Arabic sit within the curriculum, while general knowledge and skills remain part of the educational offer. It is therefore upper-secondary schooling oriented towards the Islamic sciences, rather than instruction detached from general learning.\n\nThe scope embraces the institutional forms named in the record: madrasah aliyah (MA), ulya-level muadalah education, formal diniyah ulya education, and ulya-level pesantren based on kitab kuning study. It also includes equivalency education at salafiyah Islamic boarding schools at the ulya level. These examples give the activity its educational setting and level with useful precision. The record does not, however, designate a particular registrant type; it defines the activity without identifying a specified kind of founder or institution that must register it.\n\nOn national foreign ownership, the position is clear: it is listed as TERBUKA, with a 100% foreign-ownership ceiling. The cited source is Perpres 10/2021, 49/2021. This is the national PMA reading for the activity and should remain distinct from the Bali assessment. The slim record gives no entries under scales_open_to, so it does not support a claim that the activity is limited to, or excludes, any named business scale. That silence is meaningful: an empty scale field is not evidence for an invented threshold.\n\nFor Bali, the honest answer is not a prohibition. The Bali status is OK_or_HIGHER_RISK, and the record places the activity at medium-high or high risk: it is not blocked by the moratorium, though the address should be verified. The stated provincial rule blocks PMA for all low- and medium-low-risk activities island-wide and permanently. This activity sits outside that blocked group on the record’s risk reading. A foreign investor is therefore not blocked from registering it in Bali on the stated moratorium basis; address-specific verification remains part of the Bali picture, without any stated Bali ownership cap or wider ban.",
+    "pullQuote": "A foreign investor is therefore not blocked from registering it in Bali on the stated moratorium basis.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "11020",
+  "editorial": {
+    "headline": "Fermented Alcohol Manufacturing Is Closed to PMA Investors",
+    "standfirst": "KBLI 11020 covers wine and other non-distilled fermented alcoholic drinks, but the record closes it to foreign ownership nationally and in Bali.",
+    "body": "KBLI 11020 is the manufacturing home for alcoholic beverages made through fermentation rather than distillation. In plain English, the activity covers the making of wine from grapes and from other fruits, including still wine, sparkling wine, mead, fruit wine, rice wine, sticky-rice wine, brem Bali wine, vegetable wine, tuak, tonic wine, and sake. It also includes sparkling wine production, wine made from concentrated grape juice, non-distilled fermented drinks such as cider, perry, mead, other fruit wines, and alcoholic mixed beverages, as well as vermouth-like drinks, wine blending, and low-alcohol or non-alcoholic wine.\n\nThat scope matters because this is not merely a retail or hospitality label. The record is describing industrial production: the making, blending, and formulation of fermented beverage products. A founder using this code would be registering the manufacturing activity itself, across the four business scales listed in the record: Mikro, Kecil, Menengah, and Besar. The scale range is broad, but the investment signal is not: broad scale availability does not make the activity open to foreign ownership.\n\nNationally, the record marks the PMA status as TERTUTUP, with `pma_max_asing` at 0. The practical reading is direct: this activity is closed to foreign ownership under the record supplied here. There is no percentage to optimize around, no partial foreign ceiling to structure up to, and no workaround implied by the listed business scales. The source field points to Perpres 10/2021, 49/2021, but the operative facts available in this slim record are the closed PMA status and the 0 foreign-ownership maximum.\n\nBali does not soften that conclusion. The Bali-side status is also TERTUTUP, and `l4_bali_blocked` is true, so a foreigner cannot register this activity in Bali today on the basis of this record. The record’s Bali reason states: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” Its moratorium field separately says that Bali province blocks all low and medium-low risk KBLI for PMA island-wide, permanently. Taken together, the honest editorial point is narrow and important: for KBLI 11020, the barrier is not a hidden Bali percentage or a local quota. The record simply closes the activity to PMA nationally and marks it closed in Bali as well.",
+    "pullQuote": "For KBLI 11020, broad scale availability does not make the activity open to foreign ownership.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "0%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "TERTUTUP"
+      }
+    ]
+  }
+}

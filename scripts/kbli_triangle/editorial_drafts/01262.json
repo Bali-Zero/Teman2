@@ -1,0 +1,27 @@
+{
+  "code": "01262",
+  "editorial": {
+    "headline": "Oil Palm Cultivation With a Clear Bali Path",
+    "standfirst": "KBLI 01262 covers the full oil palm farming cycle, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 01262 is the classification for oil palm farming as an integrated agricultural activity. Its scope is not limited to the visible plantation stage. The record describes a chain that begins with land preparation and continues through planting, maintenance, harvesting, and post-harvest work when those activities form one connected operation. It also includes the planting of oil palm plants to produce seed in the form of kernels or seeds, as well as nursery and seedling activity for oil palm fruit plants.\n\nThat breadth matters because this code is about cultivation infrastructure, not a narrow trading label. A founder using it is describing an operation built around growing oil palm: preparing the land, raising or planting the crop, maintaining it through the production cycle, harvesting the fruit, and handling the post-harvest stage as part of the same agricultural sequence. The scope also makes room for seed-oriented planting and nursery work, so long as the activity remains within the oil palm farming frame set by the record.\n\nNationally, the investment signal is straightforward. The slim record marks the PMA status as TERBUKA, with a foreign ownership ceiling of 100%, and cites Perpres 10/2021, 49/2021 as the source. It is open across Mikro, Kecil, Menengah, and Besar scales. In plain terms, the code is not presented here as a restricted national category, nor as one reserved only for a narrow business size. A foreign-owned setup can read the national position as open, with no foreign-share cap below full ownership in the data provided.\n\nThe Bali picture is also unusually clear. The province’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, under the cited governor letter. But this code is marked l4_bali_blocked: false, with the reason that OSS risk at Besar scale is Menengah-Tinggi/Tinggi and therefore not blocked by the moratorium. That does not create extra promises beyond the record, but it does establish the core conclusion: for this activity, a foreigner is not blocked from PMA registration in Bali today on the moratorium ground described here.",
+    "pullQuote": "For this activity, a foreigner is not blocked from PMA registration in Bali today on the moratorium ground described here.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

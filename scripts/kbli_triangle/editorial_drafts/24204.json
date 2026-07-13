@@ -1,0 +1,27 @@
+{
+  "code": "24204",
+  "editorial": {
+    "headline": "Non-Ferrous Metal Extrusion, Open Nationally and Workable in Bali",
+    "standfirst": "KBLI 24204 is a manufacturing code for aluminium, copper, and other non-ferrous extrusions, open across business scales and not blocked for PMA in Bali.",
+    "body": "KBLI 24204 covers the extrusion of non-ferrous metals: aluminium bars, copper bars, aluminium rods, copper rods, and other non-ferrous extruded products formed in circular, square, or other cross-sections. The record also brings electrical-conductor extrusions into the scope, so the practical centre of the code is shaped non-ferrous metal output rather than general metal trading or broad fabrication. It is an industrial activity with a clear physical process: metal is pressed through a profile to produce consistent bars, rods, and related extruded forms.\n\nThat makes the code relevant to operators whose business is built around repeatable metal-production capacity. The available scales are broad: Mikro, Kecil, Menengah, and Besar are all open in the record. In plain English, the activity is not reserved only for a large industrial company. It can sit at different operating sizes, provided the registered business scale matches the actual setup. The editorial point is important: the code is defined by the extrusion activity and the non-ferrous material, not by a brand position, customer type, or downstream sales channel.\n\nNationally, the PMA position is clean. The record marks the activity as TERBUKA, with `pma_max_asing` at 100, sourced to Perpres 10/2021, 49/2021. For a foreign-invested company, that means the national foreign-ownership ceiling is 100%. There is no lower national cap in the slim record, and there is no stated sector-specific ownership dilution to invent. The foreign-investment reading is therefore straightforward: this activity is open at the national level, including for full foreign ownership.\n\nThe Bali picture is also relatively clear, but for a different reason. The record does not mark KBLI 24204 as blocked in Bali: `l4_bali_blocked` is false, and the Bali status is `OK_or_HIGHER_RISK`. The reason given is specific: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not caught by that block on the stated risk reading. So the honest conclusion is not a hidden Bali ownership cap or a local-partner condition. It is simpler: nationally open, and not blocked for PMA registration in Bali under the slim record.",
+    "pullQuote": "The honest conclusion is not a hidden Bali ownership cap or a local-partner condition: it is nationally open, and not blocked for PMA registration in Bali under the slim record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
