@@ -176,14 +176,14 @@ def test_router_registered_in_both_include_functions():
 
     full = FastAPI()
     include_routers(full)
-    full_paths = {r.path for r in full.routes if hasattr(r, "path")}
+    full_paths = {r.path for r in iter_leaf_routes(full)}
     assert "/api/observed-shell/emit" in full_paths, (
         "include_routers() does NOT mount /api/observed-shell/emit — Sprint 1.B cicatrix regression"
     )
 
     light = FastAPI()
     include_light_routers(light)
-    light_paths = {r.path for r in light.routes if hasattr(r, "path")}
+    light_paths = {r.path for r in iter_leaf_routes(light)}
     assert "/api/observed-shell/emit" in light_paths, (
         "include_light_routers() does NOT mount /api/observed-shell/emit — "
         "Sprint 1.B cicatrix regression"

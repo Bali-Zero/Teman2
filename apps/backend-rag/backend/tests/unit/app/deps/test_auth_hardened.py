@@ -341,8 +341,9 @@ class TestLogoutRevocation:
     def test_revoke_all_endpoint_exists(self):
         """The /api/auth/revoke-all endpoint should exist."""
         from backend.app.routers.auth import router
+        from backend.app.setup.route_walk import iter_leaf_routes
 
-        paths = [route.path for route in router.routes]
+        paths = [route.path for route in iter_leaf_routes(router)]
         assert "/api/auth/revoke-all" in paths
 
 

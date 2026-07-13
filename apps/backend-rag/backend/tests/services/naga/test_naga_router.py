@@ -14,6 +14,7 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from backend.app.routers.naga import router
+from backend.app.setup.route_walk import iter_leaf_routes
 
 
 @pytest.fixture()
@@ -29,7 +30,7 @@ class TestRouterStructure:
 
     def test_router_has_correct_routes(self) -> None:
         """Router must expose exactly 3 routes with correct methods and paths."""
-        routes = [r for r in router.routes if isinstance(r, APIRoute)]
+        routes = [r for r in iter_leaf_routes(router) if isinstance(r, APIRoute)]
         route_map: dict[str, set[str]] = {}
         for r in routes:
             route_map[r.path] = r.methods

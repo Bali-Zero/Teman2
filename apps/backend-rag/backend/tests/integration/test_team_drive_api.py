@@ -27,6 +27,8 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+from backend.app.setup.route_walk import iter_leaf_routes  # noqa: E402
+
 
 def safe_import(module_path: str, attribute: str = None):
     """
@@ -153,7 +155,7 @@ class TestTeamDriveRouterConfig:
         router, error = safe_import("backend.app.routers.team_drive", "router")
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
-        paths = [route.path for route in router.routes]
+        paths = [route.path for route in iter_leaf_routes(router)]
         # Paths may include router prefix
         assert any("/status" in path for path in paths)
 
@@ -162,7 +164,7 @@ class TestTeamDriveRouterConfig:
         router, error = safe_import("backend.app.routers.team_drive", "router")
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
-        paths = [route.path for route in router.routes]
+        paths = [route.path for route in iter_leaf_routes(router)]
         # Paths may include router prefix
         assert any("/files" in path for path in paths)
 
@@ -171,7 +173,7 @@ class TestTeamDriveRouterConfig:
         router, error = safe_import("backend.app.routers.team_drive", "router")
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
-        paths = [route.path for route in router.routes]
+        paths = [route.path for route in iter_leaf_routes(router)]
         # Check for download endpoint (may vary in format)
         has_download = any("download" in path for path in paths)
         assert has_download or len(paths) > 0  # At least some routes exist
