@@ -367,10 +367,11 @@ function assignTier(code: string): KBLITier {
   return "bronze";
 }
 
-// SEO firebreak (PR #1967): metadata (<title>/description/keywords) stays pinned
-// to the curated-legacy English map until the GSC crawl window recovers. Flip
-// NEXT_PUBLIC_KBLI_META_EN=1 (operator decision) to let metadata consume the
-// full-coverage titles. Page BODY always uses the full map.
+// SEO firebreak (PR #1967): metadata (<title>/description/keywords) stayed pinned
+// to the curated-legacy English map until the GSC crawl window recovered.
+// FLIPPED 2026-07-13 (Zero GO, post-#2359 editorial launch): NEXT_PUBLIC_KBLI_META_EN=1
+// is set in Vercel Production — metadata now consumes the full-coverage titles.
+// Page BODY always uses the full map.
 const META_USES_FULL_EN = process.env.NEXT_PUBLIC_KBLI_META_EN === "1";
 
 // =============================================================================
@@ -384,7 +385,8 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
 
   const titleId = toTitleCase(raw.judul);
   // Body display: curated wins, then generated, then Indonesian fallback.
-  const titleEnReal = ENGLISH_TITLES[code] ?? ENGLISH_TITLES_GENERATED[code] ?? null;
+  const titleEnReal =
+    ENGLISH_TITLES[code] ?? ENGLISH_TITLES_GENERATED[code] ?? null;
   const titleEn = titleEnReal ?? titleId;
   // Metadata surface (frozen to curated-legacy until NEXT_PUBLIC_KBLI_META_EN=1).
   const titleEnMeta = META_USES_FULL_EN
