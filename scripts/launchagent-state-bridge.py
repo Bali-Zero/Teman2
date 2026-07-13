@@ -298,16 +298,10 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
         organ_id="pro.wa_mirror_strategic_recap",
         daemon=False,
     ),
-    BridgedLaunchAgent(
-        label="com.balizero.wr2.canva-gc.weekly",
-        organ_id="wr2.canva_gc_weekly",
-        daemon=False,
-    ),
-    BridgedLaunchAgent(
-        label="com.balizero.wr2.canva-lease-watchdog",
-        organ_id="wr2.canva_lease_watchdog_launchd",
-        daemon=False,
-    ),
+    # wr2.canva_gc_weekly + wr2.canva_lease_watchdog_launchd REMOVED 2026-07-14:
+    # Canva render lane retired 2026-07-13 (#2396 — plists deleted from repo,
+    # booted out on Pro). Bridging them wrote a perpetual false "label not
+    # loaded" failed sidecar for organs that are retired by design.
     BridgedLaunchAgent(
         label="com.balizero.wr2.daily-metrics",
         organ_id="wr2.daily_metrics",
