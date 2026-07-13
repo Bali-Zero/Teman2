@@ -1,0 +1,27 @@
+{
+  "code": "46753",
+  "editorial": {
+    "headline": "Hazardous-Materials Wholesale: Foreign-Open, Not Blocked in Bali",
+    "standfirst": "Wholesale trade in hazardous materials is open to PMA at every listed business scale; in Bali, its Medium-High/High risk at the Besar scale keeps it outside the permanent moratorium.",
+    "body": "KBLI 46753 is the wholesale-trade classification for materials described as hazardous because they are toxic, carcinogenic, teratogenic, mutagenic, corrosive or irritating. That is the core of the activity: commerce at wholesale in substances whose stated properties give them their hazardous character. Its scope also covers the full field of foreign trade—imports and exports—for B3 materials that can be used and materials subject to restricted use. The classification therefore draws its boundary from the hazardous properties named in the scope, while placing those materials in a wholesale-trade setting rather than around one named product line.\n\nThe record places the activity within reach of businesses at every listed scale: Mikro, Kecil, Menengah and Besar. This is a broad scale profile. The activity is not confined in the record to one enterprise size; a business at any of the four named scales may register it. The shared activity remains the wholesale trade described in the scope. Scale identifies the stated range of operators, while the scope identifies what is being traded.\n\nBali requires a separate reading, since the province’s permanent PMA moratorium blocks all low- and medium-low-risk KBLI activities island-wide. For this activity, the record does not mark PMA registration in Bali as blocked. Its stated reason is risk at the Besar scale: OSS assigns it Medium-High/High risk at that scale, placing it outside the moratorium’s stated low- and medium-low-risk reach. The Bali status is OK_or_HIGHER_RISK. This matters because national openness alone would not settle Bali’s position; the provincial rule has its own risk-screening logic.\n\nNationally, PMA is open to 100% foreign ownership, and in Bali the moratorium does not block the activity. A foreign-owned business can therefore register it in Bali today. The significance is the specific recorded reason—OSS Medium-High/High risk at the Besar scale—which means the moratorium does not apply. That is the complete national-versus-Bali picture supplied by the record.",
+    "pullQuote": "Nationally, PMA is open to 100% foreign ownership, and in Bali the moratorium does not block the activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

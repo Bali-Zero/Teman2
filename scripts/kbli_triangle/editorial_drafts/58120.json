@@ -1,0 +1,27 @@
+{
+  "code": "58120",
+  "editorial": {
+    "headline": "Newspaper Publishing: One Activity, Many Formats",
+    "standfirst": "This activity is nationally open to PMA at 100%, and Bali’s large-scale risk assessment leaves it outside the province’s PMA moratorium.",
+    "body": "Newspaper publishing here is defined by the act of publishing a newspaper, not by a single delivery format. It includes advertising newspapers and accommodates newspaper publishing in print, electronic, digital, analog and other possible forms. That breadth matters: the activity can retain its essential publishing character while appearing in the formats through which newspapers are made available.\n\nThe registration is open across the full scale range recorded for this activity: Mikro, Kecil, Menengah and Besar. The scale labels establish that the activity is not confined to one size of enterprise. A founder should therefore begin with the publishing activity itself—whether it is a newspaper, including an advertising newspaper—and then assess the relevant scale through the record’s own classification rather than treating format as the defining boundary.\n\nAt the national level, PMA participation is TERBUKA, and foreign ownership may extend to 100%. This is an unambiguous national ownership position: foreign participation may reach the stated ceiling, rather than being limited to a smaller recorded share. The record identifies Perpres 10/2021, 49/2021 as the source for that national PMA position. The important distinction is that this is the national result; Bali’s position must still be read through its separate PMA moratorium rule and the activity’s Bali assessment.\n\nIn Bali, the province blocks all Low and Medium-Low risk KBLI activities for PMA on an island-wide, permanent basis. This activity is not blocked by that moratorium. Its recorded OSS risk at the Besar scale is Menengah-Tinggi/Tinggi, which places it outside the stated Low and Medium-Low trigger. The practical reading is clean: Bali does not undo the national 100% PMA openness for this activity through the cited moratorium. The Bali record nevertheless frames the result as OK_or_HIGHER_RISK, so the activity should be understood in the risk context expressly recorded for the Besar scale.",
+    "pullQuote": "Bali does not undo the national 100% PMA openness for this activity through the cited moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

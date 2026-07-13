@@ -1,0 +1,27 @@
+{
+  "code": "64995",
+  "editorial": {
+    "headline": "Carbon-Unit Trading, on the Trader’s Own Account",
+    "standfirst": "This activity covers proprietary trading in carbon units—rights connected to emissions or emissions removal—with national foreign ownership open to 100%.",
+    "body": "This activity is the proprietary trading of carbon units: rights connected to the release of emissions or to emissions removal. The defining feature is who acts in the transaction. The trader acts in its own name and on its own account, taking the commercial position itself rather than carrying out a transaction for somebody else. It is therefore a focused activity classification for a business whose role is the trading of those units, not the operation of a marketplace or the measurement and verification work behind them.\n\nFor registration purposes, the record gives the activity a clear commercial identity but does not list any `scales_open_to` categories. That absence should be read carefully: it does not create a scale threshold or a special entitlement. It simply means the slim record does not specify which business scales are open to this activity. What is explicit is the own-account character of the enterprise. A registrant should be able to describe its business accordingly, with the carbon-unit trading position held and undertaken by the company itself.\n\nAt the national level, the position is unusually direct. The activity is marked **TERBUKA**, with a maximum foreign ownership level of **100%** under the cited Presidential Regulations. In plain English, national rules allow full foreign ownership for this activity. There is no lower foreign-ownership ceiling in the record to qualify that conclusion, and no added national condition is stated here.\n\nBali requires a more location-conscious reading, but not a false alarm. The activity is not blocked by Bali’s moratorium: its stated risk position is medium-high or high, while the province’s permanent island-wide PMA block applies to Low and Medium-Low risk activities. The Bali status is **OK_or_HIGHER_RISK**, and the record expressly calls for verification by address. That is not a Bali-specific foreign-ownership cap or partnership requirement; none is stated. The honest position is that the activity remains open rather than moratorium-blocked in Bali, while the proposed address should be checked as part of the registration assessment.",
+    "pullQuote": "Nationally, full foreign ownership is open; in Bali, the activity is not moratorium-blocked, but the address still deserves verification.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

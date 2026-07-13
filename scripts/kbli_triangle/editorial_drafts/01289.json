@@ -1,0 +1,27 @@
+{
+  "code": "01289",
+  "editorial": {
+    "headline": "Other Spice and Aromatic Crop Farming, Open Through the Bali Filter",
+    "standfirst": "This activity covers integrated cultivation and seed production for other spice and aromatic crops, with full foreign ownership nationally and no Bali moratorium block in the record.",
+    "body": "KBLI 01289 is a farming code for other spice, aromatic, and refreshing crops: the record names candlenut, vanilla, cinnamon, ginseng, quinine, fennel, areca nut, and gambier as examples of the activity family. Its core is not trading or processing as a separate business line, but cultivation as an integrated agricultural sequence: land preparation, planting, maintenance, harvesting, and postharvest work carried out as one connected operation.\n\nThe scope also reaches seed-oriented activity. Where the same crop family is grown to produce seed in the form of grains, the activity remains inside this code. That matters editorially because the record frames the code around the agricultural cycle itself: soil work, nursery or seedling work, planting, crop care, harvest, and seed production are all part of the same described field of work when they concern these other spice and aromatic crops.\n\nOn business scale, the code is broad. The record opens it to Mikro, Kecil, Menengah, and Besar operators, so it can describe anything from a very small cultivation setup to a large-scale farming operation, provided the registered activity remains within this crop and cultivation scope. Nationally, the PMA status is TERBUKA, and the foreign ownership ceiling is 100%. In plain terms, the slim record does not show a foreign-share cap below full ownership for this activity.\n\nThe Bali reading is also unusually clear. The province’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But this code is not marked as blocked: its Bali status is OK_or_HIGHER_RISK, and the stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore not a warning disguised as nuance. For this activity, the record supports a clean national-and-Bali position: foreign ownership is open nationally up to 100%, and the Bali moratorium field does not block PMA registration for the code.",
+    "pullQuote": "For this activity, the record supports a clean national-and-Bali position: foreign ownership is open nationally up to 100%, and the Bali moratorium field does not block PMA registration for the code.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

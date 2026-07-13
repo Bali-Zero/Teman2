@@ -1,0 +1,27 @@
+{
+  "code": "29300",
+  "editorial": {
+    "headline": "Motor-Vehicle Components With Full National PMA Access",
+    "standfirst": "KBLI 29300 covers the manufacturing base behind four-wheel vehicle parts, from chassis modules to electrical systems, and the record treats it as nationally open to foreign investment.",
+    "body": "KBLI 29300 is an industrial manufacturing code for the parts that make a four-wheel-or-larger motor vehicle work, fit together, and meet modern equipment expectations. Its scope is broad but still disciplined: mechanical components such as radiators, fuel tanks, mufflers, brakes, gearboxes, axles, wheels, shock absorbers, exhaust pipes, catalytic converters, clutches, steering wheels, steering columns, and steering boxes sit inside it. So do body-related parts and accessories, including seat belts, doors, bumpers, airbags, and car seats. The record also brings vehicle electrical equipment into the same frame: generators, alternators, spark plugs, ignition wiring harnesses and starters, automatic door and window systems, taximeters fitted into instrument panels, voltage regulators, and lights.\n\nThe code is not only about individual spare parts. It also covers chassis or frames without engines, inverter modules and fuel cells for four-wheel-or-larger vehicles, and plastic vehicle components such as car interiors, coolant reservoirs, mirror covers, and battery holders. The finishing of those plastic parts is also in scope when it involves metal coating, other coating substances, or painting. In practical terms, this is the classification for a manufacturer whose activity is centred on automotive components rather than complete vehicle assembly: the factory may be producing structural, mechanical, safety, electrical, interior, or finished plastic components, as long as the activity remains within the recorded scope.\n\nThe registration scale picture is unusually open across the business-size spectrum. The slim record lists Mikro, Kecil, Menengah, and Besar as open scales, so the code is not framed only for a large industrial operator. A small workshop-style component producer and a larger parts manufacturer are both within the recorded scale ladder, provided their actual activity matches the manufacturing scope. That breadth matters because KBLI selection is not a branding exercise; it should describe the real production activity, the material process, and the product family being manufactured.\n\nOn foreign ownership, the national picture is clear. The record marks the PMA status as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national record allows foreign ownership up to 100% for this activity. The Bali position is also clear, but it is not a separate ownership cap. The Bali status is OK_or_HIGHER_RISK, and the stated reason is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently; this code is not marked as blocked. The honest reading is therefore simple: nationally open, not blocked for Bali PMA registration in this record, with the Bali conclusion resting on the recorded risk-and-moratorium reason rather than on any separate Bali percentage.",
+    "pullQuote": "The honest reading is therefore simple: nationally open, not blocked for Bali PMA registration in this record, with the Bali conclusion resting on the recorded risk-and-moratorium reason rather than on any separate Bali percentage.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open registration scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

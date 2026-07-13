@@ -1,0 +1,27 @@
+{
+  "code": "10710",
+  "editorial": {
+    "headline": "The Industrial Bakery Code Behind Bread, Pastry, and Frozen Bake Goods",
+    "standfirst": "KBLI 10710 covers bakery manufacturing at every registered business scale, with full national foreign ownership and no Bali PMA moratorium block in the record.",
+    "body": "**KBLI 10710 is the manufacturing home for bakery products, not the counter where a warm croissant is handed over.** The record places here the making of fresh, frozen, and dry bakery goods: sliced bread and rolls, pastries, cakes, pies, tarts, toast, biscuits, dry bread products, preserved pastry and cake products, sweet or salty snacks such as cookies, crackers, and pretzels, tortillas, and frozen bakery items including pancakes, waffles, and rolls. In plain English, this is the code for producing baked goods as products, whether they leave the facility fresh, shelf-stable, preserved, or frozen.\n\nThat breadth matters because the code is not confined to a boutique bakery format or a single industrial profile. The record opens it to Mikro, Kecil, Menengah, and Besar scales, so the registered operator may be a small maker or a larger food-manufacturing business, provided the declared activity is the making of bakery products described in the scope. The exclusions in the record also help define the boundary without needing to look elsewhere: this is not about making flour mixes or dough preparations, not pasta, not potato-based snacks, and not simply heating bakery products for immediate consumption. Its center of gravity is production.\n\nNationally, the investment picture is straightforward. The record marks KBLI 10710 as TERBUKA for PMA and gives a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the national foreign-ownership ceiling in this record is 100%. There is no lower cap in the slim record, and there is no separate percentage attached to Bali. The clean national reading is therefore that foreign ownership is open up to the full stated ceiling.\n\nThe Bali reading is also unusually clean. The province-wide moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this code is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the record’s reason is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". So the honest conclusion is not a hidden Bali cap or a special local percentage. On this slim record, KBLI 10710 is nationally open to foreign ownership and is not blocked for PMA registration in Bali by the stated moratorium.",
+    "pullQuote": "On this slim record, KBLI 10710 is nationally open to foreign ownership and is not blocked for PMA registration in Bali by the stated moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

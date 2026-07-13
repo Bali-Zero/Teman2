@@ -1,0 +1,27 @@
+{
+  "code": "52105",
+  "editorial": {
+    "headline": "Hazardous-Goods Storage: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "Nationally open to full foreign ownership, this specialised storage activity is unavailable for PMA registration at a Bali address under the island-wide moratorium.",
+    "body": "KBLI 52105 covers the storage of hazardous and toxic goods: inventory that requires a storage place suited to the material’s particular properties and characteristics. Its scope extends to cold warehouses for hazardous and toxic goods, storage in free-trade zones, warehouse-receipt-system storage, and places holding physical hazardous and toxic commodities. The central fact is not simply that goods are being kept somewhere, but that their hazardous and toxic nature determines the kind of storage operation being run.\n\nThis is consequently a category for operators of the relevant warehouse or storage facility. It is open at every scale named in the record: Mikro, Kecil, Menengah, and Besar. That gives the activity a wide national scale range, while keeping its purpose specific. A company using this code is registering the operation of specialised storage for hazardous and toxic goods, not a broad commercial description detached from the facility and the goods it is designed to hold.\n\nAt national level, the position is straightforward. The activity is TERBUKA, and foreign ownership is permitted up to 100%. In national terms, full foreign ownership is available. Bali, however, changes the practical answer completely for a PMA applicant. KBLI 52105 cannot be registered by PMA at a Bali address today. The Bali status is a moratorium closure, and the stated reason places the Besar scale in the Medium-Low risk band. Bali blocks all Low and Medium-Low risk KBLI from PMA registration.\n\nThe distinction is important because it is not a reduced Bali foreign-ownership percentage. The national ceiling remains 100%; the Bali rule closes the PMA registration route for this activity at a Bali address. The moratorium is island-wide and permanent. For a founder assessing this code, the honest conclusion is therefore two-layered: nationally, a foreign-owned company may hold the activity in full; in Bali, PMA registration for the same activity is barred under the moratorium.",
+    "pullQuote": "Nationally, full foreign ownership is available; in Bali, PMA registration for the same activity is barred under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "Closed (Bali moratorium)"
+      }
+    ]
+  }
+}

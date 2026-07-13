@@ -1,0 +1,27 @@
+{
+  "code": "27310",
+  "editorial": {
+    "headline": "Fiber-Optic Cable Manufacturing as Infrastructure Industry",
+    "standfirst": "KBLI 27310 covers the factory production of fiber-optic cables for data or image transmission, nationally open to PMA and not blocked in Bali under this record.",
+    "body": "**KBLI 27310 is a manufacturing code, not an installation code.** Its center of gravity is the production of fiber-optic cable used to carry data or images directly. The record makes the line quite specific: the cable may be supplied with connectors or without them, but the activity remains the making of the cable itself. It is not the making of glass fiber as a material, not the separate production of connectors, bundles, or cable connectors, and not the field work of installing fiber-optic or other cables. In practical terms, this is the industrial side of digital infrastructure: the plant, process, and output behind the cable before it is deployed into a network.\n\nFor registration, the code is open across all stated business scales: Mikro, Kecil, Menengah, and Besar. That matters because the record does not confine the activity to a narrow industrial class or reserve it only for large operators. A small manufacturer, a mid-sized supplier, or a larger industrial facility can all sit within the stated scale range, provided the registered activity is genuinely the manufacture of fiber-optic cable described in the scope. The editorial caution is therefore about activity fit, not about stretching the code: a company using this code should be making the cable product, rather than importing, trading, installing, or separately producing adjacent components.\n\nThe national foreign-investment position is clean. The PMA status is marked TERBUKA, and the recorded foreign-ownership ceiling is 100%. That means the national record treats this activity as open to foreign ownership up to the stated ceiling. There is no extra threshold, licence, capital floor, or timing condition in the slim record, so none should be read into the code. The source attached to that national position is Perpres 10/2021, 49/2021, which is the only source stated here for the PMA opening.\n\nThe Bali picture is also relatively straightforward, but it needs to be said precisely. Bali’s moratorium rule in the record blocks all low and medium-low risk KBLI for PMA across the province. This activity, however, is not marked as blocked in Bali. The Bali status is OK_or_HIGHER_RISK, and the reason given is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. So the honest reading is not that Bali has a separate foreign-ownership cap, quota, or local partnership requirement; the record gives none. It says the activity is nationally open to PMA, and on the Bali side it is not blocked by the moratorium because of the recorded risk position at large scale.",
+    "pullQuote": "The honest reading is that this is a nationally open PMA manufacturing activity and, on this record, not blocked for Bali registration.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

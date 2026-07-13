@@ -1,0 +1,27 @@
+{
+  "code": "43212",
+  "editorial": {
+    "headline": "Telecommunications Network Installation, From Buildings to Ground Stations",
+    "standfirst": "This activity spans telecom-network installation and upkeep across buildings and civil works, with full foreign ownership open nationally and no Bali moratorium block.",
+    "body": "Telecommunications network installation is the practical work of putting communications infrastructure into place and keeping it functioning. Its scope reaches residential and non-residential buildings, including antenna installation, as well as transmission and telecommunications networks within buildings and civil structures. It also includes installation, repair and maintenance work at telephone and telegraph exchanges, microwave radar transmitting stations, small earth stations, satellite stations and similar facilities. In other words, this is an installation-and-maintenance activity for the physical systems that carry telecommunications services.\n\nThe classification is available to businesses at Mikro, Kecil, Menengah and Besar scales. That breadth matters because the activity is defined by the nature of the technical work rather than by a single type of premises: a building installation, a civil-works network and work on specified transmission or station infrastructure all sit inside the same stated scope. The record also identifies the telecommunications-installation sub-classification as IN002.\n\nAt the national level, PMA remains TERBUKA and allows foreign ownership up to the 100% ceiling. That is a clear national setting: foreign investment may hold the full permitted stake in the activity. The basis stated for that position is Perpres 10/2021, 49/2021. Nothing in the record adds a separate national partnership requirement, capital figure or licensing condition, so none should be inferred from the classification alone.\n\nBali does not turn that national openness into a prohibition. The provincial moratorium permanently blocks PMA registration island-wide for all Low and Medium-Low risk KBLI activities, but this activity is not blocked by that rule. The Bali record places it at `OK_or_HIGHER_RISK` and explains that, at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi. The honest reading is therefore straightforward: the activity is nationally open to full foreign ownership, and Bali’s stated moratorium does not bar it. That is not a claim about requirements beyond the record; it is the precise boundary of what the available Bali evidence establishes.",
+    "pullQuote": "The activity is nationally open to full foreign ownership, and Bali’s stated moratorium does not bar it.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "21014",
+  "editorial": {
+    "headline": "Veterinary Pharma Ingredients, Open Nationally and Clear in Bali",
+    "standfirst": "A precise industrial category for makers of raw and auxiliary pharmaceutical materials for animal medicine, nationally open to PMA and not blocked in Bali.",
+    "body": "**KBLI 21014 covers the industrial base behind veterinary pharmaceuticals:** the manufacture and processing of active and supporting drug materials for animals. The record defines a broad technical field: materials derived from chemicals, natural inputs, animals, and plants, including biological products. In practical terms, this is not the retail or clinical face of animal health. It is the upstream activity that produces the substances and preparations later used in veterinary pharmacology, from antisera, blood fractions, vaccines, and homeopathic preparations to antibiotics, vitamins, salicylic and o-acetylsalicylic acid, pharmaceutical salts, chemically pure sugar, processed blood, gland processing, and gland extraction.\n\nThat breadth matters because the code is framed around manufacturing and processing rather than a single product line. A company using this classification is positioning itself as a producer of raw pharmaceutical ingredients or auxiliary materials for animal medicines. The Indonesian scope also ends with “Seluruh,” indicating that the activity is described as covering the whole of that stated field. It therefore belongs to businesses that make or process the inputs themselves, not merely those that trade finished veterinary products or provide animal-health services.\n\nOn business scale, the record is unusually clear. The activity is open to Mikro, Kecil, Menengah, and Besar scales. That means the classification is not confined to large industrial players in the source record; it can describe a manufacturer across the listed scale spectrum, provided the business activity truly matches the defined scope. The important editorial distinction is still the nature of the work: this is a manufacturing KBLI for veterinary pharmaceutical raw materials and supporting ingredients, not a general animal-care category.\n\nThe national PMA picture is also straightforward. The record marks the activity as TERBUKA, with a pma_max_asing of 100, so the national foreign-ownership ceiling should be read as 100%. Bali does not add a separate percentage in this record, and none should be inferred. Instead, Bali is recorded as OK_or_HIGHER_RISK, with the reason stated as: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The Bali moratorium rule blocks all Low and Medium-Low risk KBLI for PMA island-wide, but this record says this activity is not blocked by that moratorium. The honest reading is therefore clean: nationally open to PMA up to 100%, and, on the Bali status given here, not presently blocked for PMA registration in Bali.",
+    "pullQuote": "The honest reading is clean: nationally open to PMA up to 100%, and not presently blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "11010",
+  "editorial": {
+    "headline": "Distilled Spirits Production Is Closed to Foreign Ownership",
+    "standfirst": "KBLI 11010 covers the making, purifying, and blending of distilled alcoholic drinks, but the record closes it to PMA ownership nationally and in Bali.",
+    "body": "**KBLI 11010 is a manufacturing code for distilled alcoholic beverages that are ready to drink.** Its scope covers the making of spirits through distillation or purification, whether the process is modern or traditional. The record’s examples are direct and specific: whisky, brandy, gin, vodka, tequila, arak, genever, soju, liqueurs, and mixed alcoholic drinks. It also covers the blending of distilled alcoholic beverages, or the mixing of raw beverage materials, to reach a desired ethanol level. Neutral alcoholic beverages without flavour are inside the same frame.\n\nThe code is therefore not a general drinks-trading label, and it is not a catch-all for every alcohol-related activity. The record draws the line around distillation, purification, blending, and neutral alcoholic-beverage production. It expressly leaves out alcohol made without distillation, synthetic ethyl alcohol, ethyl alcohol from fermented materials, and bottling or labelling when that activity belongs to wholesale trade or is done for a fee or contract. For a founder, the practical reading is simple: this code is about the industrial act of producing or blending distilled alcoholic beverages, not merely packaging, distributing, or handling them as a downstream service.\n\nOn scale, the record is broad: Mikro, Kecil, Menengah, and Besar are all listed as open scales for this activity. That means the code is not framed only for a large factory profile; the official scale field spans the full ladder from micro through large enterprise. But scale openness is not the same thing as foreign-investment openness. Nationally, the PMA status is TERTUTUP, with a maximum foreign ownership figure of 0%. The cited source is Perpres 10/2021, 49/2021. In plain English, the national record does not treat this as a foreign-owned business line. A foreign investor looking at this activity should read the zero ceiling as the central fact, not as a technical footnote.\n\nBali does not soften that picture. The Bali status is also TERTUTUP, and the record marks the activity as blocked for Bali PMA registration today. The Bali reason must be read carefully: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That sentence says the Bali moratorium is not the operative reason at large scale, because the moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province. Even so, the result recorded here remains closed. The honest conclusion is therefore quiet but firm: KBLI 11010 describes a real distilled-spirits manufacturing activity across all business scales, yet it is not available as a foreign-owned registration route nationally or in Bali under this record.",
+    "pullQuote": "The record does not treat distilled-spirits manufacturing as a foreign-owned business line; the zero ceiling is the central fact.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "0%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "TERTUTUP"
+      }
+    ]
+  }
+}

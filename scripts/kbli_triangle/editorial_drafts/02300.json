@@ -1,0 +1,27 @@
+{
+  "code": "02300",
+  "editorial": {
+    "headline": "Wild Forest Products, Without the Timber",
+    "standfirst": "KBLI 02300 covers the gathering of non-timber forest products, and this record treats it as open to all business scales and to full foreign ownership.",
+    "body": "KBLI 02300 is the activity of collecting non-timber forest products that grow wild. Its centre of gravity is not cultivation, plantation management, or logging, but the taking of naturally occurring forest materials: mushrooms and truffles, berries and nuts, balata and other gums, cork, lac, damar and resin, balsam, acorns, chestnuts, moss, lichen, eelgrass, and similar products. The record also brings into scope a wide spread of Indonesian forest commodities: rubber latex, gutta-percha, jelutung, frankincense, rattan, pine resin, jernang, copal, shellac, wild bamboo, silkworm cocoons, damar, honey, swiftlet nests, agarwood leaves, fruit and bark, sandalwood leaves, twigs and bark, lawang bark, cinnamon, pandan leaves, eucalyptus leaves, and wild spices when gathered and naturally dried.\n\nThe line is therefore quite specific. This is a forest-gathering classification for products other than timber, including activity in protected forest and production forest as described in the record. It is not the business of farming those products, and it is not the gathering of firewood. That distinction matters editorially because the activity is defined by wild growth and collection: the products may have agricultural equivalents elsewhere, but this code is about what is collected from the forest rather than what is produced through farming.\n\nOn business scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar, so the classification can describe anything from a small local collector to a larger operator handling forest-product supply. Nationally, the foreign-investment position is also clean: the PMA status is TERBUKA, the recorded maximum foreign ownership is 100%, and the cited source is Perpres 10/2021, 49/2021. There is no foreign-share cap to soften here. On this record, a foreign-owned company is not limited to a minority or partial stake by the PMA field.\n\nThe Bali reading is equally important because it does not create the usual moratorium problem. Bali’s rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently. But this activity is not marked as blocked in Bali: l4_bali_blocked is false, and the stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore straightforward. KBLI 02300 is nationally open to PMA up to 100% foreign ownership, open across all listed business scales, and not blocked for PMA registration in Bali under the moratorium logic provided in this record.",
+    "pullQuote": "The honest conclusion is straightforward: KBLI 02300 is nationally open to PMA up to 100% foreign ownership and is not blocked in Bali under the recorded moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

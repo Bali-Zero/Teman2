@@ -1,0 +1,27 @@
+{
+  "code": "43223",
+  "editorial": {
+    "headline": "Gas Network Installation: Nationally Open, Clear in Bali",
+    "standfirst": "This activity covers gas-network installation and maintenance in buildings and civil structures, with full foreign ownership permitted nationally and no Bali PMA block.",
+    "body": "### Built-system work\n\nThis activity covers the installation and maintenance of gas-distribution networks in residential and non-residential buildings, as well as other civil structures. It expressly includes networks for fuel gas and medical gas, placing the emphasis on the installed system within the built environment. Installation and maintenance are both part of the remit: the work concerns putting the network in place and maintaining that installed network.\n\n### A defined edge to the remit\n\nThe record draws useful boundaries around the work. It does not extend to construction of long-distance oil-and-gas transport networks. Nor does it include the installation of pipes and machinery in chemical plants, refineries and similar facilities where the purpose is processing, or where the work is unrelated to heating, ventilation and air-conditioning. These limits keep the activity anchored in gas-network work for buildings and civil structures.\n\n### Nationally open across the scale range\n\nRegistration is open to Micro, Small, Medium and Large enterprises. The national PMA status is Open and the stated maximum foreign ownership is 100%, so full foreign ownership is permitted nationally for this activity. The scale range is broad, but it is an eligibility statement rather than a reason to blur the scope: the classification remains centred on installation and maintenance of the relevant gas networks.\n\n### Bali: open, with the risk context stated\n\nFor this activity, national openness is real, and Bali does not block PMA registration under its moratorium. Bali is marked `OK_or_HIGHER_RISK`; at the Large scale, the record places its OSS risk at Medium-High/High, which is why it is not blocked. Bali's permanent, island-wide PMA moratorium applies to Low and Medium-Low risk activities. On the facts supplied, a foreign investor can register this activity in Bali today. The relevant qualification is the stated risk context for a Large-scale operation, not a separate Bali ownership cap or partnership condition.",
+    "pullQuote": "For this activity, national openness is real, and Bali does not block PMA registration under its moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Eligible scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

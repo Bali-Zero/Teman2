@@ -1,0 +1,27 @@
+{
+  "code": "23999",
+  "editorial": {
+    "headline": "A Broad Industrial Home for Non-Metal Mineral Products",
+    "standfirst": "KBLI 23999 covers specialised non-metal mineral manufacturing, open nationally to foreign ownership and not blocked for PMA registration in Bali under the record.",
+    "body": "KBLI 23999 is a broad industrial category for non-metal mineral products that sit outside more specific classifications. Its scope covers the making of kaolin flour and calcined kaolin, gypsum flour, talc flour, and the drying and milling of clay into clay powder. It also reaches into more specialised materials: lighter flint, friction materials, unframed goods based on mineral substances or cellulose, mineral insulation such as slag wool and rock wool, expanded clay, exfoliated vermiculite, heat-insulating materials, and sound-absorbing materials.\n\nThe record also places mica goods, peat goods used as fuel, artificial corundum, carbon and carbon fibre products, graphite products, graphite fibre and related derivatives within the same activity, while excluding carbon-fibre fabric, electrodes, electrical equipment, and the refining of non-metal mineral products. In practical terms, this is not a retail or trading code. It is for manufacturers dealing with processed mineral inputs, industrial insulation, friction or refractory-type materials, graphite-based inputs, and other mineral-substance products that the classification does not place elsewhere.\n\nOn scale, the code is unusually broad: it is open to Mikro, Kecil, Menengah, and Besar businesses. That matters because the activity can describe both smaller mineral-processing operations and larger industrial manufacturing facilities. The record does not add a separate capital threshold, licence list, operating timeline, or tax treatment, so none should be assumed. What it does say is enough for a clean registration reading: the activity is nationally marked TERBUKA, with a foreign-ownership ceiling of 100%, under Perpres 10/2021, 49/2021.\n\nFor Bali, the record is also clear. It marks l4_bali_blocked as false and gives the Bali status as OK_or_HIGHER_RISK. The stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That is the key distinction. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently, but this record does not place KBLI 23999 inside that blocked outcome. The result is a genuinely open reading: nationally open to foreign ownership up to 100%, and not blocked for PMA registration in Bali on the Bali-side record provided.",
+    "pullQuote": "The result is a genuinely open reading: nationally open to foreign ownership up to 100%, and not blocked for PMA registration in Bali on the Bali-side record provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

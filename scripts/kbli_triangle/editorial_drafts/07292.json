@@ -1,0 +1,27 @@
+{
+  "code": "07292",
+  "editorial": {
+    "headline": "PMA-Open Lead Ore Mining, Cleared for Bali Registration",
+    "standfirst": "KBLI 07292 covers lead-ore mining and preparation, open across all business scales, nationally open to full foreign ownership, and not blocked for PMA registration in Bali.",
+    "body": "KBLI 07292 is narrow but not minor. The slim record describes mining and preparation of *bijih timah hitam*, rendered in clear English as lead ore. Its scope is not only extraction: it includes preparation of the ore, and it expressly reaches the production-operation stage when that activity is integrated with processing and/or refining facilities. The record also names IPR cooperative applications, which matters because the code is not written only for one corporate scale or one style of operator.\n\nThe registration profile is broad. The code is open to Mikro, Kecil, Menengah, and Besar scales, so the record treats it as a code that can sit from smaller cooperative-context registrations through large operations. The practical reading stays anchored to the actual activity described: mining and preparing lead ore, with the integrated processing and/or refining language where applicable. For PMA, the national status is straightforward: TERBUKA, with pma_max_asing at 100. In ordinary English, the foreign ownership ceiling shown in this record is full foreign ownership, not a lower foreign-stake cap. The legal source given for that national PMA position is Perpres 10/2021, 49/2021.\n\nThe Bali field is the decisive part of the record. It includes an island-wide, permanent moratorium rule: Bali province blocks all Low and Medium-Low risk KBLI for PMA. For this activity, however, the Bali field does not say blocked. Its status is OK_or_HIGHER_RISK, and the specific reason is that OSS risk at the Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The point is not that Bali has no moratorium language in the record; the point is that this code's recorded risk position sits outside the low and medium-low moratorium trigger.\n\nThe honest conclusion, then, is relatively clean. Nationally, KBLI 07292 is foreign-open up to 100%. In Bali, the record does not impose the PMA moratorium block, because the reason field says the relevant large-scale OSS risk is medium-high/high. A founder reading this code should therefore see it as a mining-and-preparation activity for lead ore, open across all listed scales and PMA-open nationally and in Bali under the record's stated moratorium logic. The substance is industrial and specific, while the registration picture is unusually direct because the record itself does not force a Bali exception.",
+    "pullQuote": "The substance is industrial and specific, while the registration picture is unusually direct because the record itself does not force a Bali exception.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "10297",
+  "editorial": {
+    "headline": "Canned Aquatic Products That Stay Open in Bali",
+    "standfirst": "KBLI 10297 covers airtight, retorted or pasteurised canning of crustaceans, molluscs and other aquatic biota, with national PMA openness and no Bali moratorium block recorded.",
+    "body": "KBLI 10297 is a processing code, not a catching code. Its centre of gravity is the transformation and preservation of aquatic biota through airtight packaging or canning, followed by retort or pasteurisation. The record names crustaceans, molluscs, echinoderms and other aquatic biota, and gives concrete examples: canned shrimp, canned shellfish, canned squid or cuttlefish, and canned crab or swimming crab. A processing vessel can also fall here when it only processes and preserves aquatic biota in cans, without carrying out fishing activity.\n\nThat distinction matters because the activity is defined by the method and output: sealed packaging, canning, heat treatment, and a shelf-stable aquatic product. The slim record does not add a separate permit, capital threshold, production quota or timeline, so none should be read into the classification. What it does say is enough to locate the business clearly: this is for operators whose registered activity is the canning and preservation of non-fish aquatic products in the forms described above.\n\nOn scale, the code is unusually broad. The record marks it as open to Mikro, Kecil, Menengah and Besar. In plain English, the activity is not reserved only for one size of operator in the record: it can describe a small canning operation, a growing medium enterprise, or a large industrial processor, provided the actual activity remains within the recorded scope. The same scope also keeps the line clean for vessels used only as processing platforms, because the record expressly includes those when they do not conduct capture.\n\nThe national-vs-Bali picture is clean rather than conflicted. Nationally, the PMA status is TERBUKA, with a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. For Bali, the record does not mark the activity as blocked: l4_bali_blocked is false, and the stated reason is “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province, but this entry is not caught by that block on the supplied record. For a foreign-owned setup, the honest reading is therefore straightforward: this code is nationally open up to the recorded ceiling, and the Bali status supplied here does not block PMA registration.",
+    "pullQuote": "This is a canning and preservation code, and the supplied Bali record does not block it for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

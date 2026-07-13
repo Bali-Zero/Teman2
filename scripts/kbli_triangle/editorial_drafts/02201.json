@@ -1,0 +1,27 @@
+{
+  "code": "02201",
+  "editorial": {
+    "headline": "Wood Harvesting Is Foreign-Open Nationally and Clear for Bali Review",
+    "standfirst": "KBLI 02201 covers the production of roundwood from forest felling, with full-scale registration open nationally and no Bali moratorium block recorded.",
+    "body": "KBLI 02201 is the activity of harvesting timber: producing roundwood through forest felling for use in forest-product industries, or for direct use in unprocessed form. The record names examples that make the scope concrete: pit-props, fence posts, and electricity or telephone poles. In plain English, this is not a furniture, retail, or downstream processing category. Its center of gravity is the extraction of logs from forest felling and the supply of wood in a raw or minimally shaped form.\n\nThat narrowness matters because the registration profile is broad. The activity is open across **Mikro, Kecil, Menengah, and Besar** scales, so the slim record does not confine it to one size of operator. A small Indonesian setup and a larger corporate structure are both inside the scale language. For foreign-owned companies, the national status is also clear: **TERBUKA**, with a recorded foreign-ownership ceiling of **100%**. There is no foreign-share cap below full ownership in this record, so the national reading is not a cautious minority-entry story. On the face of the data given, KBLI 02201 is open to full PMA ownership under the cited Perpres framework.\n\nThe Bali picture is more specific, and it should not be blurred into a generic warning. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently. This record, however, marks KBLI 02201 as **OK_or_HIGHER_RISK** and says it is medium-high risk, therefore **not blocked by the moratorium**. That is the honest practical lede: a foreign investor is not facing the Bali PMA moratorium block on this code, based on the record supplied. The note still says to verify per address, so the clean conclusion is not “automatic everywhere in Bali,” but “not moratorium-blocked, with address-level verification still part of the file review.”\n\nFor founders, the useful distinction is between the activity’s industrial meaning and its registration temperature. Industrially, this is about producing roundwood from forest felling, including raw-use timber such as posts and poles. Nationally, it is foreign-open up to full ownership. In Bali, it is not captured by the island-wide moratorium that blocks lower-risk PMA codes. That combination makes KBLI 02201 a comparatively clear record in the Navigator: serious, resource-based, open across business scales, and eligible for PMA consideration in Bali without the specific moratorium obstacle stated for Low and Medium-Low risk activities.",
+    "pullQuote": "The clean conclusion is not automatic everywhere in Bali, but not moratorium-blocked, with address-level verification still part of the file review.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

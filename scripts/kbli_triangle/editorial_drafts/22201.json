@@ -1,0 +1,27 @@
+{
+  "code": "22201",
+  "editorial": {
+    "headline": "Building Plastics Manufacturing, Open Nationally and Workable in Bali",
+    "standfirst": "KBLI 22201 covers plastic building products, from frames and tanks to flooring sheets and sanitary fittings, with national PMA ownership open up to 100%.",
+    "body": "**KBLI 22201 is the manufacturing lane for plastic goods used in buildings.** Its scope is practical and material: plastic doors, windows, frames, window shutters, blinds, and skirting boards; plastic tanks and water reservoirs; plastic floor, wall, and ceiling coverings in rolls or sheets; and plastic sanitary equipment such as curtains, showers, sinks, lavatory pans, and flushing tanks. In plain English, this is not trading in construction supplies. It is the making of plastic building components and related fixtures.\n\nThe record opens the activity across every business scale listed: Mikro, Kecil, Menengah, and Besar. That matters because the code is not framed only for a large factory profile. A smaller producer making a narrower range of plastic building items and a larger industrial operator making a broader product line both sit within the same activity description, so long as the work remains manufacturing goods of this kind. The centre of gravity is the product and the production activity, not the customer segment or the construction project where the goods may later be installed.\n\nNationally, the PMA signal is clear. The record marks the code as TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. There is no lower percentage in the record, and no special national qualification is stated here beyond that open status and the listed maximum foreign ownership. For a foreign-owned setup, the honest national reading is therefore simple: this activity is open, and the record allows foreign ownership up to the full 100% ceiling.\n\nBali does not change that into a separate percentage or a hidden local cap. The Bali-side status is recorded as OK_or_HIGHER_RISK, with l4_bali_blocked marked false. The record gives a precise basis: “At scale Besar, OSS risk is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this record is not caught by that block on the stated reason. So the balanced conclusion is that KBLI 22201 is nationally open to PMA up to 100%, and the Bali record does not mark it as blocked by the moratorium.",
+    "pullQuote": "Bali does not turn this code into a hidden percentage cap: the record marks it as not blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

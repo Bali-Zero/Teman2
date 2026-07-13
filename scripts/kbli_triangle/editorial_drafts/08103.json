@@ -1,0 +1,27 @@
+{
+  "code": "08103",
+  "editorial": {
+    "headline": "Gravel Extraction With a Clear Bali Path",
+    "standfirst": "This activity covers gravel excavation and processing, open across business scales and nationally open to full foreign ownership, without a Bali moratorium block.",
+    "body": "**KBLI 08103 is a materials activity, not a trading label.** Its scope is the physical work of excavating gravel, then cleaning and separating it so the output can be used as a defined mineral product. The record describes the products in concrete terms: sandstone, hard boulders, and gravelly sand. That makes the code relevant where the business activity is tied to quarrying and preparing these stone materials, rather than simply reselling construction inputs or managing a downstream supply chain.\n\nThe record also places the activity in the administrative world of rock-mining operations, with references to an extension of an IUP for the rock production-operation stage and an individual IPR application. Those phrases matter because they show the activity is treated as a regulated extraction field in the source record. They should not be inflated into extra requirements here: the slim record gives the activity labels, the business scales, and the ownership position, but it does not give a separate checklist of permits, timelines, capital levels, tax treatment, or operating thresholds.\n\nFor business scale, the opening is unusually broad. The activity is open to Mikro, Kecil, Menengah, and Besar operators. In plain English, the record does not reserve this activity only for large companies, nor does it limit the classification to small local operators. A founder reading the scale field should understand that the activity can sit at any of those registered sizes, provided the actual business matches the substance of the scope: gravel excavation, cleaning, separation, and the stated stone outputs.\n\nThe national foreign-investment picture is also direct. The PMA status is TERBUKA and the foreign-ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. Because the ceiling is not below full ownership, the record does not describe a capped foreign stake. The Bali position is the important second check: the Bali status is OK_or_HIGHER_RISK, and the record says it is not blocked because OSS risk at Besar scale is Menengah-Tinggi/Tinggi. Bali’s moratorium blocks Low and Medium-Low risk KBLI for PMA across the province, but this activity is not caught by that block on the record supplied. The honest conclusion is therefore clean: nationally open to PMA, full foreign ownership indicated, and not blocked for PMA registration in Bali under the supplied Bali moratorium analysis.",
+    "pullQuote": "The honest conclusion is clean: nationally open to PMA, full foreign ownership indicated, and not blocked for PMA registration in Bali under the supplied Bali moratorium analysis.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

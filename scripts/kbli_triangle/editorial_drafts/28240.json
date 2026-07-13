@@ -1,0 +1,27 @@
+{
+  "code": "28240",
+  "editorial": {
+    "headline": "Heavy Machinery Manufacturing With a Clear Bali Path",
+    "standfirst": "KBLI 28240 covers the making of mining, quarrying, and construction machinery, with all business scales open and no Bali moratorium block recorded.",
+    "body": "KBLI 28240 is the industrial home for companies that manufacture the machines behind mining, quarrying, and construction work. Its scope is broad but concrete: underground continuous elevators and material carriers, drilling and tunnelling machines, mineral-processing equipment for washing, crushing, grinding, mixing, or kneading solid mineral materials, concrete and mortar mixers, earth-moving machinery such as bulldozers, graders, scrapers, levelers, shovels, and loaders, plus pile drivers, pile extractors, asphalt and mortar spreaders, concrete finishing machines, excavators, bulldozer blades, off-road dumping trucks, snow ploughs, and snow blowers.\n\nIn plain English, this is not a trading or contracting classification. It is for the factory-side activity of making the machinery itself: the equipment used to cut, drill, dig, lift, move, crush, mix, and finish materials in heavy industrial and construction settings. The record points to a manufacturing activity with a technical, capital-equipment character, where the product is the machine or machine component rather than the construction service performed with it.\n\nThe scale position is unusually clean. The record lists **Mikro**, **Kecil**, **Menengah**, and **Besar** as open, so the activity is not framed only for large industrial operators. A small workshop making qualifying equipment and a larger plant manufacturing heavy construction machinery both sit within the scale language of the record, provided the actual activity remains within the manufacturing scope described above.\n\nThe national-versus-Bali picture is also clear. Nationally, the PMA status is **TERBUKA**, with `pma_max_asing` at **100%**, so the record treats this as open to full foreign ownership at the national level. Bali does not add a recorded block here: `l4_bali_blocked` is false, and the Bali status is **OK_or_HIGHER_RISK**. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That matters because the Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This code is not marked as caught by that block. For a foreign-owned setup in Bali, the honest reading is therefore straightforward: this activity is nationally open and, on this record, not blocked by Bali’s PMA moratorium.",
+    "pullQuote": "For a foreign-owned setup in Bali, the honest reading is straightforward: this activity is nationally open and not blocked by Bali’s PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

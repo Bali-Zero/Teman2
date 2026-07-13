@@ -1,0 +1,27 @@
+{
+  "code": "32120",
+  "editorial": {
+    "headline": "Imitation Jewellery Manufacturing, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 32120 covers imitation jewellery and similar metal accessories, nationally open to PMA, but not registrable by foreign investors in Bali under the record’s moratorium rule.",
+    "body": "KBLI 32120 is the manufacturing activity for imitation jewellery and closely related personal adornments. In practical terms, the record points to rings, bracelets, brooches, earrings, necklaces and similar small items made outside the category of precious jewellery. The line is important: this activity does not cover jewellery made from precious metals, base metals mixed with precious metals, genuine gemstones, pearls, or precious-metal watch straps. Its centre is costume-style jewellery: pieces made from base materials, sometimes plated with precious metal, sometimes using imitation stones such as imitation gems or imitation diamonds.\n\nThe same scope also includes the manufacture of metal watch straps, provided those straps are not made from precious metal. That makes the code broader than decorative jewellery alone, but still tightly framed around non-precious personal accessories. A founder using this code should read it as a production classification, not retail, not trading, and not high-jewellery craftsmanship. The record describes making the items themselves: imitation jewellery, small personal adornments, and non-precious metal watch straps.\n\nOn the national investment side, the record is straightforward. Nationally, the PMA status is marked TERBUKA, with a foreign-ownership ceiling of 100%. The activity is also open across every listed business scale: Mikro, Kecil, Menengah, and Besar. In national terms, therefore, KBLI 32120 is not presented as a closed category for foreign investors. A foreign-owned company can look at the national line and see an open manufacturing activity with no foreign-share cap below full ownership in the slim record.\n\nBali changes the answer. The record marks `l4_bali_blocked` as true and gives the reason: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” It also states the provincial rule directly: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” The honest reading is that a foreign investor cannot register this KBLI for PMA in Bali today, even though the national PMA status is open and the national ownership ceiling is 100%. This is not a separate Bali percentage, quota, or partnership condition; the record gives none. It is a Bali-side block based on the moratorium rule and the recorded risk classification.",
+    "pullQuote": "The honest reading is that a foreign investor cannot register this KBLI for PMA in Bali today, even though the national PMA status is open.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

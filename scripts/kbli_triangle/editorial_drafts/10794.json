@@ -1,0 +1,27 @@
+{
+  "code": "10794",
+  "editorial": {
+    "headline": "The Everyday Snack Industry With a Clear Bali PMA Path",
+    "standfirst": "KBLI 10794 covers the making of krupuk, chips, peyek, and similar foods, with national foreign ownership open up to 100% and no Bali moratorium block recorded.",
+    "body": "KBLI 10794 is the industrial home for one of Indonesia’s most familiar food categories: krupuk, keripik, peyek, and the wider family of crisp, dry, snack-like products that sit close to them. The record describes a broad manufacturing activity, not a narrow single-product trade. It includes chips and peyek made from different kinds of nuts, shrimp crackers, fish crackers, starch crackers, and similar foods such as emping, kecimpring, karak, gendar, and opak. It also reaches into more specific snack products named in the scope, including lung chips, snail chips, skin chips, anchovy peyek, and shrimp peyek.\n\nThat scope matters because the code is built around making the product, not merely selling it. A founder using this activity is positioning the business as a producer in the snack-food manufacturing chain: transforming ingredients into packaged or ready-to-distribute crisp foods of the kind listed in the Indonesian scope. The code is open across all recorded business scales: Mikro, Kecil, Menengah, and Besar. In plain terms, the record does not confine this activity to either cottage production or large factories. It can describe a small producer, a growing mid-sized operation, or a larger industrial setup, provided the actual activity remains within the manufacturing scope captured here.\n\nNationally, the foreign-investment signal is straightforward. The PMA status is marked TERBUKA, and the listed foreign-ownership ceiling is 100%. That is the clean national reading: the record allows full foreign ownership for this activity, with the source given as Perpres 10/2021, 49/2021. There is no lower national cap in the slim record, so there is no basis to invent one. For a foreign-owned structure, the important point is therefore not a national ownership restriction, but whether the intended place of registration creates a separate Bali-side problem.\n\nOn Bali, the record does not mark this activity as blocked. The Bali status is OK_or_HIGHER_RISK, and the reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this code is not caught by that block on the record provided. The honest conclusion is therefore unusually clean: KBLI 10794 is nationally open to PMA up to 100%, and the Bali record supplied here does not block PMA registration under the stated moratorium logic.",
+    "pullQuote": "The honest conclusion is therefore unusually clean: KBLI 10794 is nationally open to PMA up to 100%, and the Bali record supplied here does not block PMA registration under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

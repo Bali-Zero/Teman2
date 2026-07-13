@@ -1,0 +1,27 @@
+{
+  "code": "93128",
+  "editorial": {
+    "headline": "A Bowling Club Can Be Nationally Open—and Still Closed to PMA in Bali",
+    "standfirst": "KBLI 93128 covers bowling clubs for members at every competitive level. Nationally, foreign ownership may reach 100%; in Bali, a PT PMA cannot register the activity today.",
+    "body": "KBLI 93128 is the category for bowling clubs: professional, semi-professional, and amateur organisations that give their members an opportunity to take part in the sport. Its scope is deliberately broad. A club may provide bowling premises and sporting facilities, or it may organise member activity without supplying either. The defining feature is the club’s sporting role for its members, rather than the particular form of venue it operates.\n\nThe record opens the activity at the **Mikro** and **Kecil** scales. That places the code in the world of small-format club organisation, where membership and participation sit at the centre of the activity. It is not written as a category for a single style of bowling operation or a single competitive standard: the scope expressly accommodates professional, semi-professional, and amateur clubs alike.\n\nNationally, the PMA status is **TERBUKA**, with a maximum foreign ownership ceiling of **100%**. In plain terms, the national foreign-investment setting permits full foreign ownership. The source stated for that position is Perpres 10/2021, 49/2021. That national openness is real, but it is not the end of the registration question for a business intended for Bali.\n\nIn Bali, a foreigner cannot register this activity through a PT PMA today. The stated reason is structural: OSS has no **Usaha Besar** scale row for this activity, listing only Mikro, Kecil, and Menengah. A PT PMA is treated as Usaha Besar by law under Omnibus UU 6/2023; under the OSS-RBA scale-gating cited in PP 28/2025 Pasal 127, the missing large-scale row bars the registration route. A national 100% ownership ceiling does not create a Bali registration route when the required large-scale OSS row is absent. Bali also has an island-wide, permanent PMA block for all low- and medium-low-risk KBLI activities, set out in the cited Gubernur letter; the direct Bali result recorded here, however, is the absence of the required large-scale OSS row.",
+    "pullQuote": "A national 100% ownership ceiling does not create a Bali registration route when the required large-scale OSS row is absent.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Closed to PMA (no Besar scale)"
+      }
+    ]
+  }
+}

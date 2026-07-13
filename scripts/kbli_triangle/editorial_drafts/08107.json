@@ -1,0 +1,27 @@
+{
+  "code": "08107",
+  "editorial": {
+    "headline": "Tras Quarrying With a Nationally Open PMA Path",
+    "standfirst": "KBLI 08107 covers tras excavation and cleaning, with all business scales open and Bali not applying its PMA moratorium block on the record given.",
+    "body": "KBLI 08107 is about the excavation of *tras*: volcanic rock that has undergone chemical change through weathering and groundwater conditions. The slim record keeps the activity narrow. It is not a broad construction-material category, and it is not a catch-all for every quarrying operation. Its stated scope is the digging of this altered volcanic material, including the cleaning activities that belong to that extraction work.\n\nThe record also places the activity inside a rock-mining administrative frame by naming *IUP Tahap Eksplorasi Batuan* and *Peningkatan IUP Tahap Operasi Produksi Batuan*. In plain English, the activity sits where exploration-stage and upgraded production-operation stages for rock materials become relevant, but the record does not give timelines, procedures, fees, or technical thresholds. For founders, that distinction matters: the commercial description is simple, but the registration context is not a casual retail activity. It is an extractive activity tied to a defined mineral-material scope.\n\nOn business scale, the entry is unusually broad. The record says it is open to Mikro, Kecil, Menengah, and Besar. That means the activity is not presented here as reserved only for large operators, nor limited to a single enterprise size. A founder reading this should treat scale as part of the registration profile, not as an afterthought: the same code can appear across the full range of scales listed in the record. The foreign-investment picture is also clear at the national level. PMA status is TERBUKA, and the foreign ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. On this slim record, there is no partial cap to explain; the national ceiling is full foreign ownership.\n\nThe Bali picture is the decisive practical nuance. The province’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the island, permanently. But this entry is marked as not blocked: `l4_bali_blocked` is false, with the reason stating that OSS risk at scale Besar is Menengah-Tinggi/Tinggi and therefore not blocked by the moratorium. That does not turn the code into a frictionless approval story, and the record’s Bali status remains `OK_or_HIGHER_RISK`, not a promise of simplicity. But it does give a clean conclusion from the data supplied: nationally, KBLI 08107 is foreign-open up to 100%, and in Bali it is not blocked by the stated PMA moratorium rule.",
+    "pullQuote": "Nationally, KBLI 08107 is foreign-open up to 100%, and in Bali it is not blocked by the stated PMA moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

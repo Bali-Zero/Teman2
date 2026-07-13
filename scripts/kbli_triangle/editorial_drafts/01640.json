@@ -1,0 +1,27 @@
+{
+  "code": "01640",
+  "editorial": {
+    "headline": "Seed Selection for Propagation, Open Nationally and Workable in Bali",
+    "standfirst": "This activity covers post-harvest seed processing for stronger propagation, with national PMA openness and no Bali moratorium block shown in the record.",
+    "body": "Seed selection for propagation is the quiet industrial layer between harvested seed and market-ready planting material. Its scope is not farming itself, and not research into new seed forms; it is the post-harvest handling that improves seed quality before the seed is sold. The work includes removing non-seed material, taking out seed that is too small, mechanically damaged, insect-damaged, or immature, and reducing moisture so the seed can be stored safely.\n\nIn practice, this is the discipline of making a seed lot more reliable. Drying, cleaning, grading, sorting, and related preparation sit at the centre of the activity, continuing up to the point where seed reaches the market. The record also places maintenance of modified seed inside this activity. That gives the code a practical breadth: it can serve operators whose value is not in planting crops, but in preparing propagation material so it is cleaner, better sorted, more stable in storage, and more suitable for commercial circulation.\n\nThe scale picture is unusually straightforward. The activity is open to Mikro, Kecil, Menengah, and Besar operators, so it is not framed as a single-size business lane. A small seed-handling operation and a larger processing setup both sit within the recorded scale range, provided the actual activity remains within the defined seed-selection and processing scope. For founders, that matters because the code describes a specific technical function rather than a broad agricultural trade identity.\n\nThe national-vs-Bali reading is also clean. Nationally, the PMA status is TERBUKA, and the foreign-ownership ceiling is 100%, so the record indicates full foreign openness at the national level. Bali does have a province-wide moratorium rule blocking all Low and Medium-Low risk KBLI for PMA, but this record does not mark the activity as blocked. Its Bali status is OK_or_HIGHER_RISK, and the reason given is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore not a warning disguised as caution: for this activity, the record shows a nationally open PMA lane and no Bali PMA moratorium block today.",
+    "pullQuote": "The honest conclusion is therefore not a warning disguised as caution: for this activity, the record shows a nationally open PMA lane and no Bali PMA moratorium block today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

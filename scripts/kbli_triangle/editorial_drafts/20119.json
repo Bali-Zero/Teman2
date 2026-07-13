@@ -1,0 +1,27 @@
+{
+  "code": "20119",
+  "editorial": {
+    "headline": "A Closed Door for Other Inorganic Basic Chemicals",
+    "standfirst": "This activity covers residual inorganic basic chemical manufacturing, but the record closes it to foreign ownership nationally and marks Bali as closed as well.",
+    "body": "For KBLI 20119, the activity is the manufacture of other inorganic basic chemical products that are not already covered elsewhere in the classification. In practical terms, the record points to production involving phosphorus and its derivatives, sulphur and its derivatives, nitrogen and other derivatives, metallic elements, other oxide compounds, raw materials for explosives, and products used as fluorescent whitening agents or luminophores. It is a technical industrial category, not a retail or service activity, and its scope is defined by what it makes: base inorganic chemical inputs and specialist chemical products.\n\nThe record also carries two important exclusions inside the scope itself. It states that inorganic basic chemical industry involving chlorine and alkali using a mercury process is prohibited for new investment, business expansion, and development. It separately states that the mercury industry is prohibited for new investment, business expansion, and development. Those notes matter because they narrow the practical reading of the activity: even inside an already technical manufacturing field, mercury-related routes are not treated as available business territory in the record.\n\nOn business scale, the category is broad. The record opens it to Mikro, Kecil, Menengah, and Besar operators, so the activity is not confined to large industrial players in the scale field. A domestic registration reading would therefore look first at whether the intended operation fits the stated manufacturing scope and avoids the prohibited mercury-related descriptions. The scale line is inclusive, but the investment line is not: for foreign-owned company formation, the record is unambiguous.\n\nNationally, the PMA status is TERTUTUP, with `pma_max_asing` at 0. That means the foreign-ownership ceiling in the record is 0%, not a partial cap. Bali does not reopen the door. The Bali status is also TERTUTUP, and `l4_bali_blocked` is true, so the honest reading for a foreign founder is simple: this activity cannot be registered as a PMA in Bali today. The Bali reason should be read carefully, because it says: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA island-wide, but this entry’s own Bali note says the block is not the moratorium trigger at Besar scale. The closing fact remains the national PMA closure and Bali’s TERTUTUP status.",
+    "pullQuote": "The scale line is inclusive, but the investment line is not: for foreign-owned company formation, the record is unambiguous.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "0%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "Bali status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

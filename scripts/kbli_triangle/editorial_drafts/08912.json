@@ -1,0 +1,27 @@
+{
+  "code": "08912",
+  "editorial": {
+    "headline": "Phosphate Mining With a Clear Bali Door",
+    "standfirst": "KBLI 08912 covers phosphate extraction and basic mineral upgrading, with national PMA access open and no Bali moratorium block recorded for this activity.",
+    "body": "KBLI 08912 is the classification for phosphate mining. Its scope is not just the act of extracting phosphate-bearing material from the ground; it also includes the immediate handling that makes the mined material usable at the early processing stage. The record expressly names sorting, crushing, cleaning, and upgrading the grade of phosphate mineral material. In plain English, this is the business of taking phosphate deposits from raw mineral form toward a more prepared mineral product, while staying within the mining and basic beneficiation frame described for the code.\n\nThe slim record also places this activity inside the mineral-regulatory vocabulary attached to non-metallic minerals of a specified type. It names an exploration-stage IUP for certain non-metallic minerals and an SIPB application. Those labels matter because they show that the activity is treated as a formal mining activity, not as a generic trading or processing category. The editorial point is narrow but important: a founder registering this code is not describing a downstream retail activity or a broad industrial service; they are describing phosphate mineral extraction with the listed preparation steps.\n\nOn business scale, the code is unusually broad. It is open across Mikro, Kecil, Menengah, and Besar. That means the record recognises the activity at every listed scale, from the smallest business scale through large enterprise registration. Nationally, the PMA status is TERBUKA, and the foreign ownership ceiling is 100%. There is no partial cap to explain here: based on this record, the national foreign-investment position is open up to full foreign ownership.\n\nThe Bali picture is also clean, but it should still be stated with precision. The province-wide moratorium blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this record does not mark KBLI 08912 as blocked. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest reading is therefore not a warning that foreigners cannot register it in Bali today. It is the opposite: for this record, the national PMA opening and the Bali moratorium position point in the same direction. Phosphate mining remains a formal, risk-sensitive mining activity, but the Bali moratorium field does not close the door recorded here.",
+    "pullQuote": "For this record, the national PMA opening and the Bali moratorium position point in the same direction.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

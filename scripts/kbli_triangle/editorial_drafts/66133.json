@@ -1,0 +1,27 @@
+{
+  "code": "66133",
+  "editorial": {
+    "headline": "The Quiet Infrastructure Behind Securities Ownership",
+    "standfirst": "KBLI 66133 covers the contracted administration that records securities ownership and distributes the rights attached to those securities.",
+    "body": "KBLI 66133 is the administrative backbone of securities ownership. It covers the work of recording who owns securities and administering the distribution of rights connected to those securities and/or their issuers. The activity is performed under a contract with the issuer: a business is engaged by that issuer to maintain ownership records and handle the allocation of the associated rights. Its subject is therefore precise—ownership records and the rights that follow from them—rather than a broad claim over every activity connected with securities.\n\nThe code is available at every stated business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the record does not reserve the activity for one size of enterprise. A prospective registrant should nevertheless keep the contractual centre of gravity in view. The work described here is carried out for an issuer, under contract, and consists of recording ownership and distributing related rights. A clear operating description should remain faithful to that relationship and to those two functions.\n\nAt the national level, PMA is TERBUKA and foreign ownership may reach 100%. In plain terms, the record permits full foreign ownership at the national level for this activity. The cited basis is Perpres 10/2021, 49/2021. There is no lower foreign-ownership cap in the record to soften or qualify: the national ceiling is the full 100%.\n\nBali does not reverse that result. The province-wide moratorium blocks PMA for Low and Medium-Low risk KBLI activities, but this code is not blocked by that moratorium. For the Besar scale, the OSS risk position is Menengah-Tinggi/Tinggi, which is why the Bali status is recorded as OK_or_HIGHER_RISK rather than blocked. The practical picture is consequently direct: this activity is nationally open to PMA up to 100% foreign ownership, and the Bali moratorium does not block its PMA registration on the stated risk basis.",
+    "pullQuote": "This activity is nationally open to PMA up to 100% foreign ownership, and the Bali moratorium does not block its PMA registration on the stated risk basis.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

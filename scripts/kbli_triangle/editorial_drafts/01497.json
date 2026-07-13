@@ -1,0 +1,27 @@
+{
+  "code": "01497",
+  "editorial": {
+    "headline": "Swiftlet Breeding Is Open Nationally and Clear in Bali",
+    "standfirst": "KBLI 01497 covers the cultivation and breeding of swiftlets for birds and nests, open across all scales with full foreign ownership and no Bali PMA block in this record.",
+    "body": "KBLI 01497 is a narrow but commercially distinctive agricultural activity: the cultivation and breeding of swiftlets, including the supporting activity needed to produce swiftlet birds and swiftlet nests. The center of gravity is production at the farm or breeding-house level. It is about raising and propagating the birds and generating nests as an output of that cultivation process, not about turning those nests into a processed product. Washing, processing, or finishing the nest sits outside the activity described in this record.\n\nThat distinction matters because the code is not written as a general edible-nest business. It is written around the upstream biological activity: maintaining the conditions, stock, and breeding cycle that produce birds and nests. A founder using this code should therefore be describing an operation whose primary registered activity is swiftlet cultivation and breeding. The scale field is broad: the activity is open to Mikro, Kecil, Menengah, and Besar. In plain English, the record does not reserve the activity for only small local operators or only large commercial players; it allows the full ladder of enterprise scale stated in the record.\n\nNationally, the foreign investment signal is clean. TERBUKA is the PMA status, with a foreign ownership ceiling of 100%. That means the record does not impose a foreign-share cap below full ownership. The source field points to Perpres 10/2021, 49/2021, but the practical editorial reading is simpler: for this activity, the national investment field is open, and the maximum foreign stake shown in the record is complete ownership. There is no basis in the slim record to add a minimum capital figure, a special licence, a tax treatment, or a registration timeline.\n\nThe Bali picture is also not a hidden prohibition. The province-wide moratorium rule blocks Low and Medium-Low risk KBLI for PMA, but this record marks KBLI 01497 as not blocked in Bali. The reason given is specific: at Besar scale, OSS risk is Menengah-Tinggi/Tinggi, so the moratorium does not block it. That does not turn the code into a casual, low-risk footnote; it means the Bali field should be read with precision. For a foreign-owned setup, the honest answer is that this swiftlet cultivation and breeding activity is nationally open, carries a 100% foreign ownership ceiling, and is not blocked for PMA registration in Bali under the moratorium status recorded here.",
+    "pullQuote": "For this activity, the honest answer is that it is nationally open and not blocked for PMA registration in Bali under the recorded moratorium status.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

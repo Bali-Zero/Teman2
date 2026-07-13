@@ -1,0 +1,27 @@
+{
+  "code": "52321",
+  "editorial": {
+    "headline": "The Business of Getting Passengers Booked",
+    "standfirst": "Ticketing intermediation is nationally open to 100% foreign ownership—and Bali does not block its PMA registration.",
+    "body": "Transport ticket sales agents occupy the booking layer of passenger travel. This activity covers intermediary services that help passengers buy tickets for road, rail, water and air transport, for journeys within Indonesia or abroad. It also encompasses online platforms used to book transport tickets and reservation services for passenger transport. Its subject is not merely the ticket itself but the organised path to it: the service that mediates a purchase, manages a reservation, or makes booking available online. The definition therefore brings passenger travel across several modes into one ticketing activity, whether the destination is domestic or international.\n\nThe register is not reserved for one company size. It is open at Mikro, Kecil, Menengah and Besar scales. The recorded business population includes non-exempt PPMSE and PSP operators established in Indonesia, and non-exempt PPMSE and PSP operators established outside Indonesia that conduct PMSE business in Indonesian jurisdiction. The scope further reaches businesses beyond those named e-commerce and intermediary-operator categories. This matters because the activity is defined by the ticketing and reservation function, not by a single organisational form: the record expressly accommodates both the platform operator and the passenger-ticket reservation service.\n\nFor foreign investment, the national reading is direct. The status is TERBUKA, with a foreign-ownership ceiling of 100%. A foreign investor may therefore hold the whole company nationally for this activity. Bali does not reverse that result. The provincial moratorium permanently blocks PMA registration for activities assessed as Low or Medium-Low risk, island-wide; this activity is specifically recorded as not blocked. Its OSS risk at the Besar scale is Menengah-Tinggi/Tinggi—medium-high/high—so it falls outside the moratorium’s blocked band. In Bali, a foreign investor can register this activity; the recorded status is OK_or_HIGHER_RISK, not a PMA prohibition.\n\nThat creates a clean, if precise, reading for a founder. National openness is not undone in Bali: foreign participation can reach the national 100% ceiling, and the activity is not blocked for PMA registration there. The Bali record’s point is narrower and important: at the Besar scale, its OSS risk is medium-high/high. For this activity, that places it outside the province-wide rule aimed at Low and Medium-Low risk PMA registrations. The business remains what the scope says it is—an intermediary for passenger transport tickets and reservations, including an online booking platform.",
+    "pullQuote": "National openness is not undone in Bali: this activity is not blocked for PMA registration there.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

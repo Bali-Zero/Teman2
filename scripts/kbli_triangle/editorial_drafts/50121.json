@@ -1,0 +1,27 @@
+{
+  "code": "50121",
+  "editorial": {
+    "headline": "Domestic Cargo Shipping, With a 49% Foreign-Ownership Ceiling",
+    "standfirst": "Domestic general-cargo shipping is open across all recorded scales, with foreign ownership capped nationally at 49% and not blocked by Bali’s recorded moratorium.",
+    "body": "KBLI 50121 is the domestic sea-transport activity for general cargo carried between Indonesian ports. It covers the movement of goods by sea in the country’s inter-port network, using sea-going vessels. The scope is broad in operating pattern but precise in geography: the service is domestic, and its cargo is general goods. Within that frame, an operator may sail a fixed and regular liner route according to a schedule, or a tramper route that is neither fixed nor regular. Chartering the sea transport service with its operator also sits inside the stated activity.\n\nThis is not an activity defined by one route format. Scheduled liner operations and irregular tramper operations sit side by side in the same scope, so the defining thread is domestic carriage of general cargo by sea. The record also expressly includes charter activity where the operator accompanies the transport. Registration is open at every recorded scale: Mikro, Kecil, Menengah and Besar. That gives the activity a full scale range without altering the core description of what is being registered.\n\nFor foreign investment, the national position is limited. The PMA status is TERBATAS, under the cited Presidential Regulations, and foreign ownership is capped at 49%. That ceiling is the national limit for this activity: foreign participation is possible only within that stated maximum, not on an unrestricted basis. It is the central ownership fact in the record, and it should be read plainly.\n\nBali is not a simple extension of the national rule, but this record does not show a Bali ban. Bali’s permanent, island-wide moratorium blocks PMA registration for Low and Medium-Low risk KBLI. This activity is marked OK_or_HIGHER_RISK for Bali because, at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi—medium-high/high—and it is therefore not blocked by that moratorium. The distinction matters: the 49% national foreign-ownership ceiling remains in place, while Bali’s moratorium does not block this activity on the recorded large-scale risk basis. The record gives no separate Bali ownership percentage or partnership condition, so the Bali position properly stops there.",
+    "pullQuote": "In Bali, the moratorium does not block this activity, but nationally foreign ownership still stops at 49%.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "49%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

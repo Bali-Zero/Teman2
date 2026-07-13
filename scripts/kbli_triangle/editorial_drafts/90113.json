@@ -1,0 +1,27 @@
+{
+  "code": "90113",
+  "editorial": {
+    "headline": "Independent News Journalism Is a Personal Publishing Practice",
+    "standfirst": "This activity covers individuals who find news and publish it themselves in print or digital media, with national foreign ownership open to 100%.",
+    "body": "**Independent news journalism begins with the individual reporter.** This activity covers the gathering of news by individuals as information material, followed by self-publication through either print or digital media. The definition is important because it describes a practical editorial act: finding news, shaping it for public information, and publishing it through one’s own channel. It is not framed here as a general media operation, but as independent news work undertaken and published by the person doing it.\n\n**The record identifies individuals as the operative participants.** It does not list any business-scale categories in `scales_open_to`, so no scale classification should be read into the activity from this record. What is clear is the personal character of the work: the journalist gathers the news and publishes it independently. For founders and practitioners, that makes the scope worth reading closely. The activity is defined by both the source of the reporting and the fact of self-publication, whether the final outlet is print or digital.\n\n**Nationally, the activity is open to foreign investment, with a 100% foreign-ownership ceiling.** The record marks its PMA status as open and identifies the applicable source as Perpres 10/2021, 49/2021. In plain terms, the national record does not impose a foreign-equity cap below full ownership for this activity. That national position should be kept distinct from the local operating picture: national openness establishes the foreign-investment setting, while Bali’s treatment is recorded separately.\n\n**In Bali, this activity is not marked as blocked by the province-wide PMA moratorium.** Its Bali status is recorded as `OK_or_HIGHER_RISK`, with a medium-high/high-risk designation and an instruction to verify the position for the specific address. The stated reason is that it is not blocked by the moratorium. That matters because Bali’s permanent, island-wide rule blocks PMA registration for all Low and Medium-Low risk activities; this activity is not placed in that blocked category. The practical conclusion is clean but address-sensitive: Bali does not record a moratorium block for this activity, while the applicable position should still be checked for the intended address.",
+    "pullQuote": "Bali does not record a moratorium block for this activity, while the applicable position should still be checked for the intended address.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "28120",
+  "editorial": {
+    "headline": "Fluid Power Equipment Is Nationally Open, but Bali Blocks PMA",
+    "standfirst": "KBLI 28120 covers hydraulic and pneumatic power equipment manufacturing, open nationally to foreign ownership yet blocked for PMA registration in Bali.",
+    "body": "KBLI 28120 is the manufacturing class for the machinery that turns liquid and gas pressure into controlled industrial motion. The record defines it around hydraulic and pneumatic machines and components: pumps, cylinders, valves, hydraulic and pneumatic motors, air-processing equipment used in pneumatic systems, fluid and gas power systems, hydraulic transmission equipment, electric linear actuators, and gas spring cylinders. In practical terms, this is not a general machinery catch-all. It is the industrial layer where pressure, flow, and actuation become equipment.\n\nThat precision matters because the activity sits inside a broad manufacturing economy, but its scope is quite specific. A company registering here is positioning itself as a maker of fluid-power equipment or its defined components, not merely as a trader, installer, repairer, or producer of adjacent rubber, plastic, compressor, pump, or mechanical transmission products that the record places outside the class. The eligible business scales are unusually wide: Mikro, Kecil, Menengah, and Besar are all open to the activity. That means the classification is not reserved only for large industrial producers; the record allows it across the full scale spectrum.\n\nThe national foreign-investment picture is straightforward. The PMA status is TERBUKA, and the maximum foreign ownership recorded is 100%. For an investor reading the national rule alone, that is the clean signal: this activity is open to foreign capital, with the cited source being Perpres 10/2021, 49/2021. There is no partial national ceiling in the record, no special minimum-capital detail, and no extra licensing condition stated here beyond the classification and ownership fields supplied.\n\nBali changes the answer completely. The record marks this activity as blocked for PMA registration in Bali, with the reason stated as: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026. The moratorium rule is broader still: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide, permanent. So the honest reading is national openness, local closure. KBLI 28120 may be 100% foreign-open nationally, but a foreign-owned company cannot register it in Bali today under the Bali-side block recorded here.",
+    "pullQuote": "KBLI 28120 may be 100% foreign-open nationally, but a foreign-owned company cannot register it in Bali today under the Bali-side block recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

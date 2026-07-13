@@ -1,0 +1,27 @@
+{
+  "code": "37001",
+  "editorial": {
+    "headline": "Wastewater Collection With a Clear Bali Path",
+    "standfirst": "This activity covers the collection and transport of wastewater, and it remains nationally open to foreign ownership while not being blocked for PMA registration in Bali.",
+    "body": "**37001 is the practical infrastructure activity behind wastewater collection.** It covers the collection and transport of wastewater from its source, including households and industrial units, through wastewater disposal networks, wastewater collectors, and other transport facilities such as waste or sewage vehicles. The scope also reaches the suction and cleaning of latrine wells, septic tanks, and waste pits, as well as wastewater collected from chemical toilets, including portable toilets and toilets on aircraft or trains.\n\nThe code is broad enough to include both non-hazardous domestic wastewater collection and transport, and hazardous domestic wastewater collection and transport. That breadth matters editorially: this is not a narrow maintenance label. It describes the operating layer that moves wastewater out of buildings, temporary sanitation systems, and industrial or domestic sources into the relevant collection and transport chain. The common thread is not the type of client, but the activity itself: collecting and carrying wastewater from defined sources through a waste-handling route.\n\nFor company formation, the scale position is unusually straightforward. The activity is open across Mikro, Kecil, Menengah, and Besar scales. Nationally, it is marked TERBUKA for PMA, with a foreign-ownership ceiling of 100%. In plain terms, the national record does not impose a foreign share cap below full ownership for this activity. The cited PMA basis is Perpres 10/2021, 49/2021, and the record gives no separate capital threshold, special licence detail, or timing rule to add beyond that.\n\nBali is also clear, but for a different reason. The province’s moratorium blocks all Low and Medium-Low risk KBLI for PMA across the island, permanently, under the stated governor-letter source. This activity is not blocked in Bali because the record identifies the OSS risk at Besar scale as Menengah-Tinggi/Tinggi, placing it outside that moratorium block. The honest reading is therefore not a hidden prohibition, but a clean national-and-Bali alignment: foreign investors can read the national PMA position as open, and the Bali status as OK_or_HIGHER_RISK rather than blocked.",
+    "pullQuote": "The honest reading is therefore not a hidden prohibition, but a clean national-and-Bali alignment.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

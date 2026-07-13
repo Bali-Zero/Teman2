@@ -1,0 +1,27 @@
+{
+  "code": "22194",
+  "editorial": {
+    "headline": "Medical Rubber Manufacturing with a Clear Bali Reading",
+    "standfirst": "KBLI 22194 covers rubber goods for health support, open nationally to foreign capital and not blocked for PMA registration in Bali under the record supplied.",
+    "body": "KBLI 22194 is a manufacturing classification for rubber goods made to support health needs. The record names contraceptive sheaths, baby teats, compression tools, medical rubber gloves, and urinary or Folley catheters as examples of the activity. In plain English, this is not general rubber trading or a broad health-service category; it is the industrial making of specific rubber-based products used in health, care, and medical-support contexts.\n\nThe registration picture is broad on business scale. The slim record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so the classification is not reserved in the record for only one size of enterprise. A smaller local manufacturer and a larger industrial setup are both inside the stated scale envelope, provided the activity they register is truly the making of these rubber health-support goods. The editorial point is scope discipline: the code follows the manufactured article, not the later user of the article.\n\nNationally, the foreign-investment line is straightforward. The PMA status is TERBUKA, and the foreign-ownership ceiling in the record is 100%, with the source stated as Perpres 10/2021, 49/2021. That means the national record supplied here does not show a foreign-share cap below full ownership. There is no basis in the record to add a licensing threshold, a minimum capital figure, a special permit, or a timing condition; those facts are simply not present in the supplied data.\n\nThe Bali reading is also clean, but it must be stated carefully. The record does not block this code for PMA registration in Bali: l4_bali_blocked is false and the Bali status is OK_or_HIGHER_RISK. The reason is given in the record as: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the moratorium rule supplied here says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This activity is therefore not presented as a Bali-blocked code in the record. The honest national-vs-Bali picture is aligned rather than contradictory: foreign-open nationally, and not blocked by the Bali moratorium data supplied.",
+    "pullQuote": "The honest national-vs-Bali picture is aligned rather than contradictory: foreign-open nationally, and not blocked by the Bali moratorium data supplied.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

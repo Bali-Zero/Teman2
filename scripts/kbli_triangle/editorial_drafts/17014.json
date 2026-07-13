@@ -1,0 +1,27 @@
+{
+  "code": "17014",
+  "editorial": {
+    "headline": "Specialty Paper Manufacturing, Open Nationally and Not Blocked in Bali",
+    "standfirst": "KBLI 17014 covers specialty papers and paper finishing, open across all business scales with a 100% national foreign-ownership ceiling.",
+    "body": "KBLI 17014 is the activity code for manufacturing specialty paper. The record describes a focused industrial field: papers made for specific technical or functional uses, including cardiopan, litmus paper, metallic paper, acid-proof paper, pattern paper, coated paper, and celopan paper. It also covers paper-working processes that add a surface or functional layer by coating, glazing, gumming, or laminating. In plain English, this is not general paper trading or a broad stationery category; it is the making and finishing of specialised paper products.\n\nThe registration profile is unusually broad on scale. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** businesses, so the code is not framed only for large industrial players. A small producer working on a narrow specialty line and a larger manufacturer operating at industrial scale both sit inside the same activity description, provided the work remains within the described specialty-paper and finishing scope.\n\nNationally, the foreign-investment picture is clean. The record marks the PMA status as **TERBUKA** and gives a **100%** maximum foreign-ownership figure, sourced to **Perpres 10/2021, 49/2021**. That means the national record does not impose a foreign-share ceiling below full ownership for this activity. The important editorial point is not to overcomplicate that: for the national PMA reading, the code is open, and the ownership figure in the record is full foreign ownership.\n\nBali does not change that into a blocked case on the record provided. The Bali status is **OK_or_HIGHER_RISK**, and `l4_bali_blocked` is false. The stated reason is: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is expressly marked as not blocked by that rule. So the honest national-versus-Bali conclusion is straightforward: KBLI 17014 is nationally open to PMA up to 100%, and the Bali record does not block it under the moratorium.",
+    "pullQuote": "The honest conclusion is straightforward: KBLI 17014 is nationally open to PMA up to 100%, and the Bali record does not block it under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

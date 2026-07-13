@@ -23,6 +23,7 @@ def include_routers(api: FastAPI) -> None:
     from backend.app.modules.identity.router import router as identity_router
     from backend.app.modules.knowledge.router import router as knowledge_router
     from backend.app.routers import (
+        accounting,  # [P0] cash-control workflow for Asya (reconciliation + cashout)
         admin_conversation_cleanup,
         admin_logs,
         admin_practice_auto_create,
@@ -53,7 +54,6 @@ def include_routers(api: FastAPI) -> None:
         crm_enhanced_documents,
         crm_guardian_drive,
         crm_intelligence,
-        accounting,  # [P0] cash-control workflow for Asya (reconciliation + cashout)
         crm_interactions,
         crm_notifications,
         crm_portal_integration,

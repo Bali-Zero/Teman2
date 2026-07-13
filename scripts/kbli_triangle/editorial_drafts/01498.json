@@ -1,0 +1,27 @@
+{
+  "code": "01498",
+  "editorial": {
+    "headline": "Wildlife Breeding, Open Nationally and Usable in Bali With Care",
+    "standfirst": "KBLI 01498 covers conservation-oriented captive breeding of wild animals, nationally open to full foreign ownership and not blocked by Bali’s PMA moratorium.",
+    "body": "KBLI 01498 is a conservation-centred activity code for the captive breeding, rearing and propagation of wildlife. Its scope covers mammals, reptiles other than crocodiles and alligators, birds, insects and other wild animal types, with the purpose framed around preservation rather than ordinary livestock production. The record also refers to breeding of wild plant and animal species, but the core title is clear: this is the business classification for wildlife captivity and propagation.\n\nThe code is available across the full business-size spectrum recorded in OSS: Mikro, Kecil, Menengah and Besar. That matters because the activity is not presented as a narrow large-company category only; it can sit at every registered scale listed in the record. At the same time, the substance of the activity is specialised. A founder using this code is not simply registering a general animal business. The registered activity is tied to the controlled breeding or raising of wild species for conservation purposes, so the wording should be treated with discipline when describing the company’s actual operations.\n\nNationally, the investment position is unusually clean. The slim record marks PMA status as TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021 and 49/2021. In plain English, the activity is open to foreign investment at the national level, and the record does not impose a reduced foreign-share cap. A foreign-owned company can therefore read the national PMA position as fully open, based on the fields provided here.\n\nThe Bali picture is also workable, but it should be stated precisely. Bali’s moratorium blocks all Low and Medium-Low risk KBLI for PMA registration across the province, permanently, under the listed governor-letter source. This code is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the recorded reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is not that Bali adds no friction; it is that the Bali moratorium, as captured in this record, does not close the door to PMA registration for this activity today.",
+    "pullQuote": "The honest conclusion is not that Bali adds no friction; it is that the Bali moratorium, as captured in this record, does not close the door to PMA registration for this activity today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

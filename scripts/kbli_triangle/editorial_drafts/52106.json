@@ -1,0 +1,27 @@
+{
+  "code": "52106",
+  "editorial": {
+    "headline": "Ionising-Radiation Storage Is Open—Nationally and in Bali",
+    "standfirst": "A specialist storage activity that is fully open to foreign ownership nationally and not blocked for PMA registration in Bali.",
+    "body": "Storage is the core of this activity, but the scope is deliberately specific: it concerns ionising-radiation sources—radioactive substances and ionising-radiation generators. It covers facilities that store those sources, including operations run through a warehouse-receipt system, refrigerated warehousing, storage in a free-trade zone, and the storage of physical commodities comprising those sources. These are not loose examples around a general warehouse description; each sits within the same specialist storage activity. Together, they define a facility category centred on holding ionising-radiation sources in clearly identified operating settings.\n\nThe classification is open to Kecil, Menengah and Besar enterprises. That range matters because it places the same stated activity across small, medium and large business scales, rather than reserving it in the record to one end of the market. A founder should read the scale field as a direct statement of who may enter this activity: businesses operating at any of the three listed scales. The commercial form may vary by scale, but the defining subject remains the operation of storage for ionising-radiation sources.\n\nAt the national level, PMA status remains TERBUKA, with a foreign-ownership ceiling of 100%. For a foreign investor, that is a clear national position: full foreign ownership is open for this activity. The distinction matters because national openness can still be tested by a separate Bali assessment. Here, the national position is not merely a broad signal; it is the starting point for a Bali reading that remains consistent with it.\n\nBali does not alter that conclusion. The Bali assessment is marked OK_or_HIGHER_RISK, and the activity is not flagged as blocked. At the Besar scale, OSS records its risk as Menengah-Tinggi/Tinggi. Bali’s permanent, island-wide PMA moratorium applies to Low and Medium-Low risk activities; this activity is explicitly not blocked by it. That is the decisive island-level fact. The national opening carries through to Bali because the activity is not blocked by the provincial PMA moratorium. A foreign investor can therefore read the record without a concealed Bali contradiction: it is open nationally at a 100% foreign-ownership ceiling and remains unblocked for PMA registration in Bali.",
+    "pullQuote": "The national opening carries through to Bali because the activity is not blocked by the provincial PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

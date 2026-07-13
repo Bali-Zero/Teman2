@@ -1,0 +1,27 @@
+{
+  "code": "66152",
+  "editorial": {
+    "headline": "Commodity Futures Advisory: Open Nationally, Clear of Bali’s PMA Block",
+    "standfirst": "This code covers paid advice on trading commodities through futures and derivative contracts, with a national foreign-ownership ceiling of 100% and no Bali moratorium block.",
+    "body": "Commodity futures advisory is the business of giving paid advice to other parties on buying and selling commodities through futures contracts, sharia derivative contracts, and other derivative contracts. Its scope also includes those acting as futures-adviser representatives. The defining activity is advisory work: helping another party navigate transactions based on the contracts named in the classification, in return for compensation.\n\nThe activity is open to Micro, Small, Medium and Large enterprises. That breadth matters because the code is not written as a large-company-only category: the same defined advisory activity can be registered across the full range of business scales stated in the record. The commercial focus, however, remains specific. It concerns advice on commodity trading conducted through futures and derivative instruments, rather than a general description of commodity business.\n\nNationally, the code is marked open to foreign investment, with a maximum foreign ownership level of 100%. In plain terms, the record places no foreign-share cap below full ownership at the national level. The stated basis for that position is Perpres 10/2021, 49/2021.\n\nBali’s position is also materially clear. This activity is not blocked for PMA registration by the province-wide rule that blocks Low and Medium-Low risk KBLI activities for PMA. The record identifies the OSS risk at the Large scale as Medium-High/High, and expressly says that this keeps the activity outside that moratorium block. Bali’s status is therefore recorded as OK_or_HIGHER_RISK: not a prohibition, but a classification that should be read alongside the activity’s stated risk position at the Large scale.",
+    "pullQuote": "For this advisory activity, Bali does not apply its PMA moratorium block because the recorded Large-scale risk is Medium-High/High.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

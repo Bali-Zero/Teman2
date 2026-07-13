@@ -1,0 +1,27 @@
+{
+  "code": "13922",
+  "editorial": {
+    "headline": "Textile Fillings, From Pillows to Pouffes",
+    "standfirst": "KBLI 13922 covers finished textile goods with filling materials, and this record treats it as nationally open to foreign ownership and not blocked for Bali PMA registration.",
+    "body": "KBLI 13922 sits in a very practical corner of textile manufacturing: finished textile goods built around a filling material. The record names kapok, dacron, animal feathers, and similar materials, then gives the shape of the activity through its examples: sleeping pillows and bolsters, seat pads and chair backs that are not the main part of furniture, down blankets, cushions and throw pillows, sleeping bags, bed covers, quilts, and pouffes. It also reaches into more specialised production, including the textile parts of electric pillows and pillows or bolsters made to resemble dolls or use toy characters.\n\nThe commercial point is that this is not a retail category and not a general furniture category. It is manufacturing, focused on textile articles whose value comes from fabric, filling, finishing, and form. The products can be domestic, decorative, bedding-related, travel-oriented, or character-based, but the common thread is the making of finished textile goods with filling inside them. That scope is broad enough for a small cushion workshop and precise enough for a larger bedding or soft-goods manufacturer.\n\nOn scale, the record is unusually clear: Mikro, Kecil, Menengah, and Besar are all open. That means the activity is not described here as belonging only to a large industrial operator or only to a household-scale maker. A registrant could sit at any of the listed scales, provided the actual business activity remains within the stated manufacturing scope: filled textile goods such as pillows, bolsters, cushions, quilts, bed covers, sleeping bags, pouffes, and the specified related textile components.\n\nThe national-versus-Bali picture is also clean. Nationally, the PMA status is TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. Bali does not add a separate foreign-ownership percentage in this record. Instead, the Bali-side question is moratorium risk: the province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this record marks the Bali status as OK_or_HIGHER_RISK. Its reason is specific: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. In plain terms, this record does not treat KBLI 13922 as blocked for PMA registration in Bali.",
+    "pullQuote": "This record treats KBLI 13922 as a genuinely open textile-manufacturing activity, nationally open to 100% foreign ownership and not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

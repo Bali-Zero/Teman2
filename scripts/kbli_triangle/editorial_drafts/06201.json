@@ -1,0 +1,27 @@
+{
+  "code": "06201",
+  "editorial": {
+    "headline": "Natural Gas Mining With a Clean Bali Registration Path",
+    "standfirst": "KBLI 06201 covers the integrated search, drilling, mining, separation and storage of natural gas, with full foreign ownership nationally and no Bali moratorium block.",
+    "body": "KBLI 06201 is a natural-gas mining classification, not a general energy trading label or a broad industrial-gas bucket. Its scope is built around the upstream physical chain: searching for gas deposits, drilling, mining, separating the gas, and holding it in storage as part of one connected activity. The record expressly includes natural hydrogen and other forms of natural gas, and it also brings coalbed methane into the same activity frame. In plain English, this is the code for operators whose business is finding and extracting natural gas resources, then handling the immediate separation and containment that belong to that extraction sequence.\n\nThe scope also reaches into petroleum-and-gas work areas where the activity is exploration, exploitation, and carbon capture, storage, or utilisation. It can include temporary gas seismic survey activity when the survey is not permanently established and lasts less than 30 days. That matters because the code is not written only for the moment of production; it can also sit at the investigative and field-development stages of a gas project. The common thread is still the same: the activity must remain tied to natural gas resources and the upstream operational chain described in the record.\n\nOn scale, the code is open across Besar, Mikro, Kecil, and Menengah. That is unusually broad for a technically heavy activity, but the editorial point is not that every scale looks commercially realistic; it is that the slim record lists all four as open. For foreign investment, the national status is TERBUKA, with pma_max_asing at 100. Stated plainly, the record allows full foreign ownership nationally under the cited PMA basis. There is no foreign-share cap below full ownership in the data provided here, so a foreign-owned setup is not constrained by a minority ceiling on the face of this record.\n\nThe Bali picture is also clean, but for a specific reason. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This code is not marked as blocked in Bali: l4_bali_blocked is false, and the reason given is that the OSS risk at Besar scale is Menengah-Tinggi/Tinggi, which means it is not caught by that moratorium. The honest conclusion is therefore not a hidden warning; it is that KBLI 06201 is foreign-open nationally and not blocked for PMA registration in Bali under the supplied Bali screening record.",
+    "pullQuote": "The honest conclusion is therefore not a hidden warning; it is that KBLI 06201 is foreign-open nationally and not blocked for PMA registration in Bali under the supplied Bali screening record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Besar, Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

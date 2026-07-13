@@ -1,0 +1,27 @@
+{
+  "code": "27201",
+  "editorial": {
+    "headline": "Battery Manufacturing With a Clear National and Bali Path",
+    "standfirst": "KBLI 27201 covers battery and portable energy-storage manufacturing, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 27201 is the industrial home for making batteries, cells, and battery-based portable energy-storage products. Its scope is broad but still specific: primary electric cells and batteries, alkaline batteries, mercury batteries, and derivative cells made with materials such as manganese dioxide, mercury dioxide, or silver oxide. It also covers lead-acid batteries, nickel-cadmium batteries, nickel-metal hydride batteries, lithium batteries, dry cells, and wet cells, including batteries for phones and laptops.\n\nThe record also brings newer portable storage into the same activity. Manufacturing battery energy storage systems for portable devices, including power banks for phones, tablets, and similar devices, belongs here. So does making batteries that use cathodes produced by the manufacturer itself. In plain English, this is not merely retail packaging or trading of battery products; it is the industrial activity of producing the battery, cell, or portable battery-storage system itself.\n\nRegistration is open across the stated business scales: Mikro, Kecil, Menengah, and Besar. That matters because the activity is not framed as only a large-factory category in the record, even though large-scale operations are part of the pathway. A founder reading this should treat scale as a registration dimension, not as a change in the underlying activity. The same code is anchored in manufacturing batteries and related cells, while the business scale determines how the setup is positioned inside OSS.\n\nThe foreign-investment picture is unusually clean. Nationally, the PMA status is TERBUKA, with pma_max_asing at 100%, sourced to Perpres 10/2021, 49/2021. Bali does not add a separate ownership ceiling in this record. Instead, the Bali status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason given is direct: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule still matters in the background because Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. But this record does not mark KBLI 27201 as blocked in Bali. For this activity, the honest reading is therefore straightforward: a foreign-owned company may use this battery-manufacturing code nationally, and the Bali record does not block PMA registration under the stated moratorium logic.",
+    "pullQuote": "The honest reading is straightforward: the record marks battery manufacturing as nationally foreign-open and not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

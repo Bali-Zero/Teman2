@@ -1,0 +1,27 @@
+{
+  "code": "10411",
+  "editorial": {
+    "headline": "Crude Vegetable Oils Before the Refinery Stage",
+    "standfirst": "This activity covers non-coconut, non-palm vegetable oils made as crude inputs, with national foreign ownership open and no Bali PMA moratorium block in the record.",
+    "body": "This activity is about the first industrial step in turning plant materials into crude vegetable oil. The record describes the processing of non-coconut and non-palm vegetable inputs into crude oil, including olive oil, soybean oil, peanut oil, sunflower-seed oil, cottonseed oil, castor oil, mustard-seed oil, and linseed oil. The important word is **crude**: these are oils that still need further processing, and the record frames them as products normally used as inputs in other activities rather than as finished consumer goods.\n\nThat makes the code useful for founders whose planned business sits at the raw-processing end of the vegetable-oil chain. It is not described as retailing, branding, distribution, food service, or final packaged oil. Its center of gravity is industrial conversion: taking specified vegetable materials and producing crude oil or fat that another activity may later refine, formulate, package, or otherwise transform. A clean registration should therefore match that upstream scope, because the record gives this activity its identity through processing, input use, and the fact that the product remains unfinished.\n\nOn business scale, the record is unusually broad. It is open to **Mikro**, **Kecil**, **Menengah**, and **Besar**, so the activity is not limited in the record to one size of operator. Nationally, the PMA status is **TERBUKA**, and the foreign-ownership ceiling is recorded as **100%**. Put plainly, the national record treats this activity as foreign-open up to full foreign ownership. There is no smaller ownership cap in the slim record, and there is no basis here to invent one.\n\nThe Bali reading is also clear, but it should be stated carefully. The Bali status is **OK_or_HIGHER_RISK**, and the record says: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The moratorium rule in the record blocks Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not marked as blocked. The honest national-vs-Bali picture, then, is not a contradiction: nationally it is foreign-open, and in Bali the record does not apply the PMA moratorium block. For a foreign-owned setup, the strength of this code is that its permitted reading stays aligned across the national ownership field and the Bali moratorium field.",
+    "pullQuote": "The honest national-vs-Bali picture, then, is not a contradiction: nationally it is foreign-open, and in Bali the record does not apply the PMA moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

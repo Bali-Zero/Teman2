@@ -1,0 +1,27 @@
+{
+  "code": "01469",
+  "editorial": {
+    "headline": "Other Poultry Breeding, Open Nationally and Not Blocked in Bali",
+    "standfirst": "KBLI 01469 covers the cultivation and breeding of turkeys, geese, guinea fowl and other poultry, with full foreign ownership nationally and no Bali moratorium block in this record.",
+    "body": "**KBLI 01469 is about other poultry as a productive activity, not a label for every animal-related venture.** Its scope covers the cultivation of poultry such as turkey, goose and guinea fowl, with outputs that include meat birds, laying birds and eggs for consumption. The same scope also includes breeding activity for those poultry, where the output is breeding stock or hatching eggs. The record therefore places two linked functions inside one activity: raising these birds for production, and maintaining the breeding line that produces the next flock.\n\nThat breadth matters for registration. The code is open across the stated business scales: Mikro, Kecil, Menengah and Besar. In practical classification terms, the decisive question is not whether the operator is small or large, but whether the declared activity is genuinely the cultivation or breeding of the other poultry described in the scope. A smaller producer of consumption eggs and a larger operation producing meat birds can both sit within the same activity frame if the underlying activity remains inside this record. The scale field is broad, but the activity boundary is still specific.\n\nNationally, the foreign-investment signal is clean. The PMA status is TERBUKA, and the recorded foreign-ownership ceiling is 100. Read plainly, this is not a capped line: the national data supplied here allows PMA participation up to full foreign ownership. There is no basis in the slim record to add a hidden stake limit, minimum capital figure, extra test or timing condition. Beyond the fields supplied, the editorial discipline is to stop where the record stops.\n\nBali needs its own reading because the provincial moratorium is not the same as the national PMA status. The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, permanently. For this activity, however, l4_bali_blocked is false. The Bali status is OK_or_HIGHER_RISK, and the stated reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by that moratorium. For this record, the honest national-vs-Bali picture is aligned: nationally open to PMA up to 100%, and in Bali not blocked by the moratorium described here.",
+    "pullQuote": "For this record, the honest national-vs-Bali picture is aligned: nationally open to PMA up to 100%, and in Bali not blocked by the moratorium described here.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

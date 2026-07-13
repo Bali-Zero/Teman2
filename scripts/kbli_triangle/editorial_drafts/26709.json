@@ -1,0 +1,27 @@
+{
+  "code": "26709",
+  "editorial": {
+    "headline": "Precision Optics Manufacturing with a Clear Bali Reading",
+    "standfirst": "This activity covers specialist photographic, laser, projection, and optical-instrument manufacturing, nationally open to PMA up to 100% and not blocked for Bali registration under the record's risk note.",
+    "body": "KBLI 26709 belongs to the manufacturing side of precision seeing, projecting, measuring, and unrecorded media. The record describes the making of photographic equipment and optical instruments other than eyeglasses, including parts that are not classified elsewhere in its scope language. Its center of gravity is technical hardware: monocular and astronomical telescopes, elbow telescopes, periscopes, optical components, spectroscopes and spectrographic equipment, optical microscopes, binocular telescopes, optical mirrors, magnifying equipment, and precision optical apparatus for mechanical use. It also includes optical comparators, optical weapon-sighting equipment, positioning instruments, and optical measuring or inspection equipment such as fire-control equipment and rangefinders.\n\nThe scope then widens from instruments to image and light-output equipment. Motion picture and slide projectors, overhead transparency projectors, laser equipment, unrecorded audio and video magnetic tape, and unrecorded optical discs all sit inside the same activity description. Read plainly, this is a production code for enterprises that manufacture precision optical, projection, laser, photographic, or unrecorded-media products. It is not written as a service activity; the operative verb throughout the record is manufacture, and the examples stay close to physical equipment, instruments, parts, and media.\n\nOn scale, the record is broad rather than selective. Mikro, Kecil, Menengah, and Besar are all open, so the activity can be read across the full scale ladder given in the slim record: from small makers of defined optical equipment to larger manufacturers of the same category of goods. That breadth does not loosen the scope. The clean registration narrative stays close to the named products and parts: optical instruments, photographic equipment, laser equipment, projectors, measurement and inspection optics, and unrecorded media. The more the business description drifts away from making those goods, the less it resembles the activity captured here.\n\nThe national PMA position is clean. The record marks the activity as TERBUKA and gives pma_max_asing as 100; in investor language, the foreign-ownership ceiling in the record is 100%. Bali does not add a second percentage in this record. Its l4_bali_status is OK_or_HIGHER_RISK, l4_bali_blocked is false, and the reason is `OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium`. The moratorium rule still matters because the record says Bali province blocks all Low + Medium-Low risk KBLI for PMA, island-wide and permanent. But for this activity, the Bali line is not a stop sign. The honest reading is straightforward: nationally open, fully foreign-ownable up to the record's ceiling, and not blocked in Bali under the risk note provided.",
+    "pullQuote": "The honest reading is straightforward: nationally open, fully foreign-ownable up to the record's ceiling, and not blocked in Bali under the risk note provided.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

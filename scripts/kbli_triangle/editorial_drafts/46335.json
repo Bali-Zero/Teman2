@@ -1,0 +1,27 @@
+{
+  "code": "46335",
+  "editorial": {
+    "headline": "Tobacco Wholesale: Open Nationally, Closed to PMA Registration in Bali",
+    "standfirst": "Across tobacco products, vapes and smoking accessories, this wholesale activity is open to PMA nationally yet blocked from PMA registration in Bali.",
+    "body": "KBLI 46335 covers wholesale trade in processed tobacco products and cigarette flavourings, as well as smoking products and accessories. Its stated catalogue is concrete: kretek and white cigarettes; electronic cigarettes or vapes; lighters, pipes, cigarette-rolling equipment and e-liquid. In plain terms, it is the wholesale classification for a defined mix of tobacco-derived goods and the products used with them. The scope does not reduce the activity to a single kind of cigarette or a single smoking device; it carries both established tobacco products and the listed electronic format and consumables.\n\nThe code is open across Micro, Small, Medium and Large business scales. That breadth fits the way the activity is framed: a wholesale undertaking may be organised around processed tobacco, cigarette flavourings, smoking products or the listed accessories, provided it stays within that stated mix. The record is useful precisely because it names what sits inside the activity rather than leaving the description at the general word “tobacco”. A business using this code should therefore read its commercial identity through the items actually named in the scope—cigarettes, vapes, lighters, pipes, rolling tools and e-liquid—rather than treating the title as a loose umbrella.\n\nAt the national level, the PMA position is TERBUKA, with a foreign-ownership ceiling of 100%. The cited basis is Perpres 10/2021, 49/2021. This is a national ownership result, not a promise about every provincial registration context: it says the code is nationally open to PMA and records a full foreign-ownership ceiling. For a founder, the distinction is important. The national field answers the ownership question for this activity at that level; it does not erase a separate Bali restriction recorded for the very same activity.\n\nIn Bali, the answer for PMA registration today is clear: a foreigner cannot register this activity there. The Bali classification is Blocked (risk class) because, at the Large scale, the OSS risk is Low or Medium-Low across every scope, bringing the activity within the Bali moratorium dated May 13, 2026. The provincial rule blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. It is a location-specific block on PMA registration in Bali, even though the national PMA position remains open.",
+    "pullQuote": "It is a location-specific block on PMA registration in Bali, even though the national PMA position remains open.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

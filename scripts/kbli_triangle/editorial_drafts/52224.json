@@ -1,0 +1,27 @@
+{
+  "code": "52224",
+  "editorial": {
+    "headline": "The Working Port Behind the Fishing Fleet",
+    "standfirst": "Fishing-port operations are open to foreign investment nationwide and remain outside Bali’s PMA moratorium, despite higher risk at large scale.",
+    "body": "Fishing-port activity is the operational backbone where fisheries water transport meets shore. It covers providing port services to fishing vessels: operating fishing-port facilities and wharves, arranging berthing and anchorage, pilotage, and unloading fish. The defined scope also includes inspecting cargo in holds and/or containers with ionising-radiation sources. This is a port-service activity tied specifically to fishing vessels and fisheries transport, rather than a broad label for every waterfront operation.\n\nThe activity is open at Mikro, Kecil, Menengah, and Besar scale. Its scope is defined by the service being provided: operating fishing-port facilities or wharves, serving the arrival and departure of fishing vessels, or handling the unloading of fish. It does not extend to general cargo loading and unloading, nor to marina-pier operations for tourism or recreation. The distinction matters because the code is built around the working requirements of a fishing port: vessels, berths, pilotage, port infrastructure, and fish landing services.\n\nNationally, the investment position is direct. The activity is TERBUKA to PMA, with foreign ownership permitted up to 100%. There is therefore no national foreign-share cap below full ownership in the record. The stated national basis is Perpres 10/2021, 49/2021. For a foreign-owned enterprise considering this activity, the national position is not conditional in the data provided: the activity is open, across the stated business scales, and may be wholly foreign-owned.\n\nBali does not reverse that conclusion. The Bali status is OK_or_HIGHER_RISK, and the activity is not blocked by the provincial PMA moratorium. At Besar scale, its OSS risk is Menengah-Tinggi/Tinggi; the record expressly notes that this leaves it outside the moratorium’s block. So a foreigner may register this activity in Bali today: its national openness does not disappear at the provincial level. The important qualification is one of risk classification at the large scale, not a Bali-specific foreign-ownership restriction or partnership condition.",
+    "pullQuote": "So a foreigner may register this activity in Bali today: its national openness does not disappear at the provincial level.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

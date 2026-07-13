@@ -1,0 +1,27 @@
+{
+  "code": "10291",
+  "editorial": {
+    "headline": "Salted and Dried Aquatic Products, Open Nationally but Blocked in Bali",
+    "standfirst": "This activity covers salting or drying crustaceans, mollusks, echinoderms, and other aquatic biota, with full national PMA openness but a Bali registration block.",
+    "body": "KBLI 10291 is about a specific, traditional form of aquatic-product preservation: processing crustaceans, mollusks, echinoderms, and other aquatic biota by salting or drying. The record’s scope points to products such as salted shrimp, salted squid, ebi, salted jellyfish, salted cuttlefish, dried sea cucumber, and dried cuttlefish. The centre of gravity is not fishing, trading, cold storage, or restaurant service. It is the transformation and preservation of aquatic material through salt or drying into stable products.\n\nFor operators, the scale picture is unusually broad. The activity is open to **Mikro, Kecil, Menengah, and Besar** scales, so the code can describe anything from a very small producer to a larger processing operation, provided the activity remains within the recorded scope. That breadth matters because the same activity can appear artisanal in one context and industrial in another, yet the KBLI record still frames it by the processing method and product category: salted or dried aquatic biota.\n\nNationally, the PMA reading is clean. The record marks the activity as **TERBUKA**, with **pma_max_asing** at **100%**, sourced to **Perpres 10/2021, 49/2021**. In plain English, the national classification does not itself cap foreign ownership below full ownership for this activity. A foreign-owned company looking only at the national PMA line would see an activity that is open, not conditional or partially capped.\n\nBali is the decisive complication. The same record marks **l4_bali_blocked** as true and gives the reason: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule in the record says Bali province blocks **ALL Low + Medium-Low risk KBLI for PMA**, island-wide and permanent. So the honest reading is this: although KBLI 10291 is nationally open to 100% foreign ownership, a foreigner cannot register this activity for PMA in Bali today under the Bali-side status recorded here.",
+    "pullQuote": "The honest reading is that KBLI 10291 is nationally open to 100% foreign ownership, but blocked for PMA registration in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

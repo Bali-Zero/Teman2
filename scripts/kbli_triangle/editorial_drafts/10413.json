@@ -1,0 +1,27 @@
+{
+  "code": "10413",
+  "editorial": {
+    "headline": "Crude Animal Fats, Clearly Open Nationally and in Bali",
+    "standfirst": "KBLI 10413 covers the industrial processing of non-fish animal material into crude, inedible fats and oils, with full-scale access and a clean Bali reading.",
+    "body": "KBLI 10413 is a narrow industrial classification, and its precision matters. The activity is the processing of animal materials other than fish into crude oils and inedible animal fats. The record’s examples are tallow and oil from marine mammals, which gives the code its practical shape: this is not a finished-food category, and it is not a general trading label. It is a production activity for crude, non-edible animal fat outputs, defined by the source material and by the fact that the resulting fats and oils are not for eating.\n\nThat makes the registration logic unusually clean. The activity is open to Mikro, Kecil, Menengah, and Besar scale operators, so the slim record does not confine it to a particular business size. A founder reading this code should understand it as an industrial processing lane that can be registered across the full scale ladder, from micro through large. The classification should still be used with discipline: the scope points to processing, not every downstream use of animal fat, and not fish-based oil activity. The strongest reading is the plain one: non-fish animal inputs, crude oil or inedible fat outputs.\n\nNationally, the foreign-investment picture is also direct. The record marks PMA status as TERBUKA, with `pma_max_asing` at 100 and the source given as Perpres 10/2021, 49/2021. In business English, that means the national record treats this activity as open to foreign ownership up to 100%. There is no separate national caveat in the slim record, and no lower foreign-share ceiling to explain. The right conclusion is therefore not cautious by habit, but factual: on the national PMA field, this code is open.\n\nBali does not add a hidden percentage or a separate ownership ceiling in this record. Its status is `OK_or_HIGHER_RISK`, and `l4_bali_blocked` is false. The reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That is the honest Bali-side substance. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this code is not blocked by that rule on the record provided. For KBLI 10413, the national and Bali readings align: foreign registration is open nationally, and the Bali moratorium does not block it.",
+    "pullQuote": "For KBLI 10413, the national and Bali readings align: foreign registration is open nationally, and the Bali moratorium does not block it.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

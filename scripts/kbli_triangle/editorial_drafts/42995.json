@@ -1,0 +1,27 @@
+{
+  "code": "42995",
+  "editorial": {
+    "headline": "Building Indonesia’s Processing Facilities: KBLI 42995",
+    "standfirst": "KBLI 42995 covers the construction, upkeep and rebuilding of processing-facility civil works, open nationally to foreign investment and not blocked by Bali’s moratorium.",
+    "body": "KBLI 42995 is the civil-construction activity behind processing facilities: the work of building, maintaining or rebuilding the physical infrastructure in which industrial processing takes place. Its scope reaches facilities for basic chemicals and fertiliser, plastics and rubber, agrochemicals, pharmaceuticals and petrochemicals, as well as microelectronics, silicon chips and wafers, textiles and clothing, iron and steel, and other processing plants. Construction of processing facilities using ionising-radiation sources sits outside this activity’s stated scope.\n\nThis is a code for the construction side of an industrial facility, rather than for the manufacture of the products made within it. The emphasis is on the civil works that allow a processing plant to be established, maintained or reconstructed across a broad industrial field. The record makes the activity available at every listed business scale: Mikro, Kecil, Menengah and Besar. That breadth matters because the code is framed around the nature of the construction work, not a single processing industry or a single size of operator.\n\nAt the national level, the position is straightforward: the activity is marked TERBUKA for PMA, with a foreign-ownership ceiling of 100%. In practical terms, the record permits full foreign ownership nationally for this activity. That national position is sourced to Perpres 10/2021, 49/2021, and it should be read as the ownership setting for this specific construction activity.\n\nBali’s position is also clear, but for a different reason. Bali permanently blocks PMA registration for Low and Medium-Low risk KBLI across the province. This activity is not blocked by that moratorium. The record identifies the OSS risk at the Besar scale as Menengah-Tinggi/Tinggi, placing it beyond the moratorium’s stated Low and Medium-Low trigger. A foreign investor can therefore register this activity in Bali today according to the record; the relevant Bali reading is not an exception to the national 100% ceiling, but a confirmation that the provincial moratorium does not block it.",
+    "pullQuote": "A foreign investor can register this activity in Bali today because the provincial moratorium does not block it.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Besar, Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "15114",
+  "editorial": {
+    "headline": "Composition Leather, Read as Manufacturing Rather Than Imitation",
+    "standfirst": "KBLI 15114 covers bonded composition leather made from animal-leather fragments, open nationally to PMA ownership and not blocked for Bali registration in this record.",
+    "body": "KBLI 15114 is a narrow manufacturing classification: the making of composition leather from pieces or crumbs of animal leather that are bonded back together. The important word is **composition**. This is not a general label for every material that looks like leather. The record draws the activity around animal-leather remnants and the industrial process of reconstituting them into a usable leather-based material.\n\nThat boundary matters because the classification is material-led. A founder using this code should be describing an operation whose main input is animal-leather offcut, fragment, or remnant, and whose output is composition leather. The slim record separates that from imitation leather whose main material is textile, rubber, or plastic. In plain English, this is a manufacturing code for bonded leather composition, not a catch-all for synthetic leather goods or downstream fashion production.\n\nThe registration profile is broad on business scale. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** scale operators, so it is not reserved only for large factories. At the national PMA level, the code is marked **TERBUKA**, with a foreign-ownership ceiling of **100%** under the stated PMA source. That means the national reading is clean: the record does not place a reduced foreign-share cap on this activity.\n\nThe Bali picture is also unusually clear. The record includes the province-wide moratorium rule: Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But this activity is not marked as blocked in Bali. Its Bali status is **OK_or_HIGHER_RISK**, and the reason is explicit: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. So the honest conclusion is not that Bali has a separate ownership cap, quota, or local-partner condition. The record says the national PMA ceiling is 100%, and for Bali it says this code is not blocked by the moratorium because the relevant risk status sits above the blocked Low and Medium-Low band.",
+    "pullQuote": "The honest conclusion is not that Bali has a separate ownership cap, quota, or local-partner condition.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

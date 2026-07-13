@@ -1,0 +1,27 @@
+{
+  "code": "49221",
+  "editorial": {
+    "headline": "The Long Route: Interprovincial Passenger Transport",
+    "standfirst": "A route-bound passenger-transport activity that may cross more than one province, foreign-open nationally and not blocked by Bali’s PMA moratorium.",
+    "body": "This activity is about passenger transport between cities, not merely travel that happens to be long. The journey moves from one city to another, crosses regency or municipal boundaries, and passes through more than one province. It is also tied to a route. Those elements give the definition its shape: a route-bound interprovincial service whose geography crosses both local and provincial lines. More exactly, the scope brings together city-to-city passenger transport, the listed boundary crossings, and a route attachment. It also reaches pioneering interprovincial services, typically for remote, outermost and disadvantaged areas that are not yet commercially profitable to serve.\n\nThe listed registration range runs from Mikro and Kecil through Menengah to Besar. That breadth does not alter the activity’s core description. At each of those scales, the record still concerns passenger movement between cities across the stated boundaries, on a route. It also retains the pioneering-service inclusion, rather than treating it as a separate activity. The scale field therefore answers who may register: businesses at every one of the four listed scales.\n\nNationally, the PMA position is TERBUKA, with a maximum foreign ownership level of 100%. Put plainly, this activity may be wholly foreign owned at national level. That national result is decisive on the ownership ceiling, but it is not a substitute for looking at the Bali status in its own terms. The record supplies both, and they need to be read together: the national foreign-ownership ceiling on one hand, and the provincial moratorium result on the other.\n\nBali does not block PMA registration for this activity under its island-wide, permanent moratorium. The rule blocks PMA registration for low- and medium-low-risk activities; this record says the OSS risk at the Besar scale is Medium-High/High. Its Bali status is therefore recorded as OK or higher risk, and the stated reason is that it is not blocked by the moratorium. There is no separate Bali foreign-ownership percentage or partnership condition given here. The careful conclusion is simple: 100% is the national ceiling, and Bali’s moratorium does not prevent PMA registration for this activity.",
+    "pullQuote": "This activity may be wholly foreign owned nationally, and Bali’s moratorium does not prevent its PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

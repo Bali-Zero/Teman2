@@ -51,9 +51,7 @@ async function seedSession(
  * Any /api/** call returns a benign 200 so the app never force-logs-out on a
  * mock token (this mirrors how auth/login.spec.ts mocks /api/auth/login).
  */
-async function stubApi(
-  page: import("@playwright/test").Page,
-): Promise<void> {
+async function stubApi(page: import("@playwright/test").Page): Promise<void> {
   // Match both relative (/api/...) and absolute (https://<host>/api/...) calls
   // so a 401 from the real backend never fires the global token-expiry logout,
   // which would mask the gate we are testing.
@@ -82,10 +80,9 @@ test.describe("admin RBAC gate", () => {
     // OFF the admin surface. The gate's target is /chat; in a live build a global
     // token-expiry interceptor may reach /login first — either way the guarantee
     // that MUST hold is "non-admin never rests on /admin/system".
-    await page.waitForURL(
-      (url) => !url.pathname.endsWith("/admin/system"),
-      { timeout: 15000 },
-    );
+    await page.waitForURL((url) => !url.pathname.endsWith("/admin/system"), {
+      timeout: 15000,
+    });
     await expect(page).not.toHaveURL(/\/admin\/system$/);
   });
 
@@ -108,7 +105,9 @@ test.describe("admin RBAC gate", () => {
     await seedSession(page, "founder");
     await page.goto(ADMIN_SURFACE);
     // Let the gate's useEffect run.
-    await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
+    await page
+      .waitForLoadState("networkidle", { timeout: 15000 })
+      .catch(() => {});
     // The DISCRIMINATING property vs a non-admin: the admin gate's
     // `!isAdmin() → push('/chat')` branch must NOT fire for an admin. We assert
     // the admin is not on /chat (the non-admin bounce). Whether they sit on

@@ -1,0 +1,27 @@
+{
+  "code": "65302",
+  "editorial": {
+    "headline": "The Employer-Founded Logic of Sharia Pension Funds",
+    "standfirst": "An employer-founded sharia pension fund is nationally open to 100% foreign ownership and, on its recorded risk position, is not blocked from PMA registration in Bali.",
+    "body": "This activity is the management of an Islamic employer pension fund established by a person or entity that employs staff. The employer is the founder; employees—in whole or in part—are the participants. The fund runs either a defined-benefit pension programme or a defined-contribution programme, and its operation creates an obligation for the employer. The language fixes the relationship at the heart of the activity: founder, employees, and employer obligation. It is a workplace pension arrangement conducted under sharia principles. The scope explicitly spans both programme types and allows the participant group to comprise either some or all employees. In each case, the obligation sits with the employer, not the participants.\n\nThat origin also explains who it serves. It is a fund established by a person or body that employs workers, while some or all of those employees participate in the pension programme. Mikro, Kecil, Menengah and Besar enterprises can all operate under this record. Those scale labels do not dilute the core model. Whether participation is drawn from part of a workforce or the whole workforce, the fund remains employer-founded and carries an obligation for that employer. The wording keeps the employment relationship in view at every point: it identifies the founder, identifies the participant group, and states the employer obligation. That is the activity’s institutional shape.\n\nNationally, PMA status is TERBUKA, and the foreign-ownership ceiling is 100%. That is full foreign ownership on the national reading supplied here, grounded in Perpres 10/2021, 49/2021. For an overseas founder, the stated maximum means the foreign stake can equal the entire ownership, rather than stop at a partial cap. TERBUKA is the national PMA status stated for the activity, while the percentage supplies its ownership limit. Reading those fields together avoids a false distinction between formal openness and actual ownership capacity: the record places the ceiling at 100%. The national position is consequently clear, but it is not a substitute for reading Bali’s separate moratorium rule.\n\nBali gives the answer more sharply than a generic regional caveat. The province blocks PMA for every low- and medium-low-risk KBLI on an island-wide, permanent basis. The rule is attributed to Governor’s letter B.27.000/642/PM/DPMPTSP. This activity is nevertheless recorded as not blocked: at Besar scale, its OSS risk is Menengah-Tinggi/Tinggi—medium-high/high—which places it outside the stated moratorium. The Bali status is OK_or_HIGHER_RISK. A foreigner can therefore register this activity in Bali today: the recorded outcome is not blocked by the provincial moratorium.",
+    "pullQuote": "A foreigner can therefore register this activity in Bali today: the recorded outcome is not blocked by the provincial moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Enterprise scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

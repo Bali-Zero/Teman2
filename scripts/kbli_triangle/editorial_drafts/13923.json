@@ -1,0 +1,27 @@
+{
+  "code": "13923",
+  "editorial": {
+    "headline": "Jute Sack Manufacturing, Open Nationally and Clear in Bali",
+    "standfirst": "KBLI 13923 covers the making of textile sacks from jute, with access across all business scales and no Bali moratorium block for PMA registration.",
+    "body": "KBLI 13923 is a narrow industrial activity: the manufacture of textile sacks made from jute. The slim record gives it a plain material and product boundary, so the classification should be read that way. It is not a general textile code, and it is not a broad packaging category. Its center of gravity is the act of making jute-based sacks as a textile manufacturing activity.\n\nFor company setup, the scale position is unusually clean. The record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, meaning it is not confined to one enterprise size in the data provided. A founder reading this should see a manufacturing classification that can sit at different operating scales, from a small producer to a larger industrial undertaking, without the record itself adding a scale exclusion.\n\nThe national foreign-investment picture is also direct. The PMA status is marked TERBUKA, and the maximum foreign ownership figure is 100%. In practical editorial terms, the national record treats this activity as open to foreign ownership up to the full ceiling shown in the data. The source field attached to that national position is Perpres 10/2021, 49/2021. Nothing in the slim record adds a second national cap, a special threshold, or a minimum-capital rule, so none should be read into the classification.\n\nBali is where many KBLI readings become more delicate, but this record gives a clear answer for this activity. The province-wide moratorium rule blocks all Low and Medium-Low risk KBLI for PMA, yet KBLI 13923 is not marked as blocked in Bali. The reason given is precise: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.\" That means the honest conclusion is not that Bali has a separate foreign-ownership percentage, quota, or partnership condition. The conclusion is simpler: the record marks Bali as OK_or_HIGHER_RISK, with no PMA moratorium block for this activity on the facts supplied.",
+    "pullQuote": "The honest Bali reading is not a hidden local cap, but a clear no-block result under the moratorium logic recorded for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

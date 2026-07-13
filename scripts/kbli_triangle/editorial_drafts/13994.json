@@ -1,0 +1,27 @@
+{
+  "code": "13994",
+  "editorial": {
+    "headline": "Tire Cord Fabric Manufacturing, Open Nationally and Clear in Bali",
+    "standfirst": "KBLI 13994 covers tire fabric made from high-strength synthetic yarns, with national PMA openness and no Bali moratorium block in the supplied record.",
+    "body": "KBLI 13994 is a narrow industrial classification with a very specific material logic: it covers the manufacturing of tire fabric from high-strength synthetic yarns. The record names nylon tire fabric and polyester tire fabric as examples, which makes the activity closer to technical textile production than to general clothmaking. Its subject is not finished tires, retail distribution, or broad textile trading; it is the production of the reinforced fabric layer used in tire construction, where strength, consistency, and industrial processing matter.\n\nFor founders, the practical point is that this code is open across every business scale listed in the record: **Mikro, Kecil, Menengah, and Besar**. That breadth matters because the same activity can describe a small producer, a mid-sized technical textile workshop, or a large industrial plant, as long as the registered activity remains within the stated scope. The classification is therefore not limited to a single operational size. It gives room for registration at the scale that matches the actual manufacturing setup, while keeping the description anchored to tire fabric made from synthetic high-strength yarn.\n\nThe national PMA picture is clean. The record marks the activity as **TERBUKA**, with `pma_max_asing` at **100%**. In plain English, the national foreign-ownership ceiling shown here is full foreign ownership. That does not create any extra licence, timeline, capital rule, or technical approval in this editorial; none is stated in the supplied record. It simply means that, for the national foreign-investment field provided, this manufacturing activity is not shown as closed or capped below full ownership.\n\nThe Bali reading is also important, because many activities that look nationally open can face a provincial moratorium issue. Here, however, the supplied Bali status is **OK_or_HIGHER_RISK**, and `l4_bali_blocked` is **false**. The reason is stated as: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this activity is not marked as blocked under that rule. The honest conclusion is therefore straightforward: based on this slim record, KBLI 13994 is nationally open to PMA at a 100% foreign-ownership ceiling, and it is not blocked for PMA registration in Bali by the listed moratorium logic.",
+    "pullQuote": "The honest conclusion is that this technical textile activity is nationally open to full PMA ownership and not blocked in Bali under the record’s moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

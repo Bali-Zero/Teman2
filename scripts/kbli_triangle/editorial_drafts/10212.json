@@ -1,0 +1,27 @@
+{
+  "code": "10212",
+  "editorial": {
+    "headline": "Smoked Fish Processing Is Open Nationally, But Closed to PMA in Bali",
+    "standfirst": "This activity covers smoked or roasted finned fish products, open across all business scales nationally, yet blocked for foreign-owned registration in Bali.",
+    "body": "This KBLI activity is about the processing and preservation of finned fish through smoking or roasting. The record points to a practical, product-led category: smoked milkfish, smoked julung-julung or roa, smoked fufu or asar, smoked catfish, and smoked patin. In plain English, it is not a general seafood trading bucket and not a restaurant or retail activity. It is the production activity where fish is transformed and preserved through heat and smoke into finished smoked-fish products.\n\nThe national business-scale picture is broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar scales, which means the classification can describe everything from a very small producer to a large processing operation. That matters because the code is not reserved for only one size of operator. A founder reading it should see the industrial range clearly: the activity can be registered at every scale listed in the record, provided the registration context matches the real processing and preservation work being carried out.\n\nNationally, the foreign-investment signal is also clear. The record marks the PMA status as TERBUKA and gives a foreign-ownership ceiling of 100%, with the source stated as Perpres 10/2021, 49/2021. On the national layer, then, this activity is foreign-open. There is no partial foreign-stake cap in the record, and no additional national condition is stated here. The honest national reading is simple: for Indonesia as a whole, the slim record presents this smoked-fish processing activity as open to foreign ownership up to the recorded ceiling.\n\nBali changes the answer. The record marks l4_bali_blocked as true and gives the Bali status as Blocked (risk class). Its reason is explicit: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, with the source given as Gubernur letter B.27.000/642/PM/DPMPTSP. So the correct lede for a foreign founder in Bali is not that the activity is nationally open. It is that, despite being nationally TERBUKA at 100%, a foreigner cannot register this activity as PMA in Bali today under the Bali-side block recorded here.",
+    "pullQuote": "Despite being nationally TERBUKA at 100%, a foreigner cannot register this activity as PMA in Bali today under the Bali-side block recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

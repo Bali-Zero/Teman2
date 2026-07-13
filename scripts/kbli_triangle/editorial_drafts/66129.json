@@ -1,0 +1,27 @@
+{
+  "code": "66129",
+  "editorial": {
+    "headline": "When an Open Brokerage Meets Bali’s PMA Moratorium",
+    "standfirst": "Securities and commodity-contract brokerage is open to foreign investment nationally, yet Bali’s PMA moratorium stops a registration at a Bali address.",
+    "body": "For a foreign investor seeking PMA registration, the decisive fact is geographic: this activity cannot be registered at a Bali address today. It is nationally open to foreign investment, but Bali’s permanent, island-wide PMA moratorium blocks all Low and Medium-Low risk activities. The record identifies the Besar scale here as Medium-Low, placing the activity within that prohibition. The result is location-specific, not a revision of the activity’s national foreign-ownership position.\n\nAt its core, the activity is brokerage in securities and commodity contracts. It covers acting as broker in those transactions and conducting financial-market trades on another person’s behalf. Its defining feature is agency: the business brings a client’s instruction to market rather than buying or selling for its own account. The scope gives bullion trading on behalf of another party as an example of that brokerage role. In every case, the client is the person whose market interest the broker represents.\n\nThe distinction makes the category practical as well as technical. It is for a business that stands between a client and the market in an intermediary capacity, not one trading its own financial-market position. A firm may arrange or execute the specified transactions as broker, provided it is acting for someone else. Trading on the firm’s own account is expressly outside the stated scope. That boundary keeps the activity anchored to brokerage rather than turning it into a general label for participation in financial markets.\n\nNationally, the field is TERBUKA: foreign investors may hold up to 100%, and registration is open at Mikro, Kecil, Menengah, and Besar scales. In Bali, the relevant fact is whether a PMA registration can proceed at a Bali address. It cannot. Because the Besar scale is classified as Menengah Rendah, it falls inside the island-wide, permanent moratorium described in the record. The rule applies across the province and is tied to a Governor’s letter dated May 13, 2026. Put plainly: nationally this activity is fully foreign-open; for a PMA registration with a Bali address, it is blocked today.",
+    "pullQuote": "Put plainly: nationally this activity is fully foreign-open; for a PMA registration with a Bali address, it is blocked today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Closed (Bali moratorium)"
+      }
+    ]
+  }
+}

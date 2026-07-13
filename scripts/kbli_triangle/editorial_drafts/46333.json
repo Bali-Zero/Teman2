@@ -1,0 +1,27 @@
+{
+  "code": "46333",
+  "editorial": {
+    "headline": "Alcohol-Beverage Wholesale: The National Rule and Bali’s Moratorium",
+    "standfirst": "This medium- and large-scale wholesale activity is open to 100% foreign ownership nationally; in Bali, its large-scale OSS risk places it outside the permanent PMA moratorium.",
+    "body": "KBLI 46333 is the wholesale trade of alcoholic beverages: spirits, wine, malt drinks and beer. The scope identifies the goods, then identifies the business roles attached to them: alcoholic-beverage sub-distributor and distributor. In clear commercial terms, the activity is a wholesale undertaking dealing with those specified beverages through the distributor or sub-distributor roles expressly named in the record. It is not a broad label for alcohol generally; the scope anchors it in wholesale trade and in the beverage categories it lists.\n\nThe eligibility is equally specific. The record makes the code available at Menengah and Besar scale, so its stated audience is medium- and large-scale businesses carrying on that wholesale activity. That framing brings the activity, the market role and the scale together: a business is within the record’s description when it wholesales the listed alcoholic beverages as a distributor or sub-distributor, at one of those open scales. No smaller scale is stated in the record, and there is no need to infer one.\n\nNationally, the PMA setting is TERBUKA and the maximum foreign ownership is 100%. That is a complete foreign-ownership ceiling: a foreign investor may hold all of the equity under the national PMA setting shown for this code. The source recorded for that national position is Perpres 10/2021, 49/2021. The record presents no separate national condition alongside that percentage, so the point should be read plainly: nationally, this wholesale activity is open to PMA at up to full foreign ownership.\n\nBali is a different jurisdictional check, but the answer here is not a blanket prohibition. That distinction matters because national openness and a provincial moratorium address different parts of the same registration decision. The Bali rule in the record permanently blocks PMA registration for all Low and Medium-Low risk KBLI activities across the island. This code, however, is not marked blocked. The stated reason is specific: at Besar scale, the OSS risk is Medium-High/High, which places the activity outside the moratorium’s Low and Medium-Low range. Its Bali status is OK_or_HIGHER_RISK, and the record says it is not blocked by the moratorium. The stated Bali reason concerns risk and the moratorium, not a separate Bali ownership ceiling. The practical reading is clean: a foreign investor is not prevented by that Bali moratorium from registering this activity in Bali; the relevant national ceiling remains 100%.",
+    "pullQuote": "For this activity, Bali’s PMA moratorium does not close what the national rule opens to 100% foreign ownership.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Permitted scales",
+        "value": "Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "21012",
+  "editorial": {
+    "headline": "Human Pharmaceuticals as a Broad, Foreign-Open Manufacturing Activity",
+    "standfirst": "KBLI 21012 covers finished medicines, supplements, quasi-drugs, radiopharmaceuticals, and biotechnology pharmaceuticals for human use.",
+    "body": "KBLI 21012 is the manufacturing home for human pharmaceutical products. Its scope is broad but still specific: the making and processing of medicines, health or food supplements, and finished quasi-drug preparations for human use. The record names familiar finished forms such as tablets, capsules, ointments, powders, solutions, parenteral solutions, and suspensions. It also includes hormonal contraceptive medicines, radiopharmaceutical production, and biotechnology pharmaceutical production. In plain English, this is not a trading or advisory activity; it is the industrial production and processing of finished pharmaceutical products for people.\n\nThe scale picture is unusually wide. The record opens the activity to Mikro, Kecil, Menengah, and Besar operators, which means the classification is not reserved only for large industrial applicants. A small producer and a larger manufacturer may be looking at the same activity code, provided their real business activity matches this manufacturing scope. That breadth matters editorially because the code is defined by what is made and processed, not by a single company size.\n\nNationally, the foreign-investment position is clean. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, with the source stated as Perpres 10/2021, 49/2021. That means the national foreign-ownership ceiling should be read as 100% for this record. There is no lower cap in the supplied data, and no separate condition, licence, capital number, or ownership qualifier is stated here. The responsible reading is therefore direct: at national level, this activity is foreign-open up to the recorded ceiling.\n\nBali does not change that into a hidden percentage or a separate local cap. For Bali, the status is OK_or_HIGHER_RISK and l4_bali_blocked is false. The record’s reason is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule supplied here says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, under the cited governor letter. For this activity, the supplied Bali reason says it is not caught by that block. The honest national-vs-Bali picture is therefore aligned rather than contradictory: foreign-open nationally, and not blocked for PMA registration in Bali by the moratorium described in the record.",
+    "pullQuote": "The honest national-vs-Bali picture is aligned: foreign-open nationally, and not blocked for PMA registration in Bali by the moratorium described in the record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

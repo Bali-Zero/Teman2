@@ -1,0 +1,27 @@
+{
+  "code": "01133",
+  "editorial": {
+    "headline": "Fruit-Vegetable Farming With a Clear Bali Path",
+    "standfirst": "KBLI 01133 covers integrated horticultural farming for fruit vegetables, nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 01133 is the farming code for horticultural fruit vegetables: crops used as vegetables but botanically or commercially handled in this group as fruiting produce. The record names cucumbers, eggplants, tomatoes, vegetable starfruit, chayote, pumpkin, and gambas or oyong as examples. Its scope is not just the moment of planting. It covers the field cycle as one integrated activity: land preparation, nursery work, planting, maintenance, harvesting, and post-harvest handling when those steps are carried out as one business operation.\n\nThat integrated character matters. A founder using this code is not describing a trading desk, a restaurant supply brand, or a loose aggregation of small farms. The activity is agricultural production itself, including nursery and seed activities for these fruit-vegetable crops where the output is seed in the form of grain. The code therefore fits operators whose business identity sits in cultivation and crop production, with the practical farm work and immediate post-harvest stage treated as one connected undertaking rather than separate lines of business.\n\nOn scale, the record is unusually broad: the activity is open to Mikro, Kecil, Menengah, and Besar. In plain English, it can be registered from micro-scale farming through large-scale operations, so the classification is not reserved only for industrial agribusiness. Nationally, the foreign-investment position is also clean. The PMA status is TERBUKA, and the foreign ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. There is no capped foreign stake in the slim record; the national rule shown here allows full foreign ownership for this activity.\n\nThe Bali picture is equally important, because a national “open” status does not always settle the local PMA answer. Here, however, the record says Bali is not blocking this activity: l4_bali_blocked is false, with status OK_or_HIGHER_RISK. The reason given is specific: OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by Bali’s moratorium, which blocks all Low and Medium-Low risk KBLI for PMA across the province. The honest conclusion is therefore straightforward: a foreign-owned setup can look at KBLI 01133 nationally as fully open, and in Bali as not blocked by the stated moratorium rule.",
+    "pullQuote": "A national “open” status does not always settle the local PMA answer, but for KBLI 01133 the Bali record is not blocked.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

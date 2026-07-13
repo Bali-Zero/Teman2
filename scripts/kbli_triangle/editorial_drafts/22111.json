@@ -1,0 +1,27 @@
+{
+  "code": "22111",
+  "editorial": {
+    "headline": "Tire Manufacturing That Stays Open Nationally and in Bali",
+    "standfirst": "KBLI 22111 covers the making of outer and inner tires from natural or synthetic rubber, with foreign ownership open nationally and no Bali moratorium block in the record.",
+    "body": "KBLI 22111 is a manufacturing code with a concrete industrial meaning: the making of outer tires and inner tubes, using natural rubber or synthetic rubber as the main material. Its scope reaches across tires for motor vehicles, bicycles, other transport vehicles, and equipment that uses tires. In plain English, this is the production side of the tire business, not retailing, servicing, importing, or general rubber trading. The record points to fabrication of the tire itself: the outer tire, the inner tube, and the rubber-based manufacturing activity behind them.\n\nThat breadth matters because the code is not written around one vehicle segment. It is framed around tire use wherever the listed vehicle and equipment categories apply. A founder reading this code should see an industrial activity defined by process and product: making rubber tires and tubes for transport and equipment applications. The slim record does not add technical subcategories, special product thresholds, or extra operating conditions, so the editorial picture should remain exactly that narrow and exact: rubber-based tire and tube manufacturing under a single activity code.\n\nOn business scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar, so the code is not confined to a single operating size in the available data. That does not mean every project has the same practical footprint; a small workshop and a large tire plant would plainly be different kinds of undertakings. But the registration scale field itself is inclusive. For this code, the source record allows the full ladder of scale labels, from micro through large, without introducing a separate scale exclusion.\n\nThe national foreign-investment position is also clean: the code is marked TERBUKA, with pma_max_asing at 100%. That is the national figure in the record. The Bali side does not create a separate ownership percentage, and it should not be rewritten as one. Instead, Bali is marked OK_or_HIGHER_RISK, with the reason given as: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently. Here, however, l4_bali_blocked is false. The honest conclusion is therefore straightforward: nationally, foreign ownership is open up to 100%, and in Bali the record does not mark this activity as blocked by the moratorium.",
+    "pullQuote": "The honest conclusion is straightforward: nationally, foreign ownership is open up to 100%, and in Bali the record does not mark this activity as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

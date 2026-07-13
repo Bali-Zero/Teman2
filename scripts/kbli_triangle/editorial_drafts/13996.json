@@ -1,0 +1,27 @@
+{
+  "code": "13996",
+  "editorial": {
+    "headline": "Tulle, Lace and Net Fabric Manufacturing Under KBLI 13996",
+    "standfirst": "A textile-manufacturing code for tulle, embroidery, lace-window fabrics and other net fabrics, open nationally to all business scales and not blocked for PMA in Bali.",
+    "body": "KBLI 13996 is a manufacturing code for a precise corner of the textile industry: the making of tulle fabric, embroidered fabric, vitrage and window accessories using lace fabric, and other net fabrics. Its scope is not a retail category, a garment label, or a general textile-trading description. It is concerned with production: the industrial act of making these fabrics and related window-fabric materials.\n\nThat matters because the activity sits where design, material processing and textile output meet. Tulle and lace-based fabrics can be delicate, decorative and technically specific, but the KBLI record keeps the definition sober: this is about the manufacture of those fabric types, including embroidered cloth and net fabrics. The code therefore gives founders a relatively clean classification when the business substance is the making of these materials rather than the sale, installation or downstream use of them.\n\nThe scale picture is unusually broad. The record opens the activity to Mikro, Kecil, Menengah and Besar operators, so the classification can fit a small production business as well as a larger manufacturing setup. The important point is not the aesthetic character of the product, but the registered activity: if the business is manufacturing the covered fabric types, this code is built to carry that activity across the full scale range listed in the record.\n\nThe national foreign-investment picture is also clean. The PMA status is TERBUKA, with a recorded maximum foreign ownership of 100%, sourced to Perpres 10/2021, 49/2021. Bali does not add a separate ownership percentage in this record. Instead, the Bali-side question is whether the moratorium blocks PMA registration. Here, the record says it does not: l4_bali_blocked is false, and the Bali reason is “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule still matters as background because Bali blocks Low and Medium-Low risk KBLI for PMA, but this record marks KBLI 13996 as OK_or_HIGHER_RISK rather than blocked. The honest conclusion is therefore direct: nationally open, fully foreign-open on the recorded ceiling, and not blocked for PMA registration in Bali under the supplied Bali status.",
+    "pullQuote": "The honest conclusion is direct: nationally open, fully foreign-open on the recorded ceiling, and not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "42104",
+  "editorial": {
+    "headline": "Tunnel Construction With a Clear National and Bali Path",
+    "standfirst": "KBLI 42104 covers tunnel building, maintenance, and repair, with full national PMA openness and no Bali moratorium block in this record.",
+    "body": "KBLI 42104 is for **konstruksi terowongan**: the construction of tunnels using boring machines and/or explosives, along with the practical structural work that makes a tunnel real, including formwork, reinforcement, and concrete casting. The scope is not limited to new build activity. It also includes the maintenance and repair of tunnel structures under the water surface, in hills or mountains, and below ground level.\n\nThat makes this a construction code for companies whose actual business is tunnel work itself, not a loose umbrella for adjacent infrastructure activity. The record gives one construction subclassification reference, **KK014**, which anchors the activity as tunnel construction. Within the slim record, the scale picture is broad: the activity is open to **Mikro, Kecil, Menengah, and Besar**. In plain English, the code is not reserved only for large-scale operators in the classification data supplied here, even though the activity itself can involve heavy methods and serious engineering execution.\n\nNationally, the PMA position is clean. The record marks the code **TERBUKA**, with **pma_max_asing** at **100**, sourced to **Perpres 10/2021, 49/2021**. So the national reading is that foreign ownership can reach 100% for this activity. There is no lower foreign-share ceiling in the record, and no separate capital, timeline, licence, tax, or permit condition is stated here. The editorial conclusion has to stay inside that evidence: nationally, this is foreign-open, and the ceiling recorded is full foreign ownership.\n\nBali does not change that conclusion into a block. The record marks **l4_bali_blocked** as false and gives the Bali status as **OK_or_HIGHER_RISK**. The reason is explicit: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. That matters because the Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province, permanently. For this code, however, the supplied Bali-side reading is not a moratorium refusal. The honest national-versus-Bali picture is therefore unusually direct: KBLI 42104 is nationally open to PMA up to 100%, and the slim record does not mark it as blocked for PMA registration in Bali.",
+    "pullQuote": "The honest national-versus-Bali picture is therefore unusually direct: KBLI 42104 is nationally open to PMA up to 100%, and the slim record does not mark it as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

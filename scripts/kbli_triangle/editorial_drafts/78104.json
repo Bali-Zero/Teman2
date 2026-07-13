@@ -1,0 +1,27 @@
+{
+  "code": "78104",
+  "editorial": {
+    "headline": "Ship-Crew Placement Is Open Nationally and Not Blocked in Bali",
+    "standfirst": "For ship-crew placement, the national record permits up to 100% foreign ownership and Bali does not list a PMA moratorium block.",
+    "body": "Ship-crew placement is a labour-placement activity defined around the people who serve a vessel. Its scope covers the registration, selection, placement and protection of workers for crews on both merchant vessels and fishing vessels. The work may relate to placements in Indonesia or outside it. Read in sequence, the record follows the worker from registration through selection and placement, while retaining protection as part of the activity. Both vessel classes and both locations are named directly in the scope.\n\nThe scope expressly lists two operating bases: a central office for worker placement and a branch office for worker placement. It is also open to Mikro, Kecil, Menengah and Besar scale. These entries identify the office forms inside the activity and show that the scale field spans every category supplied in the record. The distinction between central and branch office is stated directly, not left to assumption. Final placement is only one named function in the scope: registration and selection are named too, while worker protection is included as well.\n\nNationally, the investment position is TERBUKA. The listed foreign-ownership ceiling is 100%, so the national record does not put a foreign-share cap below full ownership for this activity. That national position is recorded under Perpres 10/2021, 49/2021. It applies to the activity’s stated scope: placing and protecting labour for merchant-vessel and fishing-vessel crews, in Indonesia and abroad.\n\nBali needs a separate reading. The province’s rule permanently blocks PMA registration for all Low and Medium-Low risk KBLI, island-wide; its cited source is Gubernur letter B.27.000/642/PM/DPMPTSP. Here, however, the record marks the Bali status as OK_or_HIGHER_RISK and states that the activity is not blocked by that moratorium. The stated reason is specific to the Besar scale, where the OSS risk is Menengah-Tinggi/Tinggi. That sits outside the Low and Medium-Low group named in the moratorium rule. For a foreign founder assessing registration today, the result is plain: foreign ownership can reach 100% nationally, and Bali does not block PMA registration for the activity on the recorded moratorium basis.",
+    "pullQuote": "Foreign ownership can reach 100% nationally, and Bali does not block PMA registration for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

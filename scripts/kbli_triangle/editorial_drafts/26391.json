@@ -1,0 +1,27 @@
+{
+  "code": "26391",
+  "editorial": {
+    "headline": "Smart Card Manufacturing Meets Bali’s PMA Block",
+    "standfirst": "KBLI 26391 covers the smart-card industry, from chip design and packaging to firmware, software, SIM cards, NFC products, banking cards and secure access cards.",
+    "body": "KBLI 26391 is a manufacturing classification for smart cards. Its recorded scope is broad and technical: chip design planning, smart-card circuit layout planning, chip foundry work, chip module packaging, chip packaging, and the firmware or software directly connected to smart cards. The activity is not limited to one consumer-facing format. The record includes SIM cards, near-field communication products, cards using 2G, 3G, 4G, 5G and related technologies, banking cards, access cards, micro and macro payment cards, credit cards, and cards that use data security or communication features.\n\nThat makes this a code for businesses operating inside the physical and embedded-technology layer of card infrastructure. A company under this activity is not merely reselling cards or providing a generic software service; the record points to production and directly related technical work around the smart-card object itself. It covers both the electronic component side and the associated firmware or software where that software is directly tied to the card. On the business-scale question, the record is unusually inclusive: the activity is open to Mikro, Kecil, Menengah, and Besar scales.\n\nNationally, the investment picture is straightforward. The record marks the PMA status as TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. In national terms, then, this is a foreign-open activity at the stated ceiling. A foreign investor reading only the national line would see an activity that can be owned up to 100% by foreign shareholders, subject only to the facts actually stated in this slim record.\n\nBali changes the practical answer. The record marks this activity as blocked for Bali PMA registration: l4_bali_blocked is true, and the Bali status is Blocked (risk class). The stated reason is: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, with the cited source Gubernur letter B.27.000/642/PM/DPMPTSP. The honest conclusion is therefore precise: nationally, KBLI 26391 is open to foreign ownership up to 100%; in Bali, a foreigner cannot register this activity as PMA today because the record marks it as blocked by the Bali moratorium.",
+    "pullQuote": "Nationally, KBLI 26391 is open to foreign ownership up to 100%; in Bali, a foreigner cannot register it as PMA today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

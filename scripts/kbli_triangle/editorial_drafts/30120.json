@@ -1,0 +1,27 @@
+{
+  "code": "30120",
+  "editorial": {
+    "headline": "Recreational Boatbuilding With a Clear Bali Path",
+    "standfirst": "KBLI 30120 covers the making and conversion of leisure, sport, and recreational craft, nationally open to foreign investment and not blocked for PMA in Bali.",
+    "body": "KBLI 30120 is the manufacturing lane for boats and watercraft built for leisure, recreation, tourism, and sport. Its scope is broad, but still clearly industrial: it covers the making of inflatable rubber boats and rafts, sailing boats and yachts with or without motors, motorboats, recreational hovercraft, cruise vessels, personal watercraft, canoes, kayaks, jetskis, rowing boats, sampans, speedboats, racing sailboats, and other sport or pleasure craft. The record also includes factories that convert yachts and sport vessels, so the code is not only about new builds; it also reaches industrial conversion work where the end product remains a recreational or sport vessel.\n\nThat boundary matters. This is not a general marine-services code, and it is not a rental, repair, parts, engine, surfboard, or crewed-charter activity. The centre of gravity is production: a factory, workshop, or industrial operation whose output is a leisure or sport vessel. A founder choosing this code is therefore presenting the business as a maker or converter of recreational craft, not as an operator of tourism trips or a maintenance provider. That distinction keeps the activity anchored in manufacturing, even when the finished product belongs to the tourism, marina, or water-sports economy.\n\nThe scale profile is unusually inclusive. The record opens the activity to Mikro, Kecil, Menengah, and Besar, which means the code can describe a small specialist boatbuilder as well as a larger industrial operation. That range is useful for founders because the same activity family can cover modest production and more capital-intensive vessel manufacturing. It does not, however, change the nature of the code: whatever the business size, the registered activity should still be the making or conversion of boats and vessels for leisure, recreation, tourism, or sport.\n\nThe national investment picture is clean. The record marks the activity as TERBUKA, with a pma_max_asing of 100, so the foreign-ownership ceiling is 100%. The Bali picture is also not a hidden closure. The record says l4_bali_blocked is false and gives the reason: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this activity is not blocked by that rule on the record provided. For a foreign-owned setup, the honest reading is therefore straightforward: nationally open, foreign ownership up to 100%, and not marked as blocked for PMA registration in Bali.",
+    "pullQuote": "For a foreign-owned setup, the honest reading is straightforward: nationally open, foreign ownership up to 100%, and not marked as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

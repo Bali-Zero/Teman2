@@ -1,0 +1,27 @@
+{
+  "code": "65132",
+  "editorial": {
+    "headline": "Sharia Guarantees: Open Nationally, Not Blocked in Bali",
+    "standfirst": "This activity covers sharia-based guarantees of financial obligations, open to foreign investment nationally and not blocked by Bali’s permanent PMA moratorium at the recorded large-business risk level.",
+    "body": "KBLI 65132 is the business of providing guarantees, wholly on sharia principles, for a guaranteed party’s financial obligations to a beneficiary. Its terrain is broad but coherent: it includes guarantees for sharia financing provided by financial institutions; loans or financing extended by savings-and-loan cooperatives to their members; and partnership-program financing distributed by state-owned enterprises under sharia principles. The common thread is not lending itself, but standing behind the fulfilment of a financial obligation within a sharia-based guarantee arrangement.\n\nThe stated scope also reaches into the practical instruments through which guarantees are used in commerce and finance. These include debt instruments, instalment purchases of goods, trade transactions, procurement of goods and services through surety bonds, bank guarantees and counter-guarantees, domestic documentary credits, letters of credit, customs bonds and excise guarantees. Management-consulting services connected to guarantee business are included as well, alongside other sharia-based guarantee activities. In editorial terms, this is a specialist financial-guarantee activity whose identity rests on sharia principles across the whole undertaking.\n\nThe code is open at every recorded business scale: Mikro, Kecil, Menengah and Besar. Nationally, its investment status is TERBUKA, with a foreign-ownership ceiling of 100%. That is the clean national position in the record: foreign investment may hold the full permitted stake. The applicable policy source recorded for that position is Perpres 10/2021, 49/2021. Nothing in the record adds a separate national cap, timeline or administrative condition, so none should be inferred from the activity description alone.\n\nBali requires a more exact reading, but not a more pessimistic one. The province permanently blocks PMA for all Low and Medium-Low risk KBLI, island-wide. This activity is not marked as blocked: at the Besar scale, its OSS risk is recorded as Menengah-Tinggi/Tinggi, placing it outside that moratorium’s stated reach. Its Bali status is therefore OK_or_HIGHER_RISK. For a foreign-owned registration in Bali, the honest conclusion is that this code is not barred by the provincial PMA moratorium on the facts supplied; the relevant distinction is its recorded higher risk at the large-business scale, not a Bali-specific foreign-ownership cap or partnership requirement.",
+    "pullQuote": "For a foreign-owned registration in Bali, this code is not barred by the provincial PMA moratorium on the facts supplied.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Investment-policy source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

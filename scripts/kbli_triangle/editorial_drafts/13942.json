@@ -1,0 +1,27 @@
+{
+  "code": "13942",
+  "editorial": {
+    "headline": "Rope-Goods Manufacturing With a Clean National Opening",
+    "standfirst": "KBLI 13942 covers manufactured goods made from natural, synthetic, or blended rope, with national PMA access open and Bali not blocked by the moratorium record.",
+    "body": "**KBLI 13942 is a manufacturing activity, not a general trading label.** The slim record defines it around the making of finished goods from rope: fishing nets, ship ropes, slings, and cargo nets. Its material base is broad but still specific: natural-fibre rope, synthetic-fibre rope, and blended-fibre rope all sit inside the activity. The practical centre of gravity is therefore production: turning rope into functional industrial, maritime, fishing, or lifting-related goods.\n\nThat scope matters because the code is open across the full business-size ladder recorded here. The activity is available to Mikro, Kecil, Menengah, and Besar scales, so it is not framed in the record as a scale-exclusive manufacturing lane. A small producer making rope-based goods and a larger industrial operation both sit inside the same scale universe, provided the activity remains within the record’s defined manufacturing scope. The editorial point is simple: registration should be led by what is actually made, not by the market that buys it or the material in isolation.\n\nNationally, the PMA position is unusually clear. The record marks the activity as **TERBUKA**, with `pma_max_asing` at 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national foreign-ownership ceiling shown in this record is 100%. There is no lower percentage, special calculation, or local dilution condition in the slim record, so none should be read into it. For a foreign-owned setup, the national picture is therefore open on the data provided.\n\nThe Bali picture is also clean, but for a different reason. The record marks `l4_bali_blocked` as false and gives the Bali status as OK_or_HIGHER_RISK. Its reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule itself blocks Low and Medium-Low risk KBLI for PMA in Bali, island-wide and permanently, but this record does not mark KBLI 13942 as blocked. So the honest conclusion is neither dramatic nor evasive: nationally this rope-goods manufacturing activity is foreign-open, and on the Bali-side record provided here it is not blocked by the moratorium.",
+    "pullQuote": "The honest conclusion is neither dramatic nor evasive: nationally this rope-goods manufacturing activity is foreign-open, and on the Bali-side record provided here it is not blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

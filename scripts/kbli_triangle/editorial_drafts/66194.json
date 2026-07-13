@@ -1,0 +1,27 @@
+{
+  "code": "66194",
+  "editorial": {
+    "headline": "The Discipline Behind a Fair Market Price for Securities",
+    "standfirst": "Securities price assessment is an OJK-licensed activity, open nationally to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "Price assessment for securities is the specialised work of determining a fair market price. The code covers the assessment itself: a defined pricing activity carried out to establish that market benchmark. Its centre of gravity is the conclusion the work is intended to produce—a fair market price for securities. In practical registration terms, the listed business activity is the formal assessment of securities prices undertaken to set that price. The record places this work with a party that has obtained a business licence from Indonesia’s Financial Services Authority (OJK) to perform it.\n\nWho may register it is equally precise. The record opens the activity to micro, small, medium and large businesses, so it is not reserved in the stated scale field for one end of the enterprise spectrum. That does not dilute the nature of the work: at every listed scale, the activity remains securities price assessment for the establishment of fair market value. For a founder, the scale classification and the OJK-authorised function sit together: the scale identifies where the activity is open, while the licensed function identifies the work being registered.\n\nAt the national level, the foreign-investment position is straightforward. The code is marked open, and the maximum foreign ownership is 100%. A foreign-owned company can therefore register this activity nationally up to the full ownership ceiling, provided it has the stated OJK business licence to undertake the price-assessment work. The record cites Perpres 10/2021 and 49/2021 as the PMA source. This is a national ownership position, expressed without a lower foreign cap.\n\nBali calls for a separate read, because its standing rule permanently blocks PMA registration for every Low and Medium-Low risk KBLI activity across the island. This record, however, marks the activity as not blocked for PMA registration. Its Bali assessment is OK_or_HIGHER_RISK, with the stated reason that the OSS risk at the Large scale is Medium-High/High—outside the risks caught by the moratorium. Bali’s record says the activity is not blocked today, and it gives the risk rationale for that result.",
+    "pullQuote": "Bali’s record says the activity is not blocked today, and it gives the risk rationale for that result.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA assessment",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

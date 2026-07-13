@@ -1,0 +1,27 @@
+{
+  "code": "98200",
+  "editorial": {
+    "headline": "A Household’s Own Services: KBLI 98200 in Bali",
+    "standfirst": "A household-only service activity, nationally open to 100% foreign ownership and not blocked by Bali’s moratorium, subject to address-level verification.",
+    "body": "KBLI 98200 concerns a tightly defined form of service production: a household making services for its own needs. The scope reaches into the practical core of domestic life—cooking, teaching or educating, caring for or watching household members, and other services produced by the household for itself. It also covers a household that produces a range of such services to meet its own needs. The point is not the individual task in isolation, but the setting and purpose: services generated within a household, for that household’s needs. The language gathers these varied activities within one domestic purpose, making the boundary of the activity unusually clear.\n\nWho sits inside that description is equally important. The producer is the household itself, and the beneficiary is that same household. The slim record does not identify any business scale as open to the activity, so it supplies no scale-based qualification to infer. Without a stated scale field to work from, it would be inaccurate to attach a business-size label to this activity. Nor should the breadth of examples be mistaken for an open-ended claim over external service work. Cooking, education and care appear as illustrations of essential household services, while the unifying condition is self-provision. For a founder reading the code, that is the discipline: retain both halves of the definition—diverse services, but produced by a household to satisfy its own needs.\n\nNationally, the PMA setting is TERBUKA, with a foreign-ownership ceiling of 100%. Bali changes the practical reading without reversing it. The province’s moratorium is island-wide and permanent for PMA activities classified Low or Medium-Low risk; this activity is recorded in Bali as OK_or_HIGHER_RISK, with a medium-high/high risk reason. It is therefore not blocked by the moratorium. The national allowance and Bali result answer different questions: one states the nationwide foreign-ownership ceiling, while the other addresses whether Bali’s moratorium blocks PMA registration at this risk level. That is not an invitation to ignore location: the Bali record expressly says the position must be verified for the particular address. Nationally open to full foreign ownership, and not moratorium-blocked in Bali, with address-specific verification still part of the Bali picture.",
+    "pullQuote": "Nationally open to full foreign ownership, and not moratorium-blocked in Bali, with address-specific verification still part of the Bali picture.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

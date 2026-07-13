@@ -1,0 +1,27 @@
+{
+  "code": "31021",
+  "editorial": {
+    "headline": "Plastic Furniture Manufacturing With a Scope-Dependent Bali Gate",
+    "standfirst": "This activity covers plastic-led furniture production, nationally open to PMA ownership, with Bali registration depending on the exact OSS risk scope declared.",
+    "body": "Plastic furniture manufacturing is a straightforward industrial activity, but the record gives it a sharper operational edge than the title alone suggests. Its scope is the making of furniture whose main material is plastic: tables, chairs, shelving, benches, room dividers, wardrobes, and beds. The emphasis is on production, not retailing, design consultancy, or a broad household-goods business. For a founder, the useful reading is therefore quite narrow: this code belongs to businesses that actually manufacture plastic-based furniture as their registered activity.\n\nThe registration picture is broad on business scale. The record opens the activity to Mikro, Kecil, Menengah, and Besar operators, so it is not framed only for large factories or only for small workshops. That matters because the same activity can plausibly describe a compact production setup as well as a larger industrial operation, provided the declared activity stays inside the recorded scope. The editorial discipline here is important: the record does not add special thresholds, equipment rules, location standards, tax treatment, or licence timelines, so none should be assumed from the title.\n\nNationally, the PMA signal is clean. The activity is marked TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national record allows full foreign ownership for this activity. If the business is being read only at the national investment-list level, there is no foreign-share cap in the slim record. The owner may still need to satisfy ordinary OSS and business-process requirements, but this record itself gives no extra numerical condition beyond the national 100% foreign-ownership ceiling.\n\nBali is the part that needs more care. The Bali status is recorded as Blocked (scope-dependent), and l4_bali_blocked is false, so this is not presented as an absolute island-wide rejection for every possible registration path. At the same time, the moratorium rule says Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent, with the source recorded as Gubernur letter B.27.000/642/PM/DPMPTSP. The l4_bali_reason is therefore the decisive note: “OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity”. The honest conclusion is that national openness does not automatically make a Bali PMA registration routine; for this activity, the exact OSS-declared scope controls the practical answer.",
+    "pullQuote": "Nationally this activity is fully foreign-open, but in Bali the decisive question is the exact OSS risk scope declared.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "66122",
+  "editorial": {
+    "headline": "Commodity Futures Brokerage, Open Nationally and in Bali",
+    "standfirst": "This activity covers client-mandated commodity futures and derivatives trading, with full foreign ownership nationally and no Bali moratorium block.",
+    "body": "Commodity futures brokerage is the business of carrying out client-ordered purchases and sales of commodities through futures contracts, sharia derivatives, and other derivatives. The broker receives a specified amount of money and/or securities as margin to secure the transaction. The activity is defined not by owning or producing commodities, but by acting on a client mandate within contract-based commodity trading. Its scope also expressly includes futures-broker representatives, the opening of branch offices, forwarding mandates abroad to overseas futures exchanges, and participation in an alternative trading system.\n\nRegistration is open across every stated business scale: Mikro, Kecil, Menengah, and Besar. For foreign investment at the national level, the status is TERBUKA and the permitted foreign-ownership ceiling is 100%. In practical terms, the national position in this record does not impose a foreign-equity cap below full ownership. The stated national basis is Perpres 10/2021, 49/2021.\n\nBali’s position is equally direct, but it should be read beside the provincial moratorium. That rule blocks PMA registration across Bali for all Low and Medium-Low risk activities. This activity is not marked as blocked. At the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, and the record identifies it as not blocked by the moratorium. The Bali status is OK_or_HIGHER_RISK: the activity is open in Bali rather than excluded, with its large-scale risk classification explaining why the moratorium does not close it to PMA.\n\nClient mandates remain the connecting thread across the scope. Whether an order is executed through futures, sharia derivatives, or another derivative contract; forwarded to an overseas futures exchange; or connected to an alternative trading system, the activity remains commodity trading performed for a client and supported by margin in money and/or securities. It also accommodates representation and branch-office presence. That is the complete picture in this record: a nationally open, 100-percent foreign-ownership activity whose Bali treatment is not blocked by the province’s lower-risk PMA moratorium.",
+    "pullQuote": "That is the complete picture in this record: a nationally open, 100-percent foreign-ownership activity whose Bali treatment is not blocked by the province’s lower-risk PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Available scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

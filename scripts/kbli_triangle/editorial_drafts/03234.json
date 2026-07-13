@@ -1,0 +1,27 @@
+{
+  "code": "03234",
+  "editorial": {
+    "headline": "Protected Brackish-Water Breeding, Open Nationally and Workable in Bali",
+    "standfirst": "KBLI 03234 covers the breeding and lawful use of protected brackish-water biota, with national PMA access and no Bali moratorium block on the record.",
+    "body": "KBLI 03234 is a specialist aquaculture classification for protected brackish-water life. Its Indonesian scope is not a casual fish-farming label: it points to the breeding of fish and other brackish-water biota protected under CITES appendices and/or Indonesian law, with examples in the record ranging from saltwater crocodiles and Mahakam dolphins to dugongs. It also reaches into the controlled use of protected or CITES-limited finfish, crustaceans, and related aquatic species across marine, freshwater, and brackish habitats, where the activities named in the record include research and development, breeding, domestic trade, foreign trade, and aquaria derived from breeding.\n\nThat makes the code narrower and more sensitive than a general aquaculture activity. The commercial idea is not simply to catch, keep, or sell aquatic animals. The emphasis in the record is on protected and internationally constrained species, and on activities that sit outside the core protection provisions only where use is limited or governed by ratified international conventions. In practical editorial terms, a founder reading this code should understand it as a formal home for breeding-led use of protected aquatic biota, including named finfish such as Napoleon fish, Banggai cardinalfish, sharks, rays, seahorses, and arowana, as well as protected crustaceans listed in the scope.\n\nThe registration range is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar scales, so it is not framed only for large operators. At the national investment level, it is marked TERBUKA for PMA with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. That is the clean national position in the data: foreign ownership is not capped below full ownership for this activity. The important caveat is not a hidden percentage limit, because the record gives none. The real caveat is that the activity itself concerns protected and CITES-linked biota, so the business description needs to match the scope with unusual precision.\n\nFor Bali, the record gives a more usable answer than the usual national-vs-local tension. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province, but this code is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is that OSS risk at the Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest reading is therefore direct: a foreign-owned company can consider registering this activity in Bali on the information supplied here, because the Bali record does not show a moratorium block. The sensitivity of the species remains the defining feature of the activity, but the Bali gate in this slim record is open rather than closed.",
+    "pullQuote": "The honest reading is therefore direct: a foreign-owned company can consider registering this activity in Bali on the information supplied here, because the Bali record does not show a moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

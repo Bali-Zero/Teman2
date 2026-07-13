@@ -1,0 +1,27 @@
+{
+  "code": "64194",
+  "editorial": {
+    "headline": "Sharia Microfinance, with a Wider Mandate Than Lending",
+    "standfirst": "This activity covers non-bank sharia microfinance that combines micro-scale funding, savings management, business development and community empowerment.",
+    "body": "This is a non-bank sharia microfinance activity whose remit is deliberately broader than financing alone. Every part of the operation is conducted on sharia principles, spanning business-development services and community empowerment alongside micro-scale financing for members and the wider community. It can also include savings management and business-development consulting. The defining idea is a financial institution serving practical enterprise and community needs through a fully sharia-based model, rather than a business organised solely to seek profit.\n\nThe category is for sharia microfinance institutions carrying out that combined role. The record identifies examples such as Bank Wakaf Mikro, Baitul Maal wa Tamwil and Baitul Tamwil Muhammaddiyah, as well as similar institutions. That is useful context for the activity’s character: financing sits beside advisory work, savings management, enterprise development and social empowerment. An applicant should therefore understand the classification as describing the institution’s whole operating purpose, not merely a single financing service.\n\nAt the national level, foreign investment is permitted for this activity up to 100% foreign ownership. It is open at Mikro, Kecil, Menengah and Besar scales. In Bali, the picture remains open on the record provided. The provincial moratorium permanently blocks PMA registration for low- and medium-low-risk KBLI activities across the island, but this activity is recorded as not blocked by that moratorium: at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi. Bali’s status is therefore recorded as OK_or_HIGHER_RISK, rather than as a prohibition on PMA registration.\n\nThat distinction matters because the Bali result is not a separate ownership cap or an implied local-partnership requirement. The national ceiling remains 100%, while the Bali note explains why the provincial low- and medium-low-risk moratorium does not block this activity at the stated large-scale risk level. The classification should be read in full: a sharia microfinance institution with a community-development mandate, open nationally across the listed business scales and not blocked in Bali by the moratorium described here.",
+    "pullQuote": "This is sharia microfinance with a community-development mandate, not financing in isolation.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National investment source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

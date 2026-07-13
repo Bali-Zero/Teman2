@@ -1,0 +1,27 @@
+{
+  "code": "13122",
+  "editorial": {
+    "headline": "Handloom Textile Weaving With a Bali Caveat",
+    "standfirst": "This activity is nationally open to foreign ownership, but Bali registration turns on the exact risk scope declared in OSS.",
+    "body": "KBLI 13122 is the code for textile weaving carried out without machines. The slim record describes a grounded, craft-specific field: weaving with a **gedogan** and other non-machine looms, including the making of **tenun ikat, songket, ulos, cual, ulap doyo, and geringsing** by non-machine loom. Its center of gravity is not industrial automation, but the production of woven textiles through traditional or manual equipment.\n\nThe record opens this activity across the full business-scale range: **Mikro, Kecil, Menengah, and Besar**. It is also marked nationally as **TERBUKA**, with `pma_max_asing` at **100**, sourced to **Perpres 10/2021, 49/2021**. In plain English, the national foreign-ownership ceiling shown in the record is **100%**. There is no smaller national cap in the data, and no separate capital, tax, licence, or timeline detail appears in the slim record.\n\nThe Bali picture is more exacting. The Bali status is **Blocked (scope-dependent)**, and `l4_bali_blocked` is **false**, so the record does not describe this code as absolutely blocked in Bali. But it also does not present Bali as simply open. The reason is explicit: **“OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity.”** That means the practical question is not only whether the national list allows foreign ownership; it is whether the exact activity declaration in OSS places the Bali registration inside a risk category that Bali will accept for PMA.\n\nThe moratorium rule is the key editorial point: **“Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).”** For this code, the honest reading is therefore conditional. Nationally, non-machine textile weaving is foreign-open up to the record’s stated ceiling. In Bali, however, a PMA registration cannot be treated as automatically available merely because the national PMA field says open. The record says it may be registrable only through the higher-risk scope reflected in OSS for the exact declared activity; otherwise, the Bali low and medium-low risk moratorium is the constraint that matters.",
+    "pullQuote": "National openness is not enough here; in Bali, the exact OSS risk scope decides whether the PMA path exists.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

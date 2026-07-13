@@ -1,0 +1,23 @@
+{
+  "code": "66124",
+  "editorial": {
+    "headline": "A Nationally Open Brokerage Activity, With Bali Registration Blocked",
+    "standfirst": "Money and foreign-exchange market brokerage is nationally open to full foreign ownership, yet PMA registration at a Bali address is blocked by the island-wide moratorium.",
+    "body": "A foreign investor cannot register KBLI 66124 through a PMA with a Bali address today. That result sits in deliberate tension with the national position: the activity is TERBUKA—open—and its national foreign-ownership ceiling is 100%. The code is nevertheless closed for Bali PMA registration under the province’s moratorium. The national allowance remains real, but it does not displace the rule applied to a Bali address.\n\nAt its centre, this is an intermediary activity. KBLI 66124 covers a party that acts for customers transacting in the money market and foreign-exchange market. Its subject is the concrete role of standing between customers and their transactions in those two markets. Both the money market and the foreign-exchange market are expressly named; neither can be edited out of the description. That narrow wording directs attention to the customer-facing brokerage function set out in the record.\n\nThe national record is broad on eligible business scale. It lists Mikro, Kecil, Menengah and Besar as open, corresponding to micro, small, medium and large. No one of those listed scales is presented as the sole national route to the activity; each appears in the open-to field. This is a scale statement, not a different statement of scope: every eligible scale leads back to the same intermediary role. Read alongside the TERBUKA status and the 100% ceiling, the national entry describes an activity available to PMA without a foreign-shareholding cap below full ownership.\n\nBali changes the practical registration answer rather than the definition of the work. The record identifies the Besar scale as Menengah Rendah, or medium-low, and records an island-wide, permanent Bali PMA moratorium for all low- and medium-low-risk KBLI at a Bali address. In this instance, the local status is Closed (Bali moratorium) and the activity is marked blocked. The clear conclusion is therefore no PMA registration in Bali for this activity today. A founder considering this code needs to hold both propositions at once: national foreign ownership may reach 100%, while Bali’s address-based moratorium stops the PMA registration.",
+    "pullQuote": "National foreign ownership may reach 100%, while Bali’s address-based moratorium stops the PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "Closed (Bali moratorium)"
+      }
+    ]
+  }
+}

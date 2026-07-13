@@ -1,0 +1,27 @@
+{
+  "code": "50113",
+  "editorial": {
+    "headline": "Indonesia’s Domestic Sea-Tourism Transport: Open, but Not Fully Foreign-Owned",
+    "standfirst": "This activity covers sea-based sightseeing and recreation transport, including passenger submersibles and charter vessels with operators, with foreign ownership nationally limited to 49%.",
+    "body": "This activity is the operating category for domestic sea transport built around tourism, recreation and marine sightseeing. Its scope is practical and distinct: carrying visitors at sea for leisure or tourism, whether the experience is framed as a coastal outing, a marine excursion or a sightseeing voyage. It also expressly includes passenger submersible craft used for viewing underwater scenery, as well as the hire of sightseeing sea transport when an operator is provided with the vessel. The defining feature is not simply a boat on the water, but a transport operation whose purpose is the visitor experience.\n\nRegistration is open at the **Menengah** and **Besar** business scales. For foreign investment, however, the national position is restricted: the maximum foreign ownership is **49%**. That ceiling matters because it describes a structure with permitted foreign participation, not a fully foreign-owned operation. The applicable PMA position is recorded as **TERBATAS**, with the stated source being Perpres 10/2021, 49/2021. A founder considering this activity should therefore begin with the operating model itself—tourist transport, sightseeing charter, or underwater viewing—and then ensure the ownership structure stays within that national limit.\n\nBali presents a more workable picture than the island-wide PMA moratorium might initially suggest. The provincial rule blocks PMA registration for all Low and Medium-Low risk activities, permanently and across the island. This activity is not blocked by that moratorium because its Bali treatment is medium-high risk. Its Bali status is **OK_or_HIGHER_RISK**, meaning it is not barred on the basis of the moratorium; the record nevertheless calls for verification at the particular address. That is an important distinction: Bali does not offer a blanket prohibition here, but neither does the record support treating location review as a formality.\n\nThe honest conclusion is therefore measured. Nationally, this is a tourism-transport activity available to medium and large businesses with foreign ownership capped at 49%. In Bali, it is not shut out by the province’s Low and Medium-Low risk PMA restriction, because it falls into the medium-high risk side of the framework. The remaining Bali instruction is specific rather than speculative: verify the position for the intended address before relying on the provincial status.",
+    "pullQuote": "Bali does not impose a blanket PMA prohibition here, but the intended address still needs verification.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "49%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "80190",
+  "editorial": {
+    "headline": "When Security Means Monitoring, Not Just Installation",
+    "standfirst": "This activity covers the monitored security services behind alarms, video systems and emergency response—and is nationally open to full foreign ownership, with Bali address checks still essential.",
+    "body": "This security-services activity is about an operating monitoring function, not simply the equipment itself. It covers security-system services delivered through a security service centre or alarm receiving centre, as well as remote monitoring and video surveillance. The practical subject matter includes watching anti-theft alarms, video-surveillance systems and fire alarms from a distance, and receiving alerts through call-centre, emergency-service or alarm-receiving operations. Security consultancy is also within the stated scope.\n\nThe dividing line is material. Installation, repair and maintenance of electronic security systems may fall within this activity only where they are provided together with subsequent monitoring and remote monitoring. The same connected-service logic applies to mechanical or electronic locking devices, safes and vaults: installation, repair, modification and adaptation are included when they accompany the continuing monitored service. A stand-alone installation without that monitoring relationship is not the activity described here.\n\nThe registration picture is broad in business scale: the record opens the activity to Mikro, Kecil, Menengah and Besar enterprises. Nationally, the activity is TERBUKA to PMA, with the foreign-ownership ceiling stated at 100%. That makes the national position unusually direct: the record does not state a reduced foreign-equity cap for this activity. For an operator whose real business is an active monitoring service, the national classification supports full foreign ownership within that stated ceiling.\n\nBali requires a separate reading, but the record does not present this activity as blocked for PMA registration there. It identifies the Bali position as medium-high/high risk and says the activity is not blocked by the moratorium, while requiring verification for the particular address. The permanent, island-wide moratorium described in the record applies to Low and Medium-Low risk activities. This activity sits outside that stated prohibition; its Bali position is therefore open in principle under the record, subject to address-specific verification rather than an assumed island-wide clearance.",
+    "pullQuote": "Nationally, the activity is TERBUKA to PMA, with the foreign-ownership ceiling stated at 100%.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

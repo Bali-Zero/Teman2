@@ -1,0 +1,27 @@
+{
+  "code": "12005",
+  "editorial": {
+    "headline": "The Quiet Industrial Craft Behind Cigarette Seasoning",
+    "standfirst": "KBLI 12005 covers the making of cigarette flavoring materials, with national PMA access open across every business scale and no Bali moratorium block recorded.",
+    "body": "KBLI 12005 sits inside a narrow but technically important corner of tobacco manufacturing: the making of **bumbu rokok**, the flavoring and seasoning inputs used in cigarettes. The slim record names cigarette or tobacco sauce and cigarette capsules as examples, which is enough to define the activity without overstating it. This is not the retailing of cigarettes, not plantation work, and not a broader tobacco category. Its center of gravity is production: the preparation of the flavoring materials that shape the finished cigarette experience before the product reaches any consumer-facing channel.\n\nFor founders, the practical classification point is that this code is open across the full scale ladder recorded in the data: **Mikro, Kecil, Menengah, and Besar**. That matters because the same activity can appear in very different forms, from a smaller production setup to a larger industrial operation. The record does not attach extra thresholds, licence names, capital figures, or technical conditions to those scales, so none should be assumed. The clean reading is simply that the activity is registerable across all four stated business scales, with the commercial substance remaining the manufacture of cigarette seasoning inputs such as tobacco sauces and capsules.\n\nThe national PMA picture is also unusually direct. The record marks the activity as **TERBUKA**, with `pma_max_asing` at **100**. In plain English, the national foreign-ownership ceiling is **100%**. The source line given for that national position is **Perpres 10/2021, 49/2021**. There is no capped minority position in the slim record, and no special national percentage below full ownership. For a foreign-owned company assessing this activity at the national level, the core fact is therefore openness: the classification is not nationally closed to PMA, and the recorded ceiling allows full foreign ownership.\n\nBali needs a separate reading, but not a dramatic one. The record says `l4_bali_blocked` is **false**, and the Bali status is **OK_or_HIGHER_RISK**. The reason is recorded verbatim as: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. That sentence is doing the real work. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this record says the activity is not blocked by that moratorium. So the honest national-versus-Bali conclusion is consistent: KBLI 12005 is nationally open to PMA up to 100%, and the slim record does not mark it as blocked for PMA registration in Bali.",
+    "pullQuote": "The honest reading is consistent: KBLI 12005 is nationally open to PMA up to 100%, and the slim record does not mark it as blocked in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

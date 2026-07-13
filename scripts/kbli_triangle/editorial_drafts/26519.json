@@ -1,0 +1,27 @@
+{
+  "code": "26519",
+  "editorial": {
+    "headline": "Precision Equipment Manufacturing With a Bali Scope Check",
+    "standfirst": "This activity covers makers of measuring, testing, navigation and control equipment, nationally open to foreign ownership but sensitive to exact Bali scope.",
+    "body": "**KBLI 26519 is a manufacturing code for precision instruments.** The record describes it as the production of various measuring, testing, navigation and control equipment, including instruments used inside industrial processes. In plain English, this is the activity behind devices that measure heat, pressure, viscosity and the properties of goods. It is not a general trading category, and it should not be stretched into services or distribution simply because the finished products may later be sold.\n\nThe scale picture is broad. The record opens the activity to Mikro, Kecil, Menengah and Besar operators, which means the category can describe anything from a small specialist workshop to a larger industrial manufacturer, provided the declared business activity is still the making of these instruments. That breadth matters editorially: the same KBLI label can cover different operational realities, but the record keeps the common thread clear — equipment is being manufactured, and the equipment is for measurement, testing, navigation or control.\n\nNationally, the foreign-investment position is clean. The PMA status is marked TERBUKA, with a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the national record treats this activity as open up to 100% foreign ownership. There is no lower foreign-share ceiling in the slim record, and there is no extra capital, licence, timeline or operational condition stated here. The honest national reading is therefore straightforward: as a national KBLI classification, this activity is foreign-open.\n\nBali requires more care. The Bali status is not a simple block; it is marked Blocked (scope-dependent), and l4_bali_blocked is false. The record’s own reason is precise and should be kept precise: “OSS risk at scale Besar is low on SOME scope(s) but higher on other(s): registrable as PMA in Bali only by declaring the higher-risk scope (e.g. PPMSE for platform-trade codes) — verify live OSS per exact activity.” The standing Bali moratorium rule says that Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, with the source listed as Gubernur letter B.27.000/642/PM/DPMPTSP. So the practical Bali conclusion is conditional, not decorative: this activity may be nationally open, but PMA registration in Bali depends on the exact declared scope and live OSS risk reading, especially at Besar scale.",
+    "pullQuote": "Nationally this activity is foreign-open, but in Bali the decisive question is the exact scope declared in OSS.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (scope-dependent)"
+      }
+    ]
+  }
+}

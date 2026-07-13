@@ -1,0 +1,27 @@
+{
+  "code": "42992",
+  "editorial": {
+    "headline": "Mining Civil Works: Open Nationally, Clear of Bali’s PMA Moratorium",
+    "standfirst": "Mining exploration and production infrastructure can be registered at every listed scale, with 100% foreign ownership nationally and no Bali moratorium block at the Large-scale risk classification.",
+    "body": "KBLI 42992 concerns the civil works that support mining exploration and production: the construction, maintenance or reconstruction of their facilities, with environmental-impact control included in the activity’s scope. This is not confined to a single moment of construction. The record follows the facilities through being built, maintained and rebuilt, while expressly keeping environmental impacts within view. The work is identified through construction sub-classifications ST007 and BS014.\n\nFor registration, the activity is open at Large, Micro, Small and Medium scale. That is the full scale picture supplied for this code: not merely a Large-scale construction activity, but one whose stated availability reaches each of the four listed business scales. The scale distinction matters in reading Bali’s treatment, because the Bali reason specifically identifies the OSS risk result at the Large scale. It explains why this activity is not caught by the provincial moratorium described in the record.\n\nNationally, the PMA position is TERBUKA, with a maximum foreign ownership of 100%. In plain terms, the record sets no national foreign-equity cap below full ownership for this activity. A foreign investor can therefore register it nationally with ownership up to that 100% ceiling. The stated basis is Perpres 10/2021, 49/2021. This is the national PMA position recorded for the activity; it should not be blurred with Bali’s separate local position.\n\nIn Bali, the picture remains open rather than blocked. Bali’s PMA moratorium blocks all Low and Medium-Low risk activities island-wide and permanently, yet this code’s Bali status is OK or Higher Risk. At the Large scale, its OSS risk classification is Medium-High/High, which is why the record says it is not blocked by the moratorium. For a foreign investor considering Bali, the honest reading is simple: registration is not barred by that moratorium. The national ceiling remains 100%; the Bali record adds no separate ownership percentage or partnership condition. Its Bali position is grounded in risk status, not an invented exception.",
+    "pullQuote": "In Bali, registration is not barred by the PMA moratorium because the Large-scale OSS risk classification is Medium-High/High.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Besar, Mikro, Kecil, Menengah"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

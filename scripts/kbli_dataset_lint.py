@@ -14,6 +14,10 @@ Deterministic, zero-LLM checks over apps/mouth/data/KBLI_2025_FINAL_CLEAN.json:
                            pma_max_asing (65111 class, quality-sampler find 2026-07-07).
                            Innocence guards: "N% closed" idiom, "not N%" negation, KSO
                            work-share percentages, documented sector-law overrides.
+  L11 editorial-boilerplate  corpus-level: a sentence ≥60 chars appearing verbatim in ≥5
+                           editorials (headline/standfirst/body) — the anti-template gate
+                           for the LOOP-2 magazine layer (census 2026-07-08 found the old
+                           intel prose had 995× / 258× / 88× stock sentences).
 
 Exit 0 = clean (L7 informational only). Exit 1 = findings. --json for machine output.
 Usage: python3 scripts/kbli_dataset_lint.py [--json] [--only L1,L3] [--repo ROOT]
@@ -31,7 +35,7 @@ from pathlib import Path
 
 ITALIAN_MARKERS = re.compile(
     r"\b(riservat[oaie]|chius[oaie]|apert[oaie]|vietat[oaie]|bloccat[oaie]|"
-    r"società|attività|sanit[aà]|agricoltur[a]|pesca|commercio|edilizi[oa]|"
+    r"società|attività|sanit[aà](?![a-z])|agricoltur[a]|pesca|commercio|edilizi[oa]|"
     r"consulenza|servizi|stranier[oi]|iscritt[oi]|avvocat[oi]|dipende|richiede|"
     r"gestion[ei]|impres[ae]|settore|primo dei|dal \d{1,2}/)",
     re.IGNORECASE,
@@ -48,6 +52,75 @@ BAD_DATE = re.compile(r"\b\d{1,2}/\d{1,2}/\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b")
 CODE_REF = re.compile(r"\b(\d{5})\b")
 # 5-digit numbers that are usually NOT KBLI references in our prose
 NON_CODE_5DIGIT = {"10000", "50000", "20000", "25000", "30000", "40000", "60000"}
+
+# --- L3 / G3 dead-reference machinery (ONE SSOT, shared with the applier) -----
+# A 5-digit code outside the 2025 catalogue is a LEGITIMATE reference when the prose
+# labels it as a superseded (2020) code. The editorial register uses a wider idiom set
+# than the terse enriched fields, so this list is deliberately broad — but every entry
+# is a phrase that unambiguously means "this is an OLD code", never a live-code mention.
+LABELED_2020_MARKERS = (
+    "kbli 2020", "2020 code", "kbli2020", "formerly", "previous code",
+    "from kbli 2020", "under kbli 2020", "2020 codes", "2020 origin",
+    "predecessor code", "predecessor", "split from", "split from code",
+    "used to live under", "used to fall under", "used to sit under",
+    "ex-generic", "ex-code", "absorbed", "collapsed", "consolidat",  # consolidat(es/ion)
+    "superseded", "replaced code", "old code",
+)
+# a section-block reference like "the 68000 real-estate block" / "into the 41000 group"
+# — NN000 where NN is a real 2-digit KBLI division, framed as a block/group/category.
+SECTION_BLOCK_REF = re.compile(
+    r"\b(?:into|under|in|the|its?)\s+(?:the\s+)?\d{2}000\b"
+    r"[^.]{0,30}?\b(?:block|group|category|division|section|bucket)\b",
+    re.IGNORECASE,
+)
+
+
+def l3_dead_ref(text, code, codes):
+    """The ONE SSOT for the L3/G3 unlabeled-dead-code guard.
+
+    Returns (ref, ctx) for the FIRST 5-digit reference in `text` that is NOT in the 2025
+    catalogue AND not covered by an innocence class, or None. Innocence classes:
+      * the subject code itself, or any live 2025 code, or a known non-code constant
+      * money / quantity contexts (Rp, m2, …)
+      * technical-standard numbers (ISO/IEC/SNI/DIN/EN …)
+      * explicitly labeled as a superseded 2020 code (broad idiom set)
+      * a comma-list continuation whose head carried a 2020 label ("2020 codes X, Y … Z")
+      * a section-block reference ("the 68000 real-estate block")
+    """
+    for m in CODE_REF.finditer(text):
+        ref = m.group(1)
+        if ref == code or ref in codes or ref in NON_CODE_5DIGIT:
+            continue
+        idx = m.start()
+        ctx = text[max(0, idx - 24) : idx + 36]
+        low_ctx = ctx.lower()
+        if any(w in low_ctx for w in ("rp", "idr", "usd", "$", "m2", "sqm", "meter")):
+            continue
+        std_ctx = text[max(0, idx - 70) : idx].lower()
+        if re.search(r"\b(iso(/iec)?|iec|sni|din|en)\b[^.]{0,60}$", std_ctx):
+            continue
+        # widened label lookbehind (90 chars) — editorial idioms like
+        # "kbli 2020 origin: split from code 46421" push the label further back
+        before = text[max(0, idx - 90) : idx].lower()
+        if any(w in before for w in LABELED_2020_MARKERS):
+            continue
+        # comma-list continuation: "KBLI 2020 codes 02111, 02112, … 02121 and 02122"
+        # — the label sits before the FIRST item; later items inherit it. Detect a run
+        # of "<5digits>[,·] " (optionally "and ") immediately preceding this ref, then
+        # look for a 2020 label before the whole run.
+        run = re.search(r"((?:\d{5}\s*[,·]\s*(?:and\s+|dan\s+)?)+)$", text[max(0, idx - 120) : idx])
+        if run:
+            run_start = idx - (len(text[max(0, idx - 120) : idx]) - run.start())
+            head = text[max(0, run_start - 40) : run_start].lower()
+            if any(w in head for w in LABELED_2020_MARKERS):
+                continue
+        # section-block reference ("the 68000 real-estate block")
+        block_win = text[max(0, idx - 20) : idx + 40]
+        if re.fullmatch(r"\d{2}000", ref) and SECTION_BLOCK_REF.search(block_win):
+            continue
+        return ref, ctx.strip()
+    return None
+# -----------------------------------------------------------------------------
 
 PROSE_FIELDS_INTEL = (
     "whatItMeans",
@@ -75,13 +148,77 @@ L10_FOREIGN_CTX = re.compile(
 L10_CLOSED_IDIOM = re.compile(r"^\s*(?:closed|tertutup)", re.IGNORECASE)
 # innocence: "not 100% open" negation
 L10_NEG = re.compile(r"\bnot\s*$", re.IGNORECASE)
+# innocence: an explicit CAP-DENIAL enumeration in the editorial register — the prose
+# lists percentages only to say NONE of them applies ("the record does not impose a
+# 67%, 49%, or minority ceiling", "there is no 67% cap here"). A negation verb sits
+# before the figure and a cap-noun (ceiling/cap/limit/minority) bounds the clause, so
+# the % is being denied, not asserted. Guilt is preserved: "capped at 67%" / "limited
+# to 49%" carry NO negation and still flag. Matched against the ~60-char window BEFORE
+# the figure (negation) combined with a cap-noun anywhere in the local window.
+L10_NEG_CAP_BEFORE = re.compile(
+    r"\b(?:no|not|does\s+not|do\s+not|doesn't|don't|isn't|is\s+not|are\s+not|"
+    r"never|without|there\s+is\s+no|there's\s+no|free\s+of|absent)\b"
+    r"[^.]{0,50}$",
+    re.IGNORECASE,
+)
+L10_CAP_NOUN = re.compile(
+    r"\b(?:ceiling|cap(?:ped|s)?|limit(?:ed|s)?|minority|ownership\s+ceiling|"
+    r"equity\s+ceiling|restriction)\b",
+    re.IGNORECASE,
+)
 # innocence: KSO construction work-share percentages ("min 50% domestic work",
 # "min 30% by national partner") are volume-of-work quotas, not equity (41019 class)
 L10_WORK_SHARE = re.compile(r"\b(?:kso|domestic work|construction work|work volume)\b", re.IGNORECASE)
 # innocence: historical reference to a superseded cap ("the old 49% cap is gone",
-# "no longer capped at 49%") — the prose is explicitly saying the % does NOT apply
+# "no longer capped at 49%") — the prose is explicitly saying the % does NOT apply.
+# Checked BOTH sides of the number: the marker may sit before ("the old 49%") OR
+# after ("a 49% cap ... old briefing / hangover / that ceiling closed") in the
+# longer editorial register.
 L10_HISTORICAL = re.compile(
     r"\b(?:old|former(?:ly)?|no longer|pre-\d{4}|previous(?:ly)?|used to be)\b", re.IGNORECASE
+)
+# same intent, phrased as a myth being debunked AFTER the figure — editorial voice
+# ("still hear about a 49% cap … working from an old briefing", "the 49% … hangover",
+# "that ceiling closed"). Scanned in the window that follows the %.
+L10_HISTORICAL_AFTER = re.compile(
+    r"\b(?:old\s+briefing|hangover|ceiling\s+closed|no\s+longer\s+applies|"
+    r"is\s+gone|was\s+lifted|has\s+been\s+lifted|scrapped|superseded|"
+    r"still\s+hear\s+about|myth|outdated)\b",
+    re.IGNORECASE,
+)
+# innocence: the % is a BALI / regional cap (the l4_bali layer), measured against
+# l4_bali.reason — NOT the national pma_max_asing. The Navigator's whole point is to
+# state a regional restriction on top of a nationally-open code ("Bali caps foreign
+# equity at 67%", "on the ground in Bali … capped at 49%"). Without this, every
+# documented L4 cap reads as a national-ownership contradiction (scar family #3).
+L10_REGIONAL_CAP = re.compile(
+    r"\b(?:bali|island|islandwide|island-wide|province|provincial|regional|regency|"
+    r"regensi|local\s+regime|on\s+the\s+ground|l4)\b"
+    # a regional regime phrased as "layered on top of the national OSS system" is the
+    # same L4-cap fact without the word "Bali" in the immediate window
+    r"|regime\b[^.]{0,60}?\blayered\s+on\s+top\b"
+    r"|\blayered\s+on\s+top\s+of\s+the\s+national\b",
+    re.IGNORECASE,
+)
+# innocence: an "in practice" / no-tier-to-register figure is a lived operational
+# reality distinct from the national OSS ceiling ("100% on paper, but 0% in practice —
+# no Usaha Besar tier for a PT PMA to register against"). The record itself carries the
+# same note (pma_nota / l4 reason), so this is a documented divergence, not a mis-statement.
+L10_IN_PRACTICE = re.compile(
+    r"\bin\s+practice\b|\bno\s+(?:usaha\s+)?besar\s+(?:scale\s+)?(?:tier|row|scale)\b"
+    r"|\bno\s+tier\s+(?:for\s+a\s+pt\s+pma\s+)?to\s+register\b",
+    re.IGNORECASE,
+)
+# innocence: the % is scoped to a DIFFERENT, adjacent code referenced by word/pronoun
+# rather than a 5-digit number ("a code fully open to 100%", "that code is fully open,
+# 100%", "the route … uses"). The subject-code claim ("this code/activity is open to
+# 100%") is deliberately NOT matched here, so a genuine self-contradiction still flags.
+L10_ADJACENT_STEER = re.compile(
+    r"\b(?:a|an|another|whichever|its\s+own)\s+code\b[^.]{0,40}$"
+    r"|\bthat\s+code\b[^.]{0,40}$"
+    r"|\bopen\s+code\b[^.]{0,40}$"
+    r"|\bthe\s+route\b[^.]{0,40}$",
+    re.IGNORECASE,
 )
 # Documented sector-law overrides: prose legitimately states a % that diverges from
 # the OSS catalogue because a SECTOR law outside OSS caps ownership, and the prose
@@ -89,6 +226,81 @@ L10_HISTORICAL = re.compile(
 #   65111 Life insurance — PP 14/2018 (amended PP 3/2020) caps foreign ownership at
 #   80% for non-listed insurers; catalogue records 100 at the risk-based layer.
 L10_SECTOR_LAW_OVERRIDE = {"65111"}
+
+
+def l10_ownership_contradiction(text, code, maxa, maxa_by_code):
+    """The ONE SSOT for the L10 ownership-vs-pma_max_asing guard.
+
+    Returns (val, window) for the FIRST genuine contradiction in `text`, or None if
+    every foreign-ownership % in the prose is either consistent with `maxa` or covered
+    by a documented innocence class. Both the lint's L10 rule and the applier's G4 gate
+    call this so guilt/innocence can never drift between them (scar family #3: a guard
+    with two copies hardens one and forgets the other).
+
+    Innocence classes (each a real, verified pattern in the KBLI editorials):
+      * value equals the national ceiling                    (not a contradiction)
+      * "100% closed / tertutup" idiom                        (% modifies closed-ness)
+      * "not <n>% open" negation
+      * historical marker before OR after the figure          (old cap, now gone)
+      * KSO construction work-share quota                      (volume, not equity)
+      * BALI / regional cap                                    (l4_bali layer, not national)
+      * % scoped to a named/deictic OTHER code                 (adjacent-code steering)
+      * cross-ref to another code whose own pma_max_asing == val
+    Guilt is preserved: a subject-code self-claim ("this code is fully open to 100%")
+    that diverges from `maxa` is NOT exonerated by any class above.
+    """
+    if maxa is None or code in L10_SECTOR_LAW_OVERRIDE:
+        return None
+    for m in L10_PCT.finditer(text):
+        val = int(m.group(1))
+        if val == maxa:
+            continue
+        after = text[m.end() : m.end() + 12]
+        if L10_CLOSED_IDIOM.match(after):
+            continue
+        if L10_NEG.search(text[max(0, m.start() - 6) : m.start()]):
+            continue
+        # cap-denial enumeration: negation verb before the figure AND a cap-noun in the
+        # local window ("does not impose a 67%, 49%, or minority ceiling")
+        before_neg = text[max(0, m.start() - 60) : m.start()]
+        neg_cap_win = text[max(0, m.start() - 60) : m.end() + 40]
+        if L10_NEG_CAP_BEFORE.search(before_neg) and L10_CAP_NOUN.search(neg_cap_win):
+            continue
+        if L10_HISTORICAL.search(text[max(0, m.start() - 40) : m.start()]):
+            continue
+        after_win = text[m.end() : m.end() + 80]
+        if L10_HISTORICAL_AFTER.search(after_win) or L10_HISTORICAL_AFTER.search(
+            text[max(0, m.start() - 40) : m.start()]
+        ):
+            continue
+        win = text[max(0, m.start() - 80) : m.end() + 80]
+        if L10_WORK_SHARE.search(win):
+            continue
+        # BALI / regional cap: the figure is the l4_bali restriction, not national max
+        if L10_REGIONAL_CAP.search(win):
+            continue
+        # "in practice" / no-Besar-tier operational figure — documented divergence
+        # from the national OSS ceiling, not a contradiction of it
+        if L10_IN_PRACTICE.search(win):
+            continue
+        before_clause = text[max(0, m.start() - 50) : m.start()]
+        # adjacent-code steering by word/pronoun ("a code … open to 100%")
+        if L10_ADJACENT_STEER.search(before_clause):
+            continue
+        # cross-ref: the % describes ANOTHER named code and matches THAT code's max.
+        # Window is a full recent sentence (~140 chars) so a pronoun subject whose
+        # antecedent is a named sibling one sentence back is exonerated
+        # ("That separate code is 85312 … It is fully open to 100%"), while a BARE
+        # self-claim with no nearby named sibling ("It is fully open to 100%") is not.
+        ref_window = text[max(0, m.start() - 140) : m.start()]
+        ref_codes = re.findall(r"\b(\d{5})\b", ref_window)
+        if any(rc != code and maxa_by_code.get(rc) == val for rc in ref_codes):
+            continue
+        if L10_FOREIGN_CTX.search(win):
+            return (val, win)
+    return None
+
+
 # -----------------------------------------------------------------------------
 
 
@@ -110,6 +322,21 @@ def iter_prose(rec: dict):
             v = intel.get(f)
             if isinstance(v, str) and v.strip():
                 yield f"intel_2026.{f}", v
+        # LOOP-2 editorial layer — same rules apply (L1/L3/L4/L10)
+        ed = intel.get("editorial")
+        if isinstance(ed, dict):
+            for f in ("headline", "standfirst", "body", "pullQuote"):
+                v = ed.get(f)
+                if isinstance(v, str) and v.strip():
+                    yield f"intel_2026.editorial.{f}", v
+            for i, n in enumerate(ed.get("byTheNumbers") or []):
+                if isinstance(n, dict):
+                    # label+value joined so context guards (L3 labeled-2020, L10
+                    # cross-ref) can see the label the value belongs to
+                    yield (
+                        f"intel_2026.editorial.byTheNumbers[{i}]",
+                        f"{n.get('label', '')}: {n.get('value', '')}",
+                    )
     if rec.get("pma_nota"):
         yield "pma_nota", str(rec["pma_nota"])
 
@@ -176,33 +403,10 @@ def main() -> int:
                 for m in BAD_DATE.findall(text):
                     add("L4", code, field, m)
             if enabled("L3"):
-                for m in CODE_REF.finditer(text):
-                    ref = m.group(1)
-                    if ref == code or ref in codes or ref in NON_CODE_5DIGIT:
-                        continue
-                    idx = m.start()
-                    before = text[max(0, idx - 60) : idx].lower()
-                    ctx = text[max(0, idx - 24) : idx + 36].lower()
-                    # tolerate money/quantity contexts
-                    if any(w in ctx for w in ("rp", "idr", "usd", "$", "m2", "sqm", "meter")):
-                        continue
-                    # tolerate technical-standard numbers: "ISO 9001, 14001, 45001",
-                    # "ISO/IEC 17025", "SNI 6729:2025" — 5-digit but NOT KBLI codes
-                    # (innocence guard: scar family #3 — this lint over-matched them)
-                    std_ctx = text[max(0, idx - 70) : idx].lower()
-                    if re.search(r"\b(iso(/iec)?|iec|sni|din|en)\b[^.]{0,60}$", std_ctx):
-                        continue
-                    # a dead code is a LEGITIMATE reference when explicitly labeled as KBLI 2020
-                    labeled_2020 = any(
-                        w in before
-                        for w in (
-                            "kbli 2020", "2020 code", "kbli2020", "formerly",
-                            "previous code", "from kbli 2020", "under kbli 2020",
-                        )
-                    )
-                    if labeled_2020:
-                        continue
-                    add("L3", code, field, f"{ref} :: …{ctx.strip()}…")
+                hit = l3_dead_ref(text, code, codes)
+                if hit:
+                    ref, ctx = hit
+                    add("L3", code, field, f"{ref} :: …{ctx}…")
 
         if enabled("L8"):
             reason = str(l4.get("reason") or "")
@@ -238,35 +442,39 @@ def main() -> int:
             maxa = rec.get("pma_max_asing")
             if isinstance(maxa, int):
                 for field, text in iter_prose(rec):
-                    for m in L10_PCT.finditer(text):
-                        val = int(m.group(1))
-                        if val == maxa:
-                            continue
-                        if L10_CLOSED_IDIOM.match(text[m.end() : m.end() + 12]):
-                            continue
-                        if L10_NEG.search(text[max(0, m.start() - 6) : m.start()]):
-                            continue
-                        if L10_HISTORICAL.search(text[max(0, m.start() - 40) : m.start()]):
-                            continue
-                        win = text[max(0, m.start() - 80) : m.end() + 80]
-                        if L10_WORK_SHARE.search(win):
-                            continue
-                        # cross-ref innocence: the % describes ANOTHER named code and
-                        # matches THAT code's own pma_max_asing ("47192 is 100% PMA open")
-                        before_clause = text[max(0, m.start() - 50) : m.start()]
-                        ref_codes = re.findall(r"\b(\d{5})\b", before_clause)
-                        if any(
-                            rc != code and maxa_by_code.get(rc) == val for rc in ref_codes
-                        ):
-                            continue
-                        if L10_FOREIGN_CTX.search(win):
-                            add(
-                                "L10", code, field,
-                                f"prose says {val}% but pma_max_asing={maxa} :: …{win.strip()[:100]}…",
-                            )
+                    hit = l10_ownership_contradiction(text, code, maxa, maxa_by_code)
+                    if hit:
+                        val, win = hit
+                        add(
+                            "L10", code, field,
+                            f"prose says {val}% but pma_max_asing={maxa} :: …{win.strip()[:100]}…",
+                        )
 
         if enabled("L7") and not rec.get("per_skala"):
             add("L7", code, "per_skala", "no scale rows (special regime?)")
+
+    # L11 — corpus-level boilerplate across editorial fields (needs the whole
+    # corpus, so it runs after the per-record loop)
+    if enabled("L11"):
+        sent_owners: dict[str, list[str]] = {}
+        for rec in data:
+            ed = (rec.get("intel_2026") or {}).get("editorial")
+            if not isinstance(ed, dict):
+                continue
+            seen_in_rec: set[str] = set()
+            for f in ("headline", "standfirst", "body"):
+                t = ed.get(f) or ""
+                for s in re.split(r"(?<=[.!?])\s+", t):
+                    s = s.strip()
+                    if len(s) >= 60 and s not in seen_in_rec:
+                        seen_in_rec.add(s)
+                        sent_owners.setdefault(s, []).append(rec["kode_kbli_2025"])
+        for s, owners in sent_owners.items():
+            if len(owners) >= 5:
+                add(
+                    "L11", ",".join(owners[:8]) + ("…" if len(owners) > 8 else ""),
+                    "intel_2026.editorial", f"{len(owners)}× :: {s[:90]}",
+                )
 
     by_rule: dict[str, int] = {}
     for f in findings:
@@ -280,7 +488,10 @@ def main() -> int:
             print(f"  {rule}: {by_rule[rule]}")
         blocking = [f for f in findings if f["rule"] not in ("L7", "L2")]
         print(f"\nblocking findings (non-L2/L7): {len(blocking)}")
-        for f in blocking[:40]:
+        # No display cap (2026-07-13): a truncated findings list reads as the whole
+        # list downstream — the [:40] here and the applier's twin cost a day of
+        # "exactly 40 refusals" audits. Counts live in the by_rule summary above.
+        for f in blocking:
             print(f"  [{f['rule']}] {f['code']} {f['field']}: {f['detail']}")
 
     return 1 if any(r not in ("L7",) for r in by_rule) else 0

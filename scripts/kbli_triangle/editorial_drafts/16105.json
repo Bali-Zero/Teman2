@@ -1,0 +1,27 @@
+{
+  "code": "16105",
+  "editorial": {
+    "headline": "Wood Particle Manufacturing Is Nationally Open, but Blocked in Bali",
+    "standfirst": "KBLI 16105 covers wood particles, wood flour, wood wool, and woodchips, with all business scales listed nationally but PMA registration blocked in Bali.",
+    "body": "KBLI 16105 is a manufacturing code for making wood particles and similar wood-derived materials. The record describes a scope that includes wood wool, wood flour, and sliced or chipped wood, including woodchips. In plain English, this is not a furniture, retail, or forestry-harvesting description; it is the industrial activity of turning wood into particle-form inputs and related materials. The emphasis is on production: taking wood and processing it into forms that can be used as industrial feedstock, components, or intermediate material.\n\nThe scale picture is unusually broad. The slim record lists this activity as open to Mikro, Kecil, Menengah, and Besar businesses. That means the code is not reserved in the record for only one size of operator. A small production setup and a larger industrial facility both sit within the scale language supplied here, provided the registered activity remains inside the stated scope: particle wood and comparable products such as wood wool, wood flour, and woodchips. The editorial point is that scale does not narrow the code; the activity definition does.\n\nNationally, the PMA picture looks open. According to the record, PMA is marked TERBUKA, with a pma_max_asing of 100 and Perpres 10/2021, 49/2021 as its source. Rendered plainly, the national foreign-ownership ceiling in this record is 100%. On the national reading alone, a foreign-owned company is not capped below full ownership by the field supplied here. There is no extra threshold, minimum capital, licensing condition, or timeline in the slim record, so none should be added to the interpretation.\n\nBali changes the practical answer. The same record marks l4_bali_blocked as true and gives the Bali status as Blocked (risk class). Its reason is specific: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, which places the activity inside the Bali moratorium. The moratorium rule supplied in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. So the honest national-vs-Bali conclusion is sharp: KBLI 16105 is nationally open to PMA up to 100%, but a foreigner cannot register this activity as PMA in Bali today under the Bali-side record provided.",
+    "pullQuote": "KBLI 16105 is nationally open to foreign ownership, but the Bali record turns that openness into a registration block for PMA on the island.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

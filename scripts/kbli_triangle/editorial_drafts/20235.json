@@ -1,0 +1,27 @@
+{
+  "code": "20235",
+  "editorial": {
+    "headline": "Custom Perfume Blending Is Nationally Open and Bali-Clear",
+    "standfirst": "KBLI 20235 covers made-to-order perfume production, including refill perfume, open across all business scales and not blocked for PMA in Bali.",
+    "body": "KBLI 20235 is a narrow but commercially recognisable manufacturing activity: making fragrances or perfumes that are specially blended to a customer’s order and chosen scent. The record’s Indonesian scope points to a bespoke formulation model rather than mass-market perfume branding in the abstract. Its clearest example is refill perfume production, where the business activity is the preparation of fragrance according to a customer’s selected aroma.\n\nThat makes this code relevant for operators whose core activity is production, mixing, or preparation of custom perfume, not merely retail display or general cosmetics trading. The registration picture is broad on scale: the record opens it to Mikro, Kecil, Menengah, and Besar businesses. In plain terms, the activity is not confined to a small artisanal setup, nor reserved only for larger industrial players. A modest refill-perfume operation and a larger custom-fragrance manufacturer can both sit within the scale language of the record, provided the registered activity is genuinely the made-to-order perfume production described here.\n\nNationally, the foreign-investment signal is clean. The PMA status is marked TERBUKA, and the maximum foreign ownership figure in the record is 100%. That is the only ownership percentage the record gives, and it means the national classification does not impose a foreign-shareholding cap below full foreign ownership. The cited PMA basis is Perpres 10/2021, 49/2021, so the national reading is not a soft assumption or a practical shortcut; it is the record’s stated investment-status position.\n\nThe Bali position is also clear, but for a different reason: this record does not mark the activity as blocked in Bali. The Bali status is OK_or_HIGHER_RISK, with the stated reason that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, therefore not blocked by the moratorium. That matters because the moratorium rule recorded here blocks all Low and Medium-Low risk KBLI for PMA across Bali province. For this activity, the record does not apply that block. The honest conclusion is therefore straightforward: KBLI 20235 is nationally open to PMA up to 100%, open across all listed business scales, and not marked as blocked for PMA registration in Bali under the moratorium information provided.",
+    "pullQuote": "The honest conclusion is straightforward: KBLI 20235 is nationally open to PMA up to 100% and not marked as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

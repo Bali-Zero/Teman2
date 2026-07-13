@@ -1,0 +1,27 @@
+{
+  "code": "17011",
+  "editorial": {
+    "headline": "Pulp Manufacturing With a Clear National and Bali Path",
+    "standfirst": "KBLI 17011 covers the industrial making of paper pulp from wood, other fibres, cotton linters, de-inking, and recycled paper streams.",
+    "body": "KBLI 17011 is the industrial activity behind paper pulp: the making of pulp from wood, other fibres, and used paper. The record’s scope is broad but specific. It includes bleached, semi-bleached, and unbleached pulp, whether produced through mechanical, chemical, dissolving or non-dissolving, or semi-chemical processes. It also covers cotton-linters pulp, de-inking, and pulp made from recycled paper. In plain English, this code is not about paper retail, printing, packaging design, or general waste collection. It is the manufacturing process that turns fibre inputs into pulp as an industrial material.\n\nThe scale picture is unusually open in the record. The activity is open to Mikro, Kecil, Menengah, and Besar operators, so the registration frame is not confined to a single enterprise size. That does not make every project identical in practice, but it does mean the slim record does not reserve the code only for large operators or exclude smaller scales. A founder choosing this code should therefore read the scale field as part of the core classification: the activity is defined by the pulp-making process, not by a single business-size profile.\n\nNationally, the PMA position is straightforward. The record marks the code as TERBUKA and gives a foreign-ownership ceiling of 100%, with the source listed as Perpres 10/2021, 49/2021. That is the only ownership percentage available in the record, and it is a national figure. On the face of this slim record, a foreign-owned company is not nationally capped below full ownership for this activity.\n\nThe Bali picture is also clear, but it needs careful wording. The record does not mark KBLI 17011 as blocked in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason is stated as: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. For this code, the recorded Bali logic is therefore not a separate Bali ownership cap, quota, or local-partnership condition. It is simply that, because the recorded OSS risk at large scale is Menengah-Tinggi/Tinggi, the Bali moratorium does not block PMA registration for this activity.",
+    "pullQuote": "For this code, the Bali record is not a separate ownership cap; it is a moratorium screen that the activity is recorded as passing.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

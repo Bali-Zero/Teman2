@@ -1,0 +1,27 @@
+{
+  "code": "15111",
+  "editorial": {
+    "headline": "Preserving Hides Before the Leather Trade Begins",
+    "standfirst": "KBLI 15111 covers the preservation of animal skins by drying, salting, or pickling, and is nationally open to foreign ownership across all listed business scales.",
+    "body": "KBLI 15111 is a narrow but consequential industrial activity: the preservation of hides and skins before they move further into processing or trade. The record defines the work in practical terms. It covers preservation by drying, salting, or acid pickling, and it spans a wide range of raw animal skins, including large animals such as cattle and buffalo, smaller animals such as sheep and goats, reptiles such as crocodile, snake, and monitor lizard, fish such as stingray, shark, snapper, and eel, and other animal skins. In plain English, this is not the making of finished leather goods. It is the stabilising stage that keeps raw skins from deteriorating.\n\nThat scope matters because it gives the code its shape. A founder registering this activity is describing a preservation operation: receiving animal skins and applying one of the stated preservation methods so the material can remain usable. The record does not add a location rule, a production threshold, or a technical licence condition, so none should be read into it. What can be said is simpler and stronger: the activity is open in the record to Micro, Small, Medium, and Large scales, meaning the classification is not confined to a single business size in the data provided.\n\nThe national foreign-investment position is also clear. The record marks the activity as TERBUKA, with a pma_max_asing of 100. Rendered as an ownership ceiling, that is 100% foreign ownership at the national level, sourced to Perpres 10/2021, 49/2021. For a foreign-owned company assessing the code nationally, the signal is therefore direct: the slim record treats this activity as foreign-open, not capped below full ownership.\n\nBali is not blocked on the facts supplied here, but the reason should be stated carefully. The record’s Bali status is OK_or_HIGHER_RISK, and l4_bali_blocked is false. Its explanation is that OSS risk at Large scale is Menengah-Tinggi/Tinggi, so it is not blocked by the Bali moratorium. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. This activity, on the supplied record, is therefore not one of the blocked Bali cases. The honest conclusion is clean: nationally open up to 100% foreign ownership, and not marked as blocked for PMA registration in Bali by this record.",
+    "pullQuote": "The honest conclusion is clean: nationally open up to 100% foreign ownership, and not marked as blocked for PMA registration in Bali by this record.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

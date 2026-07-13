@@ -43,6 +43,9 @@ source_documents/
 data/
 archives/kbli-feb2026/KBLI_2025_*.json
 
+# Generated KBLI editorial drafts (Codex writer output, not hand-authored source)
+scripts/kbli_triangle/editorial_drafts/
+
 # Shell scripts (not supported by Prettier)
 *.sh
 

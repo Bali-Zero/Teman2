@@ -1,0 +1,27 @@
+{
+  "code": "28210",
+  "editorial": {
+    "headline": "KBLI 28210: Agricultural Machinery With a Bali Registration Wall",
+    "standfirst": "This activity covers the manufacture of farming and forestry machinery, nationally open to full foreign ownership but blocked for PMA registration in Bali.",
+    "body": "KBLI 28210 is the industrial code for making agricultural and forestry machinery: the heavy, functional equipment that prepares land, plants seed, distributes inputs, harvests crops, and supports farm-side processing. Its scope is broad but practical. It covers tractors for agriculture and forestry, walking single-axe tractors, ploughing and harrowing machines, seed and fertilizer spreaders, harvesters and cutting machines, rice threshers, corn shellers, milking machines, horticultural sprayers, handsprayers, and lawn mowers, including those used for home lawns. It also reaches more specialised equipment: self-unloading agricultural trailers and semi-trailers, poultry warming machines, beekeeping machinery, animal-feed preparation equipment, machines for cleaning and sorting eggs and fruit, machinery for vertical farming, and the components and accessories for agricultural machinery.\n\nThat makes the code relevant to manufacturers rather than ordinary farm operators. The registrant is not simply using a tractor or a sprayer; it is producing machinery, equipment, parts, or related fittings for agricultural and forestry use. The scale profile is unusually wide: the record opens it to Mikro, Kecil, Menengah, and Besar. In plain English, the same activity family can be registered by micro, small, medium, or large-scale businesses, so the code is not reserved only for factory-sized manufacturers. Its commercial footprint can range from focused component-making to larger machinery production, provided the activity remains within the manufacturing scope described in the record.\n\nNationally, the signal is clean. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%, with the source given as Perpres 10/2021, 49/2021. For an investor reading only the national rule, this is a foreign-open manufacturing activity. There is no national foreign-share reduction in the record, no partial cap below full ownership, and no special percentage calculation to make. At the national level, KBLI 28210 reads as an industrial manufacturing code that can support full foreign ownership.\n\nBali is the hard exception. This record marks the Bali status as Blocked (risk class) and sets `l4_bali_blocked` to true. The reason is explicit: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule is also explicit: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. The honest reading is therefore simple: a foreign investor may find the activity nationally open, but cannot register this PMA activity in Bali under the Bali-side record. This is not a Bali ownership ceiling; it is a Bali registration block.",
+    "pullQuote": "The honest reading is therefore simple: a foreign investor may find the activity nationally open, but cannot register this PMA activity in Bali under the Bali-side record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "National foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

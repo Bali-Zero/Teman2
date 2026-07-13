@@ -1,0 +1,27 @@
+{
+  "code": "64940",
+  "editorial": {
+    "headline": "Securitisation Is Open Nationally, but Not for Bali PMA Registration",
+    "standfirst": "Securitisation is nationally open to 100% foreign ownership, but Bali’s permanent PMA moratorium stops registration at a Bali address.",
+    "body": "At a Bali address, a foreigner cannot register KBLI 64940 for PMA today. That is the decisive local position, even though the activity is nationally open to PMA and carries a 100% foreign-ownership ceiling. The two propositions are not competing descriptions. One states the national setting for foreign investment; the other determines whether that PMA registration can be placed at a Bali address.\n\nThe activity is securitisation in the exact sense recorded here: issuing debt securities whose coupon payments and principal repayments are guaranteed by payments from particular assets, or by future revenue streams that do not originate with the issuing unit. The scope expressly includes the securitisation of mortgage credit by a secondary housing finance company, and the securitisation of business credit. Coupon and principal obligations are therefore connected to those identified payment streams. The record makes clear that future income is relevant only when it does not originate with the issuing unit. Both stated inclusions sit within that same definition of debt payments guaranteed by the specified source of payments or income.\n\nFor registration purposes, it is open at the Mikro, Kecil, Menengah and Besar scales. A business using this code is therefore registering the described securitisation activity across that full scale range. This is a national registration proposition stated with all four named scales. The included forms matter: mortgage-credit securitisation is identified in connection with a secondary housing finance company, while business-credit securitisation is also within the stated scope. That national scale range makes the activity available at each of the four stated business sizes; it does not override Bali’s separate PMA position.\n\nBali’s restriction is tied in the record to the Besar scale being classed as “Rendah”, which brings the activity within the Bali PMA moratorium. The provincial rule is expressed as an island-wide, permanent block on PMA for Low and Medium-Low risk activities. Its practical result here is direct: national openness and a 100% foreign-ownership ceiling do not create a PMA registration route for this activity at a Bali address. For a foreign founder, the address question comes first, because the activity is locally closed to PMA registration in Bali.",
+    "pullQuote": "National openness and a 100% foreign-ownership ceiling do not create a PMA registration route for this activity at a Bali address.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Closed (Bali moratorium)"
+      }
+    ]
+  }
+}

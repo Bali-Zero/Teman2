@@ -1,0 +1,23 @@
+{
+  "code": "88902",
+  "editorial": {
+    "headline": "Social Welfare Services, With Bali’s Address Check Still in View",
+    "standfirst": "This activity covers institution-led social welfare and counselling services for individuals and families, nationally open to full foreign ownership and not blocked by Bali’s moratorium.",
+    "body": "This activity is the work of a Social Welfare Institution (LKS) providing social, counselling and welfare services to individuals and families at home or in other settings. Its practical range is broad but coherent: welfare guidance for children and young people, adoption work and the prevention of juvenile delinquency; household financial and marriage counselling; family guidance; and debt counselling. It also reaches into community and environmental activity, where social support is organised around people rather than a single commercial transaction.\n\nThe scope extends to people facing acute disruption as well as longer-running hardship. It includes work for disaster victims, refugees and immigrants, along with temporary or longer-term shelter arrangements. It covers rehabilitation activity for unemployed people where education is a limited component, assessments of eligibility for social assistance, day care for children including children with disabilities, and day facilities for homeless people and other lower-middle-income social groups. The thread running through these services is direct support to people and households, delivered through an LKS.\n\nAt the national level, the activity is open to PMA with a foreign-ownership ceiling of 100%. The record names no business scale as open, so it does not supply a scale category to add to that national position. For a foreign-owned establishment, the material point is therefore clear: full foreign ownership is permitted nationally under the cited presidential regulations.\n\nBali does not reverse that position through its island-wide moratorium. The provincial rule blocks PMA for all Low and Medium-Low risk KBLI activities, but this activity is recorded as Medium-High or High risk and is not blocked by that moratorium. Its Bali status is accordingly recorded as OK_or_HIGHER_RISK, with one practical qualification contained in the record itself: the position should be verified for the specific address. That is an address-level verification point, not a Bali-wide foreign-ownership cap or a local-partnership condition.",
+    "pullQuote": "Nationally open to 100% foreign ownership, this activity is not blocked by Bali’s moratorium, though the specific address still requires verification.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

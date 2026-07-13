@@ -1,0 +1,27 @@
+{
+  "code": "66195",
+  "editorial": {
+    "headline": "Investor Protection Fund Management, Open Nationally and in Bali",
+    "standfirst": "This activity covers the authorised organisation and management of collective funds created to protect investors from asset loss, with a 100% national foreign-ownership ceiling and no Bali PMA block.",
+    "body": "Investor protection funds are collective funds formed to protect investors from the loss of their assets. This activity is the organisation and management of that pool: it is concerned with running a fund created for investor protection, not merely invoking investor protection as a general aim. The record makes both elements inseparable. A protection fund is formed; the party undertaking the activity organises and manages it; and the fund’s stated function is to protect investors where their assets are lost. That chain of purpose and administration is the practical definition of the activity.\n\nThe record also identifies the kind of party that conducts this work. It is a party that has obtained business authorisation from Otoritas Jasa Keuangan (OJK) to organise and manage the collective investor-protection fund. This is therefore an activity tied to an authorised operator and to the management of a defined pooled fund. It is open at the Micro, Small, Medium and Large scales. Those are the scales expressly available in the record; the activity is not presented as confined to only one of them. Across each stated scale, the described role remains the organisation and management of the protection fund.\n\nNationally, the foreign-investment position is open, with a maximum foreign ownership ceiling of 100%. In plain terms, the record permits a foreign investor to hold the full ownership interest nationally. The point is unambiguous but should not be overread: it states the foreign-ownership setting for this activity at the national level. It sits alongside, rather than replaces, the record’s description of the activity as work undertaken by a party holding the relevant OJK business authorisation. The national answer is openness at a 100% ceiling.\n\nBali does not reverse that position in this record. The activity carries the Bali status `OK_or_HIGHER_RISK` and is not marked as blocked for PMA registration. The stated reason is specific: at the Large scale, its OSS risk is Medium-High/High, so it is not blocked by the provincial PMA moratorium. The honest local conclusion is therefore clean: a foreigner can register this activity in Bali today, with the national ceiling of 100% and the OJK business authorisation described in the record.",
+    "pullQuote": "The honest local conclusion is therefore clean: a foreigner can register this activity in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      }
+    ]
+  }
+}

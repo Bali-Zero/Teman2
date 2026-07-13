@@ -1,0 +1,27 @@
+{
+  "code": "42101",
+  "editorial": {
+    "headline": "Ground-Level Road Construction With a Clear Bali Path",
+    "standfirst": "This activity covers the building, upkeep, and rebuilding of roads and related ground-level civil works, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "This activity is the practical business of constructing road infrastructure on the surface of the land. The scope is not limited to one kind of road: it includes highways, medium roads, small roads, runway roads, taxiways, aircraft parking areas, and container-yard surfaces. The record also allows the work to include the construction, improvement, and maintenance of road fences or retaining walls, which places the activity firmly inside civil road works rather than a narrow paving-only trade.\n\nFor founders, the important point is that this is a construction activity with a broad scale profile. The record opens it to Mikro, Kecil, Menengah, and Besar operators, so it can describe anything from a small registered contractor to a large civil-construction business. That does not add extra licensing facts by itself; it simply means the activity is not reserved, in the record, for one business scale only. The commercial identity is therefore defined by the work performed: building, maintaining, or rebuilding road structures on land.\n\nNationally, the PMA position is clear. The record marks the activity as TERBUKA and gives a foreign-ownership ceiling of 100%. In plain English, the national record treats this as open to foreign investment up to full foreign ownership. That is the clean national reading, and it should not be softened into uncertainty or expanded into conditions that are not present in the data.\n\nBali is also clear, but for a different reason. The record does not mark this activity as blocked in Bali: `l4_bali_blocked` is false, and the Bali status is `OK_or_HIGHER_RISK`. The stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the Bali moratorium that blocks all Low and Medium-Low risk KBLI for PMA. The honest conclusion is therefore straightforward: on this record, the activity is nationally open to PMA up to 100% foreign ownership and is not blocked by the Bali moratorium.",
+    "pullQuote": "The honest conclusion is straightforward: this activity is nationally open to PMA up to 100% foreign ownership and is not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

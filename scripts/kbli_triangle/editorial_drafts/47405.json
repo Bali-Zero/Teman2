@@ -1,0 +1,27 @@
+{
+  "code": "47405",
+  "editorial": {
+    "headline": "Office-Machinery Retail: Open Nationally, Blocked for PMA in Bali",
+    "standfirst": "Retailing typewriters, calculating machines and cash registers is nationally open to full foreign ownership, yet Bali’s moratorium prevents PMA registration for this activity.",
+    "body": "This activity is specialist retail in office machinery other than computers. Its stated examples—typewriters, calculating machines and cash registers—make the commercial focus unusually concrete: it concerns retail trade in office equipment within that defined category. The phrase “specialist retail” matters because the record gives the activity a focused subject rather than a generic office-business label. Computers are expressly outside the stated scope, so the activity remains centred on the office machines named in the definition.\n\nAt the Mikro, Kecil, Menengah and Besar scales, registration remains open. Each of those four classifications is explicitly listed as open, so the national record does not confine this retail activity to one business scale. That provides an important national baseline for founders assessing the activity’s formal scope. It is not, however, a universal permission: the scale field says which classifications are open nationally, not whether PMA registration remains available in a particular location.\n\nAt the national level, this activity is TERBUKA to PMA and has a foreign-ownership ceiling of 100%. In practical English, the national position permits full foreign ownership for this defined retail activity. The source named for that position is Perpres 10/2021, 49/2021. Read on its own, the national entry is direct: no lower national foreign-ownership cap is stated. But that answer belongs to the national layer. The record also supplies a separate Bali layer, whose effect is not softened by the 100% national ceiling.\n\nBali produces the decisive present-day qualification. At the Besar scale, the OSS risk is described as Low/Medium-Low across every scope. Bali’s permanent, island-wide moratorium blocks PMA for all Low and Medium-Low risk KBLI, and this activity is consequently marked as blocked for PMA registration. The moratorium is recorded as applying in May 2026. Nationally open to full foreign ownership does not make the activity registrable for PMA in Bali today. That outcome is not a reduction of the national percentage; it is a Bali registration block arising from the risk-based moratorium. A founder should hold both conclusions together: the national framework admits a 100% foreign stake, while Bali currently closes the PMA registration route for this activity.",
+    "pullQuote": "Nationally open to full foreign ownership does not make the activity registrable for PMA in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

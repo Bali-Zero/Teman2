@@ -1,0 +1,27 @@
+{
+  "code": "66221",
+  "editorial": {
+    "headline": "Insurance Agency Activity, Open Nationally and Workable in Bali",
+    "standfirst": "This classification covers agents acting for insurers or sharia insurers, with full foreign ownership nationally and no Bali moratorium block on the supplied record.",
+    "body": "**KBLI 66221 is a representative activity, not a general financial-services bucket.** Its scope is tightly drawn around parties that act for and on behalf of an insurance company or sharia insurance company, meet the requirements to represent that company, and market insurance products or sharia insurance products. The centre of gravity is agency: the registered business is positioned as the market-facing representative of an insurer, carrying products into the market under that relationship rather than presenting itself as an unrelated advisory or brokerage concept.\n\nFor founders, the practical importance of this record is that the activity is open across the business scales listed in the file: Mikro, Kecil, Menengah, and Besar. The foreign-investment line is also unusually clear. The national status is TERBUKA, and the maximum foreign share recorded is 100. That means the record does not describe a partial foreign cap; on the information supplied here, foreign ownership can reach the full stated limit. The legal source named for that national position is Perpres 10/2021, 49/2021, and the editorial reading should stay inside that frame: open, representative, insurance-agency activity, including sharia insurance agency activity.\n\nThe Bali reading is more nuanced, but not negative on this record. Bali's moratorium rule blocks PMA registration for all Low and Medium-Low risk classifications across the province. This code is not marked as blocked. The stated reason is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so the moratorium does not block it. In other words, the honest national-vs-Bali picture is not a contradiction: nationally the activity is foreign-open, and for Bali the supplied status is OK_or_HIGHER_RISK rather than blocked. A foreign-owned setup should therefore read this record as available in principle, while keeping its activity description disciplined around acting for insurers or sharia insurers and marketing their products under the agency relationship described in the scope.",
+    "pullQuote": "The honest national-vs-Bali picture is not a contradiction: nationally the activity is foreign-open, and for Bali the supplied status is OK_or_HIGHER_RISK rather than blocked.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

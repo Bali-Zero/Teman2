@@ -1,0 +1,27 @@
+{
+  "code": "20221",
+  "editorial": {
+    "headline": "Paint Manufacturing With National PMA Room and Bali Clearance",
+    "standfirst": "KBLI 20221 covers the making of paints for walls, wood, metal, ships, epoxy uses, primers, and enamel, with full scale access and no Bali moratorium block recorded.",
+    "body": "KBLI 20221 is the manufacturing lane for paint. The record defines it through the making of many kinds of paint: primer, metal paint, wood paint, wall paint, ship paint, epoxy paint, and enamel. That scope is broad, but it is still specific. It is not a general trading category, not a construction service, and not a design or finishing activity. Its center of gravity is production: the making of paint products themselves, across the listed surfaces and uses.\n\nThe registration profile is unusually clear. The activity is open across every business scale stated in the record: Mikro, Kecil, Menengah, and Besar. That matters because the code is not reserved only for large industrial operators in the slim record. A small producer and a larger manufacturer are both inside the stated scale range, provided the registered activity remains within the described making of paints such as primers, metal paints, wood paints, wall paints, ship paints, epoxy paints, and enamel.\n\nNationally, the PMA picture is straightforward. The record marks the activity as TERBUKA, with pma_max_asing at 100. In plain English, the national foreign-ownership ceiling recorded here is 100%. The source given is Perpres 10/2021, 49/2021. There is no lower cap in the record, and there is no special national carve-out described beyond that maximum foreign-ownership value. For a founder reading the code, the honest national message is therefore simple: this activity is foreign-open at the national level, up to the stated ceiling.\n\nBali does not reverse that conclusion in this record. The Bali status is marked OK_or_HIGHER_RISK, and l4_bali_blocked is false. The record gives this basis: at scale Besar, OSS risk is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule itself says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this code is not recorded as blocked by that rule. So the honest national-vs-Bali reading is not a contradiction: KBLI 20221 is nationally open to PMA, and the Bali-side record does not mark it as blocked by the moratorium.",
+    "pullQuote": "The honest national-vs-Bali reading is not a contradiction: KBLI 20221 is nationally open to PMA, and the Bali-side record does not mark it as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

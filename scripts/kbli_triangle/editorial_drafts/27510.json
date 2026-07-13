@@ -1,0 +1,27 @@
+{
+  "code": "27510",
+  "editorial": {
+    "headline": "Household electrical appliances, treated as real manufacturing",
+    "standfirst": "KBLI 27510 covers the making of domestic electrical appliances, nationally open to PMA and not blocked for Bali on this record.",
+    "body": "KBLI 27510 is a manufacturing code for household electrical appliances: the factory work behind refrigerators, dishwashers, washing and drying machines, vacuum cleaners, floor polishers, electric bins, and the smaller powered tools that sit around a domestic kitchen or bathroom. The record also brings in food-preparation appliances such as grinders, blenders, can openers and juicers, together with electric toothbrushes, electric shavers, other electric body-care devices, electric knife sharpeners, and ventilation hoods. The centre of gravity is clear: these are electrical products made for household use, not a general code for every appliance-like machine or every installation job connected to them.\n\nThat distinction matters because this is not framed as retail, repair, installation, or commercial plant work. The activity is the making of the appliance itself. A business registering here should be able to describe a production activity around domestic electrical goods: assembling, manufacturing, or otherwise producing the kinds of household equipment named in the scope. The record explicitly leaves out commercial refrigeration and freezer equipment, air conditioners, permanent space heaters, commercial ventilation equipment, commercial cooking equipment, commercial laundry and dry-cleaning equipment, commercial vacuum cleaners, household or non-household sewing machines, and central vacuum-system installation. Those exclusions keep the code tightly focused on domestic electrical-appliance industry rather than broader machinery, building services, or commercial equipment.\n\nOn scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar businesses, so the registration logic is not confined to one size of operator. A small domestic-appliance producer and a larger industrial manufacturer can both sit within the scale language of the record, provided the activity itself remains inside the household-electrical-appliance scope. That breadth should not be read as a licence condition, a capital threshold, or a production-volume rule; the slim record gives no such figures. It simply says the activity is open across those four named business scales.\n\nThe national-vs-Bali picture is also clean. Nationally, the PMA status is TERBUKA and the foreign-ownership ceiling is 100%, which means the record treats this activity as foreign-open at the national level up to full foreign ownership. Bali does not add a separate percentage in this record. Instead, the Bali status is marked OK_or_HIGHER_RISK, with the reason stated as: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule still matters as background because the record says Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent. But this activity is not marked blocked here. The honest reading is therefore direct: for this code, the record shows national PMA openness and no Bali PMA block under the stated moratorium logic.",
+    "pullQuote": "The honest reading is therefore direct: for this code, the record shows national PMA openness and no Bali PMA block under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

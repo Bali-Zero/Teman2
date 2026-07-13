@@ -1,0 +1,27 @@
+{
+  "code": "50221",
+  "editorial": {
+    "headline": "General Cargo on Indonesia’s Inland Waterways",
+    "standfirst": "A clear route for general freight by river, canal, lake, swamp and other inland waters—with a nationally open PMA position and no Bali moratorium block in this record.",
+    "body": "KBLI 50221 covers the carriage of general goods across Indonesia’s inland waters: rivers, canals, lakes, swamps and other internal waterways. Its focus is freight transport, not a single specialised cargo stream; the goods carried may comprise more than one type. The boundary is equally clear. Hazardous goods, special goods and heavy equipment sit outside the activity described here. The result is a classification for general inland-water freight, defined by both its route and the ordinary character of the cargo.\n\nThe activity is open at every listed business scale: Micro, Small, Medium and Large. That breadth matters because the record does not confine this form of freight transport to a single size of enterprise. A business using this activity is situated in the practical movement of general goods on inland waters, whether the operation is registered at the smallest listed scale or at the largest. The classification’s scope remains consistent across those scales: transporting general freight by river, canal, lake, swamp or another inland waterway, while excluding the specified categories of cargo.\n\nNationally, the PMA status is open, with a foreign-ownership ceiling of 100%. In plain terms, the record sets no foreign-equity cap below full ownership for this activity at the national level. The stated basis is Perpres 10/2021 and 49/2021. That national position should be read as it is recorded: this is an open PMA activity, rather than one framed here as subject to a reduced foreign-share limit.\n\nBali calls for a separate but reassuring reading. The provincial moratorium permanently blocks PMA registration for Low- and Medium-Low-risk KBLI activities across the island. This record, however, is marked “OK_or_HIGHER_RISK” and expressly says it is not blocked by that moratorium. Its reason is specific: at the Large scale, the OSS risk level is Medium-High/High. For this activity, Bali is therefore not moratorium-blocked for PMA registration. No separate Bali foreign-ownership percentage or partnership condition is supplied in the record, so the national 100% ceiling remains the only stated ownership figure.",
+    "pullQuote": "For this activity, Bali is therefore not moratorium-blocked for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

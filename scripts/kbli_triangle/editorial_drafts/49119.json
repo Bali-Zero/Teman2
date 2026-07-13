@@ -1,0 +1,27 @@
+{
+  "code": "49119",
+  "editorial": {
+    "headline": "Intercity Rail: The Integrated Passenger Service",
+    "standfirst": "Operating long-distance intercity passenger trains, including integrated sleeping or dining cars, is nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "This activity is the operation of intercity passenger rail services that connect regions over relatively long distances. Its centre of gravity is the rail provider’s passenger journey: transporting people between places through an intercity service, rather than merely supplying a train or an ancillary amenity. Sleeping cars and dining cars can sit within the activity where they are an integrated part of that same passenger service.\n\nThat distinction gives the code its practical shape. The registrant is the operator of the intercity passenger railway service itself—the business responsible for making the long-distance journey available to passengers. The record opens the activity to Menengah and Besar scales, framing it as an undertaking for operators working at those stated business sizes. Where additional onboard facilities are offered, they belong to the picture only insofar as they remain part of the provider’s integrated passenger-transport service.\n\nNationally, the foreign-investment setting is TERBUKA, with a foreign-ownership ceiling of 100%. In plain terms, the record allows foreign ownership up to full ownership at the national level. This is a useful clarity point for founders: the activity is not presented as a nationally restricted foreign-investment category. The commercial proposition, however, remains specific—an intercity rail passenger operation, with long-distance regional travel as its defining service and integrated sleeping or dining facilities as possible components of that operation.\n\nBali requires a separate reading, but the result here is straightforward. The province’s permanent, island-wide PMA moratorium blocks all Low and Medium-Low risk KBLI activities. For this activity, the record states that OSS risk at the Besar scale is Medium-High/High and expressly says it is not blocked by the moratorium. In Bali, the activity is not screened out by the island-wide PMA moratorium because its stated large-scale risk sits above the blocked categories. There is no separate Bali-side ownership percentage or partnership condition stated in the record, so none should be inferred.",
+    "pullQuote": "In Bali, the activity is not screened out by the island-wide PMA moratorium because its stated large-scale risk sits above the blocked categories.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Menengah"
+      },
+      {
+        "label": "Open scale",
+        "value": "Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

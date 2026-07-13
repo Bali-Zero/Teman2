@@ -1,0 +1,27 @@
+{
+  "code": "47773",
+  "editorial": {
+    "headline": "Chemical Retail: Nationally Open, but Blocked for PMA Registration in Bali",
+    "standfirst": "This specialist chemical-retail activity permits up to 100% foreign ownership nationally, yet PMA registration is blocked in Bali under the province’s risk-based moratorium.",
+    "body": "Chemical retail can sound broad, but this activity is explicitly specialist. It is the retail trade in chemical materials, with the scope naming caustic soda, soda ash, baking soda, ammonia, colourants and preservatives. Those examples identify the materials around which the retail offer is organised. Read as a business description, the code has a clear centre of gravity: selling chemical inputs and products at retail, with the named substances illustrating the kinds of stock within its scope.\n\nA business registering this activity is therefore a specialist chemical retailer. The record opens it to Mikro, Kecil, Menengah and Besar enterprises, so its listed scale range runs from micro through large. That breadth is useful context, but it does not dilute the core activity. Across those scales, the defining subject remains specialised retail trade in the chemical materials specified in the scope.\n\nNationally, the PMA position is open. The maximum foreign ownership recorded for the activity is 100%, meaning the national ceiling permits full foreign ownership. The national reference attached to that position is Perpres 10/2021, 49/2021. This is a straightforward national reading: the activity is not closed to PMA, and the stated foreign-ownership ceiling permits a fully foreign-owned business. Yet national openness answers only the national question; it does not itself settle whether the activity can be registered under PMA in a specific province.\n\nBali is where the distinction becomes decisive. A foreign investor cannot register this activity under PMA in Bali today. At the Besar scale, the OSS risk assessment is Low or Medium-Low across every scope, putting it within Bali’s moratorium. That provincial rule blocks all Low and Medium-Low risk KBLI activities for PMA island-wide and permanently; the activity’s recorded Bali reason ties the block to the moratorium from May 2026. This is not a smaller Bali foreign-ownership ceiling or a partnership condition. It is a registration block for PMA in Bali, even though the national record allows foreign ownership up to 100%.",
+    "pullQuote": "A national ceiling of 100% does not overcome Bali’s PMA registration block.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "32201",
+  "editorial": {
+    "headline": "Traditional Instruments, Nationally Open but Bali-Blocked",
+    "standfirst": "KBLI 32201 covers the making of Indonesian traditional musical instruments, open across business scales nationally but blocked for PMA registration in Bali.",
+    "body": "KBLI 32201 is about craft, sound, and cultural manufacture rather than performance or retail. The record defines it as the making of traditional musical instruments with roots in Indonesian cultural history or customary practice. These are instruments played by plucking, bowing, blowing, or striking: angklung, calung, kecapi, bamboo flute, kolintang, gong, traditional trumpet, gambang, rebab, and tifa are all within the recorded scope. The same record also brings in whistles, call horns, and other blown sound-signalling instruments, so the code is not limited to ceremonial instruments alone. Its centre of gravity, however, is clear: physical production of traditional sound-making objects.\n\nThe registration picture is broad at the national scale. The activity is open to Mikro, Kecil, Menengah, and Besar businesses, meaning the record does not reserve this manufacturing activity for only one size of operator. A small workshop making bamboo flutes and a larger facility producing gongs or other traditional instruments would both sit inside the scale range named in the record, as long as the activity remains the making of the instruments covered by the scope. The foreign-investment field is also direct: the national PMA status is TERBUKA, with pma_max_asing at 100. In plain English, the national record treats the activity as foreign-open up to 100 percent foreign ownership, under the cited source Perpres 10/2021, 49/2021.\n\nBali is where the legal reading becomes materially different. The record marks l4_bali_blocked as true and gives the Bali status as Blocked (risk class). That means the honest lede for a foreign-owned setup in Bali is not that this is simply open because the national PMA field says TERBUKA. The Bali-side entry says: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” It also states the applicable moratorium rule in broader terms: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. No separate Bali percentage appears in the record, so the restriction should not be translated into a local ownership cap. It is a registration block for PMA in Bali, tied to the recorded risk-class moratorium.\n\nThe practical reading is therefore split but not ambiguous. Nationally, KBLI 32201 is an open traditional-instrument manufacturing code with a 100 percent foreign-ownership ceiling and all four business scales listed as open. In Bali, the same activity is blocked for PMA registration because the record connects its OSS risk profile to the provincial moratorium. For founders, that distinction is the point: the code is nationally open on paper, but the Bali record says a foreign-owned company cannot register it there today.",
+    "pullQuote": "Nationally, KBLI 32201 is open up to 100 percent foreign ownership, but the Bali record says a foreign-owned company cannot register it there today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

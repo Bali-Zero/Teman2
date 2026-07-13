@@ -1,0 +1,27 @@
+{
+  "code": "17013",
+  "editorial": {
+    "headline": "Security Paper Is a Nationally Open Industrial KBLI",
+    "standfirst": "KBLI 17013 covers the manufacturing of high-trust paper products, from banknote and cheque paper to stamps, and the record leaves it nationally open to foreign ownership.",
+    "body": "KBLI 17013 is not ordinary paper manufacturing. The activity described in the record is the making of paper whose value depends on trust: banknote paper, cheque paper, security paper, watermark paper, duty-stamp paper, postage stamps, revenue stamps, and similar products. In plain English, this is an industrial classification for paper products designed to carry financial, fiscal, postal, or verification significance. The emphasis is not on generic packaging, stationery, or pulp output, but on paper made for controlled, recognisable, and official use.\n\nThat scope matters because the registered business is defined by what it manufactures, not by the eventual institution that uses the paper. A company under this KBLI is positioned as a producer of secure or high-value paper articles: items such as bank notes, cheque paper, watermarked paper, meterai, prangko, and comparable products. The slim record opens the activity across Mikro, Kecil, Menengah, and Besar scales, so the classification itself is not confined to one registered business size. The scale line should be read exactly as written: every listed scale is open in the record.\n\nThe national foreign-investment position is clean. The record marks the PMA status as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the national ceiling stated in this record is 100% foreign ownership. There is no smaller cap in the slim record, and no additional ownership condition is stated here. The editorial point is therefore simple but important: nationally, this KBLI is open, and the record gives the foreign-ownership ceiling as the full 100%.\n\nBali does not change that into a separate percentage. The Bali-side status in the record is OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason is given as: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is not marked as blocked by that rule. So the honest national-vs-Bali picture is unusually direct: KBLI 17013 is nationally open to PMA up to 100% foreign ownership, and the Bali record does not block PMA registration under the stated moratorium logic.",
+    "pullQuote": "The honest national-vs-Bali picture is unusually direct: KBLI 17013 is nationally open to PMA up to 100% foreign ownership, and the Bali record does not block it under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

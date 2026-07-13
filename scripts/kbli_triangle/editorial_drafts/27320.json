@@ -1,0 +1,27 @@
+{
+  "code": "27320",
+  "editorial": {
+    "headline": "Insulated Cable Manufacturing With a Clear Bali Path",
+    "standfirst": "KBLI 27320 covers the making of insulated electrical, telecom, computer, printer, and USB cabling, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 27320 is a manufacturing classification for the physical production of insulated or sheathed cable and wire. Its centre of gravity is material transformation: steel, copper, or aluminium becomes protected cable stock for electrical and electronic use. The scope includes electric cable and telecommunication cable, and it also reaches computer, printer, and USB cables when those cables are made without connectors. That connector point matters editorially because the record draws the activity around cable and wire production itself, not finished connector-equipped cable assemblies.\n\nThe record also keeps the boundary clean. This activity does not cover bare wire drawing where metal is made into wire without insulation, and it does not cover electrical cable that already carries insulated wire and connectors. It also leaves out automotive cable assemblies. In practical registration language, a founder choosing this code should be describing a production operation that makes insulated or sheathed cable and wire, not a broader electronics assembly business and not a raw metal-wire operation. The business story is industrial, process-led, and product-specific.\n\nOn scale, the record is broad: Mikro, Kecil, Menengah, and Besar are open. That means the classification is not reserved only for large plants in the record; it can describe activity from smaller manufacturing setups through larger industrial operations, provided the declared activity remains within the recorded scope. The PMA picture is equally direct at national level. The status is TERBUKA, the recorded foreign-ownership ceiling is 100%, and the source given is Perpres 10/2021, 49/2021. In plain English, the national record treats this activity as foreign-open, with full foreign ownership allowed by the recorded ceiling.\n\nThe Bali reading is not a hidden contradiction. The record says l4_bali_blocked is false and gives the Bali status as OK_or_HIGHER_RISK. Its reason is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record blocks ALL Low + Medium-Low risk KBLI for PMA across Bali, but this activity is not marked as blocked by that rule. So the honest national-vs-Bali picture is clean: nationally open to PMA up to 100%, and not recorded as blocked for PMA registration in Bali under the stated moratorium logic.",
+    "pullQuote": "So the honest national-vs-Bali picture is clean: nationally open to PMA up to 100%, and not recorded as blocked for PMA registration in Bali under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

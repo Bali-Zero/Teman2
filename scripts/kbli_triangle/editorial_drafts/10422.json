@@ -1,0 +1,27 @@
+{
+  "code": "10422",
+  "editorial": {
+    "headline": "Crude Coconut Oil Processing, Open Nationally and Clear in Bali",
+    "standfirst": "This activity covers the industrial processing of coconuts into crude oil, with copra pellets as a by-product, and is open across every business scale in the record.",
+    "body": "KBLI 10422 is a production-side activity, not a trading label or a general coconut business category. The slim record defines it as the processing of coconut into crude oil, including the production of copra pellets that arise as a by-product of making coconut oil. That gives the code a fairly clear industrial character: its center of gravity is transformation, where coconut is processed into a raw oil output, with the copra pellet stream sitting inside the same manufacturing process rather than as a separate commercial story.\n\nThe registration profile is unusually broad in scale terms. The record opens the activity to Mikro, Kecil, Menengah, and Besar operators, so the code is not confined to a single company size. A smaller producer and a larger industrial operator may both sit within the same activity description, provided the registered activity remains the processing of coconut into crude oil as described. The editorial point is precision: the code is about the activity being registered, not about every possible downstream use, retail channel, or agricultural supply arrangement around coconuts.\n\nAt the national level, the position on foreign investment is straightforward. The record marks the PMA status as TERBUKA and gives the foreign-ownership ceiling as 100%. In plain English, the national field treats this activity as open to foreign investment up to full foreign ownership. The source field attached to that position is Perpres 10/2021, 49/2021. Nothing in the slim record adds a special capital figure, operating threshold, licence timeline, or tax condition, so none should be read into the registration analysis.\n\nThe Bali-side picture is also clear, but for a different reason. The Bali status is recorded as OK_or_HIGHER_RISK, and the activity is not marked as blocked for Bali PMA registration. The reason given is specific: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the record also states the moratorium rule: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. Here, the record’s own Bali assessment says the activity is not blocked by that moratorium. The honest reading is therefore clean: nationally open, with a 100% foreign-ownership ceiling, and not blocked for PMA registration in Bali under the Bali moratorium fields provided.",
+    "pullQuote": "The honest reading is clean: nationally open, with a 100% foreign-ownership ceiling, and not blocked for PMA registration in Bali under the record provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

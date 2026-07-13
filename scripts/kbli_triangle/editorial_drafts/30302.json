@@ -1,0 +1,27 @@
+{
+  "code": "30302",
+  "editorial": {
+    "headline": "UAV Manufacturing With Room to Scale in Bali",
+    "standfirst": "KBLI 30302 covers the serious end of unmanned aircraft manufacturing, from assembly and modification to AI-enabled and remotely piloted systems.",
+    "body": "KBLI 30302 is a manufacturing classification for unmanned aircraft and their related machinery. In practical terms, it is the code for businesses that make, assemble, rebuild, or modify unmanned aerial vehicles designed for remote piloting, automatic control through artificial intelligence, or mixed-control operation where crewed use remains possible if needed. The scope is broad, but it is not vague: it points to purpose-built aircraft for agriculture, topographic survey, search and rescue, cargo delivery, reconnaissance and surveillance, combat support, mine destruction, and air defence.\n\nThat makes this a production-side activity rather than a simple trading or service label. A company using this code is placing itself in the industrial chain around UAV systems: fabrication, assembly, technical reconstruction, and modification. The record opens the activity across Mikro, Kecil, Menengah, and Besar scales, so the classification is not reserved only for large industrial operators. What matters is that the registered activity matches the substance of the work: making or technically altering unmanned aircraft and the machinery tied to them.\n\nNationally, the record is clear. PMA status is marked TERBUKA, with pma_max_asing at 100. For a foreign-owned setup, that means the national foreign-ownership ceiling is 100%, under the source listed as Perpres 10/2021, 49/2021. There is no partial cap in the slim record, and no additional national threshold is stated here. The honest reading is therefore straightforward: at national level, this activity is open to foreign investment up to the full recorded ceiling.\n\nBali is also not blocked on this record. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA, but this entry is marked OK_or_HIGHER_RISK, with the reason given as: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. That is the key operational distinction. This is not a case where a nationally open PMA activity is then stopped at the Bali registration layer. For KBLI 30302, the record shows a nationally foreign-open activity and a Bali status that does not trigger the moratorium block.",
+    "pullQuote": "This is not a case where a nationally open PMA activity is then stopped at the Bali registration layer.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

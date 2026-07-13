@@ -6,7 +6,10 @@ import { proxy } from "../proxy";
  * Helper to create NextRequest with proper host header
  * NextRequest in test environment doesn't automatically set host header from URL
  */
-function createRequest(url: string, extraHeaders?: Record<string, string>): NextRequest {
+function createRequest(
+  url: string,
+  extraHeaders?: Record<string, string>,
+): NextRequest {
   const urlObj = new URL(url);
   return new NextRequest(url, {
     headers: {
@@ -547,7 +550,9 @@ describe("Middleware - Multi-domain Routing", () => {
       const response = proxy(request);
 
       expect(response.status).toBe(302);
-      expect(response.headers.get("location")).toBe("https://mail.balizero.com/");
+      expect(response.headers.get("location")).toBe(
+        "https://mail.balizero.com/",
+      );
     });
   });
 

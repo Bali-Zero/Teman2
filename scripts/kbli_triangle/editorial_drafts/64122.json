@@ -1,0 +1,27 @@
+{
+  "code": "64122",
+  "editorial": {
+    "headline": "Islamic Banking, Read as a Full Banking Activity",
+    "standfirst": "KBLI 64122 covers sharia-based banking from public fund collection and financing to payment-system services, with a nationally open PMA position and no recorded Bali moratorium block.",
+    "body": "General Islamic banking under KBLI 64122 is a banking activity conducted on sharia principles. Its core work is to collect funds from the public through deposits, investments and comparable forms, then channel those funds back to the public as financing or other sharia-based forms. The scope also includes services within the payment system. It further reaches current-account funds and other funds used as margins, compensation funds or guarantee funds when they operate on sharia principles. The defining thread is the banking function itself: gathering public funds, deploying them through sharia-based financing or related forms, and providing payment services within the same framework.\n\nThis activity is open across Mikro, Kecil, Menengah and Besar scales. That breadth reflects the record’s treatment of this as banking business under sharia principles, not merely a narrow supporting service. The description brings together the two sides of the banking relationship—fund collection and financing—while retaining payment-system services as part of the same activity. It also expressly accommodates funds held in forms associated with margins, compensation and guarantees, provided they are based on sharia principles.\n\nNationally, the PMA status is TERBUKA, with a maximum foreign ownership of 100%. In plain terms, the record does not set a national foreign-ownership ceiling below full ownership for this activity. Its cited PMA source is Perpres 10/2021, 49/2021. This is the national position stated for the activity itself: foreign investment is open, and the record gives the ceiling directly rather than qualifying it with a lower percentage.\n\nBali’s recorded position is equally specific. The Bali status is OK_or_HIGHER_RISK, and the activity is not blocked by the provincial moratorium. That moratorium is described as island-wide and permanent for activities classified Low or Medium-Low risk. Here, however, the record states that OSS risk at the Besar scale is Menengah-Tinggi/Tinggi, which is why it is not moratorium-blocked. For foreign investors, the picture is therefore direct: this activity is open nationally and is not blocked from PMA registration in Bali by the recorded moratorium assessment.",
+    "pullQuote": "For foreign investors, the picture is therefore direct: this activity is open nationally and is not blocked from PMA registration in Bali by the recorded moratorium assessment.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

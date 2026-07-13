@@ -1,0 +1,27 @@
+{
+  "code": "23933",
+  "editorial": {
+    "headline": "Porcelain Technicalware With A Clear Bali Path",
+    "standfirst": "KBLI 23933 covers porcelain laboratory, electrical, and industrial ceramic equipment, open nationally to PMA and not blocked for Bali registration.",
+    "body": "KBLI 23933 is a manufacturing classification for a precise corner of the ceramics industry: porcelain and ceramic equipment made for laboratory, electrical, technical, chemical, and industrial use. Its scope is not general tableware or decorative ceramics. The record points instead to functional technicalware: mortars and pestles, filter plates, chemical tubes, bottles and jars, crucibles, fuse housings, low-voltage and high-voltage insulators, ferrite and ceramic magnets, and ceramic products used in laboratory, chemical, and industrial settings.\n\nThat makes the activity relevant to founders who are setting up a production business around engineered porcelain or industrial ceramics, where the object being made matters as much as the material. A company registering this code should be able to recognise itself in the manufacturing act described by the scope: making the laboratory apparatus, electrical components, technical porcelain pieces, or ceramic industrial products themselves. The open scale range is broad. The record lists Mikro, Kecil, Menengah, and Besar, so the classification is not confined to a single enterprise size band.\n\nNationally, the PMA position is straightforward. The code is marked TERBUKA, with a foreign-ownership ceiling of 100%. In practical editorial terms, that means the national record does not impose a foreign-shareholding cap below full foreign ownership for this activity. The cited national basis is Perpres 10/2021, 49/2021. Nothing in the slim record adds a special capital number, operating threshold, licence timeline, or sector-specific condition, so those should not be read into the code from outside assumptions.\n\nBali is also clear, but for a different reason. The province’s moratorium blocks Low and Medium-Low risk KBLI for PMA across the island, yet this activity is not blocked in the Bali field. The Bali reason says the OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it falls outside that moratorium block. The status is therefore not a hidden prohibition: it is recorded as OK_or_HIGHER_RISK, with l4_bali_blocked set to false. For a foreign investor reading the code today, the honest conclusion is that KBLI 23933 is nationally open to full foreign ownership and, on the record provided, not blocked for PMA registration in Bali.",
+    "pullQuote": "For a foreign investor reading the code today, KBLI 23933 is nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

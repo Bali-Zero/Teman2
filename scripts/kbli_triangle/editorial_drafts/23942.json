@@ -1,0 +1,27 @@
+{
+  "code": "23942",
+  "editorial": {
+    "headline": "Lime Manufacturing That Remains Open in Bali",
+    "standfirst": "This activity covers industrial lime production from limestone, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "Activity code 23942 is about the making of lime from limestone: quicklime, wall lime, plastering lime, slaked lime, and hydraulic lime. The scope is industrial rather than decorative. It points to the transformation of limestone into different lime products used in construction and related material supply, with the record describing the activity through the products made rather than through a specific plant size, technology, or customer market.\n\nThat matters because registration follows the activity as defined, not a founder’s branding of the business. A company making these forms of lime would sit here when its substance is the production of lime from limestone. The record opens the activity across **Mikro, Kecil, Menengah, and Besar** scales, so it is not framed as a category reserved only for large industrial operators. A small producer and a larger manufacturer can both fall within the same activity description if the registered business is genuinely making the lime products named in the scope.\n\nAt the national level, the foreign-investment position is clear. The activity is marked **TERBUKA**, with **pma_max_asing** at **100%**. In plain English, the record permits foreign ownership up to the full national ceiling for this activity. There is no lower foreign-share cap in the slim record, and there is no additional national condition stated here beyond the open PMA status and the cited source. For founders, that makes the national reading unusually clean: the activity is foreign-open, and the ownership ceiling shown in the record is complete foreign ownership.\n\nBali does not reverse that conclusion in this record. The province’s moratorium blocks PMA registration for Low and Medium-Low risk activities island-wide, but this activity is not marked as blocked. Its Bali status is **OK_or_HIGHER_RISK**, and the stated reason is that OSS risk at the **Besar** scale is **Menengah-Tinggi/Tinggi**, so it is not blocked by the moratorium. The honest Bali-side reading, therefore, is not that foreign investors are barred from registering this activity in Bali, but that the moratorium block does not apply on the facts given. The decisive point is narrow and important: this is nationally open to PMA up to 100%, and the Bali record does not add a PMA block.",
+    "pullQuote": "This is nationally open to PMA up to 100%, and the Bali record does not add a PMA block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

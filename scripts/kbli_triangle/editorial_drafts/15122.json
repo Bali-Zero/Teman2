@@ -1,0 +1,27 @@
+{
+  "code": "15122",
+  "editorial": {
+    "headline": "Animal Saddlery And Harness Manufacturing, Read Without Drama",
+    "standfirst": "This activity covers the making of animal saddles, harnesses, collars, bags, shoes, clothing, and related goods from leather or other materials.",
+    "body": "This code is for a practical manufacturing activity: making goods for animals from leather or other materials. The record is broad. It includes animal collars, harnesses, saddles, muzzles, whips, animal shoes, animal bags, and clothing for animals. The final word in the scope is “Seluruh”, so the activity should be read as covering the full manufacturing scope described there, not only a luxury or equestrian niche.\n\nFor founders, the useful point is that this is not a service label or a retail description. It is an industrial activity: the making of physical animal-use goods. A business using this classification would be registering the production side of those items, whether the output is a harness, a saddle, a pet bag, a muzzle, or clothing made for animals. The material base is also deliberately wide: leather is named, but the scope also allows other materials. That makes the classification more about the object and its use than about a single material tradition.\n\nThe scale picture is unusually clean. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar. In plain English, it is available across the full business-size spectrum shown in the record, from micro activity through large-scale activity. The national foreign-investment position is also clean: the PMA status is TERBUKA, and the maximum foreign ownership recorded is 100%. There is no partial ceiling in the record to soften or interpret. Nationally, this activity is foreign-open up to the recorded full ceiling.\n\nThe Bali reading is where the classification has to be handled carefully, because the island moratorium is real but not triggered here in the record. The moratorium rule says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This code, however, is marked with Bali status OK_or_HIGHER_RISK, with `l4_bali_blocked` set to false. The record’s reason is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. So the honest conclusion is not that Bali imposes a separate ownership cap, and not that Bali blocks this activity. The conclusion is narrower and stronger: nationally it is open up to 100% foreign ownership, and in Bali the record does not mark it as blocked by the moratorium.",
+    "pullQuote": "The honest conclusion is narrow and strong: nationally it is open up to 100% foreign ownership, and Bali is not marked as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

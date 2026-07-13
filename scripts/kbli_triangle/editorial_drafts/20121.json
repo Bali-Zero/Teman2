@@ -1,0 +1,27 @@
+{
+  "code": "20121",
+  "editorial": {
+    "headline": "Nitrogen Fertiliser Manufacturing, With a Clean Bali Reading",
+    "standfirst": "KBLI 20121 covers core nitrogen, phosphate, and potassium fertiliser production, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 20121 is an industrial code for making the chemistry that sits at the base of agricultural input supply: single fertilisers based on nitrogen, phosphate, or potassium, including urea, natural phosphate, natural potassium salts, ZA, TSP, and DSP. The record also places related nitrogen compounds inside the same frame, such as nitric and sulfonitric acids, nitrous acid, ammonia-derived salts, and potassium nitrites and nitrates. In plain English, this is not retail fertiliser trading or farm advisory work. It is manufacturing: the production of fertiliser materials and associated nitrogen chemistry.\n\nThe scope is broad, but it is not limitless. The record separates this activity from ammonia industry, green hydrogen industry, blue ammonia industry, and green ammonia industry. That boundary matters because a founder should read this code as a defined manufacturing activity, not as a general licence to describe every upstream chemical, hydrogen, or ammonia venture under the same heading. The editorial interpretation is therefore disciplined: KBLI 20121 is about producing the named fertilisers and related nitrogen compounds listed in the record, with the excluded activities left outside the frame.\n\nOn business scale, the code is unusually wide. The record marks it open to Mikro, Kecil, Menengah, and Besar scales. That means the classification is not reserved only for the largest industrial players in the way some heavy manufacturing categories might appear to be from the outside. A registrant can read the scale line as covering the full stated range, from micro through large enterprise. What the record does not provide is a factory-size threshold, capital minimum, production capacity, environmental approval detail, or operational timeline, so none should be inferred from the scale language alone.\n\nThe national-versus-Bali picture is straightforward here. Nationally, the PMA status is TERBUKA, with pma_max_asing recorded as 100 under Perpres 10/2021, 49/2021. Put plainly, the national foreign-ownership ceiling is 100%. Bali does not add a separate percentage in this record, and the Bali side should not be read as a local equity cap. Instead, the record marks l4_bali_blocked as false and gives the Bali status as OK_or_HIGHER_RISK. Its reason is specific: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule still matters as background because Bali blocks all low and medium-low risk KBLI for PMA island-wide, permanently, but this record’s Bali conclusion is that KBLI 20121 is not blocked by that moratorium.",
+    "pullQuote": "This is a manufacturing code with a clear national opening and, on the Bali record provided, no PMA moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

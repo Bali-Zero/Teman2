@@ -1,0 +1,27 @@
+{
+  "code": "49213",
+  "editorial": {
+    "headline": "Urban Transport on a Fixed Route",
+    "standfirst": "A fixed-route urban transport activity open to every business scale nationally, with Bali remaining available for PMA registration under its stated risk treatment.",
+    "body": "Urban Transport covers the movement of people from one place to another within an urban area on established routes. In practical terms, it is the scheduled, route-bound side of city mobility: city buses and other bus services operating within a route framework. The defining feature is not simply that the service moves passengers in a city, but that its operations are tied to a trayek—an assigned route rather than an undefined transport activity.\n\nThe activity is open to Micro, Small, Medium and Large enterprises. That breadth matters because the classification does not reserve the activity for a single business size or operating model. A founder registering under this code is therefore placing the enterprise within a formal urban-route transport category, with the scale of the business stated directly in the record rather than inferred from the kind of vehicles or network it may operate.\n\nNationally, the PMA position is clear: the activity is TERBUKA, with a foreign-ownership ceiling of 100%. Foreign investment is therefore permitted up to full ownership at the national level. The relevant source recorded for that position is Perpres 10/2021, 49/2021. This is a meaningful distinction in a sector where the formal route-based nature of the activity should be read carefully: the record supports foreign participation in the activity itself, not a broader claim about every operational question a transport business might encounter.\n\nBali does not reverse that national opening. Its status is recorded as OK_or_HIGHER_RISK, and the record specifies that, at the Large scale, the OSS risk classification is Medium-High/High. For that reason, the activity is not blocked by Bali’s moratorium. The provincial rule blocks Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis; this activity’s stated Large-scale risk treatment places it outside that block. For a foreign founder, the honest conclusion is straightforward: this code remains available for PMA registration in Bali, while the national ceiling remains 100%.",
+    "pullQuote": "This code remains available for PMA registration in Bali, while the national ceiling remains 100%.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali risk at scale Besar",
+        "value": "Menengah-Tinggi/Tinggi"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

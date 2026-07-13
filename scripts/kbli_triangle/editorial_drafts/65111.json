@@ -1,0 +1,27 @@
+{
+  "code": "65111",
+  "editorial": {
+    "headline": "Conventional Life Insurance: Open Nationally and in Bali",
+    "standfirst": "This activity covers conventional life insurance, open to full foreign ownership nationally and not blocked from PMA registration in Bali.",
+    "body": "Conventional life insurance, under this code, is the business of providing protection against life-related risk through a conventional insurance arrangement. Its promise is a defined payment mechanism: a policyholder, insured person or another entitled party may receive payment when the insured dies or remains alive. The activity also includes payments due at a time specified in the agreement. The amount may be fixed and/or based on the results of fund management. This is therefore a code for operating the risk-management service itself, with policy terms determining the persons entitled to receive the stated payment.\n\nThe registrant is a business undertaking conventional life-insurance services: the organisation of risk protection and the payments prescribed by its policies. The record opens the activity at Mikro, Kecil, Menengah and Besar scales. That gives the code a wide scale range without changing its central proposition: the service exists to make the agreed payment when the insured dies or remains alive, or at another contractually specified time. The recipient remains the policyholder, insured person or another party with the contractual right to it.\n\nNationally, the PMA setting is open, with a foreign-ownership ceiling of 100%. In practical ownership terms, the record permits full foreign ownership for this particular activity nationwide. Its stated source is Perpres 10/2021, 49/2021. That is the national position to use; the fact that life-insurance payments may draw on fund-management results does not alter the ownership percentage given in the record.\n\nBali does not overturn that result. The provincial moratorium is a permanent, island-wide block on PMA registration for all Low and Medium-Low risk activities. This code is not marked as blocked. The record’s reason is specific: at Besar scale, OSS risk is Menengah-Tinggi/Tinggi, so the activity is not caught by the moratorium. Bali’s status is therefore genuinely open for PMA registration, not merely nationally open in theory.",
+    "pullQuote": "Bali’s status is therefore genuinely open for PMA registration, not merely nationally open in theory.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

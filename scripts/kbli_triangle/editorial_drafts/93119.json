@@ -1,0 +1,27 @@
+{
+  "code": "93119",
+  "editorial": {
+    "headline": "Sport Centres, Nationally Open but Closed to PMA in Bali",
+    "standfirst": "This activity covers sports venues, including sport centres, but Bali offers no PMA registration path despite national foreign-investment openness.",
+    "body": "Sports facilities are the core business here: providing a place and the supporting facilities for sport, including a sport centre. The emphasis is on operating the venue itself rather than treating sport as an incidental amenity. In practical terms, this is the activity for a business whose central proposition is the space, infrastructure and setting in which sporting activity takes place.\n\nThe registration record opens the activity at the **Mikro** and **Kecil** scales. That matters because scale is not a decorative classification in this case; it frames who can enter the activity through the available registration rows. The record does not extend that opening to a larger-business row, so the category remains structurally aligned with micro and small enterprises.\n\nAt the national level, the activity is **TERBUKA** to foreign investment, with a foreign-ownership ceiling of **100%**. That is a clear national position: foreign ownership is not capped below full ownership for this activity. But national openness does not itself create a route to register in every locality. In Bali, a foreigner cannot register this activity through a PT PMA today. The Bali record marks it as closed to PMA because OSS has no **Usaha Besar** scale row; the activity is therefore reserved for UMKM, while a PT PMA is treated by law as an Usaha Besar.\n\nBali’s position is reinforced by its permanent, island-wide rule blocking all low- and medium-low-risk KBLI activities from PMA. The decisive point for this activity, however, is already explicit in its registration structure: there is no large-business row available to a PT PMA. For founders, the honest reading is not that Bali has narrowed an otherwise usable foreign-investment option. It is that the national 100% ceiling and the Bali registration pathway lead to different outcomes: national foreign openness, but no PMA registration route in Bali.",
+    "pullQuote": "National openness does not itself create a route to register in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Mikro"
+      },
+      {
+        "label": "Open scale",
+        "value": "Kecil"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "Closed to PMA (no Besar scale)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "64953",
+  "editorial": {
+    "headline": "Conventional Pawn Activity: Nationally Open, Bali’s Risk Line",
+    "standfirst": "Conventional secured lending, custody and valuation services are open nationally to foreign investment and available at every business scale.",
+    "body": "Conventional pawn activity is a financial-service business built around secured lending. It includes advancing cash against collateral under pawn law, as well as lending secured by fiduciary collateral. Its scope also reaches the safekeeping of valuable goods and valuation services—two functions that place custody and assessment alongside the loan itself. Other commission-based activities that do not conflict with financial-services law may also form part of the business, as can other activities approved by the Financial Services Authority.\n\nThe activity is open to micro, small, medium and large enterprises. That breadth matters because the code is not framed as a niche service reserved for one size of operator: it describes a conventional pawn business whose core work can combine secured lending, valuables custody and appraisal. The common thread is conventional operation. The record does not present this as a purely lending-only category; the handling, safekeeping and assessment of pledged valuables are expressly within its stated scope.\n\nAt the national level, the foreign-investment position is direct: the activity is open, with a foreign-ownership ceiling of 100%. In other words, foreign investment is permitted nationally at the full stated ceiling. That national position should be read together with the activity’s full-scale availability, rather than as a shorthand for any particular operating model beyond the services set out in the scope.\n\nBali does not block PMA registration for this activity under its island-wide moratorium on low- and medium-low-risk KBLI. The Bali record places the activity, at the large-enterprise scale, in the medium-high/high risk range; that is why it is not caught by that moratorium. For a founder considering Bali, the honest conclusion is neither a special Bali ownership cap nor a prohibition: national foreign ownership may reach 100%, and the Bali moratorium does not block this code. The practical distinction is the risk profile recorded for the large scale, not an invented local restriction.",
+    "pullQuote": "Nationally, foreign ownership may reach 100%, and Bali’s moratorium does not block this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

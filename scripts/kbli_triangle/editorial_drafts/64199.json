@@ -1,0 +1,27 @@
+{
+  "code": "64199",
+  "editorial": {
+    "headline": "KBLI 64199: Other Monetary Intermediation, Clearly Framed",
+    "standfirst": "A deposit-taking and lending activity open to every business scale nationally, with up to 100% foreign ownership and no Bali moratorium block at Large scale.",
+    "body": "KBLI 64199 covers monetary intermediation that does not sit elsewhere in the classification: receiving deposits or similar deposit-like funds, then extending credit or other forms of lending. The scope is broad enough to include support for credit in forms such as loans, secured loans, mortgage lending and consumer credit cards. It is generally carried out by financial institutions other than the central bank, including postal giro and savings activities, specialised deposit-taking institutions authorised to lend, and payment-order activities. The defining thread is straightforward: accepting funds and providing credit or loans within this particular residual category of monetary intermediation.\n\nThe activity is open at every listed scale: Mikro, Kecil, Menengah and Besar. That matters because the record does not confine it to a narrow size of operator; its stated availability runs from micro through large enterprise. Nationally, its PMA status is TERBUKA, with a maximum foreign ownership figure of 100. In plain terms, the national record permits a foreign stake of up to 100% for this activity. That is the ownership ceiling stated here, rather than an implication drawn from the activity’s financial character or from any adjacent classification.\n\nBali does not reverse that national position for this record. The province’s island-wide, permanent PMA moratorium applies where OSS risk is Low or Medium-Low. For KBLI 64199, however, the record says that OSS risk at the Besar scale is Menengah-Tinggi/Tinggi. Its Bali status is therefore OK_or_HIGHER_RISK, and it is explicitly not blocked by the moratorium. There is no separate Bali foreign-ownership percentage or partnership condition recorded here. The honest reading is consequently clean: this activity is nationally open to up to 100% foreign ownership, and Bali does not block its PMA registration under the stated moratorium because of its Large-scale OSS risk position.\n\nThat does not turn the classification into a generic label for every financial service. Its scope is anchored in deposit acceptance and the provision of credit or other loans, with examples that show how varied credit support can be. For founders, the useful discipline is to keep the proposed business aligned to that stated core, then read the national ownership position and Bali treatment exactly as the record sets them out. The record supports openness across the listed scales and a non-blocked Bali outcome; it does not add further conditions beyond those facts.",
+    "pullQuote": "The record supports up to 100% foreign ownership nationally and a non-blocked Bali outcome for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

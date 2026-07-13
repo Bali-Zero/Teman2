@@ -1,0 +1,27 @@
+{
+  "code": "25112",
+  "editorial": {
+    "headline": "Aluminium Structure Work for Light Construction",
+    "standfirst": "For KBLI 25112, the record describes a manufacturing activity that is nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 25112 is a manufacturing code for aluminium structural products used in light construction. The record describes the activity as the making of aluminium window frames, door frames, aluminium trellis, aluminium roofing or awnings, rolling doors, aluminium blinds, and other light-construction products. Its centre of gravity is fabrication: turning aluminium into building-facing elements that define openings, shading, access, screening, and other lightweight structural uses.\n\nThat makes this a practical industrial code, not a general trading label or a loose construction-service category. A founder using it should be able to point back to the making of the products themselves: the frame, the door, the awning, the rolling door, the blind, or a comparable aluminium product for light construction. The record is also broad on business size. It is open across **Mikro, Kecil, Menengah, and Besar**, so the activity is not reserved in the record for only one scale of enterprise. It can describe a smaller fabrication setup as well as a larger aluminium-products manufacturer, provided the activity remains within the recorded scope.\n\nThe national PMA picture is straightforward. The record marks the activity as **TERBUKA**, with a foreign-ownership ceiling of **100%**. In plain English, the national field says this activity is open to foreign investment up to full foreign ownership. The cited PMA source in the record is **Perpres 10/2021, 49/2021**. Nothing in the slim record adds a special national licence, capital threshold, tax treatment, or timeline, so none should be read into the code from this editorial alone.\n\nBali is where this record needs careful reading, but not a manufactured warning. The Bali-side status is **OK_or_HIGHER_RISK**, and `l4_bali_blocked` is false. The record’s reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule itself says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this record does not mark 25112 as blocked. So the honest national-vs-Bali conclusion is aligned rather than contradictory: nationally open to PMA up to 100%, and not blocked by the Bali moratorium according to the provided Bali risk reasoning.",
+    "pullQuote": "The honest reading is aligned: nationally open to full foreign ownership, and not marked as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

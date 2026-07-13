@@ -1,0 +1,27 @@
+{
+  "code": "03224",
+  "editorial": {
+    "headline": "Protected Freshwater Breeding With a Clear Bali Path",
+    "standfirst": "This activity covers the breeding and controlled use of protected aquatic species, nationally open to foreign investment and not blocked for PMA registration in Bali.",
+    "body": "KBLI 03224 sits in a specialised corner of aquaculture: the breeding and use of protected freshwater fish and aquatic biota, including species listed under CITES and species protected or restricted under applicable law. Its scope is not ordinary fish farming. It is about controlled activity around sensitive aquatic life, with examples in the record ranging from freshwater rays and arwana to zebra pleco, alongside broader protected finfish and crustaceans that may live in marine, freshwater, or brackish habitats.\n\nThe activity is framed around research and development, breeding, domestic trade, foreign trade, and aquaria based on breeding results. That makes the code relevant to operators whose business model is built around propagated stock rather than casual capture or generic aquarium commerce. The emphasis is important: the record repeatedly ties the activity to protected, CITES-limited, or otherwise restricted species, and to uses that sit outside the core protection provisions only where the applicable limits allow that use.\n\nOn scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar scales, so the code is not reserved only for a large operator category. A small specialist breeding operation and a larger enterprise can both fall within the scale language of the record, provided the activity itself remains the one described here: breeding and permitted use of protected or restricted aquatic biota, including finfish and crustaceans, for the purposes stated in the scope.\n\nThe investment picture is also clean. Nationally, the PMA status is TERBUKA and the foreign ownership ceiling is 100%, so the record does not show a foreign equity cap below full ownership. For Bali, the key point is equally direct: the activity is not blocked by the province-wide moratorium, because the Bali reason says the OSS risk at Besar scale is Menengah-Tinggi/Tinggi and therefore not blocked by that moratorium. In plain terms, this is a nationally foreign-open code with a Bali status that does not close the door to PMA registration on the moratorium ground recorded here.",
+    "pullQuote": "In plain terms, this is a nationally foreign-open code with a Bali status that does not close the door to PMA registration on the moratorium ground recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

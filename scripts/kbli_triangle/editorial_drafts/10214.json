@@ -1,0 +1,27 @@
+{
+  "code": "10214",
+  "editorial": {
+    "headline": "Pemindangan Fish Processing Is Nationally Open, but Bali Blocks PMA",
+    "standfirst": "This fish-processing activity is open to all business scales nationally, yet the record marks PMA registration in Bali as blocked under the province’s low-risk moratorium.",
+    "body": "This activity covers the processing and preservation of finfish through **pemindangan**, the Indonesian boiling-and-salting preservation method associated in the record with products such as pindang bandeng or paso, pindang tongkol, pindang cue, pindang naya, pindang lemuru or tembang, pindang layang, and pindang cakalang. In plain English, it is a food-processing classification for businesses that turn finfish into preserved pindang products, not a general seafood-trading label and not a catch-all for every form of fish processing.\n\nThe scale picture is broad. The slim record opens the activity to **Mikro, Kecil, Menengah, and Besar** businesses, which means it can describe anything from a very small pindang producer to a larger industrial operation, provided the registered activity is still the pemindangan-based processing and preservation of finfish described above. That matters because the classification is anchored in the production method and the resulting pindang product line. A company using this code should be able to recognise itself in that scope, rather than treating the title as a convenient umbrella for unrelated fish activities.\n\nNationally, the foreign-investment position is clean: the record marks the activity as **TERBUKA**, with `pma_max_asing` at **100%**, sourced to **Perpres 10/2021, 49/2021**. On the national reading alone, that is a fully foreign-open activity. There is no partial foreign-share cap in the record, no special threshold, and no separate condition supplied here that would reduce the national ceiling. For a founder reading the code from outside Bali, the national signal is therefore straightforward: this activity can be structured as PMA up to the recorded foreign-ownership ceiling.\n\nBali changes the practical answer. The record sets `l4_bali_blocked` to true and gives the reason as: **“OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.”** It also states the moratorium rule as: **“Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).”** So the honest Bali lede is not that the code is partly open, or open with a local adjustment. It is that a foreigner cannot register this activity as PMA in Bali today under the record supplied, even though the same activity is nationally foreign-open at 100%.",
+    "pullQuote": "Bali changes the practical answer.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

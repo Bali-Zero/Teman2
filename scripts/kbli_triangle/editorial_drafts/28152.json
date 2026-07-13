@@ -1,0 +1,27 @@
+{
+  "code": "28152",
+  "editorial": {
+    "headline": "Electric Furnaces and Ovens as a Serious Manufacturing Category",
+    "standfirst": "KBLI 28152 covers electric industrial and household heat equipment, nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 28152 is a manufacturing category for equipment that produces, manages, or channels heat through electric current. The record places it around the making of furnaces, ovens, and related heating apparatus whose use depends on electricity. In practical English, this is not a general kitchenware label or a catch-all for every kind of industrial heater. It is the production lane for electric heat equipment such as industrial and laboratory induction equipment, incinerators, combustion furnaces, household cooling and ventilation equipment, and electric furnaces for household use.\n\nThat breadth matters because the code sits across two different worlds: heavy, technical equipment for industrial or laboratory settings, and selected household equipment where electric heat or air movement is central to the product. A founder using this code should be able to describe a manufacturing activity, not merely trading, installing, or servicing finished machines. The scope also draws a boundary around what it does not cover, excluding certain food, beverage, tobacco, pulp, paper, and other industrial heat-control equipment. The editorial point is simple: the activity is defined by making electric-current-based heating or related apparatus, with the listed examples anchoring the interpretation.\n\nOn scale, the record is unusually open. Micro, small, medium, and large enterprises are all shown as open to this activity. That means the category is not framed only for large plant manufacturers; it can also hold smaller production setups, provided the business activity genuinely fits the manufacturing scope. The scale list should not be over-read as a licence, permit, or operational clearance. It is a registration-scale signal in the record, and it says that every named scale is open.\n\nThe national foreign-investment picture is also clean. The PMA status is marked **TERBUKA**, and the foreign-ownership ceiling is **100%**, sourced to **Perpres 10/2021, 49/2021**. The Bali picture does not reverse that conclusion. The record marks Bali as **OK_or_HIGHER_RISK**, says `l4_bali_blocked` is false, and gives the reason as: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record is still important context: Bali blocks all low and medium-low risk KBLI for PMA, island-wide and permanently. But for this activity, the record’s own Bali-side conclusion is that it is not blocked by that moratorium.",
+    "pullQuote": "For this activity, the honest reading is that full foreign ownership is nationally open and Bali does not block PMA registration under the recorded moratorium check.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

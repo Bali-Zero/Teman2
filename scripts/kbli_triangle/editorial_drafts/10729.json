@@ -1,0 +1,27 @@
+{
+  "code": "10729",
+  "editorial": {
+    "headline": "Other Sugar Manufacturing With a Clear Bali Path",
+    "standfirst": "KBLI 10729 covers specialist sugar and sweetener processing, nationally open to full foreign ownership and not blocked by Bali’s PMA moratorium.",
+    "body": "KBLI 10729 is not the ordinary headline category of sugar production; it is the quieter industrial space around sugar and sweeteners once they are processed into other forms. The record places rock sugar, liquid sugar, and powdered sugar inside its scope. It also includes the making of sugar substitutes from cane juice, beet, maple, stevia, and palm plants such as coconut and aren. The same scope extends to molasses, sweet non-fruit topping sauces, and brown sugar whose main raw material is not nira.\n\nThat makes this activity a manufacturing classification for businesses working with transformed sugar and alternative sweetening materials, rather than a narrow retail or trading label. A founder would look at this code when the substance of the business is processing: turning sugar or sweetener inputs into another product form, or producing the listed substitutes and sweet derivatives. The record is explicit enough to give the activity a practical boundary without adding a licence story that is not present here.\n\nOn scale, the code is broadly available. The record opens it to Mikro, Kecil, Menengah, and Besar operators, so it is not reserved for a single size of enterprise. A small producer of powdered sugar and a larger manufacturer of liquid sweetener would still need to match their real operations to the recorded scope, but the scale field itself does not close the door at any one level. That matters because the classification can serve both small production setups and larger industrial plans, provided the activity remains within the described processing field.\n\nThe national-vs-Bali picture is unusually clean. Nationally, the PMA status is TERBUKA and the recorded foreign-ownership ceiling is 100%, with Perpres 10/2021, 49/2021 given as the source. Bali does have an island-wide moratorium rule blocking all Low + Medium-Low risk KBLI for PMA, but this record does not mark the activity as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. In plain terms, the record supports a full-foreign PMA reading nationally, and it does not show a Bali moratorium block for this activity.",
+    "pullQuote": "The national-vs-Bali picture is unusually clean: the record supports full foreign ownership and does not show a Bali moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

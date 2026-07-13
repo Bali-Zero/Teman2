@@ -1,0 +1,27 @@
+{
+  "code": "20131",
+  "editorial": {
+    "headline": "Synthetic Resin and Virgin Plastic Feedstock, Without the Bali Trap",
+    "standfirst": "KBLI 20131 covers the making of synthetic resins and virgin plastic raw materials, open nationally to PMA and not blocked for Bali in the record.",
+    "body": "KBLI 20131 is a manufacturing classification for the upstream chemistry of plastics: the making of synthetic resin and virgin plastic raw material. The record describes **damar buatan** and **bahan baku plastik**, including pure plastic pellets, with examples such as alkyd, polyester, amino resin, polyamide, epoxy, silicone, polyurethane, PE, PP, polystyrene, PVC, cellulose acetate, cellulose nitrate, biopolymers, and alginic acid. In plain English, this is not a retail or trading category and not a generic plastic-products label. It is for the industrial production of resin and primary plastic feedstock before those materials are turned into articles.\n\nThe boundary matters because the scope is about producing the material itself. The slim record separates this activity from later processing of purchased synthetic resin or purchased plastic material into finished goods, plastic articles, film, or light-insensitive film sheets. That distinction gives the code its character: it is a base-material activity, concerned with resin chemistry and plastic raw material, not the downstream shaping of already-bought inputs into consumer or industrial plastic products. The record also carries a long set of named chemical industries outside this activity, which reinforces that the classification is specific rather than a catch-all for every chemical or plastic-related operation.\n\nFor registration, the scale picture is unusually broad. The record opens the activity to **Mikro, Kecil, Menengah, and Besar** scales, so the classification is not reserved only for a large enterprise on its face. The investment picture is also straightforward nationally: PMA status is **TERBUKA**, and the recorded maximum foreign ownership is **100%** under the stated source. For a foreign-owned setup, that means the national entry point in the slim record is open rather than capped below full foreign ownership.\n\nThe Bali reading is equally important because this is where many activities become less simple. Here, the record does **not** mark the activity as blocked for Bali. Its Bali status is **OK_or_HIGHER_RISK**, and the stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently, but this activity is not blocked in the record because of the risk position stated there. The honest conclusion is clean: KBLI 20131 is foreign-open nationally, and the slim record does not show a Bali PMA moratorium block for it today.",
+    "pullQuote": "The honest conclusion is clean: KBLI 20131 is foreign-open nationally, and the slim record does not show a Bali PMA moratorium block for it today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

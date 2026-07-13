@@ -1,0 +1,27 @@
+{
+  "code": "62201",
+  "editorial": {
+    "headline": "Cybersecurity Consulting, With Bali’s PMA Moratorium in View",
+    "standfirst": "This activity spans cybersecurity planning, audit, testing and system implementation, and is open to PMA nationally without a Bali moratorium block.",
+    "body": "Cybersecurity consulting and management is defined here as an advisory and implementation-facing activity around information security. Its scope begins with planning and oversight of information security, then extends to security audits and assurance. It also covers the development and implementation of information-security systems. Planning and supervision take their place alongside auditing and assurance, while development and implementation give the activity a systems dimension. The description therefore covers consulting that is both analytical and practical in its stated security focus.\n\nThe remit is equally clear in the technical work it names. System testing, vulnerability analysis, data-protection planning, and the drafting of information-security policies and procedures all sit within the stated scope. These elements are presented as part of the same activity, placing strategic planning, assessment, and the formation of security policies and procedures in a single description. The scope also expressly includes both the development and implementation of information-security systems, alongside audit and assurance work. The result is a description that joins the listed planning, testing, policy, data-protection and system work.\n\nOn scale, the activity is open to Micro, Small, Medium and Large enterprises. No one of those listed scales is presented as the sole setting for the activity; the record expressly lists all four. Scale is part of the record’s basic operating frame, not an afterthought. The national PMA position is equally direct: it is open, and the foreign-ownership ceiling is 100 per cent. A foreign investor may therefore hold the entire ownership interest within that stated national ceiling. Perpres 10/2021, 49/2021 is the source cited for the national PMA position.\n\nBali requires a separate reading, but it does not turn this into a blocked PMA activity. The Bali status is recorded as OK_or_HIGHER_RISK, and the record says it is not blocked by the provincial moratorium. Its stated reason is the OSS risk at the Large scale: Medium-High/High. Bali’s moratorium is described as island-wide and permanent, and it blocks all Low and Medium-Low risk KBLI for PMA. This activity is recorded outside that blocked group. The distinction rests on the risk position supplied for the activity, not on a different national ownership ceiling. The plain conclusion is direct: PMA is open nationally up to 100 per cent, and Bali’s moratorium does not block PMA registration for this activity.",
+    "pullQuote": "PMA is open nationally up to 100 per cent, and Bali’s moratorium does not block PMA registration for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

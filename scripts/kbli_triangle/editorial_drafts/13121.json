@@ -1,0 +1,27 @@
+{
+  "code": "13121",
+  "editorial": {
+    "headline": "Machine Weaving for Textiles Is Open, Including in Bali",
+    "standfirst": "KBLI 13121 covers machine-based textile weaving across new, recovered, and specialty fibres, with national PMA openness and no Bali moratorium block in this record.",
+    "body": "**KBLI 13121 is the industrial activity of weaving textiles with machine looms.** The Indonesian scope describes *pertenunan tekstil dengan alat tenun mesin*, meaning textile weaving carried out using mechanical weaving equipment rather than a handloom-only or purely artisanal framing. Its material range is broad: new materials, recovered materials, silk, cotton, wool, plant fibres, artificial fibres, paper fibre, glass fibre, recovered textile waste, and new textile fibre all sit within the record’s stated scope.\n\nThat breadth matters because the code is not written around a single fabric, fashion niche, or end product. It is about the weaving activity itself: transforming permitted textile inputs into woven textile output by machine. A founder registering under this activity should therefore read the code through the production process first, then through the materials used. The record supports a textile-weaving business that may work with conventional fibres as well as recovered or specialised fibres, provided the activity remains machine-based textile weaving.\n\nOn business scale, the record is unusually straightforward. It is open to Mikro, Kecil, Menengah, and Besar. In practical registration terms, that means the activity is not reserved only for a narrow enterprise band in the slim record: micro, small, medium, and large operators all appear in the permitted scale list. That does not create extra obligations or approvals by itself; it simply tells us that the classification is available across the listed business scales.\n\nThe national-versus-Bali picture is also clean. Nationally, the PMA status is TERBUKA and the foreign-ownership ceiling is 100%, sourced in the record to Perpres 10/2021, 49/2021. Bali does not add a separate percentage in this record. Instead, the Bali field marks the code as OK_or_HIGHER_RISK, with the stated reason: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently, but this code is not marked as blocked. The honest conclusion is therefore simple: on the record provided, a foreign-owned setup can register this activity nationally and is not blocked by the Bali moratorium.",
+    "pullQuote": "The honest conclusion is therefore simple: on the record provided, a foreign-owned setup can register this activity nationally and is not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

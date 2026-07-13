@@ -1,0 +1,27 @@
+{
+  "code": "86101",
+  "editorial": {
+    "headline": "Government Hospital Activity: Closed to PMA, Including in Bali",
+    "standfirst": "For substantial government-run hospital operations, this activity is closed to PMA nationally and remains closed to PMA registration in Bali.",
+    "body": "A foreign investor cannot register this government-hospital activity in Bali today. That conclusion is not merely a provincial nuance: the national PMA position is closed, with a foreign-ownership ceiling of 0%, and Bali is likewise marked closed for PMA registration. This is not an entry route for a foreign-owned hospital operator. The point holds across the clinical settings named in the record, whether attention is on outpatient treatment, admitted patients, or a combination of the two.\n\nKBLI 86101 concerns healthcare and physical-treatment activity carried out by hospitals managed by the government. Its scope encompasses government-run general hospitals, maternity hospitals, and specialist institutions, including sanatoria and leprosy hospitals. It covers treatment delivered to outpatients as well as treatment provided during inpatient admission. The record identifies two hospital-capacity bands: more than 250 beds, and 201 to 250 beds. These descriptors locate the activity in actual hospital care under government management, with substantial bed capacity expressly within scope.\n\nThe relevant registration scale is Besar. At that scale, the record assigns a Medium-High/High risk classification. Those facts should be read for what they are: statements of scale and risk, not a reopening of the ownership position. The ownership conclusion is separately and plainly national—TERTUTUP for PMA, with no foreign share allowed. The stated source for that national position is Perpres 10/2021, 49/2021. A large-scale classification does not override that closed PMA status.\n\nBali's status needs one precise distinction. The province has a permanent, island-wide moratorium that blocks PMA in all Low and Medium-Low risk KBLI. This activity, at Besar scale, is classified Medium-High/High; the Bali reason therefore expressly says it is not blocked by that moratorium. Yet Bali still records the activity as TERTUTUP and flags it as blocked for PMA. The practical reading is simple: no PMA registration in Bali for this government-hospital activity. The closure is real, but it must not be misdescribed as an outcome of the Low and Medium-Low risk moratorium.",
+    "pullQuote": "The practical reading is simple: no PMA registration in Bali for this government-hospital activity.",
+    "byTheNumbers": [
+      {
+        "label": "KBLI 2025 code",
+        "value": "86101"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "0%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Besar"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "TERTUTUP"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "35301",
+  "editorial": {
+    "headline": "Steam, Hot Water and District Cooling Under KBLI 35301",
+    "standfirst": "KBLI 35301 is open to foreign ownership nationally and, on the record provided, is not blocked for PMA registration in Bali.",
+    "body": "KBLI 35301 covers the production and distribution of steam, hot water and cold air. In practical terms, this is infrastructure for heat, energy and cooling: producing, collecting and distributing steam or hot water for heating, power generation and other uses, as well as producing and distributing chilled air. The scope also includes geothermal heat storage, which gives the code a clear place in thermal-energy systems rather than ordinary building services alone.\n\nThe record treats the activity as open across all listed business scales: Mikro, Kecil, Menengah and Besar. That breadth matters because the activity is not framed only as a large utility undertaking. A founder reading this code should understand it as covering the activity itself, whether the planned operation is modest or substantial, so long as it remains within the stated scope of producing, distributing or storing thermal energy in the forms described.\n\nNationally, the PMA position is clean: the activity is marked TERBUKA, with a foreign-ownership ceiling of 100%. There is no foreign-share cap below full ownership in the slim record, and no extra capital figure, licence threshold or operating condition is supplied here. The national source identified for that position is Perpres 10/2021, 49/2021, but the editorial point is simpler: on the record given, KBLI 35301 is foreign-open at the national level.\n\nBali does not add the usual moratorium problem on this record. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA island-wide on a permanent basis, but this activity is marked OK_or_HIGHER_RISK, and the reason given is that the OSS risk at Besar scale is Menengah-Tinggi/Tinggi. That classification means it is not blocked by the Bali moratorium in the record provided. The honest reading is therefore aligned nationally and in Bali: a foreign-owned company may register this activity, with the national ceiling recorded as 100%, and with Bali’s status recorded as not blocked rather than closed.",
+    "pullQuote": "The honest reading is aligned nationally and in Bali: KBLI 35301 is foreign-open and not blocked by the Bali moratorium on the record provided.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

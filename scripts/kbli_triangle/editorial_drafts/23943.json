@@ -1,0 +1,27 @@
+{
+  "code": "23943",
+  "editorial": {
+    "headline": "Gypsum Manufacturing With a Clear Bali Path",
+    "standfirst": "This activity covers gypsum made from calcined gypsum or calcium sulfate, and remains nationally open to foreign ownership while not being blocked for PMA in Bali.",
+    "body": "This activity is the industrial making of gypsum: material formed from calcined gypsum, also described in the record as calcium sulfate, with calcined dolomite included in the scope. That is the useful editorial boundary. The activity is not a general construction-material label, and it is not a catch-all for every mineral product. It is centered on the manufacturing process that turns those stated inputs into gypsum within the registered business activity.\n\nFor founders, the registration story is unusually broad on business scale. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators. In plain English, that means the code is not reserved only for large factories or excluded from smaller registered businesses by scale. A founder should still read the scope narrowly: the strength of the registration comes from matching the actual operation to the making of gypsum from the materials named in the record, rather than stretching the label to cover adjacent lines of business that are not stated here.\n\nThe national foreign-investment position is clean. Classified as TERBUKA, the activity permits foreign ownership of up to 100%. For a PMA structure, the important consequence is that the national rule does not impose a foreign-share cap below full ownership for this activity. The cited national source is Perpres 10/2021, 49/2021, and the record gives no additional national condition, threshold, timeline, licence, tax treatment, or minimum-capital figure for this editorial to add.\n\nBali is also clear, but for a different reason. The province’s moratorium blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, under the cited governor letter. This activity is not blocked in Bali because the Bali reason states that at Besar scale the OSS risk is Menengah-Tinggi/Tinggi, so it is not caught by that moratorium. The honest reading is therefore not a warning that foreign investors are shut out of Bali today. It is the opposite: nationally open at 100% foreign ownership, and not blocked by Bali’s PMA moratorium on the record provided. The practical discipline is to keep the registration faithful to the gypsum-manufacturing scope and the stated scale-risk basis, because the Bali conclusion rests on those fields exactly.",
+    "pullQuote": "The honest reading is therefore not a warning that foreign investors are shut out of Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

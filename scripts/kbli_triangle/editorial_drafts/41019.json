@@ -1,0 +1,27 @@
+{
+  "code": "41019",
+  "editorial": {
+    "headline": "Conventional Construction for Indonesia’s Special-Use Buildings",
+    "standfirst": "KBLI 41019 covers conventional building work for civic, infrastructure, storage, religious, technical, and monumental facilities, with national PMA openness and no Bali moratorium block in this record.",
+    "body": "KBLI 41019 is a broad construction classification for buildings that do not sit in the ordinary residential or standard commercial frame. Its centre of gravity is conventional building work: development, maintenance, rebuilding, alteration, and renovation carried out by conventional construction methods. The scope is practical and physical rather than decorative. It reaches buildings used for religion, transport, government, storage, utilities, aviation support, public assembly, detention, data infrastructure, power infrastructure, signaling, towers, depots, pump houses, generator facilities, and even storage buildings for explosive materials. The sub-classification attached to the record is BG009, placing the activity squarely in “Konstruksi Gedung Lainnya” as recorded.\n\nThe defining feature is not one particular client type, but the kind of building being delivered. A company registering this activity is positioning itself for construction work on specialized buildings: a terminal or station building, a government building, an aircraft hangar, a data center, a meeting hall, a warehouse, a historic building, a power house, or another building of comparable use described in the scope. The record also explicitly includes changes and renovations to these buildings, so the activity is not limited to new-build projects. Maintenance, rebuilding, alteration, and renovation all remain inside the frame when they relate to the covered building types and the conventional method described by the classification.\n\nOn scale, the record is unusually clean. It is open across Mikro, Kecil, Menengah, and Besar. That means the activity is not framed here as only a large-contractor category; the classification is available at every listed business scale. At the national level, the PMA status is TERBUKA and the foreign-ownership ceiling is 100%. The source field given for that national position is “Perpres 10/2021, 49/2021.” There is no lower foreign cap in this record, and no separate condition is supplied that would justify narrowing the national reading beyond the fields provided.\n\nThe Bali picture is also clear, but it must be stated carefully. The record does include Bali’s moratorium rule: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” For this activity, however, `l4_bali_blocked` is false and the Bali status is `OK_or_HIGHER_RISK`. The reason is given exactly as: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” In plain English, the record does not mark this KBLI as blocked for PMA registration in Bali under that moratorium logic. The honest reading is therefore not a hidden Bali prohibition, nor a special Bali ownership cap, but a nationally open activity whose Bali-side record is not blocked by the stated moratorium.",
+    "pullQuote": "The honest reading is not a hidden Bali prohibition, but a nationally open activity whose Bali-side record is not blocked by the stated moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

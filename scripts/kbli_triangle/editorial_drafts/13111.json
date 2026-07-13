@@ -1,0 +1,27 @@
+{
+  "code": "13111",
+  "editorial": {
+    "headline": "Textile Fibre Preparation Before the Fabric Begins",
+    "standfirst": "KBLI 13111 covers the industrial preparation of textile fibres, open nationally to foreign ownership and not blocked for Bali PMA registration under the record’s risk reading.",
+    "body": "KBLI 13111 sits at the beginning of the textile chain: before fabric is woven, knitted, finished, or sold, the fibre itself has to be made workable. The record defines this activity as the preparation of textile fibres across several material families. It includes scutching ramie fibre, twisting or winding and washing silk fibre, removing grease from wool, carbonising wool, dyeing sheep wool, and the separation, carding, and combing of fibres from animal hair, plant sources, and synthetic or artificial materials.\n\nThat makes this a technical processing category, not a retail or design label. Its centre of gravity is the conversion of raw or semi-raw fibre into a cleaner, more aligned, more usable input for later textile production. The scope is broad in material terms: animal-derived fibre, plant fibre, and man-made fibre all appear inside the record. But the activity remains specific in function. It is about preparation: cleaning, separating, aligning, winding, washing, dyeing where stated, and making fibre ready for the next industrial step.\n\nOn registration scale, the record is unusually clear. KBLI 13111 is open to Mikro, Kecil, Menengah, and Besar. In plain English, the activity is not reserved in the record for only a small workshop profile or only an industrial-scale operator. A micro or small fibre-preparation business can sit under it, as can a medium or large enterprise, provided the registered activity is genuinely the preparation of textile fibre described in the scope. The scale openness matters because this is the kind of activity that can range from specialised fibre handling to more substantial industrial preparation, while still remaining within the same recorded activity frame.\n\nThe national foreign-investment picture is also clear. The record marks the activity as TERBUKA, with `pma_max_asing` at 100, sourced to Perpres 10/2021, 49/2021. So nationally, the foreign-ownership ceiling shown in the record is 100%. Bali does not add a separate percentage here. The Bali-side record marks the status as OK_or_HIGHER_RISK, with `l4_bali_blocked` set to false. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this activity is not blocked under the record’s Bali reading because of that higher-risk classification at large scale. The honest conclusion is therefore clean: KBLI 13111 is nationally foreign-open at the recorded ceiling, open across all listed business scales, and not blocked for Bali PMA registration by the moratorium as recorded.",
+    "pullQuote": "The honest conclusion is therefore clean: KBLI 13111 is nationally foreign-open at the recorded ceiling, open across all listed business scales, and not blocked for Bali PMA registration by the moratorium as recorded.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

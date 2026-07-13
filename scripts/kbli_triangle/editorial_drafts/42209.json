@@ -1,0 +1,27 @@
+{
+  "code": "42209",
+  "editorial": {
+    "headline": "The Utility Works Code for Unclassified Civil Infrastructure",
+    "standfirst": "KBLI 42209 covers other utility-related construction work, nationally open to PMA ownership and not marked as blocked for Bali registration in this record.",
+    "body": "KBLI 42209 is a residual but important construction category: it captures utility-related civil works that sit outside the more narrowly named utility construction groups. In plain English, the record points to the building, maintenance, and rebuilding of other construction works for utility environments, including site and environmental arrangement, residential-area infrastructure, industrial estates, hospital-area infrastructure, and similar settings. It also carries construction sub-classification references for other irrigation, communication, and waste networks, as well as prefabricated civil-building construction work.\n\nThat makes this a practical code for contractors whose work is not defined by a single visible asset, but by the infrastructure layer around a place: the network, the prepared environment, the supporting civil works. The record opens it across all listed business scales: Mikro, Kecil, Menengah, and Besar. So the scale question is not whether the code is reserved for large contractors only; the slim record says it can be registered from micro through large scale, depending on the business setup and the way the activity is presented in OSS.\n\nThe national PMA position is clean. The record marks KBLI 42209 as TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. In founder language, that means the national record allows full foreign ownership for this activity. There is no partial foreign ceiling in the slim record, and no separate national caveat is stated here. For a foreign-owned company assessing whether the activity can sit inside a PMA structure, the national answer is therefore straightforward: this code is foreign-open up to 100%.\n\nThe Bali picture is also more precise than a blanket warning. The record does include the provincial moratorium rule: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. But KBLI 42209 is not marked as blocked in this slim record. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. So the honest conclusion is not that Bali imposes a special percentage, partnership, quota, or local cap. The record says Bali is not blocking this code under the moratorium logic described here, while the operative Bali-side reason is tied to the higher OSS risk treatment at large scale.",
+    "pullQuote": "The honest conclusion is not that Bali adds a separate ownership cap, but that this record does not mark KBLI 42209 as blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "66114",
+  "editorial": {
+    "headline": "Alternative-Market Derivatives Trading: Nationally Open, Not Blocked in Bali",
+    "standfirst": "An own-account alternative-market derivatives activity that is nationally open to 100% foreign ownership and is not blocked by Bali’s PMA moratorium.",
+    "body": "KBLI 66114 is a tightly bounded own-account trading activity within an alternative trading system. Its scope is the purchase and sale of derivative contracts other than futures and sharia derivative contracts, carried out in the operator’s own name. Product, capacity and trading mechanism are joined in the definition; each matters. The words “for and on its own behalf” are not decoration: they place the activity with the party conducting its own transactions, rather than describing a general-purpose market role. It is a defined market activity, not merely a broad description of financial dealing. That clarity is useful precisely because the title is specialised.\n\nAt registration, the code is open at Micro, Small, Medium and Large scales. Those labels establish a broad scale range for the same carefully delimited activity, not a broader statement of commercial scope. The scale question and the activity question should be kept separate: the record gives access across those scale labels but retains the same scope wording. At any of those scales, the entry still describes purchase and sale of the specified derivative contracts through the stated alternative trading-system mechanism and on the operator’s own behalf. The record provides no additional operational threshold, licence or timetable, so none should be read into this otherwise direct scale position.\n\nNationally, the PMA entry is unequivocal: TERBUKA, with a maximum foreign ownership of 100%. In ordinary terms, the national record allows the activity to sit in a wholly foreign-owned PMA structure. There is no national ownership ceiling below full foreign ownership stated in the supplied record. That ownership result belongs to the national entry: it is neither a projection nor a Bali-specific condition, and it should be read alongside the activity’s narrow own-account trading definition.\n\nBali is not a hidden reversal of that national position. Its province-wide, permanent PMA moratorium blocks every Low and Medium-Low risk KBLI. This entry, however, is marked OK_or_HIGHER_RISK; the stated reason is that OSS risk at the Large scale is Medium-High/High. It is therefore not blocked by the moratorium. The record states neither a separate Bali foreign-ownership percentage nor a local partnership condition. The honest local reading is consequently simple: Bali does not block PMA registration for this activity under the stated moratorium rule, while 100% remains the only ownership ceiling supplied.",
+    "pullQuote": "Bali does not block PMA registration for this activity under the stated moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

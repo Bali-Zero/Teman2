@@ -1,0 +1,27 @@
+{
+  "code": "30200",
+  "editorial": {
+    "headline": "Where Rail Manufacturing Sits in the PMA Map",
+    "standfirst": "KBLI 30200 covers the industrial making of locomotives, rail carriages, specialist parts, railway service vehicles, signalling equipment, mine rail units, and rail simulators.",
+    "body": "KBLI 30200 is an industrial manufacturing code for the railway system itself. Its scope begins with the making or assembly of electric, diesel, steam, and other railway locomotives, then extends across self-propelled rail carriages, electric train carriages, trams, vans, and trucks. It also covers maintenance and service vehicles for railways and electric trains, plus non-self-propelled rolling stock such as passenger carriages, freight wagons, tank wagons, workshop wagons, crane wagons, unloading wagons, trains, and carts. In plain English, this is the code for businesses that build the moving hardware of rail transport, not a general metalworking or transport-services activity.\n\nThe scope is also specific about the parts and systems that belong inside the activity. It includes special parts for railways, electric trains, and carriages: bogies, axles, axle boxes and wheels, brakes and brake parts, coupling and hook equipment, buffers and buffer parts, shock absorbers, locomotive and carriage frames, bodies, inter-corridor connectors, and similar components. The record further brings in mechanical and electromagnetic signal equipment, safety and control equipment for railway signs, electric trains, water traffic, roads, parking facilities, airfields, and other settings. Mine locomotives, mining rail carriages, and railway transport simulators are included as well. The boundary matters because the activity is not merely the assembly of a train; it is a rail-manufacturing ecosystem with specialised rolling stock, parts, safety systems, and simulation hardware.\n\nOn scale, the record is unusually broad. It marks the activity as open to Mikro, Kecil, Menengah, and Besar businesses. That means the classification is not reserved in the record for only one operating scale: it can be registered by very small, small, medium, and large-scale operators. The practical reading is that the activity can describe a wide range of businesses, from a focused specialist making components to a larger manufacturer assembling locomotives or rail carriages, so long as the registered activity remains within the record's stated scope.\n\nThe national foreign-investment position is clean: the record marks PMA status as TERBUKA and gives pma_max_asing as 100, sourced to Perpres 10/2021, 49/2021. Rendered as ownership language, the foreign-ownership ceiling is 100%. Bali does not add a separate percentage in this record. The Bali status is OK_or_HIGHER_RISK, and the recorded reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule stated in the record is that Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. The honest reading is that this is not a low-risk Bali activity being stopped by the moratorium; it is marked as not blocked.",
+    "pullQuote": "The honest reading is that this is not a low-risk Bali activity being stopped by the moratorium; it is marked as not blocked.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

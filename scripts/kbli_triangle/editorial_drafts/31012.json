@@ -1,0 +1,27 @@
+{
+  "code": "31012",
+  "editorial": {
+    "headline": "Rattan and Bamboo Furniture, Open Nationally but Blocked in Bali",
+    "standfirst": "This activity covers furniture made mainly from rattan and bamboo, open across all business scales nationally but unavailable for PMA registration in Bali.",
+    "body": "KBLI 31012 is a manufacturing classification for furniture whose main materials are rattan and bamboo. The record places tables, chairs, stools, beds, cupboards, racks, and room dividers inside its scope. In plain English, this is not a general furniture label and not a retail activity; it is the making of finished furniture where rattan and bamboo are the defining materials. That gives the code a clear industrial character: the activity is about production, shaping raw or semi-processed natural materials into domestic, hospitality, or workspace furniture.\n\nThe scale picture is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses, so it can describe anything from a small workshop to a larger manufacturing operation. That breadth matters because rattan and bamboo furniture can sit at very different levels of formality and ambition: craft-led production, export-oriented manufacturing, or larger domestic supply. The code itself does not add extra thresholds, licences, capital figures, or timelines in the slim record. Its practical meaning must therefore stay close to the activity description and to the scale categories explicitly listed.\n\nNationally, the record marks the activity as **TERBUKA** for PMA and gives the foreign-ownership ceiling as **100%**, sourced to **Perpres 10/2021, 49/2021**. On the national reading alone, that is a clean foreign-investment signal: the code is open, and the recorded ceiling is full foreign ownership. But Bali is not a simple mirror of that national position. The Bali-side status is **Blocked (risk class)**, and the record marks `l4_bali_blocked` as true. The stated reason is that OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, which brings the activity under the Bali moratorium.\n\nThat is the honest national-vs-Bali picture. A foreign investor can read the national PMA line as open, but cannot treat Bali as available for this registration today under this record. The moratorium rule given here says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, and the cited source is Gubernur letter B.27.000/642/PM/DPMPTSP. So the editorial conclusion is deliberately narrow: KBLI 31012 is a clearly defined rattan-and-bamboo furniture manufacturing activity, nationally open to PMA up to 100%, open across all listed business scales, yet blocked for PMA registration in Bali because of the Bali risk-class moratorium.",
+    "pullQuote": "Nationally this furniture activity is open to full foreign ownership, but the Bali record closes the registration route for PMA.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

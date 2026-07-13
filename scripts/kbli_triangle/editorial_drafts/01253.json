@@ -1,0 +1,27 @@
+{
+  "code": "01253",
+  "editorial": {
+    "headline": "Perennial Vegetable Farming With a Clear Bali Reading",
+    "standfirst": "KBLI 01253 covers perennial vegetable farming from land preparation to post-harvest and seed work, open nationally to PMA up to 100% and not blocked for Bali on this record.",
+    "body": "KBLI 01253 is the activity code for farming perennial vegetable plants, not a catch-all for ordinary crop trading or food processing. The slim record describes a field-based agricultural activity centred on plants such as kluwih or timbul, breadfruit, vegetable jackfruit, petai, jengkol, melinjo, and similar crops. Its scope is the agricultural chain itself: preparing land, sowing or nursery work, planting, maintaining the crop, harvesting, and post-harvest activity when those steps are carried out as one connected operation. It also reaches seed-oriented cultivation, including nursery and seed production for perennial vegetables.\n\nThat matters because the code is about the production base, not merely the finished commodity. A founder using it should understand the activity as an operating farm category: the land is worked, plants are established and cared for, harvest is part of the same business line, and post-harvest handling belongs here when it remains within that continuous farming sequence. The record also makes room for cultivation aimed at producing seed in the form of biji, so the code can describe both crop output and the upstream plant material needed to reproduce the activity.\n\nOn scale, the record is unusually straightforward. It is open to Mikro, Kecil, Menengah, and Besar, so the category is not confined to a cottage-scale farm or reserved only for larger operators. It can describe a very small agricultural venture, a growing commercial operation, or a larger farm, provided the real activity remains within the scope described above. The national investment reading is also clear: the PMA status is TERBUKA and the maximum foreign ownership stated in the record is 100%. In plain English, the national record does not impose a foreign-share cap below full ownership for this activity.\n\nThe Bali reading is where many activity codes become difficult, but this one should not be overstated. Bali's moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province on a permanent island-wide basis. For this code, however, the Bali status is OK_or_HIGHER_RISK, and the stated reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest reading is simple: this is a nationally open PMA activity with a 100% foreign-ownership ceiling, and the Bali record does not block it under the moratorium.",
+    "pullQuote": "The honest reading is simple: this is a nationally open PMA activity with a 100% foreign-ownership ceiling, and the Bali record does not block it under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

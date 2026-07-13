@@ -1,0 +1,27 @@
+{
+  "code": "28193",
+  "editorial": {
+    "headline": "Commercial Cooling Machinery Is Nationally Open and Not Moratorium-Blocked in Bali",
+    "standfirst": "KBLI 28193 covers the industrial machinery behind commercial cold storage, air conditioning, laboratory ventilation, gas liquefaction, and biological-product cooling.",
+    "body": "KBLI 28193 is not a shopfront activity; it is the industrial manufacture of cooling and refrigeration machinery. The record describes a wide manufacturing field: commercial refrigeration and freezing machines, cold-storage equipment, and the assembly of their main components. It also reaches the making of display cases, dispense cases, air-conditioning machinery including for motor vehicles, industrial and laboratory fans and exhaust hoods, related components and accessories, machinery for liquefying air or gas, and cooling machines used for biological products such as vaccines and blood.\n\nThat scope matters because the activity is broader than ordinary appliance handling. It sits in the productive layer behind commercial cold chains, conditioned environments, industrial ventilation, and specialist biological cooling. A company registering this activity is presenting itself as a manufacturer or assembler of the machinery and principal equipment in that field, not merely as a distributor, installer, or service counter unless those activities are separately supported by the record. On the scale side, the slim record is unusually clean: it is open to Mikro, Kecil, Menengah, and Besar. In plain English, the classification is not limited to one company size category in the data provided here.\n\nNationally, the foreign-investment picture is also direct. The record marks the activity as TERBUKA and gives pma_max_asing as 100, which means the foreign-ownership ceiling is 100% at the national level. There is no lower national cap in the record, and no special percentage condition is supplied. The national source field is Perpres 10/2021, 49/2021, so the article should stay with that: open nationally, with a 100% ceiling, and no invented side condition.\n\nThe Bali reading is more nuanced, but still favourable on the facts given. Bali's moratorium rule in the record says the province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. This code, however, is not marked as blocked in Bali: l4_bali_blocked is false and the Bali status is OK_or_HIGHER_RISK. The reason is specific: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". So the honest conclusion is that KBLI 28193 is nationally foreign-open and, on this slim record, not blocked for PMA registration in Bali by the moratorium.",
+    "pullQuote": "The honest conclusion is that KBLI 28193 is nationally foreign-open and, on this slim record, not blocked for PMA registration in Bali by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

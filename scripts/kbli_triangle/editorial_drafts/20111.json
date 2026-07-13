@@ -1,0 +1,27 @@
+{
+  "code": "20111",
+  "editorial": {
+    "headline": "Inorganic Acids, Bases and Salts, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 20111 covers basic inorganic chemical manufacturing, nationally open to PMA up to full foreign ownership and not blocked by Bali’s moratorium record.",
+    "body": "KBLI 20111 is a basic inorganic chemical manufacturing activity. The record places it in the production of inorganic acids, inorganic bases, and inorganic salts formed from acid-base reactions. In practical terms, this is the industrial making of materials such as hydrochloric acid and carbonic acid; sodium hydroxide, potassium hydroxide, and lithium hydroxide; and salts such as sodium chloride, sodium carbonate, and potassium chloride. It also includes acid oxides, base oxides, and salt oxides, provided those oxides are not used as pigments.\n\nThe boundary matters because this is not a catch-all chemical code. The record leaves outside this activity the production of iodized consumption salt and food-industry salt, pharmaceutical salt, and ammonia. It also carries two important process exclusions: new investment, expansion, and development are not allowed for chlor-alkali basic inorganic chemical activity using a mercury process, and mercury-industry activity itself is likewise prohibited for new investment, expansion, and development. Those limits sit inside the scope record and should be treated as part of the activity’s definition, not as a separate commercial afterthought.\n\nFor registration scale, the record is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar business scales, so the activity is not framed only as a large industrial category even though many of its examples are heavy chemical inputs. Nationally, the PMA status is TERBUKA, with a foreign-ownership ceiling recorded at 100%. That is the clean national answer: a foreign-owned company may use this activity nationally up to full foreign ownership, according to the source cited in the record.\n\nThe Bali picture is also clear, but for a different reason. Bali’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the province. This record, however, does not mark KBLI 20111 as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the reason is stated directly: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest reading is not a Bali-specific ownership cap or a local percentage condition. It is simpler: nationally the activity is open to PMA up to 100%, and in Bali the record does not block it under the moratorium because the stated risk position is above the moratorium’s blocked risk band.",
+    "pullQuote": "The honest reading is not a Bali-specific ownership cap: nationally this activity is open up to 100%, and the Bali record does not block it under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

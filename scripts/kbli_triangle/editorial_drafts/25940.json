@@ -1,0 +1,27 @@
+{
+  "code": "25940",
+  "editorial": {
+    "headline": "Metal Containers for the Business Behind the Package",
+    "standfirst": "KBLI 25940 covers the making of metal cans, drums, buckets, jerrycans, boxes, and metal closures, with national PMA access open up to 100%.",
+    "body": "KBLI 25940 is the industrial code for making the metal vessels that sit behind a large part of everyday commerce: food and drink cans, paint and chemical cans, barrels, drums, buckets, boxes, jerrycans, and the components used in metal cans. It also includes metal closures, including metal bottle caps such as crown corks and lug caps. The scope is practical rather than decorative: this is about containers, closures, and the metal packaging hardware that allows goods to be filled, sealed, stored, moved, and sold.\n\nThe activity is open across the full scale range recorded here: Mikro, Kecil, Menengah, and Besar. That matters because the code is not framed only as a large-factory category, even though the examples clearly include industrial packaging outputs. A small operator making specific metal containers sits inside the same recorded scale ladder as a larger manufacturer producing cans, drums, or closure components at higher volume. The code therefore reads as a manufacturing classification with room for different operating sizes, while staying tightly focused on metal containers and related closures.\n\nNationally, the PMA picture is straightforward. The national record lists the activity as TERBUKA and sets pma_max_asing at 100, citing Perpres 10/2021, 49/2021. In plain English, the national foreign-ownership ceiling recorded for this activity is 100%. There is no lower foreign-equity limit in the slim record, and no separate condition, threshold, permit, tax, timeline, or capital figure is stated here. The honest national reading is therefore clean: for foreign investment classification purposes, this activity is open nationally up to full foreign ownership.\n\nThe Bali-side reading is also unusually clear because the record does not mark the activity blocked. Bali’s moratorium rule in this dataset blocks all Low and Medium-Low risk KBLI for PMA across the province, but KBLI 25940 is recorded with l4_bali_blocked as false and l4_bali_status as OK_or_HIGHER_RISK. The stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That is the key operational distinction. This is not a case where national openness is neutralised by a Bali PMA block. Based on this record alone, a foreign-owned registration in Bali is not blocked by the moratorium for this activity, while the national ownership ceiling remains 100%.",
+    "pullQuote": "This is not a case where national openness is neutralised by a Bali PMA block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "10213",
+  "editorial": {
+    "headline": "Frozen Fish Processing With a Clear Bali Path",
+    "standfirst": "This activity covers the freezing and preservation of finfish, from whole fish to cuts, and is nationally open to foreign ownership.",
+    "body": "This KBLI activity is about industrially preserving finfish through freezing. The record describes a processing activity that turns fish into frozen products such as frozen milkfish, tuna, skipjack, and snapper. It also makes clear that the fish may be frozen whole or after being cut into forms such as fillet, loin, saku, steak, chunk, or brown meat. In plain English, this is not a general seafood-trading label; it is the freezing and preservation of finfish as a food-processing activity.\n\nThe boundary matters. The slim record separates this activity from the narrower service of cooling fish with ice merely to keep it fresh. Here, freezing is the defining process, and preservation is the commercial purpose. That distinction gives the code its practical shape: it belongs to operators whose work changes fish into frozen inventory that can be stored, handled, and sold as frozen product, whether the input is a whole fish or a prepared cut.\n\nThe registration picture is broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar scale businesses, so it is not framed only for large processors. A small operator freezing cut fish and a larger facility producing frozen tuna or snapper both sit within the scale range described by the record, provided the actual activity remains the freezing and preservation of finfish. The editorial point is simple: scale affects the business form and operational reality, but the activity definition itself is anchored in the freezing process.\n\nFor foreign investors, the national position is clean. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%, sourced to Perpres 10/2021, 49/2021. Bali does not add a separate percentage cap in this record. Just as importantly, the Bali-side status is not blocked: `l4_bali_blocked` is false, and the stated reason is “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, but this activity is marked OK_or_HIGHER_RISK. The honest reading is therefore straightforward: nationally open, fully foreign-open on the record, and not blocked for PMA registration in Bali under the cited moratorium logic.",
+    "pullQuote": "The honest reading is therefore straightforward: nationally open, fully foreign-open on the record, and not blocked for PMA registration in Bali under the cited moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

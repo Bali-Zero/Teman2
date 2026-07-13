@@ -1,0 +1,27 @@
+{
+  "code": "07296",
+  "editorial": {
+    "headline": "Manganese Ore Mining With a Clear National and Bali Reading",
+    "standfirst": "KBLI 07296 covers manganese ore mining and preparation, open across all business scales and nationally available to foreign ownership up to the recorded ceiling.",
+    "body": "KBLI 07296 is a compact but weighty classification: it covers the mining and preparation of manganese ore. In plain English, this is the activity of extracting manganese-bearing ore and getting it ready within the mining chain. The Indonesian scope is narrow enough to be useful: it does not describe downstream manufacturing, trading, or a broad metals business. It is about the mineral activity itself, and the preparatory work attached to that ore.\n\nThe record also names two mining-administration references inside the scope: **Izin Usaha Pertambangan Khusus (IUPK) Eksplorasi** and **Perpanjangan IUP Tahap Operasi Produksi**. Those names matter because they show the classification sitting in a serious regulated-mining context, not a generic small-business category. But the record does not give thresholds, timelines, licence sequencing, capital rules, or technical requirements, so none should be inferred. For founders and investors, the clean reading is simply that this KBLI is for manganese ore mining and preparation, with the listed mining references attached to the activity scope.\n\nOn scale, the classification is unusually broad in the slim record: it is open to **Mikro, Kecil, Menengah, and Besar**. That means the activity is not presented here as limited to one business-size lane. The practical editorial point is that the scale field should not be confused with the ownership field. A code can be open across scales while still needing a separate reading on foreign ownership and Bali registration status. For KBLI 07296, the national PMA position is clear: the status is **TERBUKA**, with a foreign-ownership ceiling recorded as **100%**, sourced to **Perpres 10/2021, 49/2021**. There is no partial cap in the slim record; the recorded ceiling is full foreign ownership.\n\nThe Bali reading is also clear, and it is not a hidden block. The Bali status is **OK_or_HIGHER_RISK**, and the record states that it is **not blocked by the moratorium** because the OSS risk at **Besar** scale is **Menengah-Tinggi/Tinggi**. That is the decisive distinction. Bali’s provincial moratorium blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this record places the activity outside that blocked lane. So the honest national-vs-Bali picture is straightforward: nationally, this manganese ore mining activity is open to PMA up to 100%; in Bali, the slim record does not mark it as blocked by the moratorium.",
+    "pullQuote": "The honest national-vs-Bali picture is straightforward: nationally open to PMA up to 100%, and not marked as blocked by Bali’s moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

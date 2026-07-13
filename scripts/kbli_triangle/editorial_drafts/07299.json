@@ -1,0 +1,27 @@
+{
+  "code": "07299",
+  "editorial": {
+    "headline": "KBLI 07299 Covers the Minerals That Sit Outside the Obvious Boxes",
+    "standfirst": "A broad mining classification for non-iron-bearing mineral materials, open nationally to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 07299 is a wide, technical home for mining activity involving other non-iron-bearing mineral materials. In plain English, it covers the extraction of minerals that are not iron ore and are not otherwise captured by a more specific mineral-mining classification. The record gives a long mineral field: zinc ore, platinum, silicon, lithium, beryllium, magnesium, potassium, calcium, bismuth, molybdenum, mercury, tungsten, titanium, vanadium, chromite, antimony, cobalt, tantalum, cadmium, gallium, indium, yttrium, magnetite, niobium, zirconium, ilmenite, chromium, cesium, hafnium, scandium, ruthenium, selenium, telluride, strontium, germanium, and xenotime. That list matters because the code is not a generic trading or consultancy label; it is about the mining of named mineral materials with industrial, technological, or strategic uses.\n\nThe scope note also names **Izin Usaha Pertambangan Khusus (IUPK) Eksplorasi** and **Perpanjangan IUP Tahap Operasi Produksi**. The editorial point is not to add a licensing theory beyond the record, but to recognise the character of the activity: this is a mining-sector classification, not a light commercial wrapper. A founder choosing it should be describing real mining activity over the covered mineral materials, with the scale and risk profile that such activity naturally carries in the OSS reading reflected by the record.\n\nOn scale, the code is unusually broad: it is open to **Mikro, Kecil, Menengah, and Besar**. That means the classification is not reserved only for large-scale operators in the record; it can appear across the stated business scales. But the foreign-investment reading is equally important. Nationally, KBLI 07299 is marked **TERBUKA**, with a foreign-ownership ceiling of **100%** under the cited presidential regulations. There is no partial foreign cap in the record, so the clean national reading is that a PMA structure may use this activity with full foreign ownership.\n\nThe Bali picture is also clean, but for a different reason than a casual reader might assume. The Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This code is **not** blocked in Bali because the OSS risk at **Besar** scale is **Menengah-Tinggi/Tinggi**, so it falls outside that moratorium block. The honest conclusion is therefore not “nationally open but Bali blocked”; it is that KBLI 07299 is nationally foreign-open and, on the record provided, not blocked for PMA registration in Bali, while still belonging to a higher-risk mining context rather than a low-risk activity.",
+    "pullQuote": "KBLI 07299 is nationally foreign-open and, on the record provided, not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

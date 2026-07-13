@@ -1,0 +1,27 @@
+{
+  "code": "28160",
+  "editorial": {
+    "headline": "Heavy Lifting, Clear Access",
+    "standfirst": "KBLI 28160 covers the machinery behind industrial movement: lifting, loading, conveying, warehouse handling, elevators, escalators, and their suitable parts.",
+    "body": "KBLI 28160 is a manufacturing classification for the machines that move weight, position goods, and turn industrial space into a working system. The record frames it around lifting, handling, loading, and unloading equipment, whether operated by hand or by powered drive. That includes hoists, winches, anchor turns, jacks, derricks, cranes, mobile lifting frames, straddle carriers, factory work trucks, hand-handling equipment, hand carts, and mechanical manipulators or industrial robots designed specifically to lift, handle, load, or unload.\n\nIts scope also reaches the more automated end of factory and warehouse movement. The record includes unmanned forklifts, robots and pallet loading or unloading equipment, conveyors and other goods-lifting or goods-transport devices, lifts, escalators, moving walkways, and automatic transport and lifting equipment for warehouses. It also includes parts suitable for transport and lifting equipment. The shape of the activity is therefore not general robotics or broad machinery; it is the manufacture of equipment whose purpose is the physical movement of people, goods, pallets, loads, or industrial materials.\n\nThe scale picture is unusually broad. The activity is open to Mikro, Kecil, Menengah, and Besar scales, so the record does not confine it to large factories only. A small workshop making suitable components and a larger industrial manufacturer producing conveyor or lifting systems sit within the same activity logic, provided the work remains inside the described lifting, moving, loading, unloading, or handling scope. That breadth matters because the classification is defined by what is manufactured, not by a single factory size or one narrow product line.\n\nThe national foreign-investment position is clear: the record marks the activity as **TERBUKA**, with a foreign-ownership ceiling of **100%**. For a PMA reading, that means the national record does not impose a foreign-share cap below full ownership. Bali does not add a separate percentage in this record. Instead, the Bali-side question is whether the provincial moratorium blocks PMA registration for this activity. Here, the record marks Bali as **OK_or_HIGHER_RISK**, with `l4_bali_blocked` set to false. The stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” In plain terms, the moratorium described in the record blocks low and medium-low risk KBLI for PMA across Bali, but this activity is not blocked on the Bali record supplied here.",
+    "pullQuote": "The national foreign-investment position is clear: the record marks the activity as TERBUKA, with a foreign-ownership ceiling of 100%.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

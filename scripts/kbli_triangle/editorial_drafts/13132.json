@@ -1,0 +1,27 @@
+{
+  "code": "13132",
+  "editorial": {
+    "headline": "Wet Textile Finishing With a Clear Bali Registration Path",
+    "standfirst": "KBLI 13132 covers wet finishing for fabrics and textile goods, nationally open to PMA and not blocked by Bali’s moratorium in this record.",
+    "body": "KBLI 13132 is the industrial finishing stage where fabric and finished textile goods are treated through wet processes. The record names bleaching, dyeing, printing, sanforising, mercerising, jeans bleaching, waterproofing, coating, rubber coating, and impregnation for finished textile goods. In plain English, this is not the making of cloth from scratch; it is the technical treatment that changes how fabric looks, behaves, resists water, holds colour, or performs after production.\n\nThat makes the activity relevant to textile operators who sit close to production quality rather than retail branding alone. A business registering under this code is claiming the wet-finishing work itself: applying colour, surface treatment, dimensional stability, protective finish, or similar processing to fabric and textile goods including ready-made clothing. The record opens the code across Mikro, Kecil, Menengah, and Besar scales, so the registration logic is not limited to a single business size in the slim record.\n\nNationally, the PMA picture is straightforward. The code is marked TERBUKA, and the foreign-ownership ceiling is 100%. That means the national record presents this activity as open to foreign investment up to full ownership, under the cited presidential regulation source. There is no lower foreign-share cap in the record, and no extra national threshold, licence, tax condition, capital figure, or timeline is stated here; the only ownership number available is the 100% national ceiling.\n\nFor Bali, the important point is equally specific: this record is not blocked by the provincial PMA moratorium. The Bali status is OK_or_HIGHER_RISK, and the reason given is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA across the island, but this code’s Bali-side record does not mark it as blocked. The honest reading is therefore clean: a foreign-owned setup is nationally open at 100%, and Bali does not block PMA registration for this activity in the record provided.",
+    "pullQuote": "The honest reading is clean: this wet textile-finishing activity is nationally open at 100%, and Bali does not block PMA registration in the record provided.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

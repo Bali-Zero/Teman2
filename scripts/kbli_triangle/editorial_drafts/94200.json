@@ -1,0 +1,23 @@
+{
+  "code": "94200",
+  "editorial": {
+    "headline": "Labour Organisations: Nationally Open, With a Bali Address Check",
+    "standfirst": "This activity covers organised worker representation on pay, working conditions and collective action, with full foreign ownership nationally and a Bali classification that must be checked by address.",
+    "body": "KBLI 94200 covers the activity of organisations that advance workers’ interests through organised representation. It includes trade unions and associations whose members are workers, focused on questions of pay, working conditions and collective action through an organisation. The record situates the activity among established forms of worker organisation, including the named examples SPSI, SOKSI and KORPRI. Its centre of gravity is collective worker advocacy: bringing members together to pursue shared interests through an organised body.\n\nThat framing matters when considering who stands behind the registration. The activity is defined by an organisation and its worker membership, rather than by a particular commercial product or service. The supplied record does not list any business-scale categories in `scales_open_to`. It would therefore be inaccurate to assign this activity to micro, small, medium or large enterprise categories on the basis of this record alone. The scope also draws a deliberate boundary around the organisational work itself, rather than every activity an organisation might undertake.\n\nNationally, the position is direct. The activity is marked **TERBUKA**, with a maximum foreign ownership ceiling of 100%. In plain terms, the national record permits foreign ownership up to the full ceiling stated for the activity. Its cited basis is Perpres 10/2021, 49/2021. There is no lower foreign-ownership cap in the supplied national entry, and no additional national threshold or condition should be read into it.\n\nBali requires a more location-specific reading, but the result is not a moratorium block. The Bali status is `OK_or_HIGHER_RISK`, and the record describes the activity as medium-high or high risk; for that reason, it is not blocked by Bali’s permanent island-wide PMA moratorium for Low and Medium-Low risk KBLI. The record nevertheless says to verify the position per address. That is the honest distinction: the national entry is fully open to foreign ownership, while the Bali entry is not barred by the moratorium but carries an address-level verification point. No Bali-specific foreign-ownership percentage or partnership condition is stated in the record.",
+    "pullQuote": "The national entry is fully open to foreign ownership, while Bali is not barred by the moratorium but still requires an address-level check.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

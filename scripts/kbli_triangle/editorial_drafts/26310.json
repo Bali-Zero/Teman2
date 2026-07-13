@@ -1,0 +1,27 @@
+{
+  "code": "26310",
+  "editorial": {
+    "headline": "Telephone and Fax Equipment Manufacturing, With Bali Still Open",
+    "standfirst": "KBLI 26310 covers the making of telephone, fax and related communication-transmission equipment, and the record leaves it nationally open to PMA at every scale.",
+    "body": "KBLI 26310 is a manufacturing activity, not a retail, installation or telecom-service category. Its recorded scope is the making of communication-transmission equipment: telephone apparatus, fax machines, answering machines and similar equipment. The practical centre of the code is therefore the factory or production operation behind the device, where the business is producing the equipment itself rather than merely using, selling or servicing it.\n\nThe registration picture is unusually broad on scale. The slim record opens the activity to **Mikro, Kecil, Menengah and Besar** operators, so the code is not reserved in the record for one size of enterprise. A small producer and a large industrial operation sit inside the same stated scale range, provided the registered business is genuinely doing the manufacturing described in the scope. That breadth matters because the scale field is one of the few concrete operational facts the record gives; it should be read plainly, without adding extra thresholds or conditions that are not written here.\n\nNationally, the code is marked **TERBUKA** for PMA, with `pma_max_asing` recorded as **100**. In founder language, that means the national record allows a fully foreign-owned PMA structure for this activity. The source named for that national position is **Perpres 10/2021, 49/2021**. There is no lower foreign-ownership ceiling in the slim record, so the clean reading is that the national foreign-ownership ceiling is 100%, not a capped minority or joint arrangement.\n\nBali is where many codes become more complicated, but this record does not block the activity. The Bali status is **OK_or_HIGHER_RISK**, and `l4_bali_blocked` is **false**. The reason is specific: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently; this activity is not caught by that block on the facts given here. The honest conclusion is therefore simple: for this record, KBLI 26310 is nationally open to PMA up to 100% foreign ownership, and it is not marked as blocked for PMA registration in Bali.",
+    "pullQuote": "For this record, KBLI 26310 is nationally open to PMA up to 100% foreign ownership, and it is not marked as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

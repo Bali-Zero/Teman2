@@ -1,0 +1,27 @@
+{
+  "code": "01619",
+  "editorial": {
+    "headline": "KBLI 01619: The Operating Layer Behind Farm Support",
+    "standfirst": "A foreign-owned company may register this broad agricultural support activity nationally and in Bali, across all business scales, when the operator-led service model fits the record.",
+    "body": "KBLI 01619 is a practical code for the working layer around agriculture: services that help farming activity happen, but are not the farming activity itself. The record frames it as other agricultural support services, especially irrigation or watering arrangements, the provision of agricultural equipment together with its operator, and the maintenance or care of agricultural equipment when performed for a fee or under contract. In plain English, this is not a passive ownership code for land or a vague rural-services label. It is about operational support supplied to agricultural users, where the service, the equipment, the operator, and the contractual basis matter.\n\nThat makes the code naturally relevant to businesses built around farm-service delivery rather than crop production. A company might sit between agricultural clients and the machinery, people, and maintenance needed to keep field operations moving. The slim record is also careful about the shape of the service: it points to equipment supplied with an operator and to maintenance and care of agricultural tools on a fee or contract basis. That distinction keeps the activity anchored in support work, not in bare equipment rental or in an invented advisory, financing, or trading business that the record does not describe.\n\nOn scale, the record is unusually clear. KBLI 01619 is open to Mikro, Kecil, Menengah, and Besar. That means the classification is not reserved only for large operators, nor is it limited to small local service providers. A micro business, a small or medium operator, and a larger service company can all fit the scale field if the registered activity matches the scope. For foreign investment, the national position is also clean: the PMA status is TERBUKA and the maximum foreign ownership figure is 100%. There is no foreign-share cap below full ownership in the supplied record, so the correct reading is that a foreign-owned setup can be nationally open at the full stated ceiling.\n\nThe Bali picture is honest but not negative. Bali’s moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province, but this record marks KBLI 01619 as not blocked. The reason given is specific: at Besar scale, OSS risk is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The Bali status is therefore not a soft warning that the code is unavailable; it is recorded as OK_or_HIGHER_RISK. For a foreign investor, the important conclusion is straightforward: nationally, this activity is open up to 100% foreign ownership, and in Bali it is not blocked under the stated moratorium logic. The discipline is to keep the registration tied to the actual support services described here, rather than stretching the code into activities the record never gives it.",
+    "pullQuote": "Nationally, this activity is open up to 100% foreign ownership, and in Bali it is not blocked under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

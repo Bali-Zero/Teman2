@@ -1,0 +1,27 @@
+{
+  "code": "66162",
+  "editorial": {
+    "headline": "Sharia-Compliant Digital Lending Intermediation, Clearly Defined",
+    "standfirst": "A technology-based Islamic financing platform may be foreign-owned nationally and is not blocked for PMA registration in Bali.",
+    "body": "This activity covers the provision, management and operation of a technology-based financial service that brings lenders and borrowers together under sharia principles. In practical terms, it is the operating layer for an Islamic peer-to-peer lending service: a digital system through which parties enter directly into rupiah-denominated financing agreements over the internet. Its defining feature is not merely the use of technology, but that the service is conducted entirely according to sharia principles.\n\nThe scope is therefore broader than a simple online marketplace. It encompasses the continuing work of making the service available, managing it and operating the financial-services platform that connects the two sides of a financing arrangement. The activity is open across Mikro, Kecil, Menengah and Besar scales, giving the classification a deliberately wide commercial reach. The common thread at every scale is the same: the platform intermediates between a lender and a borrower for financing conducted electronically in rupiah.\n\nNationally, the activity is open to PMA with a foreign-ownership ceiling of 100%. That is a clear position: foreign investment is permitted without a stated national shareholding cap below full ownership. For founders, the relevant distinction is between the national investment position and the actual character of the service. The business remains an Islamic, technology-based lending-intermediation operation, rather than a generic digital-finance label applied after the fact.\n\nBali does not block PMA registration for this activity. The province’s standing is OK_or_HIGHER_RISK, and the record identifies the reason plainly: at the Besar scale, the OSS risk classification is Menengah-Tinggi/Tinggi, so the activity is not caught by Bali’s moratorium. That moratorium blocks PMA for Low and Medium-Low risk activities across the island. Here, the Bali picture is therefore aligned with the national opening: the activity can be registered for PMA in Bali, while its large-scale risk classification remains part of the regulatory context.",
+    "pullQuote": "The Bali picture is aligned with the national opening: the activity can be registered for PMA in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National basis",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

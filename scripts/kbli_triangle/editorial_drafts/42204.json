@@ -1,0 +1,27 @@
+{
+  "code": "42204",
+  "editorial": {
+    "headline": "Civil Electrical Construction for Indonesia’s Power Infrastructure",
+    "standfirst": "This activity covers the civil works behind electricity generation, transmission, distribution, utilisation installations, and renewable-energy fields.",
+    "body": "KBLI 42204 is a construction activity for civil electrical infrastructure. In plain English, it covers the building, maintenance, and rebuilding of the physical works that allow electricity to be generated, transmitted, distributed, and used. The record names civil structures for power generation, transmission, distribution, and utilisation installations, including electric-vehicle charging stations. It also reaches solar and wind energy fields, local and long-distance electrical pipeline networks, substations, electricity poles, and towers. This is not a retail energy activity or a general advisory activity; its centre of gravity is the civil construction work that makes electrical infrastructure stand in the real world.\n\nThe scale picture is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, so the registration lane is not limited to large contractors on the face of the code. That matters because the same activity can appear in very different commercial forms: a smaller operator maintaining local electrical works, a medium contractor working on distribution infrastructure, or a larger business involved in power-related civil construction. The code’s scope is wide enough to follow the infrastructure, but the record keeps the classification tied to construction, maintenance, and rebuilding of civil electrical buildings and networks.\n\nNationally, the foreign-investment signal is clean. The record classifies the PMA status as TERBUKA, lists a pma_max_asing of 100, and cites Perpres 10/2021, 49/2021 as the source. For a foreign-owned setup, that means the national foreign-ownership ceiling should be read as 100%. There is no partial cap in the record, and there is no separate national caveat stated beyond the source and status provided. The honest national reading is therefore straightforward: this activity is foreign-open at the national level, with the ownership ceiling stated at the full percentage shown in the record.\n\nThe Bali reading is also important, but for a different reason. For Bali, the record shows that this activity is not blocked: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The stated reason is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That means the Bali moratorium rule is relevant background, but it does not block this registration on the record provided. The province’s rule blocks Low and Medium-Low risk KBLI for PMA island-wide, permanently; here, the record’s own Bali reason says the Besar-scale OSS risk position keeps it outside that block. The result is a code that reads as nationally open and, on this slim record, not blocked for PMA registration in Bali.",
+    "pullQuote": "The honest reading is that this activity is nationally foreign-open and, on this record, not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

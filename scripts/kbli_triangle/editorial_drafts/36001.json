@@ -1,0 +1,27 @@
+{
+  "code": "36001",
+  "editorial": {
+    "headline": "Drinking Water Systems, From Source to Customer",
+    "standfirst": "KBLI 36001 covers the managed capture, treatment, and sale of drinking water through piped and non-piped distribution systems.",
+    "body": "KBLI 36001 is the business of turning raw water into drinking water and getting it to customers. Its scope begins at the source: surface water, groundwater, seawater, and similar inputs may be collected or drawn, then processed into drinking water. The activity does not stop at treatment. It also covers distribution, whether through a pipe network or through non-piped channels such as tank trucks, provided those trucks remain under the same administrative management as the drinking-water company.\n\nThe code is therefore broader than a simple utility label. It includes direct water intake from the sea, direct supply from a water terminal, and delivery by pipe or managed tank truck to paying customers. The customer base named in the record is wide: households, government institutions and bodies, social bodies, state-owned enterprises, and private businesses such as hotels, processing industries, and shops. What unifies these cases is not the type of buyer, but the controlled chain from capture or terminal supply through treatment and distribution for sale.\n\nRegistration is open across the full scale range stated in the record: Mikro, Kecil, Menengah, and Besar. That matters because this activity can describe very different operating footprints, from a smaller local undertaking to a large-scale water provider. The scale does not change the core character of the code: it remains about managed drinking-water provision to consumers or subscribers. The record also makes clear that, nationally, the PMA position is open. With a national foreign-ownership ceiling of 100%, a foreign-owned company is not capped below full ownership under the PMA field supplied here.\n\nBali’s position is also clear, and it is not a silent blocker. The Bali status is OK_or_HIGHER_RISK, and the record says the activity is not blocked by the island-wide moratorium because OSS risk at Besar scale is Menengah-Tinggi/Tinggi. The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across Bali, permanently, but this activity is marked outside that block. The honest reading is therefore straightforward: nationally open to PMA up to 100%, and not blocked for PMA registration in Bali on the Bali-side reason supplied.",
+    "pullQuote": "The honest reading is straightforward: nationally open to PMA up to 100%, and not blocked for PMA registration in Bali on the Bali-side reason supplied.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

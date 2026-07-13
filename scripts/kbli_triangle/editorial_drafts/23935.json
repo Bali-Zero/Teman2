@@ -1,0 +1,27 @@
+{
+  "code": "23935",
+  "editorial": {
+    "headline": "Sanitary Ceramics With a Clear Bali Opening",
+    "standfirst": "This activity covers the manufacture of ceramic and clay sanitary ware, nationally open to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "For code 23935, the activity is tightly drawn: it is the industrial manufacture of sanitary equipment made from clay or ceramic. The record names toilets, bidets, washbasins, urinals, sinks, and bathtubs as the relevant examples, which gives the category its practical shape. This is not a general building-materials label and not a retail trade activity; its centre of gravity is production. The business being registered is the maker of the sanitary ware itself, turning clay or ceramic into fixtures used in bathrooms, washrooms, and built environments.\n\nThe registration profile is broad. The slim record opens the activity to Mikro, Kecil, Menengah, and Besar scales, so it can describe a small producer as well as a larger manufacturing operation, provided the registered activity remains within the stated manufacturing scope. That breadth matters because sanitary ceramics can sit across very different operating footprints: a modest workshop producing selected fixtures, or a larger plant producing multiple lines of toilets, basins, urinals, sinks, and baths. The code does not, by itself, add a minimum size, a capital threshold, or a special licensing promise; it simply identifies the manufacturing activity and the scales at which it is open.\n\nNationally, the PMA picture is clean. The status is TERBUKA, with a pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. Put simply, the national foreign-ownership ceiling is 100%. There is no partial foreign cap in the record to soften or complicate that conclusion. For founders reading this as an investment classification, the national message is therefore direct: this sanitary-ceramics manufacturing activity is open to foreign investment up to full foreign ownership under the cited source.\n\nBali does not reverse that conclusion on the record provided. The province’s moratorium blocks all Low and Medium-Low risk activities for PMA on an island-wide, permanent basis, but this activity is not blocked because the OSS risk at Besar scale is Menengah-Tinggi/Tinggi. On the Bali assessment, the status remains OK_or_HIGHER_RISK, while l4_bali_blocked is false. That means the honest Bali reading is not a hidden prohibition: a foreign-owned company can register this activity in Bali today, subject to the activity staying within this manufacturing scope and without inventing extra conditions beyond the record. The key distinction is that Bali’s moratorium is real, but on these facts it does not catch this code.",
+    "pullQuote": "The key distinction is that Bali’s moratorium is real, but on these facts it does not catch this code.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

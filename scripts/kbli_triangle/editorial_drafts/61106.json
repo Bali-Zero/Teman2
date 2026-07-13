@@ -1,0 +1,27 @@
+{
+  "code": "61106",
+  "editorial": {
+    "headline": "IPTV’s Full-Service Definition—and Bali’s Real Position",
+    "standfirst": "This IPTV activity spans converged digital content over IP networks, is open across every stated business scale, and is not blocked for PMA registration in Bali by the island-wide moratorium.",
+    "body": "This activity is an internet-protocol television service, but the record defines it more broadly than television delivered online. It covers a telecommunications service that brings together radio, television, video, audio, text, graphics and data over an IP-based network. The service is to be delivered with assured quality, security and reliability, while retaining two-way interactivity between provider and subscriber. That combination is the centre of the classification: converged content, carried through an IP network, with the service qualities and interactive capability expressly named in the scope.\n\nThe registration picture is deliberately broad in scale. The record lists Mikro, Kecil, Menengah and Besar as open registration scales. It therefore accommodates the activity across the full stated scale range, without reducing the classification to a single kind of operator. What must remain constant is the activity described: an IPTV telecommunications service whose content convergence and technical attributes are integral to the definition. The scale list says who may register at the stated sizes; it does not add a new service or revise the underlying scope.\n\nAt national level, PMA status is TERBUKA, with a 100% foreign-ownership ceiling. In plain terms, the national record allows the activity to be held entirely by foreign capital. The cited basis is Perpres 10/2021, 49/2021. There is no lower foreign cap contained in this record, so the national position should be read directly: the activity is open to PMA up to the stated 100% ceiling. That is the relevant national position for an IPTV operation structured with wholly foreign ownership.\n\nBali is not a hidden reversal of that national position. Its recorded status is OK_or_HIGHER_RISK, and the record says the OSS risk at the Besar scale is Menengah-Tinggi/Tinggi. Bali’s permanent, island-wide PMA moratorium blocks all Low and Medium-Low risk KBLI activities; this activity is recorded as not blocked by that moratorium. A foreign investor is therefore not prevented from registering this activity in Bali by that specific moratorium. The honest reading is straightforward: the national 100% ceiling stands, and Bali does not block this activity under the stated moratorium.",
+    "pullQuote": "The national 100% ceiling stands, and Bali does not block this activity under the stated moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open registration scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

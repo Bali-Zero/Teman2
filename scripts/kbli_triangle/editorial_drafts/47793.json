@@ -1,0 +1,27 @@
+{
+  "code": "47793",
+  "editorial": {
+    "headline": "Watercraft Retail Is Nationally Open—but Closed to PMA Registration in Bali",
+    "standfirst": "Retailers of boats, sampans and their equipment are nationally open to full foreign ownership, yet Bali’s permanent PMA moratorium blocks registration of the activity on the island.",
+    "body": "KBLI 47793 concerns retail trade in water-transport equipment, whether powered or unpowered. Its stated examples are boats and sampans, together with their components and accessories. The wording expressly includes both motorised and non-motorised craft, so the category does not turn on propulsion alone. Components and accessories are not peripheral additions: they are expressly within the activity’s stated subject. The scope also says it goes beyond direct sales, giving the category a broader retail expression while keeping its focus on water-transport equipment and associated parts.\n\nThe record opens this activity to Mikro, Kecil, Menengah, and Besar enterprises. In other words, the code is stated as available across each of the four listed business scales, rather than being confined to a single tier. That breadth is a useful point of orientation for founders: the retail subject remains the same whether the registration sits at a micro, small, medium, or large scale. The record’s structure is equally plain: all four scale labels appear in the open-to list, with no scale exclusion within that set.\n\nAt the national level, the foreign-ownership position is direct. The PMA status is TERBUKA, and the maximum foreign ownership figure is 100. A foreign-owned business may therefore hold the full ownership stake nationally. Here, 100 is the stated ceiling: no lower foreign stake is stated at the national level. The source record attributes that national position to Perpres 10/2021, 49/2021. These are national terms, however; they do not settle whether the same registration is available in a particular province.\n\nBali changes the result decisively for PMA registration. The record marks its Bali status as Blocked (risk class) and says it is blocked. The stated reason is that the OSS risk at the Besar scale is Low/Medium-Low on every scope; that brings the activity within Bali’s permanent, island-wide moratorium on PMA registration for all Low and Medium-Low risk KBLI. The moratorium is recorded in May 2026. A foreign-owned business cannot register this activity in Bali today, even though the national foreign-ownership ceiling is 100%. The provincial block sets the operative boundary for Bali without altering the national ceiling.",
+    "pullQuote": "A foreign-owned business cannot register this activity in Bali today, even though the national foreign-ownership ceiling is 100%.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

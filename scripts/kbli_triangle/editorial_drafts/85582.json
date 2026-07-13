@@ -1,0 +1,23 @@
+{
+  "code": "85582",
+  "editorial": {
+    "headline": "Corporate IT Training: Open Nationally, Address-Checked in Bali",
+    "standfirst": "KBLI 85582 covers company-run job training across IT and professional communication skills, open to full foreign ownership nationally and not blocked by Bali’s low-risk PMA moratorium.",
+    "body": "KBLI 85582 concerns job training delivered by a company to add practical skills and specialist knowledge. Its field is broader than a single software discipline: the stated scope reaches networking, technical support, computer engineering, programming, multimedia, databases and systems analysis, as well as graphic design, office tools, animation and artificial intelligence. It also includes IT governance and public-facing communication capabilities such as public relations and public speaking. The emphasis is on the delivery of training that builds capability in technology and closely related professional skills, with room in the stated scope for other such subjects.\n\nThe relevant operator is the company that organises this training activity. That is an important boundary: the record describes the organisation of job training, not a claim that every business using these skills is carrying out the activity. It names no business scale in its `scales_open_to` field. That absence should be kept visible rather than filled with assumptions about whether particular sizes of enterprise can register. The scope is detailed about the training themes, but the slim record does not add a scale-based classification.\n\nNationally, the foreign-investment position is direct. The status is open, and the maximum foreign ownership is 100%. A PMA registration for this activity can therefore be fully foreign-owned at the national level. There is no basis here to recast that as a partial stake or to import a condition from elsewhere: the listed national basis is Perpres 10/2021, 49/2021, and the record’s own ceiling is complete foreign ownership. That national position is the starting point for a founder assessing this training activity.\n\nBali requires a more specific reading, but it is not a prohibition in this record. Its Bali status is recorded as OK or higher risk, and the reason states that medium-high/high-risk activities are not blocked by the island-wide moratorium. That moratorium permanently blocks PMA registration for all low- and medium-low-risk KBLI activities in the province; it does not create a block for this one. The practical qualification is explicit: the position must be verified for the relevant address. The honest conclusion is national openness at 100%, with no Bali moratorium block shown here, while the address remains part of the verification.",
+    "pullQuote": "Bali does not impose the island-wide low-risk moratorium here, but the address still has to be verified.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "32902",
+  "editorial": {
+    "headline": "Typewriter and Printer Ribbon Manufacturing, Open Nationally but Blocked in Bali",
+    "standfirst": "KBLI 32902 covers the manufacture of typing, drawing, and computer-printer ribbons, with national foreign ownership open but Bali PMA registration blocked.",
+    "body": "KBLI 32902 is a narrow manufacturing code for the production of ribbons used in writing, drawing, and printing machines. The record describes it as covering the making of various kinds of typewriter or drawing-machine ribbons, including typewriter ribbons, computer-printer ribbons, and other writing-machine ribbons. In plain English, this is not a general stationery code and not a broad printing-service activity. Its center of gravity is the industrial making of the ribbon component itself: the consumable strip that carries ink or print material for machines designed to type, draw, or print.\n\nThe scale picture is unusually simple. The record opens this activity to Mikro, Kecil, Menengah, and Besar scales, so it is not framed as an activity reserved only for a large factory or only for a small workshop. A founder could read the scope as covering anything from a compact ribbon-making operation to a larger industrial setup, provided the registered business activity remains inside the manufacture of those machine ribbons. The key discipline is scope: the code follows the product being made, not the wider commercial ecosystem around office supplies, printing services, or equipment trading.\n\nNationally, the foreign-investment signal is also clear. The PMA status is marked TERBUKA, and the maximum foreign ownership figure in the record is 100%, sourced to Perpres 10/2021, 49/2021. On the national layer alone, that means the activity is open to foreign ownership up to the full percentage stated in the slim record. There is no lower foreign-share cap in the record, and there is no stated minimum-capital figure, special licence, tax condition, or timeline here to add. For a national read, the honest conclusion is straightforward: KBLI 32902 is a foreign-open manufacturing activity at the recorded ceiling.\n\nBali changes the practical answer. The record marks `l4_bali_blocked` as true and gives the Bali status as `Blocked (risk class)`. Its reason is specific: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, with source `Gubernur letter B.27.000/642/PM/DPMPTSP`. So the editorial bottom line is not that the activity is nationally closed. It is not. The bottom line is that a foreigner cannot register this KBLI as a PMA in Bali today, even though the same record shows the national PMA layer as open.",
+    "pullQuote": "The national layer says open, but the Bali layer is decisive for anyone trying to register this as a PMA on the island.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "28113",
+  "editorial": {
+    "headline": "The Industrial Core of Engine and Turbine Components",
+    "standfirst": "KBLI 28113 covers the making of non-automotive engine and turbine parts, nationally open to PMA and not blocked for Bali registration under the record supplied.",
+    "body": "KBLI 28113 is a manufacturing code for the parts that sit inside, around, and immediately alongside prime-mover machinery: the components and spare parts of engines and turbines. In practical terms, the record points to industrial items such as engine blocks, pistons, piston rings, carburetors, cylinder heads, and comparable parts for internal-combustion and diesel engines, together with inlet valves and gas-release valves. The scope is deliberately mechanical and component-led. It is not a general trading activity, and it is not framed as vehicle manufacturing; the record expressly excludes motor-vehicle use.\n\nThat makes this a code for businesses whose real activity is fabrication, machining, assembly, or production of engine and turbine components rather than merely buying and reselling them. The scale profile is unusually broad: the record marks it open to Mikro, Kecil, Menengah, and Besar. A small workshop producing defined spare parts and a larger industrial plant making higher-volume components can both sit within the scale language of the record, provided the activity remains inside the stated manufacturing scope. The editorial point is simple: the code is about making the working parts of machines, not branding the finished machine or operating the machine as a service.\n\nNationally, the PMA picture is clear. The record marks the activity as TERBUKA, with `pma_max_asing` at 100, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the national foreign-ownership ceiling shown in the record is 100%. There is no lesser percentage, special threshold, capital number, licence timeline, or additional national condition in the slim record, so none should be read into it. The national answer is therefore clean: this activity is open to PMA at the ceiling stated in the record.\n\nThe Bali layer is also clean, but for a different reason. The province’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA on an island-wide, permanent basis. This record, however, does not mark the activity as blocked in Bali. Its Bali status is `OK_or_HIGHER_RISK`, and the reason is: `OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium`. So the honest national-versus-Bali reading is not a contradiction. Nationally, the activity is open to PMA; in Bali, the supplied record does not block PMA registration under the moratorium because the relevant large-scale risk position is higher than the blocked Low and Medium-Low categories.",
+    "pullQuote": "Nationally the activity is open to PMA, and the Bali record does not block it under the moratorium because its large-scale risk position is higher than the barred categories.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

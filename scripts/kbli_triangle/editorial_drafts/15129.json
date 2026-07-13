@@ -1,0 +1,27 @@
+{
+  "code": "15129",
+  "editorial": {
+    "headline": "KBLI 15129 Covers the Specialist Edge of Leather Goods Manufacturing",
+    "standfirst": "A precise home for leather and composition-leather products that fall outside the standard product lanes, from crafted decorative work to machine-use components.",
+    "body": "KBLI 15129 is for the making of other goods from leather and composition leather: the specialist, less standardised end of leather manufacturing. The record points to products made for uses not otherwise captured in the narrower leather-goods categories, including seats, decorative carved-and-painted craft work such as ornaments, puppets, and lampshades, as well as leather or composition-leather items made for machinery, including vanbelts and packing components.\n\nThat range matters because this is not framed as retail, repair, design, or trading. It is manufacturing. A founder using this activity should be describing a production operation: taking leather or composition leather and turning it into finished goods for practical, decorative, craft, or machine-related use. The record is broad, but not vague; it gives the code its shape through material, process, and end use. The common thread is the manufacture of leather-based goods that do not sit inside the more ordinary product boxes.\n\nThe scale position is unusually straightforward. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so it can cover anything from a small workshop making carved decorative pieces to a larger production setup manufacturing leather components for machinery. Nothing in the record adds a special threshold, minimum capital figure, permit condition, timeline, or tax rule, so those should not be implied. The clean reading is simply that the activity is available across all listed business scales.\n\nFor foreign ownership, the national picture is also clear: the PMA status is TERBUKA, with `pma_max_asing` recorded as 100. In plain English, the record treats this activity as nationally open to foreign ownership up to 100%, with the source given as Perpres 10/2021, 49/2021. Bali does not add a separate percentage, quota, partnership requirement, or foreign-share ceiling in this record. Its Bali-side status is `OK_or_HIGHER_RISK`, and `l4_bali_blocked` is false. The reason is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule still matters as context because it says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently, but this record does not mark KBLI 15129 as blocked. The honest conclusion is therefore simple: nationally foreign-open, and not blocked for PMA registration in Bali on the record provided.",
+    "pullQuote": "The honest conclusion is therefore simple: nationally foreign-open, and not blocked for PMA registration in Bali on the record provided.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

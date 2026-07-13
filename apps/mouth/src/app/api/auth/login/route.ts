@@ -7,7 +7,10 @@ function getBackendUrl(): string {
     process.env.NEXT_PUBLIC_API_URL ||
     "https://nuzantara-rag.fly.dev";
   // Normalize: strip trailing slash and /api suffix to get base URL
-  return raw.trim().replace(/\/+$/, "").replace(/\/api$/, "");
+  return raw
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/api$/, "");
 }
 const BACKEND_URL = getBackendUrl();
 

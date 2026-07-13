@@ -1,0 +1,27 @@
+{
+  "code": "35202",
+  "editorial": {
+    "headline": "Gas Distribution Networks, Open Nationally and Workable in Bali",
+    "standfirst": "This activity covers networked gas distribution, trading through channels, and newer gas fuels, with full PMA ownership nationally and no Bali moratorium block recorded.",
+    "body": "This activity is about gas moving through a network, not simply gas as a commodity sitting in a tank or traded on paper. Its scope reaches the distribution of natural and manufactured gas through extra-high-pressure networks above ten bar, high-pressure networks from four to ten bar, and medium-to-lower-pressure networks below four bar. The gas may come from the operator’s own production or from another producer, but the defining feature is delivery through a network to consumers or customers.\n\nThe scope is broader than utility-style delivery alone. It also covers the sale of gas to consumers through channels, gas agents trading through a distribution system operated by another party, and the operation of exchanges for gas-fuel commodities and transportation capacity. It is also written with newer fuel pathways in view: hydrogen fuel gas distributed through networks is included, whether produced by electrolysis, photolysis, thermochemical, biological, geological, or other methods, and whether the energy source is renewable, new energy, or fossil. Biogas and other gases distributed through networks also sit inside the frame. What falls outside is pipeline delivery carried out purely for a fee or compensation, where the business is carriage rather than this distribution activity.\n\nFor founders, the scale position is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar businesses, which means the classification is not reserved only for large infrastructure groups in the way a casual reading might suggest. A smaller operator, a mid-sized distributor, or a large network business may all find themselves inside this activity if the real business is distribution, trading through gas channels, agency trading through another operator’s system, or running the relevant exchange and capacity functions. The editorial discipline here is to follow the activity, not the ambition: the decisive question is whether the company is actually in networked gas distribution and the related trading or exchange functions described above.\n\nThe national foreign-investment position is clean. The activity is marked TERBUKA, with a PMA ceiling of 100%, sourced to Perpres 10/2021, 49/2021. In plain English, the national record allows full foreign ownership for this activity. Bali does not add a block on the record supplied here. The province’s moratorium blocks all low and medium-low risk KBLI for PMA across the island, but this activity is recorded as OK_or_HIGHER_RISK because, at Besar scale, OSS risk is medium-high or high; for that reason it is not blocked by the moratorium. The practical conclusion is direct: nationally it is foreign-open, and in Bali it is not marked as moratorium-blocked in this record.",
+    "pullQuote": "The practical conclusion is direct: nationally it is foreign-open, and in Bali it is not marked as moratorium-blocked in this record.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

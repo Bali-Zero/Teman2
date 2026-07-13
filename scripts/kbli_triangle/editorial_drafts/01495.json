@@ -1,0 +1,27 @@
+{
+  "code": "01495",
+  "editorial": {
+    "headline": "Rabbit Breeding and Farming with a Clear Bali Path",
+    "standfirst": "KBLI 01495 covers rabbit cultivation and breeding for meat, skins, and other outputs, open nationally to all business scales and not blocked for PMA in Bali.",
+    "body": "KBLI 01495 is a compact but specific agricultural activity: the cultivation and breeding of rabbits to produce meat, skins, and other outputs. Its Indonesian scope is direct and practical, centred on both pembibitan kelinci and budidaya kelinci, so the code belongs to operators whose business activity is not merely trading rabbits or processing downstream products, but raising and breeding the animals themselves. The commercial substance is animal husbandry: maintaining rabbit stock, developing breeding activity, and producing the outputs named in the record.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar, which means the same KBLI can describe a small rabbit-breeding operation, a mid-sized cultivation business, or a larger agricultural enterprise. That breadth matters because the activity is not confined to a single class of operator. A founder reading this code should see a production activity with room for different operating sizes, provided the registered business is genuinely within rabbit cultivation and breeding as described by the scope.\n\nNationally, the PMA position is clean: the activity is marked TERBUKA, with foreign ownership up to 100% under the cited Perpres source. There is no foreign-share cap below full ownership in the slim record, so the national reading is straightforward rather than conditional. For a foreign-owned company, the central point is that the activity itself is open at the national level, and the record gives a full foreign-ownership ceiling rather than a minority or joint-venture limit.\n\nThe Bali picture is also clear, but for a different reason. The record does include Bali's island-wide moratorium rule, which blocks all Low and Medium-Low risk KBLI for PMA. Here, however, the Bali status is not blocked: the record states that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so the activity is not blocked by the moratorium. In plain English, KBLI 01495 is not one of the Bali-blocked PMA activities in this record. The honest reading is therefore aligned: nationally open, fully foreign-open, open across Mikro through Besar scales, and not blocked for PMA registration in Bali under the stated Bali note.",
+    "pullQuote": "The honest reading is therefore aligned: nationally open, fully foreign-open, open across Mikro through Besar scales, and not blocked for PMA registration in Bali under the stated Bali note.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

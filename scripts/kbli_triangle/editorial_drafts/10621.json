@@ -1,0 +1,27 @@
+{
+  "code": "10621",
+  "editorial": {
+    "headline": "Cassava Starch Industry With a Clear Bali Path",
+    "standfirst": "This activity covers cassava starch production, nationally open to PMA and not blocked for Bali under the record’s moratorium logic.",
+    "body": "Cassava starch is a plain industrial phrase, but this activity is more exact than it first appears. The record defines it as the making of starch from cassava, with tapioca flour and modified cassava starch named as examples. That gives the code a focused centre: not cassava trading, not a broad food catalogue, but the transformation of cassava into starch-based outputs. Its commercial identity sits in that manufacturing step, where cassava becomes a processed ingredient rather than an agricultural raw material.\n\nThe scale picture is unusually broad. The record opens the activity to Mikro, Kecil, Menengah, and Besar scales, so the activity is not framed only for large industrial operators. A small producer, a medium processor, and a larger plant all sit inside the same scale envelope, provided the registered activity remains the making of cassava starch products described in the scope. For founders, that matters because the code does not force the business story into one size of operation; it recognises the same activity across the full scale range listed in the record.\n\nThe national investment position is clean. The PMA status is TERBUKA, and the foreign-ownership ceiling is 100%, with the source given as Perpres 10/2021, 49/2021. Stated simply, the national record treats this activity as open to foreign ownership up to the full ceiling shown. There is no lower cap in the slim record, and there is no extra threshold, licence condition, timeline, tax point, or capital rule supplied here. The only national number that can be used is the 100% PMA maximum stated in the record.\n\nThe Bali reading is also clear, but for a different reason. For Bali, the status is OK_or_HIGHER_RISK, while l4_bali_blocked remains false. The record’s reason says: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” That places the activity outside the moratorium described in the record, which blocks all Low + Medium-Low risk KBLI for PMA across Bali. So the honest national-vs-Bali picture is not a contradiction: nationally the activity is open to PMA, and in Bali the record does not mark it as blocked. The conclusion is therefore straightforward: for this activity, the record supports a genuinely open PMA reading, with Bali not adding a separate percentage cap or quantified local restriction.",
+    "pullQuote": "The honest national-vs-Bali picture is not a contradiction: nationally the activity is open to PMA, and in Bali the record does not mark it as blocked.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "code": "07294",
+  "editorial": {
+    "headline": "Copper Ore Mining, Open Nationally and Usable in Bali",
+    "standfirst": "A clear reading of copper ore mining as a KBLI activity: broad scale access, full foreign ownership nationally, and no Bali moratorium block on the record provided.",
+    "body": "Copper ore mining under this activity is not a generic metals label. The scope points to the extraction of copper ore itself, including chalcocite and rock formations described as a mixture of monticellite and copper skarn. In plain English, this is the mining activity attached to copper-bearing mineral deposits, not downstream trading, fabrication, or general industrial handling. The record also ties the activity to mining-authorisation language: an IUPK Exploration and an extension of an IUP at the production-operation stage. That makes the centre of gravity clear: this is an upstream mining code, with exploration and production-stage continuity sitting inside the official scope.\n\nThe registration profile is unusually broad on paper. The activity is open to Mikro, Kecil, Menengah, and Besar scales, which means the slim record does not limit the code to large operators only. That does not make the activity administratively simple; it simply says the code is available across the listed business scales. The foreign-investment reading is also direct: the national PMA status is TERBUKA, and the foreign ownership ceiling is 100%. There is no partial foreign cap in the data supplied here. For a foreign-owned company reading the record nationally, the formal signal is full openness under the cited investment-regulation source.\n\nThe Bali question is where many activities become more complicated, but this record does not show a current PMA registration block in Bali. The Bali status is recorded as OK_or_HIGHER_RISK, and the stated reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The moratorium rule in the record is specific: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This activity, on the record provided, does not fall into that blocked lane for the stated large-scale risk reading. The honest conclusion is therefore not that Bali is closed to this code; it is that the Bali moratorium does not block it on the data shown.\n\nThat distinction matters. Nationally, the activity is foreign-open up to 100% ownership. In Bali, the supplied record says it is not blocked by the provincial moratorium because of the risk level attached at Besar scale. A founder should read that as a narrow but important clearance: the code stands open in the investment classification and is not stopped by the Bali Low and Medium-Low PMA moratorium. The remaining seriousness lies in the activity itself: copper ore mining is a regulated mining activity, and this editorial cannot add obligations, thresholds, timelines, permits, or capital assumptions beyond the slim record. On this record alone, the story is clean: a copper ore mining activity, available across all listed scales, fully open to foreign ownership nationally, and not blocked for PMA registration in Bali by the moratorium described.",
+    "pullQuote": "On this record alone, the story is clean: a copper ore mining activity, fully open nationally and not blocked in Bali by the stated moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali registration status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

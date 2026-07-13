@@ -1,0 +1,27 @@
+{
+  "code": "64193",
+  "editorial": {
+    "headline": "Microfinance With a Community Mandate",
+    "standfirst": "Conventional non-bank microfinance supports small enterprise and community empowerment—open nationally to 100% foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "Conventional non-bank microfinance is finance with a wider social purpose. This activity covers microfinance conducted on a conventional basis, combining lending for micro-scale businesses with enterprise-development services and community empowerment. It may serve members and the public through loans, savings management, and advisory services for business development. The defining point is that the institution is not organised solely to seek profit: finance sits alongside practical support for local economic activity.\n\nThe scope describes an institutional field rooted in community finance. It includes conventional microfinance institutions such as village banks, village granaries, market banks, employee banks, and rural credit bodies, as well as similar institutions. The activity is open across every listed business scale: Mikro, Kecil, Menengah, and Besar. That breadth matters because the essential character does not change with scale: lending, savings management, business-development assistance, and community empowerment remain part of the same conventional non-bank microfinance proposition.\n\nNationally, the PMA position is TERBUKA. The foreign-ownership ceiling is 100%, under the cited Presidential Regulations. In plain terms, a foreign investor may hold the full permitted ownership interest nationally in this activity. There is no lower national foreign-share cap recorded for it, so the national position is straightforward: conventional non-bank microfinance is open to PMA at up to 100% foreign ownership.\n\nBali does not reverse that position. The provincial moratorium permanently blocks PMA for all Low and Medium-Low risk activities, but this activity is not blocked by that rule. At the Besar scale, its OSS risk is recorded as Medium-High or High, and the Bali status is OK_or_HIGHER_RISK. For founders considering a Bali registration, that is the decisive distinction: PMA registration is not blocked by the Bali moratorium for this activity. The national 100% foreign-ownership ceiling remains the relevant ownership figure, while the Bali record adds no separate foreign-ownership percentage or partnership condition.",
+    "pullQuote": "A 100% national foreign-ownership ceiling is meaningful here because Bali’s moratorium does not block the activity.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Eligible scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

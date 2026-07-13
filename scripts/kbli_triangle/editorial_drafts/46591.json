@@ -1,0 +1,27 @@
+{
+  "code": "46591",
+  "editorial": {
+    "headline": "Industrial and Office Machinery Wholesale: Open Nationally, Blocked in Bali",
+    "standfirst": "A foreign investor can pursue this wholesale activity nationally, but cannot register it in Bali today: its Large-scale risk classification triggers the island-wide PMA moratorium.",
+    "body": "This activity is the wholesale trade of industrial machinery and office machines—excluding computers and computer peripherals—together with their parts and equipment. Its industrial side includes machinery for wood and metal processing, production robots, additive-manufacturing machinery such as three-dimensional printers, and computer-controlled industrial equipment for textile production, sewing and knitting. Its office-equipment side includes cash registers, calculators, photocopiers not connected to a computer or network, paper shredders and automated teller machines. The scope is therefore deliberately practical: machinery used to make, process, administer or equip, rather than the computer hardware expressly left outside it.\n\nThe registration is open across the full business-scale range recorded here: Micro, Small, Medium and Large. That matters because the activity is not framed as belonging only to a large industrial operator. It can serve businesses trading specialist processing machinery, office equipment or their associated parts and equipment at any of those recognised scales. The code’s centre of gravity remains wholesale trade, however. The record describes the machinery, equipment and parts that may be traded; it does not extend the activity beyond that stated commercial scope.\n\nThe position on foreign investment is unambiguous at the national level. The activity is marked open, with a maximum foreign ownership of 100%. In national terms, then, foreign ownership is not capped below full ownership for this activity. The relevant source is Perpres 10/2021, 49/2021. That national openness should be read plainly, but not treated as a shortcut around Bali’s separate PMA position.\n\nIn Bali, a foreign investor cannot register this activity today. At the Large scale, every scope within the record is classified as Low or Medium-Low risk, and that classification places it inside Bali’s moratorium. The provincial rule blocks all Low and Medium-Low risk KBLI activities for PMA on an island-wide, permanent basis. This is not a contradiction of the national 100% foreign-ownership ceiling: the national figure states the ownership ceiling, while Bali’s rule blocks PMA registration for this activity because of its risk classification. For a foreign-owned business considering this wholesale activity in Bali, that local restriction is the decisive fact.",
+    "pullQuote": "National openness does not override Bali’s permanent PMA moratorium for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

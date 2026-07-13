@@ -1,0 +1,27 @@
+{
+  "code": "84210",
+  "editorial": {
+    "headline": "Foreign Affairs, Closed to Foreign Investment",
+    "standfirst": "A foreign investor cannot register this governmental foreign-affairs activity in Bali today; its remit spans diplomacy, overseas assistance and international economic relations.",
+    "body": "For a foreign investor, the position begins plainly: this activity cannot be registered in Bali today. It is also closed to foreign investment nationally, with a foreign-ownership ceiling of 0%. The category concerns the State’s conduct of relations beyond Indonesia’s borders, not a private commercial offering placed under an international label. Its subject is the machinery through which foreign affairs are administered and operated, and that public character should set the reading of every element that follows.\n\nThat machinery includes government institutions responsible for foreign affairs, diplomats and consulates stationed abroad, and offices connected with international organisations. It also takes in the administration, operation and supporting work behind information and cultural services intended for distribution outside the country. Foreign assistance, whether channelled through international organisations or otherwise, appears in the scope, as does military assistance abroad. The remit extends further to the management of foreign trade, international finance, and overseas technical relations. Taken as written, it is a broad field of external-state work, ranging from representation and communication to aid and international economic administration.\n\nThe record names no business scale as open to this activity: its `scales_open_to` field is empty. That absence should not be padded with a presumed micro, small or large-business route. Nor is there a foreign-investment exception to infer from the breadth of the scope. Nationally, the activity is closed and its stated maximum foreign share is 0%. Its international subject matter does not create an avenue for PMA participation.\n\nBali’s entry is also closed and flagged as blocked for PMA. The recorded reason adds an important distinction: this is a medium-high/high-risk activity and is not blocked by Bali’s permanent, island-wide moratorium for low- and medium-low-risk KBLI activities; the address still requires verification. In other words, the Bali outcome is closed, but the record does not place that outcome on the moratorium itself. For a founder, the honest conclusion is direct: neither the national foreign-investment setting nor the Bali record offers a PMA registration route for this activity.",
+    "pullQuote": "Its international subject matter does not create an avenue for PMA participation.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "0%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "TERTUTUP"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

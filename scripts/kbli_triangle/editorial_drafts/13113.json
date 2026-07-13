@@ -1,0 +1,27 @@
+{
+  "code": "13113",
+  "editorial": {
+    "headline": "Thread Sewing Yarn With a Full National Opening",
+    "standfirst": "KBLI 13113 covers the making and finishing of sewing thread, open across business scales and not blocked for PMA registration in Bali under the record provided.",
+    "body": "KBLI 13113 is a narrow but important textile-manufacturing activity: the making of sewing thread. The record describes production from either fibre or yarn as raw material, then includes the finishing and engineering steps that turn that input into usable sewing thread: texturizing, twisting, folding, cabling, and covering or dipping. In plain English, this is not general garment work or fabric retail. It is the industrial preparation of the thread itself, including the treatments that give sewing thread its strength, texture, ply, finish, and practical performance.\n\nThe activity is open across the full scale spectrum shown in the record: Mikro, Kecil, Menengah, and Besar. That matters because it frames the code as usable not only for a large spinning or finishing operation, but also for smaller manufacturing setups whose declared activity is genuinely the production or processing of sewing thread. The key editorial point is precision. A founder should read this as a manufacturing classification for thread-making and thread-finishing work, not as a broad textile label that can casually absorb adjacent activities.\n\nNationally, the record is straightforward: the PMA status is TERBUKA, and the listed foreign-ownership ceiling is 100%. That means the national field supplied here marks the activity as open to foreign investment up to full foreign ownership. The source named in the record is Perpres 10/2021, 49/2021. Nothing in the slim record adds a separate licence, threshold, timeline, tax treatment, or capital rule, so none should be inferred from this classification note.\n\nThe Bali picture is also clean, but it needs to be stated carefully. The record does not mark the activity as blocked in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The reason given is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently; this record’s Bali-side reason says this activity is not caught by that block. So the honest reading is that KBLI 13113 is nationally foreign-open and, on the supplied Bali fields, not blocked for PMA registration in Bali.",
+    "pullQuote": "The honest reading is that KBLI 13113 is nationally foreign-open and, on the supplied Bali fields, not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

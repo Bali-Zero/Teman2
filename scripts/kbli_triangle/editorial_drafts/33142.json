@@ -1,0 +1,27 @@
+{
+  "code": "33142",
+  "editorial": {
+    "headline": "Repairing the Power Behind Electric Mobility",
+    "standfirst": "KBLI 33142 is nationally open to full foreign ownership, but Bali’s risk-class moratorium blocks PMA registration for this activity today.",
+    "body": "KBLI 33142 is the repair-and-maintenance home for the hardware that keeps electric mobility and electrical storage working after installation. Its Indonesian scope covers the repair and upkeep of electric-car charging stations, batteries, and electric accumulators, including those used for electric motors and related equipment within the battery and accumulator manufacturing family. In plain English, this is not the business of selling vehicles or producing batteries from scratch; it is the technical aftercare layer that keeps charging and storage assets usable, serviced, and maintained.\n\nThat makes the activity practical and infrastructure-facing. A company registering under this code is positioning itself around maintenance capability: diagnosing, repairing, servicing, and preserving charging points, batteries, and accumulators once they are already in circulation. The scale aperture is broad. The record opens it to Mikro, Kecil, Menengah, and Besar operators, so the code is not framed only for a large industrial platform. It can describe a smaller specialist repair operation as well as a larger maintenance business, provided the registered activity remains inside the stated repair-and-maintenance scope.\n\nNationally, the PMA picture is straightforward. The activity is marked TERBUKA, with a `pma_max_asing` of 100, sourced to Perpres 10/2021, 49/2021. For founders reading the national investment list, that means foreign ownership is not capped below full ownership in the record supplied here. A foreign-owned company can treat the national ceiling as 100%, without inventing an additional ownership limit, capital figure, licence condition, or staging requirement that the record does not contain.\n\nBali is the decisive exception. The same record marks the Bali layer as `Blocked (risk class)`, with `l4_bali_blocked` set to true. The reason is not an ownership cap or a sector-specific local partnership condition; it is the provincial moratorium: at Besar scale, OSS classifies every scope here as Low or Medium-Low risk, and Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide on a permanent basis. The honest lede, therefore, is simple: a foreign investor may see KBLI 33142 as nationally open, even to 100% foreign ownership, but cannot register this activity as a PMA in Bali today because the Bali moratorium blocks it.",
+    "pullQuote": "A foreign investor may see KBLI 33142 as nationally open, even to 100% foreign ownership, but cannot register this activity as a PMA in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

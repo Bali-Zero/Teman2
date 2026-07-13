@@ -1,0 +1,27 @@
+{
+  "code": "18113",
+  "editorial": {
+    "headline": "3D Printing as a Broad Manufacturing Activity",
+    "standfirst": "KBLI 18113 covers three-dimensional printing across materials, scales, and ownership models, with Bali marked as usable rather than moratorium-blocked.",
+    "body": "KBLI 18113 is the activity code for three-dimensional printing: the production of objects through 3D printing for various purposes, using materials such as polymers, plastics, clay, metal ore, and other materials. Its scope is deliberately material-led rather than narrowly product-led. The record does not tie the activity to one finished article, one industry, or one customer type; it describes a printing capability that can be applied across different use cases, as long as the core activity is 3D printing itself.\n\nThat breadth matters for founders because this is not written as a micro-only craft activity or as a large-industry-only classification. The record opens it to Mikro, Kecil, Menengah, and Besar scales. In plain terms, the same activity code can describe a small 3D-printing setup, a growing production studio, or a larger operation, provided the registered business is genuinely carrying out the covered 3D-printing activity. The scale choice is therefore not a decorative field: it is part of how the business presents its operating size inside the OSS framework.\n\nNationally, the foreign-investment picture is clean. Under Perpres 10/2021, 49/2021, the record lists the activity as TERBUKA and sets pma_max_asing at 100. That means the national record does not place a lower foreign-ownership ceiling on this activity. A PMA founder reading the code nationally should see it as open up to 100% foreign ownership, without inventing additional capital thresholds, sector licences, or side conditions that are not present in the slim record.\n\nThe Bali reading is equally important, because national openness is not always the end of the analysis. Here, however, the record does not mark the code as Bali-blocked. Its l4_bali_status is OK_or_HIGHER_RISK, and the reason is explicit: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. For this code, the recorded Bali reason says the Besar-scale OSS risk sits at Menengah-Tinggi/Tinggi, so the moratorium does not block it. The honest conclusion is therefore straightforward: KBLI 18113 is nationally foreign-open and, on the supplied Bali record, not blocked by the Bali moratorium.",
+    "pullQuote": "The honest conclusion is therefore straightforward: KBLI 18113 is nationally foreign-open and, on the supplied Bali record, not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

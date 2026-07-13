@@ -1,0 +1,27 @@
+{
+  "code": "35151",
+  "editorial": {
+    "headline": "Operating Indonesia’s Power Infrastructure, Without a Bali PMA Block",
+    "standfirst": "This code covers third-party operation of electricity generation, transmission, and distribution facilities, open nationally to full foreign ownership and not blocked for PMA in Bali.",
+    "body": "KBLI 35151 is about the operation of electricity infrastructure by a party other than the facility owner. Its scope is operational, not ornamental: it covers facilities that generate electrical energy, the transmission system that carries power, and the distribution system that moves it onward. In plain English, this is the activity code for a business that runs electricity-supply installations across the generation, transmission, or distribution chain.\n\nThat makes the code relevant to operators whose work sits inside the practical machinery of power supply. The record does not describe construction, equipment sales, retail billing, or advisory work; it describes the **operation** of existing electricity-supply facilities and systems. That distinction matters because the code is framed around taking responsibility for running infrastructure: keeping a generating facility, transmission system, or distribution system in operation as the business activity being registered.\n\nThe scale picture is unusually broad. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** businesses, so it is not confined to large enterprises in the national classification data provided here. A founder should read that as a scale eligibility statement only: the slim record says the code is open across those four scales, but it does not provide capital thresholds, licence procedures, technical prerequisites, or operating timelines. Those details cannot be inferred from the KBLI entry itself.\n\nFor foreign-owned company planning, the national position is clear. The activity is marked **TERBUKA**, with a stated foreign-ownership ceiling of **100%**, sourced to **Perpres 10/2021, 49/2021**. Bali does not reverse that position in this record. The province’s moratorium rule blocks PMA registration for Low and Medium-Low risk KBLI across the island, but this activity is marked **OK_or_HIGHER_RISK** because the OSS risk at **Besar** scale is **Menengah-Tinggi/Tinggi**. The practical conclusion is direct: on the data provided, KBLI 35151 is nationally open to full foreign ownership and is not blocked for PMA registration in Bali by the moratorium.",
+    "pullQuote": "On the data provided, KBLI 35151 is nationally open to full foreign ownership and is not blocked for PMA registration in Bali by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "14301",
+  "editorial": {
+    "headline": "Knitted Apparel Manufacturing With a Clear National and Bali Path",
+    "standfirst": "This activity is for making finished garments and accessories from knitted or crocheted materials, open across business scales and not marked as blocked for PMA in Bali.",
+    "body": "This activity is the industrial making of ready-to-wear clothing and related accessories from knitted or crocheted materials. In plain English, it is about turning knit or crochet fabric into finished apparel: sweaters, cardigans, jerseys, shirts, T-shirts, blouses, vests, coats, sleepwear, underwear, baby clothing, professional or individual-use sports clothing, sportswear, and swimwear. It also extends to similar clothing accessories made by knitting or crochet, including hats and gloves. The record draws one boundary clearly: sock manufacturing is outside this activity.\n\nThat scope matters because this is not framed as retail, branding, or design consultancy. It is a production activity. The common thread is the material method and the finished-garment outcome: clothing and clothing accessories made from knitted or crocheted inputs. A founder choosing this activity is therefore describing a manufacturing operation, whether the output is everyday apparel, professional-use sports garments, babywear, underwear, or knitted accessories. The wording is broad enough to hold a wide apparel mix, but it remains disciplined around knitted and crocheted finished goods.\n\nThe scale picture is unusually straightforward. The record opens this activity to Mikro, Kecil, Menengah, and Besar enterprises, so the classification can fit anything from a very small production setup to a large-scale manufacturing operation. Nationally, the foreign-investment position is also clear: the PMA status is TERBUKA, with pma_max_asing at 100. That means the national record treats it as open to full foreign ownership. Perpres 10/2021, 49/2021 is identified as the source for that national position.\n\nThe Bali reading does not add a hidden ownership cap or a local percentage rule. According to the record, l4_bali_blocked is false, while the Bali status is OK_or_HIGHER_RISK. Its stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium text in the record says Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is not marked as blocked here. So the honest conclusion is clean: on this record, a foreign-owned company can use this activity nationally, and it is not currently marked as blocked for PMA registration in Bali.",
+    "pullQuote": "The Bali reading does not add a hidden ownership cap or a local percentage rule.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

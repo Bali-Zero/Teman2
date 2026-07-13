@@ -1,0 +1,27 @@
+{
+  "code": "01442",
+  "editorial": {
+    "headline": "Goat Meat Breeding and Fattening Without a Bali Moratorium Block",
+    "standfirst": "KBLI 01442 covers meat-goat fattening and breeding, open across business scales and nationally open to full foreign ownership, with Bali not blocking PMA registration under its moratorium rule.",
+    "body": "KBLI 01442 is a focused livestock activity: the cultivation and breeding of meat goats. Its scope covers fattening activities to produce goats for slaughter, and breeding activities to produce meat-goat livestock seed, semen, and embryos. In plain English, this is not a general animal-trading or mixed-farm category; it is the production side of the meat-goat chain, including both the growth of animals for meat output and the upstream reproductive material that supports herd development.\n\nThe record opens the activity to every listed business scale: Mikro, Kecil, Menengah, and Besar. That range matters because it means the code is not written only for a large industrial operator or only for a household-scale farm. It can describe a small goat-fattening setup, a growing breeder, or a larger operation, as long as the registered activity remains inside the stated scope: fattening for meat-goat output and breeding for livestock seed, semen, and embryos. The scale choice should therefore follow the actual business footprint, not a different interpretation of the code.\n\nNationally, the foreign-investment position is clean. Sourced to Perpres 10/2021, 49/2021, the record lists the PMA status as TERBUKA and the foreign-ownership ceiling as 100%. There is no partial foreign cap to explain here: the record gives a full ceiling. For a foreign-owned setup, the national reading is therefore straightforward: this activity is open to PMA up to 100% foreign ownership, provided the business is genuinely carrying out the activity described in the scope.\n\nThe Bali picture is also unusually clear. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA island-wide on a permanent basis, according to the governor-letter source in the record. But this activity is not marked as blocked in Bali: l4_bali_blocked is false, and the reason given is that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is that a foreigner can register this activity in Bali today under this record’s Bali status, which is OK_or_HIGHER_RISK. The point is not that Bali has no moratorium; the point is that this code, on the record provided, does not fall into the moratorium block.",
+    "pullQuote": "The honest conclusion is that a foreigner can register this activity in Bali today under this record’s Bali status, which is OK_or_HIGHER_RISK.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "08914",
+  "editorial": {
+    "headline": "Iodine Extraction With a Clean Bali Reading",
+    "standfirst": "KBLI 08914 covers iodine-bearing groundwater extraction and distillation, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 08914 is a narrowly drawn mining activity: the extraction of groundwater that contains iodine, including the distillation activity attached to that mineral extraction. In plain English, this is not a broad trading, processing, or general water-business category. Its centre of gravity is the mineral-bearing groundwater itself and the extraction-to-distillation chain described in the record.\n\nThe record places this activity across every business scale: Mikro, Kecil, Menengah, and Besar. That matters because the code is not framed only for a large corporate operator, even though the Bali risk note specifically refers to scale Besar. The slim record also carries the Indonesian labels “IUP Tahap Eksplorasi Mineral Bukan Logam” and “Permohonan SIPB”; those should be read as part of the activity’s regulatory context as recorded, not as an invitation to invent extra thresholds, timelines, or conditions beyond the text.\n\nFor foreign investment, the national position is uncomplicated. The record lists the PMA status as TERBUKA and sets the maximum foreign ownership figure at 100%. That national position is sourced to Perpres 10/2021, 49/2021. For a founder or investor reading the code, the clean national conclusion is therefore that KBLI 08914 is open to foreign ownership up to the recorded ceiling, with no lower cap appearing in the slim record.\n\nBali does not overturn that reading in this record. For Bali, the status is OK_or_HIGHER_RISK while l4_bali_blocked is false. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, sourced to Gubernur letter B.27.000/642/PM/DPMPTSP. But for this code, the record’s own Bali-side conclusion is not blocked. The honest reading is simple: KBLI 08914 is nationally open, carries a 100% foreign-ownership ceiling, is open across all listed scales, and is not marked as blocked for PMA registration in Bali by the moratorium logic supplied here.",
+    "pullQuote": "The honest reading is simple: KBLI 08914 is nationally open, carries a 100% foreign-ownership ceiling, and is not marked as blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

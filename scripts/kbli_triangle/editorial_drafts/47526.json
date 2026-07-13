@@ -1,0 +1,27 @@
+{
+  "code": "47526",
+  "editorial": {
+    "headline": "Renewable-Energy Retail: Open Nationally, Blocked for PMA in Bali",
+    "standfirst": "Retailing renewable-energy materials is nationally open to full foreign ownership, but Bali’s permanent PMA moratorium blocks registration today.",
+    "body": "For a foreign investor, the decisive fact comes before the product category: this activity cannot be registered for PMA in Bali today. Nationally, it is open to PMA and permits foreign ownership up to 100%. In Bali, however, the status is blocked on risk-class grounds. The record attributes that result to the OSS classification at the Besar scale, which is Low or Medium-Low across every scope, and to Bali’s permanent, island-wide moratorium on PMA registrations for all Low and Medium-Low risk KBLI activities. The moratorium is recorded as beginning on May 13, 2026.\n\nThe activity itself is carefully bounded. It is retail trade in renewable-energy materials: solar collectors that do not generate electricity, photovoltaic panels, and other materials of the same kind. The examples matter because they define a goods-focused activity. A non-electricity-generating solar collector and a photovoltaic panel are both expressly within the stated retail scope. Installation services, by contrast, are excluded. The code therefore concerns the supply of specified renewable-energy materials rather than the installation work that may follow their sale.\n\nNationally, access is stated across Mikro, Kecil, Menengah, and Besar scales. That breadth says the activity can be registered at each of those scales under the national classification; it does not alter the provincial PMA outcome. Bali’s blocking reason specifically locates the issue at Besar: for every scope, the OSS risk is either Low or Medium-Low. With the moratorium applying island-wide and permanently to those risk classes for PMA, the national foreign-ownership ceiling does not become a Bali registration route.\n\nThis is a case where two true statements must be read together. Perpres 10/2021, 49/2021 is the cited national source for an activity that is PMA-open to 100% foreign ownership. Bali’s documented position is still a block, not a partial opening. The practical reading is exact and limited: a business retailing the specified renewable-energy materials without installation can fall within this national activity and is open across the listed scales nationally; a foreign-owned PMA registration for it in Bali cannot proceed under the stated moratorium.",
+    "pullQuote": "National openness to 100% foreign ownership does not become a Bali registration route.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

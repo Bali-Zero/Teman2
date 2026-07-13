@@ -1,0 +1,27 @@
+{
+  "code": "16104",
+  "editorial": {
+    "headline": "Rattan Processing With a National Green Light and a Bali Stop Sign",
+    "standfirst": "KBLI 16104 covers the processing of rattan into semi-finished materials, open nationally to all business scales but blocked for PMA registration in Bali.",
+    "body": "KBLI 16104 is a production code for the processing of rattan into semi-finished material. The record names polished rattan, rattan core, and rattan skin as examples, which places the activity in the middle of the value chain rather than at the retail or finished-goods end. Its commercial logic is practical: taking raw rattan and preparing it into usable inputs for the next stage of manufacture.\n\nThat scope matters because this is not presented as a narrow boutique activity. The record opens it across every listed scale: Mikro, Kecil, Menengah, and Besar. In registration terms, the code can sit with a small local operator as well as a larger industrial setup, so long as the activity remains within the stated processing field: turning rattan into semi-finished materials such as polished rattan, core, and skin.\n\nNationally, the PMA picture is straightforward. The code is marked TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. On the national reading alone, that is a clean foreign-investment signal: the record does not show a reduced equity cap, a special threshold, or a partial foreign limit. A foreign-owned company looking only at the national PMA status would see an activity that is open.\n\nBali changes the answer completely. The Bali-side status is Blocked (risk class), and the record states that the activity is blocked for PMA because the OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, bringing it under the Bali moratorium of May 13, 2026. The moratorium rule is broader than this single activity: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. The honest reading is therefore split but not ambiguous: KBLI 16104 is nationally open to foreign ownership up to 100%, yet a foreigner cannot register it as a PMA activity in Bali under the record provided.",
+    "pullQuote": "The honest reading is split but not ambiguous: nationally open, yet blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

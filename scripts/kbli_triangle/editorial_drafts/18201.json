@@ -1,0 +1,27 @@
+{
+  "code": "18201",
+  "editorial": {
+    "headline": "Recorded Media Reproduction, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 18201 covers the reproduction of master copies of sound media, software, and data, with national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 18201 is about replication, not authorship. Its core activity is the reproduction of master copies into recorded media: vinyl records, compact discs, tapes carrying music or other audio recordings, and copies of software or data onto disks and magnetic tape. The emphasis is on taking an existing master and producing copies from it. That makes this an industrial and media-distribution activity, sitting between content ownership, software distribution, and physical recording formats.\n\nThe scope is also careful about what it is not. The record does not place blank-recording media manufacturing inside this activity, and it does not treat the original making of sound recordings on records, cassettes, or similar formats as part of this code. For a founder, that boundary matters because the registration should describe a reproduction business: copying from masters into recorded sound, software, or data media, rather than manufacturing empty media or creating the original sound recording itself.\n\nOn scale, the record is broad. It is open to Mikro, Kecil, Menengah, and Besar businesses, so the activity is not framed only for large industrial operators. A small duplication outfit, a mid-sized media reproduction service, or a larger software-and-data media replication business can all sit within the scale range shown in the record, provided the actual activity remains within the reproduction scope described above.\n\nThe national PMA position is clean: the record marks the activity as TERBUKA, with pma_max_asing at 100. In plain terms, the national foreign-ownership ceiling shown here is 100%, under the cited source Perpres 10/2021, 49/2021. Bali does not add a separate percentage in this record. Instead, the Bali-side status is OK_or_HIGHER_RISK, and the reason is stated as: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this activity is not marked as blocked here. So the honest reading is that KBLI 18201 is nationally open to PMA and, on this record, not blocked for PMA registration in Bali.",
+    "pullQuote": "The honest reading is that KBLI 18201 is nationally open to PMA and, on this record, not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

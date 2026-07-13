@@ -1,0 +1,27 @@
+{
+  "code": "10721",
+  "editorial": {
+    "headline": "Crystal Sugar Manufacturing, Read Through the Bali Lens",
+    "standfirst": "This activity covers the making of granulated sugar from cane, beet, or other materials, with national PMA openness and a Bali record not blocked by the island moratorium.",
+    "body": "KBLI 10721 is a manufacturing activity, not a trading label or a broad food category. Its recorded scope is the making of sugar in crystal or granulated form, using sugarcane, beet, or other materials as the main input. The practical centre of gravity is therefore production: taking an agricultural or other qualifying raw material and turning it into the familiar crystalline sugar described by the Indonesian title, *Industri Gula Pasir*.\n\nThe scale profile is unusually straightforward in the slim record. The activity is open to Mikro, Kecil, Menengah, and Besar operators, so the classification is not reserved only for heavy industrial players. A small producer, a mid-sized processor, or a large manufacturing operation can all sit within the registered scale range, provided the activity being registered remains the manufacturing of crystal sugar described in the scope. The record does not add a separate licence, threshold, land rule, or capital number, so none should be read into the classification itself.\n\nNationally, the PMA picture is also direct. The record marks the activity as TERBUKA, with pma_max_asing of 100, sourced to Perpres 10/2021, 49/2021. In plain English, the national foreign-ownership ceiling shown here is 100%. That does not make the activity automatically simple in every local context, but it does mean the national investment list in this record does not impose a lower foreign-share cap for this activity.\n\nThe Bali reading is the important nuance. The record does not mark KBLI 10721 as blocked in Bali: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. Its stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. That matters because the moratorium rule in the same record says Bali province blocks all Low + Medium-Low risk KBLI for PMA, island-wide and permanent. Here, the Bali-side conclusion is not a separate percentage, quota, or partnership condition. It is simply that the record does not block this activity under that moratorium logic. For a foreign-owned setup, the honest reading is therefore clean: nationally open up to 100%, and in Bali not blocked by the recorded moratorium rule.",
+    "pullQuote": "For a foreign-owned setup, the honest reading is therefore clean: nationally open up to 100%, and in Bali not blocked by the recorded moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

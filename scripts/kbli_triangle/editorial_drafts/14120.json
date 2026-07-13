@@ -1,0 +1,27 @@
+{
+  "code": "14120",
+  "editorial": {
+    "headline": "Custom Tailoring Is Nationally Open, But PMA Is Blocked in Bali",
+    "standfirst": "A made-to-order clothing activity that spans home tailors and boutique studios is nationally open to foreign capital, yet Bali blocks PMA registration under its risk moratorium.",
+    "body": "KBLI 14120 is the code for made-to-order clothing work: cutting and sewing garments to a customer’s specification until they are ready to wear. The record is clear that this is not mass confection production. It is the craft and service side of apparel, covering custom pieces such as coats, suits, ensembles, jackets, trousers, skirts, baby clothing, sportswear, pyjamas, nightgowns, kebaya, shirts, and dance costumes, including the making of parts of those items. Its natural operators are the businesses that work directly from an order: home tailors, tailoring studios, and boutique-style makers serving the general public.\n\nThat scope matters because it places the activity in a practical, human-scale category, even though the record opens it across every business scale: Mikro, Kecil, Menengah, and Besar. A small home-based tailor and a larger custom apparel operation can both sit inside the same activity description, provided the activity remains made-to-order and custom sewing rather than general ready-made clothing production. The centre of gravity is not retail display or industrial volume; it is the transformation of a client’s requested garment into a finished wearable item.\n\nNationally, the investment picture looks simple. The record marks the activity as TERBUKA and gives a pma_max_asing of 100, with the source stated as Perpres 10/2021, 49/2021. In plain terms, the national record treats this activity as open to PMA, with the foreign-ownership ceiling rendered as 100%. Nothing in the slim record adds a separate licence condition, capital threshold, operating timeline, or tax rule, so none should be inferred. The national signal is openness, and the recorded scale coverage is broad.\n\nBali is where the answer changes. The record marks l4_bali_blocked as true and gives the status Blocked (risk class). Its reason is specific: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026”. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanent, with the source listed as Gubernur letter B.27.000/642/PM/DPMPTSP. So the honest reading is this: although KBLI 14120 is nationally open to foreign ownership up to 100%, a foreign investor cannot register this activity as PMA in Bali today under the Bali-side block recorded here.",
+    "pullQuote": "Although KBLI 14120 is nationally open to foreign ownership up to 100%, a foreign investor cannot register this activity as PMA in Bali today under the Bali-side block recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

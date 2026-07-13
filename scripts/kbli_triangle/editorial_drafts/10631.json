@@ -1,0 +1,27 @@
+{
+  "code": "10631",
+  "editorial": {
+    "headline": "Rice Milling as a Full-Scale Industrial Activity",
+    "standfirst": "KBLI 10631 covers the conversion of paddy into saleable rice, with national PMA openness and no Bali moratorium block recorded.",
+    "body": "KBLI 10631 is about the industrial step that turns harvested paddy into rice for sale. The slim record defines the activity as **penggilingan padi menjadi beras**, including **penyosohan beras**: the milling of paddy into rice, together with rice polishing. It also makes clear that polishing may be part of the same rice-milling business or handled as a separate polishing activity connected to rice milling. In plain English, this is not a broad food-trading category and not a general agricultural field activity. It is the processing point where paddy becomes marketable rice.\n\nThat scope matters because the record treats the activity as available across the full business-size spectrum. The scales open to it are **Mikro, Kecil, Menengah, and Besar**. A small local milling operation and a larger industrial processing setup both sit within the same recorded scale range, provided the business activity being registered is still the milling of paddy into rice, including the relevant polishing activity. The editorial distinction is practical: the code follows the processing function, not the eventual buyer, channel, or commercial story around the rice.\n\nNationally, the PMA picture is straightforward. The record marks the PMA status as **TERBUKA**, with **pma_max_asing** at **100%**, sourced to **Perpres 10/2021, 49/2021**. On the national foreign-ownership point, there is no capped percentage below full foreign ownership in this slim record. A foreign investor reading only this record would therefore understand the national position as open, with the foreign-ownership ceiling stated at 100%.\n\nThe Bali layer is more nuanced, but it is not a hidden prohibition here. The record says **l4_bali_blocked** is **false** and gives the reason: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The broader moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is not marked as blocked under that rule. The honest reading is therefore clean: KBLI 10631 is nationally open to PMA up to 100%, and the Bali record does not block it under the listed moratorium logic.",
+    "pullQuote": "The honest reading is clean: KBLI 10631 is nationally open to PMA up to 100%, and the Bali record does not block it under the listed moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

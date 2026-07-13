@@ -1,0 +1,27 @@
+{
+  "code": "64994",
+  "editorial": {
+    "headline": "Own-Account Market Trading, With a Clear Bali Position",
+    "standfirst": "This activity covers proprietary financial-market trading across instruments, open nationally to full foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "This activity is the own-account side of financial-market trading. It covers a trader buying, selling, investing and taking positions in financial instruments and financial assets for its own account, generally in pursuit of short-term gain. The range is deliberately broad: shares, foreign exchange, commodity contracts, crypto assets and their related liabilities, bullion, receivables, swaps, options, money-market derivatives and foreign-exchange money-market derivatives all sit within the stated scope. What gives the activity its coherence is not any one instrument, but the capacity in which it is undertaken: the trader acts for itself, carrying the position and its consequences rather than transacting as an intermediary for someone else. This is not a generic label for participation in markets; it is an account-of-record description.\n\nThat distinction makes this a classification for businesses whose trading or investment operations are conducted in their own name. The record expressly embraces own-name investment and trading, own-name receivables trading, and dealers in securities and derivatives operating for themselves. It is open at every recorded business scale—Mikro, Kecil, Menengah and Besar—so the description does not reserve the activity for only a large institution. Scale identifies the range of businesses that may register the activity; the defining commercial fact remains that the dealing is proprietary.\n\nNationally, the PMA status is TERBUKA, with foreign ownership permitted up to 100%. For a foreign investor, that is a straightforward national position: full foreign ownership is permitted for this activity. The record attributes this entry to Perpres 10/2021, 49/2021. It is a statement about the permitted ownership ceiling for this activity, not a reason to blur the own-account boundary at its centre.\n\nBali does not reverse that picture. The province’s permanent moratorium blocks PMA for activities assessed at Low and Medium-Low risk, island-wide. This activity is recorded in Bali as OK_or_HIGHER_RISK, and the reason explains that, at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi—Medium-High/High. It is therefore not blocked by that moratorium. The honest Bali conclusion is clear: a foreign investor is not prevented from registering this activity in Bali on the record’s stated moratorium rule. Bali’s relevant distinction is the higher-risk classification.",
+    "pullQuote": "National foreign openness and Bali’s higher-risk treatment point in the same direction: this activity is not blocked for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

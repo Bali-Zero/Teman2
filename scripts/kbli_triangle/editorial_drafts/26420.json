@@ -1,0 +1,27 @@
+{
+  "code": "26420",
+  "editorial": {
+    "headline": "Audio and Video Equipment Manufacturing, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 26420 covers non-television audio and video equipment manufacturing for home entertainment, households, and motor vehicles, with full national PMA openness.",
+    "body": "KBLI **26420** is an industrial manufacturing classification for electronic audio and video equipment that is not television. In plain English, it is the code for making home-entertainment hardware used in households and motor vehicles: equipment that records, receives, plays, duplicates, or projects audio and video content. The record places within this scope video recording and duplicating equipment, audio recorders and duplicators, CD and VCD/DVD players, radio receivers and combination devices, stereo equipment, optical media players, computer projectors, TV projectors, household video cameras such as tape recorders and video recorders, and jukeboxes.\n\nThe shape of the activity matters. This is not a retail, rental, content, broadcasting, or service category; it is the making of the equipment itself. A founder using this code is presenting an industrial activity around the production of electronic consumer audio-video devices. The range is broad, but it is still bounded by the record: home entertainment equipment for households and vehicles, excluding television. That makes the classification useful for manufacturers whose product line sits around playback, recording, duplication, projection, radio reception, stereo systems, optical media, household video cameras, or jukebox-style equipment.\n\nThe scale position is straightforward. The record opens this activity to **Mikro, Kecil, Menengah, and Besar** scales, so it is not reserved only for large industrial operators. A small workshop-like manufacturer and a larger production operation may both find themselves inside the same activity description, provided the registered business activity is still the manufacture of the listed audio and video equipment. The practical editorial point is that scale does not narrow the doorway in this slim record: all four stated scales appear as open.\n\nThe national PMA picture is also clean. The record marks the activity as **TERBUKA** and gives a **100%** foreign-ownership ceiling, sourced to **Perpres 10/2021, 49/2021**. For a foreign-owned company, that means the national record does not impose a reduced foreign-share cap for this activity. Bali does not change that with a local percentage in this record. The Bali status is **OK_or_HIGHER_RISK**, and the activity is not blocked: the reason given is **“OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.”** The moratorium text still matters as context because Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this record’s Bali-side conclusion is not a block.",
+    "pullQuote": "For KBLI 26420, the honest reading is unusually direct: nationally open to full foreign ownership, and not blocked for PMA registration in Bali by the record supplied.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

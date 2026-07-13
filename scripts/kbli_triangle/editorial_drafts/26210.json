@@ -1,0 +1,27 @@
+{
+  "code": "26210",
+  "editorial": {
+    "headline": "Computer Assembly With a Clear Bali Path",
+    "standfirst": "KBLI 26210 covers the making and assembly of computers, from laptops and servers to interactive terminals, and is nationally open to foreign ownership up to 100%.",
+    "body": "KBLI 26210 is the industrial home for computer manufacturing and computer assembly. In plain English, it covers businesses that make or put together computing devices: mainframes, desktop computers, laptops, computer servers, handheld computers, tablets, and interactive computers such as digital signage, smartboards, and self-service interactive devices. The record also places computer assembly inside the scope, together with computer terminals such as ATMs and point-of-sale terminals, provided they are not mechanically operated.\n\nThe scope is broad because the activity is defined by the computer as a programmable machine, not by one retail format or one narrow device category. The record describes digital computers as systems that can store processing programs or the data needed to execute them, be programmed according to user needs, carry out arithmetic operations requested by the user, and run processing programs without human intervention while modifying execution through logical decisions. It also recognises analog computers that simulate mathematical models and include at least analog control and programming elements. That definition gives the code room for ordinary PCs as well as more specialised equipment.\n\nFor registration scale, the code is open across the full business-size ladder: Mikro, Kecil, Menengah, and Besar. That matters because a workshop-style assembler and a larger industrial manufacturer are not treated as different activities merely because their scale differs. The activity can include desktop production, laptop production, server production, tablet production, terminal production, and special-purpose computers for cybersecurity functions such as firewalls or network detection and response systems. The centre of gravity is still manufacturing or assembly: the business is making the computing hardware, not merely selling it, servicing it, or advising on its use.\n\nThe national foreign-investment picture is unusually clean. The record marks the PMA status as TERBUKA and gives a pma_max_asing of 100, so the national foreign-ownership ceiling is 100%. Bali does not add a separate percentage in this record, and it should not be read as having one. The Bali-side status is OK_or_HIGHER_RISK, l4_bali_blocked is false, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently; this code is not blocked on the record provided. For a foreign-owned setup in Bali, the honest reading is therefore straightforward: nationally open, 100% foreign ownership allowed, and not blocked by the Bali moratorium as recorded.",
+    "pullQuote": "For a foreign-owned setup in Bali, the honest reading is straightforward: nationally open, 100% foreign ownership allowed, and not blocked by the Bali moratorium as recorded.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

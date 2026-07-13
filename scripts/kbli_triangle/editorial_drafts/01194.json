@@ -1,0 +1,27 @@
+{
+  "code": "01194",
+  "editorial": {
+    "headline": "Flower Seed Farming That Stays Open Nationally and in Bali",
+    "standfirst": "KBLI 01194 covers flower seed farming for seed production, open across all business scales with full foreign ownership and no Bali moratorium block.",
+    "body": "KBLI 01194 is a narrow agricultural activity: the farming of flower-plant seed production, where the intended output is seed in the form of grain or seed stock. Its editorial core is not ornamental retail, landscaping, nursery display, or the broad trade in flowers. The activity is about producing the seed basis from which flower cultivation begins. That makes the classification useful for operators whose business model is upstream: organised cultivation, seed production discipline, and a clearly agricultural production chain.\n\nThe record also marks an important boundary. This code is for seed produced as seed, not for every possible form of flower propagation material. Vegetative materials such as stem cuttings, shoots, and seedlings for flower multiplication are described separately in the source scope, so they should not be casually folded into this registration. For founders, that distinction matters because the registration should match the real operating activity: a farm producing flower seeds is one thing; a business built around vegetative planting material is another. The safest reading is therefore precise and restrained: KBLI 01194 fits flower-seed farming where the harvest is seed.\n\nOn scale, the code is unusually broad. It is open to Mikro, Kecil, Menengah, and Besar businesses, so the classification can support anything from a small agricultural operator to a larger seed-production venture, provided the activity remains within the recorded scope. Nationally, it is also marked TERBUKA for foreign investment, with pma_max_asing at 100. In plain English, a PMA company may hold up to full foreign ownership for this activity under the cited investment sources. There is no recorded foreign-share cap below full ownership in the slim record, and no additional threshold, licence, capital floor, or timing rule should be inferred from it.\n\nThe Bali picture is also clean, but it needs to be stated accurately. Bali’s provincial moratorium blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. This record, however, says KBLI 01194 is not blocked: l4_bali_blocked is false, and the reason given is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not caught by the moratorium. The practical conclusion is that this is not one of the cases where a nationally open code becomes unusable for PMA registration in Bali. For this slim record, the honest answer is simple: flower seed farming under KBLI 01194 is foreign-open nationally, open across all listed scales, and not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "pullQuote": "For this slim record, the honest answer is simple: flower seed farming under KBLI 01194 is foreign-open nationally, open across all listed scales, and not blocked for PMA registration in Bali by the stated moratorium rule.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open to scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

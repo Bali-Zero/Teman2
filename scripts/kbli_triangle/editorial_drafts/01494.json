@@ -1,0 +1,27 @@
+{
+  "code": "01494",
+  "editorial": {
+    "headline": "Deer Breeding as a Fully Open National Activity",
+    "standfirst": "KBLI 01494 covers deer and muntjac breeding for stock, meat, hides, and related outputs, with full national PMA openness and no Bali moratorium block.",
+    "body": "KBLI 01494 is a focused agricultural activity: the cultivation and breeding of deer or muntjac for breeding stock, meat, hides, and other resulting products. Its scope is not a general wildlife business, a tourism concept, or a broad livestock category. The record points to a productive breeding activity, where the commercial substance is the raising and propagation of rusa or kijang and the outputs that come from that husbandry.\n\nThat makes the registration logic relatively clean. The activity is open across the full business-scale spectrum recorded here: Mikro, Kecil, Menengah, and Besar. In plain English, this is not reserved only for a small local operator, nor only for a large agricultural investor. The same activity can sit at different operating scales, and the record explicitly recognises all four. A founder reading this code should understand it as a scale-flexible breeding and cultivation activity, not as a narrowly carved exception.\n\nAt the national level, the stance on foreign investment is just as unambiguous. TERBUKA is the PMA status, with the record setting the foreign-ownership ceiling at 100%. There is no partial cap to soften or explain away: on the national reading supplied here, foreign ownership can reach the full ceiling stated in the record. The source given is Perpres 10/2021, 49/2021, and nothing in the slim record adds a separate threshold, minimum capital rule, licence condition, or timing requirement. The honest national picture is therefore that KBLI 01494 is foreign-open up to 100%, subject only to what is actually stated here.\n\nThe Bali reading is where many KBLI pages need caution, but this one does not turn into a block. The record says the Bali status is OK_or_HIGHER_RISK and that l4_bali_blocked is false. The reason is specific: OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so the activity is not blocked by the Bali moratorium. That moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across Bali on a permanent island-wide basis, but the supplied Bali assessment for this activity does not place it inside that blocked bucket. So the practical editorial conclusion is measured but clear: KBLI 01494 is nationally open to PMA up to 100%, and the Bali moratorium record supplied here does not block PMA registration for it.",
+    "pullQuote": "KBLI 01494 is nationally open to PMA up to 100%, and the Bali moratorium record supplied here does not block PMA registration for it.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

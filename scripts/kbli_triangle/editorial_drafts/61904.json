@@ -1,0 +1,27 @@
+{
+  "code": "61904",
+  "editorial": {
+    "headline": "Calling Cards, With Control at Their Core",
+    "standfirst": "Managed calling-card services are nationally open to full foreign ownership and may be registered by PMA in Bali, where their large-scale risk position sits outside the provincial moratorium.",
+    "body": "A managed calling-card service is best understood as a calling service built around controlled access, rather than as an unadorned act of making a call. Its stated features are user authentication or a call-management system, operated through a special access code. Those features serve two named purposes: controlling use and supporting billing that is prepaid or managed. The classification therefore describes a service in which the code, authentication, and management layer are integral to the offer. They are the mechanism through which users reach the calling service and through which use and charging are organised.\n\nThe activity is open to registration at every listed business scale: Mikro, Kecil, Menengah, and Besar. The record does not reserve this description for one business tier; it recognises the smallest listed scale, the middle tiers, and the largest. A business registering the activity at any of those scales is still defined by the same core proposition: a calling service with an added authentication or call-management feature, using special access codes to organise controlled use and prepaid or managed billing. Scale identifies the range of registrations available, while the stated service features identify the activity being registered.\n\nAt the national level, the PMA position is TERBUKA and the foreign-ownership ceiling is 100%. This permits full foreign ownership for the activity nationally. It is a clear ownership answer, but it does not broaden the business description. The registration remains anchored to the managed calling service stated in the record: the extra authentication or call-management feature, the special access code, and the practical function of usage control and prepaid or managed billing. That focus keeps the ownership conclusion and the operational scope in their proper places: both are specific to this activity.\n\nBali carries no block on PMA registration for this activity. The provincial moratorium blocks PMA registrations for all Low and Medium-Low risk KBLI activities, across the island and permanently. This activity’s stated position is different: at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi, and the record says it is not blocked by the moratorium. The honest reading is straightforward: a foreign investor may register this activity in Bali today, and the stated reason is that the large-scale OSS risk position does not fall within the moratorium’s Low or Medium-Low reach. The record’s Bali conclusion is therefore about moratorium coverage; nationally, the 100% ceiling remains the stated ownership figure.",
+    "pullQuote": "A foreign investor may register this activity in Bali today, because its large-scale OSS risk position does not fall within the moratorium’s Low or Medium-Low reach.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

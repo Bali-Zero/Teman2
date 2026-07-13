@@ -1,0 +1,27 @@
+{
+  "code": "23992",
+  "editorial": {
+    "headline": "Where Natural Asphalt Becomes an Industrial Product",
+    "standfirst": "KBLI 23992 covers the processing and refining of asphalt rock and comparable asphalt-based materials, with national PMA access open across all recorded scales.",
+    "body": "**KBLI 23992 is an industrial code for turning asphalt-bearing stone into usable asphalt-derived products.** The record frames the activity as the processing and/or refining of natural asphalt rock, including Buton asphalt, and goods derived from asphalt rock or similar materials. In plain English, this is not general construction work and not road contracting; it is the manufacturing and treatment layer where a mined or natural asphalt material is processed into an industrial product.\n\nThe scope also draws a clean boundary around what this activity is not. The record excludes petroleum-refinery outputs such as asphalt, tar, bitumen, and wax. That distinction matters because the commercial identity of this code rests on the material source: asphalt rock and comparable materials, not downstream products from oil refining. For a founder, the practical question is therefore whether the planned operation is built around processing or refining asphalt stone and its derivatives. If the business model is instead centred on refinery-derived asphalt products, this record does not give that activity a home.\n\nOn scale, the record is unusually broad. It marks the activity as open to **Mikro, Kecil, Menengah, and Besar** operators, which means the code is not confined to a single enterprise size in the data provided. A small processor, a mid-sized manufacturer, and a large industrial operation can all sit within the recorded scale band, provided the real activity stays inside the defined scope. The scale breadth should not be confused with a licence, timeline, or facility requirement; the record gives scale eligibility, not a separate compliance checklist.\n\nThe national-versus-Bali picture is straightforward. Nationally, the PMA status is **TERBUKA**, with a recorded foreign-ownership ceiling of **100%**, sourced to **Perpres 10/2021, 49/2021**. Bali does not add a separate percentage in this record. Its status is **OK_or_HIGHER_RISK**, and the record says the activity is not blocked: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The Bali moratorium rule itself blocks all low and medium-low risk KBLI for PMA island-wide, permanently, but this record’s Bali reason places the relevant large-scale risk level outside that block. The honest reading is therefore that KBLI 23992 is nationally foreign-open and, on the data supplied here, not blocked for PMA registration in Bali.",
+    "pullQuote": "The honest reading is that KBLI 23992 is nationally foreign-open and, on the data supplied here, not blocked for PMA registration in Bali.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

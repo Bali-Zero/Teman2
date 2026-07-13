@@ -1,0 +1,27 @@
+{
+  "code": "27404",
+  "editorial": {
+    "headline": "LED Lamp Manufacturing With a Clear National and Bali Path",
+    "standfirst": "This activity covers LED lamp production, nationally open to foreign ownership and not blocked for PMA registration in Bali under the record’s risk note.",
+    "body": "**Industri Lampu LED** is a manufacturing activity, not a retail label or a general electronics catch-all. The record defines it as the making of LED lamps, whether the lamp is produced as a separate LED unit or assembled into a lamp for a particular use. The examples in scope are concrete: LED lamps used in flashlights, vehicles, or public lighting. That makes the center of gravity clear. This is about producing LED lighting goods, including use-specific assemblies, rather than merely trading, installing, or designing them.\n\nThe registration picture is broad on business scale. The slim record opens the activity to **Mikro**, **Kecil**, **Menengah**, and **Besar** scales, so the code is not reserved only for a large industrial operator. A small producer and a larger manufacturing operation sit inside the same activity definition if their work is the making of LED lamps described in the scope. The editorial discipline here matters: the record says what the activity covers and which scales are open; it does not add capital thresholds, production volumes, factory-size tests, or technical licensing conditions. Those details should not be read into the code.\n\nNationally, the PMA signal is straightforward. The record marks the activity as **TERBUKA**, with `pma_max_asing` at **100**, sourced to **Perpres 10/2021, 49/2021**. In plain English, the national field indicates that foreign ownership can reach 100% for this activity. That is the national position in the record, and it should be stated without hedging or embellishment. If a founder is comparing whether the activity is foreign-open at the Indonesia level, the answer from this slim record is yes.\n\nBali is also clear, but for a different reason. The record does not mark this activity as blocked for Bali PMA registration: `l4_bali_blocked` is **false** and the Bali status is **OK_or_HIGHER_RISK**. The stated reason is: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium**. The moratorium rule in the record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent; this activity is not blocked on the record’s own Bali-side test. The honest national-vs-Bali reading is therefore unusually clean: nationally foreign-open up to 100%, and not blocked for PMA registration in Bali under the supplied moratorium analysis.",
+    "pullQuote": "The honest national-vs-Bali reading is unusually clean: foreign-open nationally up to 100%, and not blocked in Bali under the supplied moratorium analysis.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

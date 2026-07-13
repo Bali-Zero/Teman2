@@ -23,6 +23,7 @@ Per constitution Article 12.2, every email inherits:
 ## Surface-specific rules
 
 ### Format
+
 - **Width**: 600px max content (Outlook safe). Mobile responsive at 480px breakpoint.
 - **Aspect**: free-form vertical; no fixed height.
 - **DOCTYPE**: HTML 4.01 Transitional (Outlook compat — yes, in 2026, Outlook still requires it).
@@ -31,6 +32,7 @@ Per constitution Article 12.2, every email inherits:
 - **Images**: hosted on Bali Zero CDN or absolute Brevo-hosted URL. Alt text mandatory.
 
 ### Typography (email-safe variant)
+
 - **Headlines**: Montserrat 700 with web-safe fallback `Arial Black, Helvetica, sans-serif`.
 - **Body**: Montserrat 400-500 with fallback `Arial, Helvetica, sans-serif`.
 - **Sizes**: H1 28px, H2 22px, H3 18px, body 16px, fine print 13px. NEVER below 13px (accessibility).
@@ -38,6 +40,7 @@ Per constitution Article 12.2, every email inherits:
 - **Case**: Title Case in headlines (not UPPERCASE — UPPERCASE in email triggers spam filters and reads aggressive in inbox preview).
 
 ### Palette (subset — email rendering varies)
+
 - Background: `#FFFFFF` body OR `#373D42` antracite for "alert/regulatory" emails. NEVER pure black `#000000` (renders harshly on phone OLED).
 - Text on white: `#1A1A1A` (slightly off-black for readability).
 - Text on antracite: `#FFFFFF`.

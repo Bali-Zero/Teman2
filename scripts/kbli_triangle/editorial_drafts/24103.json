@@ -1,0 +1,27 @@
+{
+  "code": "24103",
+  "editorial": {
+    "headline": "Iron and Steel Pipe Manufacturing, Open Nationally and in Bali",
+    "standfirst": "KBLI 24103 covers industrial pipe, tube, hollow profile, and fitting production from iron and steel, with full foreign ownership open nationally.",
+    "body": "KBLI 24103 is an industrial manufacturing classification for making iron and steel tubes, pipes, pipe joints, and related hollow steel profiles. Its scope is not retail, trading, or installation; it is the production side of the pipe economy. The record describes activity that includes seamless steel tubes, pipes, and hollow profiles formed through hot rolling, hot drawing, hot extruding, cold rolling, or cold drawing. It also includes welded steel tubes and pipes produced through welding and hot or cold forming, as a continuation of cold rolling or cold drawing processes.\n\nThe classification also reaches the fabrication of steel pipe fittings. The examples in the record are technical and specific: flat flanges, flanges with forged collars, butt-welded fittings, threaded fittings, and socket-welded fittings. In plain English, this is a code for factories that shape iron and steel into pipe systems and the connecting parts that allow those systems to be assembled. The centre of gravity is heavy manufacturing: metal input, industrial forming, welding or drawing processes, and finished pipe or fitting products.\n\nOn scale, the record is unusually broad. KBLI 24103 is open to Mikro, Kecil, Menengah, and Besar businesses. That means the classification is not reserved only for large factories in the record itself; the available scale bands run from micro through large. For founders, the important editorial point is to separate the business scale question from the foreign-ownership question. The scale field says who may register the activity by size category. The PMA field says whether foreign investment is nationally open, and here the national status is TERBUKA with a pma_max_asing of 100.\n\nThe Bali picture is also clear from the record. Nationally, foreign ownership is open up to 100%, under Perpres 10/2021, 49/2021. Bali does have a province-level moratorium rule in this dataset: “Bali province blocks ALL Low + Medium-Low risk KBLI for PMA (island-wide, permanent).” But this specific record is not marked as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest reading is direct: KBLI 24103 is foreign-open nationally, and the Bali record does not block PMA registration for it today.",
+    "pullQuote": "KBLI 24103 sits in heavy manufacturing: iron and steel are formed into pipes, tubes, hollow profiles, and the fittings that make pipe systems usable.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

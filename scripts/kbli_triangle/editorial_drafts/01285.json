@@ -1,0 +1,27 @@
+{
+  "code": "01285",
+  "editorial": {
+    "headline": "Rhizome Medicinal Farming With a Clean Bali Opening",
+    "standfirst": "A precise home for ginger, turmeric, ginseng and other rhizome biofarmaka cultivation, open nationally to PMA and not caught by Bali’s moratorium.",
+    "body": "This activity covers the farming of rhizome medicinal plants: the underground-stem crops that sit at the base of Indonesia’s biofarmaka economy. The record names ginger, turmeric, temulawak, temugiring, temuireng, temukunci, kencur, lengkuas, lempuyang and dlingo, and it also includes similar plants used as botanical pesticide materials. In practical terms, this is not a trading code or a processing-room code. Its center of gravity is cultivation: preparing land, sowing, planting, maintaining, harvesting and carrying out post-harvest activity when those steps form one connected agricultural sequence.\n\nThe scope also reaches into seed-oriented activity. Planting rhizome medicinal crops to produce seed is included, as are nursery and seed-production activities for these medicinal or biofarmaka rhizome plants. The record specifically names ginseng seed production and ginseng cultivation within the same agricultural chain. That matters because the code is broad enough to hold a serious farming operation, not just a single crop line. A founder registering it should be describing a real cultivation business around these rhizome plants, whether the emphasis is crop production, seed production, or the full field-to-post-harvest sequence described in the scope.\n\nOn scale, the opening is unusually wide. The record lists Mikro, Kecil, Menengah and Besar as open scales, so the activity can sit with operators from micro farms through large-scale agricultural ventures. Nationally, it is also open to foreign investment: the PMA status is TERBUKA and the foreign-ownership ceiling is 100%. There is no partial cap to soften or explain away here. Based on the slim record, a foreign-owned company can hold the full permitted foreign stake for this activity at the national level, provided the registration facts match the agricultural scope described above.\n\nThe Bali picture is equally important, because many founders misread “open nationally” as automatically clean on the island. For this code, the record says Bali is not blocking PMA registration: `l4_bali_blocked` is false. The reason is precise. At Besar scale, the OSS risk is Menengah-Tinggi/Tinggi, so it is not caught by Bali’s moratorium, which blocks Low and Medium-Low risk KBLI for PMA across the province. That makes this a genuinely usable Bali candidate on the data given here: nationally foreign-open, 100% PMA-capable, open across the listed scales, and not blocked by the Bali moratorium recorded for this activity.",
+    "pullQuote": "For this code, Bali is not a hidden contradiction to the national opening; the record says it is not blocked by the provincial PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Kecil, Menengah, Besar, Mikro"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      }
+    ]
+  }
+}

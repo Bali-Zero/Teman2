@@ -1,0 +1,27 @@
+{
+  "code": "10421",
+  "editorial": {
+    "headline": "Copra Manufacturing, Open Nationally but Blocked for PMA in Bali",
+    "standfirst": "This activity covers the drying of coconut into copra for coconut-oil production, with full national foreign ownership but no PMA registration path in Bali.",
+    "body": "Copra manufacturing is a narrow but important industrial activity: the making of copra from coconuts that are sun-dried and dried for use in coconut-oil production. The record is not describing coconut farming, retail trading, or a general food business. It is focused on the transformation step, where coconut becomes dried copra as an input for oil making. That gives the activity a practical industrial character, even when the operation itself may be simple in equipment and process.\n\nThe national scale profile is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar undertakings, so it is not reserved only for large factories or only for cottage-scale producers. A small producer preparing dried copra and a larger operator serving coconut-oil production both sit within the scale language of the record, provided the activity remains the manufacture of copra from dried coconut. For founders, the useful point is that the registration frame follows the activity itself, not a lifestyle label or a marketing description.\n\nNationally, the foreign-investment picture is clear. The PMA status is marked TERBUKA, and the stated maximum foreign ownership is 100%, with the source given as Perpres 10/2021, 49/2021. On the national reading alone, this is therefore an activity a foreign-owned company can hold in full. There is no lower foreign-stake ceiling in the record, and there is no extra capital, licensing, or timeline condition stated here. The national rule is open, and the ownership number should be read exactly as written.\n\nBali changes the practical answer. The record marks this activity as blocked for Bali PMA registration, with the reason stated as: “OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026.” In plain terms, a foreign investor should not treat the national 100% opening as a Bali registration route today. The Bali moratorium rule in the record says the province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, with the source identified as Gubernur letter B.27.000/642/PM/DPMPTSP. So the honest reading is split: nationally open to full foreign ownership; in Bali, blocked for PMA registration under the stated moratorium.",
+    "pullQuote": "The honest reading is split: nationally open to full foreign ownership; in Bali, blocked for PMA registration under the stated moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

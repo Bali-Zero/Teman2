@@ -1,0 +1,27 @@
+{
+  "code": "22193",
+  "editorial": {
+    "headline": "Rubber Infrastructure Products, Built for Public Works Use",
+    "standfirst": "KBLI 22193 covers the manufacturing of rubber compounds and finished rubber goods for infrastructure, with national PMA openness and no Bali moratorium block in this record.",
+    "body": "KBLI 22193 is an industrial manufacturing classification for rubber products made for infrastructure use. Its scope is not general rubber trading or a loose catch-all for rubber goods; the record points to production: rubber compounds and rubber-based items used in roads, ports, bridges, rail, canals, traffic management, and related civil works. The examples are practical and physical: rubber asphalt compound, activated natural rubber powder, dock fenders, seismic bearings, bridge bearings, rubber dams, rubber road bumps, rail pads, rail guards, canal blocking, and traffic cones.\n\nThat makes this code a home for operators whose business is built around making infrastructure-grade rubber components, not merely installing them or reselling them. The activity can sit at every scale listed in the record: Mikro, Kecil, Menengah, and Besar. In plain founder terms, the classification is not reserved only for large factories, although the products themselves can serve heavy-duty public or industrial environments. A small producer of qualifying rubber infrastructure goods and a larger manufacturer serving transport or civil-work demand both belong within the same scope, provided the real activity is manufacturing the goods described by the record.\n\nThe national foreign-investment picture is clean. For PMA, the record lists its status as TERBUKA, with a foreign-ownership ceiling of 100%. That means the national entry shown here is foreign-open, without a reduced foreign stake in the slim record. The source attached to that national position is Perpres 10/2021, 49/2021. Nothing in the record adds a special minimum capital figure, extra threshold, sector licence, or operational timeline, so none should be read into it. The strongest national conclusion is simply this: for this activity, the record treats PMA participation as open up to 100%.\n\nBali is also not blocked in this record, but the reason matters. The province’s moratorium rule says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide and permanently. Here, however, the Bali-side status is OK_or_HIGHER_RISK, and the stated reason is: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. That is not a separate Bali ownership percentage, and it is not a new cap. It is a moratorium reading: because the record places the relevant large-scale risk above the blocked Low and Medium-Low band, KBLI 22193 is not marked as blocked for PMA registration in Bali.",
+    "pullQuote": "The national position is foreign-open up to 100%, and the Bali record does not mark this activity as blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "KBLI code",
+        "value": "22193"
+      },
+      {
+        "label": "PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

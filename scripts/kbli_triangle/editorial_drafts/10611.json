@@ -1,0 +1,27 @@
+{
+  "code": "10611",
+  "editorial": {
+    "headline": "Wheat and Cereal Milling Beyond the Everyday Staples",
+    "standfirst": "A focused industrial code for milling wheat and other cereals into flour and pellets, open nationally to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "This activity sits in the practical middle of Indonesia’s food-processing chain: the milling of wheat and other cereals into flour and pellets. The record names sorghum, rye, and oat as examples, and the title makes the boundary equally clear: this is not ordinary wheat-flour milling, and it does not take in rice or corn. Its commercial centre is transformation, not trading: raw cereal inputs are ground, processed, and shaped into usable industrial or food ingredients.\n\nThat makes the code relevant to operators who are building a production business around cereal processing rather than a retail food concept. The registration field is broad. The record opens it to Mikro, Kecil, Menengah, and Besar scales, so it can describe a small milling operation as well as a larger industrial facility. What matters is the activity itself: milling wheat and cereals such as sorghum, rye, and oat into flour and pellets. Anything beyond that should not be read into the code unless it appears in the underlying business scope.\n\nAt the national level, the position on foreign investment is straightforward. The record marks the activity as TERBUKA, with a pma_max_asing of 100. In plain English, the national framework allows a foreign-owned PMA to hold the full foreign-ownership ceiling recorded here. The cited source is Perpres 10/2021, 49/2021. There is no smaller cap in the slim record, and there is no additional national percentage to infer. For a foreign founder reading this code at national level, the investment message is clean: the activity is open up to 100% foreign ownership.\n\nThe Bali picture is also clean, but for a different reason than many low-risk activities. Bali’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province. This code is not marked as blocked: l4_bali_blocked is false, and the stated reason is “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” So the honest conclusion is not that Bali imposes a separate ownership cap, partnership rule, or quota. The record gives none. The conclusion is that this activity remains available for PMA registration in Bali under the record supplied, with the important note that the Bali-side status is OK_or_HIGHER_RISK rather than a moratorium closure.",
+    "pullQuote": "The honest conclusion is not that Bali imposes a separate ownership cap, partnership rule, or quota.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

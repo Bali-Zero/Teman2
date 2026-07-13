@@ -1,0 +1,27 @@
+{
+  "code": "47211",
+  "editorial": {
+    "headline": "Paddy and Palawija Retail: Open Nationally, Blocked for PMA in Bali",
+    "standfirst": "Specialised retail of paddy and palawija is open to 100% foreign ownership nationally, but Bali’s permanent risk-based moratorium blocks PMA registration.",
+    "body": "**A foreign investor cannot register this activity as a PMA business in Bali today.** That is the point that should lead any reading of the code, because its national status and its Bali outcome are materially different. Nationally, the activity is TERBUKA—open to PMA—and its foreign-ownership ceiling is 100%. In Bali, the record classifies it as blocked for PMA registration. It is not a contradiction: the fields describe different regulatory levels. The distinction is not a reduced national ownership allowance; it comes from Bali’s risk-based moratorium, which applies island-wide and permanently to PMA registration for all Low and Medium-Low risk KBLI activities.\n\nKBLI 47211 is specialised retail trade in paddy and palawija, a crop group illustrated in the record by unhulled rice, corn, sweet potatoes, cassava, taro, soybeans, peanuts, black beans and peas. Its scope is deliberately particular. It describes retailing of that named agricultural basket, bringing grain and maize together with tubers and legumes under one focused commercial activity. The examples do more than decorate the title: they set the working boundaries of what the activity is about, keeping the editorial focus on paddy and the palawija crops expressly identified in the record.\n\nThe registration field is broad. The activity is open at every stated scale: Mikro, Kecil, Menengah and Besar—Micro, Small, Medium and Large. This is a full scale range, rather than a narrow size classification, and it gives the activity a national place from the smallest listed band through to the largest. But that breadth does not alter the ownership reading. The 100% ceiling is national; it must not be recast as Bali permission. Both readings have to be retained at once. National foreign-ownership capacity and an ability to register a PMA business in Bali are separate questions in this record.\n\nWhy Bali differs is stated with some precision. At the Besar scale, the OSS risk level is Rendah or Menengah-Rendah across every scope. Bali’s permanent, island-wide rule blocks PMA for all Low and Medium-Low risk KBLI activities, and the record identifies the moratorium in May 2026 as the reason for this code’s Bali block. The relevant Bali status is a block. The practical conclusion should therefore remain unvarnished: national openness does not translate into a PMA registration route in Bali for this activity.",
+    "pullQuote": "National openness does not translate into a PMA registration route in Bali for this activity.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Available scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

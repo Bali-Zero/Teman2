@@ -77,16 +77,12 @@ export function useChatSend({
   onStep,
 }: UseChatSendOptions): UseChatSendReturn {
   const { t } = useTranslation();
-  const {
-    isStreaming,
-    setIsStreaming,
-    sendStreamingMessage,
-    abortStream,
-  } = useChatStreaming({
-    sessionId,
-    isMountedRef,
-    isAbortedRef,
-  });
+  const { isStreaming, setIsStreaming, sendStreamingMessage, abortStream } =
+    useChatStreaming({
+      sessionId,
+      isMountedRef,
+      isAbortedRef,
+    });
 
   const [streamingSteps, setStreamingSteps] = useState<Array<AgentStep>>([]);
   const [currentStatus, setCurrentStatus] = useState("");

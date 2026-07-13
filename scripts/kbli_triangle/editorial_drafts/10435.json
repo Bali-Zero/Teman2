@@ -1,0 +1,27 @@
+{
+  "code": "10435",
+  "editorial": {
+    "headline": "Palm Oil Fractionation With a Clean Bali Reading",
+    "standfirst": "This activity covers the separation of refined palm oil into olein and stearin, open nationally to foreign ownership and not blocked for PMA in Bali by the record.",
+    "body": "This activity is about a precise industrial step: separating refined palm oil into its solid and liquid fractions. The record describes the solid fraction as stearin and the liquid fraction as olein, with the resulting products named as refined bleached deodorized palm olein and refined bleached deodorized palm stearin. In plain English, this is not a broad palm-oil category. It is the fractionation stage that turns refined palm oil into two defined refined outputs.\n\nThat narrowness matters. A founder reading this code should see a manufacturing activity with a clear process boundary: the separation of fractions from refined palm oil, not an open-ended permission to cover every adjacent activity in the palm-oil chain. The Indonesian scope is technical, but the commercial signal is simple enough: register it when the declared business activity is the fractionation of refined palm oil into olein and stearin as described in the record.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar scale businesses. That means the classification itself is not reserved only for one business size in the slim record. A smaller operator and a large industrial registrant may both find the scale door open here, provided the registered activity remains this specific separation or fractionation activity. The editorial point is discipline: the scale permission is broad, while the activity scope stays narrow.\n\nThe foreign-ownership reading is also clean. Nationally, the PMA status is marked TERBUKA, with pma_max_asing recorded at 100. Rendered plainly, the national foreign-ownership ceiling is 100%. For Bali, the record does not mark this activity as blocked: l4_bali_blocked is false, and the Bali status is OK_or_HIGHER_RISK. The stated reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA in Bali, island-wide and permanent, but this activity is not caught by that block according to the supplied Bali reason. So the honest national-versus-Bali picture is not a hidden restriction story: on this record, it is nationally open to PMA up to 100%, and Bali is not blocking it under the cited moratorium logic.",
+    "pullQuote": "The honest national-versus-Bali picture is not a hidden restriction story: on this record, it is nationally open to PMA up to 100%, and Bali is not blocking it under the cited moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "46313",
+  "editorial": {
+    "headline": "Wholesale Vegetable Trading: Open Nationally, Closed to PMA in Bali",
+    "standfirst": "This activity covers wholesale trading in vegetables, but Bali’s permanent PMA moratorium blocks foreign registration there despite full national foreign-ownership openness.",
+    "body": "This activity is the wholesale trading of vegetables, including spinach, water spinach and cabbage. It is a trading activity defined by the vegetable goods being wholesaled: the record is specific about the examples it includes, and that specificity matters when founders are matching a proposed business to the activity they intend to register. The national position is straightforward. Its PMA status is open, with a national foreign-ownership ceiling of 100%, meaning a foreign investor may hold the entire business nationally.\n\nThe activity is open at every recorded business scale: Mikro, Kecil, Menengah and Besar. That breadth gives the code a clear commercial range, from micro and small enterprises through medium and large operations. For a founder, the useful reading is not that the activity changes character across those scales, but that the same wholesale-vegetable scope is recorded as available across all four of them.\n\nBali is where the national answer stops being the practical answer for PMA. A foreigner cannot register this activity in Bali today. The Bali record marks it as blocked by risk class: at the Besar scale, the OSS risk assessment is Rendah or Menengah-Rendah across the scope. Bali’s moratorium blocks all Low and Medium-Low risk KBLI activities for PMA on an island-wide, permanent basis. The block is therefore not a reduction of the national 100% ownership ceiling; it prevents PMA registration in Bali under the stated moratorium.\n\nThat distinction should remain crisp in any planning discussion. Nationally, this is an open PMA activity with full foreign ownership permitted. In Bali, the current PMA route is blocked because of the recorded risk classification and the provincial moratorium effective from May 2026. The apparent contradiction is not one: the national foreign-ownership position and Bali’s PMA registration block operate as separate parts of the record, and both must be read together before treating this activity as available in Bali.",
+    "pullQuote": "Nationally, this is an open PMA activity with full foreign ownership permitted; in Bali, the current PMA route is blocked.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

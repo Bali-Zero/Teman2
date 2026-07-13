@@ -1,0 +1,27 @@
+{
+  "code": "35201",
+  "editorial": {
+    "headline": "Gas Fuel Production, Open Nationally and Not Blocked in Bali",
+    "standfirst": "KBLI 35201 covers the making and upgrading of usable fuel gases, from natural gas and LPG to hydrogen and biogas, with full foreign ownership nationally.",
+    "body": "KBLI 35201 is a production code for fuel gas that can be used directly as fuel, with the processing work sitting at the centre of the definition. Its scope is not merely the holding or trading of gas. It covers the treatment and improvement of gas quality through purification, blending, and other processes, including gas derived from natural gas, liquid petroleum gas, coal carbonisation and gasification, and other gas sources. The record also places hydrogen fuel gas inside the same activity when it is produced through electrolysis, photolysis, thermochemical, biological, geological, or other methods, using either new and renewable energy sources or fossil energy sources.\n\nThe code also reaches into biogas where the fuel gas is generated from agricultural, plantation, livestock, or waste by-products, again with the important qualifier that the activity includes gas-quality improvement such as purification, blending, or other processing. In plain English, this is a code for businesses that make gas into a usable fuel product, whether the feedstock begins as natural gas, LPG-related gas, coal-derived gas, hydrogen pathways, or biogas from organic by-products and waste streams. The common thread is production and upgrading, not a loose association with the energy sector.\n\nFor registration scale, the record is unusually broad: it is open to Mikro, Kecil, Menengah, and Besar businesses. That means the activity is not framed only for industrial-scale operators in the slim record; it can also be selected by smaller businesses when the registered activity genuinely matches the production and processing scope. Founders should read that breadth carefully. The scale field tells you who may register the line, but it does not turn every energy-adjacent idea into this activity. The substance still has to be gas fuel production with the processing or quality-improvement character described in the scope.\n\nThe national foreign-investment position is clear. The PMA status is TERBUKA, with a foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. Bali does not add a block in the record. The province’s moratorium blocks Low and Medium-Low risk KBLI for PMA island-wide, but the Bali reason here says the OSS risk at Besar scale is Medium-High/High, so it is not blocked by that moratorium. The honest reading is therefore not a hidden closure story: nationally, this activity is fully foreign-open, and in Bali it is marked OK_or_HIGHER_RISK rather than blocked.",
+    "pullQuote": "The honest reading is therefore not a hidden closure story: nationally, this activity is fully foreign-open, and in Bali it is marked OK_or_HIGHER_RISK rather than blocked.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

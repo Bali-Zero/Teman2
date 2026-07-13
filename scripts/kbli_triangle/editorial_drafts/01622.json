@@ -1,0 +1,27 @@
+{
+  "code": "01622",
+  "editorial": {
+    "headline": "Egg Hatching as a Contract Service",
+    "standfirst": "KBLI 01622 covers paid or contract-based egg hatching, open across all business scales and fully foreign-open nationally, with Bali not blocking PMA registration under the stated moratorium rule.",
+    "body": "KBLI 01622 is narrow by design. It covers **jasa penetasan telur**: egg hatching carried out on a fee basis or under contract. The important word is service. The record does not describe a broad livestock business, a trading line, or a full farming operation; it describes the activity of hatching eggs for payment or by agreement with another party. That makes the classification useful for operators whose commercial centre is the hatching process itself, not a wider chain of activities that the record does not name.\n\nThe scale position is unusually clean. The slim record opens this activity to **Mikro, Kecil, Menengah, and Besar** businesses, so the classification is not reserved for only small operators or only larger enterprises. A founder reading the code should understand it as available across the registered scale spectrum listed in the record. That does not create any extra entitlement beyond the record, and it does not say anything about technical approvals, locations, facilities, or operating procedures. It simply tells us that the activity can be registered at every listed scale.\n\nNationally, the foreign-investment signal is also direct. The PMA status is **TERBUKA**, with **pma_max_asing** set at 100. In plain English, the record treats this KBLI as fully open to foreign ownership at the national level, with the ceiling rendered as **100%**. The cited source for that position is **Perpres 10/2021, 49/2021**. There is no capped foreign stake to explain here: the record does not impose a 67%, 49%, or minority ceiling. For a foreign-owned setup, the national reading is therefore straightforward: this activity is open, and the ownership ceiling reaches 100%.\n\nThe Bali reading is where many founders expect a hidden trap, but this record does not mark one. Bali’s moratorium rule in the record blocks **all Low and Medium-Low risk KBLI for PMA**, island-wide and permanently, under the cited governor letter. For this activity, however, **l4_bali_blocked** is false and the Bali status is **OK_or_HIGHER_RISK**. The stated reason is precise: **OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium**. The honest conclusion is not that Bali is automatically difficult, nor that a foreigner is blocked. On the record given, KBLI 01622 is nationally open to PMA and not blocked for PMA registration in Bali under the moratorium rule stated here.",
+    "pullQuote": "On the record given, KBLI 01622 is nationally open to PMA and not blocked for PMA registration in Bali under the moratorium rule stated here.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

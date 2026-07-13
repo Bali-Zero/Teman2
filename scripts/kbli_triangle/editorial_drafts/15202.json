@@ -1,0 +1,27 @@
+{
+  "code": "15202",
+  "editorial": {
+    "headline": "Sports-Footwear Manufacturing With a Clean Bali Opening",
+    "standfirst": "KBLI 15202 covers the making of purpose-built sports shoes and their parts, nationally open to foreign ownership and not blocked for PMA registration in Bali.",
+    "body": "KBLI 15202 is the manufacturing code for sports footwear: shoes specifically designed for athletic use, made from leather or imitation leather, rubber, plastic, and textiles. In practical terms, the record points to football shoes, basketball shoes, tennis shoes, athletic shoes, gymnastics shoes, jogging and running shoes, hiking shoes, ballet shoes, and the manufacture of parts for those shoes. The centre of gravity is not general fashion retail or a broad footwear label; it is production activity, defined by the making of shoes built for sport and physical movement.\n\nThe code is available across the full scale ladder recorded here: Mikro, Kecil, Menengah, and Besar. That matters because the activity is not framed as a narrow preserve of only large factories or only small workshops. A small producer making specialised sports-footwear components and a larger manufacturing operation both sit inside the same activity description, provided the activity remains within the stated sports-footwear manufacturing scope. The record’s wording is especially useful because it includes both complete shoes and parts, giving the code room for manufacturers whose business model is component production rather than finished pairs alone.\n\nNationally, the PMA picture is straightforward. The activity appears as TERBUKA in the record, which lists a pma_max_asing of 100 and cites Perpres 10/2021, 49/2021. In plain English, that means the national foreign-ownership ceiling is 100%. There is no separate national cap in the slim record below that number, and there is no recorded minimum capital figure, licence timeline, tax treatment, or operational threshold to add. The editorial conclusion should therefore stay disciplined: this is a nationally open PMA activity at the foreign-ownership ceiling stated in the record.\n\nBali does not change that into a hidden local percentage or partnership formula. The Bali field is not a second ownership table; it is a status and moratorium screen. Here, l4_bali_blocked is false and the Bali status is OK_or_HIGHER_RISK. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is not blocked on the record supplied. The honest national-vs-Bali reading is therefore unusually clean: foreign ownership is open nationally up to 100%, and the Bali moratorium screen does not block PMA registration for this activity on the supplied data.",
+    "pullQuote": "The honest national-vs-Bali reading is therefore unusually clean: foreign ownership is open nationally up to 100%, and the Bali moratorium screen does not block PMA registration for this activity on the supplied data.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

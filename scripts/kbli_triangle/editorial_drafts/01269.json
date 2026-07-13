@@ -1,0 +1,27 @@
+{
+  "code": "01269",
+  "editorial": {
+    "headline": "Oleaginous Fruit Farming, With Bali Still Open on the Record",
+    "standfirst": "This activity covers integrated farming of other oleaginous fruits, including olives, from land preparation through post-harvest work and seed production.",
+    "body": "**KBLI 01269 is a farming classification for other oleaginous fruits: crops grown for oil-bearing fruit, with olives named in the record as the clearest example.** Its scope is not limited to harvesting. It covers the agricultural sequence as a single chain: land preparation, sowing, nursery work, planting, crop maintenance, harvesting, and post-harvest activity when those steps belong to the same operation. The record also includes nursery and seed-related activity for these other oleaginous fruit plants, including cultivation intended to produce seed in the form of biji.\n\nIn practical business terms, this is the code for an operator whose activity is agricultural production rather than trade, processing as a separate industrial activity, or a detached support service. The centre of gravity is the cultivation of the crop itself. A founder using this classification is describing a farm or plantation activity that manages the growing cycle of other oleaginous fruit plants, and may also handle the connected nursery, seedling, planting, maintenance, harvest, and immediate post-harvest stages where they form one continuous agricultural activity.\n\nThe scale picture is unusually broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so it is not written only for large plantation economics. It can describe a small agricultural undertaking as well as a larger formal investment, provided the registered business activity remains within the farming scope described above. Nationally, the foreign-investment signal is also clear: the PMA status is TERBUKA, with a foreign-ownership ceiling rendered as 100%. On the slim record alone, there is no foreign equity cap below full ownership to warn about.\n\nThe Bali picture is where the reading needs care, because Bali’s moratorium rule is broad: the province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent. This record, however, does not mark the activity as blocked in Bali. Its Bali status is OK_or_HIGHER_RISK, and the reason given is specific: OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest conclusion is therefore that Bali remains open to foreign registration for this activity today. On the supplied record, the national door is open, the maximum foreign stake is 100%, and Bali is not flagged as moratorium-blocked, although the Bali status itself still reads as OK_or_HIGHER_RISK rather than a casual all-clear.",
+    "pullQuote": "On the supplied record, the national door is open, the maximum foreign stake is 100%, and Bali is not flagged as moratorium-blocked.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

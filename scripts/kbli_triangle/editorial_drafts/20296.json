@@ -1,0 +1,27 @@
+{
+  "code": "20296",
+  "editorial": {
+    "headline": "Midstream Essential Oils for Flavour, Fragrance, and Bioadditives",
+    "standfirst": "KBLI 20296 covers further processing of essential oils into downstream inputs, with full national PMA openness and no Bali moratorium block in the record.",
+    "body": "KBLI 20296 is not about the simple trading of essential oils, nor about a generic aromatic product line. Its centre of gravity is **further processing**: taking essential oils and turning them into downstream industrial products used as inputs for flavour production, fragrance production, and other chemical materials based on essential-oil processing. The slim record points to concrete examples: mixtures of essential oils and natural aromatic substances, odor preparations for flavour and fragrance use, essential-oil-based fuel bioadditives, and extracted oleoresin. In plain English, this is the activity code for the middle stretch of the essential-oil value chain, where botanical aromatics become usable industrial ingredients.\n\nThat matters because the code is framed as manufacturing, not merely branding or retail. A founder registering under this activity is describing a processing business: one that transforms essential-oil material into products with downstream application in taste, scent, fuel additives, or related chemical production. The activity is open across the full scale ladder shown in the record: Mikro, Kecil, Menengah, and Besar. That range is unusually broad in practical terms because the record does not confine the activity to either cottage-scale processors or larger industrial operators. The same classification can sit under a small specialist producer or a larger facility, as long as the registered activity remains within the described processing scope.\n\nThe national PMA picture is clean. The record marks the activity as **TERBUKA**, with `pma_max_asing` at 100, sourced to Perpres 10/2021 and 49/2021. For a foreign-owned company, the direct reading is that the national foreign-ownership ceiling is 100%. There is no lower cap in the slim record, and no separate national threshold, timeline, tax, or permit condition is provided here. The responsible editorial treatment is therefore simple: nationally, this activity is foreign-open up to full foreign ownership, according to the fields supplied.\n\nBali does not change that into a block in this record. The Bali status is `OK_or_HIGHER_RISK`, and `l4_bali_blocked` is false. The reason given is precise: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.” The moratorium rule itself says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanent, but this activity is not marked as blocked by that rule. So the honest national-vs-Bali conclusion is not a warning disguised as nuance: KBLI 20296 is nationally open to PMA up to 100%, and the Bali record does not block PMA registration under the stated moratorium logic.",
+    "pullQuote": "KBLI 20296 is nationally open to PMA up to 100%, and the Bali record does not block PMA registration under the stated moratorium logic.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

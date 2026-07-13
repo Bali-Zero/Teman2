@@ -1,0 +1,27 @@
+{
+  "code": "61107",
+  "editorial": {
+    "headline": "Internet Gateways: Open Nationally, Still Registrable in Bali",
+    "standfirst": "This activity operates the infrastructure that moves, exchanges, routes and temporarily holds internet traffic—open to foreign investment nationally and not blocked for PMA registration in Bali.",
+    "body": "An Internet Access Point is not a consumer internet service; it is part of the infrastructure that lets networks meet, exchange traffic and reach beyond Indonesia. The activity covers telecommunications services that carry and route internet traffic for other telecommunications providers. It includes IP Transit to international internet networks, connections with other Internet Access Point providers, and domestic Internet Exchange functions. It also encompasses the temporary storage of internet content through caching and the distribution of that content.\n\nThat scope places the business in the connective tissue of the internet rather than at its visible edge. Its role is to make pathways available: between telecommunications providers, towards international networks, and within Indonesia through points of access and exchange. Routing, traffic delivery, caching and content distribution are all expressly within the activity’s stated scope. For a founder, the practical importance is precision: this is the registration category for operating those network-access and interconnection services, not a broad label for every business that happens to use the internet.\n\nRegistration is open across the full scale spectrum recorded for this activity: Mikro, Kecil, Menengah and Besar. Nationally, its investment status is TERBUKA, with a maximum foreign ownership ceiling of 100%. Put simply, it allows full foreign ownership nationally. That conclusion rests on the stated national source, Perpres 10/2021, 49/2021, and should be read as the national position for this specific activity.\n\nBali does not reverse that position through its permanent, island-wide PMA moratorium on Low and Medium-Low risk activities. This activity is marked as not blocked by that moratorium. The reason recorded is specific: at the Besar scale, its OSS risk level is Menengah-Tinggi/Tinggi, placing it outside the moratorium’s stated Low and Medium-Low reach. Bali’s status is therefore OK_or_HIGHER_RISK: a foreign investor can register this activity in Bali, while recognising that the record identifies a Medium-High/High OSS risk position at the Besar scale.",
+    "pullQuote": "A foreign investor can register this activity in Bali because it is not blocked by the province’s Low and Medium-Low risk PMA moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

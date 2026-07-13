@@ -1,0 +1,27 @@
+{
+  "code": "10792",
+  "editorial": {
+    "headline": "Wet Cakes, Nationally Open but Blocked for PMA in Bali",
+    "standfirst": "KBLI 10792 covers short-life Indonesian wet cakes and related traditional foods, open nationally to all business scales but blocked for PMA registration in Bali.",
+    "body": "KBLI 10792 is the activity code for making *kue basah*: moist, relatively short-life Indonesian cakes and snacks such as wajik, lemper, kue lapis, lumpia, and martabak. The record also places tape and lempok inside this activity. In practical terms, this is not a general bakery code or a broad packaged-food category; it is a focused manufacturing classification for traditional wet cakes and closely related foods whose character is freshness, local preparation, and limited shelf life.\n\nThe scale picture is unusually broad. The slim record marks the activity as open to Mikro, Kecil, Menengah, and Besar operators. That means the code can describe a small producer, a growing workshop, a mid-sized food business, or a large-scale manufacturing setup, depending on the actual business footprint. The editorial point is simple: the activity itself is not confined to one commercial size. It can sit behind a modest local food operation or a larger formal production business, as long as the registered activity is the making of the wet cakes and related products described in the scope.\n\nNationally, the foreign-investment signal is clear. The record marks the PMA status as TERBUKA and gives a pma_max_asing value of 100, sourced to Perpres 10/2021, 49/2021. Rendered plainly, that is a 100% national foreign-ownership ceiling for this activity. On the national reading alone, a foreign-owned company would see this as an open manufacturing activity, not one capped below full foreign ownership. There is no basis in the slim record to add a special licence, a capital threshold, a timing rule, or any additional operating condition; the record only gives the ownership status, source, eligible scales, scope, and Bali restriction.\n\nBali changes the answer. The record says l4_bali_blocked is true, with the status Blocked (risk class). The stated reason is: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope → blocked by Bali moratorium 13 May 2026. The moratorium rule is broader than this one activity: Bali province blocks ALL Low + Medium-Low risk KBLI for PMA, island-wide and permanent, with the cited source being Gubernur letter B.27.000/642/PM/DPMPTSP. So the honest conclusion for KBLI 10792 is deliberately split. Nationally, it is open to PMA up to 100%. In Bali, a foreigner cannot register this activity as PMA today because the Bali-side record blocks it under the province’s risk-class moratorium.",
+    "pullQuote": "Nationally, KBLI 10792 is open to PMA up to 100%; in Bali, the record blocks it for foreign-owned registration today.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

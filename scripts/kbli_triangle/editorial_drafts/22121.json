@@ -1,0 +1,27 @@
+{
+  "code": "22121",
+  "editorial": {
+    "headline": "Smoked Rubber Sheet Manufacturing, Without the Bali Moratorium Block",
+    "standfirst": "KBLI 22121 covers the smoking of rubber into ribbed smoked sheet and smoked rubber sheets, open across all business scales and not blocked for PMA in Bali.",
+    "body": "KBLI 22121 is a manufacturing activity, not a trading label or a broad plantation category. The record defines it as the processing of rubber by smoking, producing products such as smoked rubber or ribbed smoked sheet (RSS), including smoked rubber sheets. In plain English, this is the industrial step where rubber is transformed through a smoking process into sheet-form output. The commercial centre of the code is therefore the making of smoked rubber sheet itself: the process, the finished sheet, and the RSS-style product named in the scope.\n\nThe scale profile is unusually broad in the record. This activity is open to Mikro, Kecil, Menengah, and Besar businesses, which means the code is not framed only for large industrial operators. A smaller processor and a larger manufacturing plant can both sit inside the registered scale range, provided the business being registered is genuinely the smoking-based rubber-processing activity described above. The code should not be stretched into activities outside that scope; its editorial meaning comes from the specific act of smoking rubber into sheet products, not from every possible rubber-related business.\n\nNationally, the foreign-investment signal is clean. The record lists the PMA status as TERBUKA and the foreign-ownership ceiling as 100%. That is the national picture: the activity is open to foreign ownership up to the full percentage shown in the record, with the source recorded as Perpres 10/2021, 49/2021. Nothing in the slim record adds a special national carve-out, a lower ownership band, a minimum capital figure, or a separate approval timeline, so none should be inferred. For a founder reading this code, the important point is that the national PMA position is not ambiguous in the data supplied.\n\nThe Bali side does not reverse that result. The record marks the Bali status as OK_or_HIGHER_RISK, with l4_bali_blocked set to false. Its reason is specific: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. The moratorium rule in the record blocks Low + Medium-Low risk KBLI for PMA across Bali, but this record’s Bali assessment says this activity is not caught by that block. In practical editorial terms, KBLI 22121 reads as a foreign-open rubber-sheet manufacturing code nationally, and as not blocked for PMA registration in Bali under the moratorium information provided here.",
+    "pullQuote": "In practical editorial terms, KBLI 22121 reads as a foreign-open rubber-sheet manufacturing code nationally, and as not blocked for PMA registration in Bali under the moratorium information provided here.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "13911",
+  "editorial": {
+    "headline": "Knitted Fabric Manufacturing, With Bali Still Open on the Record",
+    "standfirst": "KBLI 13911 covers industrial knitted-fabric production, from terry towel cloth to tricot and window-use knitted textiles, across every business scale.",
+    "body": "KBLI 13911 is a manufacturing activity for knitted fabric. The record describes fabric made through knitting methods, including both weft knitting and warp knitting. Its examples are practical and textile-specific: terry fabric for towels, ihram cloth, vitrase, tricot fabric, and knitted fabric for window fittings or similar uses. This is not a retail or tailoring category in the record; its centre of gravity is the making of the fabric itself.\n\nThe scope is also careful about what sits outside the activity. The record excludes vitrase and window fittings made from lace, tulle, and other net fabrics. That boundary matters because the activity is defined by a particular industrial textile process, not by every fabric that might later appear in a window product. A founder reading this code should understand it as knitted-fabric production, with the examples functioning as illustrations of the material output rather than a broad permission for all decorative textile goods.\n\nOn business scale, the record is unusually straightforward. It is open to Mikro, Kecil, Menengah, and Besar. That means the classification is not reserved only for large factories, nor framed only for small operators. The same activity can be registered across the full scale ladder shown in the slim record. The registration question therefore turns less on whether the activity is inherently small or large, and more on the real operating scale the applicant intends to run.\n\nThe national foreign-ownership picture is also clear. Recorded PMA status is TERBUKA; the record lists a 100% foreign-ownership ceiling, sourced to Perpres 10/2021, 49/2021. Bali does not add a separate percentage in this record. Instead, Bali is marked OK_or_HIGHER_RISK, with the stated reason: OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium. So the honest reading is this: nationally, the activity is foreign-open up to 100%, and on the Bali-side record provided here it is not blocked by the moratorium, though the Bali note ties that conclusion to the stated OSS risk position at large scale.",
+    "pullQuote": "Nationally, the activity is foreign-open up to 100%, and on the Bali-side record provided here it is not blocked by the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "64110",
+  "editorial": {
+    "headline": "Central Banking: Nationally Open on Paper, Closed to Private Capital in Bali",
+    "standfirst": "This activity covers the sovereign machinery of money, monetary policy and payment systems—formally open nationally, but unavailable to private or foreign capital in Bali.",
+    "body": "Central-banking activity is the institutional work of issuing and managing physical and digital currency, setting and carrying out monetary policy, and overseeing the money circulating through the economy. Its remit also reaches the clearing deposits used between monetary intermediaries, the management of national foreign-exchange reserves, and the role of banker to government. In practical terms, this is the public architecture behind money, liquidity, monetary stability and the orderly functioning of payments.\n\nThe scope is deliberately broad within that public mandate. It includes central-banking systems, the stewardship of rupiah currency, and the regulation and smooth operation of payment systems. It also encompasses monetary, macroprudential, payment-system, money-market and foreign-exchange-market oversight where that supervision belongs to the central bank, alongside the setting and implementation of macroprudential policy. These are not ordinary financial-service functions; they are core powers of national monetary administration.\n\nAt the national level, the PMA status is recorded as open, with a foreign-ownership ceiling of 100%. Registration is listed as open across Mikro, Kecil, Menengah and Besar scales. Those entries establish the national classification position, but they do not alter the underlying character of the activity. In Bali, the decisive fact is plainer: a foreigner cannot register this activity today. The Bali record identifies it as an exclusive State monopoly operated by Bank Indonesia and structurally closed to all private and PMA capital.\n\nThat Bali outcome is reinforced by the province-wide rule blocking all Low and Medium-Low risk KBLI activities for PMA. Yet the central-banking restriction is more fundamental than a location-based PMA barrier: the activity itself is reserved to the State through Bank Indonesia. For a founder or investor reading the national entry first, the lesson is to distinguish formal national openness from the actual institutional allocation of the function. Here, Bali is not a market-entry question to be solved through shareholding structure or business scale; private and foreign capital have no registration path into the activity.",
+    "pullQuote": "In Bali, central banking is not a market-entry question: it is an exclusive State function with no path for private or foreign capital.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "Closed (sector regulator)"
+      }
+    ]
+  }
+}

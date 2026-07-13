@@ -1,0 +1,27 @@
+{
+  "code": "01414",
+  "editorial": {
+    "headline": "Dairy Buffalo, Open on the Record",
+    "standfirst": "KBLI 01414 covers dairy buffalo cultivation, milk production and breeding, with full foreign ownership nationally and no Bali PMA moratorium block recorded.",
+    "body": "KBLI 01414 is a narrow agricultural code with a technical center of gravity. The Indonesian scope describes cultivation of dairy buffalo through fattening and milk production, then extends into breeding activity that produces dairy buffalo breeding stock, semen and embryos. Read in plain English, this is the code for an operator whose business is the dairy buffalo herd itself: raising the animals for milk output, and maintaining the breeding line that supplies future productive stock. The scope is not decorative language. It is the boundary of the article: dairy buffalo cultivation, dairy output and dairy buffalo breeding.\n\nThe scale field is unusually simple. The record opens the activity to Mikro, Kecil, Menengah and Besar, which means the code is available across the full scale ladder recorded here. A micro operator, a small or medium operator, and a large operator are all within the scale field when the declared activity stays inside this scope. That is the first practical reading for founders: the code is not reserved only for industrial-scale livestock capital, and it is not confined only to local smallholder form. Its registered size can follow the recorded business scale.\n\nFor PMA, the national signal is direct. The activity is marked TERBUKA, with a 100% foreign-ownership ceiling. In investor language, that is full foreign ownership, not a partial-ownership cap. There is no hidden percentage to infer from the record. The only defensible statement is narrower and stronger: nationally, the record treats this dairy buffalo cultivation and breeding activity as open to foreign ownership up to 100%.\n\nBali does not reverse that conclusion on the supplied record. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this code is recorded as not blocked in Bali. The reason matters: at Besar scale, the OSS risk is stated as Menengah-Tinggi/Tinggi, so it is not blocked by that moratorium. That is the honest national-vs-Bali picture. Nationally, KBLI 01414 is open to full PMA ownership; in Bali, the record does not show a moratorium block. The editorial discipline is to keep the activity inside its stated scope: dairy buffalo fattening, milk production, breeding stock, semen and embryos.",
+    "pullQuote": "Nationally, KBLI 01414 is open to full PMA ownership; in Bali, the record does not show a moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

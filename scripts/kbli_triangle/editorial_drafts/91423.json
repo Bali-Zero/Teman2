@@ -1,0 +1,27 @@
+{
+  "code": "91423",
+  "editorial": {
+    "headline": "Protected Forests: A Public Stewardship Activity",
+    "standfirst": "Government-managed protected forest areas are nationally open to foreign investment up to 100%, and Bali does not block their PMA registration under its risk-based moratorium.",
+    "body": "Protected Forests describes the government’s management and use of forest areas whose function is to safeguard ecosystems, water systems, soil fertility and protection against erosion. This is not a broad description of woodland in general, but of a forest area defined by its protective role. The record points to Bukit Daun Protected Forest in Bengkulu as an example of that function in practice: stewardship is inseparable from maintaining the ecological and hydrological services the forest provides.\n\nThe government is expressly named as the actor carrying out the management and use of these protected forest areas. Nationally, the PMA position is **open**, with a foreign-ownership ceiling of **100%**. That is the national investment position recorded for the activity. The supplied record does not list any business-scale categories under `scales_open_to`, so it provides no basis for attaching a scale-specific eligibility claim to this activity.\n\nIn Bali, the position is also clear, though it remains address-specific. The activity is not marked as blocked for PMA registration. Its Bali status is recorded as **OK or higher risk**, with the accompanying assessment placing it at medium-high or high risk and stating that it is not blocked by the moratorium; verification is required for the particular address. Bali’s permanent, island-wide PMA moratorium applies to low and medium-low risk activities. On the record supplied here, this protected-forest activity sits outside that moratorium treatment.\n\nThe honest reading is therefore two-layered but not conflicted: national policy records the activity as open to foreign ownership up to the full 100% ceiling, while Bali does not impose a moratorium block on it at the stated risk level. That does not remove the need to verify the address in Bali; it is the specific qualification given by the record. The national PMA basis cited for the activity is Perpres 10/2021 and 49/2021, while the Bali position is tied to the Governor’s letter B.27.000/642/PM/DPMPTSP.",
+    "pullQuote": "In Bali, the activity is not barred by the PMA moratorium, but its medium-high or high-risk treatment must be verified for the particular address.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales listed",
+        "value": "[]"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

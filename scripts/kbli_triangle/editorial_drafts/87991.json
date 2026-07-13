@@ -1,0 +1,27 @@
+{
+  "code": "87991",
+  "editorial": {
+    "headline": "Residential Child Welfare Services: Nationally Open, Bali Site Check Required",
+    "standfirst": "This activity covers residential social care and child protection, nationally open to foreign investment but requiring an address-specific check in Bali.",
+    "body": "This activity concerns residential social services and care for children delivered by child social-welfare institutions. Its practical setting is continuous support: temporary accommodation and round-the-clock social accompaniment for children needing special protection, where healthcare and education are not the principal services. Orphanages, children’s hostels and temporary shelters sit within that frame, alongside other residential institutions offering protection and family support.\n\nThe scope also reaches residential social rehabilitation for people experiencing social dysfunction, as well as work that supports their social reintegration. The defining thread is not merely a building in which people stay, but organised welfare provision with residential care at its centre. It is an activity associated in the record with child social-welfare institutions, and with institutions that organise child welfare. No business scale is listed in the record as open to this activity, so the scale question should not be filled in by assumption.\n\nAt the national level, the foreign-investment position is clear: the activity is open, with a foreign-ownership ceiling of 100%. That makes the national setting unusually direct in the record’s own terms. It does not, however, remove the need to read Bali as a separate operating context. Bali’s status is recorded as OK_or_HIGHER_RISK, and the activity is not blocked by the province-wide moratorium described in the record.\n\nThat distinction matters because Bali’s permanent island-wide rule blocks all low- and medium-low-risk activities from PMA registration. This activity is instead described as medium-high or high risk, placing it outside that stated block. The record nevertheless calls for verification by address. For a founder, the honest conclusion is therefore neither a blanket warning nor an automatic green light: foreign investment is nationally open at 100%, Bali does not block this activity through the stated moratorium, and the proposed address still needs to be checked before treating the provincial position as settled.",
+    "pullQuote": "Foreign investment is nationally open at 100%, while Bali requires an address-specific check rather than imposing the stated moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

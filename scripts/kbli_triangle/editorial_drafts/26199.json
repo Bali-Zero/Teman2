@@ -1,0 +1,27 @@
+{
+  "code": "26199",
+  "editorial": {
+    "headline": "Electronic Components Manufacturing, Open Nationally and Workable in Bali",
+    "standfirst": "KBLI 26199 covers specialised electronic components and boards, with national foreign ownership open to 100% and no Bali moratorium block in the record.",
+    "body": "**KBLI 26199 is a manufacturing code for the less easily named parts of the electronics economy: components and electronic boards that sit inside larger devices rather than appear as finished consumer products.** Its scope is broad but still technical. The record places here the making of transistors and similar semiconductor equipment, integrated circuits, printed circuits, inductors, resistors, capacitors, microprocessors, microcontrollers, electronic crystals and assemblies, solenoids, electronic switches, transducers, interface cards, display components, LEDs, diodes, chips, wafers, dice, and programmable logic controllers. In plain English, this is the industrial layer where electronic intelligence, control, signal handling, and connectivity are manufactured as components.\n\nThat breadth matters because this is not a narrow workshop description. It reaches from familiar board-level parts to semiconductor-adjacent items and control components used in electronic applications. A company using this code should be able to recognise itself in the act of making the component, board, chip, wafer, diode, interface card, or control unit described in the scope. The editorial point is simple: the code is about production of electronic components and boards, not the retailing, installation, or general trading of electronics.\n\nOn scale, the record is unusually clear. The activity is open to Mikro, Kecil, Menengah, and Besar. That means the code is not framed only for large industrial plants, even though its subject matter can easily sound capital-intensive. The registration scale still has to match the actual business, but the slim record itself keeps all four scale categories available. For founders, that is the useful operational signal: this classification can describe anything from a small component-making setup to a larger manufacturing operation, provided the real activity remains inside the stated manufacturing scope.\n\nThe national-vs-Bali picture is also clean. Nationally, the PMA status is marked TERBUKA, with pma_max_asing at 100. So the record supports saying that foreign ownership is open up to 100% at national level. Bali does not add a separate percentage, quota, partnership requirement, or local ceiling in this record. The Bali-side status is marked OK_or_HIGHER_RISK, and l4_bali_blocked is false. The reason given is: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium\". That matters because the Bali moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA across the province; this activity is not marked as blocked by that rule. The honest reading is therefore not a warning disguised as nuance: for this record, KBLI 26199 is nationally foreign-open and not blocked for PMA registration in Bali by the Bali moratorium field.",
+    "pullQuote": "The honest reading is that KBLI 26199 is nationally foreign-open and not blocked for PMA registration in Bali by the Bali moratorium field.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

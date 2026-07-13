@@ -1,0 +1,27 @@
+{
+  "code": "35131",
+  "editorial": {
+    "headline": "Power Transmission And Distribution As Infrastructure Business",
+    "standfirst": "This code is for operating the grids that move electricity from generation or storage into transmission, distribution, and final consumer supply.",
+    "body": "This activity is the business of moving electricity through the network, not merely trading it. Its center of gravity is the operation of transmission systems that carry power from generating facilities into distribution systems, or move electricity between systems through high-voltage and extra-high-voltage networks. The record defines those networks in concrete technical terms: high voltage from 35 kilovolts up to 245 kilovolts, and extra-high voltage above 245 kilovolts. It also includes the substations attached to those transmission systems, whether the electricity comes from the operator’s own production or from another producer.\n\nThe same code reaches downstream into distribution. It covers the operation of medium-voltage-and-below distribution systems, including lines, poles, meters, cables, and distribution substations, that deliver electricity received from generation facilities or transmission systems to final consumers. It also covers distribution through electricity networks, leasing or lending distribution networks, selling electricity to consumers where the operator owns the transmission or distribution assets, operating electricity capacity exchange and power transmission without intermediaries, and channeling stored electricity through the grid. In plain English, this is a network-asset activity: the company’s role is tied to the physical system that carries power.\n\nFor registration scale, the record is broad. The activity is open to Mikro, Kecil, Menengah, and Besar business scales, so it is not framed only as a large-enterprise category in the slim record. That breadth should not be confused with a light operational profile. The scope itself describes infrastructure that may include high-voltage transmission, extra-high-voltage transmission, distribution equipment, substations, metering, and direct consumer supply using owned network assets. Founders should therefore read the scale availability as an OSS classification fact, not as a statement that every project under the code has the same practical footprint.\n\nNationally, the foreign-investment position is straightforward: the activity is marked TERBUKA, with a PMA foreign-ownership ceiling of 100%, sourced to Perpres 10/2021, 49/2021. Bali does not reverse that position in this record. The Bali status is OK_or_HIGHER_RISK, and the reason is specific: at Besar scale, the OSS risk level is medium-high/high, so it is not blocked by the Bali moratorium. The moratorium described in the record blocks all low and medium-low risk KBLI for PMA across Bali, permanently; this activity is outside that blocked category because of its recorded risk position. The honest reading is therefore clean: a foreign-owned company may register this activity nationally up to 100%, and the Bali-side note does not block PMA registration on the facts provided here.",
+    "pullQuote": "The honest reading is clean: this is a foreign-open electricity network activity, and the Bali-side note does not block PMA registration on the facts provided here.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

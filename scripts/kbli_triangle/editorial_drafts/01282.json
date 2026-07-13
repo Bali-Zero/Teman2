@@ -1,0 +1,27 @@
+{
+  "code": "01282",
+  "editorial": {
+    "headline": "Clove Farming, Open Nationally and Usable in Bali",
+    "standfirst": "KBLI 01282 covers clove cultivation from land preparation to post-harvest work, with national PMA openness and no Bali moratorium block in the supplied record.",
+    "body": "KBLI 01282 is the activity of growing cloves as an integrated agricultural operation. The record describes a chain that begins with land preparation and continues through sowing, nursery work, planting, maintenance, harvesting, and post-harvest activity when these are performed as one sequence. It also includes planting clove crops to produce seed in the form of grains, as well as nursery and seedling activities for clove plants. In plain English, this is not merely the act of selling cloves or managing a plantation nameplate; it is the cultivation work itself, from preparing the soil to bringing the harvested crop through the immediate post-harvest stage.\n\nThe scope is broad enough to suit operators at every formal scale named in the record: Mikro, Kecil, Menengah, and Besar. That matters because this activity is not reserved only for large estates. A small clove grower, a medium agricultural enterprise, or a larger plantation-style operation all sit within the same described activity so long as the substance remains clove farming and the related cultivation sequence. The record also keeps seed-oriented activity inside the same frame: planting clove plants to produce seed, plus nursery and seedling work, belongs here when it is part of the clove cultivation activity.\n\nNationally, the PMA position is clean: the activity is marked TERBUKA, with a foreign-ownership ceiling of 100%. That means the slim record gives no foreign-share cap below full ownership. The cited PMA basis is Perpres 10/2021, 49/2021, and the record does not add any separate threshold, minimum capital figure, special licence, or timeline. The responsible reading is therefore narrow but useful: for national classification purposes, this clove-farming activity is open to foreign investment up to the stated ceiling, across the scales listed in the record.\n\nThe Bali picture is also clear, but it should not be overstated. The record says this activity is not blocked by the Bali moratorium. The province-wide moratorium described in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but the Bali reason supplied here says that OSS risk at scale Besar is Menengah-Tinggi/Tinggi, so it is not blocked by that moratorium. In practical editorial terms, this is a genuinely open Bali case on the facts provided: nationally open to PMA, 100% foreign ownership allowed in the record, and not marked as blocked for Bali registration today.",
+    "pullQuote": "On the facts provided, this is a genuinely open Bali case: nationally open to PMA and not blocked by the Bali moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

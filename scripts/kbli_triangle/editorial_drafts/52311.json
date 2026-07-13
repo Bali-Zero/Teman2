@@ -1,0 +1,27 @@
+{
+  "code": "52311",
+  "editorial": {
+    "headline": "The Quiet Work of Moving Goods at Scale",
+    "standfirst": "This activity code covers the coordination of large-volume goods shipments across rail, road, sea and air, with a nationally open foreign-ownership position and no Bali moratorium block at large scale.",
+    "body": "Goods do not move at scale through transport alone. They move through organisation: deciding how a consignment is sent, coordinating its passage by rail, road, sea or air, and arranging shipment on a client’s behalf. That is the centre of this activity. It covers the organisation of delivery or packing of goods in large volumes, as well as the arrangement and administration of consignments for clients, whether those consignments are grouped or individual.\n\nThe practical subject is therefore the management of the shipment rather than the physical act of carrying it. A business registered under this activity may organise the dispatch of goods across several transport modes and handle the associated arrangements in the client’s name. The scope is specific about a boundary, too: third-party packing performed for a fee or under contract is not part of this activity. Its focus remains on directing the movement and dispatch of goods, especially where volume and coordination matter.\n\nThe code is open to Mikro, Kecil, Menengah and Besar businesses. At national level, it carries a TERBUKA PMA status and permits foreign ownership up to 100%. At the national level, this record allows foreign ownership in full. That position is grounded in Perpres 10/2021, 49/2021; it is not an inferred opening or a commercial reading of the activity’s transport role.\n\nBali requires the same clarity. The province’s standing moratorium blocks PMA registration for all Low and Medium-Low risk KBLI activities. This activity is not blocked by that moratorium: at the Besar scale, its OSS risk is Menengah-Tinggi/Tinggi. The Bali status is therefore OK_or_HIGHER_RISK. For a founder assessing this code, the distinction matters. The national position is fully open to foreign ownership, while the Bali position is not a blanket prohibition; it remains outside the stated moratorium because of its recorded risk classification at large scale.",
+    "pullQuote": "The national position is fully open to foreign ownership, while Bali does not impose a moratorium block on this activity at large scale.",
+    "byTheNumbers": [
+      {
+        "label": "National foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

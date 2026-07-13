@@ -1,0 +1,27 @@
+{
+  "code": "39002",
+  "editorial": {
+    "headline": "Carbon Storage With a Clean Bali Opening",
+    "standfirst": "KBLI 39002 covers geological carbon storage services, open nationally to full PMA ownership and not blocked for Bali at the large-business scale.",
+    "body": "KBLI 39002 is a narrow but substantial activity: carbon storage in geological formations. The record defines it as services for exploring, injecting, and storing carbon emissions safely and permanently in subsurface formations. Its terrain is technical rather than generic environmental consulting: former oil and gas fields, saline aquifers, coal seams, basalt formations, onshore sites, and subsea formations all sit within the stated scope. The activity also includes support services for carbon storage when provided on a fee or contract basis.\n\nThe commercial shape is therefore closer to specialised infrastructure and field operations than to advisory work. The record names both carbon storage operation activities in geological formations and exploration of target injection zones in geological formations, each tied to a carbon storage licence area. It also draws a boundary around the activity by excluding the use of carbon for oil extraction aimed at improving oil recovery. In plain terms, this is the KBLI for storing carbon, not for using carbon as part of petroleum extraction.\n\nOn scale, the record is clear and spare: this activity is open to `Besar` only. That matters because the Bali-side assessment turns on the OSS risk character at that scale. Nationally, the PMA status is `TERBUKA`, with `pma_max_asing` set at 100. For a foreign-owned setup, the national picture is therefore straightforward: the record allows full foreign ownership, with the cited source given as `Perpres 10/2021, 49/2021`. There is no smaller-scale opening in the record, and there is no separate condition to infer beyond the single large-scale entry.\n\nThe Bali picture is unusually clean. The province’s moratorium rule in the record blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but KBLI 39002 is not blocked in Bali. Its Bali status is `OK_or_HIGHER_RISK`, and the reason is stated directly: `OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium`. That means the honest reading is not a hidden Bali cap, a local quota, or a special Bali ownership ceiling. The national foreign-ownership ceiling remains the only percentage in the record, and Bali’s note is simply that this large-scale, higher-risk profile is outside the moratorium block.",
+    "pullQuote": "The honest reading is not a hidden Bali cap, a local quota, or a special Bali ownership ceiling.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scale",
+        "value": "Besar"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

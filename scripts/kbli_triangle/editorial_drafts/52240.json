@@ -1,0 +1,27 @@
+{
+  "code": "52240",
+  "editorial": {
+    "headline": "Cargo Work at the Point of Transfer",
+    "standfirst": "This activity covers hands-on cargo and baggage handling across transport modes, with national foreign ownership open to 100% and a Bali position not blocked by the moratorium.",
+    "body": "Cargo handling is the practical work of loading and unloading goods and baggage, regardless of the transport mode involved. It includes the loading and unloading of ships and freight rail wagons, as well as the provision of operator-supplied lifting and handling equipment such as cargo lifts and cranes. It also covers moving loads at industrial sites, generally with transport equipment not suited to use on public roads. The centre of gravity is the physical handling of a load: receiving it, lifting it, placing it, or transferring it as part of an operational movement.\n\nA business registering under this activity may operate at any of the stated enterprise scales: Micro, Small, Medium, or Large. That breadth reflects a classification concerned with the handling task itself, from the movement of baggage and goods to equipment-led lifting and industrial-site transfers. The defining work is hands-on and operational, whether the cargo is being loaded, unloaded, or repositioned with the appropriate handling equipment and an operator.\n\nNationally, the activity is open to foreign investment, with a maximum foreign ownership ceiling of 100%. Put simply, the national-level record allows 100% foreign ownership. This is a clear position rather than a partial opening: the stated ceiling does not require foreign ownership to stop below complete ownership. For a founder assessing the activity at the national level, the relevant facts are its open PMA status and that full foreign participation is permitted within the stated ceiling.\n\nBali requires a more exact reading, but it is not a prohibition in this record. The province permanently blocks PMA registration for all Low and Medium-Low risk activities across the island. This activity is explicitly not blocked by that moratorium. At the Large scale, its OSS risk is Medium-High/High, which is the reason given for the Bali outcome. Its Bali status is therefore recorded as OK_or_HIGHER_RISK: the activity is not caught by the stated moratorium, while the local assessment rests on the higher-risk classification at the Large scale. The national 100% foreign-ownership ceiling remains the stated national position.",
+    "pullQuote": "Bali does not block this activity through the stated moratorium because its Large-scale OSS risk is Medium-High/High.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Available scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

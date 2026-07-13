@@ -1,0 +1,27 @@
+{
+  "code": "42203",
+  "editorial": {
+    "headline": "Waste Infrastructure Construction With a Clear Bali Opening",
+    "standfirst": "This activity covers the civil works behind solid, liquid, and gas waste systems, and the record treats it as nationally foreign-open and not blocked in Bali.",
+    "body": "KBLI 42203 is the construction activity behind waste-management infrastructure: the building, maintenance, and reconstruction of facilities and supporting structures for solid, liquid, and gas waste treatment. Its scope is not limited to one visible asset. The record names waste reservoirs, waste-pipeline networks, urban wastewater networks for domestic and industrial wastewater, disposal and incinerator buildings, final waste-disposal sites and their supporting buildings, septic-system installation services, and waste-treatment units connected to thermal, hydro, geothermal, and other renewable-energy generation. In plain English, this is the civil-construction lane for the physical systems that collect, move, contain, treat, burn, or dispose of waste.\n\nThe registration picture is unusually broad by scale. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses, so it is not framed only as a large-contractor category. Smaller operators may sit within the same activity when the work matches the scope, while larger contractors may use it for bigger waste-infrastructure projects. The construction subclassification attached to the record is BS006, for civil construction of solid, liquid, and gas waste-treatment infrastructure and facilities. That subclassification matters editorially because it reinforces the core identity of the activity: this is construction of waste-system infrastructure, not general environmental consulting, cleaning, transport, or operational management unless the work is actually the construction, maintenance, rebuilding, or installation described in the scope.\n\nNationally, the record is clear. The PMA status is TERBUKA, and the maximum foreign ownership shown is 100%. That means the national record does not impose a foreign-share cap below full ownership for this activity. Perpres 10/2021, 49/2021 is the source cited for that national position. For a founder or investor reading the category, the practical editorial point is simple: the national side does not present this as a closed activity, and the foreign-ownership ceiling in the record is the full 100%.\n\nThe Bali side is also clear, but it must be read precisely. For Bali, the status reads OK_or_HIGHER_RISK, while l4_bali_blocked is false. The record’s reason is: “OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium”. The moratorium rule in the same record says Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, but this activity is not marked as blocked under that rule. So the honest national-vs-Bali picture is not a contradiction: nationally it is foreign-open up to 100%, and in Bali the record does not block PMA registration under the moratorium because the listed Bali reason places the relevant large-scale OSS risk at Menengah-Tinggi/Tinggi.",
+    "pullQuote": "The honest national-vs-Bali picture is not a contradiction: nationally it is foreign-open up to 100%, and in Bali the record does not block PMA registration under the moratorium.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

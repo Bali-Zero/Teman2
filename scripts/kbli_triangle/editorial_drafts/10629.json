@@ -1,0 +1,27 @@
+{
+  "code": "10629",
+  "editorial": {
+    "headline": "Starch Processing with Room for Full Foreign Ownership",
+    "standfirst": "KBLI 10629 covers extracted and modified starch products, with all business scales open and no Bali PMA block recorded for this activity.",
+    "body": "KBLI 10629 is the industrial category for making starch and related starch products through extraction. The record frames it broadly: potato starch, bengkuang starch, temulawak starch, arrowroot starch, mango-seed starch, and modified starch all sit inside this activity. It also includes the production of inulin and gluten. In plain English, this is not a trading or packaging category; it is a manufacturing activity where raw agricultural or plant-based inputs are processed into starch-based materials and adjacent products.\n\nThat scope matters because the code is not limited to one commodity. It can fit a small producer extracting a specific local starch, a medium manufacturer making modified starch for downstream use, or a larger industrial operation working across several starch products. The scale field is unusually clear: Mikro, Kecil, Menengah, and Besar are all open. That means the record does not confine this activity to either small domestic operators or large industrial investors; it recognises the activity across the full business-size ladder.\n\nNationally, the investment picture is straightforward. The PMA status is marked TERBUKA, and the maximum foreign ownership field is 100%. The source given is Perpres 10/2021, 49/2021. On the national reading, then, a foreign-owned company is not being asked by this record to stop below full ownership. The correct editorial conclusion is simple: for this KBLI, the national foreign-ownership ceiling shown in the record is full ownership.\n\nBali does not change that conclusion into a block. The Bali status is recorded as OK_or_HIGHER_RISK, with l4_bali_blocked set to false. The reason is explicit: \"OSS risk at scale Besar is Menengah-Tinggi/Tinggi → not blocked by moratorium.\" The moratorium rule in the record says Bali blocks all Low and Medium-Low risk KBLI for PMA island-wide, permanently, but this activity is not marked as blocked under that rule. So the honest national-vs-Bali picture is not a hidden contradiction: KBLI 10629 is nationally open to PMA up to 100%, and the Bali-side record does not mark it as blocked.",
+    "pullQuote": "The honest national-vs-Bali picture is not a hidden contradiction: KBLI 10629 is nationally open to PMA up to 100%, and the Bali-side record does not mark it as blocked.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "code": "03233",
+  "editorial": {
+    "headline": "Brackish-Water Plant Cultivation With a Real Bali Opening",
+    "standfirst": "This activity covers non-protected brackish-water plants, including Gracilaria, from nursery work to carbon-credit-linked cultivation.",
+    "body": "**03233 is a cultivation code for plants grown in brackish water, not a general fisheries label.** Its scope is the enlargement and cultivation of non-protected brackish-water plants, explicitly including seaweed such as Gracilaria spp. It also includes seedling or nursery activity for those plants. The operating setting is deliberately broad: the activity may take place on land, in waters, or in other artificial facilities, provided brackish water is the cultivation medium. That detail matters because the code is defined less by a single site format than by the biological subject and the water environment.\n\nThe record also gives this activity a climate-linked edge. Cultivation of brackish-water plants may be carried out for natural carbon absorption and storage, and the scope includes the sale of carbon credits or emission-reduction certificates resulting from the cultivation activity. That does not turn the code into a financial product or a carbon-trading licence; it simply means the cultivation activity, when producing those outcomes, remains within the stated scope. The commercial story is therefore wider than harvested plant biomass alone, but it still begins with actual brackish-water cultivation.\n\nFor domestic registration scale, the code is unusually broad: it is open to Mikro, Kecil, Menengah, and Besar. A micro operator, a small aquaculture business, a mid-sized project, or a large project can all sit inside the scale field given in the record. Nationally, the PMA position is also clear. The code is marked TERBUKA, with pma_max_asing at 100, sourced to Perpres 10/2021, 49/2021. In plain English, the record presents this activity as foreign-open at national level, with a foreign ownership ceiling of 100%. There is no lower cap stated in the slim record, so none should be implied.\n\nBali is the decisive part of the reading, and here the answer is not a hidden no. The Bali province moratorium rule blocks all Low and Medium-Low risk KBLI for PMA across the island, but this record is not marked as blocked. Its Bali status is OK_or_HIGHER_RISK, and the stated reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest lede is therefore positive: a foreign investor can read this as nationally open and not Bali-blocked on the fields supplied here. That is not a promise about every future administrative step; it is the clean conclusion the record supports.",
+    "pullQuote": "The honest lede is therefore positive: a foreign investor can read this as nationally open and not Bali-blocked on the fields supplied here.",
+    "byTheNumbers": [
+      {
+        "label": "PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

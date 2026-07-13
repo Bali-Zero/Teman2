@@ -1,0 +1,27 @@
+{
+  "code": "42996",
+  "editorial": {
+    "headline": "Building Military and Spaceport Civil Facilities",
+    "standfirst": "A construction activity open nationally to full foreign ownership and not blocked by Bali’s PMA moratorium.",
+    "body": "KBLI 42996 covers the construction, maintenance and/or reconstruction of civil-works buildings for military facilities and spaceport facilities. Its stated examples include forts, protective shelters and military test centres. The category is concerned with the physical construction of those facilities: creating the built infrastructure, maintaining it, or rebuilding it when required. Maintenance and reconstruction are therefore part of the activity’s stated scope, alongside new construction. The record also identifies the construction subclassifications BS019 and ST011.\n\nRegistration is open to businesses at every scale listed in the record: Mikro, Kecil, Menengah and Besar. That range gives the code a broad business-scale setting while keeping its subject matter tightly defined. What matters is that the work falls within the construction, maintenance or rebuilding of the named military and spaceport facilities. The activity is not framed as a general description of operations within such sites; it is a construction classification for their buildings and related civil-works structures.\n\nNationally, the foreign-investment position is direct. The PMA status is TERBUKA, with a maximum foreign ownership level of 100% under the stated source. In plain terms, the national ceiling permits full foreign ownership for this activity. That national position is important, but Bali carries its own recorded screening context, which should be read alongside it rather than assumed to follow automatically from the national status.\n\nIn Bali, this code is not marked as blocked by the moratorium. Its Bali status is OK_or_HIGHER_RISK, and at Besar scale the OSS risk assessment is Menengah-Tinggi/Tinggi; the record expressly says that it is not blocked by the moratorium. Bali’s island-wide, permanent rule blocks PMA registration for all Low and Medium-Low risk KBLI activities. This activity’s recorded large-scale risk placement is why the Bali result is not a prohibition. The honest reading is straightforward: it is nationally open up to 100% foreign ownership and is not moratorium-blocked in Bali on the record provided.",
+    "pullQuote": "It is nationally open up to 100% foreign ownership and is not moratorium-blocked in Bali on the record provided.",
+    "byTheNumbers": [
+      {
+        "label": "Maximum foreign ownership",
+        "value": "100%"
+      },
+      {
+        "label": "Business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

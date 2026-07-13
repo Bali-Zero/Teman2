@@ -1,0 +1,27 @@
+{
+  "code": "86102",
+  "editorial": {
+    "headline": "Puskesmas: Nationally Open, Restricted in Bali",
+    "standfirst": "This first-level community health activity is open to foreign investment nationally, while Bali records a more limited local ownership position.",
+    "body": "KBLI 86102 covers the work of a community health centre: first-level public-health and individual-health services delivered within its service area, with priority given to health promotion and prevention. The emphasis matters. This is not defined simply as treatment after illness arises; the activity joins population-facing health efforts with first-contact care for individual patients. Its scope is broad enough to include the centre’s public-health role while remaining anchored in first-level services.\n\nThe record distinguishes two operating forms. A non-inpatient puskesmas may provide outpatient care, home care and emergency services; it may also provide inpatient care for normal childbirth. An inpatient puskesmas, with beds, adds inpatient provision for normal childbirth and other inpatient health services. The distinction is practical rather than decorative: it describes the service configuration contained in the activity’s stated scope. The code is open across Micro, Small, Medium and Large scales, giving it a national scale range rather than confining it to a single enterprise size.\n\nAt national level, the PMA status is open, with a maximum foreign ownership ceiling of 100%. That is a straightforward national opening for foreign investment, not a substitute for the Bali position. Bali records the activity as restricted. Its local condition states that, for clinics, foreign nationals may hold no more than 67%. The record therefore presents a more limited Bali-side ownership picture than the national ceiling; the two figures describe different levels of the framework and should not be collapsed into one.\n\nBali’s record also notes a permanent, island-wide rule blocking all Low- and Medium-Low-risk KBLI activities from PMA registration. Yet this activity is not marked as blocked in the Bali field. With no risk level supplied here, the responsible reading is not to assign it to the moratorium’s categories. The clear conclusion is narrower: 86102 is nationally open up to 100% foreign ownership, while Bali classifies it as restricted and records a 67% foreign-national limit for clinics. Any registration analysis must keep those statements separate.",
+    "pullQuote": "86102 is nationally open up to 100% foreign ownership, while Bali classifies it as restricted and records a 67% foreign-national limit for clinics.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "TERBATAS"
+      },
+      {
+        "label": "Bali clinic ceiling",
+        "value": "67% WNA"
+      }
+    ]
+  }
+}

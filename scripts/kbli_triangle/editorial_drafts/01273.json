@@ -1,0 +1,27 @@
+{
+  "code": "01273",
+  "editorial": {
+    "headline": "Cocoa Farming, Read Clearly for PMA in Bali",
+    "standfirst": "KBLI 01273 covers cocoa cultivation from land preparation to harvest, with national PMA opening at 100% and no Bali moratorium block in the record.",
+    "body": "KBLI 01273 is the agricultural code for cocoa: the growing of cocoa as a crop, from land preparation and planting through maintenance, harvest, and the post-harvest work when those steps form one continuous activity. Its scope also reaches the planting of cocoa plants to produce seed in the form of beans, plus nursery and seed-production work for beverage-crop material where the crop is cocoa. In plain English, this is not a narrow trading label or a downstream chocolate category. It is the cultivation base: preparing soil, raising seedlings, planting, tending, harvesting, and carrying the immediate post-harvest sequence tied to cocoa farming itself.\n\nThat breadth matters because the record opens the activity across every listed business scale: Mikro, Kecil, Menengah, and Besar. A small grower, a mid-sized plantation operator, and a larger agricultural company are all within the scale vocabulary of this code, provided the activity remains the cocoa-farming sequence described in the scope. The seed element is also part of the code's center of gravity, but only as cocoa seed in the form of beans and nursery or seedling activity for beverage-crop planting material. The clean boundary is agricultural production and seed-related cultivation, not a claim about manufacturing, retail, or any separate commercial layer not stated in the record.\n\nNationally, the PMA status is straightforward: TERBUKA, with pma_max_asing at 100%, sourced to Perpres 10/2021, 49/2021. For a foreign-owned setup, that means the record does not impose a foreign share cap below full ownership. The important editorial point is restraint: the national opening says what it says, and no more. It does not create a minimum-capital figure, a special timeline, a tax conclusion, or a local operating condition in this record. The foreign-ownership picture for this code is therefore clean at the national level: open, up to 100%, across the stated scales.\n\nThe Bali picture is also unusually clear, but for the opposite reason from many low-risk activities: the record marks l4_bali_blocked as false and gives the status as OK_or_HIGHER_RISK. The moratorium rule says Bali blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently; this activity is not caught by that block because at scale Besar the OSS risk is Menengah-Tinggi/Tinggi. Cocoa farming is nationally foreign-open at 100%, and the record does not place it under Bali's PMA moratorium block. The caution is simply to keep the reading anchored to the record's scope: cocoa cultivation, seed-bean production, nursery work, harvesting, and linked post-harvest activity as one farming sequence.",
+    "pullQuote": "Cocoa farming is nationally foreign-open at 100%, and the record does not place it under Bali's PMA moratorium block.",
+    "byTheNumbers": [
+      {
+        "label": "National PMA status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

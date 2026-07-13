@@ -1,0 +1,27 @@
+{
+  "code": "72109",
+  "editorial": {
+    "headline": "A Nationally Open Research Activity, Blocked for PMA in Bali",
+    "standfirst": "Systematic experimental research in uncategorised technology and engineering—from biological-process DNA sequencing to space research—is open nationally at every business scale, but blocked for PMA in Bali.",
+    "body": "This activity covers regular, systematic experimental research and development in technology and engineering that is not classified elsewhere. Its range is deliberately broad but still technically defined: it includes DNA sequencing undertaken for general research into biological processes, as well as research and development in the field of space. The common thread is not a particular commercial output, but an organised research effort directed at scientific and engineering questions beyond the more specifically classified fields.\n\nThe activity is open to enterprises at the Mikro, Kecil, Menengah, and Besar scales. That matters because the code does not reserve this research work for a single size of operator: a small specialist undertaking and a large research organisation may each fall within the stated scale range, provided their work remains within the activity’s scope. Nationally, it is TERBUKA to PMA, with a foreign-ownership ceiling of 100% under the cited presidential regulations.\n\nBali is where the national opening stops being the practical answer. A foreign national is unable to register this activity for PMA in Bali today. At the Besar scale, OSS risk is Rendah or Menengah-Rendah across every scope, and Bali’s moratorium blocks the activity on that basis. The provincial rule is island-wide and permanent: PMA is blocked for all Low and Medium-Low risk KBLI activities. This is not a qualification of the national foreign-ownership ceiling; it is a separate Bali registration barrier arising from the code’s risk classification at scale Besar.\n\nFor founders, the distinction requires a clean reading. At national level, the activity is open to full foreign ownership. In Bali, the same activity is blocked for PMA registration because of the provincial moratorium. The decisive issue is therefore not whether the research concerns DNA sequencing, space research, or another technology and engineering programme within the stated scope. It is that the activity’s relevant OSS risk treatment at the Besar scale falls inside Bali’s permanent PMA restriction.",
+    "pullQuote": "Nationally, the activity is open to full foreign ownership; in Bali, it is blocked for PMA registration.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign-ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open business scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali PMA status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

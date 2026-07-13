@@ -1,0 +1,27 @@
+{
+  "code": "01467",
+  "editorial": {
+    "headline": "Pigeon Breeding at Commercial Scale, Open Nationally and Usable in Bali",
+    "standfirst": "This activity covers pigeon farming and breeding for meat, other production purposes, breeding stock, and hatching eggs, with access across all business scales.",
+    "body": "Pigeon breeding under this activity is a farming and propagation business. Its core is the cultivation of pigeons to produce birds for meat or other productive uses, alongside breeding work that produces livestock seed stock and hatching eggs. The scope is narrow but complete: it is not a broad animal-trading category, and it is not merely a hobby aviary. It is the registered activity for operators whose business substance is raising pigeons and reproducing them as a controlled livestock line.\n\nThe scale picture is unusually straightforward. The slim record opens this activity to Mikro, Kecil, Menengah, and Besar operators, so the classification can serve anything from a very small farm to a large commercial setup. That matters because the registered KBLI should describe the actual operating activity, not just the legal vehicle around it. A small breeder, a mid-sized production farm, and a larger integrated operation may all sit inside the same activity description if their business is genuinely the cultivation and breeding of pigeons for the outputs stated in the scope.\n\nFor foreign ownership, the national position is clean: the activity is marked TERBUKA, with a foreign-ownership ceiling of 100%. In plain English, a PMA structure is nationally open for this activity, and the slim record does not impose a foreign-equity cap below full ownership. The source given for that national investment position is Perpres 10/2021, 49/2021. Nothing in the record supports adding extra capital thresholds, licence promises, tax treatment, or processing timelines, so the editorial conclusion should stay disciplined: nationally open means open as recorded, not open with invented conditions.\n\nThe Bali picture is also clear, but for a different reason. Bali’s moratorium blocks all Low and Medium-Low risk KBLI for PMA across the province on a permanent basis, yet this activity is not marked as blocked. The recorded reason is that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the Bali moratorium. That does not turn the activity into a casual registration; it simply means the specific Bali moratorium barrier shown in the record does not close the door. The honest reading is therefore: a foreign-owned setup may use this activity nationally, can reach 100% foreign ownership under the recorded ceiling, and is not currently blocked for PMA registration in Bali by the moratorium rule stated here.",
+    "pullQuote": "The honest reading is that this activity is nationally open to full foreign ownership and is not closed in Bali by the moratorium recorded here.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National status",
+        "value": "TERBUKA"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}

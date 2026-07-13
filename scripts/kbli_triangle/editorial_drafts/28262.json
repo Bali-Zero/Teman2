@@ -1,0 +1,27 @@
+{
+  "code": "28262",
+  "editorial": {
+    "headline": "Textile-Machinery Manufacturing Is Open Nationally, Blocked in Bali",
+    "standfirst": "A precise manufacturing code for textile machinery is foreign-open at national level, but the record blocks PMA registration in Bali under the island-wide moratorium.",
+    "body": "**KBLI 28262 covers the manufacturing side of textile machinery.** The record describes a broad industrial scope: machines for preparing fibre, spinning, preparing weaving, weaving itself, textile printing, knitting, cloth inspection, finishing, and garment-making. It also reaches the auxiliary equipment that keeps textile machinery operating, including dobby and jacquard equipment, automatic stop-motion machines, shuttle-change machinery, spindles, and spindle flyers. In plain English, this is not a trading or showroom activity. It is the activity code for making the machines and attachments used inside textile production lines.\n\nThat scope matters because the code is open across every business scale listed in the record: Mikro, Kecil, Menengah, and Besar. A small workshop making specialised textile-machine components and a larger industrial manufacturer would both sit inside the scale range shown here, provided the actual registered activity matches the manufacturing scope. The editorial point is narrow but important: the code is defined by the making of textile machinery and its related equipment, not by textile production itself, not by distribution, and not by a general engineering identity detached from the listed machines.\n\nNationally, the foreign-investment signal is clean. The record marks the PMA status as TERBUKA and gives a foreign-ownership ceiling of 100, sourced to Perpres 10/2021, 49/2021. That means the national record treats the activity as open to foreign ownership up to 100%. There is no smaller national cap in the slim record, no staged ownership rule, and no extra threshold stated here. For a founder reading only the national position, this looks like a straightforward foreign-open manufacturing activity.\n\n**Bali is the decisive exception.** The record says `l4_bali_blocked` is true and gives the Bali status as `Blocked (risk class)`. Its reason is specific: OSS risk at scale Besar is Rendah/Menengah-Rendah on every scope, so the activity is blocked by the Bali moratorium from May 13, 2026. The moratorium rule in the record is broader still: Bali province blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently. So the honest reading is this: a foreign investor may see a nationally open, 100% PMA-eligible code, but cannot register this activity as PMA in Bali today under the Bali-side block recorded here.",
+    "pullQuote": "A foreign investor may see a nationally open, 100% PMA-eligible code, but cannot register this activity as PMA in Bali today.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Scales open to",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "Blocked (risk class)"
+      }
+    ]
+  }
+}

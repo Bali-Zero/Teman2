@@ -1,0 +1,27 @@
+{
+  "code": "01412",
+  "editorial": {
+    "headline": "Dairy Cattle Farming With a Clear National Opening",
+    "standfirst": "This activity covers dairy cattle cultivation, milk production, fattening, and breeding, with national PMA access and no Bali moratorium block on the record.",
+    "body": "KBLI 01412 is the activity space for dairy cattle as a productive herd, not merely as livestock ownership. The record describes three connected parts of the business: cultivating dairy cattle, fattening them, and producing milk; then the breeding work needed to generate dairy cattle stock, semen, and embryos. In practical terms, this is the code for operators whose core activity is the managed raising and breeding of dairy cows, with milk and breeding outputs sitting inside the same defined scope.\n\nThe scale picture is broad. The record opens this activity to Mikro, Kecil, Menengah, and Besar businesses, so it is not framed as a category reserved only for industrial farms. A smaller dairy breeding operation and a larger integrated dairy cattle business both sit within the scale range stated in the slim record. That matters because the activity is defined by what it does, not by one single operating size: dairy cattle cultivation, fattening, milk production, and breeding remain the anchor points.\n\nFor foreign ownership, the national rule is straightforward on this record. The PMA status is TERBUKA, and the maximum foreign ownership value is 100. Stated plainly, the national position allows full foreign ownership for this activity, with the source given as Perpres 10/2021, 49/2021. There is no partial foreign-ownership ceiling in the record to soften or reinterpret; the ceiling is 100%, and that is the number founders should read before moving into location-specific checks.\n\nBali is also clear, but for a different reason. The province’s moratorium rule blocks all Low and Medium-Low risk KBLI for PMA, island-wide and permanently, according to the record. This activity, however, is not marked as blocked: its Bali status is OK_or_HIGHER_RISK, and the reason states that OSS risk at Besar scale is Menengah-Tinggi/Tinggi, so it is not blocked by the moratorium. The honest national-versus-Bali picture is therefore not a contradiction. Nationally, the code is foreign-open up to 100%; in Bali, the record does not block PMA registration under the moratorium because the stated risk position is higher than the blocked Low and Medium-Low band.",
+    "pullQuote": "Nationally, the code is foreign-open up to 100%; in Bali, the record does not block PMA registration under the moratorium because the stated risk position is higher than the blocked Low and Medium-Low band.",
+    "byTheNumbers": [
+      {
+        "label": "Foreign ownership ceiling",
+        "value": "100%"
+      },
+      {
+        "label": "Open scales",
+        "value": "Mikro, Kecil, Menengah, Besar"
+      },
+      {
+        "label": "National PMA source",
+        "value": "Perpres 10/2021, 49/2021"
+      },
+      {
+        "label": "Bali status",
+        "value": "OK_or_HIGHER_RISK"
+      }
+    ]
+  }
+}
