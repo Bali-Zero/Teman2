@@ -68,11 +68,7 @@
       "why": "a healer/cron restarted over a live predecessor corrupts state (panel finding 2026-07-06: restart without idempotency is a cure that wounds)"
     }
   },
-  "scan_roots": [
-    "infra",
-    "apps",
-    "scripts"
-  ],
+  "scan_roots": ["infra", "apps", "scripts"],
   "grandfathered": {
     "apps/backend-rag/deploy/launchd/com.nuzantara.cost-advisor-daily-cap.plist": [
       "G2_heartbeat",
@@ -99,10 +95,7 @@
       "G2_heartbeat",
       "G5_kill_switch"
     ],
-    "apps/cell/com.cell.organism.plist": [
-      "G2_heartbeat",
-      "G5_kill_switch"
-    ],
+    "apps/cell/com.cell.organism.plist": ["G2_heartbeat", "G5_kill_switch"],
     "apps/cell/com.nuzantara.heartbeat-bridge.plist": [
       "G2_heartbeat",
       "G5_kill_switch"
@@ -250,12 +243,6 @@
     "infra/launchagents/com.balizero.wr2.canva-oauth-watchdog.plist": [
       "G2_heartbeat",
       "G5_kill_switch"
-    ],
-    "infra/launchagents/com.balizero.wr2.canva-renderer.plist": [
-      "G1_registry",
-      "G2_heartbeat",
-      "G5_kill_switch",
-      "G9_fail_visible"
     ],
     "infra/launchagents/com.balizero.wr2.connector.plist": [
       "G2_heartbeat",
@@ -734,9 +721,7 @@
       "G5_kill_switch",
       "G9_fail_visible"
     ],
-    "scripts/launchd/com.cell.metabolic-rollup.pro.plist": [
-      "G5_kill_switch"
-    ],
+    "scripts/launchd/com.cell.metabolic-rollup.pro.plist": ["G5_kill_switch"],
     "scripts/launchd/com.nuzantara.fly-pg-tunnel.plist": [
       "G1_registry",
       "G2_heartbeat",
