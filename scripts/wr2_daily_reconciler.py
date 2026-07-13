@@ -241,6 +241,32 @@ def _verify_visibility_or_backfill(row: dict[str, Any], *, dry_run: bool) -> str
         return "backfill_failed"
 
 
+def _queue_hygiene_sweep(*, dry_run: bool) -> None:
+    """W96 immune organ: quarantine malformed review-queue entries every tick.
+
+    Junk contract lives in wr2_queue_hygiene.is_junk_entry (drafted + blank
+    topic + never published). Best-effort — a hygiene failure must never
+    affect the day's decision; a non-empty sweep is alerted (fail-visible)."""
+    try:
+        import wr2_queue_hygiene as hyg  # same scripts/ dir, same venv
+
+        report = hyg.sweep_queue(dry_run=dry_run)
+        if report.moved:
+            logger.info(
+                "queue hygiene: %s %d junk entries: %s",
+                "would quarantine" if dry_run else "quarantined",
+                len(report.moved), report.moved[:5],
+            )
+            if not dry_run:
+                _tg_notify(
+                    "p2", f"wr2-queue-hygiene-{datetime.now(WITA).date()}",
+                    f"🧹 WR2 queue hygiene: {len(report.moved)} entry malformate "
+                    f"(drafted, topic vuoto) spostate in quarantena.",
+                )
+    except Exception as exc:  # noqa: BLE001 — never break the reconciler tick
+        logger.warning("queue hygiene sweep failed: %s", exc, exc_info=exc)
+
+
 async def _apply(decision: Decision, conn: Any, *, dry_run: bool) -> None:
     if dry_run:
         logger.info("DRY-RUN: would apply %s (%s)", decision.action, decision.reason)
@@ -327,6 +353,7 @@ async def _tick(
     stuck_hours: float,
     max_attempts: int,
 ) -> int:
+    _queue_hygiene_sweep(dry_run=dry_run)
     rows = await _fetch_today(conn, day_start_utc)
     decision = decide(
         rows, now_wita,
