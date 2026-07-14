@@ -23,7 +23,7 @@
 #   - State file: $HOME/.agent/decisions/matagaruda-split-brain-last.txt
 #     stores epoch + stream+host combos seen, gc'd after 4h.
 
-set -e
+set -eu
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 if [ -f "$HOME/.nuzantara-secrets.env" ]; then
@@ -74,8 +74,14 @@ if [ -n "$ALERTS" ]; then
 fi
 
 # Telegram alert with dedup (suppress repeat of same stream+stale_host combo)
+# tg-gateway migration (2026-07-14): the SEND leg goes through
+# scripts/tg_notify.py (--tier p0) instead of a direct Telegram HTTP call —
+# the gateway owns token resolution (env / secrets file / ssh relay) so no
+# TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID gate is needed here anymore.
+# Suppress-window/state-file dedup logic below is unchanged — only the
+# SEND mechanism changed.
 NOW=$(date +%s)
-if [ -n "$ALERTS" ] && [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_OWNER_CHAT_ID" ]; then
+if [ -n "$ALERTS" ]; then
     # GC old state entries
     if [ -f "$STATE_FILE" ]; then
         awk -v now="$NOW" -v window="$SUPPRESS_WINDOW_S" \
@@ -103,11 +109,14 @@ except Exception:
     done <<< "$ALERTS"
 
     if [ -n "$NEW_ALERTS" ]; then
-        MSG=$(echo "🚨 *Mata Garuda Redis Split-Brain*\n\n\`\`\`\n${NEW_ALERTS}\`\`\`\n\nRun manually:\n\`python3 ~/Desktop/nuzantara/apps/mata-garuda/scripts/check_redis_split_brain.py\`")
-        curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
-            -d "text=${MSG}" \
-            -d "parse_mode=Markdown" >/dev/null 2>&1 || true
+        GATEWAY="$(dirname "$0")/tg_notify.py"
+        [ -f "$GATEWAY" ] || GATEWAY="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+        MSG="Mata Garuda Redis Split-Brain
+
+${NEW_ALERTS}
+Run manually: python3 ~/Desktop/nuzantara/apps/mata-garuda/scripts/check_redis_split_brain.py"
+        python3 "$GATEWAY" --tier p0 --source matagaruda-redis-split-brain \
+            --dedup-key "matagaruda-split-brain:$(hostname -s)" -- "$MSG" >/dev/null 2>&1 || true
     fi
 fi
 

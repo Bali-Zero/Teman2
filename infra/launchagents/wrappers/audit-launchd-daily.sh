@@ -119,31 +119,33 @@ RECENT_LIST=$(cat "$RECENT_LIST_FILE")
 mv "$NEW_STATE_FILE" "$STATE_FILE"
 rm -f "$DELTA_FILE" "$SUMMARY_LINE_FILE" "$RECENT_LIST_FILE"
 
-# Send Telegram if there's a delta OR recent errors present
+# Send digest if there's a delta OR recent errors present.
+# tg-gateway migration (2026-07-14): the SEND leg goes through
+# scripts/tg_notify.py (--tier digest) instead of a direct Telegram HTTP
+# call — this is an informative delta report, not an actionable-now
+# alert, so it is spooled and flushed in the grouped digest rather than
+# sent immediately. The gateway owns token resolution, so no
+# TELEGRAM_BOT_TOKEN/TELEGRAM_OWNER_CHAT_ID gate is needed here anymore.
+# Delta-detection logic above is unchanged — only the SEND mechanism
+# changed.
 # `recent_lines` count: empty marker "(none)" => no recent errors
 HAS_RECENT=$(echo "$RECENT_LIST" | grep -q "^- " && echo yes || echo no)
 if [ -n "$DELTA_MSG" ] || [ "$HAS_RECENT" = "yes" ]; then
-    if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_OWNER_CHAT_ID" ]; then
-        MSG="📊 *Launchd audit daily report*
+    MSG="Launchd audit daily report
 
-\`\`\`
 $SUMMARY_LINE
-\`\`\`
 
-*Delta vs yesterday:* ${DELTA_MSG:-no change}
+Delta vs yesterday: ${DELTA_MSG:-no change}
 
-*Plists currently broken (hot, last 1h):*
-\`\`\`
+Plists currently broken (hot, last 1h):
 $RECENT_LIST
-\`\`\`
 
-Snapshot: \`$ARCHIVE_FILE\`"
+Snapshot: $ARCHIVE_FILE"
 
-        curl -sS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${TELEGRAM_OWNER_CHAT_ID}" \
-            -d "text=${MSG}" \
-            -d "parse_mode=Markdown" > /dev/null || true
-    fi
+    GATEWAY="$(dirname "$0")/tg_notify.py"
+    [ -f "$GATEWAY" ] || GATEWAY="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    python3 "$GATEWAY" --tier digest --source audit-launchd-daily \
+        --dedup-key "audit-launchd-daily:$(hostname -s):$TODAY" -- "$MSG" > /dev/null 2>&1 || true
 fi
 
 # Re-emit summary to stdout for launchd logging

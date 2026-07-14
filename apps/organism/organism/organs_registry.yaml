@@ -1347,6 +1347,18 @@ organs:
     label: com.nuzantara.cost-advisor-weekly
   severity_on_silence: info
   cicatrix_refs: []
+- id: pro.curiosity_weekly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 700000
+  owner_module: scripts/curiosity-batch.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.curiosity.weekly
+  severity_on_silence: warning
+  cicatrix_refs: []
 - id: pro.automap_server
   runtime: pro_launchd
   type: daemon

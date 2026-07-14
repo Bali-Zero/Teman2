@@ -14,6 +14,12 @@
 # Repointed in canon because com.matagaruda.* plists are resurrected from
 # canon by the plist-watchdog.hourly job — a HOME-only fix here would be
 # clobbered on the next watchdog tick.
+
+# G9 fail-visible (organ-conformance gene): every var below is either
+# assigned unconditionally or already ${VAR:-default}-guarded, so -u is
+# safe fleet-wide here without further changes.
+set -uo pipefail
+
 LOG="$HOME/logs/matagaruda-consumer-lag.log"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"

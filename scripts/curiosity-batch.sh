@@ -22,6 +22,12 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 LOG="$HOME/logs/curiosity-batch.log"
 
+# Kill switch (gene G5)
+if [ "${CURIOSITY_BATCH_ENABLED:-true}" = "false" ]; then
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ): CURIOSITY_BATCH_ENABLED=false — skipping" >> "$LOG"
+    exit 0
+fi
+
 # W84 trampoline (2026-07-14): fail fast / re-exec via ssh-localhost if this
 # launchd context has lost the TCC grant to ~/Desktop, BEFORE SCRIPT/VENV
 # below (both REPO-relative, i.e. under ~/Desktop) are ever touched.
@@ -52,5 +58,41 @@ if [ -z "${DATABASE_URL:-}" ]; then
     exit 1
 fi
 
+# Organism heartbeat (gene G2): source the shared lib the way its own
+# docstring documents ("Source pattern (bash)") and call organism_heartbeat
+# directly — same lib-resolution order as
+# infra/launchagents/wrappers/regulatory-watcher-run.sh (prefer ~/scripts/lib,
+# outside the TCC-protected ~/Desktop; fall back to repo canon). python3's
+# exit code is captured explicitly (not left to -e) so a failing run still
+# gets an honest "error" heartbeat instead of the wrapper dying silently
+# before the write.
+if [ -n "${ORGANISM_HEARTBEAT_LIB:-}" ]; then
+    HEARTBEAT_LIB="$ORGANISM_HEARTBEAT_LIB"
+elif [ -r "$HOME/scripts/lib/heartbeat.sh" ]; then
+    HEARTBEAT_LIB="$HOME/scripts/lib/heartbeat.sh"
+else
+    HEARTBEAT_LIB="$HOME/Desktop/nuzantara/scripts/lib/heartbeat.sh"
+fi
+if [ -r "$HEARTBEAT_LIB" ]; then
+    source "$HEARTBEAT_LIB"
+fi
+
+set +e
 python3 "$SCRIPT" >> "$LOG" 2>&1
-echo "$(date -u +%Y-%m-%dT%H:%M:%SZ): Curiosity batch completed" >> "$LOG"
+PY_EXIT=$?
+set -e
+
+if [ "$PY_EXIT" -eq 0 ]; then
+    HB_STATUS="ok"
+    HB_NOTE="completed"
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ): Curiosity batch completed" >> "$LOG"
+else
+    HB_STATUS="error"
+    HB_NOTE="rc=${PY_EXIT}"
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ): FAILED curiosity batch rc=${PY_EXIT}" >> "$LOG"
+fi
+if command -v organism_heartbeat >/dev/null 2>&1; then
+    organism_heartbeat "pro.curiosity_weekly" "$HB_STATUS" "$HB_NOTE"
+fi
+
+exit "$PY_EXIT"
