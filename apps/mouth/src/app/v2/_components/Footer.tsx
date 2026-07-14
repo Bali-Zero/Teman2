@@ -98,7 +98,7 @@ export function Footer() {
                 href={buildWhatsAppLink("home")}
                 Icon={MessageCircle}
                 label="WhatsApp"
-                value="+62 822 1030 2328"
+                value="+62 822 3010 2328"
                 accent="#25D366"
                 external
                 onClick={() =>
@@ -124,10 +124,10 @@ export function Footer() {
                 accent="#f59e0b"
               />
               <ContactLink
-                href="tel:+6282210302328"
+                href="tel:+6282230102328"
                 Icon={Phone}
                 label="Phone"
-                value="+62 822 1030 2328"
+                value="+62 822 3010 2328"
                 accent="#a78bfa"
               />
               <ContactLink

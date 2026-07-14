@@ -10,6 +10,7 @@ import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import APIRouter
 
 # ── Guard imports so settings validation doesn't fire ──
 _mock_settings = MagicMock()
@@ -17,17 +18,20 @@ _mock_settings.PROJECT_NAME = "Test Nuzantara"
 _mock_settings.API_V1_STR = "/api/v1"
 _mock_settings.log_level = "INFO"
 
-# Pre-seed modules that app_factory imports at module level
+# Pre-seed modules that app_factory imports at module level.
+# Stub routers are REAL empty APIRouters, not MagicMocks: fastapi 0.137+
+# include_router asserts `not router._contains_router(self)`, and a
+# MagicMock answers that with a truthy MagicMock → spurious AssertionError.
 _patches = {
     "backend.app.setup.logging_config": MagicMock(configure_logging=MagicMock()),
     "backend.app.setup.middleware_config": MagicMock(),
     "backend.app.setup.observability": MagicMock(),
     "backend.app.setup.exception_handlers": MagicMock(),
     "backend.app.setup.router_registration": MagicMock(),
-    "backend.app.routers.root_endpoints": MagicMock(router=MagicMock()),
-    "backend.app.routers.audio": MagicMock(router=MagicMock()),
-    "backend.app.streaming": MagicMock(router=MagicMock()),
-    "backend.app.routers.system_observability": MagicMock(router=MagicMock()),
+    "backend.app.routers.root_endpoints": MagicMock(router=APIRouter()),
+    "backend.app.routers.audio": MagicMock(router=APIRouter()),
+    "backend.app.streaming": MagicMock(router=APIRouter()),
+    "backend.app.routers.system_observability": MagicMock(router=APIRouter()),
     "backend.app.routers.article_composer": MagicMock(limiter=MagicMock()),
     "slowapi": MagicMock(_rate_limit_exceeded_handler=MagicMock()),
     "slowapi.errors": MagicMock(RateLimitExceeded=Exception),

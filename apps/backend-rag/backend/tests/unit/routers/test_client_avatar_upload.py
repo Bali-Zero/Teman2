@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import HTTPException, UploadFile
 
+from backend.app.setup.route_walk import iter_leaf_routes
+
 
 class TestClientUpdateRejectsDataUri:
     def test_data_uri_rejected(self):
@@ -37,7 +39,7 @@ class TestUploadRouteRegistered:
         from backend.app.routers import crm_clients
 
         found = False
-        for r in crm_clients.router.routes:
+        for r in iter_leaf_routes(crm_clients.router):
             if getattr(r, "path", None) == "/api/crm/clients/{client_id}/avatar" and "POST" in (
                 getattr(r, "methods", set()) or set()
             ):

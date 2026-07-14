@@ -93,7 +93,7 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger("wr2_html_apply")
 
 MAX_DRAFTS_PER_RUN = 1
-DEFAULT_RECIPIENTS = ["6282210302328", "628213454726"]  # Antonello +62 822-1030-2328, Damar +62 821-3454-726
+DEFAULT_RECIPIENTS = ["6282230102328", "628213454726"]  # Antonello +62 822-3010-2328, Damar +62 821-3454-726
 TELEGRAM_OWNER_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
 
 

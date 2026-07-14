@@ -223,7 +223,19 @@ async def _render_one(
     montserrat = readiness.get("montserrat", False)
 
     if not montserrat:
-        logger.warning("%s: Montserrat NOT loaded — font may be wrong", html_path.name)
+        # HARD GATE (2026-07-14): this used to be a logger.warning drowned in a
+        # 12MB run log while 6/9 slides of a carousel — and 4/9 of the PUBLISHED
+        # Rp2.8T revenue carousel — shipped painted in the SYSTEM font (the
+        # composer's _fonts.css injection missed self-closing <link/> skeletons).
+        # Green ≠ working (superscar #2): a slide without the brand face is a
+        # render FAILURE, not a nuance.
+        return (
+            False,
+            False,
+            f"{html_path.name}: BRAND FONT NOT LOADED — Montserrat @font-face "
+            f"unavailable (missing _fonts.css link?); slide would paint in the "
+            f"system font",
+        )
 
     if expect_hero:
         # logo.png is loaded via CSS background-image, NOT an <img>, so any

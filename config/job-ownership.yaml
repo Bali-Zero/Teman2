@@ -5,7 +5,7 @@
 # Other fields hand-curated as needed.
 
 schema_version: 1
-generated_at: '2026-05-10T10:30:00+08:00'
+generated_at: "2026-05-10T10:30:00+08:00"
 pro_plist_count: 135
 mini_plist_count: 13
 both_count: 2
@@ -465,7 +465,7 @@ jobs:
     owner: pro
     family: balizero
     cluster: C_migrate_candidate
-    state: active
+    state: inactive
     side_effects: [canva]
     idempotent: false
     resource_class: cron_light
@@ -479,7 +479,7 @@ jobs:
     owner: pro
     family: balizero
     cluster: C_migrate_candidate
-    state: active
+    state: inactive
     side_effects: [canva]
     idempotent: false
     resource_class: cron_light
@@ -493,7 +493,7 @@ jobs:
     owner: pro
     family: balizero
     cluster: A_residence_pro
-    state: active
+    state: inactive
     side_effects: [canva]
     idempotent: false
     resource_class: cron_light
@@ -507,7 +507,7 @@ jobs:
     owner: pro
     family: balizero
     cluster: A_residence_pro
-    state: active
+    state: inactive
     side_effects: [canva]
     idempotent: false
     resource_class: continuous
@@ -515,7 +515,7 @@ jobs:
     candidate_migrate: false
     last_migrated: null
     git_sha: null
-    notes: ""
+    notes: "BY_DESIGN_OFF since HTML cutover (PR #1236); plist removed from repo 2026-07-13 — it crashlooped every 5min (DATABASE_URL not set) because wr2_plist_watchdog reinstalled it blindly"
 
   com.balizero.wr2.connector:
     owner: pro

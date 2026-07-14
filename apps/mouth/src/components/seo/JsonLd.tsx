@@ -22,7 +22,7 @@ export function OrganizationJsonLd() {
       "https://www.linkedin.com/company/balizero",
       "https://www.instagram.com/balizero",
       "https://www.facebook.com/balizero",
-      "https://wa.me/6282210302328",
+      "https://wa.me/6282230102328",
     ],
     contactPoint: {
       "@type": "ContactPoint",

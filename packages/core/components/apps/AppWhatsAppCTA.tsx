@@ -47,7 +47,11 @@ export const AppWhatsAppCTA: FC<AppWhatsAppCTAProps> = ({
   // Observe the stampRef — once it's out of view, pin sticky.
   useEffect(() => {
     if (!stampRef?.current) return;
-    if (typeof window === "undefined" || typeof IntersectionObserver === "undefined") return;
+    if (
+      typeof window === "undefined" ||
+      typeof IntersectionObserver === "undefined"
+    )
+      return;
     const io = new IntersectionObserver(
       ([entry]) => setSticky(!entry.isIntersecting),
       { rootMargin: "-10% 0px 0px 0px", threshold: 0 },
@@ -83,8 +87,10 @@ export const AppWhatsAppCTA: FC<AppWhatsAppCTAProps> = ({
       });
       window.location.href = json.whatsapp_url;
     } catch {
-      setError("We could not open WhatsApp automatically. Opening the basic link.");
-      window.location.href = "https://wa.me/6282210302328";
+      setError(
+        "We could not open WhatsApp automatically. Opening the basic link.",
+      );
+      window.location.href = "https://wa.me/6282230102328";
     } finally {
       setPending(false);
     }
@@ -108,18 +114,26 @@ export const AppWhatsAppCTA: FC<AppWhatsAppCTAProps> = ({
         borderRadius: "12px",
         border: "1px solid var(--color-border-subtle)",
         boxShadow: sticky ? "0 -8px 24px rgba(0, 0, 0, 0.18)" : undefined,
-        transition: "background var(--motion-duration-base, 250ms) var(--motion-curve-editorial), box-shadow var(--motion-duration-base, 250ms) var(--motion-curve-editorial)",
+        transition:
+          "background var(--motion-duration-base, 250ms) var(--motion-curve-editorial), box-shadow var(--motion-duration-base, 250ms) var(--motion-curve-editorial)",
       }}
     >
-      <strong style={{ fontSize: "var(--text-lg, 1.12rem)", color: "var(--text-primary)" }}>
+      <strong
+        style={{
+          fontSize: "var(--text-lg, 1.12rem)",
+          color: "var(--text-primary)",
+        }}
+      >
         {headline}
       </strong>
-      <p style={{
-        margin: 0,
-        color: "var(--color-text-muted)",
-        fontSize: "var(--text-md, 1rem)",
-        lineHeight: 1.5,
-      }}>
+      <p
+        style={{
+          margin: 0,
+          color: "var(--color-text-muted)",
+          fontSize: "var(--text-md, 1rem)",
+          lineHeight: 1.5,
+        }}
+      >
         {description}
       </p>
       <button
@@ -142,7 +156,14 @@ export const AppWhatsAppCTA: FC<AppWhatsAppCTAProps> = ({
         {pending ? "Opening…" : label}
       </button>
       {error ? (
-        <p role="alert" style={{ margin: 0, color: "var(--color-error)", fontSize: "var(--text-sm, 0.88rem)" }}>
+        <p
+          role="alert"
+          style={{
+            margin: 0,
+            color: "var(--color-error)",
+            fontSize: "var(--text-sm, 0.88rem)",
+          }}
+        >
           {error}
         </p>
       ) : null}

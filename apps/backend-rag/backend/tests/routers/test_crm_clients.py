@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 import backend.app.routers.crm_clients as crm_clients_module
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.setup.route_walk import iter_leaf_routes
 
 
 def _async_return(value: object):
@@ -94,7 +95,7 @@ class TestRouterStructure:
     @pytest.mark.unit
     def test_router_prefix_and_routes(self) -> None:
         assert crm_clients_module.router.prefix == "/api/crm/clients"
-        paths = {route.path for route in crm_clients_module.router.routes}
+        paths = {route.path for route in iter_leaf_routes(crm_clients_module.router)}
         assert "/api/crm/clients/" in paths
         assert "/api/crm/clients/{client_id}" in paths
 
@@ -107,7 +108,7 @@ class TestRouterStructure:
 
     @pytest.mark.unit
     def test_ensure_drive_folder_route_registered(self) -> None:
-        paths = {route.path for route in crm_clients_module.router.routes}
+        paths = {route.path for route in iter_leaf_routes(crm_clients_module.router)}
         assert "/api/crm/clients/{client_id}/ensure-drive-folder" in paths
 
 

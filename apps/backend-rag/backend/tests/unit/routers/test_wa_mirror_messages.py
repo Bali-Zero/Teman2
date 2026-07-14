@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.routers.wa_mirror_messages import router
+from backend.app.setup.route_walk import iter_leaf_routes
 
 EXPECTED_MESSAGE_KEYS = {
     "id",
@@ -83,7 +84,7 @@ def message_row(**overrides: object) -> dict[str, object]:
         "client_id": 42,
         "practice_id": 88,
         "direction": "inbound",
-        "team_member_phone": "+6282210302328",
+        "team_member_phone": "+6282230102328",
         "counterpart_phone": "+6281234567890",
         "body": "Client asked for renewal timing",
         "message_text": "legacy duplicate text",
@@ -261,8 +262,8 @@ def test_wa_mirror_router_registered_in_manifest_and_runtime() -> None:
 
     full = FastAPI()
     include_routers(full)
-    assert any(route.path == "/api/wa/messages" for route in full.routes)
+    assert any(route.path == "/api/wa/messages" for route in iter_leaf_routes(full))
 
     light = FastAPI()
     include_light_routers(light)
-    assert any(route.path == "/api/wa/messages" for route in light.routes)
+    assert any(route.path == "/api/wa/messages" for route in iter_leaf_routes(light))

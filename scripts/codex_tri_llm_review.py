@@ -511,6 +511,24 @@ async def review_deepseek(prompt: str, http_client: Any) -> ReviewVerdict:
     if not api_key:
         return parse_verdict("deepseek", "", time.time() - start, error="no_api_key")
 
+    # Smart-spend 2026-07-14: consult the cost breaker before spending and
+    # ledger the call after — the panel already degrades gracefully to 2-way
+    # when this seat drops, so a budget refusal is a soft seat-death, not an
+    # error. Import is lazy + best-effort: a broken guard must never kill the
+    # review panel itself.
+    try:
+        import deepseek_client as _dsc
+
+        _decision = await _dsc.budget_verdict_async()
+        if _decision.verdict is not _dsc.cost_breaker.Verdict.ALLOW:
+            return parse_verdict(
+                "deepseek", "", time.time() - start,
+                error=f"budget_{_decision.verdict.value.lower()}",
+            )
+    except Exception as exc:  # noqa: BLE001 — guard is best-effort here
+        logger.warning("deepseek budget guard unavailable (%s) — proceeding", exc)
+        _dsc = None
+
     try:
         r = await http_client.post(
             "https://api.deepseek.com/chat/completions",
@@ -535,6 +553,12 @@ async def review_deepseek(prompt: str, http_client: Any) -> ReviewVerdict:
             )
         data = r.json()
         content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if _dsc is not None:
+            _dsc.log_cost_event(
+                str(data.get("model") or "deepseek-v4-pro"),
+                data.get("usage") or {},
+                purpose="tri-llm-review",
+            )
         return parse_verdict("deepseek", content, duration)
     except Exception as e:
         return parse_verdict("deepseek", "", time.time() - start, error=str(e))

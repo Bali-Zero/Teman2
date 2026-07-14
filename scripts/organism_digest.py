@@ -41,6 +41,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -53,6 +54,16 @@ MAX_PR_LINES = 5
 MAX_STALE_LINES = 4
 HEARTBEAT_STALE_H = 26.0  # matches proprioception guardian_freshness for the arsenal report
 BUDGET_S = 6
+
+# arsenal_probe's AUTOMATED recurring heartbeat is a promise only on its primary
+# node (docs/runbooks/arsenal-probe.md §How it is armed: "Mini (primary)"). Any
+# other node's `<machine>.arsenal_probe.json` is a one-time on-demand stamp from
+# a manual `--table` run there — its staleness is expected, not a silent outage.
+# Narrowly scoped to this one organ id (not a generic dot-prefix heuristic) to
+# avoid a family #3 under/over-match on unrelated heartbeat naming conventions
+# (ledger PENDING-ARMS.md: "boot-report organ-silence classifier cries wolf").
+_ARSENAL_PROBE_STEM_RE = re.compile(r"^(?P<machine>[a-z][a-z0-9]*)\.arsenal_probe$")
+ARSENAL_PROBE_PRIMARY_NODE = "mini"
 
 # Env-overridable roots so --selftest can fixture a fake world without touching $HOME.
 def _home() -> Path:
@@ -132,6 +143,9 @@ def stale_heartbeats(window_stale_h: float = HEARTBEAT_STALE_H) -> tuple[list[st
     if not hb_dir.is_dir():
         return lines, errs
     for path in sorted(hb_dir.glob("*.json")):
+        m = _ARSENAL_PROBE_STEM_RE.match(path.stem)
+        if m and m.group("machine") != ARSENAL_PROBE_PRIMARY_NODE:
+            continue  # on-demand elsewhere; no recurring promise here, never "silent"
         try:
             age_h = (_now() - path.stat().st_mtime) / 3600
             data = json.loads(path.read_text())
@@ -309,6 +323,24 @@ def _selftest() -> int:
             d = build_digest(24)
             expect("guilt: fresh-but-degraded organ flagged",
                    any("status=degraded" in ln for ln in d["organs"]))
+
+            # ---- innocence: stale arsenal_probe on a NON-primary node is not "silent"
+            # (ledger: "boot-report organ-silence classifier cries wolf" — a one-time
+            # on-demand stamp there, not a broken recurring promise)
+            hb3 = fake_home / ".organism" / "last_seen" / "m5.arsenal_probe.json"
+            hb3.write_text(json.dumps({"status": "ok"}))
+            os.utime(hb3, (old, old))
+            d = build_digest(24)
+            expect("innocence: stale non-primary arsenal_probe not flagged silent",
+                   not any("arsenal_probe" in ln for ln in d["organs"]))
+
+            # ---- guilt: stale arsenal_probe on its PRIMARY node still flags
+            hb4 = fake_home / ".organism" / "last_seen" / "mini.arsenal_probe.json"
+            hb4.write_text(json.dumps({"status": "ok"}))
+            os.utime(hb4, (old, old))
+            d = build_digest(24)
+            expect("guilt: stale primary-node arsenal_probe still flagged",
+                   any("mini.arsenal_probe: silent" in ln for ln in d["organs"]))
 
             # ---- guilt: fresh regulatory delta listed with severity+citation
             (fake_repo / "research" / "regulatory" / "2026-01-01-delta.json").write_text(

@@ -63,16 +63,16 @@ sudah ada di sistem,
 
 Tidak ada konsekuensi PHK atau penalti. Namun ke depan, Bali Zero akan secara
 bertahap meminta semua komunikasi klien dilakukan via nomor resmi Bali Zero
-(+62 822 1030 2328) yang diakses via dashboard, bukan via nomor pribadi.
+(+62 822 3010 2328) yang diakses via dashboard, bukan via nomor pribadi.
 Penolakan saat ini = transisi lebih cepat ke nomor resmi untuk Anda.
 
 ### Tanda tangan
 
-Nama: ______________________________
+Nama: `______________________________`
 
-Tanggal: ___________________________
+Tanggal: `______________________________`
 
-Tanda tangan: ______________________
+Tanda tangan: `______________________________`
 
 ---
 
@@ -137,13 +137,13 @@ existing "Linked Devices" feature of WhatsApp. Goal:
 
 No PHK / no penalty. However, going forward, Bali Zero will gradually
 require all client communications to happen via the official Bali Zero
-number (+62 822 1030 2328) accessed via dashboard, not via personal
+number (+62 822 3010 2328) accessed via dashboard, not via personal
 numbers. Declining today = faster transition to the official number for you.
 
 ### Signature
 
-Name: ______________________________
+Name: `______________________________`
 
-Date: ______________________________
+Date: `______________________________`
 
-Signature: __________________________
+Signature: `______________________________`

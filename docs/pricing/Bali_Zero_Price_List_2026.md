@@ -4,7 +4,7 @@
 **Version:** 2026.1
 **Last updated:** 2026-05-06
 
-> zero@balizero.com · +62 822 1030 2328 · balizero.com · Kerobokan, Bali, Indonesia
+> zero@balizero.com · +62 822 3010 2328 · balizero.com · Kerobokan, Bali, Indonesia
 
 ![Bali Zero](./assets/2026/logo_circle.png)
 
@@ -260,5 +260,5 @@ _Express processing tiers for time-sensitive filings._
 
 - Website: <https://balizero.com>
 - Email: <zero@balizero.com>
-- WhatsApp: [+62 822 1030 2328](https://wa.me/6282210302328)
+- WhatsApp: [+62 822 3010 2328](https://wa.me/6282230102328)
 - Office: Kerobokan, Bali, Indonesia

@@ -20,7 +20,7 @@ describe("HeaderWhatsAppCTA", () => {
     const link = screen.getByRole("link", {
       name: /WhatsApp/i,
     }) as HTMLAnchorElement;
-    expect(link.href).toBe("https://wa.me/6282210302328");
+    expect(link.href).toBe("https://wa.me/6282230102328");
   });
 
   it.each([

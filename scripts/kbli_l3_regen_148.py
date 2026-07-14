@@ -9,26 +9,20 @@ Rules (Zero's mandate: altissima qualità + safety):
   or that contradicts the L4 Bali status. Rejected → left as gap, never written as fact.
 - Batched, background-safe, idempotent (skips already-done), proxy-bypass.
 """
-import json, os, sys, re, time, subprocess
+import json, os, sys, re, time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from deepseek_client import complete, DeepSeekBudgetExceeded, resolve_model  # noqa: E402
 
 WT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCHEMA = f"{WT}/data/kbli_schema_v2/KBLI_2025_SCHEMA_V2_AUTHORITATIVE.json"
 GAPS = f"{WT}/data/kbli_schema_v2/_l3_contradictions_148.json"
 OUT = f"{WT}/data/kbli_schema_v2/_l3_regen_148.json"
 
-URL = "https://api.deepseek.com/v1/chat/completions"
-MODEL = "deepseek-v4-pro"
-
-def key():
-    k = os.environ.get("DEEPSEEK_API_KEY")
-    if k: return k
-    for line in open(os.path.expanduser("~/.openclaw/workspace/.env.master")):
-        line = line.strip()
-        if line.startswith(("export DEEPSEEK_API_KEY=", "DEEPSEEK_API_KEY=")):
-            return line.split("=", 1)[1].strip().strip('"').strip("'")
-    sys.exit("no DEEPSEEK key")
-KEY = key()
+# Smart-spend 2026-07-14: flash by default; the fact-gate below already rejects
+# bad outputs, so pro quality is an explicit opt-in: DEEPSEEK_MODEL=deepseek-v4-pro.
+MODEL = resolve_model()
 
 SYS = """You are a senior Indonesian business-setup advisor writing for FOREIGN entrepreneurs in Bali.
 You are given the OFFICIAL facts about ONE KBLI 2025 code (title, official description, national PMA
@@ -60,19 +54,17 @@ def call(rec):
         "bali_status": l4["status"],
         "bali_reason": l4.get("reason", ""),
     }
-    payload = {"model": MODEL, "reasoning_effort": "low", "stream": False,
-               "messages": [{"role": "system", "content": SYS},
-                            {"role": "user", "content": json.dumps(facts, ensure_ascii=False)}]}
     for attempt in range(3):
-        r = subprocess.run(["curl", "-sS", "-m", "120", URL, "-H", "Content-Type: application/json",
-                            "-H", f"Authorization: Bearer {KEY}", "-d", json.dumps(payload)],
-                           capture_output=True, text=True)
         try:
-            content = json.loads(r.stdout)["choices"][0]["message"]["content"]
-            content = re.sub(r"^```json|```$", "", content.strip()).strip()
+            result = complete(json.dumps(facts, ensure_ascii=False), system=SYS,
+                              model=MODEL, reasoning_effort="low", timeout=120,
+                              purpose="kbli-l3-regen148")
+            content = re.sub(r"^```json|```$", "", result.text.strip()).strip()
             obj = json.loads(content)
             verdict = fact_gate(obj, kode, l4["status"])
             return kode, obj, verdict
+        except DeepSeekBudgetExceeded:
+            raise  # budget breaker fired — fail the whole run loudly, never grind on
         except Exception:
             if attempt == 2:
                 return kode, None, {"ok": False, "reason": "parse/api fail"}

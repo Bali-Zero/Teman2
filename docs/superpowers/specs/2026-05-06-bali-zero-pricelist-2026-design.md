@@ -66,7 +66,7 @@ Shape evolves the existing 2025 schema with three additions: top-level `version`
     "currency": "IDR",
     "contact": {
       "email": "zero@balizero.com",
-      "whatsapp": "+62 822 1030 2328",
+      "whatsapp": "+62 822 3010 2328",
       "location": "Kerobokan, Bali, Indonesia",
       "website": "balizero.com"
     },
@@ -267,7 +267,7 @@ Embedded next to each service title (12×12mm in PDF, accessible-alt in HTML).
 - **Running header** from page 2: "Bali Zero · Price List 2026" left + section name right, copper hairline beneath
 - **ToC with leader dots** menu-degustazione style
 - **Color-coded edge tabs** on right margin per macro-section (printed solid bars visible at book edge)
-- **Closing page**: dark brand surface, contacts large, generated **WhatsApp QR code** linking `wa.me/6282210302328` (libqrencode SVG, generated inline in script)
+- **Closing page**: dark brand surface, contacts large, generated **WhatsApp QR code** linking `wa.me/6282230102328` (libqrencode SVG, generated inline in script)
 
 ---
 
@@ -339,7 +339,7 @@ Embedded next to each service title (12×12mm in PDF, accessible-alt in HTML).
 ## 11. Distribution & handover
 
 - **Internal Drive:** Zero uploads HTML + PDF to Bali Zero shared Drive (manual step, out of scope for this spec).
-- **Client send:** PDF attached via WhatsApp `+62 822 1030 2328` or email `zero@balizero.com`.
+- **Client send:** PDF attached via WhatsApp `+62 822 3010 2328` or email `zero@balizero.com`.
 - **Repo:** Markdown version is the auditable record at `docs/pricing/Bali_Zero_Price_List_2026.md`.
 - **Backend RAG migration:** the `PricingTool` continues to read `bali_zero_official_prices_2025.json` until Zero explicitly asks to switch. The 2026 JSON sits next to it ready to be swapped in a future single-line config change.
 
@@ -360,5 +360,5 @@ Embedded next to each service title (12×12mm in PDF, accessible-alt in HTML).
 
 ## 13. Open items (none blocking)
 
-- WhatsApp number `+62 822 1030 2328` was given by user on 2026-05-06; the previous brand book had `+62 813 3805 1876`. **User decision is the final word.** Generator uses the new number. ⚠️ Please double-check this number before render — different formatting interpretations are possible (10 digits after +62 ID code).
+- WhatsApp number `+62 822 3010 2328` was given by user on 2026-05-06; the previous brand book had `+62 813 3805 1876`. **User decision is the final word.** Generator uses the new number. ⚠️ Please double-check this number before render — different formatting interpretations are possible (10 digits after +62 ID code).
 - If Zero wants a multi-language version (bahasa Indonesia for team), it is a future follow-up — generator is JSON-driven, easy to add a `description_id` field per service.

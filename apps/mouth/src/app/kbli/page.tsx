@@ -5,6 +5,7 @@ import { getSections } from "@/lib/kbli-data";
 import { KBLISearch } from "@/components/kbli/KBLISearch";
 import { KBLISectorGrid } from "@/components/kbli/KBLISectorGrid";
 import { ZantaraChat } from "@/components/kbli/ZantaraChat";
+import { KBLIPersonaDoors } from "@/components/kbli/KBLIPersonaDoors";
 import { FunnelFrame } from "@balizero/core";
 
 export const metadata: Metadata = {
@@ -177,6 +178,8 @@ export default async function KBLIHomePage({
             </div>
           </div>
         </div>
+
+        <KBLIPersonaDoors />
 
         {/* ── TRUST BAR ── */}
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 -mt-4">

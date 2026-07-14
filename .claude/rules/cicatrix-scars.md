@@ -504,3 +504,83 @@ _Discovered: 2026-07-13 07:20 WITA · Severity: RESOLVED · Status: Resolved (PR
 **GOTCHA**: (a) A library default of `Path.home()/...` makes every unisolated test a production writer — grep for `Path.home()` defaults when a phantom artifact appears with fixture-smelling fields (`https://drive/x` was the tell: it existed ONLY in test files). (b) The daily 20:39Z timestamps pointed to a Pro crontab coverage job, not a WR2 cron — junk cadence identifies the RUNNER, not the writer. (c) The recon lane proposed deleting `wr2_worktree_gc.py` as dead; the live probe showed its LaunchAgent LOADED on Pro — the final grep is never delegable (W65). (d) The /scar audit-log step (`~/.claude/state/`) is host-boundary-blocked for agents by design — the scar itself rides a PR from a worktree.
 
 **Reference**: PR #2360 (merged 2026-07-13) · scripts/wr2_queue_hygiene.py · memory discovery_wr2_micro_carousels_test_leak_w96_2026_07_13
+
+## W97 — display-cap `[:40]` su liste di report lette come liste COMPLETE (3 strumenti nello stesso giorno) + `push | tail` che maschera l'exit del hook — 2026-07-13
+
+**TRAUMA:** campagna KBLI editorial regen. Tre strumenti indipendenti stampavano liste troncate
+con slicing "per leggibilità": `refused[:40]` nell'applier, la finestra del grader, `blocking[:40]`
+nel dataset-lint. Quattro audit consecutivi hanno "trovato esattamente 40 item" con membership che
+CAMBIAVA tra un run e l'altro — la lista vera era 105. Un intero round di retry (R1) ha rigenerato
+SOLO i primi 40 visualizzati, convinto che fossero tutti. Stesso genere, stessa giornata: un
+`git push … | tail` in background ha riportato il task "completed (exit 0)" mentre il push era
+stato BOCCIATO dal hook pre-push — la pipe maschera l'exit code, e il verde memorizzato mente
+(famiglia #2). Scoperto solo ri-leggendo l'OUTPUT: `error: push di alcuni riferimenti…`.
+
+**ANTIBODY:** (1) MAI slicing (`[:N]`, `| head`, `| tail`) su una lista che un passo successivo o
+un audit consumerà come completa — stampare tutto, o dichiarare `N di M (troncato)` con M esplicito.
+(2) Su comandi in background il cui exit conta (push/deploy/migrazioni): mai chiudere la pipeline
+con un filtro — catturare l'RC esplicito (`cmd > log 2>&1; echo RC=$?`) e leggere il log, mai
+fidarsi dello status "completed" del task. (3) Euristica di sospetto: un audit che "trova
+esattamente N" con N tondo che ricorre tra run diversi è un cap, non una coincidenza — grep lo
+slicing nello strumento prima di fidarsi del numero.
+
+**GOTCHA:** il cap non è un bug di logica ma di VERITÀ: nasce innocuo in fase di sviluppo
+("stampiamone solo 40 sennò intasa") e diventa letale appena un consumatore a valle — umano o
+LLM — tratta il visualizzato come l'insieme. La membership che cambia tra run (i "40" non sono
+mai gli stessi) è il segnale-precoce distintivo.
+
+**Reference:** sessione KBLIREGEN 2026-07-13 (PR #2359) · memoria `scar_display_cap_truncated_report_2026_07_13` · famiglia #2 (il report mente come il verde).
+
+## W98 — Dependabot lock-regen bypassa il `!=` anti-malware di requirements.txt: fastapi 0.136.3 (MAL-2026-4750) arriva IN PROD con scanner verdi (famiglia #2 — Esiste ≠ Armato; il vincolo esiste nel manifest ma nessuno lo arma all'install) — 2026-07-13
+
+**TRAUMA:** PR #879 (storico) aveva escluso deliberatamente `fastapi!=0.136.3` da requirements.txt —
+release pubblicata da un attaccante che inietta la dipendenza malevola `fastar` (MAL-2026-4750).
+Il gruppo dependabot #2349 (93 update) ha RIGENERATO i lock scegliendo proprio 0.136.3 (la più alta
+sotto l'ignore `>=0.137` allora attivo): il lock-updater pip di dependabot **non legge i specifier del
+manifest**. La CI installa `-r requirements.lock.txt` senza mai ri-verificare requirements.txt; Snyk
+Docker e Socket Security restano VERDI; auto-merge a verde; fly-deploy al merge → **la wheel pubblicata
+dall'attaccante è andata in produzione** ed è rimasta in esecuzione ~2h. Salvati da un dettaglio non
+nostro: `fastar>=0.9.0; extra == "standard"` è extra-gated e noi installiamo fastapi liscio — payload
+MAI installato (provato live: `import fastar` → ModuleNotFoundError; pip list pulito).
+
+**ANTIBODY:** `backend/tests/test_lock_honors_requirements.py` — per ogni coppia manifest↔lock
+(requirements/-prod), ogni pin `name==ver` del lock deve soddisfare lo specifier del manifest
+(packaging.Requirement.contains, marker-aware); guilt+innocence inclusi (0.136.3 bocciata, 0.139.0
+passa, e il test fallisce se qualcuno DROPPA l'esclusione `!=0.136.3` dal manifest). Gira nel job
+Backend Tests → una rigenerazione lock che viola un vincolo deliberato ora è CI-rossa.
+
+**GOTCHA:** (1) il `!=` nel manifest è protezione SOLO alla compilazione del lock — all'install nessuno
+lo guarda: ogni difesa messa "nel manifest" va ri-armata anche sul percorso che installa il lock.
+(2) Gli scanner supply-chain (Snyk/Socket) non hanno flaggato una versione con advisory MAL nota —
+verde ≠ pulito, il gate deve essere NOSTRO. (3) La cura di un incidente della stessa famiglia (l'ignore
+`>=0.137` per il route-tree) ha CREATO il corridoio verso 0.136.3: ogni hold ristretta cambia la scelta
+del resolver — dopo ogni nuova hold, chiedersi "quale versione prenderà ADESSO?".
+
+## W99 — check≠action nel font-inject del renderer WR2: 6/9 slide dipinte in FONT DI SISTEMA (e 4/9 del carosello revenue GIÀ PUBBLICATO su IG) con render verde e critic PASS — 2026-07-14
+
+**TRAUMA.** Zero guarda il carosello bike e chiede "perché il font cambia a volte tra slide?". Probe
+empirico (canvas measureText su ogni zona testo, headless chromium): 6 slide su 9 dipinte in
+SYSTEM-FALLBACK (Helvetica/SF), non Montserrat. Stessa malattia su 4/9 slide del carosello revenue
+Rp2.8T GIÀ PUBBLICATO su Instagram l'11/7. Root cause a DUE strati: (1) famiglia #3 check≠action —
+`composer._normalize_skeleton` verificava `'href="_base.css"' in html` (loose) ma la replace matchava
+`href="_base.css">` (strict): gli skeleton con `<link ... />` self-closing (editorial-text,
+stat-card-hero, numbered-forces-list, photo-headline-yellow-sub, evidence-carved) passavano il check,
+mancavano la replace → `_fonts.css` MAI iniettato → zero @font-face → Chromium dipinge il sistema.
+(2) famiglia #2 esiste≠armato — il renderer CALCOLAVA già `montserrat=false` via `document.fonts.check`
+e lo declassava a `logger.warning` in un run-log da 12MB: il guardiano esisteva, vedeva, e sussurrava.
+Né il critic (vision, giudica contenuto/contrasto, non identità del font) né i gate dimensioni/hero
+potevano prenderlo.
+
+**ANTIBODY.** (1) Iniezione ancorata a `<head[^>]*>` via `re.subn` con `n==0 → ValueError` (fail-visible,
+l'ordine del link è irrilevante per @font-face). (2) `montserrat=false` promosso a HARD FAILURE del
+render (`BRAND FONT NOT LOADED`), non warning. (3) Test guilt+innocence
+(`tests/test_fonts_injection.py`, 8 casi) incluso sweep REALE di tutta la layout library ("ogni skeleton
+estratto → esattamente 1 link \_fonts.css", con blind-sweep guard W84).
+
+**GOTCHA.** (1) Un guardiano che degrada a warning ciò che sa essere fatale È la famiglia #2 in
+miniatura: se un check ha senso solo bloccando, deve bloccare. (2) Il critic vision NON è un font-gate:
+giudica leggibilità e brand-look ma Helvetica bold uppercase su antracite "somiglia" abbastanza da
+passare — l'identità del font si prova con `document.fonts.check`/measureText, mai a occhio. (3) La
+coppia check/replace con pattern DIVERSI è la firma testuale della famiglia #3 fuori dalle guardie
+regex: vale per ogni `if X in s: s.replace(Y,...)` dove X≠Y. (4) Il carosello revenue pubblicato resta
+col font sbagliato su IG — decisione republish = operator[business].

@@ -501,6 +501,39 @@ def call_deepseek(target_text: str, target_path: str, brand_ctx: str,
     if not api_key:
         raise RuntimeError("DEEPSEEK_API_KEY missing")
 
+    # Smart-spend 2026-07-14: consult the cost breaker before spending, ledger
+    # after. Best-effort import (the HOME-fork copy on Pro lives at
+    # ~/scripts/eventbus/ with no repo scripts/ two levels up, so we also try
+    # NUZANTARA_REPO_ROOT and the known checkout locations) — a missing guard
+    # logs a warning and proceeds; a firing guard raises, which is the
+    # runner's normal fail-visible path.
+    _dsc = None
+    try:
+        import sys as _sys
+        _env_root = os.environ.get("NUZANTARA_REPO_ROOT")
+        _candidates = [
+            Path(__file__).resolve().parents[2] / "scripts",
+            *([Path(_env_root) / "scripts"] if _env_root else []),
+            Path.home() / "Desktop" / "nuzantara-deploy" / "scripts",
+            Path.home() / "Desktop" / "nuzantara" / "scripts",
+        ]
+        _scripts_dir = next(
+            (str(c) for c in _candidates if (c / "deepseek_client.py").is_file()),
+            str(_candidates[0]),
+        )
+        if _scripts_dir not in _sys.path:
+            _sys.path.insert(0, _scripts_dir)
+        import deepseek_client as _dsc  # noqa: PLC0415
+
+        _decision = _dsc.budget_verdict()
+        if _decision.verdict is not _dsc.cost_breaker.Verdict.ALLOW:
+            raise _dsc.DeepSeekBudgetExceeded(_decision)
+    except Exception as exc:  # noqa: BLE001
+        if _dsc is not None and isinstance(exc, _dsc.DeepSeekBudgetExceeded):
+            raise
+        log.warning("deepseek budget guard unavailable (%s) — proceeding", exc)
+        _dsc = None
+
     system = SYSTEM_PROMPT_BASE
     if brand_ctx:
         system += f"\n\n# Brand context\n\n{brand_ctx}"
@@ -572,6 +605,12 @@ def call_deepseek(target_text: str, target_path: str, brand_ctx: str,
     log.info("DeepSeek responded in %.1fs (model=%s, finish=%s)",
              elapsed, parsed.get("model", "?"),
              parsed.get("choices", [{}])[0].get("finish_reason", "?"))
+    if _dsc is not None:
+        _dsc.log_cost_event(
+            str(parsed.get("model") or DEEPSEEK_MODEL),
+            parsed.get("usage") or {},
+            purpose="devils-advocate",
+        )
     return parsed
 
 
