@@ -25,10 +25,17 @@ class KGIncrementalBuilder:
     - Robust error handling with retry
     """
 
-    # High priority collections to process
+    # High priority collections to process.
+    # Verified against the LIVE Qdrant collection list 2026-07-14 (necropsy
+    # §10f arming): the old entries `legal_unified_hybrid` and
+    # `kbli_2025_final` no longer exist — with them the armed loop would have
+    # failed 2/5 collections and drained a ~12-chunk backlog while the real
+    # one (~26k) sat in the renamed collections below.
     HIGH_PRIORITY_COLLECTIONS = [
-        "legal_unified_hybrid",
-        "kbli_2025_final",
+        "legal_unified_2026",  # 11,385 unprocessed at arming time
+        "kbli_2025_final_oss",  # 10,825
+        "kbli_2025_final_hybrid",  # 1,559
+        "immigration_circulars",  # 1,975
         "tax_genius_hybrid",
         "visa_oracle",
         "balizero_news",  # Intel articles, news

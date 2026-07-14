@@ -55,7 +55,19 @@ class TestInit:
     def test_class_constants(self) -> None:
         assert KGIncrementalBuilder.MAX_CHUNKS_PER_RUN == 1500
         assert KGIncrementalBuilder.MAX_RPM == 15
-        assert len(KGIncrementalBuilder.HIGH_PRIORITY_COLLECTIONS) == 5
+        # Names verified against the live Qdrant list at §10f arming time
+        # (2026-07-14): the retired `legal_unified_hybrid`/`kbli_2025_final`
+        # entries no longer exist as collections — a stale name here means
+        # the daily loop drains the wrong backlog.
+        assert KGIncrementalBuilder.HIGH_PRIORITY_COLLECTIONS == [
+            "legal_unified_2026",
+            "kbli_2025_final_oss",
+            "kbli_2025_final_hybrid",
+            "immigration_circulars",
+            "tax_genius_hybrid",
+            "visa_oracle",
+            "balizero_news",
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -198,8 +210,8 @@ class TestRunIncrementalExtraction:
                         with patch("asyncio.sleep", new_callable=AsyncMock):
                             result = await builder.run_incremental_extraction()
 
-            assert result["collections_processed"] == 5
-            assert result["total_chunks"] == 50  # 10 per collection x 5
+            assert result["collections_processed"] == 7
+            assert result["total_chunks"] == 70  # 10 per collection x 7
 
     @pytest.mark.asyncio
     async def test_custom_collections(self, builder: KGIncrementalBuilder) -> None:
