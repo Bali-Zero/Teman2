@@ -9,10 +9,29 @@
 # Runs every Sunday 20:00 WITA (12:00 UTC) via com.nuzantara.curiosity-batch.weekly.
 set -euo pipefail
 
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-case "$REPO" in */.worktrees/*) REPO="${REPO%%/.worktrees/*}" ;; esac
+# W84 trampoline sweep (2026-07-14): this wrapper is DEPLOYED to ~/scripts/
+# (declared pair in infra/home-fork/declared-pairs.json) — dirname-based
+# REPO resolution (BASH_SOURCE[0]) is wrong there, since it would resolve
+# REPO to $HOME instead of the repo checkout. REPO_ROOT lets an operator
+# override for testing; the deploy-aware default assumes the canonical
+# checkout location.
+REPO="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+
+# sshd (W84 trampoline) and bare launchd contexts carry a minimal PATH.
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 LOG="$HOME/logs/curiosity-batch.log"
+
+# W84 trampoline (2026-07-14): fail fast / re-exec via ssh-localhost if this
+# launchd context has lost the TCC grant to ~/Desktop, BEFORE SCRIPT/VENV
+# below (both REPO-relative, i.e. under ~/Desktop) are ever touched.
+TRAMPOLINE_LIB="$HOME/scripts/lib/trampoline.sh"
+[ -f "$TRAMPOLINE_LIB" ] || TRAMPOLINE_LIB="$(dirname "$0")/lib/trampoline.sh"
+if [ -f "$TRAMPOLINE_LIB" ]; then
+    source "$TRAMPOLINE_LIB"
+    w84_trampoline_or_die "$LOG"
+fi
+
 SCRIPT="$REPO/scripts/cron-agent-python/curiosity_batch.py"
 VENV="$REPO/apps/backend-rag/.venv"
 SECRETS="$HOME/.nuzantara-secrets.env"
