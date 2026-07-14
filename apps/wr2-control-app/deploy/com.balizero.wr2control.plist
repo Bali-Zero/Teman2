@@ -7,6 +7,8 @@
        grant for ~/Desktop and the worker dies "green"). -->
   <key>ProgramArguments</key>
   <array>
+    <string>/bin/bash</string>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/wr2-control-app/deploy/run-wr2control.sh</string>
     <string>/Users/nuzantara/Applications/WR2 Control.app/Contents/MacOS/WR2Control</string>
     <string>--ambient</string>
   </array>

@@ -97,6 +97,16 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         "__tests__/** tree: test fixtures",
     ),
     (
+        # Swift Package Manager test convention: capital-T `Tests/` directory,
+        # `.swift` extension — neither matches the lowercase `tests?/` rule
+        # above nor its extension list. First Swift code vendored into the
+        # repo (apps/wr2-control-app, audit §6/D2, 2026-07-14) surfaced the
+        # gap: fixture-shaped strings (e.g. a synthetic carousel path with a
+        # topic-slug suffix) read as high-entropy to the scanner.
+        re.compile(r"(^|/)Tests/.*\.swift$"),
+        "Swift Tests/** tree: test fixtures, not production secrets",
+    ),
+    (
         # pytest/unittest convention: test_*.py / *_test.py files outside a
         # tests/ dir (e.g. agent-library/scar_replay/test_*.py,
         # scripts/test_*.py). Fake credentials in these are fixtures.

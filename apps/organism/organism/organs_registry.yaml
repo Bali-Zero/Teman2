@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 286a6239a356afdf4b8535e4fab84bf819dfa8f5d43e349ea3ab496e9f6abc1d
+checksum: e30cd1f296ece6f5055be9642b2a1960a14abde65cd2bd15589bc7593fadb9e5
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1873,5 +1873,74 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/mini.fleet_watch.json
+    timestamp_field: ts
+    status_field: status
+- id: m5.wr2_control_app
+  runtime: air_launchd
+  type: daemon
+  expected_hb_seconds: 0
+  owner_module: apps/wr2-control-app/deploy/run-wr2control.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.wr2control
+  severity_on_silence: info
+  notes: 'WR2 Control macOS ambient GUI app (RunAtLoad + KeepAlive-on-crash, NOT a
+    cron). Vendored into the repo 2026-07-14 (audit §6/D2) from a pre-genome Desktop
+    copy — the app itself has no built-in heartbeat/kill-switch, so a thin tracked
+    wrapper (run-wr2control.sh) proves launch-attempt liveness and honors WR2CONTROL_ENABLED
+    without touching the Swift source. expected_hb_seconds=0: no periodic heartbeat
+    exists yet (G2 is launch-time only), same pattern as infra.redis/infra.postgres.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/wr2_control_app.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.wr2_control_app
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 0
+  owner_module: apps/wr2-control-app/deploy/run-wr2control.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2control
+  severity_on_silence: info
+  notes: 'WR2 Control macOS ambient GUI app (RunAtLoad + KeepAlive-on-crash, NOT a
+    cron). Vendored into the repo 2026-07-14 (audit §6/D2) from a pre-genome Desktop
+    copy — the app itself has no built-in heartbeat/kill-switch, so a thin tracked
+    wrapper (run-wr2control.sh) proves launch-attempt liveness and honors WR2CONTROL_ENABLED
+    without touching the Swift source. expected_hb_seconds=0: no periodic heartbeat
+    exists yet (G2 is launch-time only), same pattern as infra.redis/infra.postgres.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/wr2_control_app.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.wr2_control_app
+  runtime: mini_launchd
+  type: daemon
+  expected_hb_seconds: 0
+  owner_module: apps/wr2-control-app/deploy/run-wr2control.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.balizero.wr2control
+  severity_on_silence: info
+  notes: 'WR2 Control macOS ambient GUI app (RunAtLoad + KeepAlive-on-crash, NOT a
+    cron). Mini has no local war-room data — env points at the synced copy from Pro.
+    Vendored into the repo 2026-07-14 (audit §6/D2) from a pre-genome Desktop copy
+    — the app itself has no built-in heartbeat/kill-switch, so a thin tracked wrapper
+    (run-wr2control.sh) proves launch-attempt liveness and honors WR2CONTROL_ENABLED
+    without touching the Swift source. expected_hb_seconds=0: no periodic heartbeat
+    exists yet (G2 is launch-time only), same pattern as infra.redis/infra.postgres.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/wr2_control_app.json
     timestamp_field: ts
     status_field: status
