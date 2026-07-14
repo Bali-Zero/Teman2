@@ -138,6 +138,35 @@ def test_innocence_hardened_llm_wrapper_passes(tmp_path, monkeypatch):
     assert report["exit"] == 0, report
 
 
+def test_innocence_app_bundle_info_plist_is_not_scanned_as_organ(tmp_path, monkeypatch):
+    """A macOS app-bundle Info.plist (CFBundleIdentifier/CFBundleExecutable/...)
+    can live under a scan root (e.g. apps/<app>/Info.plist) but structurally can
+    never carry ProgramArguments/Program — the one launchd.plist(5)-mandatory
+    directive this gate checks. It must never be flagged as a "new organ without
+    genes", and must never be silently grandfathered (the ratchet forbids new
+    grandfather entries) — it must be recognized as not-an-organ and skipped."""
+    repo = make_repo(tmp_path)
+    bundle_dir = repo / "apps/some-app"
+    bundle_dir.mkdir(parents=True)
+    (bundle_dir / "Info.plist").write_text(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+        "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
+        "<plist version=\"1.0\"><dict>\n"
+        "  <key>CFBundleIdentifier</key><string>com.test.someapp</string>\n"
+        "  <key>CFBundleExecutable</key><string>SomeApp</string>\n"
+        "</dict></plist>\n",
+        encoding="utf-8",
+    )
+    add_organ(repo, "com.test.good", "good.sh", GOOD_WRAPPER)  # keep scan non-blind
+    report = run_gate(repo, monkeypatch)
+    assert report["exit"] == 0, report
+    assert not any("Info.plist" in f for f in report["failures"])
+    assert not any("Info.plist" in m for m in report.get("malformed", []))
+    bundle_organ = next(o for o in report["organs"] if o["path"].endswith("Info.plist"))
+    assert bundle_organ.get("not_an_organ") is True, bundle_organ
+
+
 # ------------------------------------------------------------------- guilt
 def test_guilt_new_organ_without_genes_fails(tmp_path, monkeypatch):
     repo = make_repo(tmp_path)
@@ -166,6 +195,29 @@ def test_guilt_naked_llm_spawn_fails(tmp_path, monkeypatch):
     organ = next(o for o in report["organs"] if o["label"] == "com.test.llm2")
     assert "G6_spawn_hardened" in organ["missing"]
     assert "G10_single_instance" in organ["missing"]
+    assert report["exit"] == 1
+
+
+def test_guilt_plist_with_program_arguments_is_still_an_organ(tmp_path, monkeypatch):
+    """The not-an-organ classifier only skips plists lacking BOTH ProgramArguments
+    and Program — it must never over-match into skipping a genuine (if oddly
+    shaped, e.g. no Label) launchd job description."""
+    repo = make_repo(tmp_path)
+    plist = repo / "infra/launchagents/com.test.nolabel.plist"
+    plist.write_text(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+        "\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n"
+        "<plist version=\"1.0\"><dict>\n"
+        "  <key>ProgramArguments</key>\n"
+        "  <array><string>/bin/bash</string><string>/tmp/nolabel.sh</string></array>\n"
+        "</dict></plist>\n",
+        encoding="utf-8",
+    )
+    report = run_gate(repo, monkeypatch)
+    organ = next(o for o in report["organs"] if o["path"].endswith("com.test.nolabel.plist"))
+    assert not organ.get("not_an_organ")
+    assert "G1_registry" in organ["missing"]
     assert report["exit"] == 1
 
 

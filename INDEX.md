@@ -99,7 +99,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### Apps (tutte, enumerate da disco)
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 31 · **Packages:** 6
+**Apps:** 32 · **Packages:** 6
 
 | App | Ruolo |
 | --- | ----- |
@@ -133,6 +133,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | `wa-meta-inbox` | Desktop-local UI for the **BALI ZERO WhatsApp Business (Meta API)** number |
 | `wa-mirror` | **Status**: capture bridge scaffold + read-only CRM API v1 (2026-05-17) |
 | `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |
+| `wr2-control-app` | A native **macOS 27 (Tahoe) SwiftUI** app to launch and monitor the Bali Zero **WR2 carousel |
 | `zantara-media` | Mata Garuda Layer 4.5 — Asset indexer + multi-channel curator. |
 <!-- DOCSYNC:LIVING_ORGANS_END -->
 

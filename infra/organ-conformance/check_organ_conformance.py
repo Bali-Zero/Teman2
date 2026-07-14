@@ -127,6 +127,18 @@ def analyze_plist(
         result["malformed"] = f"{type(exc).__name__}: {exc}"
         return result
 
+    # Not every tracked *.plist is a launchd organ: a macOS app-bundle Info.plist
+    # (CFBundleIdentifier/CFBundleExecutable/...) lives under the same scan roots
+    # (e.g. apps/wr2-control-app/Info.plist) but structurally can never carry
+    # ProgramArguments/Program — those are the one launchd.plist(5)-mandatory keys
+    # this gate exists to check. Scanning it as a "new organ" would demand genes
+    # (heartbeat, kill-switch) a bundle-metadata file can never have, and the
+    # baseline ratchet forbids grandfathering a brand-new path — so this is a
+    # scope fix, not a grandfather. Guilt/innocence pinned in test_organ_conformance.py.
+    if "ProgramArguments" not in payload and "Program" not in payload:
+        result["not_an_organ"] = True
+        return result
+
     label = str(payload.get("Label", ""))
     result["label"] = label
 
@@ -234,6 +246,8 @@ def run(repo_root: Path) -> dict[str, Any]:
         organs.append(organ)
         if "malformed" in organ:
             malformed.append(f"{organ['path']}: {organ['malformed']}")
+            continue
+        if organ.get("not_an_organ"):
             continue
         missing = set(organ["missing"])
         if not missing:
