@@ -35,7 +35,7 @@ TRAMPOLINE_LIB="$HOME/scripts/lib/trampoline.sh"
 [ -f "$TRAMPOLINE_LIB" ] || TRAMPOLINE_LIB="$(dirname "$0")/lib/trampoline.sh"
 if [ -f "$TRAMPOLINE_LIB" ]; then
     source "$TRAMPOLINE_LIB"
-    w84_trampoline_or_die "$LOG"
+    w84_trampoline_or_die "$LOG" "$0"
 fi
 
 SCRIPT="$REPO/scripts/cron-agent-python/curiosity_batch.py"

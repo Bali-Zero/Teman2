@@ -54,13 +54,18 @@
 # USAGE (zsh AND bash — source, don't exec):
 #   TRAMPOLINE_LIB="$HOME/scripts/lib/trampoline.sh"
 #   [ -f "$TRAMPOLINE_LIB" ] || TRAMPOLINE_LIB="$(dirname "$0")/lib/trampoline.sh"
-#   [ -f "$TRAMPOLINE_LIB" ] && . "$TRAMPOLINE_LIB" && w84_trampoline_or_die "$LOG"
+#   [ -f "$TRAMPOLINE_LIB" ] && . "$TRAMPOLINE_LIB" && w84_trampoline_or_die "$LOG" "$0"
 #
-# w84_trampoline_or_die LOGFILE [WRAPPER_PATH]
+# w84_trampoline_or_die LOGFILE WRAPPER_PATH
 #   LOGFILE       — path to append the FATAL/trampoline breadcrumb to.
-#   WRAPPER_PATH  — defaults to $0 (the sourcing script's own invocation
-#                   path); pass explicitly if $0 would resolve wrong
-#                   (e.g. sourced from an unusual context).
+#   WRAPPER_PATH  — the calling script's own path: pass "$0" from
+#                   TOP-LEVEL script code. zsh callers MUST NOT rely on
+#                   the lib-side fallback: inside a zsh function $0 is the
+#                   FUNCTION's name, not the script path, so the fallback
+#                   re-execs a command literally named
+#                   "w84_trampoline_or_die" (exit 127 — proven live
+#                   2026-07-14 on both matagaruda kickstarts). bash keeps
+#                   script-$0 inside functions, but pass it anyway.
 #   Returns 0 if ~/Desktop is readable in THIS context (caller continues).
 #   Never returns otherwise: either re-execs via ssh (exec replaces the
 #   process) or exits 78 (config error, per launchd_liveness_detector
@@ -71,6 +76,15 @@ w84_trampoline_or_die() {
 
     if head -c 1 "$HOME/Desktop/nuzantara/CLAUDE.md" >/dev/null 2>&1; then
         return 0
+    fi
+
+    # Guard against the zsh $0-in-function trap: if the resolved wrapper
+    # path is not a real file, the re-exec can only fail remotely with a
+    # cryptic 127 — die visibly here instead (family #3: an antidote must
+    # survive its own invocation).
+    if [ ! -f "$_w84_wrapper" ]; then
+        echo "[$(date)] FATAL: W84 trampoline got an unresolvable wrapper path '$_w84_wrapper' (zsh \$0-in-function trap — caller must pass \"\$0\" from top-level). Aborting." >> "$_w84_log"
+        exit 78
     fi
 
     if [ -z "${W84_TRAMPOLINED:-}" ] && [ -f "$HOME/.ssh/id_local_trampoline" ]; then
