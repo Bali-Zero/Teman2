@@ -23,7 +23,12 @@ from dataclasses import dataclass
 logger = logging.getLogger("zantara.intake.inference_runtime")
 
 DEFAULT_OLLAMA_MAX_INFLIGHT = 1
-DEFAULT_OLLAMA_KEEP_ALIVE = "15m"
+# Intake alternates qwen2.5vl OCR with qwen3.5 text extraction. Pro currently
+# admits one loaded Ollama model at a time; a long residency hint therefore
+# makes the next model wait behind an idle predecessor until that hint expires.
+# A short grace keeps adjacent same-model page calls warm without converting a
+# model switch into repeated HTTP timeouts.
+DEFAULT_OLLAMA_KEEP_ALIVE = "5s"
 _MAX_CONFIGURED_INFLIGHT = 8
 
 

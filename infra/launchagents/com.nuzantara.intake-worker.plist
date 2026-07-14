@@ -31,7 +31,7 @@
 		<key>INTAKE_LOG_LEVEL</key>
 		<string>INFO</string>
 		<key>INTAKE_OLLAMA_KEEP_ALIVE</key>
-		<string>15m</string>
+		<string>5s</string>
 		<key>INTAKE_OLLAMA_MAX_INFLIGHT</key>
 		<string>1</string>
 		<key>INTAKE_NAMEID_AUTO_ATTACH_ENABLED</key>
