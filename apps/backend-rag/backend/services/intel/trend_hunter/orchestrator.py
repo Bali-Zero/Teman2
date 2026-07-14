@@ -106,8 +106,8 @@ class TrendHunterOrchestrator:
     def _default_adapters(*, degraded: bool) -> list[SourceAdapter]:
         """RSS always; xAI only on Pro (Law 2 OSINT blindato).
 
-        Reddit + GoogleTrends placeholders included so orchestrator logs
-        the coverage gap — they return [] until implemented.
+        Reddit + GoogleTrends are live no-auth public-RSS adapters
+        (B9 resurrection 2026-07-14); they stay Pro-only alongside xAI.
         """
         adapters: list[SourceAdapter] = [RSSAdapter()]
         if not degraded:
@@ -137,6 +137,23 @@ class TrendHunterOrchestrator:
         summary.adapters_run = await gather_sources(self.adapters)
         all_signals = [s for r in summary.adapters_run if r.ok for s in r.signals]
         summary.raw_signals = len(all_signals)
+
+        # Starvation receptor (scar family #2 — "green cron, empty output"):
+        # a cycle where EVERY adapter contributed zero signals must be loud.
+        # The 2026-07 incident: 4/4 dead RSS URLs + 2 inert placeholder
+        # adapters produced "0 signals every 2h cycle for weeks" with exit 0
+        # and nothing above DEBUG in the logs.
+        if summary.raw_signals == 0:
+            self.logger.warning(
+                "[trend-hunter] STARVATION: 0 signals from %d adapters (%s)",
+                len(summary.adapters_run),
+                "; ".join(
+                    f"{r.adapter_name}: "
+                    + (f"error={r.error}" if r.error else "0 signals")
+                    for r in summary.adapters_run
+                )
+                or "no adapters ran",
+            )
 
         unique = _dedup(all_signals)
         summary.after_dedup = len(unique)
