@@ -44,6 +44,10 @@ items: # 2-4 items
           var(--spacing-edge-margin);
         display: flex;
         flex-direction: column;
+        /* 2026-07-14: center the block vertically — with 3 forces the content
+           filled ~45% of the canvas top-anchored (top-heavy void, critic soft
+           flag on every render). Padding still reserves logo/indicator zones. */
+        justify-content: center;
       }
       .numeral-row {
         display: flex;

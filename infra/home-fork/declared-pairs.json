@@ -256,8 +256,56 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/lib/trampoline.sh",
+      "repo": "infra/launchagents/wrappers/lib/trampoline.sh",
+      "_note": "W84 trampoline sweep (2026-07-14): shared fail-fast/ssh-localhost-reexec lib, extracted from regulatory-watcher-run.sh so it can be sourced by multiple wrappers. Lives at ~/scripts/lib (outside TCC-protected ~/Desktop) same reasoning as heartbeat.sh.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/curiosity-batch.sh",
+      "repo": "scripts/curiosity-batch.sh",
+      "_note": "W84 trampoline sweep (2026-07-14): canon REPO resolution was dirname-based (BASH_SOURCE), which broke when deployed to ~/scripts — fixed to REPO_ROOT-aware ($HOME/Desktop/nuzantara default). Also wired the shared trampoline lib before any ~/Desktop access.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/matagaruda-consumer-lag-run.sh",
+      "repo": "infra/launchagents/wrappers/matagaruda-consumer-lag-run.sh",
+      "_note": "W84 trampoline sweep (2026-07-14): NEW wrapper extracted from com.matagaruda.consumer-lag.check.plist, which used to exec the venv python directly under ~/Desktop with no TCC fail-fast. Plist repointed to this wrapper in the same PR.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/matagaruda-redis-split-brain-check.sh",
+      "repo": "infra/launchagents/wrappers/matagaruda-redis-split-brain-check.sh",
+      "_note": "W84 trampoline sweep (2026-07-14): promoted the live HOME script to canon verbatim + trampoline block inserted after secrets sourcing, before REPO= (first ~/Desktop access). Was an UNDECLARED live payload (family #1).",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/audit-launchd-daily.sh",
+      "repo": "infra/launchagents/wrappers/audit-launchd-daily.sh",
+      "_note": "W84 trampoline sweep (2026-07-14): promoted to canon + trampoline block (cheap insurance — wrapper/payload currently have no hard ~/Desktop dependency, verified against the live plist set) + REPO_ROOT default de-hardcoded to $HOME. Was an UNDECLARED live payload (family #1).",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/audit_launchd_crons.py",
+      "repo": "scripts/audit_launchd_crons.py",
+      "_note": "W84 trampoline sweep (2026-07-14): promoted verbatim (companion payload of audit-launchd-daily.sh). Was an UNDECLARED live payload (family #1).",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/.openclaw/bin/wr2/wr2-ig-metrics-scrape.sh",
       "repo": "scripts/wr2-ig-metrics-scrape.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/.openclaw/bin/wr2/wr2-script-wrapper.sh",
+      "repo": "infra/openclaw/wr2/wr2-script-wrapper.sh",
+      "_note": "WR2 deep audit 2026-07-14 (§4): was byte-identical to the repo twin (e8e22fe1 both) but UNDECLARED, so lint_home_fork.py --check was blind to it and identical-today was luck, not enforcement.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/.openclaw/bin/wr2/wr2-cron-wrapper.sh",
+      "repo": "scripts/wr2-cron-wrapper.sh",
+      "_note": "WR2 deep audit 2026-07-14 (§4): the HOME copy (f17092b3) had DIVERGED from the repo copy (3cd52391) on the same machine — oracle/connector/newsletter were running the stale fork. Declared so --check catches this class of drift going forward; the live copy still needs a manual sync on Pro (operator/session task, not this PR).",
       "machines": ["pro"]
     }
   ],

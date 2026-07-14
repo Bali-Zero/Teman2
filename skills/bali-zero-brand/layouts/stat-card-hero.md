@@ -43,6 +43,9 @@ chart:
           var(--spacing-edge-margin);
         display: flex;
         flex-direction: column;
+        /* 2026-07-14: center the stack vertically — heading+chart+body filled
+           ~50% of the canvas top-anchored (top-heavy void, critic soft flag). */
+        justify-content: center;
       }
       .top-rule {
         width: 90px;
