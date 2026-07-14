@@ -16,7 +16,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         Returns:
             Counts by validation status, owner domain, and MIME type.
         """
-        return await _call("/api/crm-guardian/drive/validation-summary")
+        return await _call("/api/crm-guardian/drive/validation-summary", admin=True)
 
     @mcp.tool()
     async def crm_guardian_find_external_owner_risks(limit: int = 50) -> dict:
@@ -32,6 +32,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         rows = await _call(
             "/api/crm-guardian/drive/external-owner-risks",
             params={"limit": limit},
+            admin=True,
         )
         return {"items": rows, "count": len(rows) if isinstance(rows, list) else None}
 
@@ -50,6 +51,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         rows = await _call(
             "/api/crm-guardian/drive/stale-link-candidates",
             params={"limit": limit},
+            admin=True,
         )
         return {"items": rows, "count": len(rows) if isinstance(rows, list) else None}
 
@@ -67,6 +69,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         rows = await _call(
             "/api/crm-guardian/drive/unlinked-items",
             params={"limit": limit},
+            admin=True,
         )
         return {"items": rows, "count": len(rows) if isinstance(rows, list) else None}
 
@@ -88,5 +91,9 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         params: dict[str, Any] = {"limit": limit}
         if status:
             params["status"] = status
-        rows = await _call("/api/crm-guardian/drive/shortcut-edges", params=params)
+        rows = await _call(
+            "/api/crm-guardian/drive/shortcut-edges",
+            params=params,
+            admin=True,
+        )
         return {"items": rows, "count": len(rows) if isinstance(rows, list) else None}
