@@ -220,3 +220,21 @@ class IntelEventPayload(BaseModel):
     topic_category: str | None = None
     urgency_score: float | None = None
     public_safe: bool | None = None
+
+
+class IntelItemSummary(BaseModel):
+    """Read-only projection of ``intel_items`` (migration 168 lake) for
+    editorial consumers (daily digest). Internal-only — this table is raw
+    OSINT, not Legge-2 public_safe-gated like ResearchDossier.
+    """
+
+    id: UUID
+    title: str
+    summary: str | None = None
+    source_domain: str | None = None
+    canonical_url: str | None = None
+    jurisdiction: str | None = None
+    topic_tags: list[str] = Field(default_factory=list)
+    confidence_score: float | None = None
+    published_at: datetime | None = None
+    first_seen_at: datetime

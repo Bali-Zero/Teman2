@@ -369,6 +369,91 @@ $patch_css
 """
 
 
+# ── Newsletter DAILY (internal digest, 2026-07-14) ───────────────────────
+#
+# Distinct from NEWSLETTER_HTML above (the public weekly roundup): this is
+# the internal daily editorial digest. All CSS is INLINE per
+# ~/.claude/skills/bali-zero-brand/surfaces/email-template.md ("Gmail
+# strips <style> blocks") — no <style> block at all, unlike the weekly
+# template. $items_html is pre-built HTML (one block per item, inline
+# styled) substituted by the publisher; $scarce_note is empty string or an
+# italic "quiet day" disclosure.
+
+NEWSLETTER_DAILY_HTML = """<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bali Zero Daily</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f5f2eb;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f5f2eb;">
+<tr><td align="center">
+<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="width:600px;max-width:600px;background-color:#ffffff;">
+
+  <!-- Masthead -->
+  <tr><td style="background-color:#373D42;padding:24px 32px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+      <tr>
+        <td valign="middle" style="width:56px;">
+          <img src="$logo_url" width="40" height="40" alt="Bali Zero" style="display:block;border:0;border-radius:4px;">
+        </td>
+        <td valign="middle" style="padding-left:14px;">
+          <span style="font-family:Arial,Helvetica,sans-serif;font-weight:700;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#F4C430;">Bali Zero Daily</span><br>
+          <span style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#ffffff;">$date_label</span>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- Items -->
+  <tr><td style="padding:8px 32px 0 32px;">
+$items_html
+  </td></tr>
+
+  $scarce_note
+
+  <!-- Footer -->
+  <tr><td style="padding:20px 32px;border-top:1px solid #eeeeee;">
+    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#888888;line-height:1.5;">
+      Bali Zero &middot; balizero.com &middot; digest interno, non ridistribuire.<br>
+      Inviato da zantara@balizero.com
+    </p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>
+"""
+
+# One item card — Template.safe_substitute per item, then joined into
+# $items_html above. `body`/`title`/`domain_tag`/`source_line` arrive
+# pre-escaped from the publisher (single authority for escaping, same
+# pattern as NewsletterPublisher._build_body_html).
+NEWSLETTER_DAILY_ITEM_HTML = """
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom:22px;">
+      <tr>
+        <td style="border-left:3px solid #F4C430;padding:2px 0 2px 14px;">
+          <span style="font-family:Arial,Helvetica,sans-serif;font-weight:700;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#C8102E;">$domain_tag</span><br>
+          <span style="font-family:Arial,Helvetica,sans-serif;font-weight:700;font-size:19px;line-height:1.25;color:#1a1a1a;">$title</span><br>
+          <span style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#333333;">$body</span><br>
+          <span style="font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#888888;">$source_line</span>
+        </td>
+      </tr>
+    </table>
+"""
+
+NEWSLETTER_DAILY_SCARCE_NOTE_HTML = """
+  <tr><td style="padding:0 32px 8px 32px;">
+    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-style:italic;color:#888888;">
+      Giornata con pochi segnali nuovi — nessuna notizia riempitiva aggiunta.
+    </p>
+  </td></tr>
+"""
+
+
 _TEMPLATES: dict[PlatformTemplate, TemplateSpec] = {
     PlatformTemplate.IG_CAROUSEL_COVER: TemplateSpec(
         platform_template=PlatformTemplate.IG_CAROUSEL_COVER,
