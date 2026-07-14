@@ -44,6 +44,9 @@ from typing import Any
 
 import asyncpg  # noqa: E402
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
+
 logger = logging.getLogger("wr2.image_generator")
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -1430,6 +1433,13 @@ async def _process_one(
             )
         return True
 
+    # B11: per-step observability (wr2_orchestrator_metrics, migration 203 —
+    # had zero writer before this). Times the WHOLE per-draft image generation
+    # section (all heroes, whichever backend); closest available enum value is
+    # image_prompt_author (the table has no distinct "render image" value —
+    # see wr2_orchestrator_metrics.py module docstring). Fail-open.
+    _wom_t0 = time.perf_counter()
+
     # ── Backend selection (Sprint A 2026-05-07: Codex added as primary) ──
     # Probe Codex + FlowKit ONCE per draft (not per slide). Codex is the
     # default primary in `auto` mode because it produces 4:5 1080x1350
@@ -1577,6 +1587,23 @@ async def _process_one(
     successes = len(url_by_slide)
     failures = len(errors_by_slide)
     logger.info("Draft %s: %d/%d images OK", draft_id, successes, successes + failures)
+
+    _wom_cid = await wom.resolve_carousel_id(
+        conn, topic=topic, session_id=f"image_generator:{draft_id}"
+    )
+    await wom.record_step(
+        carousel_id=_wom_cid,
+        step_name="image_prompt_author",
+        step_index=3,
+        model=IMAGE_BACKEND,  # backend mode (auto/codex/flowkit/playwright), not an LLM name
+        tier=1,  # no LLM-cascade tier applies to image backends — see module docstring
+        latency_ms=int((time.perf_counter() - _wom_t0) * 1000),
+        retry_count=failures,  # approximate: 1 failed hero ≈ ≥1 exhausted retry, see wr2_image_generator.py's own retry loop in _gen_image_with_semaphore
+        success=successes > 0,  # mirrors the actual pipeline gate below (successes == 0 -> image_failed)
+        error_class="all_images_failed" if successes == 0 else None,
+        error_message=("; ".join(list(errors_by_slide.values())[:3]) if successes == 0 else None),
+        conn=conn,
+    )
 
     for s in slides:
         if s.get("is_hero_image"):

@@ -44,6 +44,7 @@ import os
 import socket
 import sys
 import threading
+import time
 import uuid
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
@@ -56,6 +57,7 @@ sys.path.insert(0, str(_REPO / "scripts"))
 
 import asyncpg  # noqa: E402
 
+import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
 from backend.services.canva_renderer_v2 import _pg  # noqa: E402
 from wr2_html_renderer.claude_vision import VisionTransient  # noqa: E402
 
@@ -904,10 +906,45 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
         try:
             hero_dir = work / "heroes"
             hero_dir.mkdir(parents=True, exist_ok=True)
-            with _HeroServer(hero_dir) as server:
-                norm_slides = _normalize_heroes(slides, hero_dir, server)
-                slides_dir, weak_slides = await _render_carousel(
-                    str(draft_id), norm_slides, work, vision_required
+            # B11: per-step observability (wr2_orchestrator_metrics, migration
+            # 203 — had zero writer before this). Times the whole per-carousel
+            # render (designer-loop critic + Playwright PNG production happen
+            # INSIDE _render_carousel, not as separate awaits) — recorded once
+            # as 'playwright_render' (the concrete artifact-producing step) to
+            # avoid fabricating a second, duplicate-latency 'critic' row for
+            # work that isn't separately timed; see wr2_orchestrator_metrics.py
+            # module docstring. Fail-open, and re-raises the real error.
+            _wom_t0 = time.perf_counter()
+            _wom_error: Exception | None = None
+            try:
+                with _HeroServer(hero_dir) as server:
+                    norm_slides = _normalize_heroes(slides, hero_dir, server)
+                    slides_dir, weak_slides = await _render_carousel(
+                        str(draft_id), norm_slides, work, vision_required
+                    )
+            except Exception as _render_exc:  # noqa: BLE001 — record then re-raise, never swallow
+                _wom_error = _render_exc
+                raise
+            finally:
+                # NOTE: deliberately NOT reusing main_conn here — a render can
+                # take up to ~15 min and the pg-proxy idle-closes it mid-render
+                # (see the _ensure_live reconnect a few lines below, same
+                # cause). conn=None makes both calls open their own short-lived
+                # connection instead of racing that staleness.
+                _wom_cid = await wom.resolve_carousel_id(
+                    None, topic=str(dict(row).get("topic") or ""),
+                    session_id=f"html_apply:{draft_id}",
+                )
+                await wom.record_step(
+                    carousel_id=_wom_cid,
+                    step_name="playwright_render",
+                    step_index=6,
+                    tier=1,
+                    latency_ms=int((time.perf_counter() - _wom_t0) * 1000),
+                    retry_count=0,
+                    success=_wom_error is None,
+                    error_class=type(_wom_error).__name__ if _wom_error else None,
+                    error_message=str(_wom_error)[:500] if _wom_error else None,
                 )
             # _stage_assets copies logo.png INTO slides_dir in vision mode (per-slide
             # HTML resolves file:// assets there) — a bare *.png glob shipped the
