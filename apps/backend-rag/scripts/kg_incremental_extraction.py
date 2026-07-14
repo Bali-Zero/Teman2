@@ -58,11 +58,11 @@ def retry_qdrant(max_retries=3, delay=2):
     return decorator
 
 
-import asyncpg  # noqa: E402
-import httpx  # noqa: E402
+import asyncpg
+import httpx
 
-from backend.llm.genai_client import get_genai_client  # noqa: E402
-from backend.llm.ollama_client import ollama_chat_kg  # noqa: E402
+from backend.llm.genai_client import get_genai_client
+from backend.llm.ollama_client import ollama_chat_kg
 
 try:
     from openai import AsyncOpenAI
@@ -137,6 +137,14 @@ LEGAL_REFERENCE_PATTERNS = {
         r"(?i)(?:perda|peraturan daerah)\s*(?:no\.?|nomor)?\s*(\d+)\s*(?:tahun)?\s*(\d{4})"
     ),
 }
+
+# Gemini model for KG extraction. Default is the "-latest" alias on purpose:
+# the previous hardcoded `gemini-2.0-flash-lite` was RETIRED by Google and every
+# generateContent 404'd — discovered only when the §10f feeder was armed live
+# (2026-07-14). The alias tracks a current free-tier flash-lite model so a future
+# retirement does not silently zero out extraction again. Override with
+# KG_GEMINI_MODEL if a specific pinned model is ever needed.
+_KG_GEMINI_MODEL = os.environ.get("KG_GEMINI_MODEL", "gemini-flash-lite-latest")
 
 # Gemini extraction prompt
 EXTRACTION_PROMPT = """You are a Knowledge Graph Extractor for Indonesian business/legal documents.
@@ -336,7 +344,7 @@ class KGIncrementalExtractor:
         self,
         collection_name: str,
         limit: int = None,
-        offset: int = 0,  # noqa: ARG002
+        offset: int = 0,
     ) -> list:
         """Get chunks from a Qdrant collection using scroll API with pagination."""
         chunks = []
@@ -516,7 +524,7 @@ class KGIncrementalExtractor:
         try:
             if hasattr(self.gemini, "generate_content"):
                 response = await self.gemini.generate_content(
-                    model="gemini-2.0-flash-lite",
+                    model=_KG_GEMINI_MODEL,
                     contents=prompt,
                     temperature=0.1,
                 )
@@ -524,7 +532,7 @@ class KGIncrementalExtractor:
             else:
                 response = await asyncio.to_thread(
                     self.gemini.models.generate_content,
-                    model="gemini-2.0-flash-lite",
+                    model=_KG_GEMINI_MODEL,
                     contents=prompt,
                 )
                 response_text = response.text.strip()
@@ -655,7 +663,7 @@ class KGIncrementalExtractor:
         rel: dict,
         chunk_id: str,
         collection: str,
-        new_entity_ids: set = None,  # noqa: ARG002
+        new_entity_ids: set = None,
     ):
         """Save relationship to PostgreSQL."""
         source_id = rel.get("source", "").lower().replace(" ", "_")
