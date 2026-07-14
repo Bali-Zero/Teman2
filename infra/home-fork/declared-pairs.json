@@ -28,6 +28,12 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/launchagent-state-bridge.py",
+      "repo": "scripts/launchagent-state-bridge.py",
+      "_note": "Pro-only: plist com.nuzantara.launchagent-state-bridge execs the HOME copy. Undeclared until 2026-07-14 (found in boot-triage: the canva-delist fix #2412 did not reach the live copy until manually synced). Declared so lint_home_fork --check catches future drift.",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/scripts/codex/nightly-autofix-ci.sh",
       "repo": "scripts/codex/codex-nightly-autofix-ci.sh",
       "_note": "Hourly codex auto-fix generator (plist com.nuzantara.codex-autofix-ci, StartCalendarInterval Minute=15, via cron-runner.sh). Declared 2026-07-06 together with the recursion-brake fix \u2014 was an UNDECLARED live payload (family #1); basenames differ by history.",
