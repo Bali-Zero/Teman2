@@ -1,0 +1,5 @@
+build/
+*.app
+_proof/liverun.log
+.DS_Store
+.superpowers/
