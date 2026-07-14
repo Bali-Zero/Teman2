@@ -1140,7 +1140,16 @@ def _check_body_font_size_floor(skeleton_css: str, family: str) -> None:
 # audit). This block gives them teeth.
 # ---------------------------------------------------------------------------
 
-_CONSTITUTION_PATH = _BRAND / "constitution.md"
+# Deliberately NOT _BRAND (Path.home()/.claude/skills/bali-zero-brand — a
+# machine-local symlink into this same repo, HOME-fork family #1): a CI
+# runner has no ~/.claude/skills, so a path built off Path.home() 404s on
+# every PR, unlike the layouts/tokens code above which either mocks this
+# directory in tests or never got a fail-closed reader wired to it. Article 7
+# is fail-closed, so it needs a path that resolves the same way in CI as it
+# does on a dev machine: straight off the repo checkout (parents[2] from
+# scripts/wr2_html_renderer/composer.py is the repo root).
+_REPO_ROOT_FOR_CONSTITUTION = Path(__file__).resolve().parents[2]
+_CONSTITUTION_PATH = _REPO_ROOT_FOR_CONSTITUTION / "skills" / "bali-zero-brand" / "constitution.md"
 
 
 def _load_forbidden_phrases(path: Path | None = None) -> list[str]:
