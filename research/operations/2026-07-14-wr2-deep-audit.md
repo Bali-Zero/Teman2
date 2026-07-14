@@ -1,3 +1,9 @@
+---
+date: 2026-07-14
+domain: operations
+adversarial_review: codex
+---
+
 # WR2 Deep Audit — coherence + SOTA positioning (2026-07-14)
 
 > **Mandate** (Zero, 2026-07-14): *"analisi profonda della codebase wr2 (deve coincidere anche con
@@ -340,6 +346,16 @@ Only genuinely operator-only items (everything else is session-executable):
     cause); build Voyager's substrate dirs or delete the aspirational prose; refresh
     external-bench (July run).
 17. Trend-hunter adapter config audit (0 signals every cycle for weeks is a config smell).
+
+## Adversarial review
+
+Two external seats red-teamed the draft before landing — **Codex (GPT-5.5)**, 29 objections,
+and **Gemini 3.1 Pro (agy)**, 10 objections. Three Codex objections were verified on disk and
+promoted to findings (§5a: verifier self-approval at `wr2_html_render_apply.py:751`, fabricated
+Python-side verdict at `:229`, explicit-family bypass of Art 9.3/9.5 at `composer.py:140-143`);
+the cure plan was re-ordered truth-before-throughput on their joint objection. Objections
+rejected after re-verification are listed below with reasons — the refuter is not trusted
+blindly either (W65).
 
 ## 11 · Verification notes
 
