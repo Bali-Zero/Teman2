@@ -63,6 +63,7 @@ import json
 import logging
 import os
 import sys
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -84,6 +85,11 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _BACKEND_DIR = _REPO_ROOT / "apps" / "backend-rag"
 if str(_BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(_BACKEND_DIR))
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
 
 # Carousel output root. Matches wr2_rerender_local.py convention: defaults to the
 # M5 app-machine Desktop path, overridable via WR2_CAROUSEL_ROOT for Pro/Mini.
@@ -509,10 +515,39 @@ async def _run(args: argparse.Namespace) -> int:
         logger.error("IGPublisher init failed: %s", exc)
         return 1
 
+    # B11: per-step observability (wr2_orchestrator_metrics, migration 203 —
+    # had zero writer before this). Clean 1:1 mapping to the 'ig_publisher'
+    # enum value; carousel_id is already resolved above by
+    # _ledger_precondition (SAME find-or-create-by-topic idiom
+    # wr2_orchestrator_metrics.resolve_carousel_id mirrors). Fail-open.
+    _wom_t0 = time.perf_counter()
+    result = None
+    _wom_error: Exception | None = None
     try:
         result = await publisher.publish(draft)
+    except Exception as exc:  # noqa: BLE001 — record then re-raise, never swallow
+        _wom_error = exc
+        raise
     finally:
         await close_ig_publisher_client()
+        _wom_ok = result is not None and result.ok
+        await wom.record_step(
+            carousel_id=carousel_id,
+            step_name="ig_publisher",
+            step_index=8,
+            tier=1,
+            latency_ms=int((time.perf_counter() - _wom_t0) * 1000),
+            retry_count=0,
+            success=_wom_ok,
+            error_class=(
+                type(_wom_error).__name__ if _wom_error
+                else (None if _wom_ok else "publish_failed")
+            ),
+            error_message=(
+                str(_wom_error)[:500] if _wom_error
+                else (None if _wom_ok else (result.error or None))
+            ),
+        )
 
     if not result.ok:
         await _ledger_record_result(

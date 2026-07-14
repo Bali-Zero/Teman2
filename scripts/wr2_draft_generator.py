@@ -42,6 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import asyncpg  # noqa: E402
 
+import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
 import wr2_topic_type as tt  # noqa: E402  (pure, side-effect-free)
 from backend.llm.claude_oauth_client import (  # noqa: E402
     ClaudeOAuthError,
@@ -1214,6 +1215,14 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     register = ""
     slides: list[dict[str, Any]] = []
     for attempt in range(max_regen + 1):
+        # B11: per-step observability (wr2_orchestrator_metrics, migration 203 —
+        # had zero writer before this). Wraps the single Claude call that stands
+        # in for the interactive path's brief_interpreter (this script composes
+        # brief+storyboard in one shot, not two — see wr2_orchestrator_metrics.py
+        # module docstring for the mapping rationale). Fail-open: never blocks
+        # a draft on a metrics-recording failure.
+        _wom_t0 = time.perf_counter()
+        _wom_error: Exception | None = None
         try:
             parsed = await claude_compose_slides(
                 topic=topic, summary=summary, source_url=source_url,
@@ -1221,14 +1230,33 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
                 avoid_steer=avoid_steer, liveness_tier=liveness_tier,
             )
         except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
+            _wom_error = e
             logger.error("Claude OAuth failed: %s", e)
             await _mark_rejected(conn, draft_id, f"claude_failed: {e}")
             _send_telegram(f"WR2 draft_generator Claude failed\ndraft {draft_id}\n{str(e)[:200]}")
             return False
         except (json.JSONDecodeError, ValueError) as e:
+            _wom_error = e
             logger.error("Claude output parse failed: %s", e)
             await _mark_rejected(conn, draft_id, f"parse_error: {e}")
             return False
+        finally:
+            _wom_cid = await wom.resolve_carousel_id(
+                conn, topic=topic, session_id=f"draft_generator:{draft_id}"
+            )
+            await wom.record_step(
+                carousel_id=_wom_cid,
+                step_name="brief_interpreter",
+                step_index=1,
+                model="claude-opus-4-7",
+                tier=1,
+                latency_ms=int((time.perf_counter() - _wom_t0) * 1000),
+                retry_count=attempt,
+                success=_wom_error is None,
+                error_class=type(_wom_error).__name__ if _wom_error else None,
+                error_message=str(_wom_error)[:500] if _wom_error else None,
+                conn=conn,
+            )
 
         try:
             register, slides = _normalise_slides(parsed)
