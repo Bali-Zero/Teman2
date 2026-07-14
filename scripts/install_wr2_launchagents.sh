@@ -28,6 +28,8 @@ FORCE="${WR2_FORCE:-0}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC_DIR="$REPO_ROOT/infra/launchagents"
 DST_DIR="$HOME/Library/LaunchAgents"
+WRAPPERS_SRC_DIR="$SRC_DIR/wrappers"
+WRAPPERS_DST_DIR="$HOME/scripts"
 
 if [[ ! -d "$SRC_DIR" ]]; then
     echo "ERROR: $SRC_DIR not found — run from repo root" >&2
@@ -51,6 +53,22 @@ echo
 case "$MODE" in
     load)
         mkdir -p "$DST_DIR"
+        # W84 trampoline sweep (#2421): any plist wired to a wrapper deployed
+        # OUTSIDE ~/Desktop (superscar #1) needs that wrapper synced first.
+        # Idempotent, additive — no-op for plists that don't use one.
+        if [[ -d "$WRAPPERS_SRC_DIR" ]]; then
+            mkdir -p "$WRAPPERS_DST_DIR"
+            for W in "$WRAPPERS_SRC_DIR"/wr2-*.sh; do
+                [[ -f "$W" ]] || continue
+                WDST="$WRAPPERS_DST_DIR/$(basename "$W")"
+                if [[ -f "$WDST" ]] && cmp -s "$W" "$WDST"; then
+                    continue
+                fi
+                cp "$W" "$WDST"
+                chmod 755 "$WDST"
+                echo "  ✓  synced wrapper $(basename "$W") -> $WDST"
+            done
+        fi
         for P in "${PLISTS[@]}"; do
             SRC="$SRC_DIR/$P"
             DST="$DST_DIR/$P"

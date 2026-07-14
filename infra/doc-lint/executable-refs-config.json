@@ -1,0 +1,14 @@
+{
+  "_comment": "Config for scripts/lint_doc_executable_refs.py — 'living documentation' surfaces that must never cite a scripts/*.py|.sh entry point that doesn't exist on disk. Born 2026-07-14 from the WR2 deep audit (research/operations/2026-07-14-wr2-deep-audit.md item 11): the wr2-carousel-pipeline skill and docs/wr2/*.md still cited scripts/wr2_carousel_orchestrator.py and scripts/wr2_telegram_publish_gate.py long after both were deleted, and the retired Canva lane (PR #2396) was still documented as live. Scope starts wr2-only and is meant to grow — add new include_globs as other doc surfaces earn the same discipline.",
+  "include_globs": [
+    "docs/wr2/*.md",
+    ".claude/skills/wr2-carousel-pipeline/**/*.md"
+  ],
+  "exclude_prefixes": [
+    "research/",
+    ".claude/rules/cicatrix",
+    "docs/superpowers/plans/"
+  ],
+  "exclude_dated_filenames": true,
+  "_exclude_dated_filenames_note": "Any doc whose BASENAME embeds an ISO date (YYYY-MM-DD) is presumed a dated point-in-time snapshot and exempted — mirrors the repo's own research/<domain>/YYYY-MM-DD-slug.md convention (CLAUDE.md sec.15). This is what exempts docs/wr2/2026-05-08-sprint-b-to-f-detailed-plan.md, docs/wr2/pipeline-architecture-2026-05-10.md, docs/wr2/canonical-bypass-prevention-2026-05-15.md and docs/wr2/operator-driven-mode-spec-2026-05-26.md without hand-listing them."
+}

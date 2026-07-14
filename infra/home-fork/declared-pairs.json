@@ -28,6 +28,12 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/wr2-worktree-gc-run.sh",
+      "repo": "infra/launchagents/wrappers/wr2-worktree-gc-run.sh",
+      "_note": "A1 finding #4 promotion (2026-07-14): com.balizero.wr2.worktree-gc.daily was never installed, only .plist.example existed. New wrapper follows the W84 trampoline pattern; ships REPORT-ONLY (never passes --apply) pending a follow-up that fixes scripts/wr2_worktree_gc.py's missing 3-AND checks and stale WORKTREE_PREFIX.",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/scripts/launchagent-state-bridge.py",
       "repo": "scripts/launchagent-state-bridge.py",
       "_note": "Pro-only: plist com.nuzantara.launchagent-state-bridge execs the HOME copy. Undeclared until 2026-07-14 (found in boot-triage: the canva-delist fix #2412 did not reach the live copy until manually synced). Declared so lint_home_fork --check catches future drift.",
@@ -305,7 +311,7 @@
     {
       "live": "~/.openclaw/bin/wr2/wr2-cron-wrapper.sh",
       "repo": "scripts/wr2-cron-wrapper.sh",
-      "_note": "WR2 deep audit 2026-07-14 (§4): the HOME copy (f17092b3) had DIVERGED from the repo copy (3cd52391) on the same machine — oracle/connector/newsletter were running the stale fork. Declared so --check catches this class of drift going forward; the live copy still needs a manual sync on Pro (operator/session task, not this PR).",
+      "_note": "WR2 deep audit 2026-07-14 (§4): the HOME copy (f17092b3) had DIVERGED from the repo copy (3cd52391) on the same machine — oracle/connector/newsletter were running the stale fork. Declared so --check catches this class of drift going forward. RESOLVED same day: the live copy self-realigned via a routine pull (mtime 14:05 WITA), re-verified read-only on Pro 2026-07-14 ~15:30 WITA — sha 3cd52391 both sides, byte-identical. No manual sync pending. Consumers verified via ProgramArguments grep: com.balizero.wr2.{oracle,connector,newsletter,dossier-compiler,learner-nightly,measurer,sla-worker,strategos,trend-hunter} + com.balizero.sota.m13-* all exec ~/.openclaw/bin/wr2/wr2-cron-wrapper.sh (NOT ~/scripts/, which does not exist on Pro).",
       "machines": ["pro"]
     }
   ],

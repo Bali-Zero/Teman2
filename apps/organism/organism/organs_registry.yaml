@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: e30cd1f296ece6f5055be9642b2a1960a14abde65cd2bd15589bc7593fadb9e5
+checksum: 6a1f5c9f112135ec94aae263495565c348dd50f7dc5d430e9189dcc2f0a7ce46
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -748,6 +748,28 @@ organs:
   recovery_params:
     host: mini
     label: com.matagaruda.normalizer.hourly
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.redis_split_brain_check
+  runtime: pro_launchd
+  type: cron
+  enabled: false
+  disabled_reason: Retired 2026-07-14 — obsolete doctrine, not a bug. Since the Stage-1
+    single-writer cutover (2026-06-29, Zero decision G1=Pro) Mini's local garuda:*
+    stream copies are legitimately frozen forever, so this check alerted forever on
+    an expected-permanent condition (p0 Telegram spam every 4h suppress-window) on
+    lag/drift that is now by design. Plist retired to infra/launchagents/com.matagaruda.redis-split-brain.check.plist.retired-20260714;
+    bridge entry removed from scripts/launchagent-state-bridge.py (same pattern as
+    the wr2.canva_* removal). Wrapper + detector script left in place as archaeology
+    — nothing invokes them with the plist retired.
+  expected_hb_seconds: 1800
+  owner_module: apps/mata-garuda/scripts/check_redis_split_brain.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.redis-split-brain.check
   severity_on_silence: warning
   cicatrix_refs: []
 - id: wr2.canva_apply
@@ -1852,6 +1874,23 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.wr2_daily_carousel.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.wr2_worktree_gc
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 129600
+  owner_module: scripts/wr2_worktree_gc.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.worktree-gc.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.wr2_worktree_gc.json
     timestamp_field: ts
     status_field: status
 - id: mini.fleet_watch

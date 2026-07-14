@@ -17,6 +17,12 @@ What happens next (NOT triggered here — the cron picks it up naturally):
   `WR2_PULL_CHECKSUM=1 wr2-queue-pull.sh --once` on M5 reconciles the mirror
   (steady-state `--ignore-existing` skips replaced-in-place PNGs).
 
+Note (2026-07-14, B5): the `image_failed` lane (drafts stuck before this
+stage, from wr2_image_generator.py's Codex output-detection bug) has its
+OWN dedicated requeue verb — `scripts/wr2_image_requeue.py` — not this one.
+This tool's anti-jump doctrine correctly refuses a pre-image `image_failed`
+row (see `_pg.requeue_draft_for_rerender`'s status whitelist below).
+
 Usage (runs where DATABASE_URL reaches prod — Pro, or via scripts/pg.sh env):
   DATABASE_URL=... python3 scripts/wr2_rerender_requeue.py <draft-uuid> [<draft-uuid> ...]
   DATABASE_URL=... python3 scripts/wr2_rerender_requeue.py --dry-run <draft-uuid>

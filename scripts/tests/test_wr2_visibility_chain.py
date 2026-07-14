@@ -85,6 +85,32 @@ def test_queue_append_and_exact_id_dedup(tmp_path):
     assert len(queue) == 1 and queue[0]["draft_id"] == "d1"
 
 
+def test_queue_entry_never_writes_bare_pass_or_soft_fail(tmp_path):
+    """INNOCENCE (spec §4a): a queue entry built with weak_count=0 must contain
+    the honest legibility_only_pass value and never the bare "pass" string
+    (which would be indistinguishable from a real constitution-critic verdict
+    to every downstream consumer — the app, the analyst, reflexion). Regex/
+    substring check on the SERIALIZED entry, not just dict equality, so a
+    future edit that reintroduces the bare value by accident (e.g. concatenating
+    a legacy string somewhere) is caught even if it doesn't touch this exact
+    key."""
+    import re
+
+    entry = html._make_queue_entry(
+        draft_id="d5", topic="E", carousel_dir=tmp_path / "car", drive_url="u",
+        slide_count=2, weak_count=0, fact_check_status="pass",
+        drafted_at="2026-07-14T10:00:00Z",
+    )
+    assert entry["critic_overall_verdict"] == "legibility_only_pass"
+    serialized = json.dumps(entry)
+    # the bare "pass" string must never appear as critic_overall_verdict's
+    # value — only as a substring of the honest legibility_only_pass value
+    # (fact_check_status="pass" is a DIFFERENT field, deliberately untouched
+    # by this rename — §1 of the edit spec).
+    assert not re.search(r'"critic_overall_verdict"\s*:\s*"pass"', serialized)
+    assert not re.search(r'"critic_overall_verdict"\s*:\s*"soft_fail"', serialized)
+
+
 def test_queue_rerender_repoints_drafted_entry_in_place(tmp_path):
     """GUILT (W82 exist-not-content): before the repoint existed, a re-rendered
     draft kept its queue entry pointed at the OLD slides_dir forever."""

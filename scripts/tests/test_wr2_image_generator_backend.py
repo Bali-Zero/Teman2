@@ -152,6 +152,149 @@ async def test_backend_auto_falls_back_when_flowkit_fails_at_runtime(wig):
 
 
 @pytest.mark.asyncio
+async def test_backend_auto_codex_ok_flowkit_not_called(wig):
+    """auto + codex_available=True + codex succeeds → FlowKit never called.
+
+    Codex remains primary in auto mode; the 2026-07-14 fallback fix must not
+    regress the "prefer Codex" rule when Codex is healthy.
+    """
+    import asyncio
+
+    fake_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
+
+    wig._acquire_bytes_via_codex = AsyncMock(return_value=(fake_bytes, None))
+    wig._acquire_bytes_via_flowkit = AsyncMock(return_value=(b"WRONG", None))
+
+    sem = asyncio.Semaphore(1)
+    result = await wig._gen_image_with_semaphore(
+        sem,
+        context=None,
+        slide_number=10,
+        image_prompt="A test prompt",
+        draft_id="abcd-1234",
+        backend="auto",
+        codex_available=True,
+        flowkit_available=True,
+    )
+    slide_number, url, err = result
+    assert slide_number == 10
+    assert url is not None
+    assert err is None
+    wig._acquire_bytes_via_codex.assert_awaited_once()
+    wig._acquire_bytes_via_flowkit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_backend_auto_codex_fails_falls_back_to_flowkit(wig):
+    """auto + Codex fails + FlowKit available → FlowKit is tried per-slide.
+
+    Regression guard 2026-07-14: the Codex-primary call site in `_process_one`
+    used to hardcode backend="codex" (never "auto") and never pass
+    flowkit_available, so this fallback — even though already implemented in
+    `_gen_image_with_semaphore` — was unreachable in production. Every real
+    Codex failure dead-ended as image_failed while FlowKit sat idle.
+    """
+    import asyncio
+
+    fake_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
+
+    wig._acquire_bytes_via_codex = AsyncMock(
+        return_value=(None, "latest PNG older than 600s window"),
+    )
+    wig._acquire_bytes_via_flowkit = AsyncMock(return_value=(fake_bytes, None))
+
+    sem = asyncio.Semaphore(1)
+    result = await wig._gen_image_with_semaphore(
+        sem,
+        context=None,
+        slide_number=11,
+        image_prompt="A test prompt",
+        draft_id="abcd-1234",
+        backend="auto",
+        codex_available=True,
+        flowkit_available=True,
+    )
+    slide_number, url, err = result
+    assert slide_number == 11
+    assert url is not None
+    assert err is None
+    wig._acquire_bytes_via_codex.assert_awaited_once()
+    wig._acquire_bytes_via_flowkit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_backend_codex_strict_never_falls_back_to_flowkit(wig):
+    """backend="codex" (explicit, not "auto") + Codex fails → honest error,
+    FlowKit NEVER called even if flowkit_available=True.
+
+    An explicit WR2_IMAGE_BACKEND=codex request must stay codex-only — the
+    2026-07-14 fallback fix only widens the "auto" per-slide backend, it must
+    not silently cascade a strict operator choice.
+    """
+    import asyncio
+
+    wig._acquire_bytes_via_codex = AsyncMock(
+        return_value=(None, "codex exit=1: some codex error"),
+    )
+    wig._acquire_bytes_via_flowkit = AsyncMock(return_value=(b"WRONG", None))
+
+    sem = asyncio.Semaphore(1)
+    result = await wig._gen_image_with_semaphore(
+        sem,
+        context=None,
+        slide_number=12,
+        image_prompt="A test prompt",
+        draft_id="abcd-1234",
+        backend="codex",
+        codex_available=True,
+        flowkit_available=True,
+    )
+    slide_number, url, err = result
+    assert slide_number == 12
+    assert url is None
+    assert err is not None
+    assert "codex" in err
+    wig._acquire_bytes_via_codex.assert_awaited_once()
+    wig._acquire_bytes_via_flowkit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_backend_auto_codex_and_flowkit_both_fail_returns_honest_error(wig):
+    """auto + Codex fails + FlowKit fails + no Playwright context → honest
+    error tuple, no crash, no false success.
+
+    Mirrors the real Codex-primary call site (`_process_one` passes
+    context=None — Playwright is never launched in that path).
+    """
+    import asyncio
+
+    wig._acquire_bytes_via_codex = AsyncMock(
+        return_value=(None, "latest PNG older than 600s window"),
+    )
+    wig._acquire_bytes_via_flowkit = AsyncMock(
+        return_value=(None, "flowkit unhandled error: connection refused"),
+    )
+
+    sem = asyncio.Semaphore(1)
+    result = await wig._gen_image_with_semaphore(
+        sem,
+        context=None,
+        slide_number=13,
+        image_prompt="A test prompt",
+        draft_id="abcd-1234",
+        backend="auto",
+        codex_available=True,
+        flowkit_available=True,
+    )
+    slide_number, url, err = result
+    assert slide_number == 13
+    assert url is None
+    assert err is not None
+    wig._acquire_bytes_via_codex.assert_awaited_once()
+    wig._acquire_bytes_via_flowkit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_backend_flowkit_returns_error_when_flowkit_fails(wig):
     """backend=flowkit + FlowKit fails → error tuple, NO Playwright fallback."""
     import asyncio
@@ -231,6 +374,100 @@ async def test_flowkit_only_with_no_context_does_not_crash(wig):
     assert slide_number == 6
     assert url is not None
     assert err is None
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# _process_one — call-site wiring (the actual 2026-07-14 bug)
+#
+# The dispatch logic tested above already lived in _gen_image_with_semaphore
+# before this fix; the bug was that the "Codex-primary" call site in
+# _process_one hardcoded backend="codex" and never passed flowkit_available,
+# making that fallback logic unreachable in production. These tests pin the
+# call-site wiring itself, not just the dispatch function.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def _make_hero_row(draft_id):
+    return {
+        "id": draft_id,
+        "topic": "Test topic",
+        "slides_json": {
+            "slides": [
+                {"slide_number": 1, "is_hero_image": True, "image_prompt": "p1"},
+            ]
+        },
+        "council_debate_json": {},
+    }
+
+
+@pytest.mark.asyncio
+async def test_process_one_auto_mode_passes_auto_backend_and_flowkit_available(wig, monkeypatch):
+    """IMAGE_BACKEND=auto + both probes True → _gen_image_with_semaphore is
+    called with backend="auto" (NOT "codex") and flowkit_available=True.
+    """
+    import uuid
+
+    monkeypatch.setattr(wig, "_send_telegram", MagicMock())
+    wig._probe_codex_available = AsyncMock(return_value=True)
+    wig._probe_flowkit_available = AsyncMock(return_value=True)
+    captured_calls = []
+
+    async def fake_gen(sem, context, slide_number, prompt, draft_id, **kwargs):
+        captured_calls.append(kwargs)
+        return slide_number, "https://example.test/x.png", None
+
+    wig._gen_image_with_semaphore = fake_gen
+
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    draft_id = uuid.uuid4()
+    row = _make_hero_row(draft_id)
+
+    ok = await wig._process_one(conn, row, dry_run=False)
+    assert ok is True
+    assert len(captured_calls) == 1
+    assert captured_calls[0]["backend"] == "auto"
+    assert captured_calls[0]["codex_available"] is True
+    assert captured_calls[0]["flowkit_available"] is True
+
+
+@pytest.mark.asyncio
+async def test_process_one_explicit_codex_mode_stays_codex_only(monkeypatch):
+    """WR2_IMAGE_BACKEND=codex (explicit, strict) → _gen_image_with_semaphore
+    is called with backend="codex" even when FlowKit is also available —
+    an explicit operator choice must never silently cascade.
+    """
+    import uuid
+
+    sys.modules.pop("wr2_image_generator", None)
+    sys.modules.pop("wr2_flowkit_client", None)
+    monkeypatch.setenv("WR2_IMAGE_BACKEND", "codex")
+    monkeypatch.setenv("WR2_IMAGE_VLM_VALIDATION", "false")
+    spec = importlib.util.spec_from_file_location("wr2_image_generator", GEN_PATH)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["wr2_image_generator"] = mod
+    spec.loader.exec_module(mod)
+    monkeypatch.setattr(mod, "_send_telegram", MagicMock())
+
+    mod._probe_codex_available = AsyncMock(return_value=True)
+    mod._probe_flowkit_available = AsyncMock(return_value=True)
+    captured_calls = []
+
+    async def fake_gen(sem, context, slide_number, prompt, draft_id, **kwargs):
+        captured_calls.append(kwargs)
+        return slide_number, "https://example.test/x.png", None
+
+    mod._gen_image_with_semaphore = fake_gen
+
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    draft_id = uuid.uuid4()
+    row = _make_hero_row(draft_id)
+
+    ok = await mod._process_one(conn, row, dry_run=False)
+    assert ok is True
+    assert len(captured_calls) == 1
+    assert captured_calls[0]["backend"] == "codex"
 
 
 # ─────────────────────────────────────────────────────────────────────────

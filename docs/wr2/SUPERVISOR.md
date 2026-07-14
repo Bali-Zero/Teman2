@@ -1,10 +1,18 @@
 # WR2 Supervisor — Event-Driven Pipeline Orchestrator
 
-**Status:** v1, deployed 2026-04-26
+**Status:** v1, deployed 2026-04-26; render chokepoint cut over to the HTML lane 2026-06-11 (PR #1236),
+the Canva lane it replaced was retired 2026-07-13 (PR #2396) — see "What it replaces" below.
 **Code:** `scripts/wr2_supervisor.py`
 **Plist:** `infra/launchagents/com.balizero.wr2.supervisor.plist`
 **DB trigger:** migration `138_wr2_status_notify.sql`
 **Reviewers:** Codex GPT-5.5, Gemini 3.1 Pro, DeepSeek Reasoner
+**Reality check:** `research/operations/2026-07-14-wr2-deep-audit.md` — the supervisor/reconciler
+loop this doc describes is one of **two** live WR2 pipelines (the other is the interactive
+`wr2-design-architect` + 4-subagent path); this file only covers the autonomous one. It also is
+NOT the entry point for the HOME-only `wr2-carousel-pipeline` skill's "autonomous orchestrator"
+path — that skill cites a `wr2_carousel_orchestrator.py` entry point that **does not exist on
+disk anywhere in this repo** (ghost reference, PENDING-ALIGN, see the audit §2). The real
+autonomous entry point is `wr2_supervisor.py`, described below.
 
 ---
 
@@ -13,9 +21,20 @@
 Six chained `launchd` plists scheduled at fixed WITA minutes (05:10..05:16) used to fire WR2 pipeline stages back-to-back. This was a chain-as-cron antipattern: a slow stage made the next one no-op, latency was 24h, throughput capped at one carousel per day.
 
 After this refactor:
+
 - `topic-selector` keeps its 05:10 cron as the **daily entry point**.
-- The other five stages (`draft-generator`, `image-generator`, `fact-extractor`, `fact-checker`, `canva-apply`) lose their `StartCalendarInterval` and run **only** when the supervisor `launchctl kickstart`s them in response to a status transition.
-- Latency: ~10–20 min topic→`rendered` (Canva-API variance dominates).
+- The other five stages (`draft-generator`, `image-generator`, `fact-extractor`, `fact-checker`, and
+  the render stage) lose their `StartCalendarInterval` and run **only** when the supervisor
+  `launchctl kickstart`s them in response to a status transition.
+- **The render stage itself changed lanes since deployment.** At cutover (2026-04-26) the final
+  stage was `canva-apply` (Canva duplica-poi-edita). PR #1236 (2026-06-11) moved the render
+  chokepoint to the deterministic HTML lane — `com.balizero.wr2.html-apply`, which shells out to
+  `scripts/wr2_html_render_apply.py` → `scripts/wr2_html_renderer/composer.py` +
+  `scripts/wr2_html_renderer/renderer.py` (Playwright HTML→PNG). The Canva lane was fully retired
+  PR #2396 (2026-07-13) — do not re-introduce `canva-apply` as a live target; any doc or code still
+  citing it is describing history, not the current pipeline.
+- Latency: ~10–20 min topic→`rendered` (image-gen and render-pass variance dominate; Canva-API
+  variance no longer applies since the Canva lane is retired).
 - Throughput: bounded by Gemini Ultra rate limits (~10 drafts/day practical).
 
 ## How it works
@@ -39,19 +58,33 @@ INSERT or UPDATE OF status ON war_room_drafts
 
 ## State machine
 
-| Transition | Triggers |
-|------------|----------|
-| `* → briefed` | `draft-generator` |
-| `briefed → briefed_facted` | `draft-generator` |
-| `briefed/briefed_facted → drafts` | `image-generator` |
-| `drafts → drafts_imaged` | `fact-extractor` |
-| `drafts_imaged → drafts_imaged_facted` | `fact-checker` |
-| `drafts_imaged_facted → drafts_imaged_checked` | `canva-apply` |
-| `* → rendered` | Telegram alert (review gate) |
-| `* → fact_check_failed` | Telegram alert (manual triage) |
-| `* → rejected` | log only |
+| Transition                                     | Triggers                                               |
+| ---------------------------------------------- | ------------------------------------------------------ |
+| `* → briefed`                                  | `draft-generator`                                      |
+| `briefed → drafts`                             | `image-generator`                                      |
+| `drafts → drafts_imaged`                       | `fact-extractor`                                       |
+| `drafts_imaged → drafts_imaged_facted`         | `fact-checker`                                         |
+| `drafts_imaged_facted → drafts_imaged_checked` | `html-apply` (Engine A: `composer.py` + `renderer.py`) |
+| `* → rendered`                                 | Telegram alert (review gate)                           |
+| `* → fact_check_failed`                        | Telegram alert (manual triage)                         |
+| `* → rejected`                                 | log only                                               |
 
-`*` matches any prior status, including `NULL` for INSERT events.
+`*` matches any prior status, including `NULL` for INSERT events. Source of truth for this table:
+`TRANSITIONS` in `scripts/wr2_supervisor.py` (verified 2026-07-14) — the `briefed_facted` state
+referenced in an earlier revision of this doc had no producer in the live state machine and was
+removed (`scripts/wr2_supervisor.py` inline comment, "P-1 2026-06-11").
+
+### After `rendered` — this doc's blind spot
+
+`rendered` is a DB-status proxy for "HTML render pass completed", **not** "published". The
+supervisor/reconciler loop above does not drive publication at all. What happens next lives on a
+separate surface: `apps/war-room/output/queue/human-review-queue.json` (written by
+`wr2_html_render_apply.py`) is the **live, most-authoritative** publication queue; a human
+(Damar/app) approves and publishes by hand — never auto-publish (Legge 5). `war_room_drafts.status`
+in Postgres is **not authoritative** for "was this actually published" — see
+`research/operations/2026-07-14-wr2-deep-audit.md` §3 for the full state-surface map (5 surfaces,
+one writer short) before building anything that trusts DB `status='rendered'` as a publication
+signal.
 
 ## Reconciliation
 
@@ -78,14 +111,14 @@ The v1 plan used a per-plist cooldown ("don't kickstart the same plist twice wit
 
 The supervisor is sourced via `~/.openclaw/bin/wr2/wr2-script-wrapper.sh`, which loads `~/.nuzantara-secrets.env` and `~/.nuzantara-backend-secrets.env`. Required:
 
-| Variable | Purpose |
-|----------|---------|
-| `DATABASE_URL` | local pg-proxy DSN (port 15432 → Fly Postgres) |
-| `TELEGRAM_BOT_TOKEN` | optional, review notifications |
-| `TELEGRAM_OWNER_CHAT_ID` | optional, Zero's chat |
-| `WR2_SUPERVISOR_DRY_RUN` | optional, `true` to log without kickstarts |
-| `WR2_RECONCILE_INTERVAL_SEC` | optional, default 300 |
-| `WR2_RECONCILE_STALE_MIN` | optional, default 30 |
+| Variable                     | Purpose                                        |
+| ---------------------------- | ---------------------------------------------- |
+| `DATABASE_URL`               | local pg-proxy DSN (port 15432 → Fly Postgres) |
+| `TELEGRAM_BOT_TOKEN`         | optional, review notifications                 |
+| `TELEGRAM_OWNER_CHAT_ID`     | optional, Zero's chat                          |
+| `WR2_SUPERVISOR_DRY_RUN`     | optional, `true` to log without kickstarts     |
+| `WR2_RECONCILE_INTERVAL_SEC` | optional, default 300                          |
+| `WR2_RECONCILE_STALE_MIN`    | optional, default 30                           |
 
 ## Observability
 
@@ -117,7 +150,7 @@ tail -20 ~/logs/wr2_supervisor.log
 
 # 5. Remove StartCalendarInterval from the 5 chained plists
 #    (draft-generator, image-generator, fact-extractor, fact-checker,
-#    canva-apply). topic-selector keeps its 05:10 cron.
+#    html-apply). topic-selector keeps its 05:10 cron.
 ```
 
 ### Uninstall
@@ -128,7 +161,7 @@ launchctl bootout gui/$(id -u)/com.balizero.wr2.supervisor
 
 # Restore the chained-cron plists from your snapshot dir, then bootstrap
 # them back. Run each downstream stage once to flush stranded drafts:
-for stage in draft-generator image-generator fact-extractor fact-checker canva-apply; do
+for stage in draft-generator image-generator fact-extractor fact-checker html-apply; do
   launchctl kickstart gui/$(id -u)/com.balizero.wr2.$stage
   sleep 60
 done
@@ -143,11 +176,20 @@ psql nuzantara_rag -c "DROP FUNCTION wr2_status_change_notify();"
 - **Throughput**: ~10 drafts/day before Gemini Ultra rate limits (silent throttling). Worth flagging if Bali Zero scales editorial output.
 - **Mac sleep gap**: NOTIFYs fired while the Mac is asleep are lost. Reconciliation catches them on wake, but a draft that transitioned `briefed → drafts` during sleep will resume from `drafts` (not from `briefed` again — workers are idempotent so this is safe).
 - **Single supervisor SPOF**: only one instance on Pro. launchd restarts it within 10s on crash. No HA — not warranted at this scale.
-- **Canva render variance**: 2–15 min normal, the 30-min reconcile threshold accommodates worst-case.
+- **Render/image-gen variance**: 2–15 min normal, the 30-min reconcile threshold accommodates
+  worst-case. As of 2026-07-14 the image-generation stage was observed functionally dead on both
+  providers (Codex `$imagegen` + FlowKit/Playwright fallback, 0/5 slides generated on two full
+  runs) — see `research/operations/2026-07-14-wr2-deep-audit.md` §4 for the live-liveness probe
+  before assuming this stage is healthy.
+- **Publication-state blindness**: `wr2_daily_reconciler.py`'s `TERMINAL_OK` set treats `rendered`
+  as terminal-OK; it has no visibility into whether the review-queue/app path later published the
+  carousel. This supervisor+reconciler pair only reasons about render completion, never
+  publication — see "After `rendered`" above.
 
 ## Tests
 
 `scripts/tests/test_wr2_supervisor.py` — 17 unit tests covering:
+
 - Transition resolution (exact, wildcard, alert-only, unknown sentinel)
 - `kickstart` no-`-k`, rc=113 no-op, dry-run mode, real-failure alerting
 - Per-draft serialisation lock
@@ -159,6 +201,7 @@ psql nuzantara_rag -c "DROP FUNCTION wr2_status_change_notify();"
 - `conn = None` UnboundLocalError protection (source-level assertion)
 
 Run:
+
 ```bash
 cd apps/backend-rag && source .venv/bin/activate
 PYTHONPATH=. pytest ../../scripts/tests/test_wr2_supervisor.py -v

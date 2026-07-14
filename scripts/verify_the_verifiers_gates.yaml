@@ -449,6 +449,25 @@ gates:
       fires after 3 empty weeks. Green = the last green-but-empty loop now records its own
       no-delta. Closes the self-loop: all reflexion organs delegate to the one core.
 
+  - id: scar_wr2_reflexion_layout_routing
+    kind: scar_test
+    w_number: audit-2026-07-14-wave4-16
+    target: scripts/test_wr2_reflexion_layout_routing.py
+    note: >
+      WR2 deep audit (research/operations/2026-07-14-wr2-deep-audit.md §10 item 16): the
+      reflexion synthesis prompt promised `suggested_destination: layouts/_proposed/<name>.md`
+      for category="layout" lessons, but write_lessons() had no code path that ever wrote
+      there — the dir did not exist and no routing logic existed (aspirational contract,
+      cicatrix-superscar #2 flavor: doc asserts a capability the code cannot produce). Cure:
+      `_write_layout_proposal()` routes lessons where BOTH `category == "layout"` AND
+      `suggested_destination` starts with "layouts/_proposed/" agree (structured-field match,
+      never bare substring — cicatrix-superscar #3 guard-over-match discipline) to
+      LAYOUTS_PROPOSED_DIR, the repo-canonical `skills/bali-zero-brand/layouts/_proposed/` dir
+      (NOT a new undeclared HOME-fork target — superscar #1). Test asserts guilt (matching
+      category+dest writes a file) AND innocence (non-layout lessons, and mismatched
+      category/dest pairs, never touch the dir), plus the placeholder-filename fallback.
+      Green = the promised layout-proposal destination is a real, tested write path.
+
   # ---------------------------------------------------------------------------
   # R1 (2026-07-06) — generator != grader T-GATE on research/audit deliverables.
   # Reference: docs/specs/rules-as-harness-and-simulation-chamber-v1.md section 2/R1.

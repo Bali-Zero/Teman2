@@ -8,10 +8,10 @@ import { I18nProvider } from "@/i18n";
 
 const BLOG_NAV_ITEMS = [
   { label: "Home", href: "/" },
-  { label: "Visa", href: "/visa" },
-  { label: "Business", href: "/kbli" },
-  { label: "Tax", href: "/tax-calendar" },
-  { label: "Property", href: "/property/eligibility" },
+  { label: "Visa", href: "/services/visa" },
+  { label: "Business", href: "/services/company" },
+  { label: "Tax", href: "/services/tax" },
+  { label: "Property", href: "/services/property" },
   { label: "News", href: "/news" },
   { label: "Team", href: "/team" },
 ];

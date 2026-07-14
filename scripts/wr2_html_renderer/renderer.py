@@ -127,7 +127,24 @@ def _stage_assets(output_dir: Path) -> None:
     if _BRAND_LOGO.is_file():
         shutil.copy2(_BRAND_LOGO, slides_dir / "logo.png")
     else:
-        logger.warning("brand logo not found at %s — slides will miss the logo", _BRAND_LOGO)
+        # HARD GATE (2026-07-14, cure item 13 / Article 4.3 "present on every
+        # slide without exception. Hard fail if missing"). Was a
+        # logger.warning since the renderer's original PR (#1228) — staging
+        # would silently continue with no logo.png at all, and EVERY layout
+        # skeleton in the library (12/12, verified via `grep -l
+        # data-zone-type="logo" layouts/*.md`) bakes the mark via CSS
+        # `background-image:url('logo.png')` against this ONE staged file,
+        # so a missing master asset means every slide in the carousel would
+        # render logo-less. No layout family is exempt (no full-bleed-hero
+        # skeleton omits the logo div either), so this is a blanket gate —
+        # mirrors the W99 BRAND FONT NOT LOADED hard gate in _render_one
+        # below: green ≠ working (superscar #2), a carousel without the
+        # brand mark is a render FAILURE, not a nuance worth a log line.
+        raise FileNotFoundError(
+            f"Article 4.3 hard fail: brand logo asset not found at "
+            f"{_BRAND_LOGO} — every slide in this carousel would render "
+            f"without the logo"
+        )
 
     # _base.css with token :root injected from tokens.json (no drift)
     from .tokens_to_css import load_tokens, render_root_block  # local import
@@ -191,9 +208,35 @@ async () => {
   //    reflects post-load() truth rather than the lazy status field).
   const montserrat = document.fonts.check('800 16px Montserrat')
                   || document.fonts.check('700 16px Montserrat');
-  return { total_images: imgs.length, decoded_images: decoded, montserrat };
+  // 4. Logo (Article 4.3 — present on every slide, hard fail if missing).
+  //    Every layout skeleton bakes the mark as `<div class="logo">` with the
+  //    CSS background-image set in _base.css; check the element exists AND
+  //    its resolved background-image actually loaded (not 'none' — the
+  //    value it falls back to if logo.png 404s under this file:// origin).
+  const logoEl = document.querySelector('.logo');
+  const logoPresent = !!logoEl;
+  let logoBgOk = false;
+  if (logoEl) {
+    const bg = getComputedStyle(logoEl).backgroundImage;
+    logoBgOk = !!bg && bg !== 'none';
+  }
+  return {
+    total_images: imgs.length, decoded_images: decoded, montserrat,
+    logo_present: logoPresent, logo_bg_ok: logoBgOk,
+  };
 }
 """
+
+
+def _readiness_logo_ok(readiness: dict[str, Any]) -> bool:
+    """Article 4.3 gate predicate: True only if the rendered page has a
+    `.logo` element AND its CSS background-image actually resolved.
+
+    Pulled out of `_render_one` as a pure function so the gate logic is
+    unit-testable without a live Chromium page (mirrors the readiness dict
+    shape `_READINESS_JS` returns).
+    """
+    return bool(readiness.get("logo_present")) and bool(readiness.get("logo_bg_ok"))
 
 
 async def _render_one(
@@ -235,6 +278,22 @@ async def _render_one(
             f"{html_path.name}: BRAND FONT NOT LOADED — Montserrat @font-face "
             f"unavailable (missing _fonts.css link?); slide would paint in the "
             f"system font",
+        )
+
+    if not _readiness_logo_ok(readiness):
+        # HARD GATE (2026-07-14, cure item 13 / Article 4.3): the staging-time
+        # check above (_stage_assets) only proves the master asset EXISTS on
+        # disk; this proves the mark actually resolved on THIS rendered page
+        # (mirrors the montserrat check's mechanism — a boolean read off the
+        # in-page readiness probe, gated per-slide, not a log line). No layout
+        # family is exempt, so a missing/unresolved logo is a hard fail here
+        # too, same as the font gate above.
+        return (
+            False,
+            False,
+            f"{html_path.name}: LOGO MISSING — Article 4.3 requires the brand "
+            f"mark on every slide without exception; .logo element "
+            f"{'not found' if not readiness.get('logo_present') else 'has no background-image loaded'}",
         )
 
     if expect_hero:

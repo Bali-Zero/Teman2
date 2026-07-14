@@ -34,6 +34,7 @@ import asyncio
 import json
 import logging
 import os
+import socket
 import sys
 import time
 import uuid
@@ -42,6 +43,9 @@ from pathlib import Path
 from typing import Any
 
 import asyncpg  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
 
 logger = logging.getLogger("wr2.image_generator")
 
@@ -757,6 +761,14 @@ CODEX_OUTPUT_DIR = Path.home() / ".codex" / "generated_images"
 CODEX_TIMEOUT_SEC = float(os.environ.get("WR2_CODEX_TIMEOUT_SEC", "600"))
 CODEX_MTIME_WINDOW_SEC = 600
 
+# Bounded retry for the Codex subprocess itself (2026-07-14, B5 resurrection —
+# distinct from the outer backend=auto fallback in _gen_image_with_semaphore,
+# which only tries Codex ONCE before dropping to FlowKit/Playwright). A
+# transient Codex hiccup (rate limit, momentary CLI flake) shouldn't burn the
+# whole slide down to a different, lower-fidelity backend on the first miss.
+CODEX_MAX_ATTEMPTS = int(os.environ.get("WR2_CODEX_MAX_ATTEMPTS", "2"))
+CODEX_RETRY_BACKOFF_SEC = float(os.environ.get("WR2_CODEX_RETRY_BACKOFF_SEC", "10"))
+
 _CODEX_STRIPPED_ENV_KEYS = frozenset({
     "ANTHROPIC_API_KEY",
     "AWS_BEDROCK_ANTHROPIC_KEY",
@@ -779,19 +791,98 @@ async def _probe_codex_available() -> bool:
         return False
 
 
-async def _acquire_bytes_via_codex(
+def _select_fresh_codex_png(
+    output_dir: Path,
+    pre_existing: set[Path],
+    start_ts: float,
+    *,
+    mtime_window_sec: float = CODEX_MTIME_WINDOW_SEC,
+    now: float | None = None,
+    slide_number: int | str | None = None,
+) -> tuple[Path | None, str | None]:
+    """Name-agnostic pick of the PNG Codex just wrote for THIS invocation.
+
+    2026-07-14 (B5 resurrection): the previous detector globbed
+    `ig_*.png` only. Codex's `$imagegen` skill has silently renamed its
+    output at least twice since (`ig_*.png` -> `call_*.png`, and a third
+    `exec-*.png` variant observed live) — the glob then matches nothing
+    NEW, ever again, and every run falls through to the "latest existing
+    PNG" staleness check against a file frozen days in the past. That
+    made every Codex call look like a failure even though Codex was
+    succeeding on 100% of attempts (verified: every "failed" session
+    directory from the 2026-07-14 outage window actually contained a
+    correctly-generated PNG under the drifted name).
+
+    Detection is now filename-agnostic: any `*.png` under `output_dir`
+    counts as "ours" if EITHER it wasn't present in the pre-run snapshot
+    (`pre_existing`) OR its mtime is at/after `start_ts` (covers the edge
+    case of a path being reused). This can't be fooled by a THIRD rename
+    — only by Codex ceasing to write PNG files at all, which correctly
+    surfaces as a real failure.
+
+    Always logs what it found (count + example path) so the next naming
+    drift is visible in the log stream instead of silently degrading back
+    into this same trap.
+
+    Returns (path, None) on a fresh candidate, or (None, error) — the
+    error covers both "no PNG at all" and "only a stale pre-existing PNG,
+    filename-agnostic staleness check included".
+    """
+    if not output_dir.exists():
+        return None, "codex output dir does not exist after run"
+
+    all_pngs = list(output_dir.rglob("*.png"))
+    fresh: list[tuple[Path, float]] = []
+    for p in all_pngs:
+        try:
+            mtime = p.stat().st_mtime
+        except OSError:
+            continue
+        if p not in pre_existing or mtime >= start_ts:
+            fresh.append((p, mtime))
+
+    logger.info(
+        "[slide %s] codex output scan: %d png(s) total under %s, %d fresh candidate(s)%s",
+        slide_number, len(all_pngs), output_dir,
+        len(fresh),
+        f" (e.g. {fresh[0][0].name})" if fresh else "",
+    )
+
+    if fresh:
+        chosen = max(fresh, key=lambda t: t[1])[0]
+        return chosen, None
+
+    if not all_pngs:
+        return None, "no PNG found in codex output dir"
+
+    now = time.time() if now is None else now
+    latest, latest_mtime = max(
+        ((p, p.stat().st_mtime) for p in all_pngs), key=lambda t: t[1]
+    )
+    if (now - latest_mtime) > mtime_window_sec:
+        return None, (
+            f"latest PNG older than {mtime_window_sec:.0f}s window "
+            f"(checked {len(all_pngs)} file(s), name-agnostic — "
+            f"latest was {latest.name})"
+        )
+    return latest, None
+
+
+async def _acquire_bytes_via_codex_once(
     slide_number: int,
     image_prompt: str,
     draft_id: str,
     tonal_palette: str | None = None,
 ) -> tuple[bytes | None, str | None]:
-    """Generate one hero image via Codex CLI `$imagegen` (gpt-image-2).
+    """Single-attempt Codex `$imagegen` (gpt-image-2) generation.
 
     Aspect ratio 4:5 portrait is enforced via prompt suffix. Returns
     (bytes, None) on success or (None, error) on failure.
 
     Mirrors wr2_draft_generator._generate_cover_via_codex but takes the
-    final composed prompt (BRAND + ANTI_CLICHE) as input.
+    final composed prompt (BRAND + ANTI_CLICHE) as input. Callers wanting
+    retry+backoff should use `_acquire_bytes_via_codex` below — this
+    single-shot helper stays separately testable/callable.
     """
     final_prompt = _compose_final_prompt(image_prompt, tonal_palette)
     # Force 4:5 portrait — gpt-image-2 honours aspect hints in prompt body
@@ -804,7 +895,8 @@ async def _acquire_bytes_via_codex(
 
     pre_existing: set[Path] = set()
     if CODEX_OUTPUT_DIR.exists():
-        pre_existing = set(CODEX_OUTPUT_DIR.rglob("ig_*.png"))
+        pre_existing = set(CODEX_OUTPUT_DIR.rglob("*.png"))
+    start_ts = time.time()
 
     t0 = time.perf_counter()
     try:
@@ -833,19 +925,11 @@ async def _acquire_bytes_via_codex(
     except Exception as e:  # noqa: BLE001
         return None, f"codex spawn failed: {e}"
 
-    if not CODEX_OUTPUT_DIR.exists():
-        return None, "codex output dir does not exist after run"
-    candidates = [p for p in CODEX_OUTPUT_DIR.rglob("ig_*.png") if p not in pre_existing]
-    if not candidates:
-        all_pngs = list(CODEX_OUTPUT_DIR.rglob("ig_*.png"))
-        if not all_pngs:
-            return None, "no PNG found in codex output dir"
-        latest = max(all_pngs, key=lambda p: p.stat().st_mtime)
-        if (time.time() - latest.stat().st_mtime) > CODEX_MTIME_WINDOW_SEC:
-            return None, f"latest PNG older than {CODEX_MTIME_WINDOW_SEC}s window"
-        png_path = latest
-    else:
-        png_path = max(candidates, key=lambda p: p.stat().st_mtime)
+    png_path, select_err = _select_fresh_codex_png(
+        CODEX_OUTPUT_DIR, pre_existing, start_ts, slide_number=slide_number,
+    )
+    if png_path is None:
+        return None, select_err
 
     try:
         img_bytes = png_path.read_bytes()
@@ -858,6 +942,38 @@ async def _acquire_bytes_via_codex(
         slide_number, len(img_bytes), png_path.name, elapsed_ms,
     )
     return img_bytes, None
+
+
+async def _acquire_bytes_via_codex(
+    slide_number: int,
+    image_prompt: str,
+    draft_id: str,
+    tonal_palette: str | None = None,
+) -> tuple[bytes | None, str | None]:
+    """Bounded retry+backoff wrapper around `_acquire_bytes_via_codex_once`.
+
+    2026-07-14 (B5, audit cure-plan §10 item 5): the Codex path previously
+    tried exactly once per slide before falling through to FlowKit/
+    Playwright (lower fidelity — 1:1 crop instead of native 4:5). A
+    transient Codex hiccup (rate limit, momentary CLI flake) shouldn't
+    burn the whole slide down a quality tier on the first miss. Default
+    2 attempts / 10s backoff — small and bounded, not a new architecture.
+    """
+    last_err: str | None = None
+    for attempt in range(1, CODEX_MAX_ATTEMPTS + 1):
+        img_bytes, err = await _acquire_bytes_via_codex_once(
+            slide_number, image_prompt, draft_id, tonal_palette,
+        )
+        if img_bytes:
+            return img_bytes, None
+        last_err = err
+        logger.warning(
+            "[slide %d] codex attempt %d/%d failed: %s",
+            slide_number, attempt, CODEX_MAX_ATTEMPTS, err,
+        )
+        if attempt < CODEX_MAX_ATTEMPTS:
+            await asyncio.sleep(CODEX_RETRY_BACKOFF_SEC)
+    return None, last_err
 
 
 async def _acquire_bytes_via_flowkit(
@@ -1182,11 +1298,52 @@ async def _fetch_pending(conn: asyncpg.Connection, limit: int) -> list[asyncpg.R
     )
 
 
+def _lease_owner_id() -> str:
+    return f"wr2-image-generator:{socket.gethostname()}:{os.getpid()}"
+
+
+async def _acquire_image_lease(
+    conn: asyncpg.Connection, draft_id: uuid.UUID, lease_owner: str,
+) -> bool:
+    """CAS lease on a pending draft — overlap-prevention (2026-07-14, B5).
+
+    `wr2_image_generator.py` was the one WR2 lane with NO lease/CAS at all
+    (the HTML-render and Canva-render lanes both already guard their fetch
+    via `lease_owner IS NULL` in `_pg.py`) — two overlapping invocations
+    (e.g. a stuck run still mid-slide when the supervisor's reconcile
+    sweep re-kicks the same plist) could double-process the same draft:
+    duplicate Codex/Tigris calls, and — sharper for THIS bug — two
+    processes racing writes into the SAME shared `~/.codex/generated_images/`
+    tree the fresh-PNG detector above scans. Mirrors the existing
+    `war_room_drafts.lease_owner` CAS convention (`_pg.py`
+    `acquire_html_lease_and_fetch`) rather than inventing a new mechanism.
+
+    Status is re-checked in the same CAS (not just at `_fetch_pending`
+    time) so a draft that moved on between fetch and lease attempt is
+    never claimed. Release happens in `_persist_imaged` / `_mark_image_failed`.
+    """
+    row = await conn.fetchrow(
+        """
+        UPDATE war_room_drafts
+           SET lease_owner = $2, lease_acquired_at = NOW()
+         WHERE id = $1
+           AND lease_owner IS NULL
+           AND status IN ('drafts_checked', 'drafts')
+        RETURNING id
+        """,
+        draft_id,
+        lease_owner,
+    )
+    return row is not None
+
+
 async def _persist_imaged(
     conn: asyncpg.Connection,
     draft_id: uuid.UUID,
     slides: list[dict[str, Any]],
     council_meta: dict[str, Any],
+    *,
+    lease_owner: str | None = None,
 ) -> None:
     await conn.execute(
         """
@@ -1194,26 +1351,40 @@ async def _persist_imaged(
            SET slides_json         = $2::jsonb,
                council_debate_json = $3::jsonb,
                status              = 'drafts_imaged',
+               lease_owner         = NULL,
+               lease_acquired_at   = NULL,
                updated_at          = NOW()
          WHERE id = $1
+           AND ($4::text IS NULL OR lease_owner = $4)
         """,
         draft_id,
         json.dumps({"slides": slides}),
         json.dumps(council_meta),
+        lease_owner,
     )
 
 
-async def _mark_image_failed(conn: asyncpg.Connection, draft_id: uuid.UUID, reason: str) -> None:
+async def _mark_image_failed(
+    conn: asyncpg.Connection,
+    draft_id: uuid.UUID,
+    reason: str,
+    *,
+    lease_owner: str | None = None,
+) -> None:
     await conn.execute(
         """
         UPDATE war_room_drafts
-           SET status           = 'image_failed',
-               rejection_reason = $2,
-               updated_at       = NOW()
+           SET status            = 'image_failed',
+               rejection_reason  = $2,
+               lease_owner       = NULL,
+               lease_acquired_at = NULL,
+               updated_at        = NOW()
          WHERE id = $1
+           AND ($3::text IS NULL OR lease_owner = $3)
         """,
         draft_id,
         reason[:1000],
+        lease_owner,
     )
 
 
@@ -1227,6 +1398,7 @@ async def _process_one(
     row: asyncpg.Record,
     *,
     dry_run: bool,
+    lease_owner: str | None = None,
 ) -> bool:
     draft_id: uuid.UUID = row["id"]
     topic: str = row["topic"]
@@ -1260,6 +1432,13 @@ async def _process_one(
                 (s.get("image_prompt") or "")[:100],
             )
         return True
+
+    # B11: per-step observability (wr2_orchestrator_metrics, migration 203 —
+    # had zero writer before this). Times the WHOLE per-draft image generation
+    # section (all heroes, whichever backend); closest available enum value is
+    # image_prompt_author (the table has no distinct "render image" value —
+    # see wr2_orchestrator_metrics.py module docstring). Fail-open.
+    _wom_t0 = time.perf_counter()
 
     # ── Backend selection (Sprint A 2026-05-07: Codex added as primary) ──
     # Probe Codex + FlowKit ONCE per draft (not per slide). Codex is the
@@ -1296,10 +1475,12 @@ async def _process_one(
     results: list[Any] = []
 
     if IMAGE_BACKEND == "codex" or (IMAGE_BACKEND == "auto" and codex_available):
-        # Codex-only path: no Playwright launch at all.
+        # Codex-primary path: no Playwright launch at all (context=None).
         # In auto mode, if Codex is available we skip Playwright entirely
-        # — Codex handles 4:5 native and is the desired primary. FlowKit/
-        # Playwright are only fallbacks if Codex itself is missing.
+        # — Codex handles 4:5 native and is the desired primary. FlowKit is
+        # a per-slide fallback if Codex itself fails; Playwright is never
+        # reintroduced here (context=None keeps _gen_image_with_semaphore's
+        # Playwright branch unreachable — see its `context is None` guard).
         # Without this guard, the Playwright launch loop below ran a
         # `launch_persistent_context` per slide even when Codex succeeded,
         # leading to network-service crashes on slide 11 (08:09 WITA run).
@@ -1309,10 +1490,17 @@ async def _process_one(
         # 'playwright' in the deploy venv). Codex MUST be preferred when
         # available regardless of FlowKit status. Empirical 2026-05-19:
         # 2 drafts (2f21e709, 98805a61) went image_failed because of this.
+        # 2026-07-14 fix: in auto mode, pass backend="auto" (not "codex")
+        # and flowkit_available through, so a per-slide Codex failure falls
+        # back to FlowKit instead of dead-ending as image_failed. Explicit
+        # WR2_IMAGE_BACKEND=codex still passes backend="codex" strictly —
+        # an explicit codex-only request must not silently cascade.
         sem = asyncio.Semaphore(1)
+        per_slide_backend = "auto" if IMAGE_BACKEND == "auto" else "codex"
         logger.info(
-            "Codex-only path active (backend=%s, codex_available=True). "
-            "Skipping Playwright launch.", IMAGE_BACKEND,
+            "Codex-primary path active (backend=%s, codex_available=True, "
+            "flowkit_available=%s). Skipping Playwright launch.",
+            IMAGE_BACKEND, flowkit_available,
         )
         for idx, s in enumerate(hero_slides):
             r = await _gen_image_with_semaphore(
@@ -1321,8 +1509,9 @@ async def _process_one(
                 s["slide_number"],
                 s.get("image_prompt") or "",
                 str(draft_id),
-                backend="codex",
+                backend=per_slide_backend,
                 codex_available=True,
+                flowkit_available=flowkit_available,
                 tonal_palette=s.get("tonal_palette"),
             )
             results.append(r)
@@ -1399,6 +1588,23 @@ async def _process_one(
     failures = len(errors_by_slide)
     logger.info("Draft %s: %d/%d images OK", draft_id, successes, successes + failures)
 
+    _wom_cid = await wom.resolve_carousel_id(
+        conn, topic=topic, session_id=f"image_generator:{draft_id}"
+    )
+    await wom.record_step(
+        carousel_id=_wom_cid,
+        step_name="image_prompt_author",
+        step_index=3,
+        model=IMAGE_BACKEND,  # backend mode (auto/codex/flowkit/playwright), not an LLM name
+        tier=1,  # no LLM-cascade tier applies to image backends — see module docstring
+        latency_ms=int((time.perf_counter() - _wom_t0) * 1000),
+        retry_count=failures,  # approximate: 1 failed hero ≈ ≥1 exhausted retry, see wr2_image_generator.py's own retry loop in _gen_image_with_semaphore
+        success=successes > 0,  # mirrors the actual pipeline gate below (successes == 0 -> image_failed)
+        error_class="all_images_failed" if successes == 0 else None,
+        error_message=("; ".join(list(errors_by_slide.values())[:3]) if successes == 0 else None),
+        conn=conn,
+    )
+
     for s in slides:
         if s.get("is_hero_image"):
             sn = s["slide_number"]
@@ -1423,6 +1629,7 @@ async def _process_one(
             conn,
             draft_id,
             f"all_images_failed: {list(errors_by_slide.values())[:3]}",
+            lease_owner=lease_owner,
         )
         _send_telegram(
             f"WR2 image_generator FAILED\n"
@@ -1432,7 +1639,7 @@ async def _process_one(
         )
         return False
 
-    await _persist_imaged(conn, draft_id, slides, council)
+    await _persist_imaged(conn, draft_id, slides, council, lease_owner=lease_owner)
     logger.info("Draft %s → status=drafts_imaged", draft_id)
 
     _send_telegram(
@@ -1484,15 +1691,30 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
                 logger.info("[DRY-RUN] would process %d drafts:", len(rows))
 
             successes = 0
+            lease_owner = _lease_owner_id()
             for row in rows:
+                draft_lease: str | None = None
+                if not dry_run:
+                    acquired = await _acquire_image_lease(conn, row["id"], lease_owner)
+                    if not acquired:
+                        logger.info(
+                            "Draft %s: lease held by another process — skipping "
+                            "(overlap-prevention, B5)", row["id"],
+                        )
+                        continue
+                    draft_lease = lease_owner
                 try:
-                    ok = await _process_one(conn, row, dry_run=dry_run)
+                    ok = await _process_one(
+                        conn, row, dry_run=dry_run, lease_owner=draft_lease,
+                    )
                     if ok:
                         successes += 1
                 except Exception as e:
                     logger.exception("Unhandled error on draft %s: %s", row["id"], e)
                     try:
-                        await _mark_image_failed(conn, row["id"], f"unhandled: {e}")
+                        await _mark_image_failed(
+                            conn, row["id"], f"unhandled: {e}", lease_owner=draft_lease,
+                        )
                     except Exception:
                         pass
 

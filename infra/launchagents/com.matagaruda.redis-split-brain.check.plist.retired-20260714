@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  RETIRED 2026-07-14 (obsolete doctrine, not a bug fix).
+
+  This check compares garuda:* streams between Pro and Mini redis. Since the
+  Stage-1 single-writer cutover (2026-06-29, Zero decision G1=Pro — see
+  mata_garuda/workers/base_worker.py header), Mini's local garuda:* copies are
+  legitimately frozen forever: there is ONE canonical Redis now (Pro), so the
+  drift this check exists to catch is an EXPECTED PERMANENT condition, not a
+  fault. Left armed, it alerted forever (p0 Telegram spam every 4h
+  suppress-window) on a comparison whose premise (two live writers) no longer
+  holds.
+
+  Renamed to *.plist.retired-20260714 so launchd/plutil tooling that globs
+  *.plist never picks it up again. The wrapper script
+  (infra/launchagents/wrappers/matagaruda-redis-split-brain-check.sh) and the
+  detector (apps/mata-garuda/scripts/check_redis_split_brain.py) are left in
+  place as archaeology — with the plist retired, nothing invokes them.
+
+  See also: apps/organism/organism/organs_registry.yaml (enabled: false on
+  the matching organ entry) and scripts/launchagent-state-bridge.py (bridge
+  entry annotated, not removed — see the canva-label retirement comment there
+  for the established pattern).
+-->
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>GARUDA_CANONICAL_REDIS_HOST</key>
+		<string>127.0.0.1</string>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.matagaruda.redis-split-brain.check</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/scripts/matagaruda-redis-split-brain-check.sh</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/matagaruda-redis-split-brain.error.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/matagaruda-redis-split-brain.log</string>
+	<key>StartInterval</key>
+	<integer>1800</integer>
+</dict>
+</plist>

@@ -1,5 +1,13 @@
 # WR2 Canonical-Bypass Prevention Audit (2026-05-15)
 
+> **HISTORICAL SNAPSHOT.** This is a dated incident post-mortem, not a live procedure doc. The
+> render script it centers on (`scripts/wr2_canva_pdf_render.py`) still exists on disk but is no
+> longer wired into any live `launchd` plist — the Canva lane it belonged to was retired PR #2396
+> (2026-07-13). The 12-pattern bypass-prevention checklist (session-local edits vs canonical file,
+> etc.) is a general lesson still worth reading; the specific render path it was written against is
+> not the current one. Current ground truth: `docs/wr2/SUPERVISOR.md` +
+> `research/operations/2026-07-14-wr2-deep-audit.md`.
+>
 > 12-pattern checklist from Gemini 3.1 Pro + Codex GPT-5.5 brainstorming after
 > the v2→v3 false-PASS incident on the Bali Tourist Visa Q1-Q2 2026 carousel.
 > Each pattern includes detection method + the implemented guard.
@@ -31,6 +39,7 @@ This document captures the systematic audit performed afterward.
 during a run, then later runs reuse it instead of pulling canonical.
 
 **Guard implemented**:
+
 - `wr2-design-architect.md` Rule #15 (constitution-level): never write
   `/tmp/wr2_*_LOCAL*.py`. Edit canonical + commit.
 - Pre-flight: at run start, delete any leftover `/tmp/wr2_*_LOCAL*.py`.
@@ -43,6 +52,7 @@ interpreters, different `sys.path`, different cached modules.
 
 **Guard implemented**: `_log_canonicity_banner()` in
 `scripts/wr2_canva_pdf_render.py:main()` logs at startup:
+
 - `Path(__file__).resolve()`
 - `sys.executable` + `sys.version`
 - `git rev-parse --short HEAD`

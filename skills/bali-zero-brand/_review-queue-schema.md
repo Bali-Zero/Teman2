@@ -20,12 +20,16 @@ Single JSON array. Append-only by orchestrator. Modified in-place by Damar's too
     "carousel_path": "~/Desktop/nuzantara/apps/war-room/output/carousel/kep71-spt-extension/",
     "canva_design_id": "DAHJxxxxxx",
     "canva_design_url": "https://www.canva.com/design/DAHJxxxxxx/edit",
-    "critic_overall_verdict": "soft_fail",
+    "critic_overall_verdict": "legibility_soft_fail",
     "critic_summary": "rubric 4 image-fit slide 5: AI-art fingerprints suspected (extra finger). Other slides pass.",
     "agent_recommendation": "regenerate slide 5 hero image OR keep + manual photo swap",
     "state": "drafted",
     "state_history": [
-      {"state": "drafted", "at": "2026-05-08T11:00:00Z", "by": "wr2-design-architect"}
+      {
+        "state": "drafted",
+        "at": "2026-05-08T11:00:00Z",
+        "by": "wr2-design-architect"
+      }
     ],
     "damar_action": null,
     "damar_action_at": null,
@@ -37,6 +41,25 @@ Single JSON array. Append-only by orchestrator. Modified in-place by Damar's too
   }
 ]
 ```
+
+> **`critic_overall_verdict` vocabulary (WR2 deep audit 2026-07-14, §5a finding
+> #2):** this doc's worked example above predates the current field values and
+> is otherwise Canva-era (`canva_design_id`, `damar_action` — fields the live
+> Python-cron render path, `scripts/wr2_html_render_apply.py`, does not write;
+> full doc refresh is a separate tracked item, out of this fix's scope). The
+> verdict values `legibility_only_pass` / `legibility_soft_fail` mean the
+> per-slide **legibility** loop (readable/hierarchy/balanced) converged or
+> didn't — they are NOT a constitution-critic verdict. The 4-rubric brand
+> constitution critic (citations verbatim, no-emoji, bullet-promise, Art 7
+> phrase-ban, Art 2.3 palette-ratio) is the `wr2-critic` subagent, run only on
+> the interactive `wr2-design-architect` orchestration path — it never touches
+> a draft produced by the Python cron path. Before this rename the cron path
+> wrote a bare `"pass"`/`"soft_fail"`, indistinguishable from a real
+> constitution-critic pass to every downstream consumer (the review app, the
+> IG-metrics analyst, reflexion synthesis). Other observed values on this
+> field: `"external"` (hand-imported, never critic-gated — see
+> `wr2_carousel_import.py`) and `null`/omitted (this pipeline never touched
+> the field at all).
 
 ## State machine
 
@@ -63,15 +86,18 @@ drafted → withdrawn                    (Antonello pulls the carousel before re
 ## Required fields per state transition
 
 ### drafted → reviewed
+
 - `damar_action_at` set
 - `state_history` appended with `by: "damar"`
 
 ### reviewed → published
+
 - `instagram_post_url` set
 - `instagram_published_at` set
 - `designer_override_diff` MUST be `null` or empty (no edits = identity diff)
 
 ### reviewed → published_with_edits
+
 - `instagram_post_url` set
 - `instagram_published_at` set
 - `designer_override_diff` MUST be filled with structured JSON:
@@ -79,13 +105,26 @@ drafted → withdrawn                    (Antonello pulls the carousel before re
   {
     "slides_modified": [3, 5],
     "modifications": [
-      {"slide": 3, "field": "body", "before": "...", "after": "...", "reason": "regulatory citation was wrong"},
-      {"slide": 5, "field": "image", "before_url": "...", "after_url": "...", "reason": "AI fingerprints"}
+      {
+        "slide": 3,
+        "field": "body",
+        "before": "...",
+        "after": "...",
+        "reason": "regulatory citation was wrong"
+      },
+      {
+        "slide": 5,
+        "field": "image",
+        "before_url": "...",
+        "after_url": "...",
+        "reason": "AI fingerprints"
+      }
     ]
   }
   ```
 
 ### reviewed → rejected
+
 - `damar_notes` MUST contain reason — at minimum a tag from this closed list:
   - `factually-wrong`
   - `tone-off`
@@ -98,6 +137,7 @@ drafted → withdrawn                    (Antonello pulls the carousel before re
 ## Voyager curriculum signal extraction
 
 Weekly cron reads queue + carousel_runs join, extracts:
+
 - **Published count by domain/register/layout** → "underrepresented" detection
 - **Override diffs** → Reflexion lessons (most valuable signal)
 - **Rejection reasons** → constitution amendment proposals (categorized)

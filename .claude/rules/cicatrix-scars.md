@@ -584,3 +584,15 @@ passare — l'identità del font si prova con `document.fonts.check`/measureText
 coppia check/replace con pattern DIVERSI è la firma testuale della famiglia #3 fuori dalle guardie
 regex: vale per ogni `if X in s: s.replace(Y,...)` dove X≠Y. (4) Il carosello revenue pubblicato resta
 col font sbagliato su IG — decisione republish = operator[business].
+
+### 🚨 P0: launchctl print leaks inherited env secrets into transcript — TELEGRAM_BOT_TOKEN exposed, fleet-wide rotation triggered (2026-07-14)
+
+_Discovered: 2026-07-14 15:24 WITA · Severity: P0 · Status: rotation in progress (mapping delivered, awaiting Zero's new BotFather token)_
+
+**TRAUMA**: `launchctl print` invocato su Pro come probe diagnostico durante una sessione agent (newsletter-daily-impl) — il comando dumpa l'INTERO inherited environment del processo, incluso `TELEGRAM_BOT_TOKEN` in chiaro, finito nel transcript della sessione. Nessun `cat` di file, nessun secret letto direttamente: il vettore è stato un comando di ispezione ritenuto innocuo (leggere lo stato di un LaunchAgent). Trattato come esposizione (scar #4 family) → rotazione token su tutte le superfici mappate: GH Actions secret (11 workflow consumer), Fly.io (2 secret con nomi diversi — `TELEGRAM_BOT_TOKEN` e `TELEGRAM_TOKEN` — stesso digest), `.nuzantara-secrets.env` su Pro/Mini/M5, e 2 LaunchAgent con valore letterale embedded scoperti solo durante la mappatura.
+
+**ANTIBODY**: MAI usare `launchctl print <target>` per diagnosticare un servizio su un host con secrets ambient (qualunque macchina che sourcia `.nuzantara-secrets.env` o ha LaunchAgent con `EnvironmentVariables`/valori letterali) — usare `launchctl list <label>` (mostra solo PID/exit-status/label, non l'environment) per verificare stato, e leggere il plist file direttamente (via `grep -c`/`-l` per nome, mai `cat`) se serve ispezionare la config.
+
+**GOTCHA**: la superficie di esposizione non è solo "ho stampato il secret" ma anche "ho invocato un comando che stampa TUTTI i secret ambient di un processo per rispondere a una domanda su UNO solo di essi" — il blast radius di un probe diagnostico può essere molto più ampio dell'informazione richiesta. Verificato in parallelo durante la mappatura per rotazione: 2 LaunchAgent (`com.nuzantara.sentinel.plist` su Pro, `com.matagaruda.sentinel.daily.plist` su Mini) avevano il token scritto LETTERALMENTE nel plist invece che referenziato da env — superficie di esposizione pre-esistente e indipendente dall'incidente launchctl, scoperta solo mappando per la rotazione. Anche il naming è insidioso: Fly.io ha due secret con nome diverso (`TELEGRAM_BOT_TOKEN` e `TELEGRAM_TOKEN`) con lo stesso digest — un rotate parziale su un solo nome lascia l'altro stale.
+
+**Reference**: task-lead assignment 2026-07-14T07:22:49Z (task #2) · mappa completa consegnata via SendMessage a team-lead 2026-07-14.

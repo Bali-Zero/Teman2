@@ -161,6 +161,109 @@ def calmest_band(image_path: Path, n_bands: int = 3) -> tuple[int, list[float]]:
     return best, busyness
 
 
+# ---------------------------------------------------------------------------
+# Article 2.3 palette-adherence SIGNAL (2026-07-14, cure item 13 /
+# research/operations/2026-07-14-wr2-deep-audit.md §5): the constitution says
+# "TEXT zones... >=95% of pixels in palette tokens. Hard fail" but no
+# measurement of this existed anywhere in the engine (grep-verified). This
+# adds the actual pixel measurement — but ships it as a recorded SIGNAL
+# (logged + written to manifest.json), NOT a hard gate, because:
+#   1. We don't have per-element zone bounding boxes at this post-render
+#      stage (no structured layout JSON survives PNG rasterization) — the
+#      hero-band exclusion below is a coarse family-aware approximation
+#      (reusing renderer._hero_visible_in_png's band geometry), not a real
+#      per-element text/hero/overlay mask. It over-excludes (the gradient
+#      overlay + any text inside the excluded band is skipped too, not just
+#      the photo) and under-excludes (a stray hero corner outside the band
+#      still counts against the ratio).
+#   2. No calibration run exists yet against real published carousels to
+#      pick a defensible tolerance/threshold; fabricating a hard-fail
+#      threshold without that data would over-block on the approximation's
+#      noise, not the actual brand violation.
+# Recording the ratio on every render is what MAKES that calibration
+# possible later — see PR body for the v1-signal-not-gate rationale.
+# ---------------------------------------------------------------------------
+
+
+def _hex_to_rgb(hex_color: str) -> tuple[float, float, float]:
+    h = hex_color.lstrip("#")
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+
+def _brand_palette_rgb() -> np.ndarray:
+    """The exact 6 tokens Article 2.3 names: color.bg.* + color.text.* +
+    color.accent.* + color.status.* (NOT color.overlay.* — that's a photo
+    legibility scrim, not a palette color per Article 2.1's token table)."""
+    from .tokens_to_css import load_tokens  # local import, mirrors renderer.py
+
+    tokens = load_tokens()
+    color = tokens["color"]
+    hexes = [
+        color["bg"]["antracite"]["value"],
+        color["bg"]["black"]["value"],
+        color["text"]["white"]["value"],
+        color["text"]["muted"]["value"],
+        color["accent"]["yellow"]["value"],
+        color["status"]["red"]["value"],
+    ]
+    return np.array([_hex_to_rgb(h) for h in hexes], dtype=np.float64)
+
+
+def _hero_exclusion_band(family: str | None, h: int) -> tuple[int, int] | None:
+    """Row range (y0, y1) to exclude as the HERO PHOTO zone, mirroring
+    renderer._hero_visible_in_png's family-aware sampling bands exactly (same
+    families, same fractions) so the two never drift apart. None = no
+    exclusion (measure the whole canvas)."""
+    if family == "photo-fullbleed-top":
+        return (11 * h // 20, 17 * h // 20)  # ~55%-85%
+    if family == "photo-fullbleed-split":
+        return (2 * h // 5, 3 * h // 5)  # ~40%-60%
+    return (h // 12, h // 3)  # ~8%-33% (cover-photo / photo-headline-yellow-sub / photo-fullbleed / unknown)
+
+
+def palette_adherence_ratio(
+    png_path: Path,
+    *,
+    family: str | None = None,
+    has_hero: bool = False,
+    tolerance: float = 40.0,
+    sample_stride: int = 4,
+) -> float:
+    """Fraction of sampled canvas pixels within `tolerance` Euclidean RGB
+    distance of the nearest brand-palette token color (Article 2.3 signal).
+
+    `has_hero=False` (text-only families — editorial-text, dark-status-list,
+    evidence-carved, statement-bomb, elegant-close, qa-dialogue,
+    timeline-pinboard, numbered-forces-list, stat-card-hero) measures the
+    FULL canvas — there is no photo zone to exclude, so the whole slide IS
+    the constitution's TEXT zone. `has_hero=True` excludes the family-aware
+    hero band (see `_hero_exclusion_band`) before measuring — approximating
+    Article 2.3's "HERO PHOTO zones: NO palette pixel constraint" exemption.
+
+    `tolerance` (Euclidean RGB distance, 0-441) accounts for anti-aliased
+    text edges and JPEG-ish gradient banding blending a palette color into
+    its neighbor — a bare exact-hex match would undercount even a perfectly
+    compliant slide. 40.0 is a starting value (~14% of the 0-255 per-channel
+    range), NOT calibrated against real renders — see module comment.
+    """
+    palette_rgb = _brand_palette_rgb()
+    arr = _load_rgb(png_path).astype(np.float64)
+    h, w, _ = arr.shape
+    if has_hero:
+        y0, y1 = _hero_exclusion_band(family, h)
+        keep = np.ones(h, dtype=bool)
+        keep[y0:y1] = False
+        arr = arr[keep]
+    if arr.size == 0:
+        return 1.0  # degenerate (nothing left to measure) — no false alarm
+    sampled = arr[::sample_stride, ::sample_stride, :].reshape(-1, 3)
+    if sampled.size == 0:
+        return 1.0
+    dists = np.sqrt(((sampled[:, None, :] - palette_rgb[None, :, :]) ** 2).sum(axis=2))
+    nearest = dists.min(axis=1)
+    return float((nearest <= tolerance).mean())
+
+
 @dataclass
 class GeometryLint:
     near_empty: bool  # slide is almost all one flat color (render likely broke)

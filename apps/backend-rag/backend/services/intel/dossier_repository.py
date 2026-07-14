@@ -21,6 +21,7 @@ from backend.services.intel.dossier_models import (
     DossierFact,
     DossierNumber,
     DossierPrecedent,
+    IntelItemSummary,
     RefreshReason,
     ResearchDossier,
     ResearchDossierCreate,
@@ -29,6 +30,26 @@ from backend.services.intel.dossier_models import (
     TrendSignalCreate,
     TrendSource,
 )
+
+
+def _row_to_intel_item_summary(row: asyncpg.Record) -> IntelItemSummary:
+    tags = row["topic_tags"]
+    if isinstance(tags, str):
+        tags = json.loads(tags)
+    return IntelItemSummary(
+        id=row["id"],
+        title=row["title"],
+        summary=row["summary"],
+        source_domain=row["source_domain"],
+        canonical_url=row["canonical_url"],
+        jurisdiction=row["jurisdiction"],
+        topic_tags=list(tags) if tags else [],
+        confidence_score=(
+            float(row["confidence_score"]) if row["confidence_score"] is not None else None
+        ),
+        published_at=row["published_at"],
+        first_seen_at=row["first_seen_at"],
+    )
 
 
 def _row_to_trend(row: asyncpg.Record) -> TrendSignal:
@@ -430,3 +451,29 @@ class IntelRepository(BaseRepository):
             Decimal(str(old_confidence)) if old_confidence is not None else None,
             Decimal(str(new_confidence)) if new_confidence is not None else None,
         )
+
+    # ── Intel Lake (migration 168) — raw OSINT feed, internal-only ──────
+
+    async def fetch_recent_intel_items(
+        self,
+        *,
+        lookback_hours: int = 48,
+        limit: int = 10,
+    ) -> list[IntelItemSummary]:
+        """Most recent ``intel_items`` rows, newest first.
+
+        Internal-only source (raw scraped OSINT, no public_safe gate —
+        distinct from ``research_dossiers``). Callers filter for topical
+        relevance themselves (see ``newsletter.builder`` daily digest).
+        """
+        rows = await self.fetch_safe(
+            """
+            SELECT * FROM intel_items
+             WHERE first_seen_at > NOW() - make_interval(hours => $1)
+             ORDER BY published_at DESC NULLS LAST, first_seen_at DESC
+             LIMIT $2;
+            """,
+            lookback_hours,
+            limit,
+        )
+        return [_row_to_intel_item_summary(row) for row in rows]

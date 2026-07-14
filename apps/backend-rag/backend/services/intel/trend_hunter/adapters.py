@@ -10,12 +10,12 @@ Each adapter:
   run on Pro only; orchestrator checks host at startup.
 
 Currently implemented:
-- RSSAdapter — feedparser on curated Indonesian compliance/visa/KBLI feeds
+- RSSAdapter — curated Indonesian compliance/visa/KBLI feeds (httpx + XML parse)
+- RedditAdapter — public no-auth .rss endpoints for r/bali + r/indonesia
+- GoogleTrendsAdapter — public no-auth Google Trends daily RSS (geo=ID)
 
 Placeholders (Sprint 2+):
 - XAIAdapter — Grok search via HTTP (GROK_API_KEY, Law 2 exception)
-- RedditAdapter — PRAW r/bali, r/indonesia
-- GoogleTrendsAdapter — pytrends
 - PlaywrightScraper — Bali Post, Antara
 """
 
@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
@@ -41,12 +42,43 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_RSS_FEEDS: list[str] = [
     # Legal / compliance / visa aggregators covering Indonesia regulatory moves.
-    # Curated list — extend via config if needed. DA VERIFICARE accessibility each.
-    "https://www.hukumonline.com/berita/rss",
-    "https://www.thejakartapost.com/rss",
-    "https://www.bisnis.com/rss",
-    "https://www.antaranews.com/rss/terkini.xml",
+    # B9 resurrection 2026-07-14: 3 of the 4 original feeds were dead for weeks
+    # (hukumonline.com/berita/rss -> 403 Cloudflare wall; thejakartapost.com/rss
+    # and bisnis.com/rss -> 404, both sites dropped RSS entirely — autodiscovery
+    # on their homepages finds no feed). Every URL below returned HTTP 200 with
+    # real XML on 2026-07-14 and parses through _parse_rss.
+    # Override without a deploy via TREND_HUNTER_RSS_FEEDS (comma-separated).
+    "https://www.antaranews.com/rss/terkini.xml",  # kept — national wire, ID
+    "https://www.antaranews.com/rss/hukum.xml",  # legal desk — replaces hukumonline
+    "https://en.antaranews.com/rss/news.xml",  # EN national — replaces thejakartapost
+    "https://nasional.kontan.co.id/rss",  # business/policy — replaces bisnis.com
+    "https://keuangan.kontan.co.id/rss",  # finance/tax desk (DJP, pajak coverage)
 ]
+
+_RSS_FEEDS_ENV_VAR = "TREND_HUNTER_RSS_FEEDS"
+
+# Public no-auth Reddit RSS endpoints. Reddit serves Atom XML on any listing
+# URL suffixed with `.rss`; a descriptive User-Agent is REQUIRED (the default
+# python-httpx UA is rate-limited to 429 almost immediately — verified live
+# 2026-07-14: same URL, 200 with UA vs 429 without).
+DEFAULT_REDDIT_SUBREDDITS: list[str] = ["bali", "indonesia"]
+_REDDIT_USER_AGENT = "bali-zero-trend-hunter/1.0 (contact: zero@balizero.com)"
+
+# Public no-auth Google Trends daily trending-searches RSS for Indonesia.
+# Verified live 2026-07-14 (HTTP 200, RSS 2.0). The legacy
+# /trends/trendingsearches/daily/rss path is 404 — do not revert to it.
+GTRENDS_RSS_URL = "https://trends.google.com/trending/rss?geo=ID"
+
+
+def _feeds_from_env(env_var: str = _RSS_FEEDS_ENV_VAR) -> list[str] | None:
+    """Parse a comma-separated feed-URL override from the environment.
+
+    Returns None when unset/blank so callers fall back to DEFAULT_RSS_FEEDS.
+    Entries are stripped; empty entries dropped (trailing commas tolerated).
+    """
+    raw = os.environ.get(env_var, "")
+    feeds = [u.strip() for u in raw.split(",") if u.strip()]
+    return feeds or None
 
 # Keywords used to triage RSS items before spending Gemini CLI tokens on scoring.
 _BALI_ZERO_TRIAGE_KEYWORDS = {
@@ -112,23 +144,34 @@ class RSSAdapter(SourceAdapter):
         feeds: list[str] | None = None,
         http_timeout: float = 8.0,
         triage_keywords: set[str] | None = None,
+        transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
-        self.feeds = feeds or DEFAULT_RSS_FEEDS
+        # Precedence: explicit arg > TREND_HUNTER_RSS_FEEDS env > defaults.
+        self.feeds = feeds if feeds is not None else (_feeds_from_env() or DEFAULT_RSS_FEEDS)
         self.http_timeout = http_timeout
         self.triage_keywords = triage_keywords or _BALI_ZERO_TRIAGE_KEYWORDS
+        self._transport = transport
 
     async def fetch(self) -> list[NormalizedSignal]:
         results: list[NormalizedSignal] = []
-        async with httpx.AsyncClient(timeout=self.http_timeout) as client:
+        dead_feeds = 0
+        async with httpx.AsyncClient(
+            timeout=self.http_timeout, transport=self._transport
+        ) as client:
             for feed_url in self.feeds:
                 try:
                     resp = await client.get(feed_url)
                     if resp.status_code != 200:
-                        logger.debug(
-                            "rss %s returned %s",
+                        # WAS logger.debug — invisible at the INFO cron level,
+                        # so 4/4 dead feeds ran silent for weeks (scar #2).
+                        logger.warning(
+                            "rss feed DEAD: %s returned HTTP %s — replace the URL "
+                            "or override via %s",
                             feed_url,
                             resp.status_code,
+                            _RSS_FEEDS_ENV_VAR,
                         )
+                        dead_feeds += 1
                         continue
                     items = _parse_rss(resp.text)
                 except Exception as exc:
@@ -137,6 +180,7 @@ class RSSAdapter(SourceAdapter):
                         feed_url,
                         exc,
                     )
+                    dead_feeds += 1
                     continue
 
                 for item in items:
@@ -157,6 +201,14 @@ class RSSAdapter(SourceAdapter):
                             detected_at=datetime.now(timezone.utc),
                         )
                     )
+        if self.feeds and dead_feeds == len(self.feeds):
+            # Every configured feed is unreachable — surface as an adapter
+            # ERROR (SourceAdapterResult.error via run()) instead of a quiet
+            # empty list, so the cron JSON line shows red, not "signals: 0".
+            raise RuntimeError(
+                f"all {len(self.feeds)} RSS feeds dead/unreachable — "
+                "feed list needs replacement"
+            )
         return results
 
 
@@ -196,23 +248,148 @@ class XAIAdapter(SourceAdapter):
 
 
 class RedditAdapter(SourceAdapter):
-    """Placeholder — Sprint 2 follow-up (needs PRAW credentials)."""
+    """r/bali + r/indonesia via Reddit's public no-auth ``.rss`` endpoints.
+
+    B9 resurrection 2026-07-14: this was an inert placeholder returning []
+    in 0.0ms every cycle ("signals: 0, duration_ms: 0.0" in the cron JSON —
+    it never attempted a request). PRAW/OAuth is NOT needed for read-only
+    listing access: ``https://www.reddit.com/r/<sub>/new/.rss`` serves Atom
+    XML unauthenticated. A descriptive User-Agent is mandatory (default UA
+    gets 429 within a couple of requests — verified live). Failures now
+    surface loudly instead of silently contributing zero.
+    """
 
     name = "reddit"
 
+    def __init__(
+        self,
+        subreddits: list[str] | None = None,
+        http_timeout: float = 10.0,
+        triage_keywords: set[str] | None = None,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
+        self.subreddits = subreddits or DEFAULT_REDDIT_SUBREDDITS
+        self.http_timeout = http_timeout
+        self.triage_keywords = triage_keywords or _BALI_ZERO_TRIAGE_KEYWORDS
+        self._transport = transport
+
     async def fetch(self) -> list[NormalizedSignal]:
-        logger.debug("reddit adapter placeholder")
-        return []
+        results: list[NormalizedSignal] = []
+        failed = 0
+        async with httpx.AsyncClient(
+            timeout=self.http_timeout,
+            transport=self._transport,
+            headers={"User-Agent": _REDDIT_USER_AGENT},
+            follow_redirects=True,
+        ) as client:
+            for sub in self.subreddits:
+                url = f"https://www.reddit.com/r/{sub}/new/.rss"
+                try:
+                    resp = await client.get(url)
+                    if resp.status_code != 200:
+                        logger.warning(
+                            "reddit r/%s returned HTTP %s%s",
+                            sub,
+                            resp.status_code,
+                            " (rate-limited — check User-Agent)"
+                            if resp.status_code == 429
+                            else "",
+                        )
+                        failed += 1
+                        continue
+                    items = _parse_rss(resp.text)
+                except Exception as exc:
+                    logger.warning("reddit fetch failed for r/%s: %s", sub, exc)
+                    failed += 1
+                    continue
+
+                for item in items:
+                    title = item.get("title", "")
+                    snippet = item.get("description", "")[:500]
+                    haystack = f"{title} {snippet}".lower()
+                    if not any(kw in haystack for kw in self.triage_keywords):
+                        continue
+                    results.append(
+                        NormalizedSignal(
+                            source=TrendSource.REDDIT,
+                            topic=title[:200],
+                            source_url=item.get("link"),
+                            raw_title=title,
+                            raw_snippet=snippet,
+                            language="en",
+                            urgency_hint=_heuristic_urgency(haystack),
+                            detected_at=datetime.now(timezone.utc),
+                        )
+                    )
+        if self.subreddits and failed == len(self.subreddits):
+            raise RuntimeError(
+                f"all {len(self.subreddits)} subreddit feeds failed — "
+                "reddit adapter contributing zero"
+            )
+        return results
 
 
 class GoogleTrendsAdapter(SourceAdapter):
-    """Placeholder — Sprint 2 follow-up (needs pytrends install)."""
+    """Indonesia daily trending searches via Google Trends public RSS.
+
+    B9 resurrection 2026-07-14: this was an inert placeholder returning []
+    in 0.0ms every cycle. pytrends is NOT needed:
+    ``https://trends.google.com/trending/rss?geo=ID`` serves RSS 2.0
+    unauthenticated (verified live; the legacy
+    /trends/trendingsearches/daily/rss path is 404). Trending search terms
+    are triaged with the same Bali Zero keyword list; failures surface
+    loudly instead of silently contributing zero.
+    """
 
     name = "gtrends"
 
+    def __init__(
+        self,
+        rss_url: str = GTRENDS_RSS_URL,
+        http_timeout: float = 10.0,
+        triage_keywords: set[str] | None = None,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
+        self.rss_url = rss_url
+        self.http_timeout = http_timeout
+        self.triage_keywords = triage_keywords or _BALI_ZERO_TRIAGE_KEYWORDS
+        self._transport = transport
+
     async def fetch(self) -> list[NormalizedSignal]:
-        logger.debug("gtrends adapter placeholder")
-        return []
+        async with httpx.AsyncClient(
+            timeout=self.http_timeout,
+            transport=self._transport,
+            follow_redirects=True,
+        ) as client:
+            resp = await client.get(self.rss_url)
+            if resp.status_code != 200:
+                # Raise -> SourceAdapterResult.error via run(): loud, not a
+                # quiet "signals: 0".
+                raise RuntimeError(
+                    f"gtrends RSS returned HTTP {resp.status_code} ({self.rss_url})"
+                )
+            items = _parse_rss(resp.text)
+
+        results: list[NormalizedSignal] = []
+        for item in items:
+            title = item.get("title", "")
+            snippet = item.get("description", "")[:500]
+            haystack = f"{title} {snippet}".lower()
+            if not any(kw in haystack for kw in self.triage_keywords):
+                continue
+            results.append(
+                NormalizedSignal(
+                    source=TrendSource.GTRENDS,
+                    topic=title[:200],
+                    source_url=item.get("link") or self.rss_url,
+                    raw_title=title,
+                    raw_snippet=snippet,
+                    language="id",
+                    urgency_hint=_heuristic_urgency(haystack),
+                    detected_at=datetime.now(timezone.utc),
+                )
+            )
+        return results
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────
@@ -266,6 +443,10 @@ def _parse_rss_fallback(xml_text: str) -> list[dict[str, Any]]:
     # Atom fallback
     ns = {"a": "http://www.w3.org/2005/Atom"}
     for entry in root.findall("a:entry", ns):
+        # NOTE: `entry.find(...) or {}` is a trap — a childless Element
+        # (e.g. <link href="..."/>) is FALSY in ElementTree, so the href was
+        # silently dropped for every Atom entry. Explicit None check required.
+        link_el = entry.find("a:link", ns)
         items.append(
             {
                 "title": (entry.findtext("a:title", namespaces=ns) or "").strip(),
@@ -274,7 +455,7 @@ def _parse_rss_fallback(xml_text: str) -> list[dict[str, Any]]:
                     or entry.findtext("a:content", namespaces=ns)
                     or ""
                 ).strip(),
-                "link": (entry.find("a:link", ns) or {}).get("href", ""),  # type: ignore[union-attr]
+                "link": link_el.get("href", "") if link_el is not None else "",
                 "language": None,
             }
         )
