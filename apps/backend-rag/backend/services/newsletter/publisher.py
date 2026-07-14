@@ -48,7 +48,7 @@ DEFAULT_DAILY_LOGO_URL = "https://www.balizero.com/static/email/balizero-logo-em
 
 DEFAULT_NOTIFICATIONS_URL = (
     os.environ.get("NOTIFICATIONS_EMAIL_URL")
-    or "http://127.0.0.1:8000/api/notifications/send-email"
+    or "http://127.0.0.1:8080/api/notifications/send-email"
 )
 # No hardcoded default: the previous fallback (`REDACTED-ROTATED-KEY`) was a
 # real admin key committed to a public repo. It has been rotated + revoked.
