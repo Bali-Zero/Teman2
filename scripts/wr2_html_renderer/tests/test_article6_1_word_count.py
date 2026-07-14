@@ -68,6 +68,39 @@ def test_innocence_body_text_fallback_key_also_checked():
     assert result is None  # did not raise
 
 
+def test_innocence_facts_stack_body_exempt_even_when_short():
+    """A body the composer parses as LABEL: value fact pairs renders as a
+    discrete facts STACK, not prose — Article 6.1's prose word band does not
+    apply (exemption predicate = the composer's own facts-branch condition).
+    This exact 20-word shape is the real _FACTS_BODY fixture that the
+    backend-side consumer test (test_wr2_html_render_apply.py) pushes
+    through materialize_slide_html."""
+    facts_body = (
+        "NEW FEE: IDR 3,500,000. OLD FEE: IDR 2,000,000. REGULATION: PMK 47/2026. "
+        "EFFECTIVE: 1 JUNE 2026. [SOURCE: KEMENKEU, 24 APR 2026]"
+    )
+    assert len(facts_body.split()) < C._ART_6_1_BODY_WORD_MIN  # would fail as prose
+    result = C._check_body_word_count(
+        _SKELETON_WITH_BODY, {"body": facts_body}, index=2, family="editorial-text"
+    )
+    assert result is None  # did not raise
+
+
+def test_guilt_short_prose_body_still_fails_next_to_facts_exemption():
+    """Boundary guard for the exemption itself: a 20-word body that does NOT
+    parse as fact pairs (plain prose) must still hard-fail — the facts
+    exemption must not become an under-match hole for any short body."""
+    prose_20 = (
+        "The new regulation changes everything about how foreign companies "
+        "register their business activities in Indonesia starting from June"
+    )
+    assert len(prose_20.split()) < C._ART_6_1_BODY_WORD_MIN  # genuinely short prose
+    with pytest.raises(ValueError, match=r"Article 6\.1"):
+        C._check_body_word_count(
+            _SKELETON_WITH_BODY, {"body": prose_20}, index=3, family="editorial-text"
+        )
+
+
 def test_innocence_family_without_body_placeholder_is_untouched():
     """statement-bomb: Article 6.6 wants a SHORT closing line — a 3-word
     statement must not trip the 25-50-word body gate. Its skeleton has no

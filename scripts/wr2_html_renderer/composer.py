@@ -1301,6 +1301,20 @@ def _check_body_word_count(skeleton: str, slide: dict[str, Any], *, index: int, 
     if "{{body}}" not in skeleton:
         return
     body = str(slide.get("body") or slide.get("body_text") or "").strip()
+    # FACTS-STACK exemption: a body the composer itself parses as LABEL: value
+    # fact pairs renders as a discrete row stack (see the facts_block branch in
+    # _fill_placeholders), not as running prose. Article 6.1's 25-50 band is a
+    # PROSE-legibility rule — its stated rationale is UPPERCASE reading-speed +
+    # text-zone overflow of continuous copy — and a terse 4-row facts stack
+    # ("NEW FEE: IDR 3,500,000. OLD FEE: ...") is legitimate editorial well
+    # under 25 words. The exemption predicate is EXACTLY the composer's own
+    # facts-branch condition (same _split_source_line + _parse_fact_pairs
+    # call chain), so the gate and the renderer can never disagree about
+    # which bodies are prose.
+    if body:
+        body_wo_source, _ = _split_source_line(body)
+        if _parse_fact_pairs(body_wo_source):
+            return
     n = len(body.split()) if body else 0
     if not (_ART_6_1_BODY_WORD_MIN <= n <= _ART_6_1_BODY_WORD_MAX):
         raise ValueError(
