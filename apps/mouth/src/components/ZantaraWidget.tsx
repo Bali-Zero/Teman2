@@ -321,7 +321,7 @@ export function ZantaraWidget() {
                   { label: "Page", value: pathname },
                 ]}
                 utm={{ page: pathname }}
-                fallbackHref="https://wa.me/6282210302328?text=Hi%20Bali%20Zero%2C%20I%20was%20chatting%20with%20Zantara%20on%20your%20website..."
+                fallbackHref="https://wa.me/6282230102328?text=Hi%20Bali%20Zero%2C%20I%20was%20chatting%20with%20Zantara%20on%20your%20website..."
                 className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-[#25D366]/15 text-[#25D366] text-xs font-medium hover:bg-[#25D366]/25 transition-colors"
               >
                 <svg

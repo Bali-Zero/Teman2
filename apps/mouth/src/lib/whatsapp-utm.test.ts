@@ -4,7 +4,7 @@ import { buildWhatsAppLink } from "./whatsapp-utm";
 describe("buildWhatsAppLink", () => {
   it("builds link with default greeting and UTM for home", () => {
     const link = buildWhatsAppLink("home");
-    expect(link).toContain("https://wa.me/6282210302328");
+    expect(link).toContain("https://wa.me/6282230102328");
     expect(link).toContain("utm_source=balizero_web");
     expect(link).toContain("utm_medium=whatsapp_cta");
     expect(link).toContain("utm_campaign=home");

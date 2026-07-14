@@ -179,7 +179,7 @@ class TestAddContactIfAppropriate:
 
     def test_no_duplicate_contact(self):
         """Test contact info is not added if already present"""
-        response = "Contact us on WhatsApp +62 822 1030 2328"
+        response = "Contact us on WhatsApp +62 822 3010 2328"
         result = add_contact_if_appropriate(response, "business")
         # Should not duplicate
         assert result.count("whatsapp") == 1 or result.count("+62") == 1

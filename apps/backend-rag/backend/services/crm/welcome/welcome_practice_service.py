@@ -612,7 +612,7 @@ def _build_html(
   <div style="background:#0c0c0e;padding:20px 32px;border-top:1px solid #2a2a30;">
     <div style="font-size:11px;color:#9e9b95;text-align:center;line-height:1.8;">
       zantara@balizero.com &nbsp;·&nbsp;
-      wa.me/6282210302328 &nbsp;·&nbsp;
+      wa.me/6282230102328 &nbsp;·&nbsp;
       <a href="https://www.balizero.com" style="color:#c9a96e;text-decoration:none;">www.balizero.com</a>
       &nbsp;·&nbsp; Canggu, Bali
     </div>
