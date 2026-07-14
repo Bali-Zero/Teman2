@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import {
   AppFrame,
   AppTrustStrip,
@@ -73,7 +74,7 @@ const cardButtonStyle = (selected: boolean): React.CSSProperties => ({
 export default function VisaMatchPage() {
   const router = useRouter();
   const tracker = useFunnelApp("visa_match");
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<React.ReactNode>(null);
 
   const steps: WizardStep[] = [
     {
@@ -266,7 +267,18 @@ export default function VisaMatchPage() {
       router.push(`/visa/match/${hash}`);
     } catch {
       setSubmitError(
-        "We could not compute a recommendation. Please try again or message us on WhatsApp.",
+        <>
+          We could not compute a recommendation. Please try again or{" "}
+          <a
+            href={buildWhatsAppLink("visa")}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "var(--color-error)", textDecoration: "underline" }}
+          >
+            message us on WhatsApp
+          </a>
+          .
+        </>,
       );
     }
   };
