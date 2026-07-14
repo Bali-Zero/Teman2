@@ -13,7 +13,7 @@
 		<key>INTAKE_EXTRACTION_MODEL</key>
 		<string>qwen3.5:9b</string>
 		<key>INTAKE_EXTRACT_NUM_PREDICT</key>
-		<string>1024</string>
+		<string>512</string>
 		<key>INTAKE_EXTRACT_PAGE_LOCAL_MAX_CHARS</key>
 		<string>12000</string>
 		<key>INTAKE_EXTRACT_PAGE_LOCAL_RADIUS</key>
