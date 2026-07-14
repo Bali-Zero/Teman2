@@ -6,13 +6,22 @@ sources: ["workflow scheduler-necropsy wf_380e0d6c (21 agents: 12 task investiga
 adversarial_review: gemini
 ---
 
-> **Adversarial review (2026-07-14):** two layers. (1) Inside the workflow, every RESURRECT/RETIRE
-> verdict was refuted by an independent verifier agent and coverage claims were re-executed against
-> repo ground truth (5+ "covered by X" comments proven FALSE, W82). (2) External seat: **Gemini via
-> `agy`** re-attacked all 12 per-task claims against grepped worktree evidence — first pass FAIL
-> (7 claims evidence-starved by the prompt, not wrong), second pass with the full evidence pack:
-> **12/12 CONFIRMED-SOUND, VERDICT: PASS**. Codex seat attempted first but silent-dead on both MCP
-> (30min) and CLI (10min) — cascade fell to Tier 2 per doctrine.
+## Adversarial review
+
+Two layers, none of the objections survived (10 raised in first external pass, 0 in second):
+
+1. **Inside the workflow**: every RESURRECT/RETIRE verdict was refuted by an independent verifier
+   agent and coverage claims were re-executed against repo ground truth (5+ "covered by X" comments
+   proven FALSE, W82).
+2. **External seat — Gemini via `agy`**: re-attacked all 12 per-task claims against grepped worktree
+   evidence. First pass: FAIL with 10 objections — 7 were evidence-starved by the prompt (not wrong
+   on the merits), 3 misreads; second pass with the full evidence pack: **12/12 CONFIRMED-SOUND,
+   VERDICT: PASS**. Key empirical confirmations: scheduler call commented at
+   `service_initializer.py:1363`; `run_incremental_extraction` exists / `run_incremental_update`
+   never did; `GoldenRouterService` instantiated only in tests; renewals coverage real at
+   `scripts/crm_automation_engine.py:567`; §10d guardian live; §10e per-machine scope deliberate.
+   Codex seat attempted first but silent-dead on both MCP (30min) and CLI (10min) — cascade fell to
+   Tier 2 per doctrine.
 
 # AutonomousScheduler necropsy — triage of 12 tasks on an engine dead since 2026-02-11
 
