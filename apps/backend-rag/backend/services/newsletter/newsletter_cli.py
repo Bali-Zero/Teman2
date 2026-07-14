@@ -1,4 +1,10 @@
-"""Newsletter cron entrypoint — weekly (Monday) or daily (--daily), on Pro.
+"""Newsletter cron entrypoint — weekly (Monday) or daily (--daily).
+
+Runs INSIDE the Fly `api` process (dispatched remotely from the Pro
+scheduler via ``scripts/wr2-cron-wrapper.sh``, ``fly ssh console -g api``):
+DATABASE_URL, NOTIFICATIONS_API_KEY, and the notifications endpoint only
+exist there. For a manual/local run against a machine that already has all
+three set, the usage below still applies.
 
 Usage:
     cd ~/Desktop/nuzantara/apps/backend-rag
@@ -12,7 +18,10 @@ NEWSLETTER_RECIPIENTS   comma-separated email list. Defaults to
                         ``zero@balizero.com`` when unset (2026-07-14 —
                         the newsletter was previously a permanent no-op,
                         "no_recipients", because this was never set).
-NOTIFICATIONS_EMAIL_URL override internal endpoint (default localhost:8000).
+NOTIFICATIONS_EMAIL_URL override internal endpoint (default 127.0.0.1:8080 —
+                        matches fly.toml's `internal_port`/uvicorn `--port`;
+                        127.0.0.1:8000 was a stale default that made every
+                        send fail with connection-refused, fixed 2026-07-14).
 NOTIFICATIONS_API_KEY   internal X-API-Key (required; no default — rotated key).
 NEWSLETTER_SUBJECT_PREFIX  optional prefix prepended to the subject (e.g. "[TEST] ").
 
