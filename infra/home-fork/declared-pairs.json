@@ -28,6 +28,12 @@
       "machines": ["pro"]
     },
     {
+      "live": "~/scripts/wr2-worktree-gc-run.sh",
+      "repo": "infra/launchagents/wrappers/wr2-worktree-gc-run.sh",
+      "_note": "A1 finding #4 promotion (2026-07-14): com.balizero.wr2.worktree-gc.daily was never installed, only .plist.example existed. New wrapper follows the W84 trampoline pattern; ships REPORT-ONLY (never passes --apply) pending a follow-up that fixes scripts/wr2_worktree_gc.py's missing 3-AND checks and stale WORKTREE_PREFIX.",
+      "machines": ["pro"]
+    },
+    {
       "live": "~/scripts/launchagent-state-bridge.py",
       "repo": "scripts/launchagent-state-bridge.py",
       "_note": "Pro-only: plist com.nuzantara.launchagent-state-bridge execs the HOME copy. Undeclared until 2026-07-14 (found in boot-triage: the canva-delist fix #2412 did not reach the live copy until manually synced). Declared so lint_home_fork --check catches future drift.",

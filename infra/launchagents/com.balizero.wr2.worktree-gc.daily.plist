@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+WR2 worktree garbage collector — daily 08:00 WITA (Pro only).
+
+Promoted from com.balizero.wr2.worktree-gc.daily.plist.example (A1 finding
+#4, 2026-07-14): the cron was never installed — only the .example template
+existed. This canon plist follows the W84 trampoline sweep pattern (#2421):
+ProgramArguments points to the wrapper deployed OUTSIDE the TCC-protected
+~/Desktop (infra/launchagents/wrappers/wr2-worktree-gc-run.sh, declared in
+infra/home-fork/declared-pairs.json), which probes TCC + trampolines via
+ssh-localhost before touching ~/Desktop/nuzantara.
+
+REPORT-ONLY BY DESIGN: the wrapper never passes the apply flag to
+scripts/wr2_worktree_gc.py. Two blocking gaps found during promotion (see
+PR body): (1) the script has no 3-AND safety check (no live-process check,
+no lease check, no content-on-main check, pure age>24h); (2) its
+WORKTREE_PREFIX ("wr2-run-") no longer matches scripts/agent_start.py's
+current naming convention ("lane-task_id"), so even in apply mode it
+would find zero real candidates today. Arming apply mode is left to
+whoever closes those gaps, not part of this promotion.
+
+Install (Pro, generic installer already globs com.balizero.wr2.*.plist):
+    cp infra/launchagents/wrappers/wr2-worktree-gc-run.sh ~/scripts/
+    chmod 755 ~/scripts/wr2-worktree-gc-run.sh
+    ./scripts/install_wr2_launchagents.sh
+
+Kill switch (without removing plist):
+    launchctl setenv WR2_WORKTREE_GC_ENABLED false
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wr2.worktree-gc.daily</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/wr2-worktree-gc-run.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>0</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <!-- 00:00 UTC = 08:00 WITA -->
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>WR2_WORKTREE_GC_ENABLED</key>
+        <string>true</string>
+        <key>WR2_WORKTREE_GC_MAX_AGE_HOURS</key>
+        <string>24</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wr2-worktree-gc.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wr2-worktree-gc.error.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
