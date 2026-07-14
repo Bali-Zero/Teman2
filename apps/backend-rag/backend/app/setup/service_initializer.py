@@ -1480,6 +1480,28 @@ async def initialize_services(app: FastAPI) -> None:
         )
         logger.error("❌ Failed to start KG incremental builder: %s", e)
 
+    # 10g. Newsletter daily-digest trigger (live path — replaces the Pro
+    # LaunchAgent com.balizero.wr2.newsletter, which dispatched via
+    # `fly ssh console -g api` using an app-scoped token that lacks ssh-console
+    # scope — armed-but-unable-to-fire, scar family #2). The send path already
+    # only ever executes inside this Fly process (newsletter_cli.py header),
+    # so the trigger now lives here too: zero new secrets, zero fly-ssh
+    # dependency. Kill switch: NEWSLETTER_DAILY_TASK_ENABLED=false.
+    try:
+        from backend.services.newsletter.daily_task import start_newsletter_daily_task
+
+        newsletter_task = start_newsletter_daily_task(db_pool)
+        app.state.newsletter_daily_task = newsletter_task
+        if newsletter_task is not None:
+            service_registry.register(
+                "newsletter_daily_task", ServiceStatus.HEALTHY, critical=False
+            )
+    except Exception as e:
+        service_registry.register(
+            "newsletter_daily_task", ServiceStatus.DEGRADED, error=str(e), critical=False
+        )
+        logger.error("❌ Failed to start newsletter daily-digest task: %s", e)
+
     # 10c. Olympus DB Guardian
     # Background workers kill switch (2026-04-12 incident): skip Olympus when
     # DISABLE_BACKGROUND_WORKERS=1 — Olympus heartbeat/pulse loops corrupt the

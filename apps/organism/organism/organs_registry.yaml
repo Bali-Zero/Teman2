@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 6a1f5c9f112135ec94aae263495565c348dd50f7dc5d430e9189dcc2f0a7ce46
+checksum: d0e4b81cf2af6692c25e730cfbfaa85582fcbe66ff49a3f3ebee37dd9c304c9b
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -470,6 +470,11 @@ organs:
 - id: wr2.newsletter
   runtime: pro_launchd
   type: cron
+  enabled: false
+  disabled_reason: '2026-07-15: retired — dispatched into Fly via `fly ssh console
+    -g api` using an app-scoped FLY_API_TOKEN that lacks ssh-console scope (armed-but-unable-to-fire,
+    scar family #2). Replaced by an in-process daily trigger inside the Fly api process
+    itself, see wr2.newsletter_daily_task below.'
   expected_hb_seconds: 1209600
   owner_module: backend.services.newsletter.newsletter_cli
   dependencies:
@@ -485,6 +490,22 @@ organs:
     path: ~/.organism/last_seen/wr2.newsletter.json
     timestamp_field: ts
     status_field: status
+- id: wr2.newsletter_daily_task
+  runtime: fly_machine
+  type: daemon
+  expected_hb_seconds: 129600
+  owner_module: backend.services.newsletter.daily_task
+  dependencies:
+  - infra.postgres
+  recovery_action: noop
+  recovery_params: {}
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: postgres_row
+    query: SELECT value, updated_at FROM system_settings WHERE key = 'newsletter_daily_task_last'
+    timestamp_field: updated_at
+    status_field: value
 - id: pro.organism_control_panel
   runtime: pro_launchd
   type: daemon

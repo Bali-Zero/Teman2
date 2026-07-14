@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  RETIRED 2026-07-15. Booted out + moved out of ~/Library/LaunchAgents on Pro
+  (now under ~/Library/LaunchAgents-disabled/). This cron dispatched into Fly
+  via `fly ssh console -a nuzantara-rag -g api`, but the FLY_API_TOKEN on Pro
+  is an app-scoped deploy token that cannot open an ssh console (needs
+  org-level access) — armed-but-unable-to-fire, scar family #2. Replaced by
+  an in-process daily task inside the Fly api process itself:
+  apps/backend-rag/backend/services/newsletter/daily_task.py, wired at
+  service_initializer.py §10g. See config/job-ownership.yaml and
+  apps/organism/organism/organs_registry.yaml (wr2.newsletter_daily_task)
+  for the current state. File kept for archaeology; do not reinstall.
+-->
 <plist version="1.0">
 <dict>
     <key>Label</key>
