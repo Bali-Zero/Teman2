@@ -1132,6 +1132,184 @@ def _check_body_font_size_floor(skeleton_css: str, family: str) -> None:
             )
 
 
+# ---------------------------------------------------------------------------
+# Article 7 (forbidden phrases) + Article 6.1 (body word count) hard gates
+# (2026-07-14, cure item 13 / research/operations/2026-07-14-wr2-deep-audit.md
+# §5): both articles say "hard fail" in the constitution but had ZERO
+# executable enforcement anywhere in the render engine (grep-verified by the
+# audit). This block gives them teeth.
+# ---------------------------------------------------------------------------
+
+_CONSTITUTION_PATH = _BRAND / "constitution.md"
+
+
+def _load_forbidden_phrases(path: Path | None = None) -> list[str]:
+    """Parse the Article 7 closed list straight out of the canonical
+    constitution.md — NEVER hardcode the phrase list in code, so an amendment
+    to Article 7 (Article 11 process) takes effect the next render with no
+    code change.
+
+    Fail-closed idiom (mirrors `tokens_to_css.load_tokens` /
+    `_brand_base_css_body` in this module): constitution.md is a repo-tracked
+    file that must always exist for THIS renderer to be brand-compliant at
+    all — unlike the WR2_VISION_REQUIRED toggle (claude_vision.py), which
+    guards an OPTIONAL external subprocess (Claude CLI vision) that can
+    legitimately be transiently unavailable. A missing canonical brand file is
+    not "transient infra flake", it's "the renderer's ground truth is gone" —
+    so this raises unconditionally rather than soft-passing, same as the two
+    precedents above.
+    """
+    p = path or _CONSTITUTION_PATH
+    if not p.is_file():
+        raise FileNotFoundError(
+            f"Article 7 enforcement requires the brand constitution, not "
+            f"found at {p} — refusing to render without the phrase list "
+            f"(fail-closed, not fail-open: see _load_forbidden_phrases docstring)"
+        )
+    text = p.read_text(encoding="utf-8")
+    m = re.search(
+        r"## Article 7 — Forbidden phrases \(closed list\)(.*?)(?=\n## )",
+        text,
+        re.DOTALL,
+    )
+    if not m:
+        raise ValueError(
+            f"Article 7 section not found in {p} — constitution.md shape "
+            f"changed; the closed list heading must stay "
+            f"'## Article 7 — Forbidden phrases (closed list)'"
+        )
+    phrases = re.findall(r"`([^`]+)`", m.group(1))
+    if not phrases:
+        raise ValueError(f"Article 7 section in {p} parsed but yielded zero phrases (blind-scan guard)")
+    return phrases
+
+
+_PHRASE_PATTERN_CACHE: dict[str, "re.Pattern[str]"] = {}
+
+
+def _forbidden_phrase_pattern(phrase: str) -> "re.Pattern[str]":
+    """Word/phrase-boundary regex for one forbidden phrase (scar family #3
+    discipline: match on ENTITY, never bare substring — a banned single word
+    like `unlock` must not fire inside `unlockable`, and `landscape` must not
+    fire inside `landscaper`). Non-alphanumeric lookaround (not bare `\\b`) so
+    apostrophes/hyphens inside a phrase (`let's dive in`) don't confuse the
+    boundary. Internal whitespace is tolerated as `\\s+` so a phrase that
+    happens to wrap across a rendered line still matches. Cached — the
+    Article 7 list is short and re-compiled at most once per phrase per
+    process.
+    """
+    cached = _PHRASE_PATTERN_CACHE.get(phrase)
+    if cached is not None:
+        return cached
+    escaped = re.escape(phrase.strip())
+    escaped = re.sub(r"(?:\\ )+", r"\\s+", escaped)
+    pattern = re.compile(rf"(?<![A-Za-z0-9]){escaped}(?![A-Za-z0-9])", re.IGNORECASE)
+    _PHRASE_PATTERN_CACHE[phrase] = pattern
+    return pattern
+
+
+def _slide_copy_texts(slide: dict[str, Any]) -> dict[str, str]:
+    """The reader-facing copy fields Article 6.1 (word count) and Article 7
+    (forbidden phrases) check: heading, subheading, body, the statement-bomb
+    punch line, and the evidence-carved take/caption line. Mirrors the same
+    field-name fallbacks `_fill_placeholders` uses (headline/heading,
+    subhead/subheading, body/body_text) so the gate sees exactly the text
+    that will render, not a stale/alternate schema key.
+    """
+    return {
+        "heading": str(slide.get("headline") or slide.get("heading") or "").strip(),
+        "subhead": str(slide.get("subhead") or slide.get("subheading") or "").strip(),
+        "body": str(slide.get("body") or slide.get("body_text") or "").strip(),
+        "statement": str(slide.get("statement") or "").strip(),
+        "caption": str(slide.get("take_line") or slide.get("take_label") or "").strip(),
+    }
+
+
+def _check_forbidden_phrases(slide: dict[str, Any], *, index: int) -> None:
+    """Article 7 hard gate: heading/subhead/body/statement/caption text must
+    not contain any phrase from the constitution's closed forbidden-phrase
+    list. Raises ValueError naming the slide + every (field, phrase) hit, so
+    a single retry fixes every violation instead of whack-a-mole one at a
+    time.
+
+    Known scope limit (not a silent assumption — documented per the audit's
+    "give it teeth or honesty" mandate): 3 entries carry a sense-qualifier in
+    the constitution's own prose — `landscape` ("in metaphorical sense"),
+    `journey` ("in the boilerplate sense"), `ecosystem` ("in marketing
+    sense"). This scanner has no semantic disambiguation; it hard-fails on
+    the LITERAL phrase regardless of sense (e.g. a genuinely geographic "the
+    landscape of Kerobokan" would also trip it). That is a stricter reading
+    than the constitution's stated intent, not a looser one — false positives
+    route back to the storyboarder for a rephrase, which is the same failure
+    mode the constitution already accepts for its OTHER 20 sense-independent
+    entries. Fixing this needs an LLM judge (the vision critic already covers
+    this class of nuance on the interactive path per the audit); a
+    deterministic composer-time gate cannot do better without one.
+    """
+    phrases = _load_forbidden_phrases()
+    hits: list[str] = []
+    for field, text in _slide_copy_texts(slide).items():
+        if not text:
+            continue
+        for phrase in phrases:
+            if _forbidden_phrase_pattern(phrase).search(text):
+                hits.append(f"{field}={phrase!r}")
+    if hits:
+        raise ValueError(
+            f"Article 7 hard fail: slide {index} contains forbidden phrase(s): "
+            f"{', '.join(hits)}"
+        )
+
+
+# Article 6.1: "Body length: 25-50 words per slide. Hard fail if outside
+# range. Cover slide exempt (title only)."
+_ART_6_1_BODY_WORD_MIN = 25
+_ART_6_1_BODY_WORD_MAX = 50
+
+
+def _check_body_word_count(skeleton: str, slide: dict[str, Any], *, index: int, family: str) -> None:
+    """Article 6.1 hard gate: prose body text must be 25-50 words.
+
+    Scope, derived from the skeleton itself (not a hardcoded family
+    allow-list): the gate applies only when this family's skeleton actually
+    renders a prose `{{body}}` placeholder (editorial-text,
+    photo-headline-yellow-sub, photo-fullbleed / -top / -split,
+    source-citation, stat-card-hero — verified via `grep -l "{{body}}"
+    layouts/*.md`). Families that render STRUCTURED copy instead have no
+    `{{body}}` token and are correctly untouched:
+      - cover-photo: constitution explicitly exempts it ("title only") —
+        and structurally it has no {{body}} either, belt-and-suspenders.
+      - statement-bomb: Article 6.6 mandates the closing be a SHORT
+        single-line statement, which would directly contradict a blanket
+        25-50-word floor; it renders via {{statement}}, not {{body}}.
+      - dark-status-list / evidence-carved / timeline-pinboard /
+        numbered-forces-list / qa-dialogue / elegant-close: structured
+        item/fact/QA arrays, not a prose body — Article 6.1 doesn't cleanly
+        apply to a bullet list or a QA exchange.
+    A new layout family automatically gets this gate the moment its skeleton
+    adopts {{body}} — no code change required.
+    """
+    if "{{body}}" not in skeleton:
+        return
+    body = str(slide.get("body") or slide.get("body_text") or "").strip()
+    n = len(body.split()) if body else 0
+    if not (_ART_6_1_BODY_WORD_MIN <= n <= _ART_6_1_BODY_WORD_MAX):
+        raise ValueError(
+            f"Article 6.1 hard fail: slide {index} ({family}) body has {n} "
+            f"words — constitution requires "
+            f"{_ART_6_1_BODY_WORD_MIN}-{_ART_6_1_BODY_WORD_MAX}. "
+            f"body={body[:120]!r}"
+        )
+
+
+def _check_slide_constitution_gates(skeleton: str, slide: dict[str, Any], *, index: int, family: str) -> None:
+    """Run both Article 7 + Article 6.1 gates for one slide. Single call site
+    so compose_carousel and materialize_slide_html stay in lockstep (both
+    build one HTML file per slide from the same skeleton + slide dict)."""
+    _check_forbidden_phrases(slide, index=index)
+    _check_body_word_count(skeleton, slide, index=index, family=family)
+
+
 def _default_heading_subhead_colors(slide: dict[str, Any]) -> tuple[str, str]:
     """Odd/even alternation default for heading_color / subhead_color.
 
@@ -1526,6 +1704,7 @@ async def compose_carousel(
 
             skeleton = _extract_skeleton(plan.family)
             _check_body_font_size_floor(skeleton, plan.family)
+            _check_slide_constitution_gates(skeleton, plan.slide, index=plan.index, family=plan.family)
             html = _normalize_skeleton(skeleton)
             if plan.expect_hero and hero_filename:
                 html = _hero_bg_to_img(html, hero_filename)
@@ -1545,6 +1724,38 @@ async def compose_carousel(
 
     result = await render_html_files(html_specs, output_dir, timeout_ms=timeout_ms, make_pdf=True)
 
+    # Article 2.3 palette-adherence SIGNAL (recorded, NOT a hard gate — see
+    # critic_signals.palette_adherence_ratio module comment for why v1 ships
+    # as a measured value to calibrate a future threshold, not a fabricated
+    # one). Never allowed to break the render pipeline — a signal failing to
+    # compute is a warning, not a carousel failure.
+    from .critic_signals import palette_adherence_ratio  # local import, optional numpy/PIL dep
+
+    plans_by_index = {p.index: p for p in plans}
+    palette_signal: list[dict[str, Any]] = []
+    for png_path in result.png_paths:
+        try:
+            idx = int(png_path.stem)
+        except ValueError:
+            continue
+        plan = plans_by_index.get(idx)
+        if plan is None:
+            continue
+        try:
+            ratio = palette_adherence_ratio(png_path, family=plan.family, has_hero=plan.expect_hero)
+        except Exception as exc:
+            logger.warning("Art 2.3 palette signal failed for slide %d: %s", idx, exc)
+            continue
+        palette_signal.append({"slide": idx, "family": plan.family, "ratio": round(ratio, 4)})
+        if ratio < 0.95:
+            logger.warning(
+                "Art 2.3 palette signal: slide %d (%s) ratio=%.3f below the "
+                "constitution's 95%% target — SIGNAL ONLY (v1, uncalibrated "
+                "threshold), recorded in manifest.json palette_adherence",
+                idx, plan.family, ratio,
+            )
+    palette_signal.sort(key=lambda e: e["slide"])
+
     # write a manifest
     manifest = {
         "topic": topic,
@@ -1557,6 +1768,7 @@ async def compose_carousel(
         "failures": result.failures,
         "png_paths": [str(p) for p in result.png_paths],
         "pdf_path": str(result.pdf_path) if result.pdf_path else None,
+        "palette_adherence": palette_signal,
     }
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return result
@@ -1586,6 +1798,7 @@ async def materialize_slide_html(
 
     skeleton = _extract_skeleton(family)
     _check_body_font_size_floor(skeleton, family)
+    _check_slide_constitution_gates(skeleton, slide, index=index, family=family)
     html = _normalize_skeleton(skeleton)
     if expect_hero and hero_filename:
         html = _hero_bg_to_img(html, hero_filename)
