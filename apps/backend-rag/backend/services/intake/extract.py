@@ -87,6 +87,34 @@ _UNREADABLE_VALUE_MARKERS = (
     "redacted",
 )
 
+# A classifier can receive a multi-document PDF even when the winning document
+# is physically local to one page (for example, a WhatsApp payment receipt
+# embedded in a 14-page bundle).  Passing the entire OCR corpus to a local 9B
+# model creates avoidable timeouts.  Only document families whose extraction
+# evidence is page-local are eligible for source-page context budgeting.  Legal
+# and business documents (akta, NIB, company profiles, bank statements, etc.)
+# deliberately stay full-context because their fields can span many pages.
+_PAGE_LOCAL_CONTEXT_TYPES: frozenset[str] = frozenset(
+    {
+        "passport",
+        "kitas",
+        "visa",
+        "itap",
+        "itk",
+        "ktp",
+        "family_card",
+        "birth_certificate",
+        "marriage_certificate",
+        "payment_receipt",
+        "travel_ticket",
+    }
+)
+_PAGE_LOCAL_CONTEXT_MAX_CHARS_ENV = "INTAKE_EXTRACT_PAGE_LOCAL_MAX_CHARS"
+_PAGE_LOCAL_CONTEXT_RADIUS_ENV = "INTAKE_EXTRACT_PAGE_LOCAL_RADIUS"
+_DEFAULT_PAGE_LOCAL_CONTEXT_MAX_CHARS = 12_000
+_DEFAULT_PAGE_LOCAL_CONTEXT_RADIUS = 1
+_OCR_TRUNCATION_MARKER = "\n[... OCR CONTEXT TRUNCATED ...]\n"
+
 # --- Persistent async HTTP client (Golden Rule #10: never per-call). ---
 _client: httpx.AsyncClient | None = None
 
@@ -341,6 +369,121 @@ def canonical_doc_type(doc_type: str | None) -> str | None:
     return key if key in DOC_TYPE_FIELDS else None
 
 
+def _bounded_env_int(
+    name: str,
+    default: int,
+    *,
+    minimum: int,
+    maximum: int,
+) -> int:
+    """Read a bounded integer setting, falling back safely on invalid input."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("extract: invalid integer for %s; using default=%s", name, default)
+        return default
+    return max(minimum, min(value, maximum))
+
+
+def _clip_ocr_page(text: str, limit: int) -> str:
+    """Clip OCR to ``limit`` chars while retaining both page edges."""
+    if len(text) <= limit:
+        return text
+    if limit <= len(_OCR_TRUNCATION_MARKER):
+        return text[:limit]
+    content_limit = limit - len(_OCR_TRUNCATION_MARKER)
+    head_chars = (content_limit + 1) // 2
+    tail_chars = content_limit - head_chars
+    tail = text[-tail_chars:] if tail_chars else ""
+    return f"{text[:head_chars]}{_OCR_TRUNCATION_MARKER}{tail}"
+
+
+def _budget_page_local_context(
+    doc_type: str,
+    pages: list[str],
+    source_page: int | None,
+) -> list[str]:
+    """Bound model OCR for page-local documents around a trusted page index.
+
+    ``source_page`` is the classifier's zero-based physical page index.  The
+    returned list keeps its original length, so :func:`_build_prompt` continues
+    to expose the correct 1-based page numbers for evidence attribution.  Full
+    OCR remains available to deterministic extractors before this helper runs.
+    """
+    max_chars = _bounded_env_int(
+        _PAGE_LOCAL_CONTEXT_MAX_CHARS_ENV,
+        _DEFAULT_PAGE_LOCAL_CONTEXT_MAX_CHARS,
+        minimum=2_000,
+        maximum=100_000,
+    )
+    chars_before = sum(len(page) for page in pages)
+    if doc_type not in _PAGE_LOCAL_CONTEXT_TYPES or chars_before <= max_chars:
+        return pages
+    if (
+        isinstance(source_page, bool)
+        or not isinstance(source_page, int)
+        or source_page < 0
+        or source_page >= len(pages)
+    ):
+        logger.info(
+            "extract: page-local context budget skipped doc_type=%s pages=%s "
+            "chars=%s reason=missing_source_page",
+            doc_type,
+            len(pages),
+            chars_before,
+        )
+        return pages
+
+    radius = _bounded_env_int(
+        _PAGE_LOCAL_CONTEXT_RADIUS_ENV,
+        _DEFAULT_PAGE_LOCAL_CONTEXT_RADIUS,
+        minimum=0,
+        maximum=3,
+    )
+    selected = [
+        index
+        for index in range(source_page - radius, source_page + radius + 1)
+        if 0 <= index < len(pages)
+    ]
+    ordered = [source_page, *(index for index in selected if index != source_page)]
+
+    # Give the source page twice the initial share of each neighbour, then
+    # redistribute unused shares without crossing the global character cap.
+    weights = {index: (2 if index == source_page else 1) for index in ordered}
+    total_weight = sum(weights.values())
+    allocations = {
+        index: min(len(pages[index]), max_chars * weights[index] // total_weight)
+        for index in ordered
+    }
+    remaining = max_chars - sum(allocations.values())
+    for index in ordered:
+        if remaining <= 0:
+            break
+        extra = min(len(pages[index]) - allocations[index], remaining)
+        allocations[index] += extra
+        remaining -= extra
+
+    budgeted = ["" for _page in pages]
+    for index in ordered:
+        budgeted[index] = _clip_ocr_page(pages[index], allocations[index])
+
+    chars_after = sum(len(page) for page in budgeted)
+    logger.info(
+        "extract: bounded page-local model context doc_type=%s pages=%s "
+        "source_page=%s selected_pages=%s chars=%s->%s",
+        doc_type,
+        len(pages),
+        source_page + 1,
+        [index + 1 for index in selected],
+        chars_before,
+        chars_after,
+    )
+    return budgeted
+
+
 def _parsed_field_with_alias(
     parsed: dict[str, Any],
     doc_type: str,
@@ -391,6 +534,8 @@ def _build_prompt(doc_type: str, pages: list[str]) -> str:
         'an object {"value": <extracted value or null>, "source_page": '
         "<1-based page number where you read it, or null>}.\n"
         'If the field is a list, "value" is an array (or null / [] if none).\n\n'
+        "A page marker followed by no OCR text contains no usable evidence: "
+        "NEVER cite a blank page.\n\n"
         "Fields:\n"
         f"{fields_block}\n\n"
         "Do not add fields that are not listed. Do not output markdown or "
@@ -404,6 +549,8 @@ def _coerce_field(
     is_list: bool,
     raw: Any,
     num_pages: int,
+    *,
+    allowed_source_pages: set[int] | None = None,
 ) -> dict[str, Any]:
     """Normalise one model-emitted field into {value, confidence, source_page}.
 
@@ -449,11 +596,17 @@ def _coerce_field(
 
     # Validate the page citation.
     source_page: int | None = None
-    if isinstance(src, int) and 1 <= src <= num_pages:
+    if (
+        isinstance(src, int)
+        and 1 <= src <= num_pages
+        and (allowed_source_pages is None or src in allowed_source_pages)
+    ):
         source_page = src
     elif isinstance(src, str) and src.strip().isdigit():
         cand = int(src.strip())
-        if 1 <= cand <= num_pages:
+        if 1 <= cand <= num_pages and (
+            allowed_source_pages is None or cand in allowed_source_pages
+        ):
             source_page = cand
 
     # Present-and-evidenced -> _PRESENT_CONFIDENCE; present-but-no-citation ->
@@ -1902,6 +2055,7 @@ async def extract_fields(
     doc_type: str | None,
     ocr_text_per_page: list[str],
     *,
+    source_page: int | None = None,
     generate_fn: GenerateFn | None = None,
 ) -> dict[str, Any]:
     """Extract canonical fields for ``doc_type`` from per-page OCR text.
@@ -1976,7 +2130,8 @@ async def extract_fields(
             "any_low_confidence": any_low,
         }
 
-    prompt = _build_prompt(canonical, pages)
+    model_pages = _budget_page_local_context(canonical, pages, source_page)
+    prompt = _build_prompt(canonical, model_pages)
     gen = generate_fn or _ollama_generate
     resolved_model = _resolve_extraction_model()
     raw_response = await gen(resolved_model, prompt)
@@ -1984,12 +2139,18 @@ async def extract_fields(
 
     specs = DOC_TYPE_FIELDS[canonical]
     num_pages = len(pages)
+    allowed_source_pages = {index + 1 for index, page in enumerate(model_pages) if page.strip()}
     fields: dict[str, Any] = {}
     field_aliases: dict[str, str] = {}
     any_low = False
     for name, is_list, _desc in specs:
         raw_field, alias = _parsed_field_with_alias(parsed, canonical, name)
-        field = _coerce_field(is_list, raw_field, num_pages)
+        field = _coerce_field(
+            is_list,
+            raw_field,
+            num_pages,
+            allowed_source_pages=allowed_source_pages,
+        )
         fields[name] = field
         if alias is not None:
             field_aliases[name] = alias
@@ -2051,8 +2212,9 @@ async def extract_stage(job: dict, stage: str) -> dict:
 
     doc_type = _read_upstream(job, "doc_type", "canonical_doc_type")
     pages = _read_upstream(job, "ocr_text_per_page", "pages", "ocr_pages")
+    source_page = _read_upstream(job, "source_page")
     if isinstance(pages, str):
         pages = [pages]
-    result = await extract_fields(doc_type, pages or [])
+    result = await extract_fields(doc_type, pages or [], source_page=source_page)
     logger.info("extract: completed")
     return result
