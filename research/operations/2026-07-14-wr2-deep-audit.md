@@ -302,6 +302,14 @@ Only genuinely operator-only items (everything else is session-executable):
    instead of `brand_verifier=claude_design_critic` (`wr2_html_render_apply.py:751`).
 4. Declare the two wr2 wrapper pairs in `declared-pairs.json`; realign the diverged
    `wr2-cron-wrapper.sh` fork on Pro.
+   **CLOSED 2026-07-14**: both pairs declared (PR #2432, `machines=["pro"]`). The realign
+   half resolved itself — the live `~/.openclaw/bin/wr2/wr2-cron-wrapper.sh` self-realigned
+   via a routine pull (mtime 14:05 WITA) and was re-verified read-only on Pro the same
+   afternoon: sha `3cd52391…` byte-identical to `scripts/wr2-cron-wrapper.sh`, and
+   `wr2-script-wrapper.sh` still `e8e22fe1…` both sides. Plist consumers confirmed via
+   `ProgramArguments`: the wr2 crons exec the `~/.openclaw/bin/wr2/` copies (a
+   `~/scripts/wr2-cron-wrapper.sh` path does not exist on Pro). No Pro-side action pending;
+   from here the declared pair makes any future drift a lint `--check` failure instead of luck.
 
 **Wave 1 — resuscitate production (after Wave 0 so recovery doesn't scale unsafe output)**
 5. Fix image-gen per the Wave-0 diagnosis (operator login only if confirmed); add bounded retry
