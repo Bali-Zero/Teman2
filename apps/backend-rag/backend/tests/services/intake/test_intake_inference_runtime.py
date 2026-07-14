@@ -58,6 +58,6 @@ def test_invalid_gate_configuration_fails_safe(monkeypatch) -> None:
 
 def test_keep_alive_has_safe_default_and_override(monkeypatch) -> None:
     monkeypatch.delenv("INTAKE_OLLAMA_KEEP_ALIVE", raising=False)
-    assert inference_runtime.ollama_keep_alive() == "15m"
+    assert inference_runtime.ollama_keep_alive() == "5s"
     monkeypatch.setenv("INTAKE_OLLAMA_KEEP_ALIVE", "30m")
     assert inference_runtime.ollama_keep_alive() == "30m"
