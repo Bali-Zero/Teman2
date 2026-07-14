@@ -28,15 +28,23 @@ import httpx
 
 from backend.services.layout.template_renderer import TemplateRenderer
 from backend.services.layout.templates import (
+    NEWSLETTER_DAILY_HTML,
+    NEWSLETTER_DAILY_ITEM_HTML,
+    NEWSLETTER_DAILY_SCARCE_NOTE_HTML,
     NEWSLETTER_HTML,
 )
-from backend.services.newsletter.builder import RoundupContent
+from backend.services.newsletter.builder import DailyDigestContent, RoundupContent
 
 logger = logging.getLogger(__name__)
 
 
 LOCKED_SENDER_EMAIL = "zantara@balizero.com"
 LOCKED_SENDER_NAME = "Zantara"
+
+# Purpose-built email logo asset (apps/mouth/public/static/email/), served
+# publicly by the Vercel-hosted mouth frontend — no new infra, no inline
+# CID (unproven across the 3-provider Zoho/Brevo/Resend send chain).
+DEFAULT_DAILY_LOGO_URL = "https://www.balizero.com/static/email/balizero-logo-email.png"
 
 DEFAULT_NOTIFICATIONS_URL = (
     os.environ.get("NOTIFICATIONS_EMAIL_URL")
@@ -89,6 +97,19 @@ class NewsletterSendResult:
     skip_reason: str = ""
 
 
+@dataclass
+class DailyDigestSendResult:
+    day: date
+    recipients_attempted: int = 0
+    recipients_sent: int = 0
+    recipients_failed: int = 0
+    subject: str = ""
+    per_recipient: list[PerRecipientResult] = field(default_factory=list)
+    skipped: bool = False
+    skip_reason: str = ""
+    scarce: bool = False
+
+
 class NewsletterPublisher:
     """Renders the weekly roundup HTML and sends via internal endpoint.
 
@@ -115,6 +136,7 @@ class NewsletterPublisher:
         api_key: str | None = None,
         cover_fallback_url: str = "https://balizero.com/newsletter/cover.png",
         timeout: float | None = None,
+        daily_logo_url: str | None = None,
     ) -> None:
         self.template_renderer = template_renderer or TemplateRenderer()
         self._client = http_client
@@ -122,6 +144,7 @@ class NewsletterPublisher:
         self.api_key = api_key or DEFAULT_API_KEY
         self.cover_fallback_url = cover_fallback_url
         self.timeout = timeout or DEFAULT_TIMEOUT
+        self.daily_logo_url = daily_logo_url or DEFAULT_DAILY_LOGO_URL
 
     # ── Public API ─────────────────────────────────────────────
 
@@ -129,6 +152,8 @@ class NewsletterPublisher:
         self,
         content: RoundupContent,
         recipients: Sequence[str],
+        *,
+        subject_prefix: str = "",
     ) -> NewsletterSendResult:
         result = NewsletterSendResult(week_of=content.week_of)
 
@@ -152,7 +177,7 @@ class NewsletterPublisher:
             result.skip_reason = f"render_failed: {type(exc).__name__}: {exc}"
             return result
 
-        subject = self._build_subject(content)
+        subject = subject_prefix + self._build_subject(content)
         result.subject = subject
 
         client = self._client or _get_module_client(self.timeout)
@@ -166,6 +191,90 @@ class NewsletterPublisher:
                 result.recipients_failed += 1
 
         return result
+
+    async def send_daily_digest(
+        self,
+        content: DailyDigestContent,
+        recipients: Sequence[str],
+        *,
+        subject_prefix: str = "",
+    ) -> DailyDigestSendResult:
+        """Send the internal daily digest (distinct from send_roundup).
+
+        ``subject_prefix`` (e.g. ``"[TEST] "``) is applied BEFORE sending —
+        it must reach the actual email, not just the returned result.
+        """
+        result = DailyDigestSendResult(day=content.day, scarce=content.scarce)
+
+        if content.is_empty:
+            result.skipped = True
+            result.skip_reason = "empty_digest"
+            return result
+
+        recipient_list = [r.strip() for r in recipients if r and r.strip()]
+        if not recipient_list:
+            result.skipped = True
+            result.skip_reason = "no_recipients"
+            return result
+
+        result.recipients_attempted = len(recipient_list)
+
+        try:
+            html = self.render_daily_html(content)
+        except Exception as exc:
+            result.skipped = True
+            result.skip_reason = f"render_failed: {type(exc).__name__}: {exc}"
+            return result
+
+        subject = subject_prefix + self._build_daily_subject(content)
+        result.subject = subject
+
+        client = self._client or _get_module_client(self.timeout)
+
+        for email in recipient_list:
+            per = await self._send_one(client, email, subject, html)
+            result.per_recipient.append(per)
+            if per.ok:
+                result.recipients_sent += 1
+            else:
+                result.recipients_failed += 1
+
+        return result
+
+    def render_daily_html(self, content: DailyDigestContent) -> str:
+        """Render the NEWSLETTER_DAILY template. All CSS is inline (no
+        <style> block — Gmail strips it, per the email-template surface
+        spec)."""
+        template = Template(NEWSLETTER_DAILY_HTML)
+        items_html = "".join(self._build_daily_item_html(item) for item in content.items)
+        scarce_note = NEWSLETTER_DAILY_SCARCE_NOTE_HTML if content.scarce else ""
+        return template.safe_substitute(
+            logo_url=self.daily_logo_url,
+            date_label=_escape(content.day.isoformat()),
+            items_html=items_html,
+            scarce_note=scarce_note,
+        )
+
+    def _build_daily_item_html(self, item: Any) -> str:
+        source_bits = [item.source_label]
+        if item.source_date:
+            source_bits.append(item.source_date.date().isoformat())
+        source_line = " · ".join(_escape(b) for b in source_bits)
+        if item.source_url:
+            source_line += f' — <a href="{_escape(item.source_url)}" style="color:#888888;">{_escape(item.source_url)}</a>'
+
+        return Template(NEWSLETTER_DAILY_ITEM_HTML).safe_substitute(
+            domain_tag=_escape(item.domain_tag),
+            title=_escape(item.title),
+            body=_escape(item.body),
+            source_line=source_line,
+        )
+
+    def _build_daily_subject(self, content: DailyDigestContent) -> str:
+        base = f"Bali Zero Daily · {content.day.isoformat()}"
+        if content.items:
+            return f"{base} — {content.items[0].title[:60]}"
+        return base
 
     # ── Internals ─────────────────────────────────────────────
 

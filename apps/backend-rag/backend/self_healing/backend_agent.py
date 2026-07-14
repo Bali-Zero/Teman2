@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import sys
 import time
 import traceback
@@ -127,7 +128,14 @@ class BackendSelfHealingAgent:
                 CPUCheck(),
                 MemoryCheck(),
                 DiskCheck(),
-                HTTPAPICheck("http://localhost:8080/health", client=self.http_client),
+                # Default to the IPv6 loopback: in prod uvicorn binds `::` only
+                # and the container's /etc/hosts maps localhost to 127.0.0.1
+                # alone, so "localhost" could never connect (check was red on
+                # every cycle once the agent went live, 2026-07-14).
+                HTTPAPICheck(
+                    os.environ.get("SELF_HEAL_API_URL", "http://[::1]:8080/health"),
+                    client=self.http_client,
+                ),
                 DBCheck(),
                 self._cache_check,
             ],
