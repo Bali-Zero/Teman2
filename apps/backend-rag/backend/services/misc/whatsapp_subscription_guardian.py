@@ -216,7 +216,79 @@ class WhatsAppSubscriptionGuardian:
 
         result = {"rearm": rearm, "deafness": deafness, "ran_at": now.isoformat()}
         logger.info("[wa-sub-guardian] cycle done: %s", json.dumps(result))
+        await self._persist_state(result)
         return result
+
+    async def _persist_state(self, result: dict[str, Any]) -> None:
+        """Durable receptor (economia-notifiche): Telegram is a best-effort VIEW
+        nobody may be reading — the verdict must also live as disk-state. One
+        row in ``system_settings`` keyed ``wa_subscription_guardian_last``, so
+        any session/monitor can read the last cycle with one SELECT.
+        """
+        if self.db_pool is None:
+            return
+        try:
+            await self.db_pool.execute(
+                """
+                INSERT INTO system_settings (key, value, updated_at)
+                VALUES ('wa_subscription_guardian_last', $1, now())
+                ON CONFLICT (key) DO UPDATE
+                    SET value = EXCLUDED.value, updated_at = now()
+                """,
+                json.dumps(result),
+            )
+        except Exception as e:  # persistence must never kill the cycle
+            logger.warning("[wa-sub-guardian] state persist failed: %s", e)
+
+
+async def _guardian_loop(
+    guardian: WhatsAppSubscriptionGuardian, interval_seconds: int
+) -> None:
+    """Standalone loop for the LIVE init path (the AutonomousScheduler is
+    disabled in prod — service_initializer §10, "omnichannel stabilization" —
+    so registering there alone would be an unarmed arm, scar W81).
+
+    Leader election reuses the scheduler's own Redis lock key, so if the
+    scheduler is ever re-enabled the two paths dedupe instead of double-running.
+    """
+    from backend.services.misc.autonomous_scheduler import _acquire_task_lock
+
+    await asyncio.sleep(30)  # let the app finish booting
+    while True:
+        try:
+            if await _acquire_task_lock("wa_subscription_guardian", interval_seconds):
+                await guardian.run_cycle()
+            else:
+                logger.debug("[wa-sub-guardian] another worker holds the lock")
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:  # the loop must survive anything
+            logger.error("[wa-sub-guardian] cycle crashed: %s", e)
+        await asyncio.sleep(interval_seconds)
+
+
+def start_whatsapp_subscription_guardian_task(
+    db_pool: Any = None,
+    alert_service: Any = None,
+    interval_seconds: int = 21600,
+) -> asyncio.Task | None:
+    """Spawn the guardian loop on the running event loop (kill-switch aware)."""
+    if os.environ.get("WA_SUBSCRIPTION_GUARDIAN_ENABLED", "true").lower() in {
+        "false",
+        "0",
+        "no",
+    }:
+        logger.info("[wa-sub-guardian] disabled via WA_SUBSCRIPTION_GUARDIAN_ENABLED")
+        return None
+    guardian = WhatsAppSubscriptionGuardian(db_pool=db_pool, alert_service=alert_service)
+    task = asyncio.get_event_loop().create_task(
+        _guardian_loop(guardian, interval_seconds), name="wa_subscription_guardian"
+    )
+    logger.info(
+        "✅ WhatsApp subscription guardian loop started (%dh interval)",
+        interval_seconds // 3600,
+    )
+    return task
 
 
 def register_whatsapp_subscription_guardian(

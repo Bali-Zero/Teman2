@@ -555,3 +555,32 @@ lo guarda: ogni difesa messa "nel manifest" va ri-armata anche sul percorso che 
 verde ≠ pulito, il gate deve essere NOSTRO. (3) La cura di un incidente della stessa famiglia (l'ignore
 `>=0.137` per il route-tree) ha CREATO il corridoio verso 0.136.3: ogni hold ristretta cambia la scelta
 del resolver — dopo ogni nuova hold, chiedersi "quale versione prenderà ADESSO?".
+
+## W99 — check≠action nel font-inject del renderer WR2: 6/9 slide dipinte in FONT DI SISTEMA (e 4/9 del carosello revenue GIÀ PUBBLICATO su IG) con render verde e critic PASS — 2026-07-14
+
+**TRAUMA.** Zero guarda il carosello bike e chiede "perché il font cambia a volte tra slide?". Probe
+empirico (canvas measureText su ogni zona testo, headless chromium): 6 slide su 9 dipinte in
+SYSTEM-FALLBACK (Helvetica/SF), non Montserrat. Stessa malattia su 4/9 slide del carosello revenue
+Rp2.8T GIÀ PUBBLICATO su Instagram l'11/7. Root cause a DUE strati: (1) famiglia #3 check≠action —
+`composer._normalize_skeleton` verificava `'href="_base.css"' in html` (loose) ma la replace matchava
+`href="_base.css">` (strict): gli skeleton con `<link ... />` self-closing (editorial-text,
+stat-card-hero, numbered-forces-list, photo-headline-yellow-sub, evidence-carved) passavano il check,
+mancavano la replace → `_fonts.css` MAI iniettato → zero @font-face → Chromium dipinge il sistema.
+(2) famiglia #2 esiste≠armato — il renderer CALCOLAVA già `montserrat=false` via `document.fonts.check`
+e lo declassava a `logger.warning` in un run-log da 12MB: il guardiano esisteva, vedeva, e sussurrava.
+Né il critic (vision, giudica contenuto/contrasto, non identità del font) né i gate dimensioni/hero
+potevano prenderlo.
+
+**ANTIBODY.** (1) Iniezione ancorata a `<head[^>]*>` via `re.subn` con `n==0 → ValueError` (fail-visible,
+l'ordine del link è irrilevante per @font-face). (2) `montserrat=false` promosso a HARD FAILURE del
+render (`BRAND FONT NOT LOADED`), non warning. (3) Test guilt+innocence
+(`tests/test_fonts_injection.py`, 8 casi) incluso sweep REALE di tutta la layout library ("ogni skeleton
+estratto → esattamente 1 link \_fonts.css", con blind-sweep guard W84).
+
+**GOTCHA.** (1) Un guardiano che degrada a warning ciò che sa essere fatale È la famiglia #2 in
+miniatura: se un check ha senso solo bloccando, deve bloccare. (2) Il critic vision NON è un font-gate:
+giudica leggibilità e brand-look ma Helvetica bold uppercase su antracite "somiglia" abbastanza da
+passare — l'identità del font si prova con `document.fonts.check`/measureText, mai a occhio. (3) La
+coppia check/replace con pattern DIVERSI è la firma testuale della famiglia #3 fuori dalle guardie
+regex: vale per ogni `if X in s: s.replace(Y,...)` dove X≠Y. (4) Il carosello revenue pubblicato resta
+col font sbagliato su IG — decisione republish = operator[business].
