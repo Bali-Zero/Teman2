@@ -14,6 +14,7 @@ dossiers (intelligence blindata) never reach the newsletter.
 
 from __future__ import annotations
 
+import html
 import logging
 import re
 from dataclasses import dataclass, field
@@ -142,50 +143,40 @@ DEFAULT_DAILY_THESES_MAX = 2
 DEFAULT_DAILY_TOTAL_MAX = 3
 DEFAULT_DAILY_SCARCE_FLOOR = 2  # fewer than this total items → "scarce day"
 
-# Word-boundary keyword filter for intel_items relevance. topic_tags on the
-# raw lake rows are noisy (an unrelated cooperative-politics story was seen
-# tagged "visa"/"immigration" in production data 2026-07-14) — filtering on
-# the title/summary text itself is more reliable than trusting the tag.
-_RELEVANCE_KEYWORDS = (
-    "visa",
-    "kitas",
-    "kitap",
-    "imigrasi",
-    "immigration",
-    "overstay",
-    "pajak",
-    "tax",
-    "pph",
-    "ppn",
-    "djp",
-    "npwp",
-    "spt",
-    "lkpm",
-    "kbli",
-    "pma",
-    "pmdn",
-    "oss",
-    "nib",
-    "izin",
-    "property",
-    "villa",
-    "hak pakai",
-    "sertifikat",
-    "tanah",
-    "kemenkumham",
-    "permenkumham",
-    "permenaker",
-    "kemenaker",
-    "compliance",
-    "regulasi",
-    "regulation",
-    "akta",
-    "notaris",
-)
+# Word-boundary keyword filter for intel_items relevance, grouped by
+# editorial category. topic_tags on the raw lake rows are noisy (an
+# unrelated cooperative-politics story was seen tagged "visa"/"immigration"
+# in production data 2026-07-14, and a Bali property-market-trust article
+# was tagged "visa" too) — filtering AND labeling off the title/summary
+# text itself is more reliable than trusting the tag. Order matters: the
+# first category whose keyword matches becomes the item's domain_tag.
+_RELEVANCE_CATEGORIES: dict[str, tuple[str, ...]] = {
+    "VISA": ("visa", "kitas", "kitap", "imigrasi", "immigration", "overstay"),
+    "TAX": ("pajak", "tax", "pph", "ppn", "djp", "npwp", "spt", "lkpm"),
+    "KBLI": ("kbli", "pma", "pmdn", "oss", "nib", "izin"),
+    "PROPERTY": ("property", "villa", "hak pakai", "sertifikat", "tanah"),
+    "COMPLIANCE": (
+        "kemenkumham",
+        "permenkumham",
+        "permenaker",
+        "kemenaker",
+        "compliance",
+        "regulasi",
+        "regulation",
+        "akta",
+        "notaris",
+    ),
+}
 _RELEVANCE_RE = re.compile(
-    r"\b(" + "|".join(re.escape(k) for k in _RELEVANCE_KEYWORDS) + r")\b",
+    r"\b("
+    + "|".join(re.escape(k) for keywords in _RELEVANCE_CATEGORIES.values() for k in keywords)
+    + r")\b",
     re.IGNORECASE,
 )
+_CATEGORY_RES: dict[str, re.Pattern[str]] = {
+    tag: re.compile(r"\b(" + "|".join(re.escape(k) for k in keywords) + r")\b", re.IGNORECASE)
+    for tag, keywords in _RELEVANCE_CATEGORIES.items()
+}
 
 
 @dataclass
@@ -224,22 +215,72 @@ def _thesis_to_item(t: CrossDossierThesis) -> DailyDigestItem:
     )
 
 
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_WP_APPEARED_FIRST_RE = re.compile(
+    r"\s*The post .*? appeared first on .*?\.?\s*$", re.IGNORECASE | re.DOTALL
+)
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def _clean_summary(raw: str, *, max_len: int = 320) -> str:
+    """Strip HTML markup, entities, and WordPress-RSS boilerplate.
+
+    Found live 2026-07-14: some scraped intel_items.summary values are the
+    raw RSS <description> — full HTML tags, `&#8217;`-style entities, and a
+    trailing "The post X appeared first on Y." syndication footer. None of
+    that is editorial content; the digest must show clean prose, not a raw
+    feed dump.
+    """
+    text = _HTML_TAG_RE.sub(" ", raw)
+    text = html.unescape(text)
+    text = _WP_APPEARED_FIRST_RE.sub("", text)
+    text = _WHITESPACE_RE.sub(" ", text).strip()
+    if len(text) > max_len:
+        text = text[: max_len - 1].rstrip() + "…"
+    return text
+
+
 def _intel_item_to_item(i: IntelItemSummary) -> DailyDigestItem:
-    domain_tag = (i.topic_tags[0].upper() if i.topic_tags else "INTEL")[:14]
     return DailyDigestItem(
         kind="intel_item",
         title=i.title,
-        body=i.summary or "",
+        body=_clean_summary(i.summary) if i.summary else "",
         source_label=i.source_domain or "source",
         source_url=i.canonical_url,
         source_date=i.published_at or i.first_seen_at,
-        domain_tag=domain_tag,
+        domain_tag=_domain_tag_for(i),
     )
 
 
+def _domain_tag_for(i: IntelItemSummary) -> str:
+    """Kicker badge derived from the matched relevance category, NOT the
+    raw ``topic_tags`` (found noisy live 2026-07-14 — a Bali property-market
+    article was tagged "visa"). Falls back to "INTEL" if, somehow, nothing
+    in _RELEVANCE_CATEGORIES matches (should not happen post-_is_relevant)."""
+    haystack = f"{i.title} {_clean_summary(i.summary) if i.summary else ''}"
+    for tag, pattern in _CATEGORY_RES.items():
+        if pattern.search(haystack):
+            return tag
+    return "INTEL"
+
+
 def _is_relevant(i: IntelItemSummary) -> bool:
-    haystack = f"{i.title} {i.summary or ''}"
+    haystack = f"{i.title} {_clean_summary(i.summary) if i.summary else ''}"
     return bool(_RELEVANCE_RE.search(haystack))
+
+
+def _has_editorial_content(i: IntelItemSummary) -> bool:
+    """Reject rows with no (or whitespace-only, post-cleaning) summary.
+
+    Found live 2026-07-14: some scraped intel_items have title but empty
+    summary — selecting them renders a blank body line in the card. Others
+    have a summary that's ONLY WordPress-RSS boilerplate ("The post X
+    appeared first on Y.") which _clean_summary strips to empty. Either
+    way: an empty body is honest (no fabrication) but reads as broken;
+    better to skip and let another fresh, relevant item (or the scarce-day
+    note) take the slot.
+    """
+    return bool(_clean_summary(i.summary).strip()) if i.summary else False
 
 
 class DailyDigestBuilder:
@@ -301,7 +342,7 @@ class DailyDigestBuilder:
                     lookback_hours=self.lookback_hours,
                     limit=max(remaining * 5, 10),  # over-fetch, then relevance-filter
                 )
-                relevant = [i for i in candidates if _is_relevant(i)]
+                relevant = [i for i in candidates if _is_relevant(i) and _has_editorial_content(i)]
                 items.extend(_intel_item_to_item(i) for i in relevant[:remaining])
             except Exception as exc:
                 logger.debug("daily digest intel_items fetch failed: %s", exc)

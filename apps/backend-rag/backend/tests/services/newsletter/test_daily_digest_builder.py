@@ -15,6 +15,8 @@ from backend.services.newsletter.builder import (
     DEFAULT_DAILY_THESES_MAX,
     DEFAULT_DAILY_TOTAL_MAX,
     DailyDigestBuilder,
+    _clean_summary,
+    _domain_tag_for,
 )
 
 
@@ -173,6 +175,35 @@ async def test_relevant_intel_item_included(repos):
     assert content.items[0].kind == "intel_item"
 
 
+@pytest.mark.asyncio
+async def test_relevant_intel_item_with_empty_summary_excluded(repos):
+    """Regression 2026-07-14 (found on real prod data): a relevant item
+    with no summary would render a blank body line in the card — skip it
+    rather than ship a broken-looking card."""
+    intel, cognitive = repos
+    blank_summary = _intel_item(
+        title="Ekstensifikasi Pajak Melesat, DJP Catat 143.449 WP Baru",
+        summary="",
+    )
+    intel.fetch_recent_intel_items = AsyncMock(return_value=[blank_summary])
+    builder = DailyDigestBuilder(intel_repo=intel, cognitive_repo=cognitive)
+    content = await builder.build_daily(now=_now())
+    assert content.is_empty
+
+
+@pytest.mark.asyncio
+async def test_relevant_intel_item_with_whitespace_only_summary_excluded(repos):
+    intel, cognitive = repos
+    ws_summary = _intel_item(
+        title="Aturan Pajak UMKM Disempurnakan",
+        summary="   ",
+    )
+    intel.fetch_recent_intel_items = AsyncMock(return_value=[ws_summary])
+    builder = DailyDigestBuilder(intel_repo=intel, cognitive_repo=cognitive)
+    content = await builder.build_daily(now=_now())
+    assert content.is_empty
+
+
 # ── Scarce day flag ─────────────────────────────────────────
 
 
@@ -243,3 +274,124 @@ async def test_intel_item_carries_source_url_and_domain(repos):
     content = await builder.build_daily(now=_now())
     assert content.items[0].source_url == item.canonical_url
     assert content.items[0].source_label == item.source_domain
+
+
+# ── domain_tag derived from matched content, not raw noisy tags ─────────
+# Regression 2026-07-14: a real prod row about Bali's property market was
+# tagged topic_tags=["visa"] — the old (raw-tag) logic would have badged
+# it "VISA". The fix derives the badge from which _RELEVANCE_CATEGORIES
+# keyword actually matched the title/summary.
+
+
+def test_domain_tag_for_visa_keyword():
+    item = _intel_item(title="Indonesia tightens visa rules", summary="overstay crackdown")
+    assert _domain_tag_for(item) == "VISA"
+
+
+def test_domain_tag_for_tax_keyword():
+    item = _intel_item(title="DJP catat wajib pajak baru", summary="ekstensifikasi pajak")
+    assert _domain_tag_for(item) == "TAX"
+
+
+def test_domain_tag_for_property_keyword_not_misled_by_noisy_topic_tag():
+    item = _intel_item(
+        title="Can You Measure Trust in Bali's Property Market?",
+        summary="A look at property transactions and buyer trust in Bali.",
+        topic_tags=["visa"],  # noisy/wrong tag on the raw row — must be ignored
+    )
+    assert _domain_tag_for(item) == "PROPERTY"
+
+
+@pytest.mark.asyncio
+async def test_selected_intel_item_domain_tag_matches_content_not_raw_tag(repos):
+    intel, cognitive = repos
+    property_item = _intel_item(
+        title="Can You Measure Trust in Bali's Property Market?",
+        summary="A look at property transactions and buyer trust in Bali.",
+        topic_tags=["visa", "immigration"],  # noisy — must not win over content match
+    )
+    intel.fetch_recent_intel_items = AsyncMock(return_value=[property_item])
+    builder = DailyDigestBuilder(intel_repo=intel, cognitive_repo=cognitive)
+    content = await builder.build_daily(now=_now())
+    assert len(content.items) == 1
+    assert content.items[0].domain_tag == "PROPERTY"
+
+
+# ── _clean_summary — strip raw RSS/WordPress markup ─────────────────────
+# Regression 2026-07-14: a real prod row's summary was the raw RSS
+# <description> — HTML tags, HTML entities, and a "The post X appeared
+# first on Y." syndication footer appended by WordPress.
+
+
+def test_clean_summary_strips_html_tags():
+    raw = "<p>Trust is one of the most discussed qualities.</p>"
+    assert _clean_summary(raw) == "Trust is one of the most discussed qualities."
+
+
+def test_clean_summary_unescapes_html_entities():
+    raw = "Bali&#8217;s property market is opaque."
+    assert _clean_summary(raw) == "Bali’s property market is opaque."
+
+
+def test_clean_summary_strips_wordpress_appeared_first_on_footer():
+    raw = (
+        "<p>Trust is hard to measure in property.</p>\n"
+        '<p>The post <a href="https://x.com/y">Can You Measure Trust</a> appeared first on '
+        '<a href="https://indonesiaexpat.id">Indonesia Expat</a>.</p>'
+    )
+    cleaned = _clean_summary(raw)
+    assert "appeared first on" not in cleaned
+    assert cleaned == "Trust is hard to measure in property."
+
+
+def test_clean_summary_truncates_long_text_with_ellipsis():
+    raw = "word " * 200
+    cleaned = _clean_summary(raw, max_len=50)
+    assert len(cleaned) <= 50
+    assert cleaned.endswith("…")
+
+
+def test_clean_summary_plain_text_passthrough_unchanged():
+    assert _clean_summary("Indonesia cut visa-free entry by 87 percent.") == (
+        "Indonesia cut visa-free entry by 87 percent."
+    )
+
+
+@pytest.mark.asyncio
+async def test_raw_wordpress_summary_rendered_as_clean_body(repos):
+    intel, cognitive = repos
+    wp_item = _intel_item(
+        title="Can You Measure Trust in Bali's Property Market?",
+        summary=(
+            "<p>Trust is hard to measure in Bali&#8217;s property market.</p>\n"
+            '<p>The post <a href="https://x.com">Can You Measure Trust</a> appeared first on '
+            '<a href="https://indonesiaexpat.id">Indonesia Expat</a>.</p>'
+        ),
+    )
+    intel.fetch_recent_intel_items = AsyncMock(return_value=[wp_item])
+    builder = DailyDigestBuilder(intel_repo=intel, cognitive_repo=cognitive)
+    content = await builder.build_daily(now=_now())
+    assert len(content.items) == 1
+    body = content.items[0].body
+    assert "<p>" not in body
+    assert "appeared first on" not in body
+    assert "&#8217;" not in body
+    assert body == "Trust is hard to measure in Bali’s property market."
+
+
+@pytest.mark.asyncio
+async def test_summary_that_is_only_wordpress_boilerplate_excluded(repos):
+    """A summary that, after cleaning, is empty must be treated the same
+    as a genuinely empty summary — skip, don't ship a blank card."""
+    intel, cognitive = repos
+    boilerplate_only = _intel_item(
+        title="Some Bali property story",
+        summary=(
+            'The post <a href="https://x.com">title</a> appeared first on '
+            '<a href="https://indonesiaexpat.id">Indonesia Expat</a>.'
+        ),
+    )
+    intel.fetch_recent_intel_items = AsyncMock(return_value=[boilerplate_only])
+    builder = DailyDigestBuilder(intel_repo=intel, cognitive_repo=cognitive)
+    content = await builder.build_daily(now=_now())
+    assert content.is_empty
