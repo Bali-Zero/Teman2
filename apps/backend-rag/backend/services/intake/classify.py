@@ -68,6 +68,10 @@ import asyncpg
 import httpx
 
 from backend.llm.config import ModelName
+from backend.services.intake.inference_runtime import (
+    ollama_inference_slot,
+    ollama_keep_alive,
+)
 from backend.services.intake.model_roles import resolve_model_role
 
 logger = logging.getLogger("zantara.intake.classify")
@@ -288,13 +292,21 @@ async def _ollama_vision(
         "prompt": prompt,
         "images": [png_b64],
         "stream": False,
+        "keep_alive": ollama_keep_alive(),
         "options": {"temperature": 0.0, "num_predict": resolved_num_predict},
         # CLAUDE.md S9: qwen 3.x family needs think:false. qwen3-vl ignores it
         # for vision (empirically still reasons) but qwen2.5vl honours it.
         "think": False,
     }
     client = _get_client()
-    r = await client.post(f"{OLLAMA_URL}/api/generate", json=payload)
+    async with ollama_inference_slot(operation="ocr_vision", model=model):
+        # Admission wait is intentionally outside the request timeout.  A busy
+        # local GPU should queue work, not make a request expire before it has
+        # started running.
+        r = await asyncio.wait_for(
+            client.post(f"{OLLAMA_URL}/api/generate", json=payload),
+            timeout=OCR_PAGE_TIMEOUT_SECONDS,
+        )
     r.raise_for_status()
     data = r.json()
     return (
@@ -472,9 +484,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
         # non-reasoning VLMs like qwen2.5vl).
         if not text:
             try:
-                resp, thinking = await asyncio.wait_for(
-                    _ollama_vision(primary, b64), timeout=OCR_PAGE_TIMEOUT_SECONDS
-                )
+                resp, thinking = await _ollama_vision(primary, b64)
                 resp = _clean_ocr_response(resp)
                 thinking = _clean_ocr_response(thinking or "")
                 if resp:
@@ -497,10 +507,7 @@ async def ocr_pages(pages: list[Any]) -> list[dict[str, Any]]:
             if _OCR_FALLBACK == primary:
                 logger.info("OCR same-model retry (%s) on page %d", _OCR_FALLBACK, idx)
             try:
-                resp, _ = await asyncio.wait_for(
-                    _ollama_vision(_OCR_FALLBACK, b64),
-                    timeout=OCR_PAGE_TIMEOUT_SECONDS,
-                )
+                resp, _ = await _ollama_vision(_OCR_FALLBACK, b64)
                 resp = _clean_ocr_response(resp)
                 if resp:
                     text, via, model_used = resp, "fallback", _OCR_FALLBACK
@@ -914,10 +921,15 @@ async def _ollama_text_classify(model: str, prompt: str) -> tuple[str, str | Non
         "prompt": prompt,
         "stream": False,
         "think": False,
+        "keep_alive": ollama_keep_alive(),
         "options": {"temperature": 0.0, "num_predict": 24},
     }
     client = _get_client()
-    r = await client.post(f"{OLLAMA_URL}/api/generate", json=payload)
+    async with ollama_inference_slot(operation="text_classify", model=model):
+        r = await asyncio.wait_for(
+            client.post(f"{OLLAMA_URL}/api/generate", json=payload),
+            timeout=TEXT_LLM_CLASSIFY_TIMEOUT_SECONDS,
+        )
     r.raise_for_status()
     data = r.json()
     return (data.get("response") or "").strip(), (data.get("thinking") or "").strip()
@@ -936,9 +948,9 @@ async def _text_llm_classify(ocr_text: str | None) -> str | None:
         return None
     model = _resolve_text_llm_model()
     try:
-        response, thinking = await asyncio.wait_for(
-            _ollama_text_classify(model, _text_llm_classify_prompt(text)),
-            timeout=TEXT_LLM_CLASSIFY_TIMEOUT_SECONDS,
+        response, thinking = await _ollama_text_classify(
+            model,
+            _text_llm_classify_prompt(text),
         )
     except Exception as exc:
         logger.warning("text LLM classify fallback failed model=%s error=%r", model, exc)
@@ -958,14 +970,11 @@ async def _vision_classify_page(png_bytes: bytes) -> str | None:
     """
     try:
         b64 = base64.b64encode(_ensure_min_size(png_bytes)).decode("ascii")
-        resp, thinking = await asyncio.wait_for(
-            _ollama_vision(
-                _VISION_CLASSIFY_MODEL,
-                b64,
-                prompt=_VISION_CLASSIFY_PROMPT,
-                num_predict=_VISION_CLASSIFY_NUM_PREDICT,
-            ),
-            timeout=OCR_PAGE_TIMEOUT_SECONDS,
+        resp, thinking = await _ollama_vision(
+            _VISION_CLASSIFY_MODEL,
+            b64,
+            prompt=_VISION_CLASSIFY_PROMPT,
+            num_predict=_VISION_CLASSIFY_NUM_PREDICT,
         )
     except Exception as exc:
         logger.warning("vision classify fallback failed: %s", exc)

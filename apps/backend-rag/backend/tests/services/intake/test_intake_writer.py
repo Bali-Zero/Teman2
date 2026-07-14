@@ -71,18 +71,24 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
     """Build a synthetic intake chain + 2 clients + an open practice."""
     tag = f"5btest-{uuid.uuid4().hex[:8]}"
     created: dict[str, list[int]] = {
-        "clients": [], "proposals": [], "queues": [], "instances": [], "practices": []
+        "clients": [],
+        "proposals": [],
+        "queues": [],
+        "instances": [],
+        "practices": [],
     }
     bh = (uuid.uuid4().hex + uuid.uuid4().hex)[:64]  # shared blob for both clients
 
     async with pool.acquire() as conn:
         cid_a = await conn.fetchval(
             "INSERT INTO clients (full_name, assigned_to) VALUES ($1,$2) RETURNING id",
-            f"{tag}-A", ADMIN["email"],
+            f"{tag}-A",
+            ADMIN["email"],
         )
         cid_b = await conn.fetchval(
             "INSERT INTO clients (full_name, assigned_to) VALUES ($1,$2) RETURNING id",
-            f"{tag}-B", ADMIN["email"],
+            f"{tag}-B",
+            ADMIN["email"],
         )
         created["clients"] += [cid_a, cid_b]
 
@@ -90,7 +96,8 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         prac_a = await conn.fetchval(
             """INSERT INTO practices (client_id, practice_type_code, title, status)
                VALUES ($1, 'kitas_application', $2, 'in_progress') RETURNING id""",
-            cid_a, f"{tag}-practice",
+            cid_a,
+            f"{tag}-practice",
         )
         created["practices"].append(prac_a)
 
@@ -99,7 +106,9 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         inst = await conn.fetchval(
             """INSERT INTO document_instances (blob_hash, pipeline_version, blob_path, first_source)
                VALUES ($1,$2,$3,'drive') RETURNING id""",
-            bh, PIPELINE, f"/tmp/{tag}.pdf",
+            bh,
+            PIPELINE,
+            f"/tmp/{tag}.pdf",
         )
         created["instances"].append(inst)
 
@@ -110,16 +119,29 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
                    (instance_id, source, source_ref, blob_path, blob_hash, pipeline_version,
                     status, stage_output, intake_key)
                    VALUES ($1,'drive',$2,$3,$4,$5,'review_pending',$6::jsonb,$7) RETURNING id""",
-                inst, source_ref, f"/tmp/{tag}.pdf", bh, PIPELINE,
-                json.dumps({"doc_type": "npwp", "file_id": f"drive-{source_ref}",
-                            "ocr": {"pages": [{"page": 1, "text": "NPWP"}]}}),
+                inst,
+                source_ref,
+                f"/tmp/{tag}.pdf",
+                bh,
+                PIPELINE,
+                json.dumps(
+                    {
+                        "doc_type": "npwp",
+                        "file_id": f"drive-{source_ref}",
+                        "ocr": {"pages": [{"page": 1, "text": "NPWP"}]},
+                    }
+                ),
                 ikey,
             )
             created["queues"].append(qid)
             entity = {"decision": decision, "candidates": [{"table": "clients", "id": client_id}]}
-            routing = {"client_id": client_id, "company_id": None,
-                       "practice_id": practice_id, "doc_type": "npwp",
-                       "fields": {"npwp_number": {"value": "01.234.567.8-901.000"}}}
+            routing = {
+                "client_id": client_id,
+                "company_id": None,
+                "practice_id": practice_id,
+                "doc_type": "npwp",
+                "fields": {"npwp_number": {"value": "01.234.567.8-901.000"}},
+            }
             gate = {"requires_human": decision != "AUTO_ATTACH", "decision": decision}
             pid = await conn.fetchval(
                 """INSERT INTO document_routing_proposal
@@ -129,9 +151,14 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
                    VALUES ($1,0,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb,'review_claimed',
                            $7, now() + interval '15 min', $8)
                    RETURNING id""",
-                qid, PIPELINE, f"{tag}-{uuid.uuid4().hex[:8]}",
-                json.dumps(entity), json.dumps(routing), json.dumps(gate),
-                ADMIN["email"], uuid.uuid4(),
+                qid,
+                PIPELINE,
+                f"{tag}-{uuid.uuid4().hex[:8]}",
+                json.dumps(entity),
+                json.dumps(routing),
+                json.dumps(gate),
+                ADMIN["email"],
+                uuid.uuid4(),
             )
             created["proposals"].append(pid)
             return pid
@@ -139,8 +166,16 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
         p_a = await mk(cid_a, "AUTO_ATTACH", "refA", practice_id=prac_a)
         p_b = await mk(cid_b, "AUTO_ATTACH", "refA")  # SAME source_ref+blob, different client
 
-    yield {"tag": tag, "cid_a": cid_a, "cid_b": cid_b, "prac_a": prac_a,
-           "p_a": p_a, "p_b": p_b, "bh": bh, "created": created}
+    yield {
+        "tag": tag,
+        "cid_a": cid_a,
+        "cid_b": cid_b,
+        "prac_a": prac_a,
+        "p_a": p_a,
+        "p_b": p_b,
+        "bh": bh,
+        "created": created,
+    }
 
     async with pool.acquire() as conn:
         # Real-write tests (flag ON) may have INSERTed documents for these clients —
@@ -163,6 +198,7 @@ async def seed(pool: asyncpg.Pool) -> AsyncIterator[dict]:
 
 def _make_app(pool: asyncpg.Pool, user: dict) -> FastAPI:
     from backend.app.routers import intake_review
+
     app = FastAPI()
     app.include_router(intake_review.router)
     app.dependency_overrides[get_current_user] = lambda: user
@@ -218,9 +254,11 @@ async def test_p0_1_idempotency_key_cross_client_distinct(pool, seed):
     """P0#1: same blob, two clients → keys are per-client-scoped, no collision."""
     async with pool.acquire() as conn:
         prop_a = await conn.fetchrow(
-            "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"])
+            "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
         prop_b = await conn.fetchrow(
-            "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_b"])
+            "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_b"]
+        )
         plan_a = await intake_writer.plan_commit(prop_a, conn, committed_by=ADMIN["email"])
         plan_b = await intake_writer.plan_commit(prop_b, conn, committed_by=ADMIN["email"])
     # SAME blob + SAME source_ref → the key STRING is identical across the two
@@ -242,7 +280,8 @@ async def test_p0_3_blocked_on_soft_deleted_client(pool, seed):
         await conn.execute("UPDATE clients SET deleted_at = now() WHERE id=$1", seed["cid_a"])
         try:
             prop_a = await conn.fetchrow(
-                "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"])
+                "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+            )
             plan = await intake_writer.plan_commit(prop_a, conn, committed_by=ADMIN["email"])
             result = await intake_writer.execute_commit(plan, conn, dry_run=True)
         finally:
@@ -261,7 +300,8 @@ async def test_flag_off_real_commit_refused(pool, seed, monkeypatch):
     before = await _crm_counts(pool)
     async with pool.acquire() as conn:
         prop_a = await conn.fetchrow(
-            "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"])
+            "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
         plan = await intake_writer.plan_commit(prop_a, conn, committed_by=ADMIN["email"])
         with pytest.raises(intake_writer.WriterDisabledError):
             await intake_writer.execute_commit(plan, conn, dry_run=False)
@@ -273,17 +313,21 @@ async def test_dry_run_writes_only_audit_row(pool, seed):
     """The ONLY write a dry-run performs is one intake_commit_audit row."""
     async with pool.acquire() as conn:
         n_before = await conn.fetchval(
-            "SELECT count(*) FROM intake_commit_audit WHERE proposal_id=$1", seed["p_a"])
+            "SELECT count(*) FROM intake_commit_audit WHERE proposal_id=$1", seed["p_a"]
+        )
     app = _make_app(pool, ADMIN)
     async with _client(app) as cl:
         r = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
     assert r.status_code == 200
     async with pool.acquire() as conn:
         n_after = await conn.fetchval(
-            "SELECT count(*) FROM intake_commit_audit WHERE proposal_id=$1", seed["p_a"])
+            "SELECT count(*) FROM intake_commit_audit WHERE proposal_id=$1", seed["p_a"]
+        )
         row = await conn.fetchrow(
             "SELECT dry_run, outcome, doc_id FROM intake_commit_audit "
-            "WHERE proposal_id=$1 ORDER BY id DESC LIMIT 1", seed["p_a"])
+            "WHERE proposal_id=$1 ORDER BY id DESC LIMIT 1",
+            seed["p_a"],
+        )
     assert n_after == n_before + 1
     assert row["dry_run"] is True
     assert row["outcome"] == "dry_run"
@@ -365,10 +409,34 @@ async def test_real_commit_writes_document_and_advances(pool, seed, monkeypatch)
     async with pool.acquire() as conn:
         audit = await conn.fetchrow(
             "SELECT dry_run, outcome, doc_id FROM intake_commit_audit "
-            "WHERE proposal_id=$1 ORDER BY id DESC LIMIT 1", seed["p_a"])
+            "WHERE proposal_id=$1 ORDER BY id DESC LIMIT 1",
+            seed["p_a"],
+        )
     assert audit["dry_run"] is False
     assert audit["outcome"] == "committed"
     assert audit["doc_id"] == new_doc["id"]
+
+    # The same atomic commit produces a local field-level ground-truth row.
+    async with pool.acquire() as conn:
+        correction = await conn.fetchrow(
+            """
+            SELECT field_name, ai_value, human_value, ai_confidence, outcome,
+                   source, verified_by
+            FROM intake_corrections
+            WHERE queue_id = (
+                SELECT queue_id FROM document_routing_proposal WHERE id = $1
+            )
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            seed["p_a"],
+        )
+    assert correction["field_name"] == "npwp_number"
+    assert correction["ai_value"] == "01.234.567.8-901.000"
+    assert correction["human_value"] == correction["ai_value"]
+    assert correction["outcome"] == "approved"
+    assert correction["source"] == "drive"
+    assert correction["verified_by"] == ADMIN["email"]
 
 
 async def test_real_commit_idempotent_recommit(pool, seed, monkeypatch):
@@ -386,6 +454,16 @@ async def test_real_commit_idempotent_recommit(pool, seed, monkeypatch):
     doc_id_1 = r1.json()["result"]["doc_id"]
     assert doc_id_1 is not None
     docs_after_first = await _docs_for_client(pool, seed["cid_a"])
+    async with pool.acquire() as conn:
+        corrections_after_first = await conn.fetchval(
+            """
+            SELECT count(*) FROM intake_corrections
+            WHERE queue_id = (
+                SELECT queue_id FROM document_routing_proposal WHERE id = $1
+            )
+            """,
+            seed["p_a"],
+        )
 
     # The proposal is now 'routed' (terminal) — plan_commit would block it as "not
     # approvable". Re-arm it to 'review_claimed' so a SECOND execute_commit reaches
@@ -398,7 +476,8 @@ async def test_real_commit_idempotent_recommit(pool, seed, monkeypatch):
         )
         async with conn.transaction():
             prop = await conn.fetchrow(
-                "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"])
+                "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+            )
             plan = await intake_writer.plan_commit(prop, conn, committed_by=ADMIN["email"])
             # existing doc surfaced by the idempotency probe
             assert plan.existing_doc_id == doc_id_1
@@ -409,6 +488,17 @@ async def test_real_commit_idempotent_recommit(pool, seed, monkeypatch):
 
     docs_after_second = await _docs_for_client(pool, seed["cid_a"])
     assert len(docs_after_second) == len(docs_after_first), "no duplicate document on re-commit"
+    async with pool.acquire() as conn:
+        corrections_after_second = await conn.fetchval(
+            """
+            SELECT count(*) FROM intake_corrections
+            WHERE queue_id = (
+                SELECT queue_id FROM document_routing_proposal WHERE id = $1
+            )
+            """,
+            seed["p_a"],
+        )
+    assert corrections_after_second == corrections_after_first
 
 
 async def test_blocked_plan_no_write_even_with_flag_on(pool, seed, monkeypatch):
@@ -420,7 +510,8 @@ async def test_blocked_plan_no_write_even_with_flag_on(pool, seed, monkeypatch):
         try:
             async with conn.transaction():
                 prop = await conn.fetchrow(
-                    "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"])
+                    "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+                )
                 plan = await intake_writer.plan_commit(prop, conn, committed_by=ADMIN["email"])
                 result = await intake_writer.execute_commit(plan, conn, dry_run=False)
         finally:
@@ -450,13 +541,16 @@ async def test_exception_mid_tx_rolls_back(pool, seed, monkeypatch):
         with pytest.raises(RuntimeError, match="simulated practice append failure"):
             async with conn.transaction():
                 prop = await conn.fetchrow(
-                    "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"])
+                    "SELECT * FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+                )
                 plan = await intake_writer.plan_commit(prop, conn, committed_by=ADMIN["email"])
                 await intake_writer.execute_commit(plan, conn, dry_run=False)
 
     after = await _crm_counts(pool)
     assert after == before, "TX did not roll back — orphan document survived the failure"
-    assert await _proposal_status(pool, seed["p_a"]) == "review_claimed", "proposal advanced despite rollback"
+    assert await _proposal_status(pool, seed["p_a"]) == "review_claimed", (
+        "proposal advanced despite rollback"
+    )
 
 
 async def test_rollback_commit_undoes_document(pool, seed, monkeypatch):
@@ -474,7 +568,9 @@ async def test_rollback_commit_undoes_document(pool, seed, monkeypatch):
     async with pool.acquire() as conn:
         async with conn.transaction():
             res = await intake_writer.rollback_commit(
-                conn, client_id=seed["cid_a"], idempotency_key=idem_key,
+                conn,
+                client_id=seed["cid_a"],
+                idempotency_key=idem_key,
                 committed_by=ADMIN["email"],
             )
     assert res.outcome == "rolled_back"
@@ -493,7 +589,9 @@ async def test_rollback_commit_undoes_document(pool, seed, monkeypatch):
     async with pool.acquire() as conn:
         async with conn.transaction():
             res2 = await intake_writer.rollback_commit(
-                conn, client_id=seed["cid_a"], idempotency_key=idem_key,
+                conn,
+                client_id=seed["cid_a"],
+                idempotency_key=idem_key,
                 committed_by=ADMIN["email"],
             )
     assert res2.outcome == "rolled_back"
@@ -529,9 +627,7 @@ async def test_rollback_commit_undoes_document(pool, seed, monkeypatch):
         ("skt", "tax", "03_Tax"),
     ],
 )
-def test_company_doc_category_maps_to_company_folder(
-    doc_type, expected_category, expected_folder
-):
+def test_company_doc_category_maps_to_company_folder(doc_type, expected_category, expected_folder):
     """Intake-derived category must be the CANONICAL one that resolves to the
     right Drive folder. Before the fix, nib/akta produced category='company',
     which is absent from CATEGORY_TO_FOLDER → fell through to '99_Misc' (Drive
@@ -565,7 +661,9 @@ async def _set_passport_proposal(conn: asyncpg.Pool, proposal_id: int, client_id
     """Rewrite a seeded proposal to a passport doc with nested {value} fields,
     mirroring the real FASE-3 extract shape (extract.py:252)."""
     routing = {
-        "client_id": client_id, "company_id": None, "practice_id": None,
+        "client_id": client_id,
+        "company_id": None,
+        "practice_id": None,
         "doc_type": "passport",
         "fields": {
             "passport_no": {"value": "YC0000001", "confidence": 0.99, "source_page": 1},
@@ -577,7 +675,9 @@ async def _set_passport_proposal(conn: asyncpg.Pool, proposal_id: int, client_id
     entity = {"decision": "AUTO_ATTACH", "candidates": [{"table": "clients", "id": client_id}]}
     await conn.execute(
         "UPDATE document_routing_proposal SET routing=$1::jsonb, entity_resolution=$2::jsonb WHERE id=$3",
-        json.dumps(routing), json.dumps(entity), proposal_id,
+        json.dumps(routing),
+        json.dumps(entity),
+        proposal_id,
     )
     await conn.execute(
         "UPDATE intake_queue SET stage_output=$1::jsonb WHERE id="
@@ -598,7 +698,9 @@ async def test_approve_enriches_client_card_passport(pool, seed, monkeypatch):
         # baseline: card is empty for these identity columns
         before = await conn.fetchrow(
             "SELECT passport_number, passport_expiry, date_of_birth, nationality "
-            "FROM clients WHERE id=$1", seed["cid_a"])
+            "FROM clients WHERE id=$1",
+            seed["cid_a"],
+        )
     assert before["passport_number"] is None
     assert before["passport_expiry"] is None
 
@@ -611,7 +713,9 @@ async def test_approve_enriches_client_card_passport(pool, seed, monkeypatch):
     async with pool.acquire() as conn:
         after = await conn.fetchrow(
             "SELECT passport_number, passport_expiry, date_of_birth, nationality "
-            "FROM clients WHERE id=$1", seed["cid_a"])
+            "FROM clients WHERE id=$1",
+            seed["cid_a"],
+        )
     assert after["passport_number"] == "YC0000001"
     assert after["passport_expiry"] == date(2034, 6, 19)
     assert after["date_of_birth"] == date(1987, 7, 1)
@@ -621,9 +725,12 @@ async def test_approve_enriches_client_card_passport(pool, seed, monkeypatch):
 async def test_enrichment_skips_archive_only_no_client(pool, seed, monkeypatch):
     """Innocence test: archive-only (client_id None) must NOT attempt any client UPDATE."""
     from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+
     async with pool.acquire() as conn:
         written = await enrich_client_from_extracted_fields(
-            conn, None, "passport",
+            conn,
+            None,
+            "passport",
             {"passport_no": {"value": "X"}, "expiry": {"value": "2030-01-01"}},
         )
     assert written == {}  # no-op, no exception
@@ -633,13 +740,21 @@ async def test_enrichment_skips_unknown_doctype_and_bad_date(pool, seed, monkeyp
     """Innocence test: unknown doc_type → no-op; a garbage date → that field skipped,
     others still written (never raises, never rolls back the document)."""
     from backend.services.intake.client_enricher import enrich_client_from_extracted_fields
+
     async with pool.acquire() as conn:
         # unknown doc_type → nothing
-        assert await enrich_client_from_extracted_fields(
-            conn, seed["cid_a"], "akta_pendirian", {"x": {"value": "y"}}) == {}
+        assert (
+            await enrich_client_from_extracted_fields(
+                conn, seed["cid_a"], "akta_pendirian", {"x": {"value": "y"}}
+            )
+            == {}
+        )
         # passport with a garbage expiry → expiry skipped, passport_number still written
         written = await enrich_client_from_extracted_fields(
-            conn, seed["cid_a"], "passport",
-            {"passport_no": {"value": "YC9999999"}, "expiry": {"value": "not-a-date"}})
+            conn,
+            seed["cid_a"],
+            "passport",
+            {"passport_no": {"value": "YC9999999"}, "expiry": {"value": "not-a-date"}},
+        )
     assert written.get("passport_number") == "YC9999999"
     assert "passport_expiry" not in written

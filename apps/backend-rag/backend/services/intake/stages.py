@@ -8,7 +8,7 @@ implementations:
     classification happen in this ONE stage; the v1 passthrough ``ocr`` stage
     was dropped by the v2 machine, migration 224).
   * ``extract``  -> :func:`backend.services.intake.extract.extract_stage`
-    (local SEA-LION field extraction, Maybe pattern).
+    (configured local field extraction, Maybe pattern).
   * ``validate`` -> :func:`backend.services.intake.validate_rules.validate_stage`
     (deterministic, no LLM).
   * ``route``    -> :func:`backend.services.intake.routing.route_stage`
@@ -60,9 +60,9 @@ import httpx
 
 from backend.services.intake import classify as _classify
 from backend.services.intake.extract import (
-    EXTRACTION_MODEL_LABEL,
     canonical_doc_type,
     extract_stage,
+    resolved_extraction_model_label,
 )
 from backend.services.intake.routing import route_stage as _route_stage_fase4
 from backend.services.intake.validate_rules import validate_stage
@@ -171,6 +171,7 @@ def build_real_stage_handler(pool: asyncpg.Pool) -> StageHandler:
                 # So we short-circuit to an empty-extraction result and let the
                 # doc flow on to validate -> route-proposal for human triage.
                 if canonical_doc_type(doc_type) is None:
+                    extraction_model = resolved_extraction_model_label()
                     logger.info(
                         "extract: doc_type=%r not auto-extractable (job=%s) -> "
                         "empty fields, route to review (no DLQ)",
@@ -180,10 +181,10 @@ def build_real_stage_handler(pool: asyncpg.Pool) -> StageHandler:
                     return {
                         "doc_type": doc_type or "unknown",
                         "fields": {},
-                        "extraction_model": EXTRACTION_MODEL_LABEL,
+                        "extraction_model": extraction_model,
                         "any_low_confidence": True,
                         "skipped": "unschematised_doc_type",
-                        "_metric": {"model": EXTRACTION_MODEL_LABEL, "confidence": 0.0},
+                        "_metric": {"model": extraction_model, "confidence": 0.0},
                     }
                 if _env_truthy(_PROPOSAL_ONLY_SKIP_EXTRACT_ENV):
                     logger.info(
@@ -205,7 +206,7 @@ def build_real_stage_handler(pool: asyncpg.Pool) -> StageHandler:
                 payload.setdefault(
                     "_metric",
                     {
-                        "model": payload.get("extraction_model", EXTRACTION_MODEL_LABEL),
+                        "model": payload.get("extraction_model", resolved_extraction_model_label()),
                         "confidence": 0.0 if payload.get("any_low_confidence") else 0.85,
                     },
                 )

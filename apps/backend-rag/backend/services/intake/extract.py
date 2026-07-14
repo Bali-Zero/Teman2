@@ -1,9 +1,11 @@
 """Document-intake field extraction (FASE 3 β — 'extract' stage).
 
-Runs the SEA-LION extraction model (``aisingapore/Qwen-SEA-LION-v4-32B-IT``)
-LOCALLY via Ollama (``http://localhost:11434``) — PII never leaves the Pro
-(Law 2 / UU-PDP). For each canonical field the model returns either the value
-WITH ``source_page`` evidence, or an explicit ``null`` — the *Maybe pattern*.
+Runs a schema-driven extraction model LOCALLY via Ollama
+(``http://localhost:11434``) — PII never leaves the Pro (Law 2 / UU-PDP). The
+registry default remains SEA-LION 32B; ``INTAKE_EXTRACTION_MODEL`` can select a
+validated low-latency local tier without changing the safety contract. For each
+canonical field the model returns either the value WITH ``source_page``
+evidence, or an explicit ``null`` — the *Maybe pattern*.
 
 GOLDEN RULE (CLAUDE.md anti-hallucination): a field that is not clearly
 legible is ``null`` with ``confidence == 0.0``. NEVER an invented value. A
@@ -30,6 +32,10 @@ from typing import Any
 
 import httpx
 
+from backend.services.intake.inference_runtime import (
+    ollama_inference_slot,
+    ollama_keep_alive,
+)
 from backend.services.intake.model_roles import resolve_model_role
 from backend.utils.passport_normalize import (
     normalize_date,
@@ -58,6 +64,7 @@ OLLAMA_BASE_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
 # SEA-LION 32B q4 is a heavy local model: ~25-45s warm, cold-load slower.
 _GENERATE_TIMEOUT_SECONDS: float = float(os.getenv("INTAKE_EXTRACT_TIMEOUT", "300"))
 _CONNECT_TIMEOUT_SECONDS: float = 5.0
+_DEFAULT_NUM_PREDICT = 1024
 
 # Confidence assigned to a value the model returned WITH evidence. The extractor
 # is deterministic (temperature 0) and does not emit calibrated probabilities;
@@ -68,6 +75,17 @@ _LOW_CONFIDENCE_THRESHOLD: float = 0.60  # mirrors evidence-scoring CAUTIOUS ban
 _MRZ_CONFIDENCE: float = 0.95
 _LABEL_CONFIDENCE: float = 0.90
 _DETERMINISTIC_LABEL_MODEL: str = "deterministic_labels"
+_UNREADABLE_VALUE_MARKERS = (
+    "unreadable",
+    "illegible",
+    "not legible",
+    "tidak terbaca",
+    "tidak jelas",
+    "blurred",
+    "blurry",
+    "smudged",
+    "redacted",
+)
 
 # --- Persistent async HTTP client (Golden Rule #10: never per-call). ---
 _client: httpx.AsyncClient | None = None
@@ -341,6 +359,7 @@ def _parsed_field_with_alias(
 # Prompt construction + parsing.
 # ---------------------------------------------------------------------------
 
+
 def _build_prompt(doc_type: str, pages: list[str]) -> str:
     """Build the Maybe-pattern extraction prompt with per-page numbering."""
     specs = DOC_TYPE_FIELDS[doc_type]
@@ -350,9 +369,7 @@ def _build_prompt(doc_type: str, pages: list[str]) -> str:
         field_lines.append(f'  - "{name}": {shape} — {desc}')
     fields_block = "\n".join(field_lines)
 
-    numbered_pages = "\n".join(
-        f"--- PAGE {i + 1} ---\n{page}" for i, page in enumerate(pages)
-    )
+    numbered_pages = "\n".join(f"--- PAGE {i + 1} ---\n{page}" for i, page in enumerate(pages))
 
     return (
         "You extract structured fields from an Indonesian legal/identity "
@@ -371,9 +388,9 @@ def _build_prompt(doc_type: str, pages: list[str]) -> str:
         "MRZ disambiguates it, return the date verbatim as printed (do not "
         "reorder) rather than guessing.\n\n"
         "Return ONLY a single JSON object. For EACH field below, the value is "
-        "an object {\"value\": <extracted value or null>, \"source_page\": "
+        'an object {"value": <extracted value or null>, "source_page": '
         "<1-based page number where you read it, or null>}.\n"
-        "If the field is a list, \"value\" is an array (or null / [] if none).\n\n"
+        'If the field is a list, "value" is an array (or null / [] if none).\n\n'
         "Fields:\n"
         f"{fields_block}\n\n"
         "Do not add fields that are not listed. Do not output markdown or "
@@ -408,7 +425,7 @@ def _coerce_field(
     # Normalise "empty" sentinels to null.
     if value is None:
         return null_field
-    if isinstance(value, str) and value.strip().lower() in {"", "null", "none", "n/a", "-"}:
+    if isinstance(value, str) and _is_null_or_unreadable_value(value):
         return null_field
 
     if is_list:
@@ -421,7 +438,7 @@ def _coerce_field(
             if item is None:
                 continue
             text = str(item).strip()
-            if text.lower() in {"", "null", "none", "n/a", "-"}:
+            if _is_null_or_unreadable_value(text):
                 continue
             cleaned.append(text)
         if not cleaned:
@@ -446,6 +463,14 @@ def _coerce_field(
     return {"value": value, "confidence": round(confidence, 2), "source_page": source_page}
 
 
+def _is_null_or_unreadable_value(value: str) -> bool:
+    """Reject model placeholders that describe missing visual evidence."""
+    normalized = value.strip().casefold()
+    if normalized in {"", "null", "none", "n/a", "-"}:
+        return True
+    return any(marker in normalized for marker in _UNREADABLE_VALUE_MARKERS)
+
+
 # ---------------------------------------------------------------------------
 # Deterministic passport MRZ extraction.
 # ---------------------------------------------------------------------------
@@ -459,12 +484,7 @@ _MRZ_WEIGHTS = (7, 3, 1)
 
 def _normalise_mrz_candidate(line: str) -> str:
     """Return a compact MRZ-ish line, dropping OCR spaces/punctuation."""
-    cleaned = (
-        line.upper()
-        .replace("«", "<")
-        .replace("‹", "<")
-        .replace(" ", "")
-    )
+    cleaned = line.upper().replace("«", "<").replace("‹", "<").replace(" ", "")
     return "".join(ch for ch in cleaned if ch in _MRZ_CHARS)
 
 
@@ -488,10 +508,7 @@ def _find_td3_mrz_pair(pages: list[str]) -> tuple[str, str, int] | None:
     extraction-stage field contract.
     """
     for page_idx, text in enumerate(pages, start=1):
-        candidates = [
-            _normalise_mrz_candidate(line)
-            for line in str(text or "").splitlines()
-        ]
+        candidates = [_normalise_mrz_candidate(line) for line in str(text or "").splitlines()]
         candidates = [line for line in candidates if len(line) >= 20 and "<" in line]
         for idx, line1 in enumerate(candidates):
             if not line1.startswith("P<"):
@@ -573,8 +590,7 @@ def _extract_passport_mrz_fields(pages: list[str]) -> dict[str, dict[str, Any]]:
 def _passport_mrz_complete(fields: dict[str, dict[str, Any]]) -> bool:
     """True when MRZ supplied the full passport extraction schema."""
     return all(
-        fields.get(name, {}).get("value")
-        for name, _is_list, _desc in DOC_TYPE_FIELDS["passport"]
+        fields.get(name, {}).get("value") for name, _is_list, _desc in DOC_TYPE_FIELDS["passport"]
     )
 
 
@@ -622,7 +638,7 @@ def _clean_label_value(value: str | None) -> str | None:
     if value is None:
         return None
     cleaned = re.sub(r"\s+", " ", value).strip(" \t:-")
-    if not cleaned or cleaned.lower() in {"null", "none", "n/a", "-"}:
+    if _is_null_or_unreadable_value(cleaned):
         return None
     return cleaned
 
@@ -734,7 +750,9 @@ def _set_list_if_present(
         for part in re.split(r"\s*(?:;|,|\||\bdan\b|\band\b)\s*", cleaned, flags=re.IGNORECASE)
         if part
     ]
-    values = [_title_person_name(part) if person_name else _clean_label_value(part) for part in parts]
+    values = [
+        _title_person_name(part) if person_name else _clean_label_value(part) for part in parts
+    ]
     values = [value for value in values if value]
     if values:
         fields[name] = {"value": values, "confidence": _LABEL_CONFIDENCE, "source_page": page}
@@ -1523,7 +1541,11 @@ def _extract_bank_statement_label_fields(pages: list[str]) -> dict[str, dict[str
     combined = "\n".join(pages)
     bank_name = _bank_name_from_text(combined)
     if bank_name:
-        fields["bank_name"] = {"value": bank_name, "confidence": _LABEL_CONFIDENCE, "source_page": 1}
+        fields["bank_name"] = {
+            "value": bank_name,
+            "confidence": _LABEL_CONFIDENCE,
+            "source_page": 1,
+        }
     return fields
 
 
@@ -1816,19 +1838,39 @@ GenerateFn = Callable[[str, str], Awaitable[str]]
 async def _ollama_generate(model: str, prompt: str) -> str:
     """Call local Ollama /api/generate with JSON format + think:false."""
     client = _get_client()
-    resp = await client.post(
-        "/api/generate",
-        json={
-            "model": model,
-            "prompt": prompt,
-            "stream": False,
-            "think": False,  # SEA-LION/Qwen: return content directly, no <think>.
-            "format": "json",
-            "options": {"temperature": 0},
-        },
-    )
+    raw_num_predict = os.getenv("INTAKE_EXTRACT_NUM_PREDICT", str(_DEFAULT_NUM_PREDICT))
+    try:
+        num_predict = max(128, int(raw_num_predict))
+    except ValueError:
+        logger.warning(
+            "invalid INTAKE_EXTRACT_NUM_PREDICT=%r; using %d",
+            raw_num_predict,
+            _DEFAULT_NUM_PREDICT,
+        )
+        num_predict = _DEFAULT_NUM_PREDICT
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "think": False,  # SEA-LION/Qwen: return content directly, no <think>.
+        "format": "json",
+        "keep_alive": ollama_keep_alive(),
+        "options": {"temperature": 0, "num_predict": num_predict},
+    }
+    async with ollama_inference_slot(operation="field_extract", model=model):
+        resp = await client.post("/api/generate", json=payload)
     resp.raise_for_status()
     return resp.json().get("response", "")
+
+
+def _model_metric_label(model: str) -> str:
+    """Keep the legacy SEA-LION label while exposing every model override exactly."""
+    return "sea-lion" if "sea-lion" in model.casefold() else model
+
+
+def resolved_extraction_model_label() -> str:
+    """Return the metric label for the model selected by current configuration."""
+    return _model_metric_label(_resolve_extraction_model())
 
 
 def _parse_response(text: str) -> dict[str, Any]:
@@ -1854,6 +1896,7 @@ def _parse_response(text: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Public API.
 # ---------------------------------------------------------------------------
+
 
 async def extract_fields(
     doc_type: str | None,
@@ -1924,10 +1967,7 @@ async def extract_fields(
         if deterministic_fields:
             _merge_deterministic_fields(fields, deterministic_fields)
         deterministic_extractors.append(extractor_name)
-        any_low = any(
-            field["confidence"] < _LOW_CONFIDENCE_THRESHOLD
-            for field in fields.values()
-        )
+        any_low = any(field["confidence"] < _LOW_CONFIDENCE_THRESHOLD for field in fields.values())
         return {
             "doc_type": canonical,
             "fields": fields,
@@ -1938,7 +1978,8 @@ async def extract_fields(
 
     prompt = _build_prompt(canonical, pages)
     gen = generate_fn or _ollama_generate
-    raw_response = await gen(_resolve_extraction_model(), prompt)
+    resolved_model = _resolve_extraction_model()
+    raw_response = await gen(resolved_model, prompt)
     parsed = _parse_response(raw_response)
 
     specs = DOC_TYPE_FIELDS[canonical]
@@ -1961,7 +2002,7 @@ async def extract_fields(
     result = {
         "doc_type": canonical,
         "fields": fields,
-        "extraction_model": EXTRACTION_MODEL_LABEL,
+        "extraction_model": _model_metric_label(resolved_model),
         "any_low_confidence": any_low,
     }
     if field_aliases:
@@ -1974,6 +2015,7 @@ async def extract_fields(
 # ---------------------------------------------------------------------------
 # Stage handler (worker.py FASE 2 contract: async def(job, stage) -> dict).
 # ---------------------------------------------------------------------------
+
 
 def _read_upstream(job: dict, *keys: str) -> Any:
     """Read a value from the job's accumulated stage_output by trying keys.
