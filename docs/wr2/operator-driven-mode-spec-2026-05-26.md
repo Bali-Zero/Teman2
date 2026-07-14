@@ -10,6 +10,15 @@ priority: P1
 
 # WR2 `operator_driven` Mode — Formal Contract Spec
 
+> **HISTORICAL SNAPSHOT (2026-05-26, spec-draft).** This is a proposal, not a shipped procedure:
+> `scripts/wr2_operator_apply.py` (the entry point this spec proposes) was never built and does not
+> exist on disk. Some of the underlying intent partially landed elsewhere (see
+> `apps/backend-rag/backend/app/routers/asset_upload.py`), but this document should not be read as
+> "how WR2 operator-driven mode works today" — it wasn't re-verified against disk in the 2026-07-14
+> pass. It also predates the Canva-lane retirement (PR #2396, 2026-07-13) that this spec's "Canva
+> apply" stage refers to. Current ground truth: `docs/wr2/SUPERVISOR.md` +
+> `research/operations/2026-07-14-wr2-deep-audit.md`.
+
 ## Problem statement
 
 The WR2 production pipeline (`wr2-design-architect` orchestrator → 5 specialist subagents → critic gate → Canva apply → IG publisher) assumes an **autonomous chain**: brief from intel-stream → narrative auto-generated → render → publish.
