@@ -1,0 +1,39 @@
+{
+  "run_at": "2026-07-15T07:04:42+08:00",
+  "today": "2026-07-15",
+  "yesterday_seen_count": 21,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (HTTP 403)",
+    "https://muc.co.id/article (HTTP 403)",
+    "https://ikpi.or.id/news/ (HTTP 404)",
+    "https://ortax.org/news (HTTP 404, 'Artikel tidak ditemukan')",
+    "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026 (HTTP 403)"
+  ],
+  "deltas": [],
+  "seen_citations": [
+    "UU Nomor 4 Tahun 2026",
+    "UU Nomor 5 Tahun 2026",
+    "PP Nomor 20 Tahun 2026",
+    "PP Nomor 24 Tahun 2026",
+    "Perpres Nomor 3 Tahun 2026",
+    "Perpres Nomor 26 Tahun 2026",
+    "Perpres Nomor 27 Tahun 2026",
+    "PMK Nomor 43 Tahun 2026",
+    "PMK Nomor 42 Tahun 2026",
+    "PMK Nomor 41 Tahun 2026",
+    "PMK Nomor 40 Tahun 2026",
+    "PMK Nomor 28 Tahun 2026",
+    "Permenkes Nomor 6 Tahun 2026",
+    "Permenaker Nomor 7 Tahun 2026",
+    "Permenaker Nomor 8 Tahun 2026",
+    "Permenaker Nomor 9 Tahun 2026",
+    "Permen PMK/Badan PMI Nomor 5 Tahun 2026",
+    "PMK 37/2025",
+    "Permendagri 6/2026",
+    "KMK 29/MK/EF.2/2026",
+    "PMK Nomor 44 Tahun 2026"
+  ],
+  "note": "NB-INTEL family (Regulation/Press/Immigration/Tax) all returned 'nessuna novita' for the 24-48h window. NB-INTEL-Tax offered an unrelated follow-up about Coretax phased rollout from July 2026 - a known fact, not a new regulation citation, dropped per hard rule 2 (no speculation). Primary web sources: Hukumonline 403, MUC 403, IKPI 404 (all unchanged vs prior runs). Ortax path corrected to /news per skill spec - now a clean 404 'Artikel tidak ditemukan' rather than the client-side SPA seen at /berita yesterday. DDTC surfaced one dated article (2026-07-14, ~15h old at fetch time): 'Penunjukan Kuasa Baru Perlu Diawali dengan Pencabutan SKK Lama' citing PMK 44/2026 - that citation is already in seen_citations from 2026-07-14's run (procedural sub-topic of an already-seen act, not a new act), dropped via dedup per Step 4. Backup gov portals: peraturan.go.id newest entries dated 2026-07-06/07-08 (Peraturan Menteri Investasi dan Hilirisasi/BKPM No 4/2026, Permen UMKM No 4/2026, PermenPAN-RB No 10/2026, Peraturan Menteri LH/BKLH No 10/2026) - all outside the 48h window, none newly citable today. pajak.go.id newest dated content 2026-07-07 (KMK 31/MK/EF.2/2026 exchange-rate series, same non-actionable routine class as prior runs), outside window. imigrasi.go.id newest press items dated 2026-07-01 (KPK integrity collaboration, 'Digital Fence' drone surveillance) - no regulatory content, outside window. peraturan.bpk.go.id now returns HTTP 403 (previously 200-but-JS-shell) - source degraded further, tracked in unreachable_sources. jdih.kemenkeu.go.id returned a static shell page with no entries (no timeout this time, but still no extractable data). jdih.kemnaker.go.id remains a JS filter shell with zero static July 2026 entries. No source contradicted the NB-reported null result. Zero new deltas today."
+}
