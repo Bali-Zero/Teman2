@@ -1,3 +1,12 @@
+---
+date: 2026-07-14
+domain: marketing
+client_case: internal (balizero.com SEO — GSC CTR optimization)
+adversarial_review: codex
+sources:
+  - Google Search Console export, balizero.com, Apr–Jul 2026 (exported 2026-07-12 20:15 WITA)
+---
+
 # GSC Keyword Mining — balizero.com
 **Date:** 2026-07-14
 **Data range:** Last 3 months (Apr–Jul 2026)
@@ -19,9 +28,11 @@
 | Tax/services pages | 7 | /property/rental-income-tax (296 imp, 0.34% CTR) |
 | Extreme KBLI quick wins pos<6 CTR=0% | 15 | /kbli/47773 (466 imp) |
 
+*Note (adversarial review): the four segment rows (KBLI 277 + Visa 25 + Business/blog 20 + Tax/services 7 = 329) are not an exhaustive partition of the 337 page gaps — the remaining 8 pages sit in other sections (e.g. /living/, /immigration/, both visible in CLUSTER D below). To be reconciled against the raw export at the 2026-07-28 refresh.*
+
 ---
 
-## CLUSTER D — ZERO CTR HIGH IMPRESSION (PRIORITY ESCALATION)
+## CLUSTER D — ZERO/NEAR-ZERO CTR HIGH IMPRESSION (PRIORITY ESCALATION)
 
 | Query/Page | Impressions | CTR | Position | Action |
 |---|---|---|---|---|
@@ -82,14 +93,26 @@
 
 ### Immediate this week
 1. /kbli/47773 — pos 4.2, 466 imp, 0 clicks. Rewrite title + meta. Todoist task 6h4XFgJP9rGpXmmc.
-2. /taxes/ppn-12-percent-increase-2026 — 1,389 imp, 0.07% CTR. Meta description hampir pasti kosong.
-3. KBLI extreme quick wins batch — 15 pages pos<6 CTR 0%. Batch rewrite title+meta.
+2. /taxes/ppn-12-percent-increase-2026 — 1,389 imp, 0.07% CTR. Hypothesis: meta description kosong — verify on-page before rewrite.
+3. KBLI extreme quick wins batch — remaining 14 pages pos<6 CTR 0% (batch of 15 minus /kbli/47773, escalated separately as item 1). Batch rewrite title+meta.
 
 ### Week of 21 Jul
-4. /services/visa — 1,656 imp, 0.66% CTR, pos 10. Title + struktur + internal linking.
-5. /business/minimum-wage-indonesia-2026 — 1,334 imp, 0% CTR. Title mismatch query intent.
-6. Bali landfill query cluster — article + suwung page share same query. Cross-link.
+4. /services/visa — 1,656 imp, 0.66% CTR, pos 10. Title rewrite; structure/internal-linking scope to be confirmed by an on-page audit (not derivable from GSC data alone).
+5. /business/minimum-wage-indonesia-2026 — 1,334 imp, 0% CTR. Hypothesis: title mismatch vs query intent ("bali minimum wage" / "minimum wage bali" gaps above) — confirm rendered title before rewrite.
+6. Bali landfill query cluster — hypothesis: article + suwung page compete on the same query (query "bali landfill closure rubbish crisis" 414 imp + /living/suwung-landfill-closure 469 imp) — confirm query→page mapping in GSC, then cross-link.
 
 ---
 
-*Exported: 2026-07-12 · Analyzed: 2026-07-14 · Next refresh: 2026-07-28*
+## Adversarial review
+
+**Reviewer:** `codex` (GPT-5.5, ChatGPT Pro, `codex exec --sandbox read-only`) — a seat distinct from the author (Subhi, GSC export + manual analysis), satisfying generator ≠ grader. Run 2026-07-14 against this file only, per R1 gate (`scripts/check_adversarial_review.py`).
+
+**Verdict: REFUTED (first pass) → corrections applied in this same commit (W86 same-PR discipline).** The refuter confirmed the underlying GSC data tables and the opportunity ranking are internally coherent; it found labeling/reconciliation defects and evidence-overreach in the recommendations, all addressed above:
+
+- **CONFIRMED — Page-gap counts did not reconcile** (337 total vs 277+25+20+7 = 329). Root cause: the four segment rows are not an exhaustive partition — 8 pages live in other sections (/living/, /immigration/, visible in CLUSTER D). → Clarifying note added under SUMMARY; raw-export reconciliation deferred to the 2026-07-28 refresh.
+- **CONFIRMED — "ZERO CTR" cluster contained two non-zero rows** (0.07%, 0.66%). → Retitled "ZERO/NEAR-ZERO CTR".
+- **CONFIRMED — Duplicated immediate work**: /kbli/47773 appeared both as its own item and inside the 15-page batch. → Batch restated as "remaining 14 pages".
+- **UNFOUNDED diagnoses beyond the data** ("meta description hampir pasti kosong", /services/visa structure prescription, minimum-wage title mismatch, landfill shared-query claim). → All four restated as explicit hypotheses with a verify-before-rewrite step; none are asserted as fact.
+- **MINOR — P1/P2/P3 tiering has no stated formula** (ordering not monotonic by impressions or position). → Accepted as-is: tiers are editorial prioritization, not a computed metric; the pos<6/CTR=0% inclusion filter is stated and correct.
+
+*Exported: 2026-07-12 · Analyzed: 2026-07-14 · Reviewed: 2026-07-14 (codex) · Next refresh: 2026-07-28*
