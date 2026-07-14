@@ -18,7 +18,11 @@ For Bali Zero: weekly cron reads last 7 days of:
 
 Synthesis is delegated to claude -p (Opus, OAuth — never pay-per-token) via subprocess. Lessons
 are written to reflective_lessons table + appended to voice/on-tone-examples.md or
-off-tone-examples.md or proposed as constitution amendments in _proposed-amendments/.
+off-tone-examples.md, proposed as constitution amendments in _proposed-amendments/, or — for
+lessons the synthesis itself classifies category="layout" with a
+"layouts/_proposed/<name>.md" destination — routed as a proposal file into the repo-canonical
+layout library's `_proposed/` dir (LAYOUTS_PROPOSED_DIR, see `_write_layout_proposal`; audit
+2026-07-14 Wave-4 item 16 — the write logic did not exist before this routing was added).
 
 THE DELTA GATE (cabled to scripts/lib/reflexion.record_run): every run appends an auditable
 record to _reflexion-state.json with {run_at, signals_found, lessons_written, status, ...}.
@@ -30,7 +34,8 @@ core's loop_status param; the canonical enum drives is_tautological.
 Run: weekly LaunchAgent Sunday 02:30 WITA (after Voyager curriculum at 02:00).
 Cost: 1 claude -p call per week (1 Opus invocation). ~52/year. Within OAuth MAX quota.
 
-Paths are env-overridable (WR2_DB_PATH / WR2_SKILL_DIR / WR2_QUEUE_PATH) for tests + deploy.
+Paths are env-overridable (WR2_DB_PATH / WR2_SKILL_DIR / WR2_QUEUE_PATH /
+WR2_LAYOUTS_PROPOSED_DIR) for tests + deploy.
 """
 
 import importlib.util
@@ -75,11 +80,29 @@ def _queue_path() -> Path:
     return Path(env) if env else (Path.home() / "Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json")
 
 
+def _layouts_proposed_dir() -> Path:
+    """Repo-canonical layout-library `_proposed/` dir (audit 2026-07-14, Wave-4 item 16).
+
+    Deliberately NOT rooted under SKILL_DIR (which defaults to `$HOME/.claude/skills/...`, an
+    undeclared HOME-fork target per superscar #1 — `infra/home-fork/declared-pairs.json` does
+    not cover this dir). Layout-scoped lessons are routed to the repo-tracked layout library
+    that `wr2_html_renderer/composer.py` actually reads from (`skills/bali-zero-brand/layouts/`),
+    resolved relative to this script's own location so it works from any worktree/deploy
+    checkout without depending on `$HOME` state.
+    """
+    env = os.environ.get("WR2_LAYOUTS_PROPOSED_DIR")
+    if env:
+        return Path(env)
+    repo_root = Path(__file__).resolve().parent.parent
+    return repo_root / "skills" / "bali-zero-brand" / "layouts" / "_proposed"
+
+
 DB_PATH = _db_path()
 SKILL_DIR = _skill_dir()
 PROPOSED_DIR = SKILL_DIR / "_proposed-amendments"
 ON_TONE_PATH = SKILL_DIR / "voice/on-tone-examples.md"
 OFF_TONE_PATH = SKILL_DIR / "voice/off-tone-examples.md"
+LAYOUTS_PROPOSED_DIR = _layouts_proposed_dir()
 
 
 def fetch_last_7_days():
@@ -322,6 +345,14 @@ def write_lessons(synthesis):
         finally:
             conn.close()
 
+    # Route layout-scoped lessons to the layout library's _proposed/ dir (audit 2026-07-14,
+    # Wave-4 item 16). Requires BOTH structured signals to agree (category AND destination
+    # prefix) — never a bare substring match on lesson_text (cicatrix scar #3 guard-over-match).
+    for lesson in lessons:
+        dest = lesson.get("suggested_destination", "")
+        if lesson.get("category") == "layout" and dest.startswith("layouts/_proposed/"):
+            _write_layout_proposal(lesson, week)
+
     # Append voice lessons to on-tone/off-tone
     for lesson in lessons:
         dest = lesson.get("suggested_destination", "")
@@ -336,6 +367,38 @@ def write_lessons(synthesis):
                 f.write(f"\n\n---\n\n*Reflexion {week}*: {addition}\n")
 
     return len(lessons)
+
+
+def _write_layout_proposal(lesson, week) -> Path:
+    """Write one layout-scoped lesson as a proposal file in LAYOUTS_PROPOSED_DIR.
+
+    Filename prefers the `<name>` the synthesis put in `suggested_destination`
+    ("layouts/_proposed/<name>.md"); falls back to a slug of the lesson text if the LLM left
+    the literal placeholder or an empty tail. Lifecycle (proposed -> operator review -> merged
+    into the library or discarded) is documented in LAYOUTS_PROPOSED_DIR/README.md.
+    """
+    dest = lesson.get("suggested_destination", "")
+    LAYOUTS_PROPOSED_DIR.mkdir(parents=True, exist_ok=True)
+
+    name_part = dest.rsplit("/", 1)[-1] if "/" in dest else ""
+    if not name_part or name_part == "<name>.md":
+        slug = lesson["lesson_text"][:50].lower().replace(" ", "-").replace(",", "")
+        name_part = f"{slug}.md"
+    if not name_part.endswith(".md"):
+        name_part += ".md"
+
+    proposal_path = LAYOUTS_PROPOSED_DIR / f"{week}-{name_part}"
+    proposal_path.write_text(
+        f"# Layout proposal {week}\n\n"
+        f"**Lesson**: {lesson['lesson_text']}\n\n"
+        f"**Confidence**: {lesson.get('confidence', 'unknown')}\n\n"
+        f"**Motivating runs**: {lesson.get('motivating_run_ids')}\n\n"
+        f"**Suggested addition**:\n\n{lesson.get('suggested_addition', 'TBD by Antonello')}\n\n"
+        f"---\n\n*Generated by Reflexion synthesis on {datetime.now(timezone.utc).isoformat()}*\n\n"
+        f"> Lifecycle: proposed -> operator review -> merged into "
+        f"`skills/bali-zero-brand/layouts/` or discarded. See this directory's README.md.\n"
+    )
+    return proposal_path
 
 
 def _record(status, *, signals_found, lessons_written, notes=""):
