@@ -218,6 +218,7 @@ export const ENGLISH_TITLES: Record<string, string> = {
   "47746": "Antique Retail",
   "47751": "Pet Shop",
   "47761": "Florist",
+  "47773": "Chemical Retail",
   "47774": "Essential Oil & Aromatherapy Retail",
   "47781": "Souvenir & Handicraft Retail",
   "47782": "Painting & Art Retail",
