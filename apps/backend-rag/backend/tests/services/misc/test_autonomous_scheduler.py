@@ -78,9 +78,6 @@ async def test_create_and_start_scheduler_uses_global_scheduler_and_starts_it(
     result = await module.create_and_start_scheduler(
         db_pool=None,
         ai_client=object(),
-        search_service=object(),
-        auto_ingestion_enabled=False,
-        self_healing_enabled=False,
         conversation_trainer_enabled=False,
         conversation_cleanup_enabled=False,
     )

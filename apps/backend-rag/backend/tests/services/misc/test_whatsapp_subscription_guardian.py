@@ -17,7 +17,6 @@ import pytest
 
 from backend.services.misc.whatsapp_subscription_guardian import (
     WhatsAppSubscriptionGuardian,
-    register_whatsapp_subscription_guardian,
 )
 
 
@@ -251,28 +250,6 @@ class TestCycleAlerts:
             if "misconfigured" in c.kwargs["title"]
         ]
         assert len(config_alerts) == 1
-
-
-class TestRegistration:
-    def test_registers_on_scheduler(self):
-        scheduler = MagicMock()
-
-        guardian = register_whatsapp_subscription_guardian(scheduler, db_pool=None)
-
-        assert guardian is not None
-        kwargs = scheduler.register_task.call_args.kwargs
-        assert kwargs["name"] == "wa_subscription_guardian"
-        assert kwargs["interval_seconds"] == 21600
-        assert kwargs["enabled"] is True
-
-    def test_kill_switch_disables(self, monkeypatch):
-        monkeypatch.setenv("WA_SUBSCRIPTION_GUARDIAN_ENABLED", "false")
-        scheduler = MagicMock()
-
-        guardian = register_whatsapp_subscription_guardian(scheduler)
-
-        assert guardian is None
-        scheduler.register_task.assert_not_called()
 
 
 class TestLiveLoopStarter:

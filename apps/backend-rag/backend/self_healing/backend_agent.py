@@ -75,12 +75,16 @@ class BackendSelfHealingAgent:
     def __init__(
         self,
         service_name: str,
-        orchestrator_url: str = "https://nuzantara-orchestrator.fly.dev",
+        # None by default: the old hardcoded https://nuzantara-orchestrator.fly.dev
+        # never existed as a deployed app — reporting to it was a silent 4xx on
+        # every event (scheduler-necropsy 2026-07-14). Pass a URL to re-enable.
+        orchestrator_url: str | None = None,
         check_interval: int = 30,
         auto_fix_enabled: bool = False,
         *,
         failure_threshold: int = 3,
         cooldown_seconds: float = 60.0,
+        actions: list | None = None,
     ) -> None:
         self.service_name = service_name
         self.orchestrator_url = orchestrator_url
@@ -107,6 +111,17 @@ class BackendSelfHealingAgent:
         self._reconnect_cache_action = ReconnectCacheAction(redis_url=redis_url)
         self._cache_check = CacheCheck(redis_client=self._reconnect_cache_action.redis_client)
 
+        reporter = (
+            OrchestratorReporter(
+                orchestrator_url=orchestrator_url,
+                http_client=self.http_client,
+                service_name=service_name,
+                hostname=hostname,
+                region=region,
+            )
+            if orchestrator_url
+            else None
+        )
         self.orchestrator = SelfHealingOrchestrator(
             checks=[
                 CPUCheck(),
@@ -116,20 +131,19 @@ class BackendSelfHealingAgent:
                 DBCheck(),
                 self._cache_check,
             ],
-            actions=[
+            # Callers can reduce the cure surface (e.g. GC-only on the live
+            # init path: redis reconnect is redis_manager's job, service
+            # restart is Fly's) while keeping the full check surface.
+            actions=actions
+            if actions is not None
+            else [
                 GCAction(),
                 self._reconnect_cache_action,
                 RestartServiceAction(),
             ],
             failure_threshold=failure_threshold,
             cooldown_seconds=cooldown_seconds,
-            reporter=OrchestratorReporter(
-                orchestrator_url=orchestrator_url,
-                http_client=self.http_client,
-                service_name=service_name,
-                hostname=hostname,
-                region=region,
-            ),
+            reporter=reporter,
         )
 
         logger.info("Initializing agent for service: %s", service_name)
