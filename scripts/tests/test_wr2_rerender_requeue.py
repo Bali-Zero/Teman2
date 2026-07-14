@@ -38,6 +38,24 @@ def _queue(tmp_path: Path, items: list[dict]) -> Path:
     return qp
 
 
+# ── generator≠grader sibling check (WR2 deep audit 2026-07-14, §5a #1) ──────
+#
+# wr2_rerender_local.py's own docstring claims it "REUSES the production
+# renderer verbatim ... so the output is identical to what the pipeline would
+# produce" — so the self-approval fix in wr2_html_render_apply.py must also
+# land here, or the two paths silently diverge (the file's own invariant would
+# become false).
+
+
+def test_rerender_does_not_self_approve_brand_verifier():
+    import inspect
+
+    rerender_mod = _load("wr2_rerender_local")
+    src = inspect.getsource(rerender_mod.rerender)
+    assert "brand_verifier=claude_brand_verifier" in src
+    assert "brand_verifier=claude_design_critic" not in src
+
+
 def test_published_entry_refused(tmp_path):
     """GUILT: a published queue entry blocks the requeue by default."""
     qp = _queue(tmp_path, [{"draft_id": "d1", "state": "published"}])

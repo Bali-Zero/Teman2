@@ -295,6 +295,18 @@
       "live": "~/.openclaw/bin/wr2/wr2-ig-metrics-scrape.sh",
       "repo": "scripts/wr2-ig-metrics-scrape.sh",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/.openclaw/bin/wr2/wr2-script-wrapper.sh",
+      "repo": "infra/openclaw/wr2/wr2-script-wrapper.sh",
+      "_note": "WR2 deep audit 2026-07-14 (§4): was byte-identical to the repo twin (e8e22fe1 both) but UNDECLARED, so lint_home_fork.py --check was blind to it and identical-today was luck, not enforcement.",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/.openclaw/bin/wr2/wr2-cron-wrapper.sh",
+      "repo": "scripts/wr2-cron-wrapper.sh",
+      "_note": "WR2 deep audit 2026-07-14 (§4): the HOME copy (f17092b3) had DIVERGED from the repo copy (3cd52391) on the same machine — oracle/connector/newsletter were running the stale fork. Declared so --check catches this class of drift going forward; the live copy still needs a manual sync on Pro (operator/session task, not this PR).",
+      "machines": ["pro"]
     }
   ],
   "allow": [

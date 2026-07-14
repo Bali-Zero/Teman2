@@ -76,7 +76,7 @@ def test_queue_append_and_exact_id_dedup(tmp_path):
     )
     assert entry["state"] == "drafted"
     assert entry["state_history"][0]["by"] == "wr2-html-apply"
-    assert entry["critic_overall_verdict"] == "pass"
+    assert entry["critic_overall_verdict"] == "legibility_only_pass"
 
     assert html._append_review_queue(entry, queue_path=qp) is True
     # SAME render batch re-applied (identical id) → pure dup, skip
@@ -114,7 +114,7 @@ def test_queue_rerender_repoints_drafted_entry_in_place(tmp_path):
     assert item["carousel_path"] == str(tmp_path / "car-new")
     assert item["drive_url"] == "https://drive/new"
     assert item["slide_count"] == 6
-    assert item["critic_overall_verdict"] == "pass"
+    assert item["critic_overall_verdict"] == "legibility_only_pass"
     # breadcrumb: the repoint is visible in state_history
     assert item["state_history"][-1]["by"] == "wr2-html-apply-rerender"
     assert item["state_history"][-1]["at"] == "2026-07-08T09:00:00Z"
@@ -180,7 +180,7 @@ def test_queue_appends_preserve_existing_items(tmp_path):
         slide_count=1, weak_count=2, fact_check_status=None,
         drafted_at="2026-07-07T13:00:00Z",
     )
-    assert entry["critic_overall_verdict"] == "soft_fail"
+    assert entry["critic_overall_verdict"] == "legibility_soft_fail"
     assert html._append_review_queue(entry, queue_path=qp) is True
     queue = json.loads(qp.read_text())
     assert [i["id"] for i in queue][0] == "legacy-1" and len(queue) == 2
