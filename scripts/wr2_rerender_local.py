@@ -165,7 +165,7 @@ async def rerender(slug: str, *, use_vision: bool = False) -> int:
         return 0
 
     # Vision path: per-slide designer loop (render → critic → adjust → re-render).
-    from wr2_html_renderer.claude_vision import claude_design_critic
+    from wr2_html_renderer.claude_vision import claude_brand_verifier, claude_design_critic
     from wr2_html_renderer.designer_loop import run_designer_loop
 
     total = len(slides)
@@ -195,8 +195,13 @@ async def rerender(slug: str, *, use_vision: bool = False) -> int:
             out_dir=slides_dir / f"loop-{i:02d}",
             is_hero=is_hero,
             hero_path=(slides_dir / hero_filename) if hero_filename else None,
+            # Same fix as wr2_html_render_apply.py (WR2 deep audit 2026-07-14
+            # §5a #1): this file's docstring claims it "REUSES the production
+            # renderer verbatim ... so the output is identical to what the
+            # pipeline would produce" — it must track the production wiring,
+            # not a stale copy of the self-approval bug.
             vision_critic=claude_design_critic,
-            brand_verifier=claude_design_critic,
+            brand_verifier=claude_brand_verifier,
             use_vision=True,
             max_iters=3,
         )
