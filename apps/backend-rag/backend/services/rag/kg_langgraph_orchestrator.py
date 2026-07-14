@@ -219,8 +219,11 @@ def route_after_query_understanding(state: KGAgentState) -> str:
         logger.info("📍 [Router] Domain='%s', routing strictly to %s", domain, target)
         return target
 
-    # PHASE 2: Golden route matching for specific intents
-    golden_route_intents = {"pt_pma_setup", "kitas_work", "nib_oss", "npwp_registration"}
+    # PHASE 2: Golden route matching for specific intents.
+    # Only intents present in KGEnhancedRetrieval.GOLDEN_ROUTES belong here —
+    # npwp_registration was routed but has no catalog entry, so it always hit
+    # the no-match fallback with a misleading warning (2026-07-14 cleanup).
+    golden_route_intents = {"pt_pma_setup", "kitas_work", "nib_oss"}
     if intent in golden_route_intents:
         logger.info("✅ [Router] Routing to golden route for intent: %s", intent)
         return "use_golden_route"
@@ -337,7 +340,7 @@ async def invoke_subgraph(
 
 
 # ============================================================================
-# Golden Route Node (Placeholder)
+# Golden Route Node
 # ============================================================================
 
 
@@ -348,11 +351,16 @@ async def use_golden_route_node(
     """
     Use pre-computed golden route for exact intent match.
 
-    Fetches golden route from kg_enhanced_retrieval.py golden routes.
+    Looks the intent up in KGEnhancedRetrieval.GOLDEN_ROUTES — the curated
+    in-code catalog (22 routes) that also backs /api/kg/routes. This node
+    used to await a phantom ``kg_service.get_golden_routes()`` that never
+    existed on KGEnhancedRetrieval, so any routed intent raised
+    AttributeError on the live path (found by the 2026-07-14 scheduler
+    necropsy, same disease as ``run_incremental_update``).
 
     Args:
         state: Current KGAgentState
-        db_pool: PostgreSQL connection pool
+        db_pool: PostgreSQL connection pool (kept for node signature parity)
 
     Returns:
         Updated state with workflow from golden route
@@ -361,24 +369,22 @@ async def use_golden_route_node(
 
     logger.info(f"🌟 [Golden Route] Fetching golden route for intent: {state['intent']}")
 
-    kg_service = KGEnhancedRetrieval(db_pool)
-    golden_routes = await kg_service.get_golden_routes()
-
-    # Find matching golden route
-    for route in golden_routes:
-        if route.route_id == state["intent"]:
-            state["workflow"] = {
-                "id": route.route_id,
-                "type": "golden_route",
-                "name": route.name,
-                "description": route.description,
-                "steps": [{"entity_id": entity_id} for entity_id in route.path],
-                "source": "golden_route",
-                "confidence": 1.0,  # Golden routes are 100% confident
-            }
-            state["golden_route_match"] = route.route_id
-            logger.info(f"✅ [Golden Route] Found: {route.name}")
-            return state
+    route = KGEnhancedRetrieval.GOLDEN_ROUTES.get(state["intent"])
+    if route is not None:
+        state["workflow"] = {
+            "id": route.route_id,
+            "type": "golden_route",
+            "name": route.name,
+            "description": route.description,
+            # Keys match what orchestrator_core's workflow formatter reads
+            # (step_data.get("step") / .get("action")).
+            "steps": [{"step": i, "action": step} for i, step in enumerate(route.path, 1)],
+            "source": "golden_route",
+            "confidence": 1.0,  # Golden routes are 100% confident
+        }
+        state["golden_route_match"] = route.route_id
+        logger.info(f"✅ [Golden Route] Found: {route.name}")
+        return state
 
     logger.warning(f"⚠️ [Golden Route] No match for intent: {state['intent']}, falling back")
     return state

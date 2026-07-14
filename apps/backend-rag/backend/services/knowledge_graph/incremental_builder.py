@@ -25,10 +25,17 @@ class KGIncrementalBuilder:
     - Robust error handling with retry
     """
 
-    # High priority collections to process
+    # High priority collections to process.
+    # Verified against the LIVE Qdrant collection list 2026-07-14 (necropsy
+    # §10f arming): the old entries `legal_unified_hybrid` and
+    # `kbli_2025_final` no longer exist — with them the armed loop would have
+    # failed 2/5 collections and drained a ~12-chunk backlog while the real
+    # one (~26k) sat in the renamed collections below.
     HIGH_PRIORITY_COLLECTIONS = [
-        "legal_unified_hybrid",
-        "kbli_2025_final",
+        "legal_unified_2026",  # 11,385 unprocessed at arming time
+        "kbli_2025_final_oss",  # 10,825
+        "kbli_2025_final_hybrid",  # 1,559
+        "immigration_circulars",  # 1,975
         "tax_genius_hybrid",
         "visa_oracle",
         "balizero_news",  # Intel articles, news
@@ -296,3 +303,88 @@ async def run_knowledge_graph_incremental_build(db_pool: asyncpg.Pool) -> dict[s
     """
     builder = KGIncrementalBuilder(db_pool=db_pool)
     return await builder.run_incremental_extraction()
+
+
+# ---------------------------------------------------------------------------
+# Live init path (service_initializer §10f) — scheduler-necropsy 2026-07-14.
+# The AutonomousScheduler is dead in prod AND ENABLE_KG_INCREMENTAL was never
+# set on Fly, so this feeder was doubly unarmed: KG frozen at 88k processed
+# chunks while collections kept growing (W90 freshness drift). Same pattern
+# as the WhatsApp guardian §10d: standalone loop, scheduler's own Redis lock
+# key for dedupe, verdict persisted to system_settings (disk=store, chat=view).
+# ---------------------------------------------------------------------------
+
+
+async def _persist_kg_verdict(db_pool: asyncpg.Pool, stats: dict[str, Any]) -> None:
+    """Upsert the last-run verdict so liveness is a DB probe, not a log grep."""
+    import json
+    from datetime import datetime, timezone
+
+    payload = {
+        "ran_at": datetime.now(timezone.utc).isoformat(),
+        "status": stats.get("status", "ok"),
+        "collections_processed": stats.get("collections_processed"),
+        "total_chunks": stats.get("total_chunks"),
+        "total_entities": stats.get("total_entities"),
+        "total_relationships": stats.get("total_relationships"),
+        "errors": (stats.get("errors") or [])[:5],
+    }
+    await db_pool.execute(
+        """
+        INSERT INTO system_settings (key, value, updated_at)
+        VALUES ('kg_incremental_last', $1, now())
+        ON CONFLICT (key) DO UPDATE
+            SET value = EXCLUDED.value, updated_at = now()
+        """,
+        json.dumps(payload),
+    )
+
+
+async def _kg_incremental_loop(db_pool: asyncpg.Pool, interval_seconds: int) -> None:
+    """Daily incremental KG extraction on the live path."""
+    from backend.services.misc.autonomous_scheduler import _acquire_task_lock
+
+    await asyncio.sleep(120)  # let the app finish booting before Qdrant scans
+    while True:
+        try:
+            if await _acquire_task_lock("kg_incremental_builder", interval_seconds):
+                stats = await run_knowledge_graph_incremental_build(db_pool)
+                try:
+                    await _persist_kg_verdict(db_pool, stats)
+                except Exception as e:
+                    logger.error("[kg-incremental] verdict persist failed: %s", e)
+            else:
+                logger.debug("[kg-incremental] another worker holds the lock")
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:  # the loop must survive anything
+            logger.error("[kg-incremental] run crashed: %s", e, exc_info=True)
+        await asyncio.sleep(interval_seconds)
+
+
+def start_kg_incremental_task(
+    db_pool: asyncpg.Pool | None,
+    interval_seconds: int = 86400,
+) -> asyncio.Task | None:
+    """Spawn the KG incremental loop on the running event loop (kill-switch aware).
+
+    Default ON: the free-tier caps are enforced in-code (MAX_CHUNKS_PER_RUN,
+    MAX_RPM) and extraction is dedup-idempotent via processed chunk ids, so
+    an armed default is safe; ENABLE_KG_INCREMENTAL=false is the kill switch.
+    """
+    import os
+
+    if os.environ.get("ENABLE_KG_INCREMENTAL", "true").lower() in {"false", "0", "no"}:
+        logger.info("[kg-incremental] disabled via ENABLE_KG_INCREMENTAL")
+        return None
+    if db_pool is None:
+        logger.warning("[kg-incremental] no db_pool — loop not started")
+        return None
+    task = asyncio.get_event_loop().create_task(
+        _kg_incremental_loop(db_pool, interval_seconds), name="kg_incremental_builder"
+    )
+    logger.info(
+        "✅ KG incremental builder loop started (%dh interval, Gemini free tier caps)",
+        interval_seconds // 3600,
+    )
+    return task

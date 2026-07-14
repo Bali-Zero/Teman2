@@ -249,7 +249,7 @@ class TestRouteAfterQueryUnderstanding:
     # The router was refactored to route PRIMARILY on `domain`
     # (`route_after_query_understanding` PHASE 1). Intent only matters when
     # it lands in the small `golden_route_intents` allowlist (PHASE 2:
-    # `pt_pma_setup`, `kitas_work`, `nib_oss`, `npwp_registration`). The
+    # `pt_pma_setup`, `kitas_work`, `nib_oss`). The
     # broader intent-name-to-subgraph mapping below was removed when the
     # Pydantic-validated domain field became the routing contract.
     #
@@ -461,22 +461,15 @@ class TestInvokeSubgraph:
 class TestUseGoldenRouteNode:
     """Tests for use_golden_route_node function.
 
-    Note: KGEnhancedRetrieval is imported locally inside the function body,
-    so we patch the source module, not the orchestrator.
+    The node reads the REAL curated catalog KGEnhancedRetrieval.GOLDEN_ROUTES
+    (2026-07-14 fix: it used to await a phantom get_golden_routes() that never
+    existed, so these tests now exercise the real class attribute instead of
+    mocking an API the service never had).
     """
 
     @pytest.mark.asyncio
     async def test_matching_golden_route(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import use_golden_route_node
-
-        mock_route = MagicMock()
-        mock_route.route_id = "pt_pma_setup"
-        mock_route.name = "PT PMA Setup"
-        mock_route.description = "Steps to set up PT PMA"
-        mock_route.path = ["e1", "e2", "e3"]
-
-        mock_kg = AsyncMock()
-        mock_kg.get_golden_routes = AsyncMock(return_value=[mock_route])
 
         mock_pool = MagicMock()
         state: dict[str, Any] = {
@@ -485,23 +478,27 @@ class TestUseGoldenRouteNode:
             "golden_route_match": None,
         }
 
-        with patch(
-            "backend.services.rag.kg_enhanced_retrieval.KGEnhancedRetrieval", return_value=mock_kg
-        ):
-            result = await use_golden_route_node(state, mock_pool)
-            assert result["workflow"]["type"] == "golden_route"
-            assert result["workflow"]["confidence"] == 1.0
-            assert result["golden_route_match"] == "pt_pma_setup"
+        result = await use_golden_route_node(state, mock_pool)
+        assert result["workflow"]["type"] == "golden_route"
+        assert result["workflow"]["confidence"] == 1.0
+        assert result["golden_route_match"] == "pt_pma_setup"
+        # Steps carry the keys the workflow formatter reads (step/action)
+        steps = result["workflow"]["steps"]
+        assert steps and steps[0]["step"] == 1
+        assert isinstance(steps[0]["action"], str) and steps[0]["action"]
+
+    @pytest.mark.asyncio
+    async def test_all_router_intents_resolve(self) -> None:
+        """Every intent the LangGraph router sends here must exist in the
+        catalog — a routed-but-missing intent is a silent fallback."""
+        from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
+
+        for intent in ("pt_pma_setup", "kitas_work", "nib_oss"):
+            assert intent in KGEnhancedRetrieval.GOLDEN_ROUTES
 
     @pytest.mark.asyncio
     async def test_no_matching_golden_route(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import use_golden_route_node
-
-        mock_route = MagicMock()
-        mock_route.route_id = "kitas_work"
-
-        mock_kg = AsyncMock()
-        mock_kg.get_golden_routes = AsyncMock(return_value=[mock_route])
 
         mock_pool = MagicMock()
         state: dict[str, Any] = {
@@ -510,11 +507,8 @@ class TestUseGoldenRouteNode:
             "golden_route_match": None,
         }
 
-        with patch(
-            "backend.services.rag.kg_enhanced_retrieval.KGEnhancedRetrieval", return_value=mock_kg
-        ):
-            result = await use_golden_route_node(state, mock_pool)
-            assert result["workflow"] is None  # No match found
+        result = await use_golden_route_node(state, mock_pool)
+        assert result["workflow"] is None  # No match found
 
 
 class TestKGLangGraphOrchestrator:

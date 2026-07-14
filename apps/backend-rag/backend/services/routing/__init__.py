@@ -9,7 +9,6 @@ from .conflict_resolver import ConflictResolver
 from .fallback_manager import FallbackManagerService
 
 # Import main routers AFTER sub-services
-from .golden_router_service import GoldenRouterService
 from .intelligent_router import IntelligentRouter
 from .keyword_matcher import KeywordMatcherService
 from .priority_override import PriorityOverrideService
@@ -21,7 +20,6 @@ __all__ = [
     "ConfidenceCalculatorService",
     "ConflictResolver",
     "FallbackManagerService",
-    "GoldenRouterService",
     "IntelligentRouter",
     "KeywordMatcherService",
     "PriorityOverrideService",

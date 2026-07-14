@@ -6,18 +6,12 @@ Background tasks that run while the backend is active on Fly.io.
 down after ~5min of inattivity. Only short-interval tasks (<=5min) survive.
 All long-interval tasks (>=6h) have been migrated to OpenClaw cron on Pro (H24).
 
-Active Tasks (survive auto_stop):
-- Backend Self-Healing Agent: health monitoring (every 5min)
-- Golden Routes Seeder: seed query patterns (one-time at startup)
-
-Disabled Tasks (migrated to OpenClaw cron):
-- Conversation Trainer: git subprocess won't work on Fly.io
-- Daily Ops Autopilot: BUG (localhost:8000 = self), OpenClaw handles correctly
-- Renewal Alerts: 12h interval, covered by practice-lifecycle-check cron
-- Birthday Notifier: 24h interval, covered by client-health-monitor cron
-- Conversation Cleanup: 24h interval, migrated to OpenClaw cron
-- Auto-Ingestion: handled by bali-intel-scraper on Pro
-- Drive Changes Polling: migrated to OpenClaw cron
+⚰️ NECROPSY 2026-07-14: the engine itself has been DEAD in prod since
+2026-02-11 (service_initializer §10 commented out), so nothing registered here
+runs. Surviving live coverage moved to the live init path: self-healing (§10e),
+WhatsApp guardian (§10d), KG incremental builder (§10f). Retired blocks carry
+tombstone comments below; full report in
+research/operations/2026-07-14-autonomous-scheduler-necropsy.md.
 
 Leader Election:
 - Uses Redis SET NX EX to ensure only one instance executes each task
@@ -316,20 +310,17 @@ def get_autonomous_scheduler() -> AutonomousScheduler:
 
 async def create_and_start_scheduler(
     db_pool,
-    ai_client,
-    conversation_trainer_enabled: bool = False,  # DISABLED (audit 2026-03-16): git subprocess on Fly.io ephemeral container
     conversation_cleanup_enabled: bool = False,  # DISABLED (audit 2026-03-16): 24h > auto_stop uptime. Migrated to OpenClaw cron.
 ) -> AutonomousScheduler:
     """
     Create and start the autonomous scheduler with the surviving agents.
 
     Necropsy 2026-07-14: params for retired tasks (search_service,
-    auto_ingestion_enabled, self_healing_enabled) were removed with their
-    blocks — the sole caller (_init_background_services, §10) is commented out.
+    auto_ingestion_enabled, self_healing_enabled, conversation_trainer_enabled,
+    ai_client) were removed with their blocks — the sole caller (_init_background_services, §10) is commented out.
 
     Args:
         db_pool: Database connection pool
-        ai_client: ZantaraAIClient instance
         *_enabled: Enable/disable individual tasks
 
     Returns:
@@ -348,100 +339,33 @@ async def create_and_start_scheduler(
     # since 2026-02-11, so the 'Active' claim above it was a lie for 5 months.
     # The reduced agent (GCAction + stats visibility) now runs per-machine.
 
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 3. CONVERSATION TRAINER AGENT (every 6 hours)
-    # ═══════════════════════════════════════════════════════════════════════════
-    if conversation_trainer_enabled and db_pool:
-        try:
-            from backend.agents.agents.conversation_trainer import ConversationTrainer
-
-            trainer = ConversationTrainer(
-                db_pool=db_pool,
-                zantara_client=ai_client,
-            )
-
-            async def run_conversation_trainer() -> None:
-                # 1. Analyze last 7 days of high-rated conversations
-                analysis = await trainer.analyze_winning_patterns(days_back=7)
-                if not analysis:
-                    logger.info("No high-rated conversations found in last 7 days")
-                    return
-
-                logger.info(
-                    f"🎓 Conversation Trainer found {len(analysis.get('patterns', []))} patterns",
-                )
-
-                # 2. Generate improved prompt based on analysis
-                try:
-                    improved_prompt = await trainer.generate_prompt_update(analysis)
-                    if not improved_prompt:
-                        logger.warning("Failed to generate improved prompt")
-                        return
-
-                    logger.info("✅ Generated improved prompt from conversation analysis")
-
-                    # 3. Create PR with improvements
-                    pr_branch = await trainer.create_improvement_pr(improved_prompt, analysis)
-                    logger.info("✅ Conversation Trainer: PR %s created", pr_branch)
-
-                except Exception as e:
-                    logger.error(
-                        "Error in Conversation Trainer prompt generation/PR creation: %s",
-                        e,
-                        exc_info=True,
-                    )
-
-            scheduler.register_task(
-                name="conversation_trainer",
-                task_func=run_conversation_trainer,
-                interval_seconds=21600,  # 6 hours
-                enabled=False,  # DISABLED (audit 2026-03-16): git subprocess on Fly.io ephemeral container
-            )
-            logger.info("⏸️ Conversation Trainer registered but DISABLED (migrated to OpenClaw)")
-        except Exception as e:
-            logger.error("❌ Failed to register Conversation Trainer: %s", e)
+    # 3. CONVERSATION TRAINER — RETIRED 2026-07-14 (necropsy follow-up, decision
+    # delegated by Zero "agisci con saggezza"): total_runs=0 in its whole life,
+    # registered-but-disabled since the 2026-03-16 audit (git subprocess cannot
+    # work on a Fly ephemeral container). The on-demand surface survives intact:
+    # POST /api/autonomous-agents/conversation-trainer/run + MCP
+    # run_conversation_trainer. Re-arming autonomously would be a NEW build
+    # (artifact store instead of git), not a resurrection.
 
     # 5. GOLDEN ROUTES SEEDER — RETIRED 2026-07-14 (scheduler-necropsy): it
-    # would have seeded rows nobody reads — GoldenRouterService is never
+    # would have seeded rows nobody reads — GoldenRouterService was never
     # instantiated in the app and document_ids were never populated. The orphan
-    # service+table (wire-or-delete) is tracked in modus PENDING-ARMS.
+    # service was DELETED same day (wire-or-delete resolved: the live golden
+    # routes are KGEnhancedRetrieval.GOLDEN_ROUTES). The stale golden_routes
+    # DB table (8 rows, last write 2026-01-10) remains; dropping it is a
+    # migration decision tracked in modus PENDING-ARMS.
 
     # 6. RENEWAL ALERTS — RETIRED 2026-07-14 (scheduler-necropsy): the old
     # comment claimed coverage by 'OpenClaw practice-lifecycle-check' (false);
     # the REAL live coverage is crm_automation_engine.py module 'renewals'
     # (Pro crontab 23:00 UTC). This dead block duplicated that logic.
 
-    # ═══════════════════════════════════════════════════════════════════════════
-    # TASK 8: BIRTHPLACE ENRICHMENT (Ollama)
-    # Enriches client birthplace with cultural context for personalized conversations
-    # Runs daily at ~22:00 Bali time (after work hours, when Ollama has capacity)
-    # ═══════════════════════════════════════════════════════════════════════════
-    # Skip in production (Ollama not available on Fly.io)
-    _is_production = os.getenv("ENVIRONMENT", "").lower() == "production"
-    if _is_production:
-        logger.debug("Birthplace Enrichment disabled in production (no Ollama)")
-    else:
-        try:
-            from backend.services.crm.birthplace_enrichment_service import (
-                run_birthplace_enrichment_task,
-            )
-
-            async def run_birthplace_enrichment() -> None:
-                try:
-                    stats = await run_birthplace_enrichment_task(db_pool)
-                    logger.info(f"🎭 Birthplace Enrichment: {stats.get('successful', 0)} enriched")
-                except Exception as e:
-                    logger.error("❌ Birthplace Enrichment error: %s", e, exc_info=True)
-
-            scheduler.register_task(
-                name="birthplace_enrichment",
-                task_func=run_birthplace_enrichment,
-                interval_seconds=86400,  # 24 hours
-                enabled=True,
-            )
-            logger.info("✅ Birthplace Enrichment registered (24h interval)")
-        except Exception as e:
-            logger.error("❌ Failed to register Birthplace Enrichment: %s", e)
+    # 8. BIRTHPLACE ENRICHMENT — RETIRED 2026-07-14 (necropsy follow-up,
+    # decision delegated by Zero "agisci con saggezza"): 945 candidates, 0
+    # enriched EVER; prod always skipped it (no Ollama on Fly); the consumer
+    # (birthday email) degrades to "" without it. LLM-fabricated "cultural
+    # context" on client birthplaces is also a UU PDP liability, not a feature.
+    # The service module stays for deliberate local runs.
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 9: BIRTHDAY EMAIL SERVICE
@@ -539,33 +463,12 @@ async def create_and_start_scheduler(
     except Exception as e:
         logger.error("Failed to register Drive Changes Polling: %s", e)
 
-    # ═══════════════════════════════════════════════════════════════════════════
-    # KG INCREMENTAL BUILDER (daily — disabled on Fly.io, run via Air/Pro cron)
-    # ENABLE_KG_INCREMENTAL=true to activate. Uses Gemini Free Tier (15 RPM, 1500/day).
-    # ═══════════════════════════════════════════════════════════════════════════
-    kg_incremental_enabled = os.getenv("ENABLE_KG_INCREMENTAL", "false").lower() in (
-        "true",
-        "1",
-        "yes",
-    )
-    if kg_incremental_enabled and db_pool:
-        try:
-            from backend.services.knowledge_graph.incremental_builder import KGIncrementalBuilder
-
-            kg_builder = KGIncrementalBuilder(db_pool=db_pool)
-
-            async def run_kg_incremental() -> None:
-                await kg_builder.run_incremental_extraction()
-
-            scheduler.register_task(
-                name="kg_incremental_builder",
-                task_func=run_kg_incremental,
-                interval_seconds=86400,  # 24 hours
-                enabled=True,
-            )
-            logger.info("✅ KGIncrementalBuilder registered (24h, Gemini Free Tier)")
-        except Exception as e:
-            logger.error("❌ Failed to register KGIncrementalBuilder: %s", e)
+    # KG INCREMENTAL BUILDER — MOVED to the live init path 2026-07-14
+    # (service_initializer §10f, necropsy follow-up): it was doubly unarmed
+    # here — dead engine AND an ENABLE_KG_INCREMENTAL env never set on Fly.
+    # The "run via Air/Pro cron" claim above it was false (no cron/plist
+    # anywhere; Air is decommissioned). Daily loop now lives next to the
+    # WhatsApp guardian, same Redis lock key for dedupe.
 
     # WHATSAPP WABA SUBSCRIPTION GUARDIAN — registration RETIRED 2026-07-14
     # (scheduler-necropsy): the guardian lives on the LIVE init path

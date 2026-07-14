@@ -1040,7 +1040,6 @@ async def _init_background_services(
 
         autonomous_scheduler = await create_and_start_scheduler(
             db_pool=db_pool,
-            ai_client=ai_client,
         )
         logger.info("DEBUG: Scheduler started")
 
@@ -1457,6 +1456,29 @@ async def initialize_services(app: FastAPI) -> None:
                 "self_healing", ServiceStatus.DEGRADED, error=str(e), critical=False
             )
             logger.error("❌ Failed to start reduced self-healing agent: %s", e)
+
+    # 10f. KG incremental builder (live path — necropsy follow-up 2026-07-14).
+    # Doubly unarmed before: registered on the dead scheduler AND gated by an
+    # ENABLE_KG_INCREMENTAL env that was never set on Fly. Daily Gemini
+    # free-tier extraction (caps in-code), scheduler lock key for dedupe,
+    # verdict on system_settings.kg_incremental_last. Kill switch:
+    # ENABLE_KG_INCREMENTAL=false.
+    try:
+        from backend.services.knowledge_graph.incremental_builder import (
+            start_kg_incremental_task,
+        )
+
+        kg_task = start_kg_incremental_task(db_pool)
+        app.state.kg_incremental_task = kg_task
+        if kg_task is not None:
+            service_registry.register(
+                "kg_incremental_builder", ServiceStatus.HEALTHY, critical=False
+            )
+    except Exception as e:
+        service_registry.register(
+            "kg_incremental_builder", ServiceStatus.DEGRADED, error=str(e), critical=False
+        )
+        logger.error("❌ Failed to start KG incremental builder: %s", e)
 
     # 10c. Olympus DB Guardian
     # Background workers kill switch (2026-04-12 incident): skip Olympus when

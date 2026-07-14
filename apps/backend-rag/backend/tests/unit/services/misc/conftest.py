@@ -5,7 +5,6 @@ Based on orchestrator conftest.py pattern.
 """
 
 import os
-import sys
 from unittest.mock import MagicMock
 
 # Set environment variables before any imports
@@ -31,26 +30,11 @@ _mock_settings.openai_api_key = "sk-test-key-for-testing-only"
 _mock_settings.qdrant_url = "http://localhost:6333"
 _mock_settings.redis_url = "redis://localhost:6379/0"
 
-# Patch the config module before it's imported
-# This prevents Settings() from being called during import
-if "backend.app.core.config" not in sys.modules:
-    # Create a fake config module
-    fake_config = type(sys)("backend.app.core.config")
-    fake_config.settings = _mock_settings
-
-    # Create a fake Settings class that returns our mock
-    class FakeSettings:
-        def __init__(self, *args, **kwargs) -> None:
-            pass
-
-        def __call__(self, *args, **kwargs):
-            return _mock_settings
-
-    fake_config.Settings = FakeSettings
-    sys.modules["backend.app.core.config"] = fake_config
-else:
-    # If already imported, patch it
-    from unittest.mock import patch
-
-    with patch("backend.app.core.config.settings", _mock_settings):
-        pass
+# NOTE (2026-07-14, scheduler-necropsy follow-up): this conftest used to install
+# a FAKE backend.app.core.config module into sys.modules at collection time,
+# session-wide and without cleanup (W96 family: test state leaking beyond the
+# test). Any test that later lazy-imported the real app (e.g. the unit/routers
+# coverage tests importing main_cloud) got a MagicMock settings whose log_level
+# exploded configure_logging with "attribute name must be string, not MagicMock".
+# The env defaults above are sufficient for the real Settings() to validate,
+# so the hack is gone. _mock_settings stays for fixtures that patch it locally.
