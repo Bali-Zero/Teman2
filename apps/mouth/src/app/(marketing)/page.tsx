@@ -41,12 +41,11 @@ const LATEST_NEWS_COUNT = 5;
 // persona-door cards (B2R2 — the chips strip is gone, tool identities live
 // inside the doors); #news to NewsHero.
 const NAV_ITEMS = [
-  { label: "Home", href: "#top" },
-  { label: "Visa", href: "#visa" },
-  { label: "Business", href: "#kbli" },
-  { label: "Tax", href: "#tax" },
-  { label: "Property", href: "#property" },
-  { label: "News", href: "#news" },
+  { label: "Visa", href: "/services/visa" },
+  { label: "Business", href: "/services/company" },
+  { label: "Tax", href: "/services/tax" },
+  { label: "Property", href: "/services/property" },
+  { label: "News", href: "/news" },
 ];
 
 export default async function HomePage() {

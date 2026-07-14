@@ -37,7 +37,7 @@ const TOPICS: {
 ];
 
 const NAV_ITEMS = [
-  { label: "Home", href: "/v2" },
+  { label: "Home", href: "/" },
   { label: "News", href: "/v2/news" },
 ];
 
