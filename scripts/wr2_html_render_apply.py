@@ -226,7 +226,13 @@ def _make_queue_entry(
 ) -> dict:
     """Review-queue entry per skills/bali-zero-brand/_review-queue-schema.md."""
     slug = _slugify(topic)
-    verdict = "pass" if weak_count == 0 else "soft_fail"
+    # WR2 deep audit 2026-07-14 (§5a finding #2, Codex objection #15): this path
+    # runs ONLY the per-slide designer-loop legibility critic (readable/hierarchy/
+    # balanced) — the 4-rubric constitution critic (wr2-critic subagent) never
+    # touches this draft. A bare "pass" here was indistinguishable from a real
+    # constitution-critic pass to every downstream consumer (the app, the
+    # analyst, reflexion). Name the verdict for what actually ran.
+    verdict = "legibility_only_pass" if weak_count == 0 else "legibility_soft_fail"
     return {
         "id": f"carousel_{drafted_at}_{slug}",
         "draft_id": str(draft_id),
