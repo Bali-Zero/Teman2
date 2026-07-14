@@ -1888,6 +1888,11 @@ organs:
     label: com.balizero.wr2.worktree-gc.daily
   severity_on_silence: warning
   cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.wr2_worktree_gc.json
+    timestamp_field: ts
+    status_field: status
 - id: mini.fleet_watch
   runtime: mini_launchd
   type: cron

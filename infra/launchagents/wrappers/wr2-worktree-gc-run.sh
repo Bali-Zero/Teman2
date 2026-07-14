@@ -24,10 +24,27 @@
 # Deployed copy: ~/scripts/wr2-worktree-gc-run.sh (outside TCC-protected
 # ~/Desktop — scar W84). Declared pair: infra/home-fork/declared-pairs.json.
 
-set -uo pipefail
+set -uo pipefail   # G9_fail_visible: unset vars crash, they do not expand empty
 
+ORGAN_ID="pro.wr2_worktree_gc"
 LOG="$HOME/logs/wr2-worktree-gc.log"
 mkdir -p "$HOME/logs"
+SIDECAR_DIR="$HOME/.organism/last_seen"
+
+# G2_heartbeat — sidecar EVERY exit path (Esiste≠Armato: prove life, every run)
+heartbeat() { # $1 status, $2 note
+    mkdir -p "$SIDECAR_DIR"
+    printf '{"ts":"%s","status":"%s","note":"%s"}\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" > "$SIDECAR_DIR/$ORGAN_ID.json"
+}
+
+# G5_kill_switch — operator stop without uninstall; disabled heartbeat keeps
+# the healer from resurrecting an intentionally-stopped organ
+if [ "${WR2_WORKTREE_GC_ENABLED:-true}" = "false" ]; then
+    echo "[$(date)] kill switch WR2_WORKTREE_GC_ENABLED=false — exiting" >> "$LOG"
+    heartbeat "disabled" "kill switch"
+    exit 0
+fi
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
@@ -44,6 +61,7 @@ PYBIN="$REPO/apps/backend-rag/.venv/bin/python"
 
 cd "$REPO" || {
     echo "[$(date)] FATAL: cannot cd to REPO=$REPO" >> "$LOG"
+    heartbeat "error" "cannot cd to REPO=$REPO"
     exit 1
 }
 
@@ -51,4 +69,9 @@ cd "$REPO" || {
 RC=$?
 
 echo "[wr2-worktree-gc] exit=$RC" >> "$LOG"
+if [ "$RC" -eq 0 ]; then
+    heartbeat "ok" "run done"
+else
+    heartbeat "error" "rc=$RC"
+fi
 exit "$RC"
