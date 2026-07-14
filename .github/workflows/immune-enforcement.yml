@@ -67,6 +67,10 @@ jobs:
               scripts/tests/test_adversarial_review_gate.py|\
               scripts/tests/test_jules_dispatch.py|\
               scripts/tests/test_codex_autofix_selector.py|\
+              scripts/lint_doc_executable_refs.py|\
+              scripts/tests/test_lint_doc_executable_refs.py|\
+              infra/doc-lint/*|\
+              docs/wr2/*.md|\
               infra/home-fork/declared-pairs.json|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/immune-enforcement.yml)
@@ -96,6 +100,7 @@ jobs:
             scripts/tests/test_adversarial_review_gate.py \
             scripts/tests/test_jules_dispatch.py \
             scripts/tests/test_codex_autofix_selector.py \
+            scripts/tests/test_lint_doc_executable_refs.py \
             scripts/test_lint_test_reward_hacking.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
@@ -119,6 +124,19 @@ jobs:
               assert p.get("repo"), p
           print(f"OK: {len(data['pairs'])} declared pairs, {len(data.get('allow', []))} allow globs")
           EOF
+
+      # Doc-executable-refs lint runs FOR REAL on every PR (not just its own
+      # unit tests): unlike lint_home_fork.py it has no $HOME dependency — it
+      # is a pure repo-tree scan, so CI can enforce the live check directly.
+      # 2026-07-14 WR2 deep audit item 11: docs cited scripts/wr2_carousel_
+      # orchestrator.py + scripts/wr2_telegram_publish_gate.py as entry points
+      # years after both were deleted. This is the antidote that turns that
+      # class of drift into a build-blocking fact.
+      - name: Doc-executable-refs lint (docs cite only real scripts/*.py|.sh)
+        run: |
+          if [ -f scripts/lint_doc_executable_refs.py ]; then
+            python scripts/lint_doc_executable_refs.py
+          fi
 
       # The two ledger gates below run on EVERY PR (cheap: parse one markdown
       # file) — they are the reason this check is required at all.

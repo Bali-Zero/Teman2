@@ -1,5 +1,11 @@
 # WR2 carousel pipeline — architecture review (2026-05-10)
 
+> **HISTORICAL SNAPSHOT.** "Today's pipeline" below is "as of 2026-05-10" — it predates the
+> supervisor cutover (2026-04-26 is actually earlier than this doc, but the render chokepoint
+> shown here as `wr2_canva_desktop_apply.py` was replaced by the HTML lane, PR #1236, 2026-06-11)
+> and the Canva lane's full retirement (PR #2396, 2026-07-13). Current ground truth:
+> `docs/wr2/SUPERVISOR.md` + `research/operations/2026-07-14-wr2-deep-audit.md`.
+
 Audit done after the night-of recovery cycle that fixed PRs #552, #565,
 #566, plus this hardening PR. This document captures the architectural
 findings (M1, M2 from the audit) and the migration paths the operator
@@ -130,11 +136,13 @@ Doable. Approach:
 4. Replace `wr2_canva_desktop_apply.py` with `wr2_canva_playwright.py`.
 
 Estimated effort: 2-3 dev-days. Wins:
+
 - Production cron can fire without operator presence.
 - No focus contention (browser is hidden).
 - Skill duration becomes deterministic (no Claude Desktop in the loop).
 
 Risks:
+
 - Canva can rotate their internal API and break us. Periodic re-auth
   required (storageState expires).
 - Reverse-engineering effort for Phase A's adaptive remap that the
@@ -144,6 +152,7 @@ Risks:
 ### Path C: Keep Desktop, add monitor watchdog
 
 Lightest touch. The current PR already adds:
+
 - Reconciler script (recovers from missed UPDATE).
 - Plist watchdog (recovers from disappeared LaunchAgent).
 - Daily metrics (visibility into how often the failure modes fire).
@@ -164,5 +173,6 @@ manual cycles.
    don't lose data.
 
 If, after 30 days, `wr2_daily_metrics.py` reports a reconciliation gap
+
 > 0 on more than 7 days, OR if median skill duration goes above 15 min,
-escalate to Path B.
+> escalate to Path B.

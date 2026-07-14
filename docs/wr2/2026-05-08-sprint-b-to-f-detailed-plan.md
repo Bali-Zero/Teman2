@@ -1,5 +1,11 @@
 # WR2 Sprint B → F — Detailed Implementation Plan
 
+> **HISTORICAL SNAPSHOT (2026-05-08).** The Canva-lane stabilization work this plan describes
+> (`canva-apply`, `wr2_canva_pdf_render.py`, the Canva MCP/OAuth watchdogs) was superseded when the
+> render chokepoint moved to the HTML lane (PR #1236, 2026-06-11) and the Canva lane was fully
+> retired (PR #2396, 2026-07-13). Current ground truth: `docs/wr2/SUPERVISOR.md` +
+> `research/operations/2026-07-14-wr2-deep-audit.md`.
+>
 > **Status**: Pre-implementation review. Owner-approved scope from `2026-05-07-wr2-longterm-design.md`.
 > **Author**: Claude Opus 4.7 in collaboration with Antonello Siano.
 > **Audience**: future Claude sessions executing these sprints, future contributors.
@@ -186,6 +192,7 @@ The first B0 implementation (PR #516) wrote `_log_run_telemetry(draft_id, n, "su
 - `tests/lint/test_canva_oauth_watchdog.sh` — extracts the bash body from the snapshot, runs 6 scenarios with a stub `claude` (healthy / first stale / cooldown active / cooldown elapsed / non-numeric output / boundary count=29), 17 assertions
 
 **Probe contract**:
+
 - Healthy → integer ≥ `MIN_TOOLS=30` → exit 0, state.last_status=healthy.
 - Stale → empty/non-numeric or < 30 → exit 1, state.last_status=stale, alert if no cooldown.
 - 60s probe timeout (`PROBE_TIMEOUT`); 86400s alert cooldown (`ALERT_COOLDOWN_SEC`).
@@ -366,6 +373,7 @@ echo "0" > ~/.agent/decisions/state/wr2_canva_keeper.state 2>/dev/null || true
 **Status**: implemented in PR `fix/wr2-supervisor-watchdog-2026-05-08`. Migration 161 lands on the next post-deploy `run-sql-v2-migrations-post-deploy` run; the supervisor degrades open until the table exists.
 
 **Files shipped**:
+
 - `apps/backend-rag/backend/db/migrations_v2/161_wr2_supervisor_heartbeat.sql` — append-only table + `(written_at DESC)` index, `-- === ROLLBACK ===` marker, Squawk lint suppressions for the brand-new-table create-index case.
 - `scripts/wr2_supervisor.py` — `_run_loop` opens a SECOND `asyncpg.connect()` as `conn_hb` (review fix B3.1: NOT on the LISTEN connection), `_heartbeat_loop` writes one row every 60s via `_write_heartbeat`, both background tasks cancelled in `finally` before connections close.
 - `scripts/wr2_supervisor_watchdog.py` — long-running daemon, polls every 60s, tiered alerts:
@@ -487,6 +495,7 @@ plists were disabled in PR #299 (26 Apr) but the executable scripts
 never written; only stub plists existed. This PR ships them from scratch.
 
 **Files shipped**:
+
 - `apps/backend-rag/backend/db/migrations_v2/162_war_room_fact_check.sql` — adds 3 columns (`fact_check_json JSONB`, `fact_check_status TEXT` w/ CHECK constraint NULL/pass/fail/degraded, `fact_check_at TIMESTAMPTZ`); ROLLBACK marker; constraint added NOT VALID + VALIDATE in two steps so ADD COLUMN doesn't scan the table.
 - `scripts/wr2_fact_extractor.py` (NET-NEW) — Claude OPUS via OAuth subprocess (OB-3 invariant), per-slide claim extraction, JSON parser tolerates fenced + bare model output, 1 retry on parse failure → empty list (degrade-open). Sets `fact_check_json.claims` and advances status `drafts_imaged → drafts_imaged_facted`.
 - `scripts/wr2_fact_checker.py` (NET-NEW) — deterministic per-claim verifier (law / quote / number / date / other) + optional LLM cross-check that **only upgrades** unverifiable claims (cannot downgrade verified). Aggregation rules: any contradicted → `fail`, any unverifiable → `degraded`, all verified → `pass`. Empty claims → `pass` (vacuous truth, lets canva-apply consume).
@@ -500,6 +509,7 @@ never written; only stub plists existed. This PR ships them from scratch.
 **Atomic deploy contract** (single PR, indivisible): supervisor TRANSITIONS revert + canva-apply status filter narrow + new scripts + new plists must land together. Splitting risks a window where canva-apply still consumes `drafts_imaged` while supervisor routes to `fact-extractor` (silent kickstart of a non-existent script before the deploy completes).
 
 **Bootstrap path (post-merge, manual operator step)**:
+
 ```bash
 # 1. Apply migration 162 (auto via run-sql-v2-migrations-post-deploy on Fly).
 # 2. Set the kill-switches to enable the new stages:
@@ -530,6 +540,7 @@ tail -f ~/logs/wr2_fact_extractor.log ~/logs/wr2_fact_checker.log ~/logs/wr2_can
 ```
 
 **Rollback** (if a draft fails fact-checking and we need to ship without):
+
 ```bash
 psql $DATABASE_URL -c "UPDATE system_settings SET value='false' WHERE key='wr2_fact_extractor_enabled';"
 # Then patch supervisor TRANSITIONS back to the Sprint A bypass (drafts_imaged → canva-apply)
@@ -623,6 +634,7 @@ CODEX_TIMEOUT_SEC = float(os.environ.get("WR2_CODEX_TIMEOUT_SEC", "900"))  # was
 **Status**: implemented in PR `feat/wr2-deploy-pull-2026-05-08`.
 
 **Files shipped**:
+
 - `~/scripts/wr2-deploy-pull.sh` (Pro-local, NOT in repo)
 - `~/Library/LaunchAgents/com.balizero.wr2.deploy-puller.plist` (StartInterval=3600, RunAtLoad=true, mode 0444 per cicatrix P0-3)
 - `infra/launchagents/com.balizero.wr2.deploy-puller.plist` (repo mirror)
@@ -630,6 +642,7 @@ CODEX_TIMEOUT_SEC = float(os.environ.get("WR2_CODEX_TIMEOUT_SEC", "900"))  # was
 - `tests/lint/test_wr2_deploy_pull.sh` (extracts the bash body from the snapshot, runs 6 scenarios with a sandbox git fixture, 14 assertions)
 
 **Behavior**:
+
 - flock single-instance (no overlap on slow network).
 - `git fetch origin deploy/main` (falls back to `origin/main` if the named branch is missing on origin).
 - Already up-to-date → exit 0 / `last_status=ok`.
