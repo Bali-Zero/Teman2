@@ -291,39 +291,6 @@ def start_whatsapp_subscription_guardian_task(
     return task
 
 
-def register_whatsapp_subscription_guardian(
-    scheduler: Any,
-    db_pool: Any = None,
-    alert_service: Any = None,
-    interval_seconds: int = 21600,
-) -> WhatsAppSubscriptionGuardian | None:
-    """Register the guardian on the AutonomousScheduler (kill-switch aware)."""
-    if os.environ.get("WA_SUBSCRIPTION_GUARDIAN_ENABLED", "true").lower() in {
-        "false",
-        "0",
-        "no",
-    }:
-        logger.info("[wa-sub-guardian] disabled via WA_SUBSCRIPTION_GUARDIAN_ENABLED")
-        return None
-
-    guardian = WhatsAppSubscriptionGuardian(db_pool=db_pool, alert_service=alert_service)
-
-    async def run_wa_subscription_guardian() -> None:
-        await guardian.run_cycle()
-
-    scheduler.register_task(
-        name="wa_subscription_guardian",
-        task_func=run_wa_subscription_guardian,
-        interval_seconds=interval_seconds,
-        enabled=True,
-    )
-    logger.info(
-        "✅ WhatsApp subscription guardian registered (%dh interval)",
-        interval_seconds // 3600,
-    )
-    return guardian
-
-
 async def _main_once(skip_alerts: bool) -> int:
     """CLI one-shot for live verification (fly ssh)."""
     alert_service = None

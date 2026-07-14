@@ -104,3 +104,31 @@ class TestBackendAgentFacade:
         assert "stats" in status
         assert "checks" in status["stats"]
         assert "breakers" in status["stats"]
+
+
+class TestReducedAgent:
+    """Scheduler-necropsy 2026-07-14: the default reporter targeted
+    https://nuzantara-orchestrator.fly.dev which never existed as a deployed
+    app (silent 4xx per event), and the live init path §10e runs a reduced
+    cure surface (GC only)."""
+
+    def test_no_phantom_reporter_by_default(self):
+        agent = BackendSelfHealingAgent(service_name="t")
+        assert agent.orchestrator.reporter is None
+
+    def test_explicit_url_wires_reporter(self):
+        agent = BackendSelfHealingAgent(
+            service_name="t", orchestrator_url="https://example.internal"
+        )
+        assert agent.orchestrator.reporter is not None
+
+    def test_actions_param_reduces_cure_surface(self):
+        from backend.self_healing.actions import GCAction
+
+        agent = BackendSelfHealingAgent(service_name="t", actions=[GCAction()])
+        assert [type(a).__name__ for a in agent.orchestrator.actions] == ["GCAction"]
+
+    def test_default_actions_unchanged(self):
+        agent = BackendSelfHealingAgent(service_name="t")
+        names = [type(a).__name__ for a in agent.orchestrator.actions]
+        assert names == ["GCAction", "ReconnectCacheAction", "RestartServiceAction"]

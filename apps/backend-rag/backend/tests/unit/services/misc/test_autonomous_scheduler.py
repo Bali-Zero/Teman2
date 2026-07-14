@@ -367,9 +367,6 @@ class TestCreateAndStartScheduler:
             scheduler = await create_and_start_scheduler(
                 db_pool=mock_db_pool,
                 ai_client=MagicMock(),
-                search_service=MagicMock(),
-                auto_ingestion_enabled=False,
-                self_healing_enabled=False,
                 conversation_trainer_enabled=False,
                 conversation_cleanup_enabled=False,
             )
@@ -404,8 +401,6 @@ class TestCreateAndStartScheduler:
             scheduler = await create_and_start_scheduler(
                 db_pool=None,
                 ai_client=MagicMock(),
-                search_service=MagicMock(),
-                self_healing_enabled=False,
             )
             assert scheduler._running is True
             await scheduler.stop()
