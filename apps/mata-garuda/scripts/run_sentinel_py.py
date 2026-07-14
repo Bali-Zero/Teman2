@@ -130,7 +130,14 @@ def main() -> int:
     kb = KnowledgeBase()
     n_stats = run_normalizer(kb, max_items=50)
     print(f"  Normalizer: {n_stats}")
-    s_stats = run_scorer(kb, max_items=50)
+    # max_items 50->300 (2026-07-14): 50/day merely matched inflow, so the
+    # scorer's `scorer` consumer group carried a permanent ~1000-item backlog
+    # and high-relevance alerts fired ~8 days late (verified live: entries-read
+    # 7492->7542, lag 1048->1018 on a supervised kickstart). 300/day drains the
+    # backlog in ~1 week and then holds at ~0. scorer.py's alert freshness gate
+    # (GARUDA_ALERT_MAX_AGE_H) keeps this larger drain from flooding Telegram
+    # with alerts about week-old news while the backlog empties.
+    s_stats = run_scorer(kb, max_items=300)
     print(f"  Scorer: {s_stats}")
 
     # NLM feeding is a SEPARATE Sink stage, handled by the dedicated cron
