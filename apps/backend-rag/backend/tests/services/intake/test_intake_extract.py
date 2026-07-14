@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
 
 from backend.llm.ollama_client import is_ollama_available
@@ -81,6 +82,29 @@ async def test_ollama_generate_applies_capacity_controls(monkeypatch):
     assert payload["model"] == "qwen3.5:9b"
     assert payload["keep_alive"] == "19m"
     assert payload["options"]["num_predict"] == 768
+
+
+async def test_ollama_generate_defaults_to_bounded_output(monkeypatch):
+    calls = []
+
+    class _FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"response": '{"ok": true}'}
+
+    class _FakeClient:
+        async def post(self, path, json):
+            calls.append((path, json))
+            return _FakeResponse()
+
+    monkeypatch.delenv("INTAKE_EXTRACT_NUM_PREDICT", raising=False)
+    monkeypatch.setattr(extract, "_get_client", lambda: _FakeClient())
+
+    await extract._ollama_generate("qwen3.5:9b", "extract JSON")
+
+    assert calls[0][1]["options"]["num_predict"] == 512
 
 
 def test_canonical_doc_type_aliases():
@@ -320,6 +344,52 @@ async def test_passport_partial_mrz_merges_with_model_output():
     assert out["extraction_model"] == "sea-lion"
     assert out["deterministic_extractors"] == ["passport_mrz"]
     assert out["fields"]["passport_no"]["value"] == "MODEL123"
+    assert out["fields"]["name"]["value"] == "Eriksson Anna Maria"
+    assert out["fields"]["nationality"]["value"] == "Italian"
+    assert out["fields"]["dob"]["value"] == "1974-08-12"
+    assert out["fields"]["expiry"]["value"] == "2030-04-15"
+
+
+async def test_model_read_timeout_advances_with_explicit_null_fields(monkeypatch):
+    async def _timeout(model, prompt):  # noqa: ARG001
+        raise httpx.ReadTimeout("model exceeded extraction SLA")
+
+    monkeypatch.setenv("INTAKE_EXTRACTION_MODEL", "qwen3.5:9b")
+    out = await extract.extract_fields(
+        "nib",
+        ["unstructured scan with no reliable labels"],
+        generate_fn=_timeout,
+    )
+
+    assert out["skipped"] == "model_timeout"
+    assert out["extraction_model"] == "qwen3.5:9b-timeout-fallback"
+    assert out["any_low_confidence"] is True
+    assert set(out["fields"]) == {
+        "nib_number",
+        "company_name",
+        "kbli_codes",
+        "address",
+        "issue_date",
+    }
+    assert all(
+        field == {"value": None, "confidence": 0.0, "source_page": None}
+        for field in out["fields"].values()
+    )
+
+
+async def test_model_read_timeout_preserves_checksum_valid_partial_mrz(monkeypatch):
+    async def _timeout(model, prompt):  # noqa: ARG001
+        raise httpx.ReadTimeout("model exceeded extraction SLA")
+
+    monkeypatch.setenv("INTAKE_EXTRACTION_MODEL", "qwen3.5:9b")
+    ocr = (
+        "P<ITAERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<\nL898902C35ITA7408122F3004157ZE184226B<<<<<10"
+    )
+    out = await extract.extract_fields("passport", [ocr], generate_fn=_timeout)
+
+    assert out["skipped"] == "model_timeout"
+    assert out["deterministic_extractors"] == ["passport_mrz"]
+    assert out["fields"]["passport_no"]["value"] is None
     assert out["fields"]["name"]["value"] == "Eriksson Anna Maria"
     assert out["fields"]["nationality"]["value"] == "Italian"
     assert out["fields"]["dob"]["value"] == "1974-08-12"

@@ -64,7 +64,10 @@ OLLAMA_BASE_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
 # SEA-LION 32B q4 is a heavy local model: ~25-45s warm, cold-load slower.
 _GENERATE_TIMEOUT_SECONDS: float = float(os.getenv("INTAKE_EXTRACT_TIMEOUT", "300"))
 _CONNECT_TIMEOUT_SECONDS: float = 5.0
-_DEFAULT_NUM_PREDICT = 1024
+# The schema payload is compact. Bounding generation to 512 tokens leaves the
+# model enough room for every supported field while keeping extraction inside
+# the worker SLA on the shared local Ollama runtime.
+_DEFAULT_NUM_PREDICT = 512
 
 # Confidence assigned to a value the model returned WITH evidence. The extractor
 # is deterministic (temperature 0) and does not emit calibrated probabilities;
@@ -2082,11 +2085,7 @@ async def extract_fields(
     pages = [p if isinstance(p, str) else str(p) for p in (ocr_text_per_page or [])]
     if not pages or not any(p.strip() for p in pages):
         # No legible OCR at all -> every field null (golden rule), no model call.
-        specs = DOC_TYPE_FIELDS[canonical]
-        fields = {
-            name: {"value": None, "confidence": 0.0, "source_page": None}
-            for name, _is_list, _desc in specs
-        }
+        fields = _blank_fields(canonical)
         logger.warning("extract: empty OCR for doc_type=%s -> all fields null", canonical)
         return {
             "doc_type": canonical,
@@ -2102,10 +2101,7 @@ async def extract_fields(
         if deterministic_fields:
             deterministic_extractors.append("passport_mrz")
             if _passport_mrz_complete(deterministic_fields):
-                fields = {
-                    name: {"value": None, "confidence": 0.0, "source_page": None}
-                    for name, _is_list, _desc in DOC_TYPE_FIELDS[canonical]
-                }
+                fields = _blank_fields(canonical)
                 _merge_deterministic_fields(fields, deterministic_fields)
                 return {
                     "doc_type": canonical,
@@ -2134,7 +2130,34 @@ async def extract_fields(
     prompt = _build_prompt(canonical, model_pages)
     gen = generate_fn or _ollama_generate
     resolved_model = _resolve_extraction_model()
-    raw_response = await gen(resolved_model, prompt)
+    try:
+        raw_response = await gen(resolved_model, prompt)
+    except httpx.ReadTimeout:
+        # A model that exceeded the extraction SLA supplied no trustworthy
+        # evidence. Advance the document with an explicit null envelope so
+        # validate/route can create a human-review proposal instead of retrying
+        # the same poison document forever. Deterministic evidence (for example
+        # a checksum-valid partial MRZ) remains safe to preserve.
+        fields = _blank_fields(canonical)
+        if deterministic_fields:
+            _merge_deterministic_fields(fields, deterministic_fields)
+        model_label = f"{_model_metric_label(resolved_model)}-timeout-fallback"
+        logger.warning(
+            "extract: model SLA timeout for doc_type=%s model=%s -> "
+            "null evidence envelope for human review",
+            canonical,
+            _model_metric_label(resolved_model),
+        )
+        result: dict[str, Any] = {
+            "doc_type": canonical,
+            "fields": fields,
+            "extraction_model": model_label,
+            "any_low_confidence": True,
+            "skipped": "model_timeout",
+        }
+        if deterministic_extractors:
+            result["deterministic_extractors"] = deterministic_extractors
+        return result
     parsed = _parse_response(raw_response)
 
     specs = DOC_TYPE_FIELDS[canonical]
