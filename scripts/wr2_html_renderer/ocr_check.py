@@ -195,12 +195,32 @@ TEXT_CLAIM_KEYWORDS = (
     "non leggibil", "occlud", "occlus", "troncat", "truncat",
 )
 
+# WR2 deep audit 2026-07-14 (§5a, wiring-fix follow-up): `_VERIFIER_PROMPT`
+# (claude_vision.py) checks FIVE brand invariants — colors, font, logo, emoji,
+# headline-intact — and "headline"/"title" alone are bare-substring keywords
+# above. A font or color violation phrased about the headline specifically
+# ("the headline uses a serif font, not Montserrat", "headline text has an
+# off-palette tint") contains "headline" and would misfire as a text-
+# legibility claim — eligible for OCR override even though OCR can only
+# adjudicate text CONTENT, not font family or color (scar family #3
+# guard-over-match: match on entity/intent, not bare substring). These
+# category words gate that: if a font/color/logo/emoji category is named in
+# the SAME issue string, it is not (also) a pure text-legibility claim.
+_NON_TEXT_LEGIBILITY_CATEGORY_WORDS = (
+    "font", "serif", "script", "color", "colour", "colore", "palette",
+    "logo", "emoji", "anthracite", "antracite",
+)
+
 
 def is_text_legibility_claim(issue: str) -> bool:
     """Does this brand-verifier issue assert the headline text is broken?
 
     OCR can only override THIS class of claim (it adjudicates text legibility,
-    not palette/font/logo). Palette/font claims stay non-overridable.
+    not palette/font/logo). Palette/font claims stay non-overridable — even
+    when they happen to mention "headline"/"title" as the noun the font/color
+    problem is about (see _NON_TEXT_LEGIBILITY_CATEGORY_WORDS above).
     """
     low = issue.lower()
+    if any(k in low for k in _NON_TEXT_LEGIBILITY_CATEGORY_WORDS):
+        return False
     return any(k in low for k in TEXT_CLAIM_KEYWORDS)

@@ -3711,3 +3711,78 @@ def test_claude_brand_verifier_is_a_distinct_callable_from_the_critic():
 
     assert claude_vision.claude_brand_verifier is not claude_vision.claude_design_critic
     assert claude_vision._CRITIC_PROMPT != claude_vision._VERIFIER_PROMPT
+
+
+@pytest.mark.asyncio
+async def test_designer_loop_converges_with_a_genuinely_passing_brand_verifier(monkeypatch):
+    """D3 innocence (spec §4b): now that a REAL, independent brand_verifier is
+    wired in production, a slide whose lever-applying trial genuinely keeps
+    brand invariants intact must still converge — wiring the real verifier in
+    must not turn it into a false-block on healthy changes. Distinct from the
+    existing reject-then-override tests above (which exercise the OCR/inert
+    escape hatches): here the verifier's trial check simply PASSES on its own
+    merits, exactly like claude_brand_verifier does when the trial PNG is
+    genuinely on-brand — no override logic needs to fire."""
+    import base64
+
+    from wr2_html_renderer import designer_loop as dl
+
+    class _Pass:
+        passed = True
+        levers: list = []
+        score = 1.0
+        issues: list = []
+        tier = "mock"
+
+    monkeypatch.setattr(dl, "critic_geometry", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_legibility", lambda *a, **k: _Pass())
+    monkeypatch.setattr(dl, "critic_ocr", lambda *a, **k: _Pass())
+    monkeypatch.delenv("WR2_VISION_REQUIRED", raising=False)
+
+    calls = {"vision": 0, "brand": 0}
+
+    def vision_critic(png, slide, ctx):
+        calls["vision"] += 1
+        if calls["vision"] == 1:
+            # iter 1: proposes a legibility lever
+            return dl.Critique(
+                tier="vision",
+                passed=False,
+                issues=["text a touch low-contrast"],
+                levers=[{"lever": "scrim_opacity", "delta": 0.15, "reason": "low contrast"}],
+                score=0.5,
+            )
+        return dl.Critique(tier="vision", passed=True, issues=[], levers=[], score=0.95)
+
+    def brand_verifier(png, slide, ctx):
+        # genuine pass (brand_ok=True equivalent) — no font/color/logo/emoji/
+        # headline-corruption issue found on the trial render. This is the
+        # normal-case behavior of claude_brand_verifier on a healthy slide.
+        calls["brand"] += 1
+        return dl.Critique(tier="brand", passed=True, issues=[])
+
+    async def render_fn(slide, png_path):
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        png_path.write_bytes(
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+            )
+        )
+
+    out = Path(tempfile.mkdtemp())
+    res = await dl.run_designer_loop(
+        slide={"headline": "X"},
+        render_fn=render_fn,
+        out_dir=out,
+        vision_critic=vision_critic,
+        brand_verifier=brand_verifier,
+        use_vision=True,
+        max_iters=3,
+    )
+    assert res.converged is True
+    assert calls["brand"] >= 1, "the real brand_verifier must actually be consulted on the trial"
+    # no override/escape-hatch needed — the verifier simply approved
+    assert not any(
+        rec.get("brand_verify_overridden_by_ocr") or rec.get("brand_verify_inert_override")
+        for rec in res.history
+    )
