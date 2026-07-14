@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wr2control</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/balizero/Applications/WR2 Control.app/Contents/MacOS/WR2Control</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>WR2_WARROOM_ROOT</key>
+        <string>/Users/balizero/Desktop/nuzantara/apps/war-room/output</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/Users/balizero/Library/Logs/wr2control.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/balizero/Library/Logs/wr2control.err</string>
+</dict>
+</plist>
