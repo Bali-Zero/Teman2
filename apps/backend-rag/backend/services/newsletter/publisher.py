@@ -34,6 +34,7 @@ from backend.services.layout.templates import (
     NEWSLETTER_HTML,
 )
 from backend.services.newsletter.builder import DailyDigestContent, RoundupContent
+from backend.services.notifications.email_branding import LOGO_URL as _BRAND_LOGO_URL
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +42,12 @@ logger = logging.getLogger(__name__)
 LOCKED_SENDER_EMAIL = "zantara@balizero.com"
 LOCKED_SENDER_NAME = "Zantara"
 
-# Purpose-built email logo asset (apps/mouth/public/static/email/), served
-# publicly by the Vercel-hosted mouth frontend — no new infra, no inline
-# CID (unproven across the 3-provider Zoho/Brevo/Resend send chain).
-DEFAULT_DAILY_LOGO_URL = "https://www.balizero.com/static/email/balizero-logo-email.png"
+# Same asset (apps/mouth/public/static/email/), same host, as every other
+# Bali Zero client email (welcome_email_service.py etc.) — SSOT in
+# email_branding.py. Previously this module hardcoded a second, unproven
+# www.balizero.com URL to the same file; consolidated 2026-07-15 (no
+# functional change — both hosts serve the identical asset).
+DEFAULT_DAILY_LOGO_URL = _BRAND_LOGO_URL
 
 DEFAULT_NOTIFICATIONS_URL = (
     os.environ.get("NOTIFICATIONS_EMAIL_URL")
