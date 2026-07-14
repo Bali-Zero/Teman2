@@ -3682,3 +3682,32 @@ async def test_shadow_terminal_update_zero_rows_is_reported_as_race(monkeypatch,
     monkeypatch.setenv("WR2_HTML_SHADOW", "1")
     result = await html._apply_one("postgres://x", _uuid.uuid4(), "owner-1")
     assert result == "shadow_race"
+
+
+# ── generator≠grader (WR2 deep audit 2026-07-14, §5a finding #1) ────────────
+
+
+def test_render_carousel_does_not_self_approve_brand_verifier():
+    """Tripwire: `_render_carousel` wired `brand_verifier=claude_design_critic`
+    — the SAME callable that already served as the vision critic — collapsing
+    the critic-proposes/verifier-vetoes autonomy guardrail into self-approval
+    (Codex objection #14, verified). Source-level check: standing up the full
+    render pipeline (Drive/DB/chromium) to exercise the live call isn't worth
+    it just to pin a wiring string; this fails loudly if the collapse
+    regresses, regardless of which module the callables are imported from."""
+    import inspect
+
+    import scripts.wr2_html_render_apply as html
+
+    src = inspect.getsource(html._render_carousel)
+    assert "brand_verifier=claude_brand_verifier" in src
+    assert "brand_verifier=claude_design_critic" not in src
+
+
+def test_claude_brand_verifier_is_a_distinct_callable_from_the_critic():
+    """Innocence check: the two adapters must actually be different functions
+    with different prompts, not two names bound to the same object."""
+    from wr2_html_renderer import claude_vision
+
+    assert claude_vision.claude_brand_verifier is not claude_vision.claude_design_critic
+    assert claude_vision._CRITIC_PROMPT != claude_vision._VERIFIER_PROMPT

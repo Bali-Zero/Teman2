@@ -317,19 +317,19 @@ def get_autonomous_scheduler() -> AutonomousScheduler:
 async def create_and_start_scheduler(
     db_pool,
     ai_client,
-    search_service,
-    auto_ingestion_enabled: bool = False,  # Disabled - handled by bali-intel-scraper on Pro
-    self_healing_enabled: bool = True,  # Active - health monitoring (5min, survives cold start)
     conversation_trainer_enabled: bool = False,  # DISABLED (audit 2026-03-16): git subprocess on Fly.io ephemeral container
     conversation_cleanup_enabled: bool = False,  # DISABLED (audit 2026-03-16): 24h > auto_stop uptime. Migrated to OpenClaw cron.
 ) -> AutonomousScheduler:
     """
-    Create and start the autonomous scheduler with all agents.
+    Create and start the autonomous scheduler with the surviving agents.
+
+    Necropsy 2026-07-14: params for retired tasks (search_service,
+    auto_ingestion_enabled, self_healing_enabled) were removed with their
+    blocks — the sole caller (_init_background_services, §10) is commented out.
 
     Args:
         db_pool: Database connection pool
         ai_client: ZantaraAIClient instance
-        search_service: SearchService instance
         *_enabled: Enable/disable individual tasks
 
     Returns:
@@ -337,64 +337,16 @@ async def create_and_start_scheduler(
     """
     scheduler = get_autonomous_scheduler()
 
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 1. AUTO-INGESTION ORCHESTRATOR (every 24 hours)
-    # ═══════════════════════════════════════════════════════════════════════════
-    if auto_ingestion_enabled:
-        try:
-            from backend.services.ingestion.auto_ingestion_orchestrator import (
-                AutoIngestionOrchestrator,
-            )
+    # 1. AUTO-INGESTION — RETIRED 2026-07-14 (scheduler-necropsy): never worked
+    # (scrape_source crashed, ingest_content was a fake-success stub) and wrote to
+    # intel_articles, NOT the RAG collections. The real RAG-freshness gap is a
+    # product decision tracked in modus PENDING-ARMS. AutoIngestionOrchestrator
+    # class stays importable (routers/agents.py imports it at module level).
 
-            orchestrator = AutoIngestionOrchestrator(
-                search_service=search_service,
-                claude_service=ai_client,  # Parameter name is claude_service, not zantara_ai
-            )
-
-            async def run_auto_ingestion() -> None:
-                await orchestrator.run_scheduled_ingestion()
-
-            scheduler.register_task(
-                name="auto_ingestion",
-                task_func=run_auto_ingestion,
-                interval_seconds=86400,  # 24 hours
-                enabled=True,
-            )
-            logger.info("✅ Auto-Ingestion Orchestrator registered (24h interval)")
-        except Exception as e:
-            logger.error("❌ Failed to register Auto-Ingestion: %s", e)
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 2. BACKEND SELF-HEALING AGENT (every 5 minutes)
-    # ═══════════════════════════════════════════════════════════════════════════
-    if self_healing_enabled:
-        try:
-            from backend.self_healing import set_active_agent
-            from backend.self_healing.backend_agent import BackendSelfHealingAgent
-
-            healing_agent = BackendSelfHealingAgent(
-                service_name="nuzantara-backend",
-                check_interval=300,  # 5 minutes
-                auto_fix_enabled=True,
-            )
-            set_active_agent(healing_agent)  # expose to /api/admin/self-healing/stats
-
-            async def run_self_healing() -> None:
-                # Run a single health check cycle (not the infinite loop)
-                await healing_agent.perform_health_check()
-                issues = await healing_agent.detect_issues()
-                if healing_agent.auto_fix_enabled and issues:
-                    await healing_agent.attempt_auto_fix(issues)
-
-            scheduler.register_task(
-                name="self_healing",
-                task_func=run_self_healing,
-                interval_seconds=300,  # 5 minutes
-                enabled=True,
-            )
-            logger.info("✅ Backend Self-Healing Agent registered (5min interval)")
-        except Exception as e:
-            logger.error("❌ Failed to register Self-Healing Agent: %s", e)
+    # 2. BACKEND SELF-HEALING — MOVED to the live init path 2026-07-14
+    # (service_initializer §10e, scheduler-necropsy): this engine has been dead
+    # since 2026-02-11, so the 'Active' claim above it was a lie for 5 months.
+    # The reduced agent (GCAction + stats visibility) now runs per-machine.
 
     # ═══════════════════════════════════════════════════════════════════════════
     # 3. CONVERSATION TRAINER AGENT (every 6 hours)
@@ -449,176 +401,15 @@ async def create_and_start_scheduler(
         except Exception as e:
             logger.error("❌ Failed to register Conversation Trainer: %s", e)
 
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 5. GOLDEN ROUTES SEEDER (one-time at startup)
-    # ═══════════════════════════════════════════════════════════════════════════
-    if db_pool:
-        try:
+    # 5. GOLDEN ROUTES SEEDER — RETIRED 2026-07-14 (scheduler-necropsy): it
+    # would have seeded rows nobody reads — GoldenRouterService is never
+    # instantiated in the app and document_ids were never populated. The orphan
+    # service+table (wire-or-delete) is tracked in modus PENDING-ARMS.
 
-            async def seed_golden_routes_once() -> None:
-                """Seed golden_routes with common query patterns (one-time)."""
-                async with db_pool.acquire() as conn:
-                    # Check if already seeded
-                    count = await conn.fetchval("SELECT COUNT(*) FROM golden_routes")
-                    if count > 0:
-                        logger.debug("Golden Routes already seeded (%s routes)", count)
-                        return
-                    logger.info("🌟 Seeding Golden Routes...")
-
-                    # Common query patterns for Indonesian business/immigration
-                    common_routes = [
-                        {
-                            "canonical_query": "What are the requirements for PT PMA company setup?",
-                            "collections": ["legal_unified", "visa_kb"],
-                            "hints": {"topic": "pt_pma", "intent": "requirements"},
-                        },
-                        {
-                            "canonical_query": "How much does a KITAS work permit cost?",
-                            "collections": ["visa_kb", "legal_unified"],
-                            "hints": {"topic": "kitas", "intent": "pricing"},
-                        },
-                        {
-                            "canonical_query": "What is the minimum capital for foreign investment?",
-                            "collections": ["legal_unified"],
-                            "hints": {"topic": "pt_pma", "intent": "capital"},
-                        },
-                        {
-                            "canonical_query": "How long does KITAS processing take?",
-                            "collections": ["visa_kb"],
-                            "hints": {"topic": "kitas", "intent": "timeline"},
-                        },
-                        {
-                            "canonical_query": "What documents are needed for company registration?",
-                            "collections": ["legal_unified", "visa_kb"],
-                            "hints": {"topic": "company", "intent": "documents"},
-                        },
-                        {
-                            "canonical_query": "What are the tax obligations for foreign companies?",
-                            "collections": ["tax_genius_hybrid", "legal_unified"],
-                            "hints": {"topic": "tax", "intent": "obligations"},
-                        },
-                        {
-                            "canonical_query": "How to extend KITAS work permit?",
-                            "collections": ["visa_kb"],
-                            "hints": {"topic": "kitas", "intent": "extension"},
-                        },
-                        {
-                            "canonical_query": "What is the retirement visa age requirement?",
-                            "collections": ["visa_kb"],
-                            "hints": {"topic": "retirement", "intent": "eligibility"},
-                        },
-                    ]
-
-                    import json
-                    import uuid
-
-                    for route in common_routes:
-                        route_id = f"route_{uuid.uuid4().hex[:8]}"
-                        await conn.execute(
-                            """
-                            INSERT INTO golden_routes (
-                                route_id, canonical_query, document_ids, chapter_ids,
-                                collections, routing_hints, usage_count
-                            ) VALUES ($1, $2, $3, $4, $5, $6, 0)
-                            """,
-                            route_id,
-                            route["canonical_query"],
-                            [],  # document_ids - to be populated by search
-                            [],  # chapter_ids
-                            route["collections"],
-                            json.dumps(route["hints"]),
-                        )
-
-                    logger.info(f"🌟 Seeded {len(common_routes)} Golden Routes!")
-
-            scheduler.register_task(
-                name="golden_routes_seeder",
-                task_func=seed_golden_routes_once,
-                interval_seconds=86400 * 365,  # Effectively one-time (1 year)
-                enabled=True,
-            )
-        except Exception as e:
-            logger.error("❌ Failed to register Golden Routes Seeder: %s", e)
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 6. RENEWAL ALERTS CHECKER (every 12 hours)
-    # ═══════════════════════════════════════════════════════════════════════════
-    if db_pool:
-        try:
-
-            async def run_renewal_alerts_checker() -> None:
-                """Check for upcoming practice expirations and create alerts."""
-                from datetime import datetime, timedelta, timezone
-
-                logger.info("📅 Running Renewal Alerts Checker...")
-
-                async with db_pool.acquire() as conn:
-                    today = datetime.now(tz=timezone.utc).date()
-                    alert_days = [90, 60, 30]  # Days before expiry to alert
-
-                    for days in alert_days:
-                        target_date = today + timedelta(days=days)
-
-                        # Find practices expiring in exactly X days that don't have alerts yet
-                        practices = await conn.fetch(
-                            """
-                            SELECT p.id, p.client_id, p.title, p.expiry_date, p.assigned_to,
-                                   c.company_name, c.full_name
-                            FROM practices p
-                            JOIN clients c ON c.id = p.client_id
-                            WHERE p.expiry_date = $1
-                              AND p.status IN ('completed', 'active')
-                              AND NOT EXISTS (
-                                  SELECT 1 FROM renewal_alerts ra
-                                  WHERE ra.practice_id = p.id
-                                    AND ra.alert_type = $2
-                              )
-                            """,
-                            target_date,
-                            f"renewal_{days}d",
-                        )
-
-                        for p in practices:
-                            client_name = p["company_name"] or p["full_name"] or "Cliente"
-                            description = (
-                                f"🔔 Pratica '{p['title']}' per {client_name} "
-                                f"scade tra {days} giorni ({target_date})"
-                            )
-
-                            await conn.execute(
-                                """
-                                INSERT INTO renewal_alerts (
-                                    practice_id, client_id, alert_type, description,
-                                    target_date, alert_date, notify_team_member, status
-                                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
-                                """,
-                                p["id"],
-                                p["client_id"],
-                                f"renewal_{days}d",
-                                description,
-                                p["expiry_date"],
-                                today,
-                                p["assigned_to"],
-                            )
-                            logger.info(
-                                f"   📌 Created {days}d alert for practice {p['id'][:8]}...",
-                            )
-
-                    # Count pending alerts
-                    pending = await conn.fetchval(
-                        "SELECT COUNT(*) FROM renewal_alerts WHERE status = 'pending'",
-                    )
-                    logger.info("✅ Renewal Alerts Checker done. %s alerts pending.", pending)
-
-            scheduler.register_task(
-                name="renewal_alerts",
-                task_func=run_renewal_alerts_checker,
-                interval_seconds=43200,  # 12 hours
-                enabled=False,  # DISABLED (audit 2026-03-16): 12h > auto_stop uptime. Covered by OpenClaw practice-lifecycle-check.
-            )
-            logger.info("⏸️ Renewal Alerts registered but DISABLED (migrated to OpenClaw)")
-        except Exception as e:
-            logger.error("❌ Failed to register Renewal Alerts: %s", e)
+    # 6. RENEWAL ALERTS — RETIRED 2026-07-14 (scheduler-necropsy): the old
+    # comment claimed coverage by 'OpenClaw practice-lifecycle-check' (false);
+    # the REAL live coverage is crm_automation_engine.py module 'renewals'
+    # (Pro crontab 23:00 UTC). This dead block duplicated that logic.
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 8: BIRTHPLACE ENRICHMENT (Ollama)
@@ -681,7 +472,10 @@ async def create_and_start_scheduler(
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 10: CONVERSATION CLEANUP (daily)
-    # Cleans up old conversations (>30 days) and anonymizes user data (>7 days)
+    # NOTE (scheduler-necropsy 2026-07-14): this dead block's 30d/7d values are
+    # STALE — the LIVE coverage is POST /api/admin/conversation-cleanup
+    # (admin_conversation_cleanup.py: delete >90d, anonymize >30d, OpenClaw cron).
+    # Do not cite these numbers in UU PDP retention reviews.
     # ═══════════════════════════════════════════════════════════════════════════
     if conversation_cleanup_enabled and db_pool:
         try:
@@ -711,52 +505,12 @@ async def create_and_start_scheduler(
         except Exception as e:
             logger.error("❌ Failed to register Conversation Cleanup: %s", e)
 
-    # ═══════════════════════════════════════════════════════════════════════════
-    # TASK 11: DAILY OPS AUTOPILOT (daily at 08:00 WITA / 00:00 UTC)
-    # Runs chain_daily_ops_autopilot MCP workflow:
-    # 1. Check expiry alerts → send WhatsApp reminders (<30 days)
-    # 2. Check autonomous agent health → restart stale agents
-    # 3. Check critical intel alerts → auto-compose articles for high-impact items
-    # 4. Gather team hours and completion rates
-    # 5. Compile and email daily report
-    # ═══════════════════════════════════════════════════════════════════════════
-    try:
-
-        async def run_daily_ops_autopilot() -> None:
-            """Execute chain_daily_ops_autopilot via MCP server"""
-            try:
-                # Call MCP server endpoint to execute the chain
-                mcp_base_url = os.getenv("MCP_SERVER_URL", "http://localhost:8000")
-                client = _get_client(timeout=300.0)
-                response = await client.post(
-                    f"{mcp_base_url}/tools/chain_daily_ops_autopilot",
-                    json={"send_report_to": "zero@balizero.com"},
-                )
-                response.raise_for_status()
-                result = response.json()
-
-                reminders = (
-                    result.get("report", {}).get("expiry_alerts", {}).get("reminders_sent", 0)
-                )
-                articles = result.get("report", {}).get("intel", {}).get("articles_composed", 0)
-
-                logger.info(
-                    "🤖 Daily Ops Autopilot completed: %s reminders sent, %s articles composed",
-                    reminders,
-                    articles,
-                )
-            except Exception as e:
-                logger.error("❌ Daily Ops Autopilot error: %s", e, exc_info=True)
-
-        scheduler.register_task(
-            name="daily_ops_autopilot",
-            task_func=run_daily_ops_autopilot,
-            interval_seconds=86400,  # 24 hours
-            enabled=False,  # DISABLED (audit 2026-03-16): BUG (calls localhost:8000 = itself). OpenClaw daily-ops-autopilot handles correctly.
-        )
-        logger.info("⏸️ Daily Ops Autopilot registered but DISABLED (migrated to OpenClaw)")
-    except Exception as e:
-        logger.error("❌ Failed to register Daily Ops Autopilot: %s", e)
+    # TASK 11 DAILY OPS AUTOPILOT — RETIRED 2026-07-14 (scheduler-necropsy):
+    # it POSTed to an HTTP route the MCP server (stdio-only) never exposed, the
+    # OpenClaw cron that replaced it was frozen 2026-04-30 (zombie heartbeat
+    # archived 05-19). Expiry reminders live in scripts/expiry_alerter.py.
+    # Residual gaps (auto-compose intel articles, daily ops digest) are a
+    # business decision tracked in modus PENDING-ARMS.
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 12: DRIVE CHANGES POLLING (every 5 minutes)
@@ -779,9 +533,9 @@ async def create_and_start_scheduler(
             name="drive_changes_poll",
             task_func=run_drive_poll,
             interval_seconds=300,  # 5 minutes
-            enabled=False,  # DISABLED 2026-03-22: moved to Air cron (curl POST /api/admin/drive/poll every 5min). Fly.io auto_stop incompatible with internal polling.
+            enabled=False,  # DISABLED 2026-03-22; since re-homed to the dedicated Fly process group drive_poll_worker (fly.toml) — the old 'Air cron' note was stale, Air is decommissioned 2026-05-05.
         )
-        logger.info("⏸️ Drive Changes Polling DISABLED (moved to Air cron)")
+        logger.info("⏸️ Drive Changes Polling DISABLED (lives in the drive_poll_worker Fly process group)")
     except Exception as e:
         logger.error("Failed to register Drive Changes Polling: %s", e)
 
@@ -801,7 +555,7 @@ async def create_and_start_scheduler(
             kg_builder = KGIncrementalBuilder(db_pool=db_pool)
 
             async def run_kg_incremental() -> None:
-                await kg_builder.run_incremental_update()
+                await kg_builder.run_incremental_extraction()
 
             scheduler.register_task(
                 name="kg_incremental_builder",
@@ -813,25 +567,11 @@ async def create_and_start_scheduler(
         except Exception as e:
             logger.error("❌ Failed to register KGIncrementalBuilder: %s", e)
 
-    # ═══════════════════════════════════════════════════════════════════════════
-    # WHATSAPP WABA SUBSCRIPTION GUARDIAN (every 6 hours)
-    # Re-arms POST subscribed_apps unconditionally (the GET is not readable with
-    # our token) + inbound-silence receptor. Born from the 8-day deafness of
-    # 2026-07-05→13. Kill switch: WA_SUBSCRIPTION_GUARDIAN_ENABLED=false.
-    # ═══════════════════════════════════════════════════════════════════════════
-    try:
-        from backend.services.misc.whatsapp_subscription_guardian import (
-            register_whatsapp_subscription_guardian,
-        )
-        from backend.services.monitoring.alert_service import AlertService
-
-        register_whatsapp_subscription_guardian(
-            scheduler,
-            db_pool=db_pool,
-            alert_service=AlertService(),
-        )
-    except Exception as e:
-        logger.error("❌ Failed to register WhatsApp subscription guardian: %s", e)
+    # WHATSAPP WABA SUBSCRIPTION GUARDIAN — registration RETIRED 2026-07-14
+    # (scheduler-necropsy): the guardian lives on the LIVE init path
+    # (service_initializer §10d, PR #2423). Registering its dormant twin here
+    # was pure readability debt — the Redis leader lock already dedupes, but a
+    # dead engine should not advertise live organs.
 
     # Start the scheduler
     await scheduler.start()

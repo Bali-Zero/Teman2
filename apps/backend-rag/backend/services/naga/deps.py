@@ -28,7 +28,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _BACKEND_URL_LOCAL = os.getenv("BACKEND_URL", "https://nuzantara-rag.fly.dev")
-_BACKEND_URL_SERVER = "http://localhost:8080"  # Self-call on Fly.io
+# Self-call on Fly.io. IPv6 loopback by default: naga mounts only on the rag
+# process, whose uvicorn binds `::` while the container's /etc/hosts maps
+# localhost to 127.0.0.1 alone — "localhost" could never connect there.
+_BACKEND_URL_SERVER = os.getenv("NAGA_SELF_URL", "http://[::1]:8080")
 _API_KEY = os.getenv("SCRAPER_API_KEY", "internal-scraper-key")
 _GEMINI_MODEL = os.getenv("NAGA_GEMINI_MODEL", "gemini-3.1-pro-preview")
 

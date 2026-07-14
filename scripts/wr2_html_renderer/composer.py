@@ -217,6 +217,25 @@ def _normalize_skeleton(html: str) -> str:
     return html
 
 
+def _inject_swipe_indicator(html: str, index: int, total: int) -> str:
+    """Article 14.1 (APPROVED 2026-05-12): slides 2..N-1 MUST carry a
+    `.swipe-indicator` (yellow dot, bottom-right; CSS lives in _base.css).
+    No layout skeleton ships the element, so every carousel rendered without
+    this injection violated 14.1 — the critic soft-flagged it on EVERY run
+    (systemic composer gap, closed 2026-07-14). Cover and closer excluded.
+    Idempotent: skeletons that grow their own indicator are left alone.
+    """
+    if index <= 1 or index >= total:
+        return html
+    if "swipe-indicator" in html:
+        return html
+    return html.replace(
+        "</body>",
+        '<div class="swipe-indicator" data-zone-type="ui"></div>\n</body>',
+        1,
+    )
+
+
 def _hero_bg_to_img(html: str, hero_filename: str) -> str:
     """Rewrite a CSS background-image hero into a real <img> for decode-gating.
 
@@ -1516,6 +1535,7 @@ async def compose_carousel(
                 family=plan.family,
             )
             html = _apply_levers_to_html(html, plan.slide)  # designer-loop levers
+            html = _inject_swipe_indicator(html, plan.index, total)
 
             html_path = slides_dir / f"{plan.index:02d}.html"
             html_path.write_text(html, encoding="utf-8")
@@ -1586,6 +1606,7 @@ async def materialize_slide_html(
         family=family,
     )
     html = _apply_levers_to_html(html, slide)
+    html = _inject_swipe_indicator(html, index, total)
 
     html_path = slides_dir / f"{index:02d}.html"
     html_path.write_text(html, encoding="utf-8")

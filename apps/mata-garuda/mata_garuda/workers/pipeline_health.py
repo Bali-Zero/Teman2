@@ -49,7 +49,12 @@ STATE_FILE = Path(os.environ.get(
 ))
 SIDECAR = Path.home() / ".organism" / "last_seen" / "mata_garuda.pipeline_health.json"
 # lag above this AND growing = RED; above this but shrinking = YELLOW
-LAG_RED = int(os.environ.get("GARUDA_LAG_RED", "8000"))
+# Default lowered 8000->600 (2026-07-14): 8000 was 16x looser than
+# consumer-lag.check's own 500 threshold, and kept the dedicated SCORER DRAIN
+# check GREEN on a real, verified-live 1048-item backlog (8-day-late alerts).
+# 600 = several days of missed drains at current inflow, comfortably above
+# the healthy daily sawtooth but no longer blind to a stuck scorer.
+LAG_RED = int(os.environ.get("GARUDA_LAG_RED", "600"))
 LAG_YELLOW = int(os.environ.get("GARUDA_LAG_YELLOW", "3000"))
 # newest entry older than this many hours = stale harvest
 FRESH_MAX_H = float(os.environ.get("GARUDA_FRESH_MAX_H", "26"))

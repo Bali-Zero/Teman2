@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 3991225d82ed05d2f72f1f4862fd90dcb74d5e16d40b2451a8725fdd971874dd
+checksum: 7acd3a34e66b02095b3fa2269d2728519a150d3a6ed19b5827a8ff4936984982
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -750,6 +750,28 @@ organs:
     label: com.matagaruda.normalizer.hourly
   severity_on_silence: warning
   cicatrix_refs: []
+- id: mata_garuda.redis_split_brain_check
+  runtime: pro_launchd
+  type: cron
+  enabled: false
+  disabled_reason: Retired 2026-07-14 — obsolete doctrine, not a bug. Since the Stage-1
+    single-writer cutover (2026-06-29, Zero decision G1=Pro) Mini's local garuda:*
+    stream copies are legitimately frozen forever, so this check alerted forever on
+    an expected-permanent condition (p0 Telegram spam every 4h suppress-window) on
+    lag/drift that is now by design. Plist retired to infra/launchagents/com.matagaruda.redis-split-brain.check.plist.retired-20260714;
+    bridge entry removed from scripts/launchagent-state-bridge.py (same pattern as
+    the wr2.canva_* removal). Wrapper + detector script left in place as archaeology
+    — nothing invokes them with the plist retired.
+  expected_hb_seconds: 1800
+  owner_module: apps/mata-garuda/scripts/check_redis_split_brain.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.redis-split-brain.check
+  severity_on_silence: warning
+  cicatrix_refs: []
 - id: wr2.canva_apply
   runtime: pro_launchd
   type: daemon
@@ -1346,6 +1368,18 @@ organs:
     host: pro
     label: com.nuzantara.cost-advisor-weekly
   severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.curiosity_weekly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 700000
+  owner_module: scripts/curiosity-batch.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.curiosity.weekly
+  severity_on_silence: warning
   cicatrix_refs: []
 - id: pro.automap_server
   runtime: pro_launchd

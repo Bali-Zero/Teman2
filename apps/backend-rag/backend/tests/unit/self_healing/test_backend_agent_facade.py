@@ -104,3 +104,46 @@ class TestBackendAgentFacade:
         assert "stats" in status
         assert "checks" in status["stats"]
         assert "breakers" in status["stats"]
+
+
+class TestReducedAgent:
+    """Scheduler-necropsy 2026-07-14: the default reporter targeted
+    https://nuzantara-orchestrator.fly.dev which never existed as a deployed
+    app (silent 4xx per event), and the live init path §10e runs a reduced
+    cure surface (GC only)."""
+
+    def test_no_phantom_reporter_by_default(self):
+        agent = BackendSelfHealingAgent(service_name="t")
+        assert agent.orchestrator.reporter is None
+
+    def test_explicit_url_wires_reporter(self):
+        agent = BackendSelfHealingAgent(
+            service_name="t", orchestrator_url="https://example.internal"
+        )
+        assert agent.orchestrator.reporter is not None
+
+    def test_actions_param_reduces_cure_surface(self):
+        from backend.self_healing.actions import GCAction
+
+        agent = BackendSelfHealingAgent(service_name="t", actions=[GCAction()])
+        assert [type(a).__name__ for a in agent.orchestrator.actions] == ["GCAction"]
+
+    def test_default_actions_unchanged(self):
+        agent = BackendSelfHealingAgent(service_name="t")
+        names = [type(a).__name__ for a in agent.orchestrator.actions]
+        assert names == ["GCAction", "ReconnectCacheAction", "RestartServiceAction"]
+
+    def test_api_check_defaults_to_ipv6_loopback(self):
+        # Prod uvicorn binds `::` only and /etc/hosts maps localhost to
+        # 127.0.0.1 alone — a "localhost" URL can never connect (red on
+        # every cycle, proven live 2026-07-14).
+        agent = BackendSelfHealingAgent(service_name="t")
+        api_checks = [c for c in agent.orchestrator.checks if type(c).__name__ == "HTTPAPICheck"]
+        assert len(api_checks) == 1
+        assert api_checks[0].url == "http://[::1]:8080/health"
+
+    def test_api_check_url_env_override(self, monkeypatch):
+        monkeypatch.setenv("SELF_HEAL_API_URL", "http://127.0.0.1:9999/health")
+        agent = BackendSelfHealingAgent(service_name="t")
+        api_checks = [c for c in agent.orchestrator.checks if type(c).__name__ == "HTTPAPICheck"]
+        assert api_checks[0].url == "http://127.0.0.1:9999/health"

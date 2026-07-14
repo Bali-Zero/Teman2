@@ -1041,7 +1041,6 @@ async def _init_background_services(
         autonomous_scheduler = await create_and_start_scheduler(
             db_pool=db_pool,
             ai_client=ai_client,
-            search_service=search_service,
         )
         logger.info("DEBUG: Scheduler started")
 
@@ -1394,6 +1393,70 @@ async def initialize_services(app: FastAPI) -> None:
             critical=False,
         )
         logger.error("❌ Failed to initialize Health Monitor: %s", e)
+
+    # 10d. WhatsApp WABA subscription guardian (live path — the Autonomous
+    # Scheduler above is disabled, so the guardian runs its own loop with the
+    # scheduler's Redis leader lock; idempotent re-arm POST every 6h + inbound
+    # silence receptor. Kill switch: WA_SUBSCRIPTION_GUARDIAN_ENABLED=false.
+    try:
+        from backend.services.misc.whatsapp_subscription_guardian import (
+            start_whatsapp_subscription_guardian_task,
+        )
+
+        wa_guardian_task = start_whatsapp_subscription_guardian_task(
+            db_pool=db_pool,
+            alert_service=alert_service,
+        )
+        app.state.wa_subscription_guardian_task = wa_guardian_task
+        if wa_guardian_task is not None:
+            service_registry.register(
+                "wa_subscription_guardian", ServiceStatus.HEALTHY, critical=False
+            )
+    except Exception as e:
+        service_registry.register(
+            "wa_subscription_guardian",
+            ServiceStatus.DEGRADED,
+            error=str(e),
+            critical=False,
+        )
+        logger.error("❌ Failed to start WhatsApp subscription guardian: %s", e)
+
+    # 10e. Reduced self-healing agent (live path — scheduler-necropsy 2026-07-14).
+    # The old self_healing task lived on the dead AutonomousScheduler and never
+    # ran ('Active' comment lied for 5 months). Reduced cure surface: GCAction
+    # only (redis reconnect is redis_manager's own loop, service restart is
+    # Fly's supervisor), full check surface, no phantom orchestrator reporter.
+    # Per-machine on purpose — GC and local checks make no sense behind a
+    # fleet-wide leader lock. Kill switch: SELF_HEALING_ENABLED=false.
+    if os.environ.get("SELF_HEALING_ENABLED", "true").lower() in {"false", "0", "no"}:
+        logger.info("⏸️ Reduced self-healing agent disabled via SELF_HEALING_ENABLED")
+        app.state.self_healing_task = None
+    else:
+        try:
+            from backend.self_healing import set_active_agent
+            from backend.self_healing.actions import GCAction
+            from backend.self_healing.backend_agent import BackendSelfHealingAgent
+
+            healing_agent = BackendSelfHealingAgent(
+                service_name="nuzantara-backend",
+                check_interval=300,
+                auto_fix_enabled=True,
+                actions=[GCAction()],
+            )
+            set_active_agent(healing_agent)  # /api/admin/self-healing/stats
+            app.state.self_healing_agent = healing_agent
+            app.state.self_healing_task = asyncio.create_task(
+                healing_agent.monitoring_loop(), name="self_healing"
+            )
+            service_registry.register(
+                "self_healing", ServiceStatus.HEALTHY, critical=False
+            )
+            logger.info("✅ Reduced self-healing agent: Active (GC-only, 5min, per-machine)")
+        except Exception as e:
+            service_registry.register(
+                "self_healing", ServiceStatus.DEGRADED, error=str(e), critical=False
+            )
+            logger.error("❌ Failed to start reduced self-healing agent: %s", e)
 
     # 10c. Olympus DB Guardian
     # Background workers kill switch (2026-04-12 incident): skip Olympus when

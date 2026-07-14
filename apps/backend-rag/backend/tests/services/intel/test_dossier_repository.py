@@ -286,3 +286,55 @@ async def test_log_refresh(repo_and_conn):
         new_confidence=0.85,
     )
     conn.execute.assert_called_once()
+
+
+# ── fetch_recent_intel_items (daily digest, 2026-07-14) ─────────────────
+
+
+def _intel_item_row(**overrides):
+    row = {
+        "id": uuid4(),
+        "title": "Indonesia Cuts Visa-Free Entry by 87%",
+        "summary": "Indonesia cut visa-free entry to tighten foreign screening.",
+        "source_domain": "en.tempo.co",
+        "canonical_url": "https://en.tempo.co/read/123",
+        "jurisdiction": "ID-national",
+        "topic_tags": json.dumps(["visa", "immigration"]),
+        "confidence_score": Decimal("0.7"),
+        "published_at": _now(),
+        "first_seen_at": _now() - timedelta(hours=1),
+    }
+    row.update(overrides)
+    return row
+
+
+@pytest.mark.asyncio
+async def test_fetch_recent_intel_items_maps_rows(repo_and_conn):
+    repo, conn = repo_and_conn
+    conn.fetch = AsyncMock(return_value=[_intel_item_row(), _intel_item_row()])
+    items = await repo.fetch_recent_intel_items(lookback_hours=48, limit=10)
+    assert len(items) == 2
+    assert items[0].title == "Indonesia Cuts Visa-Free Entry by 87%"
+    assert items[0].topic_tags == ["visa", "immigration"]
+    assert items[0].confidence_score == 0.7
+
+
+@pytest.mark.asyncio
+async def test_fetch_recent_intel_items_query_uses_lookback_and_limit(repo_and_conn):
+    repo, conn = repo_and_conn
+    conn.fetch = AsyncMock(return_value=[])
+    await repo.fetch_recent_intel_items(lookback_hours=48, limit=7)
+    call_args = conn.fetch.call_args[0]
+    query = call_args[0]
+    assert "intel_items" in query
+    assert "first_seen_at" in query
+    assert call_args[1] == 48
+    assert call_args[2] == 7
+
+
+@pytest.mark.asyncio
+async def test_fetch_recent_intel_items_handles_none_confidence(repo_and_conn):
+    repo, conn = repo_and_conn
+    conn.fetch = AsyncMock(return_value=[_intel_item_row(confidence_score=None)])
+    items = await repo.fetch_recent_intel_items()
+    assert items[0].confidence_score is None

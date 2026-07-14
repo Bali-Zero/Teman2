@@ -168,11 +168,14 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
         organ_id="mata_garuda.consumer_lag_check",
         daemon=False,
     ),
-    BridgedLaunchAgent(
-        label="com.matagaruda.redis-split-brain.check",
-        organ_id="mata_garuda.redis_split_brain_check",
-        daemon=False,
-    ),
+    # com.matagaruda.redis-split-brain.check REMOVED 2026-07-14: plist retired
+    # (infra/launchagents/com.matagaruda.redis-split-brain.check.plist.retired-20260714
+    # — obsolete doctrine, not a bug). Since the Stage-1 single-writer cutover
+    # (2026-06-29, Zero G1=Pro) Mini's local garuda:* stream copies are
+    # legitimately frozen forever, so the check alerted forever on an
+    # expected-permanent condition. Bridging it here would write a perpetual
+    # false "label not loaded" failed sidecar for a retired-by-design organ —
+    # same rationale as the wr2.canva_* removal above.
     BridgedLaunchAgent(
         label="com.nuzantara.codex-spark-alarm",
         organ_id="codex.spark_alarm",

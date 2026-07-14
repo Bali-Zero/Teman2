@@ -8,6 +8,7 @@ alert-dedup latch that keeps a long silence from spamming every 6h cycle.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
@@ -16,7 +17,6 @@ import pytest
 
 from backend.services.misc.whatsapp_subscription_guardian import (
     WhatsAppSubscriptionGuardian,
-    register_whatsapp_subscription_guardian,
 )
 
 
@@ -252,23 +252,131 @@ class TestCycleAlerts:
         assert len(config_alerts) == 1
 
 
-class TestRegistration:
-    def test_registers_on_scheduler(self):
-        scheduler = MagicMock()
+class TestLiveLoopStarter:
+    """The scheduler registration alone is an unarmed arm (W81: the
+    AutonomousScheduler is disabled in prod) — the live path is the loop."""
 
-        guardian = register_whatsapp_subscription_guardian(scheduler, db_pool=None)
+    @pytest.mark.asyncio
+    async def test_starts_named_task(self):
+        from backend.services.misc.whatsapp_subscription_guardian import (
+            start_whatsapp_subscription_guardian_task,
+        )
 
-        assert guardian is not None
-        kwargs = scheduler.register_task.call_args.kwargs
-        assert kwargs["name"] == "wa_subscription_guardian"
-        assert kwargs["interval_seconds"] == 21600
-        assert kwargs["enabled"] is True
+        task = start_whatsapp_subscription_guardian_task(interval_seconds=21600)
 
-    def test_kill_switch_disables(self, monkeypatch):
+        assert task is not None
+        assert task.get_name() == "wa_subscription_guardian"
+        task.cancel()
+
+    @pytest.mark.asyncio
+    async def test_kill_switch_returns_none(self, monkeypatch):
+        from backend.services.misc.whatsapp_subscription_guardian import (
+            start_whatsapp_subscription_guardian_task,
+        )
+
         monkeypatch.setenv("WA_SUBSCRIPTION_GUARDIAN_ENABLED", "false")
-        scheduler = MagicMock()
 
-        guardian = register_whatsapp_subscription_guardian(scheduler)
+        assert start_whatsapp_subscription_guardian_task() is None
 
-        assert guardian is None
-        scheduler.register_task.assert_not_called()
+    @pytest.mark.asyncio
+    async def test_loop_respects_leader_lock(self, monkeypatch):
+        from backend.services.misc import whatsapp_subscription_guardian as mod
+
+        cycles = []
+
+        class FakeGuardian:
+            async def run_cycle(self):
+                cycles.append(1)
+
+        async def no_sleep(_):
+            if len(cycles) >= 1 or no_sleep.calls >= 3:
+                raise asyncio.CancelledError
+            no_sleep.calls += 1
+
+        no_sleep.calls = 0
+        monkeypatch.setattr(mod.asyncio, "sleep", no_sleep)
+        monkeypatch.setattr(
+            "backend.services.misc.autonomous_scheduler._acquire_task_lock",
+            AsyncMock(return_value=True),
+        )
+
+        with pytest.raises(asyncio.CancelledError):
+            await mod._guardian_loop(FakeGuardian(), 21600)
+
+        assert cycles == [1]
+
+    @pytest.mark.asyncio
+    async def test_loop_skips_cycle_when_lock_denied(self, monkeypatch):
+        from backend.services.misc import whatsapp_subscription_guardian as mod
+
+        cycles = []
+
+        class FakeGuardian:
+            async def run_cycle(self):
+                cycles.append(1)
+
+        async def no_sleep(_):
+            if no_sleep.calls >= 2:
+                raise asyncio.CancelledError
+            no_sleep.calls += 1
+
+        no_sleep.calls = 0
+        monkeypatch.setattr(mod.asyncio, "sleep", no_sleep)
+        monkeypatch.setattr(
+            "backend.services.misc.autonomous_scheduler._acquire_task_lock",
+            AsyncMock(return_value=False),
+        )
+
+        with pytest.raises(asyncio.CancelledError):
+            await mod._guardian_loop(FakeGuardian(), 21600)
+
+        assert cycles == []
+
+
+class TestStatePersistence:
+    """Telegram is a view nobody may read (economia-notifiche) — the cycle
+    verdict must land in system_settings as durable disk-state."""
+
+    @pytest.mark.asyncio
+    async def test_cycle_persists_verdict_to_system_settings(self):
+        recent = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+        pool = MagicMock()
+        pool.fetchrow = AsyncMock(return_value={"last_inbound": recent})
+        pool.execute = AsyncMock()
+        g = _guardian(db_pool=pool)
+        g._client = MagicMock(is_closed=False)
+        g._client.post = AsyncMock(return_value=_mock_response())
+
+        await g.run_cycle()
+
+        sql, payload = pool.execute.await_args.args
+        assert "wa_subscription_guardian_last" in sql
+        import json as _json
+
+        stored = _json.loads(payload)
+        assert stored["rearm"]["ok"] is True
+        assert stored["deafness"]["deaf"] is False
+
+    @pytest.mark.asyncio
+    async def test_persist_failure_never_kills_cycle(self):
+        recent = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+        pool = MagicMock()
+        pool.fetchrow = AsyncMock(return_value={"last_inbound": recent})
+        pool.execute = AsyncMock(side_effect=RuntimeError("db down"))
+        g = _guardian(db_pool=pool)
+        g._client = MagicMock(is_closed=False)
+        g._client.post = AsyncMock(return_value=_mock_response())
+
+        result = await g.run_cycle()
+
+        assert result["rearm"]["ok"] is True
+
+    @pytest.mark.asyncio
+    async def test_no_pool_skips_persistence(self):
+        g = _guardian(db_pool=None)
+        g._client = MagicMock(is_closed=False)
+        g._client.post = AsyncMock(return_value=_mock_response())
+
+        result = await g.run_cycle()
+
+        assert result["rearm"]["ok"] is True
