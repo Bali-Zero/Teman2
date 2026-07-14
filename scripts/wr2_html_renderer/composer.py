@@ -196,16 +196,24 @@ def _normalize_skeleton(html: str) -> str:
     html = html.replace('href="../_base.css"', 'href="_base.css"')
     html = html.replace("href='../_base.css'", "href='_base.css'")
     html = html.replace('href="./_base.css"', 'href="_base.css"')
-    # inject _fonts.css link right after the _base.css link (or in head)
+    # inject _fonts.css link into <head>. FONT-FALLBACK BUG (2026-07-14): the old
+    # code checked `'href="_base.css"' in html` but replaced on the STRICTER
+    # pattern `href="_base.css">` — skeletons written with a self-closing
+    # `<link ... />` (editorial-text, stat-card-hero, numbered-forces-list,
+    # photo-headline-yellow-sub, evidence-carved) passed the check, missed the
+    # replace, and shipped with NO @font-face at all: Chromium silently painted
+    # the system font on those slides (check≠action, superscar #3 shape). The
+    # injection point does not matter (@font-face is order-independent), so
+    # anchor on <head> itself — it exists in every skeleton.
     if "_fonts.css" not in html:
-        if 'href="_base.css"' in html:
-            html = html.replace(
-                'href="_base.css">',
-                'href="_base.css">\n<link rel="stylesheet" href="_fonts.css">',
-                1,
-            )
-        else:
-            html = html.replace("<head>", '<head>\n<link rel="stylesheet" href="_fonts.css">', 1)
+        html, n = re.subn(
+            r"(<head[^>]*>)",
+            r'\1\n<link rel="stylesheet" href="_fonts.css">',
+            html,
+            count=1,
+        )
+        if n == 0:
+            raise ValueError("skeleton has no <head> — cannot inject _fonts.css")
     return html
 
 
