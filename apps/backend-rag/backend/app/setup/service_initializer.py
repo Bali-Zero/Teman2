@@ -1395,6 +1395,33 @@ async def initialize_services(app: FastAPI) -> None:
         )
         logger.error("❌ Failed to initialize Health Monitor: %s", e)
 
+    # 10d. WhatsApp WABA subscription guardian (live path — the Autonomous
+    # Scheduler above is disabled, so the guardian runs its own loop with the
+    # scheduler's Redis leader lock; idempotent re-arm POST every 6h + inbound
+    # silence receptor. Kill switch: WA_SUBSCRIPTION_GUARDIAN_ENABLED=false.
+    try:
+        from backend.services.misc.whatsapp_subscription_guardian import (
+            start_whatsapp_subscription_guardian_task,
+        )
+
+        wa_guardian_task = start_whatsapp_subscription_guardian_task(
+            db_pool=db_pool,
+            alert_service=alert_service,
+        )
+        app.state.wa_subscription_guardian_task = wa_guardian_task
+        if wa_guardian_task is not None:
+            service_registry.register(
+                "wa_subscription_guardian", ServiceStatus.HEALTHY, critical=False
+            )
+    except Exception as e:
+        service_registry.register(
+            "wa_subscription_guardian",
+            ServiceStatus.DEGRADED,
+            error=str(e),
+            critical=False,
+        )
+        logger.error("❌ Failed to start WhatsApp subscription guardian: %s", e)
+
     # 10c. Olympus DB Guardian
     # Background workers kill switch (2026-04-12 incident): skip Olympus when
     # DISABLE_BACKGROUND_WORKERS=1 — Olympus heartbeat/pulse loops corrupt the
