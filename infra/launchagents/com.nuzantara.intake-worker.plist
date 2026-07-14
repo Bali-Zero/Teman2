@@ -10,6 +10,12 @@
 		<string>true</string>
 		<key>INTAKE_CONCURRENCY</key>
 		<string>3</string>
+		<key>INTAKE_EXTRACTION_MODEL</key>
+		<string>qwen3.5:9b</string>
+		<key>INTAKE_EXTRACT_NUM_PREDICT</key>
+		<string>1024</string>
+		<key>INTAKE_EXTRACT_TIMEOUT</key>
+		<string>90</string>
 		<key>INTAKE_DATABASE_URL</key>
 		<string>postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev</string>
 		<key>INTAKE_DEDUP_WALL_ENABLED</key>
@@ -20,6 +26,10 @@
 		<string>900</string>
 		<key>INTAKE_LOG_LEVEL</key>
 		<string>INFO</string>
+		<key>INTAKE_OLLAMA_KEEP_ALIVE</key>
+		<string>15m</string>
+		<key>INTAKE_OLLAMA_MAX_INFLIGHT</key>
+		<string>1</string>
 		<key>INTAKE_NAMEID_AUTO_ATTACH_ENABLED</key>
 		<string>true</string>
 		<key>INTAKE_POLL_INTERVAL_SECONDS</key>
@@ -28,6 +38,12 @@
 		<string>true</string>
 		<key>INTAKE_REPO_ROOT</key>
 		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
+		<key>INTAKE_TEXT_LLM_CLASSIFY_ENABLED</key>
+		<string>true</string>
+		<key>INTAKE_TEXT_LLM_MODEL</key>
+		<string>qwen3.5:9b</string>
+		<key>INTAKE_TEXT_LLM_TIMEOUT_SECONDS</key>
+		<string>45</string>
 		<key>INTAKE_WRITER_ENABLED</key>
 		<string>true</string>
 		<key>PATH</key>

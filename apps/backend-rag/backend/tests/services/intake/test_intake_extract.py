@@ -21,10 +21,13 @@ from backend.services.intake import extract, model_roles
 # Helpers                                                                      #
 # --------------------------------------------------------------------------- #
 
+
 def _fake_gen(payload: dict):
     """Return a generate_fn that always yields ``payload`` as JSON."""
+
     async def _gen(model: str, prompt: str) -> str:  # noqa: ARG001
         return json.dumps(payload)
+
     return _gen
 
 
@@ -48,6 +51,36 @@ def test_resolve_extraction_model_reads_model_topology(tmp_path, monkeypatch):
 def test_extraction_model_env_override_wins(monkeypatch):
     monkeypatch.setenv("INTAKE_EXTRACTION_MODEL", "override-model:q4")
     assert extract._resolve_extraction_model() == "override-model:q4"
+    assert extract.resolved_extraction_model_label() == "override-model:q4"
+
+
+async def test_ollama_generate_applies_capacity_controls(monkeypatch):
+    calls = []
+
+    class _FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"response": '{"ok": true}'}
+
+    class _FakeClient:
+        async def post(self, path, json):
+            calls.append((path, json))
+            return _FakeResponse()
+
+    monkeypatch.setenv("INTAKE_EXTRACT_NUM_PREDICT", "768")
+    monkeypatch.setenv("INTAKE_OLLAMA_KEEP_ALIVE", "19m")
+    monkeypatch.setattr(extract, "_get_client", lambda: _FakeClient())
+
+    response = await extract._ollama_generate("qwen3.5:9b", "extract JSON")
+
+    assert response == '{"ok": true}'
+    path, payload = calls[0]
+    assert path == "/api/generate"
+    assert payload["model"] == "qwen3.5:9b"
+    assert payload["keep_alive"] == "19m"
+    assert payload["options"]["num_predict"] == 768
 
 
 def test_canonical_doc_type_aliases():
@@ -82,6 +115,7 @@ async def test_unsupported_doc_type_raises():
 # --------------------------------------------------------------------------- #
 # Maybe pattern + GOLDEN RULE (fake model, deterministic)                      #
 # --------------------------------------------------------------------------- #
+
 
 async def test_full_nib_extraction_with_evidence():
     payload = {
@@ -126,6 +160,35 @@ async def test_golden_rule_illegible_field_becomes_null():
     assert out["any_low_confidence"] is True
     # legible fields untouched
     assert out["fields"]["nib_number"]["value"] == "9876543210987"
+
+
+@pytest.mark.parametrize(
+    "placeholder",
+    [
+        "[unreadable]",
+        "[tidak terbaca / illegible smudge]",
+        "blurred",
+        "REDACTED",
+    ],
+)
+async def test_golden_rule_model_unreadable_placeholders_become_null(placeholder):
+    payload = {
+        "npwp_number": {"value": "1234567890123456", "source_page": 1},
+        "name": {"value": "PT TEST", "source_page": 1},
+        "address": {"value": placeholder, "source_page": 1},
+    }
+
+    out = await extract.extract_fields(
+        "npwp",
+        ["NOMOR POKOK WAJIB PAJAK\nNama: PT TEST\nAlamat: [unreadable]"],
+        generate_fn=_fake_gen(payload),
+    )
+
+    assert out["fields"]["address"] == {
+        "value": None,
+        "confidence": 0.0,
+        "source_page": None,
+    }
 
 
 async def test_list_field_accepts_model_value_objects():
@@ -250,8 +313,7 @@ async def test_passport_partial_mrz_merges_with_model_output():
     # DOB + expiry check digits are valid. The MRZ pair is trusted enough to
     # provide name/dates/nationality, but not passport_no.
     ocr = (
-        "P<ITAERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<\n"
-        "L898902C35ITA7408122F3004157ZE184226B<<<<<10"
+        "P<ITAERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<\nL898902C35ITA7408122F3004157ZE184226B<<<<<10"
     )
     out = await extract.extract_fields("passport", [ocr], generate_fn=_fake_gen(payload))
 
@@ -651,11 +713,7 @@ async def test_kitas_label_number_drops_ocr_prefix_inside_value():
         called["n"] += 1
         return "{}"
 
-    ocr = (
-        "KARTU IZIN TINGGAL TERBATAS\n"
-        "No. ITAS : ITAS 2C11AB98765\n"
-        "Nama : MARIO LUCA ROSSI"
-    )
+    ocr = "KARTU IZIN TINGGAL TERBATAS\nNo. ITAS : ITAS 2C11AB98765\nNama : MARIO LUCA ROSSI"
     out = await extract.extract_fields("kitas", [ocr], generate_fn=_gen)
 
     assert called["n"] == 0
@@ -1682,6 +1740,7 @@ async def test_new_doc_type_schemas_extract_with_evidence(
 # Worker stage-handler contract                                               #
 # --------------------------------------------------------------------------- #
 
+
 async def test_extract_stage_reads_upstream_stage_output(monkeypatch):
     payload = {"nib_number": {"value": "1234567890123", "source_page": 1}}
 
@@ -1709,6 +1768,7 @@ async def test_extract_stage_rejects_wrong_stage():
 # --------------------------------------------------------------------------- #
 # LIVE: real SEA-LION model (deselect with -m "not slow")                     #
 # --------------------------------------------------------------------------- #
+
 
 @pytest.mark.slow
 @pytest.mark.integration

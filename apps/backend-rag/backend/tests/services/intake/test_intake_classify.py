@@ -13,6 +13,7 @@ exercised separately by the on-Pro E2E run, not here.
 
 from __future__ import annotations
 
+import asyncio
 import io
 import json
 import re
@@ -82,8 +83,7 @@ async def test_passport_classified_via_mrz():
 @pytest.mark.asyncio
 async def test_akta_classified():
     r = await cls.classify_document(
-        "AKTA PENDIRIAN PERSEROAN TERBATAS PT MAJU JAYA NOMOR 17 "
-        "DIHADAPAN NOTARIS ANGGARAN DASAR"
+        "AKTA PENDIRIAN PERSEROAN TERBATAS PT MAJU JAYA NOMOR 17 DIHADAPAN NOTARIS ANGGARAN DASAR"
     )
     assert r["type"] == "akta_pendirian"
     assert r["confidence"] >= 0.30
@@ -101,8 +101,7 @@ async def test_sk_kemenkumham_classified():
 @pytest.mark.asyncio
 async def test_evisa_classified():
     r = await cls.classify_document(
-        "REPUBLIC OF INDONESIA E-VISA VISA INDEX B211A "
-        "DIRECTORATE GENERAL OF IMMIGRATION"
+        "REPUBLIC OF INDONESIA E-VISA VISA INDEX B211A DIRECTORATE GENERAL OF IMMIGRATION"
     )
     assert r["type"] == "visa"
     assert r["confidence"] >= 0.30
@@ -117,9 +116,7 @@ async def test_generic_visa_word_alone_stays_unknown():
 
 @pytest.mark.asyncio
 async def test_family_card_classified():
-    r = await cls.classify_document(
-        "KARTU KELUARGA Nomor Kartu Keluarga No. KK Kepala Keluarga"
-    )
+    r = await cls.classify_document("KARTU KELUARGA Nomor Kartu Keluarga No. KK Kepala Keluarga")
     assert r["type"] == "family_card"
     assert r["confidence"] >= 0.30
 
@@ -135,9 +132,7 @@ async def test_birth_certificate_classified():
 
 @pytest.mark.asyncio
 async def test_marriage_certificate_classified():
-    r = await cls.classify_document(
-        "BUKU NIKAH AKTA NIKAH Kantor Urusan Agama tanggal pernikahan"
-    )
+    r = await cls.classify_document("BUKU NIKAH AKTA NIKAH Kantor Urusan Agama tanggal pernikahan")
     assert r["type"] == "marriage_certificate"
     assert r["confidence"] >= 0.30
 
@@ -338,6 +333,7 @@ async def test_ollama_vision_uses_configured_num_predict(monkeypatch):
             return _FakeResponse()
 
     monkeypatch.setenv("INTAKE_OCR_NUM_PREDICT", "512")
+    monkeypatch.setenv("INTAKE_OLLAMA_KEEP_ALIVE", "17m")
     monkeypatch.setattr(cls, "_get_client", lambda: _FakeClient())
 
     response, thinking = await cls._ollama_vision("qwen2.5vl:7b", "Zm9v")
@@ -345,6 +341,37 @@ async def test_ollama_vision_uses_configured_num_predict(monkeypatch):
     assert response == "OCR TEXT"
     assert thinking == ""
     assert calls[0]["options"]["num_predict"] == 512
+    assert calls[0]["keep_alive"] == "17m"
+
+
+@pytest.mark.asyncio
+async def test_ollama_admission_wait_does_not_consume_request_timeout(monkeypatch):
+    """Queued work gets a full inference timeout after it acquires the GPU."""
+    from backend.services.intake import inference_runtime
+
+    class _FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"response": "OCR TEXT", "thinking": ""}
+
+    class _SlowClient:
+        async def post(self, _url, json):
+            await asyncio.sleep(0.04)
+            return _FakeResponse()
+
+    monkeypatch.setenv("INTAKE_OLLAMA_MAX_INFLIGHT", "1")
+    monkeypatch.setattr(cls, "OCR_PAGE_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr(cls, "_get_client", lambda: _SlowClient())
+    inference_runtime.clear_ollama_inference_gates()
+
+    results = await asyncio.gather(
+        cls._ollama_vision("qwen2.5vl:7b", "Zm9v"),
+        cls._ollama_vision("qwen2.5vl:7b", "YmFy"),
+    )
+
+    assert [result[0] for result in results] == ["OCR TEXT", "OCR TEXT"]
 
 
 @pytest.mark.asyncio
@@ -410,8 +437,7 @@ async def test_ocr_pages_unwraps_json_text_object_response(monkeypatch):
 async def test_ocr_pages_unwraps_json_pages_object_response(monkeypatch):
     async def fake_vision(model, b64):
         return (
-            '{"pages": [{"text": "KITAS No : 2C11AB98765"}, '
-            '{"text": "Name : MARIO LUCA ROSSI"}]}',
+            '{"pages": [{"text": "KITAS No : 2C11AB98765"}, {"text": "Name : MARIO LUCA ROSSI"}]}',
             "",
         )
 

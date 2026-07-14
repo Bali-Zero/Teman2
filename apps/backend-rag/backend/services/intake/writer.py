@@ -48,6 +48,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -160,6 +161,18 @@ class CommitPlan:
     # If an identical (client_id, idempotency_key) document already exists, the
     # real path is a no-op returning this id (idempotency). Surfaced in the plan.
     existing_doc_id: int | None = None
+    # Local-only learning evidence.  These values let the real commit write one
+    # structured feedback row per approved/corrected field without re-reading or
+    # reconstructing the AI proposal after it has advanced to a terminal state.
+    source: str = "unknown"
+    blob_hash: str = ""
+    pipeline_version: str = PIPELINE_VERSION
+    original_fields: dict[str, Any] = field(default_factory=dict)
+    human_field_overrides: dict[str, Any] = field(default_factory=dict)
+    original_client_id: int | None = None
+    entity_confidence: float | None = None
+    extraction_model: str | None = None
+    validation_passed: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -320,38 +333,48 @@ async def plan_commit(
     source = (qrow["source"] if qrow else None) or "unknown"
     source_ref = (qrow["source_ref"] if qrow else None) or str(proposal_id)
     blob_hash = (qrow["blob_hash"] if qrow else None) or ""
-    pipeline_version = (qrow["pipeline_version"] if qrow else None) or p.get(
-        "pipeline_version"
-    ) or PIPELINE_VERSION
+    pipeline_version = (
+        (qrow["pipeline_version"] if qrow else None)
+        or p.get("pipeline_version")
+        or PIPELINE_VERSION
+    )
     doc_index = int(p.get("doc_index") or 0)
 
     # Target client: explicit override (human chose) wins, else routing's resolved client.
-    client_id = override_client_id if override_client_id is not None else routing.get(
-        "client_id"
-    )
+    client_id = override_client_id if override_client_id is not None else routing.get("client_id")
     if practice_explicit:
         # The reviewer chose deliberately — honour it even when it is None
         # ("archive only"): no silent fallback to routing's practice hint.
         practice_id = override_practice_id
     else:
         practice_id = (
-            override_practice_id
-            if override_practice_id is not None
-            else routing.get("practice_id")
+            override_practice_id if override_practice_id is not None else routing.get("practice_id")
         )
 
     payload = _document_payload(routing, stage_output, source_ref)
+    original_fields = payload.get("extracted_fields")
+    if not isinstance(original_fields, dict):
+        original_fields = {}
+    else:
+        original_fields = dict(original_fields)
+    human_field_overrides = dict(final_fields or {})
     # Persist the resolved practice on the document row itself (documents.practice_id):
     # _document_payload doesn't know it, but write_client_document writes
     # payload["practice_id"], and rollback_commit reads it back to detach the link.
     # Without this the column is NULL and rollback can't find the practice to clean.
     payload["practice_id"] = practice_id
-    if final_fields:
-        payload["extracted_fields"] = {**payload.get("extracted_fields", {}), **final_fields}
+    if human_field_overrides:
+        payload["extracted_fields"] = {
+            **original_fields,
+            **human_field_overrides,
+        }
 
-    idem_key = compute_idempotency_key(
-        source, source_ref, blob_hash, doc_index, pipeline_version
-    )
+    extract_output = _as_dict(stage_output.get("extract"))
+    validate_output = _as_dict(stage_output.get("validate"))
+    validation_value = validate_output.get("valid")
+    validation_passed = validation_value if isinstance(validation_value, bool) else None
+
+    idem_key = compute_idempotency_key(source, source_ref, blob_hash, doc_index, pipeline_version)
 
     plan = CommitPlan(
         proposal_id=proposal_id,
@@ -363,6 +386,24 @@ async def plan_commit(
         committed_by=committed_by,
         idempotency_key=idem_key,
         payload=payload,
+        source=str(source),
+        blob_hash=str(blob_hash),
+        pipeline_version=str(pipeline_version),
+        original_fields=original_fields,
+        human_field_overrides=human_field_overrides,
+        original_client_id=routing.get("client_id"),
+        entity_confidence=(
+            float(entity_resolution["score"])
+            if isinstance(entity_resolution.get("score"), (int, float))
+            and not isinstance(entity_resolution.get("score"), bool)
+            else None
+        ),
+        extraction_model=(
+            str(extract_output["extraction_model"])
+            if extract_output.get("extraction_model")
+            else None
+        ),
+        validation_passed=validation_passed,
     )
 
     reasons: list[str] = []
@@ -371,9 +412,7 @@ async def plan_commit(
     if client_id is None:
         reasons.append("no_target_client (decision requires human to pick a client)")
     else:
-        crow = await conn.fetchrow(
-            "SELECT id, deleted_at FROM clients WHERE id = $1", client_id
-        )
+        crow = await conn.fetchrow("SELECT id, deleted_at FROM clients WHERE id = $1", client_id)
         if crow is None:
             reasons.append(f"client {client_id} does not exist")
         elif crow["deleted_at"] is not None:
@@ -399,13 +438,9 @@ async def plan_commit(
             "SELECT 1 FROM information_schema.tables WHERE table_name='family_members'"
         )
         if has_fam_tbl:
-            frow = await conn.fetchrow(
-                "SELECT client_id FROM family_members WHERE id = $1", fam_id
-            )
+            frow = await conn.fetchrow("SELECT client_id FROM family_members WHERE id = $1", fam_id)
             if frow is None or frow["client_id"] != client_id:
-                reasons.append(
-                    f"family_member {fam_id} does not belong to client {client_id}"
-                )
+                reasons.append(f"family_member {fam_id} does not belong to client {client_id}")
 
     # Proposal must still be in a claimable/approvable state (not already terminal).
     cur_status = p.get("status")
@@ -486,15 +521,199 @@ async def plan_commit(
                 values={
                     "queue_id": queue_id,
                     "decision": decision,
-                    "outcome": "approved",
+                    "outcome": "approved|corrected|auto_committed",
                     "verified_by": committed_by,
-                    "fields_touched": list((final_fields or {}).keys()),
+                    "fields_observed": sorted(set(original_fields) | set(human_field_overrides)),
                 },
-                note="one row per field touched + decision-level __entity__ if client overridden (design §5)",
+                note=(
+                    "one idempotent row per non-null approved/corrected field + "
+                    "decision-level __entity__ if client overridden (design §5)"
+                ),
             )
         )
 
     return plan
+
+
+# --------------------------------------------------------------------------- #
+# Structured HITL evidence — local-only learning loop (FASE 4.5 / 5C).
+# --------------------------------------------------------------------------- #
+def _field_value_and_confidence(raw: Any) -> tuple[Any, float | None]:
+    """Unwrap the extractor's ``{value, confidence, source_page}`` field shape."""
+    if not isinstance(raw, dict) or "value" not in raw:
+        return raw, None
+    confidence = raw.get("confidence")
+    return raw.get("value"), (
+        float(confidence)
+        if isinstance(confidence, (int, float)) and not isinstance(confidence, bool)
+        else None
+    )
+
+
+def _normalise_feedback_value(value: Any) -> Any:
+    """Normalise harmless formatting before deciding approved vs corrected."""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, list):
+        return [_normalise_feedback_value(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            str(key): _normalise_feedback_value(item)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        }
+    return value
+
+
+def _feedback_text(value: Any) -> str | None:
+    """Serialize one local-only feedback value deterministically into TEXT."""
+    value = _normalise_feedback_value(value)
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+
+
+def _correction_evidence_rows(
+    plan: CommitPlan,
+    *,
+    advance_to: str,
+) -> list[dict[str, Any]]:
+    """Build field-level ground truth for a successful human or auto commit.
+
+    Null fields that nobody touched are excluded: counting them as successes
+    would inflate accuracy even when the model simply missed information.  A
+    human override to/from null is still recorded because it is explicit.
+    """
+    is_auto = advance_to == "auto_routed"
+    field_names = sorted(set(plan.original_fields) | set(plan.human_field_overrides))
+    rows: list[dict[str, Any]] = []
+    for field_name in field_names:
+        ai_value, ai_confidence = _field_value_and_confidence(plan.original_fields.get(field_name))
+        explicitly_overridden = field_name in plan.human_field_overrides
+        if explicitly_overridden:
+            human_value, _ = _field_value_and_confidence(plan.human_field_overrides[field_name])
+        else:
+            human_value = ai_value
+
+        if ai_value is None and human_value is None and not explicitly_overridden:
+            continue
+
+        if is_auto:
+            outcome = "auto_committed"
+        elif _normalise_feedback_value(ai_value) == _normalise_feedback_value(human_value):
+            outcome = "approved"
+        else:
+            outcome = "corrected"
+        rows.append(
+            {
+                "field_name": str(field_name),
+                "ai_value": _feedback_text(ai_value),
+                "human_value": _feedback_text(human_value),
+                "ai_confidence": ai_confidence,
+                "outcome": outcome,
+                "model_id": plan.extraction_model,
+                "stage": "extract",
+                "rule_passed": plan.validation_passed,
+            }
+        )
+
+    # Decision-level entity correction is the highest-value routing signal.
+    if not is_auto and plan.original_client_id != plan.client_id:
+        rows.append(
+            {
+                "field_name": "__entity__",
+                "ai_value": _feedback_text(plan.original_client_id),
+                "human_value": _feedback_text(plan.client_id),
+                "ai_confidence": plan.entity_confidence,
+                "outcome": "corrected",
+                "model_id": "entity-resolution",
+                "stage": "route",
+                "rule_passed": None,
+            }
+        )
+
+    # Preserve a document-level denominator even for an intentionally fieldless
+    # proposal (for example an unknown document routed manually).
+    if not rows:
+        rows.append(
+            {
+                "field_name": "__document__",
+                "ai_value": _feedback_text(plan.doc_type),
+                "human_value": _feedback_text(plan.doc_type),
+                "ai_confidence": None,
+                "outcome": "auto_committed" if is_auto else "approved",
+                "model_id": plan.extraction_model,
+                "stage": "route",
+                "rule_passed": plan.validation_passed,
+            }
+        )
+    return rows
+
+
+async def _record_commit_corrections(
+    conn: asyncpg.Connection,
+    plan: CommitPlan,
+    *,
+    advance_to: str,
+) -> int:
+    """Persist idempotent field feedback in the same transaction as the commit."""
+    if plan.queue_id is None or re.fullmatch(r"[0-9a-fA-F]{64}", plan.blob_hash) is None:
+        logger.warning(
+            "intake.corrections.skipped proposal=%s queue=%s invalid_evidence_key",
+            plan.proposal_id,
+            plan.queue_id,
+        )
+        return 0
+
+    inserted = 0
+    for row in _correction_evidence_rows(plan, advance_to=advance_to):
+        correction_id = await conn.fetchval(
+            """
+            INSERT INTO intake_corrections (
+                queue_id, blob_hash, doc_type, field_name, source,
+                ai_value, human_value, ai_confidence, outcome,
+                model_id, model_version, stage, rule_passed, verified_by
+            )
+            SELECT $1, $2::char(64), $3, $4, $5,
+                   $6, $7, $8, $9,
+                   $10, $11, $12, $13, $14
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM intake_corrections
+                WHERE queue_id = $1
+                  AND field_name = $4
+                  AND outcome = $9
+                  AND ai_value IS NOT DISTINCT FROM $6
+                  AND human_value IS NOT DISTINCT FROM $7
+                  AND model_version IS NOT DISTINCT FROM $11
+            )
+            RETURNING id
+            """,
+            plan.queue_id,
+            plan.blob_hash.lower(),
+            plan.doc_type or "unknown",
+            row["field_name"],
+            (plan.source or "unknown")[:8],
+            row["ai_value"],
+            row["human_value"],
+            row["ai_confidence"],
+            row["outcome"],
+            row["model_id"],
+            plan.pipeline_version,
+            row["stage"],
+            row["rule_passed"],
+            plan.committed_by,
+        )
+        inserted += int(correction_id is not None)
+
+    logger.info(
+        "intake.corrections.recorded proposal=%s queue=%s inserted=%d",
+        plan.proposal_id,
+        plan.queue_id,
+        inserted,
+    )
+    return inserted
 
 
 # --------------------------------------------------------------------------- #
@@ -616,7 +835,12 @@ async def execute_commit(
     # Blocked plan (P0#3): record + refuse, regardless of dry/real.
     if plan.blocked:
         audit_id = await _write_audit(
-            conn, plan, dry_run=dry_run, outcome="blocked", doc_id=None, error="; ".join(plan.block_reasons)
+            conn,
+            plan,
+            dry_run=dry_run,
+            outcome="blocked",
+            doc_id=None,
+            error="; ".join(plan.block_reasons),
         )
         logger.warning(
             "intake.writer.blocked proposal=%s reasons=%s",
@@ -633,9 +857,7 @@ async def execute_commit(
         )
 
     if dry_run:
-        audit_id = await _write_audit(
-            conn, plan, dry_run=True, outcome="dry_run", doc_id=None
-        )
+        audit_id = await _write_audit(conn, plan, dry_run=True, outcome="dry_run", doc_id=None)
         logger.info(
             "intake.writer.DRY_RUN proposal=%s client=%s practice=%s doc_type=%s ops=%d "
             "(would write, NOTHING committed)",
@@ -690,6 +912,15 @@ async def execute_commit(
             plan.doc_type,
             plan.payload.get("extracted_fields"),
         )
+        # Learning evidence is part of the same atomic commit: a document cannot
+        # become routed without also contributing its approved/corrected labels.
+        # The INSERT is idempotent, so re-committing the same intake instance does
+        # not inflate the measured acceptance rate.
+        correction_count = await _record_commit_corrections(
+            conn,
+            plan,
+            advance_to=advance_to,
+        )
         # Proposal advancement to the terminal state — in the SAME TX as the
         # writes. P0#9 inverse: the DRY-RUN path never advances; the REAL path advances
         # exactly once, atomically with the document it routed. ``advance_from``/
@@ -698,16 +929,16 @@ async def execute_commit(
         await advance_proposal(
             conn, plan.proposal_id, from_status=advance_from, target_status=advance_to
         )
-        audit_id = await _write_audit(
-            conn, plan, dry_run=False, outcome="committed", doc_id=doc_id
-        )
+        audit_id = await _write_audit(conn, plan, dry_run=False, outcome="committed", doc_id=doc_id)
         logger.info(
-            "intake.writer.COMMITTED proposal=%s client=%s doc=%s practice=%s enriched=%s (real write)",
+            "intake.writer.COMMITTED proposal=%s client=%s doc=%s practice=%s "
+            "enriched=%s corrections=%d (real write)",
             plan.proposal_id,
             plan.client_id,
             doc_id,
             plan.practice_id,
             sorted(enriched.keys()) if enriched else [],
+            correction_count,
         )
         return CommitResult(
             proposal_id=plan.proposal_id,
