@@ -75,11 +75,40 @@ fi
 # cleanly — the agent then hangs and never reaches its local-stats fallback. We probe agy
 # here with a hard 25s ceiling; if it does not return a clean answer, we tell the agent
 # explicitly to SKIP Gemini and go straight to the local Python/jq fallback path.
+#
+# 2026-07-14 zombie fix: the previous watchdog only `kill $AGY_PID` — the exact
+# PID named after backgrounding the `echo | agy` pipeline. If agy forks a
+# detached grandchild that keeps the pipe's write-end open, agy itself dies on
+# the kill but the command-substitution's read() blocks forever waiting for
+# EOF from that orphaned descendant (live incident: a 32h zombie found+killed
+# on 2026-07-14). Fix: no pipe at all (prompt goes in via a temp file, so
+# capture never depends on every fd holder closing), agy runs as the sole/
+# first process of its own job so `set -m` gives it its own process group
+# (PGID == its own PID), and the watchdog kills the WHOLE group
+# (`kill -- -$PGID`, TERM then KILL) — no descendant can outlive the timeout.
 GEMINI_HINT=""
 AGY=/Users/nuzantara/.local/bin/agy
 if [ -x "$AGY" ]; then
-  AGY_OUT=$( (echo "reply with exactly: AGYUP" | "$AGY" -p --print-timeout 20s 2>&1 &
-             AGY_PID=$!; ( sleep 25; kill $AGY_PID 2>/dev/null ) & wait $AGY_PID 2>/dev/null) || true )
+  AGY_PROMPT="$(mktemp "${TMPDIR:-/tmp}/wr2-ig-agy-prompt.XXXXXX")"
+  AGY_TMP="$(mktemp "${TMPDIR:-/tmp}/wr2-ig-agy-health.XXXXXX")"
+  echo "reply with exactly: AGYUP" > "$AGY_PROMPT"
+  (
+    set -m
+    "$AGY" -p --print-timeout 20s < "$AGY_PROMPT" > "$AGY_TMP" 2>&1 &
+    AGY_PID=$!
+    (
+      sleep 25
+      kill -TERM -- -"$AGY_PID" 2>/dev/null
+      sleep 2
+      kill -KILL -- -"$AGY_PID" 2>/dev/null
+    ) &
+    WATCHDOG_PID=$!
+    wait "$AGY_PID" 2>/dev/null
+    kill "$WATCHDOG_PID" 2>/dev/null
+    wait "$WATCHDOG_PID" 2>/dev/null
+  ) 2>/dev/null
+  AGY_OUT="$(cat "$AGY_TMP" 2>/dev/null || true)"
+  rm -f "$AGY_PROMPT" "$AGY_TMP"
   if printf '%s' "$AGY_OUT" | grep -qi 'AGYUP'; then
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] gemini health-check: UP" >> "$LOG"
   else
