@@ -27,12 +27,17 @@ docstring):
 
 - Standalone ``asyncio`` loop started directly from ``service_initializer``
   (the live init path), NOT registered on the dead scheduler.
-- Sleeps to the next wall-clock UTC target (default 00:00 UTC = 08:00 WITA)
-  rather than a fixed interval-since-boot: a fixed 24h interval (the
-  ``kg_incremental_builder`` convention) would drift away from "08:00 WITA"
-  every time the process restarts (deploys happen several times a day on
-  this repo). Wall-clock alignment recomputed after every run stays pinned
-  to the target time regardless of restarts.
+- Sleeps to the next wall-clock UTC target (default 18:30 UTC = 02:30 WITA,
+  rescheduled 2026-07-15 per Zero — was 00:00 UTC = 08:00 WITA at birth
+  earlier the same day) rather than a fixed interval-since-boot: a fixed 24h
+  interval (the ``kg_incremental_builder`` convention) would drift away from
+  the wall-clock target every time the process restarts (deploys happen
+  several times a day on this repo). Wall-clock alignment recomputed after
+  every run stays pinned to the target time regardless of restarts. The
+  target is also env-configurable via ``NEWSLETTER_DAILY_TARGET_UTC``
+  (``"HH:MM"``, e.g. ``"18:30"``) so future time changes need no code
+  deploy — malformed/missing values fall back to the default and log a
+  warning (scar family #8: never crash the loop over a config typo).
 - Reuses the scheduler's Redis leader-lock helper for cross-machine dedupe
   (``min_machines_running=1`` makes a genuine split-brain unlikely, but a
   rolling deploy can briefly run two machines — cheap insurance, same
@@ -60,10 +65,40 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TARGET_HOUR_UTC = 0  # 00:00 UTC == 08:00 WITA
-DEFAULT_TARGET_MINUTE_UTC = 0
+DEFAULT_TARGET_HOUR_UTC = 18  # 18:30 UTC = 02:30 WITA (Zero 2026-07-15, was 00:00 UTC/08:00 WITA)
+DEFAULT_TARGET_MINUTE_UTC = 30
 _LOCK_TASK_NAME = "newsletter_daily_task"
 _SETTINGS_KEY = "newsletter_daily_task_last"
+_TARGET_ENV_VAR = "NEWSLETTER_DAILY_TARGET_UTC"
+
+
+def _resolve_target_utc(default_hour: int, default_minute: int) -> tuple[int, int]:
+    """Resolve the (hour, minute) UTC target, honoring the env override.
+
+    ``NEWSLETTER_DAILY_TARGET_UTC="HH:MM"`` wins over the passed-in defaults
+    when present and well-formed. Any parse failure (missing colon,
+    non-numeric, out-of-range) falls back to the defaults with a warning —
+    never crashes the loop over a config typo (scar family #8).
+    """
+    raw = os.environ.get(_TARGET_ENV_VAR)
+    if not raw:
+        return default_hour, default_minute
+    try:
+        hour_s, minute_s = raw.strip().split(":", 1)
+        hour, minute = int(hour_s), int(minute_s)
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            raise ValueError(f"out of range: {raw!r}")
+        return hour, minute
+    except (ValueError, TypeError) as e:
+        logger.warning(
+            "[newsletter-daily-task] malformed %s=%r, falling back to %02d:%02d UTC (%s)",
+            _TARGET_ENV_VAR,
+            raw,
+            default_hour,
+            default_minute,
+            e,
+        )
+        return default_hour, default_minute
 
 
 def _seconds_until_next_utc_target(
@@ -169,6 +204,7 @@ def start_newsletter_daily_task(
     }:
         logger.info("[newsletter-daily-task] disabled via NEWSLETTER_DAILY_TASK_ENABLED")
         return None
+    target_hour_utc, target_minute_utc = _resolve_target_utc(target_hour_utc, target_minute_utc)
     task = asyncio.get_event_loop().create_task(
         _daily_loop(db_pool, target_hour_utc, target_minute_utc, subject_prefix),
         name="newsletter_daily_task",
