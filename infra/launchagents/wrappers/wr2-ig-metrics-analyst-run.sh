@@ -13,6 +13,22 @@
 # which model actually answered a given run. Fix: log an explicit provenance
 # line keyed off the claude exit code, without changing the invocation itself
 # (single-tier by design — this agent's Read/Bash tool needs stay Claude-only).
+#
+# B7 wall-clock timeout + loud logging (2026-07-14, WR2 deep audit §4/§10.7):
+# a run hung 28h+ until externally SIGTERM'd, and BOTH log files were
+# completely empty for the entire hang — nothing in this wrapper bounded the
+# child's runtime, and `claude -p` in non-streaming mode writes nothing to
+# stdout/stderr until the turn completes, so a hung child was structurally
+# indistinguishable from "still working" (the wrapper itself never emitted a
+# byte while waiting on `wait`/redirected `>>`). Fix: background the child,
+# poll it with a heartbeat (log is never silent even if the child never
+# writes anything) plus a hard wall-clock ceiling (SIGTERM, escalate to
+# SIGKILL after a grace period, exit 124) — same convention as
+# scripts/cron-wrapper.sh's bash-watchdog fallback for machines without
+# gtimeout/timeout, and the same "background + sleep + kill" idiom this file
+# already used for the agy health-check below. N=7200s (2h) — generous: the
+# analyst legitimately reads a full carousel+metrics corpus. Override via
+# WR2_IG_METRICS_TIMEOUT_SECS.
 
 set -euo pipefail
 
@@ -20,6 +36,10 @@ LOGDIR="${HOME}/logs"
 mkdir -p "$LOGDIR"
 LOG="$LOGDIR/wr2-ig-metrics-analyst.log"
 ERR="$LOGDIR/wr2-ig-metrics-analyst.err.log"
+
+TIMEOUT_SECS="${WR2_IG_METRICS_TIMEOUT_SECS:-7200}"
+HEARTBEAT_SECS=300
+KILL_GRACE_SECS=10
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst starting" >> "$LOG"
 
@@ -90,14 +110,57 @@ else
   GEMINI_HINT=" IMPORTANT: agy binary not found — use the LOCAL statistical fallback at Step 2, mark partial:true."
 fi
 
-# Spawn Claude agent (Sonnet 5) per spec frontmatter
+# Spawn Claude agent (Sonnet 5) per spec frontmatter — backgrounded under a
+# wall-clock watchdog (see B7 note at top of file).
 cd "${HOME}/Desktop/nuzantara"
+CLAUDE_PROMPT="Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics analysis. Follow the spec in ~/.claude/agents/wr2-ig-metrics-analyst.md exactly. Output the proposed amendment file path on the last line.${GEMINI_HINT}"
+
+# Best-effort line-buffering for the child's stdout/stderr (macOS ships a
+# native `stdbuf`, syntax `-o L`/`-e L` — not the GNU `-oL` short form).
+# Defense-in-depth only: the primary "log is never silent" guarantee below
+# is the wrapper's own heartbeat, which does not depend on child buffering
+# behavior at all.
+if command -v stdbuf &>/dev/null; then
+  stdbuf -o L -e L /Users/nuzantara/.local/bin/claude -p \
+    --model claude-sonnet-5 \
+    --permission-mode bypassPermissions \
+    "$CLAUDE_PROMPT" \
+    >> "$LOG" 2>> "$ERR" &
+else
+  /Users/nuzantara/.local/bin/claude -p \
+    --model claude-sonnet-5 \
+    --permission-mode bypassPermissions \
+    "$CLAUDE_PROMPT" \
+    >> "$LOG" 2>> "$ERR" &
+fi
+CLAUDE_PID=$!
+
+ELAPSED=0
+TIMED_OUT=0
+while kill -0 "$CLAUDE_PID" 2>/dev/null; do
+  if [ "$ELAPSED" -ge "$TIMEOUT_SECS" ]; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] TIMEOUT after ${TIMEOUT_SECS}s — sending SIGTERM to pid $CLAUDE_PID" >> "$LOG"
+    kill -TERM "$CLAUDE_PID" 2>/dev/null || true
+    sleep "$KILL_GRACE_SECS"
+    if kill -0 "$CLAUDE_PID" 2>/dev/null; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] pid $CLAUDE_PID survived SIGTERM — sending SIGKILL" >> "$LOG"
+      kill -KILL "$CLAUDE_PID" 2>/dev/null || true
+    fi
+    TIMED_OUT=1
+    break
+  fi
+  sleep "$HEARTBEAT_SECS"
+  ELAPSED=$((ELAPSED + HEARTBEAT_SECS))
+  if kill -0 "$CLAUDE_PID" 2>/dev/null; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] still running (${ELAPSED}s elapsed, timeout ${TIMEOUT_SECS}s, pid $CLAUDE_PID)" >> "$LOG"
+  fi
+done
+
 CLAUDE_EXIT=0
-/Users/nuzantara/.local/bin/claude -p \
-  --model claude-sonnet-5 \
-  --permission-mode bypassPermissions \
-  "Use the wr2-ig-metrics-analyst agent to run the weekly IG metrics analysis. Follow the spec in ~/.claude/agents/wr2-ig-metrics-analyst.md exactly. Output the proposed amendment file path on the last line.${GEMINI_HINT}" \
-  >> "$LOG" 2>> "$ERR" || CLAUDE_EXIT=$?
+wait "$CLAUDE_PID" 2>/dev/null && CLAUDE_EXIT=0 || CLAUDE_EXIT=$?
+if [ "$TIMED_OUT" -eq 1 ]; then
+  CLAUDE_EXIT=124
+fi
 
 # Explicit tier-provenance line (PENDING-ARMS sonnet-5 runtime proof, 2026-07-06 fix):
 # single-tier by design (no claude-cascade.sh fallback — this agent needs Claude's
@@ -105,8 +168,12 @@ CLAUDE_EXIT=0
 # "did the one tier we have actually answer", not "which of several answered".
 if [ "$CLAUDE_EXIT" -eq 0 ]; then
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] used: tier1-claude-sonnet-5 (exit=0)" >> "$LOG"
+elif [ "$CLAUDE_EXIT" -eq 124 ]; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] [wr2-ig-metrics] used: tier1-claude-sonnet-5 ABORTED (timeout after ${TIMEOUT_SECS}s, pid $CLAUDE_PID)" >> "$ERR"
 else
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] agent run failed (exit $CLAUDE_EXIT) model=claude-sonnet-5" >> "$ERR"
 fi
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] wr2-ig-metrics-analyst done" >> "$LOG"
+
+exit "$CLAUDE_EXIT"
