@@ -502,13 +502,25 @@ def call_deepseek(target_text: str, target_path: str, brand_ctx: str,
         raise RuntimeError("DEEPSEEK_API_KEY missing")
 
     # Smart-spend 2026-07-14: consult the cost breaker before spending, ledger
-    # after. Best-effort import (the HOME-fork copy on Pro may not sit next to
-    # a scripts/ dir) — a missing guard logs a warning and proceeds; a firing
-    # guard raises, which is the runner's normal fail-visible path.
+    # after. Best-effort import (the HOME-fork copy on Pro lives at
+    # ~/scripts/eventbus/ with no repo scripts/ two levels up, so we also try
+    # NUZANTARA_REPO_ROOT and the known checkout locations) — a missing guard
+    # logs a warning and proceeds; a firing guard raises, which is the
+    # runner's normal fail-visible path.
     _dsc = None
     try:
         import sys as _sys
-        _scripts_dir = str(Path(__file__).resolve().parents[2] / "scripts")
+        _env_root = os.environ.get("NUZANTARA_REPO_ROOT")
+        _candidates = [
+            Path(__file__).resolve().parents[2] / "scripts",
+            *([Path(_env_root) / "scripts"] if _env_root else []),
+            Path.home() / "Desktop" / "nuzantara-deploy" / "scripts",
+            Path.home() / "Desktop" / "nuzantara" / "scripts",
+        ]
+        _scripts_dir = next(
+            (str(c) for c in _candidates if (c / "deepseek_client.py").is_file()),
+            str(_candidates[0]),
+        )
         if _scripts_dir not in _sys.path:
             _sys.path.insert(0, _scripts_dir)
         import deepseek_client as _dsc  # noqa: PLC0415
