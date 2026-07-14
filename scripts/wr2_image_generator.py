@@ -1296,10 +1296,12 @@ async def _process_one(
     results: list[Any] = []
 
     if IMAGE_BACKEND == "codex" or (IMAGE_BACKEND == "auto" and codex_available):
-        # Codex-only path: no Playwright launch at all.
+        # Codex-primary path: no Playwright launch at all (context=None).
         # In auto mode, if Codex is available we skip Playwright entirely
-        # — Codex handles 4:5 native and is the desired primary. FlowKit/
-        # Playwright are only fallbacks if Codex itself is missing.
+        # — Codex handles 4:5 native and is the desired primary. FlowKit is
+        # a per-slide fallback if Codex itself fails; Playwright is never
+        # reintroduced here (context=None keeps _gen_image_with_semaphore's
+        # Playwright branch unreachable — see its `context is None` guard).
         # Without this guard, the Playwright launch loop below ran a
         # `launch_persistent_context` per slide even when Codex succeeded,
         # leading to network-service crashes on slide 11 (08:09 WITA run).
@@ -1309,10 +1311,17 @@ async def _process_one(
         # 'playwright' in the deploy venv). Codex MUST be preferred when
         # available regardless of FlowKit status. Empirical 2026-05-19:
         # 2 drafts (2f21e709, 98805a61) went image_failed because of this.
+        # 2026-07-14 fix: in auto mode, pass backend="auto" (not "codex")
+        # and flowkit_available through, so a per-slide Codex failure falls
+        # back to FlowKit instead of dead-ending as image_failed. Explicit
+        # WR2_IMAGE_BACKEND=codex still passes backend="codex" strictly —
+        # an explicit codex-only request must not silently cascade.
         sem = asyncio.Semaphore(1)
+        per_slide_backend = "auto" if IMAGE_BACKEND == "auto" else "codex"
         logger.info(
-            "Codex-only path active (backend=%s, codex_available=True). "
-            "Skipping Playwright launch.", IMAGE_BACKEND,
+            "Codex-primary path active (backend=%s, codex_available=True, "
+            "flowkit_available=%s). Skipping Playwright launch.",
+            IMAGE_BACKEND, flowkit_available,
         )
         for idx, s in enumerate(hero_slides):
             r = await _gen_image_with_semaphore(
@@ -1321,8 +1330,9 @@ async def _process_one(
                 s["slide_number"],
                 s.get("image_prompt") or "",
                 str(draft_id),
-                backend="codex",
+                backend=per_slide_backend,
                 codex_available=True,
+                flowkit_available=flowkit_available,
                 tonal_palette=s.get("tonal_palette"),
             )
             results.append(r)
