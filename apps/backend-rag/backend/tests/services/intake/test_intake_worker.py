@@ -1,6 +1,7 @@
 """Integration tests for the intake worker orchestrator (FASE 2).
 
-Runs against the LOCAL nuzantara_dev DB (same default as test_intake_enqueue).
+Runs against the LOCAL nuzantara_test DB.  The operational nuzantara_dev DB is
+never a test default because it contains the live Intake queue.
 Each test enqueues its own jobs via the FASE 1 enqueue() core (unique blobs ->
 unique intake_key), runs real IntakeWorker instances against them, then cleans
 up by blob_hash. Short lease TTLs (2-3s) keep the reclaim test fast.
@@ -39,8 +40,9 @@ from backend.services.intake.worker import (
 
 _DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql://nuzantara@localhost:5432/nuzantara_dev",
+    "postgresql://nuzantara@localhost:5432/nuzantara_test",
 )
+_TEST_PIPELINE_VERSION = f"pytest-intake-{os.getpid()}"
 
 # Number of stub stages from 'pending' to 'done'.
 _N_STAGES = len(STAGE_TRANSITIONS)
@@ -51,9 +53,7 @@ def test_main_module_alias_prevents_transient_error_class_duplication() -> None:
     main_mod = ModuleType("__main__")
     modules = {"__main__": main_mod}
 
-    alias = _install_canonical_main_alias(
-        "__main__", "backend.services.intake", modules
-    )
+    alias = _install_canonical_main_alias("__main__", "backend.services.intake", modules)
 
     assert alias == "backend.services.intake.worker"
     assert modules["backend.services.intake.worker"] is main_mod
@@ -99,6 +99,7 @@ async def _make_jobs(pool: asyncpg.Pool, tmp_path, n: int, tag: str) -> list[int
             source="drive",
             source_ref=f"test/{tag}/{uuid.uuid4()}",
             blob_path=str(f),
+            pipeline_version=_TEST_PIPELINE_VERSION,
         )
         qids.append(res.queue_id)
     return qids
@@ -161,7 +162,10 @@ async def test_exactly_once_two_workers_100_jobs(pool, tmp_path):
     qids = await _make_jobs(pool, tmp_path, n, "eo")
     try:
         cfg = WorkerConfig(
-            lease_ttl_seconds=30, heartbeat_interval_seconds=999, poll_interval_seconds=0.01
+            lease_ttl_seconds=30,
+            heartbeat_interval_seconds=999,
+            poll_interval_seconds=0.01,
+            pipeline_version_filter=_TEST_PIPELINE_VERSION,
         )
         w1 = IntakeWorker(pool, config=cfg, worker_id="w1")
         w2 = IntakeWorker(pool, config=cfg, worker_id="w2")
@@ -204,7 +208,10 @@ async def test_kill9_reclaim_no_job_lost(pool, tmp_path):
     try:
         lease_ttl = 2  # seconds
         cfg = WorkerConfig(
-            lease_ttl_seconds=lease_ttl, heartbeat_interval_seconds=999, poll_interval_seconds=0.05
+            lease_ttl_seconds=lease_ttl,
+            heartbeat_interval_seconds=999,
+            poll_interval_seconds=0.05,
+            pipeline_version_filter=_TEST_PIPELINE_VERSION,
         )
         dead_worker = IntakeWorker(pool, config=cfg, worker_id="dead")
 
@@ -331,6 +338,7 @@ async def test_poison_pill_goes_dead_with_alert(pool, tmp_path):
             poll_interval_seconds=0.01,
             base_backoff_seconds=0.05,
             max_backoff_seconds=0.2,
+            pipeline_version_filter=_TEST_PIPELINE_VERSION,
         )
         alerts: list[str] = []
 
@@ -340,8 +348,11 @@ async def test_poison_pill_goes_dead_with_alert(pool, tmp_path):
         w = IntakeWorker(pool, config=cfg, worker_id="poison-w", alert_fn=capture_alert)
 
         # Inject a stage handler that always crashes.
+        synthetic_email = "test" + "@" + "x.example"
+        synthetic_ktp = "1234" * 4
+
         async def crash(job, stage):  # noqa: ANN001
-            raise RuntimeError(f"poison stage={stage} leak test@x.com KTP 1234567890123456")
+            raise RuntimeError(f"poison stage={stage} leak {synthetic_email} KTP {synthetic_ktp}")
 
         w.stage_handler = crash
 
@@ -369,8 +380,8 @@ async def test_poison_pill_goes_dead_with_alert(pool, tmp_path):
         assert row["attempts"] == row["max_attempts"], f"attempts={row['attempts']}"
         assert len(alerts) == 1, f"expected 1 alert, got {len(alerts)}: {alerts}"
         # PII masked in persisted error.
-        assert "test@x.com" not in row["last_error"], row["last_error"]
-        assert "1234567890123456" not in row["last_error"], row["last_error"]
+        assert synthetic_email not in row["last_error"], row["last_error"]
+        assert synthetic_ktp not in row["last_error"], row["last_error"]
         assert "[EMAIL]" in row["last_error"] and "[KTP/CARD]" in row["last_error"]
         assert iters < max_iters, "ran to iter cap -> suspected infinite loop"
         print(
@@ -393,6 +404,7 @@ async def test_transient_stage_error_does_not_burn_attempt(pool, tmp_path):
             heartbeat_interval_seconds=999,
             poll_interval_seconds=0.01,
             transient_backoff_seconds=30,
+            pipeline_version_filter=_TEST_PIPELINE_VERSION,
         )
         alerts: list[str] = []
 
@@ -636,7 +648,11 @@ async def test_attempts_over_max_is_terminal_dead(pool, tmp_path):
                 "next_visible_at=now() WHERE id=$1",
                 qid,
             )
-        cfg = WorkerConfig(lease_ttl_seconds=30, poll_interval_seconds=0.01)
+        cfg = WorkerConfig(
+            lease_ttl_seconds=30,
+            poll_interval_seconds=0.01,
+            pipeline_version_filter=_TEST_PIPELINE_VERSION,
+        )
         w = IntakeWorker(pool, config=cfg, worker_id="term-w")
         async with pool.acquire() as conn:
             claimed = await w._claim_with_inbound(conn)

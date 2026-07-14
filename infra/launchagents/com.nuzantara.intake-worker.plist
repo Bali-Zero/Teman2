@@ -14,6 +14,10 @@
 		<string>qwen3.5:9b</string>
 		<key>INTAKE_EXTRACT_NUM_PREDICT</key>
 		<string>1024</string>
+		<key>INTAKE_EXTRACT_PAGE_LOCAL_MAX_CHARS</key>
+		<string>12000</string>
+		<key>INTAKE_EXTRACT_PAGE_LOCAL_RADIUS</key>
+		<string>1</string>
 		<key>INTAKE_EXTRACT_TIMEOUT</key>
 		<string>90</string>
 		<key>INTAKE_DATABASE_URL</key>
