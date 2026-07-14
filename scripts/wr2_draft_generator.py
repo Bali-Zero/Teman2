@@ -747,7 +747,10 @@ def _upload_to_tigris(image_bytes: bytes, key: str, content_type: str = "image/p
 CODEX_BIN = "/opt/homebrew/bin/codex"
 CODEX_OUTPUT_DIR = Path.home() / ".codex" / "generated_images"
 CODEX_TIMEOUT_SEC = 600  # 5x margin over observed 113s
-CODEX_MTIME_WINDOW_SEC = 600  # search window for "fresh" PNG (10min)
+# B14 (2026-07-14): the mtime staleness window is now sourced from
+# wr2_image_generator.CODEX_MTIME_WINDOW_SEC (single SSOT) via the lazy
+# import in _generate_cover_via_codex below — a local duplicate constant
+# here would be exactly the kind of divergence the fix removes.
 # Strip provider API keys before spawning Codex subprocess. Mirror of
 # backend.services.federation_alerts.actions.codex_image_gen._safe_env().
 # OPENAI_API_KEY is held by parent for text-embedding-3-small only;
@@ -778,10 +781,34 @@ async def _generate_cover_via_codex(scene_core: str) -> tuple[bytes | None, str 
         len(bare_prompt),
         bare_prompt[:120],
     )
+
+    # B14 (2026-07-14): this cover path used to run its OWN duplicate
+    # `ig_*.png`-only glob (sibling of the B5 fix in wr2_image_generator.py,
+    # PR #2443). Codex's `$imagegen` filename convention has since drifted
+    # (`ig_*` -> `call_*` -> `exec-*`) — a fixed-prefix glob here matched
+    # nothing NEW ever again and silently fell through to Playwright/Nano
+    # Banana on every Codex success (live proof: draft 8c8d85fa, 2026-07-14
+    # 23:00, a fresh 2.4MB `exec-*.png` cover went undetected). Cure = reuse
+    # the canonical name-agnostic detector instead of re-diverging a second
+    # copy that would need fixing again on the next rename. Same lazy-import
+    # pattern already used below by `_generate_cover_via_playwright` /
+    # `_finalize_cover` for wr2_image_generator (no circular import: that
+    # module never imports this one).
+    sys.path.insert(0, str(_REPO_ROOT / "scripts"))
+    try:
+        from wr2_image_generator import (  # noqa: E402
+            CODEX_MTIME_WINDOW_SEC as _WIG_MTIME_WINDOW_SEC,
+            _select_fresh_codex_png,
+        )
+    except Exception as e:
+        return None, f"wr2_image_generator import failed (codex detector): {e}"
+
     # Snapshot pre-existing PNGs so we can identify the fresh one by exclusion.
+    # Name-agnostic (all `*.png`, not just `ig_*.png`) — see detector docstring.
     pre_existing: set[Path] = set()
     if CODEX_OUTPUT_DIR.exists():
-        pre_existing = set(CODEX_OUTPUT_DIR.rglob("ig_*.png"))
+        pre_existing = set(CODEX_OUTPUT_DIR.rglob("*.png"))
+    start_ts = time.time()
 
     t0 = time.perf_counter()
     try:
@@ -808,21 +835,15 @@ async def _generate_cover_via_codex(scene_core: str) -> tuple[bytes | None, str 
     except Exception as e:
         return None, f"codex spawn failed: {e}"
 
-    # Find the freshest PNG NOT in the pre-existing set.
-    if not CODEX_OUTPUT_DIR.exists():
-        return None, "codex output dir does not exist after run"
-    candidates = [p for p in CODEX_OUTPUT_DIR.rglob("ig_*.png") if p not in pre_existing]
-    if not candidates:
-        # Fallback: take latest by mtime if it falls within the window.
-        all_pngs = list(CODEX_OUTPUT_DIR.rglob("ig_*.png"))
-        if not all_pngs:
-            return None, "no PNG found in codex output dir"
-        latest = max(all_pngs, key=lambda p: p.stat().st_mtime)
-        if (time.time() - latest.stat().st_mtime) > CODEX_MTIME_WINDOW_SEC:
-            return None, f"latest PNG older than {CODEX_MTIME_WINDOW_SEC}s window"
-        png_path = latest
-    else:
-        png_path = max(candidates, key=lambda p: p.stat().st_mtime)
+    png_path, select_err = _select_fresh_codex_png(
+        CODEX_OUTPUT_DIR,
+        pre_existing,
+        start_ts,
+        mtime_window_sec=_WIG_MTIME_WINDOW_SEC,
+        slide_number="cover",
+    )
+    if png_path is None:
+        return None, select_err
 
     try:
         img_bytes = png_path.read_bytes()
