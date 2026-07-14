@@ -3,8 +3,16 @@ date: 2026-07-14
 domain: operations
 client_case: none
 sources: ["workflow scheduler-necropsy wf_380e0d6c (21 agents: 12 task investigators + disable-history archaeologist + adversarial refuters on every RESURRECT/RETIRE verdict + synthesis)", "apps/backend-rag/backend/services/misc/autonomous_scheduler.py", "apps/backend-rag/backend/app/setup/service_initializer.py", "git log/blame service_initializer.py"]
-adversarial_review: "every RESURRECT/RETIRE verdict refuted by an independent verifier agent; coverage claims re-executed against repo ground truth (5+ 'covered by X' comments proven FALSE, W82)"
+adversarial_review: gemini
 ---
+
+> **Adversarial review (2026-07-14):** two layers. (1) Inside the workflow, every RESURRECT/RETIRE
+> verdict was refuted by an independent verifier agent and coverage claims were re-executed against
+> repo ground truth (5+ "covered by X" comments proven FALSE, W82). (2) External seat: **Gemini via
+> `agy`** re-attacked all 12 per-task claims against grepped worktree evidence — first pass FAIL
+> (7 claims evidence-starved by the prompt, not wrong), second pass with the full evidence pack:
+> **12/12 CONFIRMED-SOUND, VERDICT: PASS**. Codex seat attempted first but silent-dead on both MCP
+> (30min) and CLI (10min) — cascade fell to Tier 2 per doctrine.
 
 # AutonomousScheduler necropsy — triage of 12 tasks on an engine dead since 2026-02-11
 
