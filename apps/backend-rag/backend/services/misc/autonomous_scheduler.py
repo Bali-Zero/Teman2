@@ -813,6 +813,26 @@ async def create_and_start_scheduler(
         except Exception as e:
             logger.error("❌ Failed to register KGIncrementalBuilder: %s", e)
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # WHATSAPP WABA SUBSCRIPTION GUARDIAN (every 6 hours)
+    # Re-arms POST subscribed_apps unconditionally (the GET is not readable with
+    # our token) + inbound-silence receptor. Born from the 8-day deafness of
+    # 2026-07-05→13. Kill switch: WA_SUBSCRIPTION_GUARDIAN_ENABLED=false.
+    # ═══════════════════════════════════════════════════════════════════════════
+    try:
+        from backend.services.misc.whatsapp_subscription_guardian import (
+            register_whatsapp_subscription_guardian,
+        )
+        from backend.services.monitoring.alert_service import AlertService
+
+        register_whatsapp_subscription_guardian(
+            scheduler,
+            db_pool=db_pool,
+            alert_service=AlertService(),
+        )
+    except Exception as e:
+        logger.error("❌ Failed to register WhatsApp subscription guardian: %s", e)
+
     # Start the scheduler
     await scheduler.start()
 
