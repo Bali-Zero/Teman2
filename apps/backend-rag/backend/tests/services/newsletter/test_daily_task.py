@@ -14,7 +14,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from backend.services.newsletter.daily_task import (
+    DEFAULT_TARGET_HOUR_UTC,
+    DEFAULT_TARGET_MINUTE_UTC,
     _persist_state,
+    _resolve_target_utc,
     _seconds_until_next_utc_target,
     start_newsletter_daily_task,
 )
@@ -40,10 +43,34 @@ def test_seconds_until_next_utc_target_exactly_at_target_rolls_to_tomorrow() -> 
     assert seconds == 24 * 3600
 
 
-def test_seconds_until_next_utc_target_default_08_wita_is_midnight_utc() -> None:
+def test_seconds_until_next_utc_target_boundary_near_midnight_utc() -> None:
     now = datetime(2026, 7, 15, 23, 59, 0, tzinfo=timezone.utc)
     seconds = _seconds_until_next_utc_target(0, 0, now=now)
-    assert seconds == 60  # 1 minute to midnight UTC == 08:00 WITA
+    assert seconds == 60  # 1 minute to midnight UTC
+
+
+def test_default_target_is_18_30_utc_02_30_wita() -> None:
+    # 2026-07-15 reschedule (Zero): 18:30 UTC == 02:30 WITA, was 00:00/08:00.
+    assert (DEFAULT_TARGET_HOUR_UTC, DEFAULT_TARGET_MINUTE_UTC) == (18, 30)
+
+
+def test_resolve_target_utc_env_override_wins() -> None:
+    with patch.dict("os.environ", {"NEWSLETTER_DAILY_TARGET_UTC": "18:30"}):
+        assert _resolve_target_utc(0, 0) == (18, 30)
+
+
+def test_resolve_target_utc_no_env_falls_back_to_defaults() -> None:
+    with patch.dict("os.environ", {}, clear=True):
+        assert _resolve_target_utc(18, 30) == (18, 30)
+
+
+@pytest.mark.parametrize(
+    "raw",
+    ["", "not-a-time", "25:00", "18:60", "18", "18:30:00", "ab:cd"],
+)
+def test_resolve_target_utc_malformed_falls_back_to_defaults(raw: str) -> None:
+    with patch.dict("os.environ", {"NEWSLETTER_DAILY_TARGET_UTC": raw}):
+        assert _resolve_target_utc(18, 30) == (18, 30)
 
 
 def test_start_newsletter_daily_task_respects_kill_switch() -> None:
