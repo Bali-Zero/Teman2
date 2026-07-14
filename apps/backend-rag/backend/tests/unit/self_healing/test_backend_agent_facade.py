@@ -132,3 +132,18 @@ class TestReducedAgent:
         agent = BackendSelfHealingAgent(service_name="t")
         names = [type(a).__name__ for a in agent.orchestrator.actions]
         assert names == ["GCAction", "ReconnectCacheAction", "RestartServiceAction"]
+
+    def test_api_check_defaults_to_ipv6_loopback(self):
+        # Prod uvicorn binds `::` only and /etc/hosts maps localhost to
+        # 127.0.0.1 alone — a "localhost" URL can never connect (red on
+        # every cycle, proven live 2026-07-14).
+        agent = BackendSelfHealingAgent(service_name="t")
+        api_checks = [c for c in agent.orchestrator.checks if type(c).__name__ == "HTTPAPICheck"]
+        assert len(api_checks) == 1
+        assert api_checks[0].url == "http://[::1]:8080/health"
+
+    def test_api_check_url_env_override(self, monkeypatch):
+        monkeypatch.setenv("SELF_HEAL_API_URL", "http://127.0.0.1:9999/health")
+        agent = BackendSelfHealingAgent(service_name="t")
+        api_checks = [c for c in agent.orchestrator.checks if type(c).__name__ == "HTTPAPICheck"]
+        assert api_checks[0].url == "http://127.0.0.1:9999/health"
