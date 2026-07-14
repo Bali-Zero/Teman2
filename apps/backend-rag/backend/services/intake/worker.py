@@ -696,50 +696,84 @@ class IntakeWorker:
         except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
             logger.error("boot remap/reap failed (continuing): %s", exc)
 
-        loop = asyncio.get_event_loop()
-        last_reap = loop.time()
+        lane_count = max(1, self.config.concurrency)
+        tasks = [
+            asyncio.create_task(
+                self._run_lane(lane_number),
+                name=f"intake-lane-{lane_number}",
+            )
+            for lane_number in range(lane_count)
+        ]
+        tasks.append(
+            asyncio.create_task(
+                self._run_reaper_loop(),
+                name="intake-review-reaper",
+            )
+        )
+        try:
+            await asyncio.gather(*tasks)
+        except asyncio.CancelledError:
+            logger.info("intake worker %s cancelled", self.worker_id)
+            raise
+        finally:
+            self._stop.set()
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        logger.info("intake worker %s stopped", self.worker_id)
+
+    async def _run_lane(self, lane_number: int) -> None:
+        """Run one independent claim lane without waiting for sibling lanes.
+
+        Intake stages have radically different latency profiles: validation and
+        routing usually take milliseconds, while OCR or local-model inference can
+        take minutes.  A batched ``gather`` made every fast lane wait for the
+        slowest sibling before claiming again, creating head-of-line blocking.
+        Each lane now claims its next job immediately after finishing its current
+        one while preserving the same SKIP LOCKED and lease guarantees.
+        """
         db_failures = 0
         while not self._stop.is_set():
             try:
-                if loop.time() - last_reap >= REAP_INTERVAL_SECONDS:
-                    last_reap = loop.time()
-                    await reap_expired_review_claims(self.pool)
-                n = self.config.concurrency
-                if n <= 1:
-                    did_work = await self.run_once()
-                else:
-                    # Fan out N concurrent claims. FOR UPDATE SKIP LOCKED in the
-                    # claim CTE guarantees each task grabs a distinct row (or None).
-                    results = await asyncio.gather(
-                        *(self.run_once() for _ in range(n)),
-                        return_exceptions=True,
-                    )
-                    for r in results:
-                        if isinstance(r, (asyncpg.PostgresError, asyncpg.InterfaceError, OSError)):
-                            raise r
-                    did_work = any(r is True for r in results)
+                did_work = await self.run_once()
                 db_failures = 0
                 if not did_work:
                     await self._sleep_or_stop(self.config.poll_interval_seconds)
             except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
                 db_failures += 1
                 logger.error(
-                    "DB error (%d/%d): %s",
+                    "lane %d DB error (%d/%d): %s",
+                    lane_number,
                     db_failures,
                     DB_FAILURE_EXIT_THRESHOLD,
                     exc,
                 )
                 if db_failures >= DB_FAILURE_EXIT_THRESHOLD:
                     logger.error("DB unreachable; exiting 0 to let launchd respawn slowly")
+                    self._stop.set()
                     return
                 await self._sleep_or_stop(self.config.poll_interval_seconds)
             except asyncio.CancelledError:
-                logger.info("intake worker %s cancelled", self.worker_id)
                 raise
             except Exception:
-                logger.exception("unexpected worker loop error")
+                logger.exception("unexpected worker lane %d error", lane_number)
                 await self._sleep_or_stop(self.config.poll_interval_seconds)
-        logger.info("intake worker %s stopped", self.worker_id)
+
+    async def _run_reaper_loop(self) -> None:
+        """Reap abandoned human-review claims independently of work lanes."""
+        while not self._stop.is_set():
+            await self._sleep_or_stop(REAP_INTERVAL_SECONDS)
+            if self._stop.is_set():
+                return
+            try:
+                await reap_expired_review_claims(self.pool)
+            except asyncio.CancelledError:
+                raise
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
+                logger.error("review-claim reaper DB error: %s", exc)
+            except Exception:
+                logger.exception("unexpected review-claim reaper error")
 
     async def _sleep_or_stop(self, seconds: float) -> None:
         try:
