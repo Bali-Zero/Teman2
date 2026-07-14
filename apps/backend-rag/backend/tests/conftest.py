@@ -20,6 +20,18 @@ os.environ.setdefault("GOOGLE_API_KEY", "test-google-api-key")
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars_long")
 os.environ.setdefault("API_KEYS", "test_api_key_1,test_api_key_2")
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
+# Fail closed for integration tests that historically defaulted to
+# ``nuzantara_dev``.  That database carries the live local Intake/WhatsApp
+# queue on Pro, so a manual pytest run must never claim or rewrite its rows.
+# CI and operators can still provide an explicit isolated TEST_DATABASE_URL.
+os.environ.setdefault(
+    "TEST_DATABASE_URL",
+    "postgresql://nuzantara@localhost:5432/nuzantara_test",
+)
+if os.environ["TEST_DATABASE_URL"].split("?", 1)[0].rstrip("/").endswith("/nuzantara_dev"):
+    raise RuntimeError(
+        "Refusing to run pytest against operational nuzantara_dev; use nuzantara_test"
+    )
 os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "test")

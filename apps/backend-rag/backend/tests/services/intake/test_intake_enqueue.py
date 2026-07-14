@@ -1,6 +1,7 @@
 """Integration tests for the intake enqueue core (FASE 1B).
 
-Runs against the LOCAL nuzantara_dev DB (same default as tests/db/conftest.py).
+Runs against the LOCAL nuzantara_test DB.  The operational nuzantara_dev DB is
+never a test default because it contains the live Intake queue.
 enqueue() opens its own transaction via the pool, so we cannot wrap the whole
 test in a single rolled-back connection; instead each test uses a unique blob
 (tmp file with random content → unique sha256) and cleans up its own rows by
@@ -26,7 +27,7 @@ from backend.services.intake.enqueue import (
 
 _DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql://nuzantara@localhost:5432/nuzantara_dev",
+    "postgresql://nuzantara@localhost:5432/nuzantara_test",
 )
 
 
@@ -107,9 +108,7 @@ async def test_enqueue_idempotent_same_blob(pool, cleanup_hashes, tmp_path):
         n_inst = await conn.fetchval(
             "SELECT count(*) FROM document_instances WHERE blob_hash = $1", bh
         )
-        n_queue = await conn.fetchval(
-            "SELECT count(*) FROM intake_queue WHERE blob_hash = $1", bh
-        )
+        n_queue = await conn.fetchval("SELECT count(*) FROM intake_queue WHERE blob_hash = $1", bh)
     assert n_inst == 1
     assert n_queue == 1
 

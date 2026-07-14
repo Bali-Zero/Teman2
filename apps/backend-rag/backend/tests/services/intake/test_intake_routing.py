@@ -1,6 +1,7 @@
 """Integration tests for FASE-4 entity-resolution + routing proposal.
 
-Runs against the LOCAL nuzantara_dev DB (same convention as test_intake_worker).
+Runs against the LOCAL nuzantara_test DB.  The operational nuzantara_dev DB is
+never a test default because it contains the live Intake queue and proposals.
 Seeds SYNTHETIC, clearly-tagged CRM rows (torn down per-test), exercises the
 C4 decision matrix (AUTO_ATTACH / LINK_CANDIDATE / AMBIGUOUS / NO_MATCH), the
 company->owner->practice routing target, idempotency, and PROVES route_stage
@@ -23,7 +24,7 @@ from backend.services.intake.routing import backfill_received_by, route_stage
 
 _DB_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql://nuzantara@localhost:5432/nuzantara_dev",
+    "postgresql://nuzantara@localhost:5432/nuzantara_test",
 )
 
 TAG = "FASE4PYTEST"
@@ -52,40 +53,68 @@ async def seeded(pool):
         ids = {}
         ids["c_auto"] = await c.fetchval(
             "INSERT INTO clients (full_name, passport_number, notes) VALUES ($1,$2,$3) RETURNING id",
-            f"{TAG} Alice Auto", "ZZ9988770", TAG)
+            f"{TAG} Alice Auto",
+            "ZZ9988770",
+            TAG,
+        )
         ids["c_homo1"] = await c.fetchval(
             "INSERT INTO clients (full_name, passport_number, notes) VALUES ($1,$2,$3) RETURNING id",
-            f"{TAG} Budi Santoso", "AA1111111", TAG)
+            f"{TAG} Budi Santoso",
+            "AA1111111",
+            TAG,
+        )
         ids["c_homo2"] = await c.fetchval(
             "INSERT INTO clients (full_name, passport_number, notes) VALUES ($1,$2,$3) RETURNING id",
-            f"{TAG} Budi Santoso", "BB2222222", TAG)
+            f"{TAG} Budi Santoso",
+            "BB2222222",
+            TAG,
+        )
         ids["c_link"] = await c.fetchval(
             "INSERT INTO clients (full_name, notes) VALUES ($1,$2) RETURNING id",
-            f"{TAG} Wolfgang Amadeus Zinnemann", TAG)
+            f"{TAG} Wolfgang Amadeus Zinnemann",
+            TAG,
+        )
         ids["comp_auto"] = await c.fetchval(
             "INSERT INTO companies (company_name, nib, npwp_company) VALUES ($1,$2,$3) RETURNING id",
-            f"{TAG} PT Maju Auto", "9988776655443", "0011223344556677")
+            f"{TAG} PT Maju Auto",
+            "9988776655443",
+            "0011223344556677",
+        )
         ids["c_owner"] = await c.fetchval(
             "INSERT INTO clients (full_name, notes) VALUES ($1,$2) RETURNING id",
-            f"{TAG} Owner Of MajuAuto", TAG)
+            f"{TAG} Owner Of MajuAuto",
+            TAG,
+        )
         await c.execute(
             "INSERT INTO client_company_links (client_id, company_id, role, is_primary) "
-            "VALUES ($1,$2,'director',true)", ids["c_owner"], ids["comp_auto"])
+            "VALUES ($1,$2,'director',true)",
+            ids["c_owner"],
+            ids["comp_auto"],
+        )
         await c.execute(
             "INSERT INTO practices (client_id, practice_type_code, title, status) "
-            "VALUES ($1,'pt_pma_setup',$2,'on_process')", ids["c_owner"], f"{TAG} setup")
+            "VALUES ($1,'pt_pma_setup',$2,'on_process')",
+            ids["c_owner"],
+            f"{TAG} setup",
+        )
     try:
         yield ids
     finally:
         async with pool.acquire() as c:
-            await c.execute("DELETE FROM intake_queue WHERE intake_key LIKE $1 OR source_ref LIKE $1", f"{TAG}%")
+            await c.execute(
+                "DELETE FROM intake_queue WHERE intake_key LIKE $1 OR source_ref LIKE $1", f"{TAG}%"
+            )
             await c.execute("DELETE FROM document_instances WHERE blob_hash LIKE $1", f"{TAG}%")
             await c.execute(
                 "DELETE FROM client_company_links WHERE company_id IN "
-                "(SELECT id FROM companies WHERE company_name LIKE $1)", f"{TAG}%")
+                "(SELECT id FROM companies WHERE company_name LIKE $1)",
+                f"{TAG}%",
+            )
             await c.execute("DELETE FROM practices WHERE title LIKE $1", f"{TAG}%")
             await c.execute("DELETE FROM companies WHERE company_name LIKE $1", f"{TAG}%")
-            await c.execute("DELETE FROM clients WHERE notes = $1 OR full_name LIKE $2", TAG, f"{TAG}%")
+            await c.execute(
+                "DELETE FROM clients WHERE notes = $1 OR full_name LIKE $2", TAG, f"{TAG}%"
+            )
 
 
 def _fields(d: dict) -> dict:
@@ -102,21 +131,30 @@ async def _seed_queue(pool, doc_type: str, fields: dict) -> int:
         inst = await c.fetchval(
             "INSERT INTO document_instances (blob_hash, pipeline_version, blob_path, first_source) "
             "VALUES ($1,'v1',$2,'drive') RETURNING id",
-            f"{TAG}-{os.urandom(6).hex()}", f"/tmp/{TAG}.pdf")
+            f"{TAG}-{os.urandom(6).hex()}",
+            f"/tmp/{TAG}.pdf",
+        )
         return await c.fetchval(
             "INSERT INTO intake_queue "
             "(instance_id, source, source_ref, blob_path, blob_hash, pipeline_version, "
             " status, stage, intake_key, stage_output) "
             "VALUES ($1,'drive',$2,$3,$4,'v1','processing','route',$5,$6::jsonb) RETURNING id",
-            inst, f"{TAG}-ref", f"/tmp/{TAG}.pdf", f"{TAG}-{os.urandom(6).hex()}",
-            f"{TAG}-{os.urandom(6).hex()}", json.dumps(stage_output))
+            inst,
+            f"{TAG}-ref",
+            f"/tmp/{TAG}.pdf",
+            f"{TAG}-{os.urandom(6).hex()}",
+            f"{TAG}-{os.urandom(6).hex()}",
+            json.dumps(stage_output),
+        )
 
 
 async def _proposal(pool, queue_id: int):
     async with pool.acquire() as c:
         return await c.fetchrow(
             "SELECT status, entity_resolution, routing, commit_gate "
-            "FROM document_routing_proposal WHERE queue_id=$1", queue_id)
+            "FROM document_routing_proposal WHERE queue_id=$1",
+            queue_id,
+        )
 
 
 def _j(v):
@@ -125,7 +163,9 @@ def _j(v):
 
 @pytest.mark.asyncio
 async def test_auto_attach_passport_exact(pool, seeded):
-    q = await _seed_queue(pool, "passport", {"passport_no": "ZZ9988770", "name": f"{TAG} Alice Auto"})
+    q = await _seed_queue(
+        pool, "passport", {"passport_no": "ZZ9988770", "name": f"{TAG} Alice Auto"}
+    )
     r = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
     assert r["decision"] == "AUTO_ATTACH"
     assert r["requires_human"] is False
@@ -173,9 +213,7 @@ async def test_route_stage_consumes_auto_attach_result(monkeypatch, pool, seeded
             )
         return {"committed": True, "status": "auto_routed", "outcome": "committed"}
 
-    monkeypatch.setattr(
-        intake_routing, "_try_auto_attach_after_route", _fake_auto_attach
-    )
+    monkeypatch.setattr(intake_routing, "_try_auto_attach_after_route", _fake_auto_attach)
 
     q = await _seed_queue(
         pool,
@@ -237,7 +275,9 @@ async def test_bank_statement_account_holder_routes_as_subject_name(pool, seeded
 
 @pytest.mark.asyncio
 async def test_no_match(pool, seeded):
-    q = await _seed_queue(pool, "passport", {"passport_no": "QQ0000001", "name": f"{TAG} Nonexistent Person XYZ"})
+    q = await _seed_queue(
+        pool, "passport", {"passport_no": "QQ0000001", "name": f"{TAG} Nonexistent Person XYZ"}
+    )
     r = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
     assert r["decision"] == "NO_MATCH"
     er = _j((await _proposal(pool, q))["entity_resolution"])
@@ -246,19 +286,23 @@ async def test_no_match(pool, seeded):
 
 @pytest.mark.asyncio
 async def test_company_auto_attach_resolves_owner_and_practice(pool, seeded):
-    q = await _seed_queue(pool, "nib", {"nib_number": "9988776655443", "company_name": f"{TAG} PT Maju Auto"})
+    q = await _seed_queue(
+        pool, "nib", {"nib_number": "9988776655443", "company_name": f"{TAG} PT Maju Auto"}
+    )
     r = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
     assert r["decision"] == "AUTO_ATTACH"
     routing = _j((await _proposal(pool, q))["routing"])
     assert routing["company_id"] == seeded["comp_auto"]
     assert routing["client_id"] == seeded["c_owner"]  # via client_company_links
-    assert routing["practice_id"] is not None         # open practice hint
+    assert routing["practice_id"] is not None  # open practice hint
     assert routing["practice_hint"]["practice_type_code"] == "pt_pma_setup"
 
 
 @pytest.mark.asyncio
 async def test_idempotent_same_queue(pool, seeded):
-    q = await _seed_queue(pool, "passport", {"passport_no": "ZZ9988770", "name": f"{TAG} Alice Auto"})
+    q = await _seed_queue(
+        pool, "passport", {"passport_no": "ZZ9988770", "name": f"{TAG} Alice Auto"}
+    )
     r1 = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
     r2 = await route_stage({"id": q, "pipeline_version": "v1"}, "route", pool)
     assert r1["idempotent_skip"] is False
@@ -280,13 +324,21 @@ async def test_backfill_received_by(pool, seeded):
     async with pool.acquire() as c:
         c_assigned = await c.fetchval(
             "INSERT INTO clients (full_name, assigned_to, notes) VALUES ($1,$2,$3) RETURNING id",
-            f"{TAG} Backfill Target", "Backfill.Owner@Balizero.com", TAG)
+            f"{TAG} Backfill Target",
+            "Backfill.Owner@Balizero.com",
+            TAG,
+        )
         c_other = await c.fetchval(
             "INSERT INTO clients (full_name, assigned_to, notes) VALUES ($1,$2,$3) RETURNING id",
-            f"{TAG} Backfill Other", "Other.Consultant@Balizero.com", TAG)
+            f"{TAG} Backfill Other",
+            "Other.Consultant@Balizero.com",
+            TAG,
+        )
         c_unassigned = await c.fetchval(
             "INSERT INTO clients (full_name, notes) VALUES ($1,$2) RETURNING id",
-            f"{TAG} Backfill Unassigned", TAG)
+            f"{TAG} Backfill Unassigned",
+            TAG,
+        )
     q1 = await _seed_queue(pool, "passport", {"name": f"{TAG} Backfill Doc One"})
     q2 = await _seed_queue(pool, "passport", {"name": f"{TAG} Backfill Doc Two"})
 
@@ -322,7 +374,9 @@ async def test_route_stage_zero_crm_writes(pool, seeded):
             return {t: await c.fetchval(f"SELECT count(*) FROM {t}") for t in CRM_TABLES}
 
     before = await counts()
-    q1 = await _seed_queue(pool, "passport", {"passport_no": "ZZ9988770", "name": f"{TAG} Alice Auto"})
+    q1 = await _seed_queue(
+        pool, "passport", {"passport_no": "ZZ9988770", "name": f"{TAG} Alice Auto"}
+    )
     q2 = await _seed_queue(pool, "nib", {"nib_number": "9988776655443"})
     await route_stage({"id": q1, "pipeline_version": "v1"}, "route", pool)
     await route_stage({"id": q2, "pipeline_version": "v1"}, "route", pool)
@@ -367,9 +421,7 @@ async def test_anti_deadlock_revives_superseded_orphan(pool, seeded):
     # Simulate the reprocess marking the proposal superseded (m226) WITHOUT
     # bumping the queue's pipeline_version — so the re-route derives the SAME key.
     async with pool.acquire() as c:
-        await c.execute(
-            "UPDATE document_routing_proposal SET status='superseded' WHERE id=$1", pid
-        )
+        await c.execute("UPDATE document_routing_proposal SET status='superseded' WHERE id=$1", pid)
         assert (await _proposal(pool, q))["status"] == "superseded"
 
     # Re-route: same routing_key → ON CONFLICT → guard must revive the orphan.
@@ -381,7 +433,5 @@ async def test_anti_deadlock_revives_superseded_orphan(pool, seeded):
     )
     # exactly one proposal for this queue (no duplicate created)
     async with pool.acquire() as c:
-        n = await c.fetchval(
-            "SELECT count(*) FROM document_routing_proposal WHERE queue_id=$1", q
-        )
+        n = await c.fetchval("SELECT count(*) FROM document_routing_proposal WHERE queue_id=$1", q)
     assert n == 1
