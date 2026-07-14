@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 7acd3a34e66b02095b3fa2269d2728519a150d3a6ed19b5827a8ff4936984982
+checksum: d12958f8e2fcc087c5bd92649f825e1e703cc28aa72c75151ca504749e4df112
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1874,6 +1874,23 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.wr2_daily_carousel.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.wr2_worktree_gc
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 129600
+  owner_module: scripts/wr2_worktree_gc.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.worktree-gc.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.wr2_worktree_gc.json
     timestamp_field: ts
     status_field: status
 - id: mini.fleet_watch
