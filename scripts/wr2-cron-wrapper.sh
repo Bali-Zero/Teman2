@@ -15,6 +15,10 @@
 #   2. Resolve DATABASE_URL from Fly (nuzantara-rag) once per invocation.
 #   3. cd into apps/backend-rag, activate venv, exec python -m <module>.
 #
+# Exception: newsletter_cli.py runs entirely INSIDE Fly (see step 1.5) —
+# DATABASE_URL, NOTIFICATIONS_API_KEY, and the notifications endpoint only
+# exist there; Pro is just the scheduler.
+#
 # Designed for macOS launchd (Pro). Fails loud (exit != 0) if any required
 # piece is missing so missed-runs alerter can pick it up.
 
@@ -39,6 +43,29 @@ if [[ -f "$SECRETS_FILE" ]]; then
     set -a
     source "$SECRETS_FILE"
     set +a
+fi
+
+# 1.5 Newsletter only: dispatch the WHOLE run inside the Fly `api` process
+# instead of requiring local Postgres + pg-proxy. DATABASE_URL,
+# NOTIFICATIONS_API_KEY, and the /api/notifications/send-email endpoint all
+# live only on Fly — Pro has none of them and per CLAUDE.md §Cost constraint
+# a secret is never duplicated to a new machine "to make a cron simpler".
+# `fly` (FLY_API_TOKEN) is already present on Pro for other ops, so this adds
+# zero new secrets. `-g api` targets the process group by name (never a raw
+# machine ID, which is not stable across deploys/restarts).
+if [[ "$MODULE" == "backend.services.newsletter.newsletter_cli" ]]; then
+    if ! command -v fly >/dev/null 2>&1; then
+        echo "[wr2-wrapper] ERROR: fly CLI not found on PATH — cannot dispatch newsletter_cli into Fly (api process)." >&2
+        exit 74
+    fi
+    remote_cmd="python -m $MODULE"
+    for arg in "$@"; do
+        remote_cmd+=" $(printf '%q' "$arg")"
+    done
+    if [[ -n "${NEWSLETTER_SUBJECT_PREFIX:-}" ]]; then
+        remote_cmd="NEWSLETTER_SUBJECT_PREFIX=$(printf '%q' "$NEWSLETTER_SUBJECT_PREFIX") $remote_cmd"
+    fi
+    exec fly ssh console -a nuzantara-rag -g api -C "$remote_cmd"
 fi
 
 # 2. DATABASE_URL resolution
