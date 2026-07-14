@@ -35,4 +35,17 @@ INSTAGRAM_ACCESS_TOKEN="$TOK" "$PY" "$REPO/scripts/wr2_ig_metrics_scraper.py" \
   --max-age-days 3 >> "$LOG" 2>&1
 rc=$?
 echo "[$(ts)] scrape done rc=$rc" >> "$LOG"
+
+# Discovery step: find posts published BY HAND on @balizero0 that never went
+# through the WR2 pipeline (queue stays blind to them otherwise, scar #2).
+# Non-fatal on failure — the nightly metrics refresh above is the load-bearing
+# job, discovery is a best-effort add-on. MATCH-PENDING lines (fuzzy match to
+# an in-flight queue item) land in the same $LOG for a human to resolve via
+# `wr2_queue_writer.py mark-published`.
+echo "[$(ts)] discovery start" >> "$LOG"
+INSTAGRAM_ACCESS_TOKEN="$TOK" "$PY" "$REPO/scripts/wr2_ig_discovery.py" \
+  --token-env INSTAGRAM_ACCESS_TOKEN --max-age-days 90 >> "$LOG" 2>&1 \
+  || echo "[$(ts)] discovery failed rc=$?" >> "$LOG"
+echo "[$(ts)] discovery done" >> "$LOG"
+
 exit $rc
