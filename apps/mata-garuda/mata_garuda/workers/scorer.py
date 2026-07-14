@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import subprocess
+import time
 from datetime import datetime
 
 from mata_garuda.config import (
@@ -32,6 +34,19 @@ logger = logging.getLogger("mata_garuda.workers")
 
 CONSUMER_GROUP = "scorer"
 CONSUMER_NAME = "scorer-1"
+
+# Alert freshness gate (2026-07-14, backlog-drain hardening).
+# Ground truth (verified live): the scorer worker drains ~50 items/day while
+# inflow keeps pace, so a permanent ~1000-item backlog accumulates and
+# high-relevance items alert ~8 days late by the time they're finally
+# scored. run_sentinel_py.py's max_items was raised 50->300/day to actually
+# drain the backlog, but regulation_alert_agent.run_regulation_alert sends
+# ONE Telegram message per alert — draining ~1000 backlogged items without a
+# gate would flood Zero with alerts about news that is over a week old.
+# The gate below still scores+stores every item (KB stays complete), it only
+# skips the `garuda:alerts` publish for items whose stream id (the ms-prefixed
+# PUBLISH timestamp, not "now") is older than the max age.
+DEFAULT_ALERT_MAX_AGE_H = 48.0
 
 SCORE_PROMPT_TEMPLATE = """Rate the relevance of this item for an Indonesian business services company (visa, tax, company setup, property) in Bali.
 
@@ -160,12 +175,30 @@ def score_with_ollama(title: str, content: str, source: str) -> dict:
     return {"score": 2, "topic": "other", "reason": "scoring unavailable"}
 
 
+def _item_age_hours(msg_id: str, now_ms: int) -> float | None:
+    """Age in hours of a stream item, derived from its `<ms>-<seq>` id.
+
+    Redis Stream ids are `<publish-ms>-<seq>` — the ms prefix IS the publish
+    timestamp, not a separate field on the item. Returns None if the id
+    cannot be parsed (defensive: an unparseable id must never be silently
+    treated as stale — the caller falls back to "always alert" on None).
+    """
+    try:
+        ms_part = int(str(msg_id).split("-", 1)[0])
+    except (ValueError, IndexError, AttributeError):
+        return None
+    return (now_ms - ms_part) / 3_600_000.0
+
+
 def run_scorer(kb: KnowledgeBase, max_items: int = 20) -> dict:
     """Run one pass of the scorer worker.
 
-    Returns stats: {processed, alerts, stored}
+    Returns stats: {processed, alerts, stored, stale_skipped}
     """
-    stats = {"processed": 0, "alerts": 0, "stored": 0}
+    stats = {"processed": 0, "alerts": 0, "stored": 0, "stale_skipped": 0}
+
+    max_age_h = float(os.environ.get("GARUDA_ALERT_MAX_AGE_H", DEFAULT_ALERT_MAX_AGE_H))
+    now_ms = int(time.time() * 1000)
 
     items = stream_read_new(STREAM_ENRICHED, CONSUMER_GROUP, CONSUMER_NAME, count=max_items)
 
@@ -216,22 +249,33 @@ def run_scorer(kb: KnowledgeBase, max_items: int = 20) -> dict:
             )
             stats["stored"] += 1
 
-        # Alert if high score
+        # Alert if high score — gated by freshness (see DEFAULT_ALERT_MAX_AGE_H
+        # comment above). The item is scored+stored regardless (KB stays
+        # complete); only the garuda:alerts publish (-> one Telegram message
+        # per alert in regulation_alert_agent) is skipped for stale items.
         if weighted_score >= SCORE_SIGNAL:
-            alert_data = {
-                "title": title,
-                "url": data.get("url", ""),
-                "source": source,
-                "score": str(weighted_score),
-                "topic": topic,
-                "reason": reason,
-                "alert_time": datetime.now().isoformat(timespec="seconds"),
-            }
-            stream_publish(STREAM_ALERTS, alert_data)
-            stats["alerts"] += 1
+            age_h = _item_age_hours(msg_id, now_ms)
+            if age_h is not None and age_h > max_age_h:
+                stats["stale_skipped"] += 1
+            else:
+                alert_data = {
+                    "title": title,
+                    "url": data.get("url", ""),
+                    "source": source,
+                    "score": str(weighted_score),
+                    "topic": topic,
+                    "reason": reason,
+                    "alert_time": datetime.now().isoformat(timespec="seconds"),
+                }
+                stream_publish(STREAM_ALERTS, alert_data)
+                stats["alerts"] += 1
 
         stream_ack(STREAM_ENRICHED, CONSUMER_GROUP, msg_id)
 
+    if stats["stale_skipped"]:
+        logger.info(
+            f"[scorer] skipped {stats['stale_skipped']} stale alerts (>{max_age_h}h)"
+        )
     logger.info(
         f"[scorer] Done: {stats['processed']} scored, "
         f"{stats['alerts']} alerts, {stats['stored']} stored"
