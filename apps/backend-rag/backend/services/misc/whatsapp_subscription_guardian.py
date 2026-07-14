@@ -216,7 +216,29 @@ class WhatsAppSubscriptionGuardian:
 
         result = {"rearm": rearm, "deafness": deafness, "ran_at": now.isoformat()}
         logger.info("[wa-sub-guardian] cycle done: %s", json.dumps(result))
+        await self._persist_state(result)
         return result
+
+    async def _persist_state(self, result: dict[str, Any]) -> None:
+        """Durable receptor (economia-notifiche): Telegram is a best-effort VIEW
+        nobody may be reading — the verdict must also live as disk-state. One
+        row in ``system_settings`` keyed ``wa_subscription_guardian_last``, so
+        any session/monitor can read the last cycle with one SELECT.
+        """
+        if self.db_pool is None:
+            return
+        try:
+            await self.db_pool.execute(
+                """
+                INSERT INTO system_settings (key, value, updated_at)
+                VALUES ('wa_subscription_guardian_last', $1, now())
+                ON CONFLICT (key) DO UPDATE
+                    SET value = EXCLUDED.value, updated_at = now()
+                """,
+                json.dumps(result),
+            )
+        except Exception as e:  # persistence must never kill the cycle
+            logger.warning("[wa-sub-guardian] state persist failed: %s", e)
 
 
 async def _guardian_loop(

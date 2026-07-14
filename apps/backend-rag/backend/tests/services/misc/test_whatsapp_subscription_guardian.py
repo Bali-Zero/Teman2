@@ -354,3 +354,52 @@ class TestLiveLoopStarter:
             await mod._guardian_loop(FakeGuardian(), 21600)
 
         assert cycles == []
+
+
+class TestStatePersistence:
+    """Telegram is a view nobody may read (economia-notifiche) — the cycle
+    verdict must land in system_settings as durable disk-state."""
+
+    @pytest.mark.asyncio
+    async def test_cycle_persists_verdict_to_system_settings(self):
+        recent = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+        pool = MagicMock()
+        pool.fetchrow = AsyncMock(return_value={"last_inbound": recent})
+        pool.execute = AsyncMock()
+        g = _guardian(db_pool=pool)
+        g._client = MagicMock(is_closed=False)
+        g._client.post = AsyncMock(return_value=_mock_response())
+
+        await g.run_cycle()
+
+        sql, payload = pool.execute.await_args.args
+        assert "wa_subscription_guardian_last" in sql
+        import json as _json
+
+        stored = _json.loads(payload)
+        assert stored["rearm"]["ok"] is True
+        assert stored["deafness"]["deaf"] is False
+
+    @pytest.mark.asyncio
+    async def test_persist_failure_never_kills_cycle(self):
+        recent = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+        pool = MagicMock()
+        pool.fetchrow = AsyncMock(return_value={"last_inbound": recent})
+        pool.execute = AsyncMock(side_effect=RuntimeError("db down"))
+        g = _guardian(db_pool=pool)
+        g._client = MagicMock(is_closed=False)
+        g._client.post = AsyncMock(return_value=_mock_response())
+
+        result = await g.run_cycle()
+
+        assert result["rearm"]["ok"] is True
+
+    @pytest.mark.asyncio
+    async def test_no_pool_skips_persistence(self):
+        g = _guardian(db_pool=None)
+        g._client = MagicMock(is_closed=False)
+        g._client.post = AsyncMock(return_value=_mock_response())
+
+        result = await g.run_cycle()
+
+        assert result["rearm"]["ok"] is True
