@@ -57,7 +57,7 @@ export function MobileNav({ items }: MobileNavProps) {
         aria-label="Navigation menu"
         className="md:hidden fixed inset-y-0 left-0 z-[399] flex flex-col w-[min(80vw,320px)]"
         style={{
-          background: "color-mix(in srgb, var(--surface-base) 97%, #000)",
+          background: "var(--nav-bg)",
           borderRight: "1px solid var(--nav-border)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
