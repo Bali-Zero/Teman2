@@ -344,6 +344,9 @@ export function SocialProof() {
                       fill
                       sizes="(max-width: 768px) 50vw, 200px"
                       style={{ objectFit: "cover" }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
                   )}
                   {/* Bottom gradient for caption legibility */}
@@ -403,6 +406,9 @@ export function SocialProof() {
                         fill
                         sizes="44px"
                         style={{ objectFit: "cover" }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
                       />
                     ) : (
                       <span
