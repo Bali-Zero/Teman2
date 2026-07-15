@@ -8,6 +8,8 @@
 		<string>/Users/nuzantara</string>
 		<key>PATH</key>
 		<string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>WR2_IMAGE_VLM_URL</key>
+		<string>http://100.93.236.6:11434</string>
 	</dict>
 	<key>Label</key>
 	<string>com.balizero.wr2.image-generator</string>
