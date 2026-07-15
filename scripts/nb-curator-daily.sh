@@ -139,6 +139,14 @@ NOTE: exact-URL duplicates AND exact-title anti-bot challenge pages (\"Just a mo
 
 OUTPUT:
 9. Write report to: $REPORT_PATH
+The file's FIRST THREE LINES must be exactly this YAML frontmatter block (verbatim, no
+variation) so the report passes the repo's R1 adversarial-review CI gate as a declared
+machine-generated exemption — every prior report missing this failed R1 on the PR that
+harvested it:
+---
+adversarial_review: exempt-machine-report # nb-curator daily health snapshot (generated artifact, not a research deliverable)
+---
+Then a blank line, then the report body starting with the '# NB Arsenal Health Report' heading.
 Write the report in ONE pass (max ~40 lines), then immediately emit the SUMMARY line. Do not re-analyze.
 10. End your response with a single line: SUMMARY: broken=<n> stale=<n> proposals=<n> press_new=<n>
 
