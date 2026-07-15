@@ -12,6 +12,7 @@ import {
 import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { trackFunnelEvent } from "@balizero/core/analytics";
 import { getOrCreateSessionId } from "@balizero/core/auth";
+import { usePathname } from "next/navigation";
 
 const SERVICES = [
   { label: "Visa & Immigration", href: "/services/visa" },
@@ -39,6 +40,25 @@ const COMPANY = [
 ];
 
 export function Footer() {
+  const pathname = usePathname();
+  const footerFunnel = pathname.startsWith("/visa")
+    ? "visa"
+    : pathname.startsWith("/kbli")
+      ? "kbli"
+      : pathname.startsWith("/tax")
+        ? "tax"
+        : pathname.startsWith("/property")
+          ? "property"
+          : "home";
+
+  const FOOTER_EVENT = {
+    home: "home_whatsapp_cta",
+    visa: "visa_whatsapp_cta",
+    kbli: "kbli_whatsapp_cta",
+    tax: "tax_whatsapp_cta",
+    property: "property_whatsapp_cta",
+  } as const;
+
   return (
     <footer
       className="pt-12 md:pt-20 pb-8 px-5 md:px-10"
@@ -95,14 +115,14 @@ export function Footer() {
             </h4>
             <div className="flex flex-col gap-3">
               <ContactLink
-                href={buildWhatsAppLink("home")}
+                href={buildWhatsAppLink(footerFunnel)}
                 Icon={MessageCircle}
                 label="WhatsApp"
                 value="+62 822 3010 2328"
                 accent="#25D366"
                 external
                 onClick={() =>
-                  void trackFunnelEvent("home_whatsapp_cta", {
+                  void trackFunnelEvent(FOOTER_EVENT[footerFunnel], {
                     sessionId: getOrCreateSessionId(),
                     payload: { trigger: "footer" },
                   })

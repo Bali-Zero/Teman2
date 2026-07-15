@@ -86,7 +86,11 @@ function CardCoverImage({
 
   if (hasError || !src) {
     return (
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460]" />
+      <div className="absolute inset-0 flex items-center justify-center bg-[var(--surface-muted)]">
+        <span className="text-[var(--text-tertiary)] text-[11px] font-semibold uppercase tracking-[0.15em]">
+          Bali Zero
+        </span>
+      </div>
     );
   }
 
