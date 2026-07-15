@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import socket
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -255,10 +256,16 @@ def _send_telegram(text: str, bot_token: str) -> bool:
     gateway = PROJECT_ROOT / "scripts" / "tg_notify.py"
     if not gateway.is_file():
         gateway = Path(os.path.expanduser("~/Desktop/nuzantara/scripts/tg_notify.py"))
+    # Stable key (cohort-3 disk_watchdog.sh pattern) — the message body embeds
+    # a live timestamp + variable days-left, so tg_notify's default
+    # source+text[:160] hash never matches twice and dedup can't suppress
+    # flap-refiring (PENDING-ARMS 2026-07-12).
+    dedup_key = f"drive-token-watchdog:{socket.gethostname().split('.')[0]}"
     try:
         proc = subprocess.run(
             [sys.executable, str(gateway), "--tier", "p0",
-             "--source", "drive-token-watchdog", "--", text],
+             "--source", "drive-token-watchdog",
+             "--dedup-key", dedup_key, "--", text],
             capture_output=True, text=True, timeout=30,
         )
         log(f"tg_notify exit={proc.returncode}")
