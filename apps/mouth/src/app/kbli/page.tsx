@@ -77,7 +77,7 @@ export default async function KBLIHomePage({
             }}
           />
 
-          <div className="relative z-10 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-12 px-8 py-16 sm:px-12 sm:py-20 lg:px-16 lg:py-24">
+          <div className="relative z-10 flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8 px-5 py-10 sm:px-12 sm:py-20 lg:px-16 lg:py-24">
             {/* Left column */}
             <div className="flex flex-col items-center lg:items-start text-center lg:text-left max-w-xl">
               {/* Bali Zero branding */}
@@ -211,7 +211,7 @@ export default async function KBLIHomePage({
         {/* ── SEARCH ── */}
         <div
           id="search"
-          className="sticky top-20 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[#141416]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8"
+          className="sticky top-14 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[#141416]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8"
         >
           <KBLISearch autoFocus initialQuery={initialQuery} />
           <div className="mt-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">

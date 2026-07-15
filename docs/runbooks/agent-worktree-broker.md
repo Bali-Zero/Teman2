@@ -182,11 +182,19 @@ Procedura sicura:
 5. Valida `python -m pytest scripts/tests/test_agent_start.py -q` dalla venv.
 6. Fai ripartire o attendi il job e ricontrolla `launchctl print`.
 
+### 7. Worktree creato con `git worktree add` diretto (bypass del broker) → pre-push fallisce con ZERO output
+
+Sintomo osservato due volte nella stessa giornata (2026-07-12): un worktree creato a mano con `git worktree add <path> <branch>` invece che via `agent_start.py` **non riceve nessuno dei symlink** che il broker crea (`apps/backend-rag/.venv`, `.env`, `node_modules/` — vedi punto 5 sopra). La differenza rispetto al caso "target mancante in main" è che qui il target ESISTE, semplicemente nessuno l'ha linkato: la pre-push suite non trova un errore da riportare, trova un **binario/modulo assente** e la shell muore prima di stampare qualunque cosa (zero output, non un traceback) — facile da scambiare per un hang o un problema di rete.
+
+Regola: **mai `git worktree add` diretto** per lavoro agent — sempre `python scripts/agent_start.py --lane <X> --task-id <Y>`, anche per worktree "veloci" o di sola lettura. Se un worktree manuale esiste già ed è bloccato così, il fix è ricrearlo via `agent_start.py` (non ri-linkare a mano: i symlink del broker sono un effetto collaterale del suo script, non un contratto pubblico da replicare).
+
+Gotcha imparentato: shell SSH non-interattive (`ssh mini '...'`) spesso non hanno `/opt/homebrew/bin` in `PATH` (stesso meccanismo del punto 6 sopra, ma qui morde `python3`/`node`/`pytest` invocati dentro un worktree, non solo `lsof`) — se uno script dentro il worktree fallisce silenziosamente via SSH ma funziona interattivo, verifica prima `echo $PATH` nella sessione non-interattiva.
+
 ## Per Claude (agent) — quick start
 
 OGNI sessione agent dispatch (subagent dispatch, cron-spawned `claude`, parallel Claude Code window) DEVE:
 
-1. `python scripts/agent_start.py --lane <X> --task-id <Y>`
+1. `python scripts/agent_start.py --lane <X> --task-id <Y>` — **mai** `git worktree add` diretto (punto 7 sopra: bypassa i symlink e la pre-push fallisce silenziosamente).
 2. `cd` nel path stampato da `WORKTREE_READY`
 3. Lavorare lì. Mai `git stash` / `git checkout` nel main checkout.
 4. Quando finito: commit + push + `--release <task-id>` (oppure lascia che `--cleanup` lo prenda al prossimo cron tick).
