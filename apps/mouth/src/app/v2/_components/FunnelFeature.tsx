@@ -247,6 +247,9 @@ export function FunnelFeature({
             src={cfg.bgImage}
             alt=""
             fill
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
             sizes="(max-width: 768px) 100vw, 50vw"
             quality={75}
             // LCP element confirmed (img.pointer-events-none) — priority needed

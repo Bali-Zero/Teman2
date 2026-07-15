@@ -179,6 +179,9 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
                     loading={i === 0 ? "eager" : "lazy"}
                     priority={i === 0}
                     className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
                   />
                   <div
                     className="absolute inset-0"
