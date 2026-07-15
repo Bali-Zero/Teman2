@@ -167,7 +167,7 @@ function ArticleCard({ article: a }: { article: ArticleListItem }) {
         {a.coverImage ? (
           <Image
             src={a.coverImage}
-            alt=""
+            alt={a.title}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 380px"
             quality={75}

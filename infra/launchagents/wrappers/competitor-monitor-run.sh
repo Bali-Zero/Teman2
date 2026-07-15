@@ -35,11 +35,13 @@ for this; this is a one-shot print-mode run and backgrounded work is terminated 
 leaving no digest on disk (W89 class-audit, regulatory-watcher incident 2026-07-05)."
 
 TMPOUT=$(mktemp)
+TMPERR=$(mktemp)
 # Multi-tier cascade: claude → claude-acct2 → claude-acct3 → gemini → codex → ollama
 "$HOME/scripts/claude-cascade.sh" "$PROMPT" --model claude-sonnet-5 --agent competitor-monitor \
-    >"$TMPOUT" 2>>"$LOG"
+    >"$TMPOUT" 2>"$TMPERR"
 EXIT=$?
 cat "$TMPOUT" >> "$LOG"
+cat "$TMPERR" >> "$LOG"
 
 if [ $EXIT -ne 0 ]; then
     echo "[$(date)] competitor-monitor ALL TIERS FAILED ($EXIT)" >> "$LOG"
@@ -48,13 +50,16 @@ fi
 # Explicit tier-provenance line (W89 class-audit, 2026-07-11): grep the cascade's own
 # "[claude-cascade] used: <tier>" line so a run's actual answering tier is always on record
 # in this wrapper's own log, not just buried in the cascade's stderr interleave.
-USED_TIER=$(grep -o '\[claude-cascade\] used: [^"]*' "$TMPOUT" | tail -1 || true)
+# claude-cascade.sh prints this line to STDERR (>&2), so it must be grepped from TMPERR,
+# never TMPOUT (stdout-only) — grepping TMPOUT can never match, on success or failure alike
+# (PENDING-ARMS ledger, healer tick 2026-07-15).
+USED_TIER=$(grep -o '\[claude-cascade\] used: [^"]*' "$TMPERR" | tail -1 || true)
 if [ -n "$USED_TIER" ]; then
     echo "[$(date)] [competitor-monitor] ${USED_TIER}" >> "$LOG"
 else
     echo "[$(date)] [competitor-monitor] used: none (all tiers failed or no tier line found)" >> "$LOG"
 fi
 
-rm -f "$TMPOUT"
+rm -f "$TMPOUT" "$TMPERR"
 echo "[$(date)] competitor-monitor run complete" >> "$LOG"
 exit 0
