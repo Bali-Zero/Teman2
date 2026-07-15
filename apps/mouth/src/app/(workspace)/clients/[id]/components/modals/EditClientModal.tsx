@@ -125,6 +125,9 @@ export function EditClientModal({
           if (tagsArray.length > 0) updates[key] = tagsArray;
           return;
         }
+        // avatar_url is owned by the dedicated upload endpoint and handled
+        // explicitly below — never forwarded through this generic field loop.
+        if (key === "avatar_url") return;
         if (
           value !== undefined &&
           value !== null &&
@@ -133,6 +136,20 @@ export function EditClientModal({
           updates[key] = value;
         }
       });
+
+      // avatar_url: an upload has already been persisted server-side by
+      // POST /api/crm/clients/{id}/avatar, so only forward an *explicit change* —
+      // a freshly uploaded storage URL, or "" when the photo was removed. Never
+      // re-send a legacy `data:` blob loaded from the DB: the backend rejects
+      // data: URIs on update, which used to block every edit of pre-#2208
+      // clients whose avatar_url still held inline base64.
+      if (
+        formData.avatar_url !== (client.avatar_url || "") &&
+        !formData.avatar_url.startsWith("data:")
+      ) {
+        updates.avatar_url = formData.avatar_url;
+      }
+
       await api.crm.updateClient(client.id, updates, user.email);
       onSave();
       onClose();
@@ -185,6 +202,7 @@ export function EditClientModal({
             <button
               type="button"
               onClick={removeAvatar}
+              aria-label="Remove avatar"
               className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
             >
               <X className="w-4 h-4" />
@@ -212,6 +230,7 @@ export function EditClientModal({
             <input
               type="file"
               accept="image/*"
+              aria-label="Upload client photo"
               onChange={handleAvatarUpload}
               disabled={isUploadingAvatar}
               className="hidden"
