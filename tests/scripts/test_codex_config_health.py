@@ -40,13 +40,72 @@ def test_clean_profile_requires_quiet_plugins(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = statuses(module.check_profile(profile, "nuzantara-core", require_quiet_plugins=True))
+    result = statuses(
+        module.check_profile(
+            profile,
+            "nuzantara-core",
+            require_quiet_plugins=True,
+            required_model="gpt-5.5",
+            required_reasoning="xhigh",
+        )
+    )
 
     assert result["profile:nuzantara-core:parse"] == "PASS"
     assert result["profile:nuzantara-core:model"] == "PASS"
     assert result["profile:nuzantara-core:reasoning"] == "PASS"
     assert result["profile:nuzantara-core:plugin_hooks"] == "PASS"
     assert result["profile:nuzantara-core:plugins"] == "PASS"
+
+
+def test_profile_requirements_are_per_profile_not_global(tmp_path: Path) -> None:
+    """2026-07-16: model/reasoning requirements diverge by profile (core vs
+    research) — the check must key off PROFILE_REQUIREMENTS per label, not a
+    single global constant, and must FAIL a profile that doesn't match ITS
+    OWN required model even if it would match another profile's."""
+    module = load_module()
+    profile = tmp_path / "nuzantara-core.config.toml"
+    profile.write_text(
+        '\n'.join(
+            [
+                'model = "gpt-5.6-sol"',
+                'model_reasoning_effort = "high"',
+                'project_doc_max_bytes = 65536',
+                '',
+                '[features]',
+                'plugins = false',
+                'plugin_hooks = false',
+                '',
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    required_model, required_reasoning = module.PROFILE_REQUIREMENTS["nuzantara-core"]
+    result = statuses(
+        module.check_profile(
+            profile,
+            "nuzantara-core",
+            require_quiet_plugins=True,
+            required_model=required_model,
+            required_reasoning=required_reasoning,
+        )
+    )
+    assert result["profile:nuzantara-core:model"] == "PASS"
+    assert result["profile:nuzantara-core:reasoning"] == "PASS"
+
+    # Same file checked against research's requirement must FAIL — proves the
+    # gate is per-profile, not a single shared constant.
+    research_model, research_reasoning = module.PROFILE_REQUIREMENTS["nuzantara-research"]
+    mismatched = statuses(
+        module.check_profile(
+            profile,
+            "nuzantara-core",
+            require_quiet_plugins=True,
+            required_model=research_model,
+            required_reasoning=research_reasoning,
+        )
+    )
+    assert mismatched["profile:nuzantara-core:model"] == "FAIL" or mismatched["profile:nuzantara-core:reasoning"] == "FAIL"
 
 
 def test_noisy_profile_fails_clean_plugin_policy(tmp_path: Path) -> None:
