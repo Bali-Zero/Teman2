@@ -541,9 +541,17 @@ def write_report(report: dict) -> None:
 
 
 def write_heartbeat(machine: str, degraded: bool, summary_line: str) -> None:
+    # Sidecar carries the PROBE's own health (did it run and produce a report),
+    # never the arsenal's observed health — same fix as pro.fly_restart_loop_detector
+    # (research/operations/2026-07-03-heartbeat-organs-tac.md, PR #1924): a dead AI
+    # seat is a finding, not a monitor failure, so it must not flip organs_heartbeat's
+    # UNHEALTHY_STATUSES gate. Dead seats stay visible via the dedicated arsenal_seats
+    # proprioception probe (--read-last, per-seat status) and healer Telegram on
+    # transitions — this field only ever reflects "the probe ran to completion".
     heartbeat = {
         "organ": f"{machine}.arsenal_probe",
-        "status": "degraded" if degraded else "ok",
+        "status": "ok",
+        "degraded": degraded,
         "note": summary_line,
         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
