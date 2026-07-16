@@ -210,7 +210,7 @@ async def publish(
     row = await conn.fetchrow(
         """
         INSERT INTO events_outbox (channel, payload)
-        VALUES ($1, $2::jsonb)
+        VALUES ($1, $2::text::jsonb)
         RETURNING id
         """,
         channel,

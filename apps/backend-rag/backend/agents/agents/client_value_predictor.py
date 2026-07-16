@@ -231,10 +231,18 @@ class ClientValuePredictor:
                             """
                             UPDATE clients
                             SET
-                                metadata = metadata || $1::jsonb,
+                                metadata = metadata || $1::text::jsonb,
                                 updated_at = NOW()
                             WHERE id = $2
                             """,
+                            # ::text::jsonb — the app pools register a jsonb
+                            # codec (encoder=json.dumps); a param inferred as
+                            # jsonb would get this pre-serialized string dumped
+                            # AGAIN. No live-probe pollution found for
+                            # clients.metadata (2026-07-16) — plausibly because
+                            # `object || string_scalar` errors or produces a
+                            # non-object result rather than a silent string
+                            # scalar; fixed defensively regardless.
                             json.dumps(
                                 {
                                     "ltv_score": client_data["ltv_score"],
