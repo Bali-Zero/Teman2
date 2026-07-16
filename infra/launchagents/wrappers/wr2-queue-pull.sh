@@ -33,6 +33,18 @@ fi
 ONCE=0
 [ "${1:-}" = "--once" ] && ONCE=1
 
+# A4 (2026-07-16, optional / red-team gates independently — separate commit):
+# WR2_PULL_CHECKSUM=1 above only forces --checksum for a MANUAL one-shot; the
+# steady-state daemon loop otherwise runs --ignore-existing forever, so a
+# carousel re-rendered IN PLACE on Pro (same filenames, new bytes) is skipped
+# by filename and never re-pulled. Force a --checksum pass automatically every
+# Nth loop iteration (default 12 * 300s interval ≈ 1h) so re-render-in-place
+# drift self-heals without a human remembering to run the manual mode. Scoped
+# to the carousel rsync only — the queue-file pull already re-fetches +
+# byte-compares (cmp -s) every iteration regardless.
+CHECKSUM_EVERY_N="${WR2_PULL_CHECKSUM_EVERY_N:-12}"
+iter_n=0
+
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
 # Merge helper (split-brain cure, 2026-07-13): the WR2 Control app writes
@@ -127,7 +139,14 @@ for e in rep.get("push_back", []): print(e["ref_code"], e["ig_url"])' | \
   # a per-dir --exclude doesn't scale. --ignore-errors lets rsync skip the tagged
   # file and continue the rest of the batch (already-synced files are unaffected
   # by --ignore-existing regardless).
-  if rsync -a "$RSYNC_MODE" --ignore-errors \
+  iter_n=$((iter_n + 1))
+  carousel_mode="$RSYNC_MODE"
+  if [ "${WR2_PULL_CHECKSUM:-0}" != "1" ] && [ "$CHECKSUM_EVERY_N" -gt 0 ] \
+       && [ $((iter_n % CHECKSUM_EVERY_N)) -eq 0 ]; then
+    carousel_mode="--checksum"
+    echo "[$(ts)] periodic checksum pass (iter $iter_n, every $CHECKSUM_EVERY_N) — checking for re-render-in-place drift" >> "$LOG"
+  fi
+  if rsync -a "$carousel_mode" --ignore-errors \
        -e "ssh -o ConnectTimeout=10 -o BatchMode=yes" \
        "pro:$CAROUSEL_SRC/" "$CAROUSEL_DEST/" >/dev/null 2>>"$LOG"; then
     : # silent on success (rsync is chatty enough on error)
