@@ -41,7 +41,11 @@ except ImportError:  # pragma: no cover
 
 OFFICIAL_URLS: tuple[str, ...] = (
     "https://www.bps.go.id/id/publication/2026/04/22/909d503355d2b7664e43dea8/tabel-konversi-kbli-2020-kbli-2025.html",
-    "https://www.bps.go.id/en/publication/2026/04/22/909d503355d2b7664e43dea8/tabel-konversi-kbli-2020-kbli-2025.html",
+    # NOTE: the EN slug has a TRIPLE dash ("2020---kbli"), not a typo — live-probed
+    # 2026-07-16 (vault-scout). A single-dash lookalike is a plausible fetch typo
+    # AND a plausible phishing-style lookalike; validate_source_url refuses it
+    # (pinned in tests/test_vault_fetch_bps.py).
+    "https://www.bps.go.id/en/publication/2026/04/22/909d503355d2b7664e43dea8/tabel-konversi-kbli-2020---kbli-2025.html",
 )
 
 LOG = common.setup_logger("vault_fetch_bps")

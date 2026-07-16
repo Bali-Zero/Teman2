@@ -19,6 +19,24 @@ class TestValidateSourceUrl:
     def test_official_en_url_accepted(self):
         assert bps.validate_source_url(bps.OFFICIAL_URLS[1]) is True
 
+    def test_en_url_has_the_live_probed_triple_dash_slug(self):
+        # Pin the exact live-probed (2026-07-16, vault-scout) EN slug:
+        # "2020---kbli" is a TRIPLE dash, not a typo — a gate review caught
+        # an earlier single-dash version of this constant that would have
+        # refused the real page (guard-over-match, cicatrix superscar #3).
+        assert "tabel-konversi-kbli-2020---kbli-2025.html" in bps.OFFICIAL_URLS[1]
+
+    def test_single_dash_en_lookalike_is_correctly_refused(self):
+        # Plausible fetch typo AND a plausible phishing-style lookalike of
+        # the real (triple-dash) EN URL — refusing it is correct behavior,
+        # pinned so it can never silently start being accepted.
+        single_dash_lookalike = (
+            "https://www.bps.go.id/en/publication/2026/04/22/909d503355d2b7664e43dea8/"
+            "tabel-konversi-kbli-2020-kbli-2025.html"
+        )
+        assert single_dash_lookalike != bps.OFFICIAL_URLS[1]
+        assert bps.validate_source_url(single_dash_lookalike) is False
+
     def test_third_party_mirror_rejected(self):
         assert bps.validate_source_url("https://some-mirror.example.com/tabel-konversi.pdf") is False
 
