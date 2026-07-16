@@ -116,34 +116,45 @@ def is_stale(metrics: Optional[dict], max_age_days: int) -> bool:
 
 
 def media_id_of(item: dict) -> Optional[str]:
-    """Extract the Graph API numeric media id from a queue item's own id, if it
-    carries one. Checked on BOTH historical id keys — legacy `"id"` (the
-    Graph-API backfill's own convention) AND `"item_id"` (the newer FSM/app
-    schema — same dual-schema precedent as `wr2_queue_writer.item_id_of`) — so an
-    entry minted under either schema is considered rather than silently skipped.
+    """Extract the Graph API numeric media id for a queue item, or None if it
+    doesn't have one it can be trusted to fetch with.
 
-    §C verification note (external-post feature spec, 2026-07-17): the "keys by
-    instagram_post_url" assumption in that spec is only PARTIALLY true. Selection
-    in `main()` below already filters on `instagram_post_url` + `state=="published"`
-    for ANY queue entry regardless of pipeline origin — but the actual Graph
-    FETCH requires a resolvable id here, and the "ig-" prefix convention assumes
-    the suffix IS a Graph-resolvable NUMERIC media id. That holds for the
-    historical Graph-API backfill (which used the real numeric id), but does
-    NOT hold for `ig-<shortcode>` ids minted by `ingest_external_post`
-    (scripts/wr2_queue_writer.py) or for this feature's own `external_<date>_...`
-    ids — a post/reel permalink's shortcode is a DIFFERENT identifier than the
-    Graph media id, and there is no local mapping between them (resolving one
-    from the other needs an authenticated Business Discovery/oEmbed call this
-    scraper does not make). Entries that fail this id-derivation are now logged
-    explicitly in `main()` (`skipped_no_media_id=`) instead of vanishing into
-    the same silent gap as "not stale yet" — this is a DOCUMENTED LIMITATION,
-    not a bug fixed here: externally-registered posts without a known Graph
-    media id cannot get automated metrics until that resolution is built.
+    §C — CORRECTED per live Pro-side diagnosis, 2026-07-17 (supersedes the
+    2026-07-16 fix below, which only widened the KEY searched, not the VALUE
+    trusted):
+
+    1. `ig_media_id` — the AUTHORITATIVE field (`wr2_queue_writer.build_external_item`
+       / `backfill_media_id`, wired from `wr2_ig_discovery.py`'s own Graph media
+       fetch, which carries the real numeric `id` alongside `permalink`). Always
+       preferred when present — it is never derived/guessed.
+    2. Legacy fallback — `id` or `item_id` (dual-schema precedent, same as
+       `wr2_queue_writer.item_id_of`) with an `"ig-"` prefix, but ONLY when the
+       SUFFIX IS ALL DIGITS. This is the load-bearing correction: a Graph media
+       id is a large all-numeric string, while an IG post/reel SHORTCODE (the
+       `/p/<code>/` URL segment) is alphanumeric with `-`/`_` — the two were
+       being conflated. The historical Graph-API backfill wrote `id: "ig-<real
+       numeric id>"` directly (digits-only suffix, still resolves here); but
+       `ingest_external_post`'s OWN `ig-<shortcode>` convention (used before
+       `ig_media_id` existed, and by any caller that never had a Graph fetch —
+       e.g. the WR2 Control app's manual "add external post" §A feature, whose
+       id looks like `external_<date>T<time>_<slug>` and never even reaches
+       this branch) does NOT resolve — a shortcode fed to the Graph endpoint
+       would 400 with a confusing error instead of failing cleanly.
+    3. Neither present -> None. `main()` counts this (`skipped_no_media_id=`)
+       instead of it vanishing into the same silent gap as "not stale yet" —
+       for a post whose real numeric id truly isn't known anywhere yet, this
+       stays a DOCUMENTED LIMITATION (needs `wr2_ig_discovery.py`'s
+       reconciliation pass to run and find/backfill it), not a bug fixed here.
     """
+    authoritative = item.get("ig_media_id")
+    if authoritative:
+        return str(authoritative)
     for key in ("id", "item_id"):
         iid = item.get(key) or ""
         if iid.startswith("ig-"):
-            return iid[3:]
+            suffix = iid[3:]
+            if suffix.isdigit():
+                return suffix
     return None
 
 

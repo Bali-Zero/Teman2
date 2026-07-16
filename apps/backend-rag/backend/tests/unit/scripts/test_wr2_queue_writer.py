@@ -324,6 +324,122 @@ def test_ingest_external_explicit_date(queue_file):
     assert new["instagram_published_at"] == "2026-05-01T12:00:00+00:00"
 
 
+# ── build_external_item / ingest_external_post — ig_media_id (§C, 2026-07-17) ─
+#
+# The scraper diagnosis (team-lead, live Pro-side) found `build_external_item`
+# derives its pseudo-id from the URL SHORTCODE and DISCARDS the real numeric
+# Graph media id even when the caller (wr2_ig_discovery.py) already fetched it.
+# This threads an OPTIONAL `ig_media_id` through, stored as its own field —
+# never folded into item_id's ig-<shortcode> derivation.
+
+
+def test_build_external_item_omits_ig_media_id_when_not_passed():
+    # GUILT/regression guard: no Graph fetch happened -> no fabricated field.
+    it = qw.build_external_item(VALID_URL, "2026-06-10T00:00:00+00:00", topic="My post")
+    assert "ig_media_id" not in it
+
+
+def test_build_external_item_stores_ig_media_id_when_passed():
+    # INNOCENCE: caller already has the real numeric Graph id -> persisted verbatim,
+    # as a STRING, and separate from item_id (which stays shortcode-derived).
+    it = qw.build_external_item(
+        VALID_URL, "2026-06-10T00:00:00+00:00", topic="My post", ig_media_id=17895695668004550,
+    )
+    assert it["ig_media_id"] == "17895695668004550"
+    assert it["item_id"] == "ig-Cabc123_-"  # unchanged — never derived from ig_media_id
+
+
+def test_build_external_item_omits_ig_media_id_when_falsy():
+    # empty string / 0 must not produce a bogus ig_media_id="" or "0" field.
+    it = qw.build_external_item(VALID_URL, "2026-06-10T00:00:00+00:00", ig_media_id="")
+    assert "ig_media_id" not in it
+
+
+def test_ingest_external_without_ig_media_id_omits_field(queue_file):
+    # Regression: the WR2 Control app's manual §A entry point never has a Graph
+    # fetch — the minted item must degrade gracefully (no field), not crash.
+    res = qw.ingest_external_post(queue_file, VALID_URL)
+    assert res.ok
+    items = json.loads(queue_file.read_text())
+    new = next(i for i in items if qw.item_id_of(i) == "ig-Cabc123_-")
+    assert "ig_media_id" not in new
+
+
+def test_ingest_external_with_ig_media_id_persists_it(queue_file):
+    res = qw.ingest_external_post(
+        queue_file, VALID_URL, ig_media_id="17895695668004550",
+    )
+    assert res.ok
+    items = json.loads(queue_file.read_text())
+    new = next(i for i in items if qw.item_id_of(i) == "ig-Cabc123_-")
+    assert new["ig_media_id"] == "17895695668004550"
+
+
+# ── backfill_media_id — reconciliation for already-known posts (§C point 3) ──
+#
+# WR2-native carousels are published via the app's own publish gate, which
+# records the permalink but NEVER a Graph media id. wr2_ig_discovery.py's
+# reconciliation pass (find_media_id_backfills) calls this to attach the real
+# id back onto a native entry once discovery matches it by shortcode.
+
+
+def _native_published_item(item_id="bali-pma-rental-crackdown", ig_url=VALID_URL):
+    """A WR2-native carousel entry: published via the app's own gate — has a
+    permalink but no ig_media_id (the exact shape backfill_media_id targets)."""
+    return {
+        "id": item_id,
+        "topic_slug": item_id,
+        "state": "published",
+        "instagram_post_url": ig_url,
+        "instagram_published_at": "2026-07-10T00:00:00+00:00",
+        "engagement_metrics": None,
+    }
+
+
+@pytest.fixture
+def native_queue_file(tmp_path):
+    items = [_native_published_item()]
+    p = tmp_path / "native-queue.json"
+    p.write_text(json.dumps(items))
+    return p
+
+
+def test_backfill_media_id_not_found_no_write(native_queue_file):
+    before = native_queue_file.read_text()
+    res = qw.backfill_media_id(native_queue_file, "does-not-exist", "17895695668004550")
+    assert res.status == "not_found" and res.ok is False
+    assert native_queue_file.read_text() == before
+
+
+def test_backfill_media_id_backfills_native_entry(native_queue_file):
+    res = qw.backfill_media_id(
+        native_queue_file, "bali-pma-rental-crackdown", "17895695668004550",
+    )
+    assert res.status == "backfilled" and res.ok is True
+    items = json.loads(native_queue_file.read_text())
+    updated = next(i for i in items if qw.item_id_of(i) == "bali-pma-rental-crackdown")
+    assert updated["ig_media_id"] == "17895695668004550"
+    # everything else on the item survives untouched
+    assert updated["instagram_post_url"] == VALID_URL
+    assert updated["state"] == "published"
+
+
+def test_backfill_media_id_idempotent_replay_is_noop(native_queue_file):
+    qw.backfill_media_id(native_queue_file, "bali-pma-rental-crackdown", "17895695668004550")
+    after_first = native_queue_file.read_text()
+    res = qw.backfill_media_id(native_queue_file, "bali-pma-rental-crackdown", "17895695668004550")
+    assert res.status == "already_backfilled" and res.ok is True
+    assert native_queue_file.read_text() == after_first  # no duplicate write
+
+
+def test_backfill_media_id_conflict_refuses_overwrite(native_queue_file):
+    qw.backfill_media_id(native_queue_file, "bali-pma-rental-crackdown", "17895695668004550")
+    after_first = native_queue_file.read_text()
+    res = qw.backfill_media_id(native_queue_file, "bali-pma-rental-crackdown", "99999999999999999")
+    assert res.status == "conflict" and res.ok is False
+    assert native_queue_file.read_text() == after_first  # refused — no overwrite
+
+
 # ── add_external / validate_external_payload — M5->Pro propagation (§B) ────
 
 

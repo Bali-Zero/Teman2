@@ -1004,6 +1004,12 @@ func test_matchesAnyPhysicalInstagramURL() {
 func test_scanCarouselsDedupesVirtualEntrySharingURL() {
     T.suite("WarRoom.scanCarousels — virtual ig-* entry hidden when a physical sibling shares its URL (§E)")
 
+    // Live shape (team-lead diagnosis, 2026-07-17): the real queue had TWO
+    // entries for this post — idx 61 (native, this fixture's "real-1") only
+    // got its instagram_post_url once flipped to published, and idx 71
+    // (ig-DaxDJuYFPi6) was discovery-ingested 07-14 while idx 61's URL was
+    // still null, with its topic mislabeled "150 LICENSED." — kept verbatim
+    // here for direct traceability to the incident, not a placeholder.
     let root = makeFixtureRoot()
     defer { try? fm.removeItem(at: root) }
     let croot = root.appendingPathComponent("carousel", isDirectory: true)
@@ -1016,7 +1022,7 @@ func test_scanCarouselsDedupesVirtualEntrySharingURL() {
       {"id":"real-1","topic_slug":"bali-pma-rental-crackdown","state":"published",
        "instagram_post_url":"https://www.instagram.com/p/DaxDJuYFPi6/",
        "instagram_published_at":"2026-06-01T00:00:00Z"},
-      {"item_id":"ig-DaxDJuYFPi6","topic":"(backfill duplicate)","state":"published",
+      {"item_id":"ig-DaxDJuYFPi6","topic":"150 LICENSED.","state":"published",
        "instagram_post_url":"https://www.instagram.com/p/DaxDJuYFPi6/?igshid=x",
        "instagram_published_at":"2026-06-01T00:00:00Z"},
       {"item_id":"ig-GenuinelyUnrelated1","topic":"(a real other IG-only post)","state":"published",

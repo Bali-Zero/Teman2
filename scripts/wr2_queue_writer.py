@@ -146,7 +146,8 @@ def extract_ig_shortcode(url: str) -> Optional[str]:
 
 
 def build_external_item(
-    ig_url: str, published_at_iso: str, topic: Optional[str] = None
+    ig_url: str, published_at_iso: str, topic: Optional[str] = None,
+    ig_media_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Build a fresh, published queue item for an EXTERNALLY-published IG post.
 
@@ -156,10 +157,21 @@ def build_external_item(
     `ig-<shortcode>` (deterministic from the URL → idempotent). `external=True`
     and `source="manual_external"` flag it so the IG analyst knows it lacks the
     full WR2 attributes (archetype/domain/audience).
+
+    `ig_media_id` (§C reconciliation, 2026-07-17 live Pro-side diagnosis): the
+    REAL numeric Graph API media id, when the caller already fetched it (e.g.
+    `wr2_ig_discovery.py`'s own Graph media listing carries `m["id"]`, the
+    numeric id, alongside `permalink`). Stored as its OWN field — NEVER folded
+    into `item_id`'s `ig-<shortcode>` derivation, because the shortcode (the
+    URL's `/p/<code>/` segment) and the Graph media id are DIFFERENT
+    identifiers; a caller that only has the permalink (no Graph fetch, e.g. the
+    WR2 Control app's manual "add external post" §A feature) legitimately omits
+    this, and the metrics scraper degrades gracefully (skips with a logged
+    reason) rather than mistaking the shortcode for a fetchable media id.
     """
     url = ig_url.strip()
     shortcode = extract_ig_shortcode(url) or hashlib.sha1(url.encode()).hexdigest()[:8]
-    return {
+    item: dict[str, Any] = {
         "item_id": f"ig-{shortcode}",
         "topic": topic or f"(external IG post {shortcode})",
         "state": "published",
@@ -172,6 +184,9 @@ def build_external_item(
         "source": "manual_external",
         "created_at": published_at_iso,
     }
+    if ig_media_id:
+        item["ig_media_id"] = str(ig_media_id)
+    return item
 
 
 REQUIRED_EXTERNAL_PAYLOAD_FIELDS = (
@@ -381,6 +396,7 @@ def ingest_external_post(
     topic: Optional[str] = None,
     published_at: Optional[str] = None,
     now: Optional[datetime] = None,
+    ig_media_id: Optional[str] = None,
 ) -> PublishResult:
     """Register an externally-published IG post (no pre-existing queue item).
 
@@ -392,6 +408,11 @@ def ingest_external_post(
     for the scraper (which skips items <24h old) — these posts are already live,
     we are not waiting for a fresh-publish window. Pass `--at` with the real
     publication date when known.
+
+    `ig_media_id`: pass-through to `build_external_item` (§C, 2026-07-17) — the
+    caller's real numeric Graph media id when it already has one (e.g.
+    `wr2_ig_discovery.py`'s Graph fetch). Omitted by callers with only a
+    permalink (no Graph fetch, e.g. the WR2 Control app's manual entry point).
 
     Returns PublishResult with ref_code = compute_ref_code of the minted id.
       * invalid_url     — not an IG permalink -> NO write
@@ -415,11 +436,69 @@ def ingest_external_post(
         published_iso = published_at or (
             (now or datetime.now(timezone.utc)) - timedelta(hours=25)
         ).isoformat()
-        new_item = build_external_item(url, published_iso, topic=topic)
+        new_item = build_external_item(url, published_iso, topic=topic, ig_media_id=ig_media_id)
         items.append(new_item)
         write_queue_atomic(path, items)
         iid = new_item["item_id"]
         return PublishResult("ingested", True, compute_ref_code(iid), iid, f"registered external post {iid}")
+
+
+def backfill_media_id(path: Path, item_id: str, ig_media_id: str) -> PublishResult:
+    """Attach the real numeric Graph media id onto an EXISTING queue item that
+    lacks one (§C reconciliation, 2026-07-17 live Pro-side diagnosis).
+
+    WR2-native carousels are published via the app's own publish gate
+    (`QueueWriter.markPublished`/`mark_published` above), which records the
+    permalink and NEVER a Graph media id — so a native entry (e.g. the
+    `bali-pma-rental-crackdown` case) had no way to get automated metrics even
+    though the same post is trivially fetchable by `wr2_ig_discovery.py`'s own
+    Graph media listing, which carries the real numeric id (Graph's own `id`
+    field) alongside the permalink. `wr2_ig_discovery.py` calls this for every
+    fetched media item whose SHORTCODE already matches a known queue item
+    lacking `ig_media_id` (see `find_media_id_backfills`) — this is the
+    reconciliation half; `ingest_external_post` above is the fresh-mint half.
+
+    Idempotent + conflict-safe, same discipline as `mark_published`:
+      * not_found          — no item matches item_id -> NO write
+      * conflict           — item already has a DIFFERENT ig_media_id -> NO write (needs human)
+      * already_backfilled — same ig_media_id already present -> NO write (no-op)
+      * backfilled         — field written atomically -> WRITE
+    """
+    with queue_lock(path):
+        items = load_queue(path)
+        idx: Optional[int] = None
+        item: Optional[dict[str, Any]] = None
+        for i, it in enumerate(items):
+            if item_id_of(it) == item_id:
+                idx, item = i, it
+                break
+        if item is None:
+            return PublishResult(
+                "not_found", False, compute_ref_code(item_id), item_id,
+                "no queue item matches this item_id",
+            )
+
+        existing = item.get("ig_media_id")
+        if existing:
+            if str(existing) == str(ig_media_id):
+                return PublishResult(
+                    "already_backfilled", True, compute_ref_code(item_id), item_id,
+                    "no-op: ig_media_id already recorded",
+                )
+            return PublishResult(
+                "conflict", False, compute_ref_code(item_id), item_id,
+                f"item already has a DIFFERENT ig_media_id ({existing!r}); refusing to overwrite",
+            )
+
+        updated = dict(item)
+        updated["ig_media_id"] = str(ig_media_id)
+        assert idx is not None
+        items[idx] = updated
+        write_queue_atomic(path, items)
+        return PublishResult(
+            "backfilled", True, compute_ref_code(item_id), item_id,
+            f"backfilled ig_media_id={ig_media_id}",
+        )
 
 
 def add_external(path: Path, payload: dict[str, Any]) -> PublishResult:

@@ -85,6 +85,56 @@ def test_build_known_shortcodes_ignores_malformed_url() -> None:
     assert discovery.build_known_shortcodes(items) == set()
 
 
+# ── find_media_id_backfills — §C point 3 reconciliation ─────────────────
+
+
+def test_find_media_id_backfills_matches_native_entry_by_shortcode() -> None:
+    # GUILT-adjacent live case: a WR2-native carousel published via the app's
+    # own gate (permalink, no ig_media_id) — this run's Graph fetch happens to
+    # carry the same shortcode with its real numeric id.
+    media = [{"id": "17895695668004550", "permalink": "https://www.instagram.com/p/ABC123/"}]
+    queue = [{"id": "bali-pma-rental-crackdown", "instagram_post_url": "https://www.instagram.com/p/ABC123/"}]
+    assert discovery.find_media_id_backfills(media, queue) == [
+        ("bali-pma-rental-crackdown", "17895695668004550")
+    ]
+
+
+def test_find_media_id_backfills_skips_item_already_backfilled() -> None:
+    # INNOCENCE: an item that already has ig_media_id is never re-paired, even
+    # if this run's fetch would otherwise match it (idempotency at the source).
+    media = [{"id": "17895695668004550", "permalink": "https://www.instagram.com/p/ABC123/"}]
+    queue = [{
+        "id": "bali-pma-rental-crackdown",
+        "instagram_post_url": "https://www.instagram.com/p/ABC123/",
+        "ig_media_id": "17895695668004550",
+    }]
+    assert discovery.find_media_id_backfills(media, queue) == []
+
+
+def test_find_media_id_backfills_skips_item_without_url() -> None:
+    media = [{"id": "17895695668004550", "permalink": "https://www.instagram.com/p/ABC123/"}]
+    queue = [{"id": "drafted-item", "state": "drafted"}]  # no instagram_post_url yet
+    assert discovery.find_media_id_backfills(media, queue) == []
+
+
+def test_find_media_id_backfills_no_pair_when_fetch_lacks_the_shortcode() -> None:
+    # A queue item is missing ig_media_id but THIS run's fetch (limited by
+    # --limit/paging) doesn't happen to include that post — no false pair.
+    media = [{"id": "999", "permalink": "https://www.instagram.com/p/OTHER/"}]
+    queue = [{"id": "bali-pma-rental-crackdown", "instagram_post_url": "https://www.instagram.com/p/ABC123/"}]
+    assert discovery.find_media_id_backfills(media, queue) == []
+
+
+def test_find_media_id_backfills_skips_media_entry_missing_numeric_id() -> None:
+    media = [{"permalink": "https://www.instagram.com/p/ABC123/"}]  # no "id" field
+    queue = [{"id": "bali-pma-rental-crackdown", "instagram_post_url": "https://www.instagram.com/p/ABC123/"}]
+    assert discovery.find_media_id_backfills(media, queue) == []
+
+
+def test_find_media_id_backfills_empty_inputs() -> None:
+    assert discovery.find_media_id_backfills([], []) == []
+
+
 # ── parse_ig_timestamp / is_recent ───────────────────────────────────────
 
 
