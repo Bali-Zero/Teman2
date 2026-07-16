@@ -135,6 +135,82 @@ class TestDecideResume:
 
 
 # ---------------------------------------------------------------------------
+# http_get default User-Agent (live-proven 2026-07-16, Mini Batch-0 run:
+# peraturan.bpk.go.id's Cloudflare 403s the default Python-urllib UA; a
+# browser UA gets 200 on the identical URL/host/minute). No real network —
+# urllib.request.build_opener is monkeypatched to a fake opener that just
+# inspects the constructed Request's headers.
+# ---------------------------------------------------------------------------
+
+class _FakeResponse:
+    def __init__(self, status=200, headers=None, body=b"{}"):
+        self.status = status
+        self.headers = headers or {}
+        self._body = body
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        return False
+
+
+class TestHttpGetDefaultHeaders:
+    def test_default_user_agent_applied_when_caller_omits_headers(self, monkeypatch):
+        captured = {}
+
+        class _FakeOpener:
+            def open(self, req, timeout=None):
+                captured["user_agent"] = req.get_header("User-agent")
+                return _FakeResponse()
+
+        monkeypatch.setattr(common.urllib.request, "build_opener", lambda *a, **k: _FakeOpener())
+        result = common.http_get("https://peraturan.bpk.go.id/Download/394930")
+        assert captured["user_agent"] == common.DEFAULT_HEADERS["User-Agent"]
+        assert result.status == 200
+
+    def test_caller_supplied_user_agent_overrides_default(self, monkeypatch):
+        captured = {}
+
+        class _FakeOpener:
+            def open(self, req, timeout=None):
+                captured["user_agent"] = req.get_header("User-agent")
+                return _FakeResponse()
+
+        monkeypatch.setattr(common.urllib.request, "build_opener", lambda *a, **k: _FakeOpener())
+        common.http_get("https://example.com/x", headers={"User-Agent": "custom-agent/1.0"})
+        assert captured["user_agent"] == "custom-agent/1.0"
+        assert captured["user_agent"] != common.DEFAULT_HEADERS["User-Agent"]
+
+    def test_existing_caller_headers_survive_the_merge(self, monkeypatch):
+        # The OSS fetcher's user_key/accept headers must be unaffected by
+        # the new default — this is the regression the fix must not cause.
+        captured = {}
+
+        class _FakeOpener:
+            def open(self, req, timeout=None):
+                # Request.get_header does an EXACT dict lookup (it does not
+                # normalize its argument) — the stored key is whatever
+                # str.capitalize() produced at insertion time in add_header.
+                captured["user_agent"] = req.get_header("User-agent")
+                captured["user_key"] = req.get_header("User_key")
+                captured["accept"] = req.get_header("Accept")
+                return _FakeResponse()
+
+        monkeypatch.setattr(common.urllib.request, "build_opener", lambda *a, **k: _FakeOpener())
+        common.http_get(
+            "https://gw.oss.go.id/v2/portal/kbli/some-uuid",
+            headers={"user_key": "abc123", "accept": "application/json"},
+        )
+        assert captured["user_agent"] == common.DEFAULT_HEADERS["User-Agent"]
+        assert captured["user_key"] == "abc123"
+        assert captured["accept"] == "application/json"
+
+
+# ---------------------------------------------------------------------------
 # Hashing + jsonl + filename sanitizing
 # ---------------------------------------------------------------------------
 
