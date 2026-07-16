@@ -51,20 +51,32 @@ func makeFixtureRoot() -> URL {
 
 /// - Parameter declareSlides: the A2 complete-or-nothing gate (WarRoom.declaredSlideCount)
 ///   needs a declaration source (slides.json/manifest.json/queue slide_count) or the dir is
-///   undeclarable and excluded outright. Default `.matching` writes a `slides.json` whose
-///   `slides` array has exactly `slides.count` entries, so every PRE-EXISTING call site
-///   (written before the gate existed) stays "complete" and green without touching each one.
-///   `.none` omits slides.json entirely (for the undeclarable-dir test). `.count(n)` writes n
-///   entries regardless of `slides.count` (for the incomplete/mismatch guilt tests).
-enum DeclaredSlides {
-    case matching
-    case none
-    case count(Int)
+///   undeclarable and excluded outright. `.auto` (the default) resolves to
+///   `.objectSlides(slides.count)` — the OBJECT schema `{"slides":[...]}` is the dominant
+///   real-world shape (a 2026-07-16 census of the live local carousel root found 100% of
+///   existing slides.json files use it, none use a bare top-level array — Codex red-team
+///   finding #6). `.bareArray` exercises the legacy/rare shape explicitly. `.absent` omits
+///   slides.json entirely (majority real-world shape — most local dirs have none at all,
+///   falling through to manifest.json/queue). `.malformed` writes invalid JSON.
+///   NOTE: this case is named `.absent`, NOT `.none` — a case literally named `none` on an
+///   enum used through an `Optional`-typed parameter is a documented Swift trap: `.none` at
+///   the call site resolves to `Optional<DeclaredSlides>.none` (plain nil) instead of
+///   `Optional.some(.none)`, silently discarding the intended declaration mode. Caught live
+///   2026-07-16: with a `DeclaredSlides?` parameter and a `case none`, EVERY `.none` call
+///   site below silently reverted to the `.auto` default instead of "no slides.json at all",
+///   which made the "undeclarable" and "ambiguous same-tier queue count" guilt tests pass
+///   for the wrong reason (source (a) short-circuited before source (c) was ever reached).
+enum DeclaredSlides: Equatable {
+    case objectSlides(Int)
+    case bareArray(Int)
+    case absent
+    case malformed
+    case auto
 }
 
 @discardableResult
 func makeCarousel(in root: URL, slug: String, slides: [String], brief: [String: Any]? = nil,
-                   declareSlides: DeclaredSlides = .matching) -> URL {
+                   declareSlides: DeclaredSlides = .auto) -> URL {
     let dir = root.appendingPathComponent("carousel/\(slug)", isDirectory: true)
     let slidesDir = dir.appendingPathComponent("slides", isDirectory: true)
     try? fm.createDirectory(at: slidesDir, withIntermediateDirectories: true)
@@ -86,17 +98,23 @@ func makeCarousel(in root: URL, slug: String, slides: [String], brief: [String: 
        let data = try? JSONSerialization.data(withJSONObject: brief) {
         try? data.write(to: dir.appendingPathComponent("brief.json"))
     }
-    let declaredCount: Int?
-    switch declareSlides {
-    case .matching: declaredCount = slides.count
-    case .none: declaredCount = nil
-    case .count(let n): declaredCount = n
-    }
-    if let n = declaredCount {
-        let slideEntries = (0..<n).map { ["index": $0 + 1] }
-        if let data = try? JSONSerialization.data(withJSONObject: slideEntries) {
+    let mode: DeclaredSlides = (declareSlides == .auto) ? .objectSlides(slides.count) : declareSlides
+    switch mode {
+    case .objectSlides(let n):
+        let entries = (0..<n).map { ["index": $0 + 1] }
+        let obj: [String: Any] = ["slides": entries]
+        if let data = try? JSONSerialization.data(withJSONObject: obj) {
             try? data.write(to: dir.appendingPathComponent("slides.json"))
         }
+    case .bareArray(let n):
+        let entries = (0..<n).map { ["index": $0 + 1] }
+        if let data = try? JSONSerialization.data(withJSONObject: entries) {
+            try? data.write(to: dir.appendingPathComponent("slides.json"))
+        }
+    case .absent, .auto:
+        break
+    case .malformed:
+        try? Data("{ not valid json ,,,".utf8).write(to: dir.appendingPathComponent("slides.json"))
     }
     return dir
 }
@@ -359,26 +377,26 @@ func test_completeOrNothingGate() {
 
     // COLPEVOLEZZA — declared (9) != disk (8): must be excluded entirely, not just flagged.
     _ = makeCarousel(in: root, slug: "mismatch-9-vs-8", slides: (1...8).map { "\($0).png" },
-                      declareSlides: .count(9))
+                      declareSlides: .objectSlides(9))
 
     // COLPEVOLEZZA — no slides.json/manifest.json/queue entry at all: undeclarable, excluded
     // even though real PNGs exist on disk (never silently trust raw disk count).
-    _ = makeCarousel(in: root, slug: "undeclarable", slides: ["1.png", "2.png"], declareSlides: .none)
+    _ = makeCarousel(in: root, slug: "undeclarable", slides: ["1.png", "2.png"], declareSlides: .absent)
 
     // fallback (b) — manifest.json total_slides, no slides.json (external-import shape).
     let manifestDir = makeCarousel(in: root, slug: "manifest-fallback", slides: ["1.png", "2.png"],
-                                    declareSlides: .none)
+                                    declareSlides: .absent)
     let manifestJSON: [String: Any] = ["total_slides": 2, "imported": true]
     try? JSONSerialization.data(withJSONObject: manifestJSON)
         .write(to: manifestDir.appendingPathComponent("manifest.json"))
 
     // fallback (c) — queue slide_count, no slides.json/manifest.json at all.
     _ = makeCarousel(in: root, slug: "queue-fallback", slides: ["1.png", "2.png", "3.png"],
-                      declareSlides: .none)
+                      declareSlides: .absent)
 
     // published exemption — undeclarable AND the only 1 disk PNG, but published: must stay
     // visible regardless (immutable, REPOINT-guarded — never hidden retroactively).
-    _ = makeCarousel(in: root, slug: "published-partial", slides: ["1.png"], declareSlides: .none)
+    _ = makeCarousel(in: root, slug: "published-partial", slides: ["1.png"], declareSlides: .absent)
 
     let queueJSON = """
     [
@@ -414,6 +432,109 @@ func test_completeOrNothingGate() {
 
     T.eq(WarRoom.excludedIncompleteCount, 2,
          "excludedIncompleteCount counts exactly the 2 unpublished exclusions (mismatch + undeclarable)")
+}
+
+// MARK: - Codex red-team hardening (2026-07-16, findings #1/#2/#3/#6 on the A2 gate)
+
+func test_matchCarouselPrecedenceOrder() {
+    T.suite("matchCarousel precedence — exact wins over regex regardless of array order (Codex finding #1)")
+
+    func fakeCarousel(_ slug: String) -> Carousel {
+        Carousel(slug: slug, directory: URL(fileURLWithPath: "/tmp/\(slug)"),
+                  slidesDir: URL(fileURLWithPath: "/tmp/\(slug)/slides"),
+                  slidePNGs: [], modified: Date(), topic: nil, domain: nil,
+                  criticVerdict: nil, slideCount: 1, imagegenFallback: false,
+                  coverURL: nil, metrics: nil, instagramURL: nil, publishedAt: nil, canvaURL: nil)
+    }
+    let exactDir = fakeCarousel("golden-visa-order")
+    let regexDir = fakeCarousel("2026-07-08-golden-visa-order-deadbeef")
+
+    let json = #"[{"id":"x","topic_slug":"golden-visa-order","state":"drafted"}]"#
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    defer { try? fm.removeItem(at: url) }
+    let item = WarRoom.readQueue(queueFile: url)[0]
+
+    // COLPEVOLEZZA (the pre-fix bug): a combined exact+regex pass lets array order pick
+    // the regex dir here. Putting it FIRST is exactly the scenario that broke.
+    T.eq(WarRoom.matchCarousel(for: item, in: [regexDir, exactDir])?.slug, "golden-visa-order",
+         "exact match wins even when the regex-matching dir sorts FIRST in the array")
+    // INNOCENZA — same result with the array in the other order (sanity, not the bug itself).
+    T.eq(WarRoom.matchCarousel(for: item, in: [exactDir, regexDir])?.slug, "golden-visa-order",
+         "exact match wins when it already sorts first too")
+}
+
+func test_completeOrNothingGateHardening() {
+    T.suite("A2 gate hardening — Codex red-team findings #2/#3/#6 (2026-07-16)")
+
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+
+    // Finding #2 — two queue rows at the SAME precedence tier (both exact topic_slug,
+    // neither has carousel_path) declare DIFFERENT slide_count. Must be excluded with a
+    // logged ambiguity reason, never silently resolved by picking the first row.
+    _ = makeCarousel(in: root, slug: "ambiguous-count", slides: (1...7).map { "\($0).png" },
+                      declareSlides: .absent)
+
+    // Finding #3 (guilt) — an empty-string instagram_post_url must NOT count as published
+    // and must NOT let an incomplete render bypass the gate.
+    _ = makeCarousel(in: root, slug: "empty-url-guilt", slides: (1...3).map { "\($0).png" },
+                      declareSlides: .objectSlides(5))
+
+    // Finding #3 (innocence) — a legacy row with state=="published" but no URL/timestamp
+    // at all must still count as published and must NOT be hidden.
+    _ = makeCarousel(in: root, slug: "state-only-published", slides: ["1.png"], declareSlides: .absent)
+
+    // Finding #6 — a malformed slides.json must not crash and must fall through cleanly
+    // to the next declaration source (queue slide_count here), same as if it were absent.
+    _ = makeCarousel(in: root, slug: "malformed-json", slides: (1...4).map { "\($0).png" },
+                      declareSlides: .malformed)
+
+    // Finding #6 — multi-source conflict mirroring the real `bali-pma-rental-crackdown`
+    // case: slides.json (a) says 9, manifest.json (b) says 999, queue (c) says 8 — (a)
+    // must win over both, precedence a > b > c.
+    let conflictDir = makeCarousel(in: root, slug: "multi-source-conflict",
+                                    slides: (1...9).map { "\($0).png" }, declareSlides: .objectSlides(9))
+    let manifestConflict: [String: Any] = ["total_slides": 999]
+    try? JSONSerialization.data(withJSONObject: manifestConflict)
+        .write(to: conflictDir.appendingPathComponent("manifest.json"))
+
+    let queueJSON = """
+    [
+      {"id":"amb1","topic_slug":"ambiguous-count","slide_count":7,"state":"drafted"},
+      {"id":"amb2","topic_slug":"ambiguous-count","slide_count":8,"state":"drafted"},
+      {"id":"eu","topic_slug":"empty-url-guilt","instagram_post_url":"","state":"drafted"},
+      {"id":"sp","topic_slug":"state-only-published","state":"published"},
+      {"id":"mj","topic_slug":"malformed-json","slide_count":4,"state":"drafted"},
+      {"id":"msc","topic_slug":"multi-source-conflict","slide_count":8,"state":"drafted"}
+    ]
+    """
+    let qurl = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? queueJSON.data(using: .utf8)!.write(to: qurl)
+    defer { try? fm.removeItem(at: qurl) }
+    let queue = WarRoom.readQueue(queueFile: qurl)
+    T.eq(queue.count, 6, "hardening-test queue fixture decoded")
+
+    let carousels = WarRoom.scanCarousels(carouselRoot: croot, queue: queue)
+    func find(_ slug: String) -> Carousel? { carousels.first(where: { $0.slug == slug }) }
+
+    T.check(find("ambiguous-count") == nil,
+            "finding #2 guilt: same-tier queue rows disagreeing on slide_count → excluded, not first-picked")
+
+    T.check(find("empty-url-guilt") == nil,
+            "finding #3 guilt: empty-string instagram_post_url does NOT bypass the gate")
+
+    T.check(find("state-only-published") != nil,
+            "finding #3 innocence: state==\"published\" with no URL/timestamp still exempts the gate")
+
+    T.check(find("malformed-json") != nil,
+            "finding #6: malformed slides.json falls through to queue fallback, no crash")
+    T.eq(find("malformed-json")?.slideCount, 4, "finding #6: fallback count taken from queue after malformed (a)")
+
+    T.check(find("multi-source-conflict") != nil, "finding #6: a>b>c conflict — carousel listed")
+    T.eq(find("multi-source-conflict")?.slideCount, 9,
+         "finding #6: slides.json (a)=9 wins over manifest (b)=999 and queue (c)=8")
 }
 
 // MARK: - carousel phase mapping (pipeline↔app coherence, 2026-06-25)
@@ -606,6 +727,8 @@ let suites: [() -> Void] = [
     test_adversarialFixes,
     test_reviewQueueJoin,
     test_completeOrNothingGate,
+    test_matchCarouselPrecedenceOrder,
+    test_completeOrNothingGateHardening,
     test_carouselPhaseMapping,
     test_instagramCaptionValidation,
     test_instagramCaptionProcessContract,

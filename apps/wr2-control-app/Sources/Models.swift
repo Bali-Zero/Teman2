@@ -155,7 +155,18 @@ struct Carousel: Identifiable, Equatable {
     var instagramURL: String?         // Instagram post URL
     var publishedAt: String?          // ISO date of publication
     var canvaURL: String?             // Zero Design / Canva edit url (for waitlist work)
-    var isPublished: Bool { instagramURL?.isEmpty == false }
+
+    /// Mirrors `isQueueItemPublished(_:)` below, applied to this struct's already-
+    /// flattened fields (a Carousel doesn't retain the raw ReviewItem it was joined
+    /// from). A trimmed non-empty `instagramURL` OR a trusted `criticVerdict=="published"`
+    /// (fed from `item.critic_overall_verdict ?? item.state` at join time) — never bare
+    /// presence of the URL key, which an empty string could satisfy (Codex red-team
+    /// finding #3, 2026-07-16).
+    var isPublished: Bool {
+        let urlNonEmpty = instagramURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        let trustedPublishedState = criticVerdict?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "published"
+        return urlNonEmpty || trustedPublishedState
+    }
 
     /// L10n key for the critic verdict (or the raw value if unknown). Kept Foundation-pure;
     /// the localized string lives in an extension in Localization.swift (SwiftUI side).
@@ -270,4 +281,25 @@ struct ReviewItem: Identifiable, Equatable, Decodable {
         return (s?.isEmpty == false) ? s : nil
     }
     var hasCanva: Bool { canvaLink != nil }
+}
+
+/// Canonical "is this genuinely published" predicate — the ONE rule shared by the A2
+/// completeness gate's exemption (WarRoom.scanCarousels), `Carousel.isPublished` above,
+/// and the queue's second-pass virtual-carousel materialization. Two conditions, either
+/// sufficient:
+///  - a trimmed non-empty `instagram_post_url` — an empty string (present but blank,
+///    not absent) must NEVER count, or an incomplete render could bypass the
+///    completeness gate just by carrying a stray blank field (Codex red-team finding
+///    #3, 2026-07-16, guilt direction);
+///  - a trusted `state`/`critic_overall_verdict` of exactly `"published"` — a legacy row
+///    that reached this state before its URL/timestamp were backfilled must still count,
+///    or it silently vanishes from the gallery (same finding, innocence direction).
+func isQueueItemPublished(_ item: ReviewItem) -> Bool {
+    if let url = item.instagram_post_url,
+       url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+        return true
+    }
+    let state = (item.critic_overall_verdict ?? item.state ?? "")
+        .trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return state == "published"
 }
