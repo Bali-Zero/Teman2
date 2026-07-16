@@ -18,11 +18,11 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/daily_indexing_cron_wrapper.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/daily_indexing_cron_wrapper.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/nuzantara</string>
 
     <key>EnvironmentVariables</key>
     <dict>

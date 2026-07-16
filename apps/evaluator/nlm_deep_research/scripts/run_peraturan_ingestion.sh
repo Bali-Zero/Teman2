@@ -3,7 +3,7 @@
 # Reads 'list peraturan' Google Sheet → downloads PDFs → ingests to Qdrant/KG + Drive + NLM NB-6
 #
 # Cron (Pro, weekly Sunday 05:30 WITA = 21:30 UTC Saturday):
-#   30 21 * * 0  /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_peraturan_ingestion.sh
+#   30 21 * * 0  /Users/nuzantara/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_peraturan_ingestion.sh
 #
 # Manual run:
 #   ./scripts/run_peraturan_ingestion.sh           # production

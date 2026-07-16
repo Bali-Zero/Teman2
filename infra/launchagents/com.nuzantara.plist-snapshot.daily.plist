@@ -34,7 +34,7 @@ Kill switch (without removing plist):
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/infra/launchagents/plist_snapshot_dr.sh</string>
+        <string>/Users/nuzantara/nuzantara/infra/launchagents/plist_snapshot_dr.sh</string>
     </array>
 
     <key>StartCalendarInterval</key>
@@ -47,7 +47,7 @@ Kill switch (without removing plist):
     <!-- 19:30 UTC = 03:30 WITA (30min after com.nuzantara.log-prune.daily) -->
 
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/nuzantara</string>
 
     <key>EnvironmentVariables</key>
     <dict>

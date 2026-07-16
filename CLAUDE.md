@@ -22,7 +22,7 @@
 
 ## Agent Worktree Discipline (2026-05-24)
 
-OGNI agent session (subagent dispatch / cron-spawned claude / parallel Claude Code window) DEVE girare sotto `.worktrees/<lane>-<task-id>/` creato via `scripts/agent_start.py`. Il main checkout `~/Desktop/nuzantara` resta read-only per agent — riservato a operator interactive + cicatrix hotfix.
+OGNI agent session (subagent dispatch / cron-spawned claude / parallel Claude Code window) DEVE girare sotto `.worktrees/<lane>-<task-id>/` creato via `scripts/agent_start.py`. Il main checkout `~/nuzantara` resta read-only per agent — riservato a operator interactive + cicatrix hotfix.
 
 Quick start: `python scripts/agent_start.py --lane <X> --task-id <Y>` → cd output path → spawn agent. Kill switch `AGENT_BROKER_ENABLED=false`. Runbook: `docs/runbooks/agent-worktree-broker.md`. SOTA panel reference: `research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md`.
 
@@ -215,7 +215,7 @@ Twitter (CRC broken), Google Chat (scaffold), Slack (scaffold) quarantined `.dis
 
 ## 15. Research Capture Convention
 
-Ricerche sostanziose (≥400 parole + ≥3 fonti + checklist + dominio in {property, visa, tax, hr, compliance} + client-case) → `~/Desktop/nuzantara/research/<domain>/YYYY-MM-DD-slug.md`.
+Ricerche sostanziose (≥400 parole + ≥3 fonti + checklist + dominio in {property, visa, tax, hr, compliance} + client-case) → `~/nuzantara/research/<domain>/YYYY-MM-DD-slug.md`.
 
 **Frontmatter obbligatorio**: `date`/`domain`/`client_case`/`sources`.
 

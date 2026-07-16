@@ -28,7 +28,7 @@ set -u
 LOG_DIR="$HOME/logs/healer"
 LOG="$LOG_DIR/healer.log"
 mkdir -p "$LOG_DIR"
-REPO="${HEALER_REPO:-$HOME/Desktop/nuzantara}"
+REPO="${HEALER_REPO:-$HOME/nuzantara}"
 SIDECAR_DIR="$HOME/.organism/last_seen"
 SIDECAR="$SIDECAR_DIR/mini.healer.json"
 PIDFILE="/tmp/nuzantara-healer.pid"

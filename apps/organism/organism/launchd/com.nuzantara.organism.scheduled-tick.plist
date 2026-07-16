@@ -13,7 +13,7 @@
     <key>PATH</key><string>/usr/local/bin:/usr/bin:/bin</string>
     <key>HOME</key><string>/Users/nuzantara</string>
     <key>ORGANISM_REDIS_URL</key><string>redis://127.0.0.1:6379/0</string>
-    <key>PYTHONPATH</key><string>/Users/nuzantara/Desktop/nuzantara/apps/organism</string>
+    <key>PYTHONPATH</key><string>/Users/nuzantara/nuzantara/apps/organism</string>
   </dict>
   <key>StartCalendarInterval</key>
   <dict>

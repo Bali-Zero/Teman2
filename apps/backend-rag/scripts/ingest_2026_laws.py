@@ -29,7 +29,7 @@ import time
 from pathlib import Path
 
 # Setup paths
-PROJECT_ROOT = Path("/Users/nuzantara/Desktop/nuzantara")
+PROJECT_ROOT = Path("/Users/nuzantara/nuzantara")
 BACKEND_PATH = PROJECT_ROOT / "apps/backend-rag"
 sys.path.insert(0, str(BACKEND_PATH))
 sys.path.insert(0, str(BACKEND_PATH / "backend"))

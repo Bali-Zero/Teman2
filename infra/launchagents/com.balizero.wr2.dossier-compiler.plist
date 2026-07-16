@@ -6,7 +6,7 @@
     <string>com.balizero.wr2.dossier-compiler</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/wr2-cron-wrapper.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/wr2-cron-wrapper.sh</string>
         <string>backend.services.intel.dossier_compiler_cli</string>
     </array>
     <key>StartCalendarInterval</key>

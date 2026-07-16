@@ -9,7 +9,7 @@
 # Schedule (manual install when ready for Stage 3):
 #   crontab -e
 #   30 4 * * 1-6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh \
-#       /Users/nuzantara/Desktop/nuzantara/scripts/nlm_activation/run_canary_all.sh \
+#       /Users/nuzantara/nuzantara/scripts/nlm_activation/run_canary_all.sh \
 #       >> /tmp/cron-canary.log 2>&1
 #
 # Prerequisites:
@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${REPO_ROOT:-$HOME/nuzantara}"
 LOG_FILE="$HOME/.openclaw/logs/nlm_canary.log"
 mkdir -p "$(dirname "$LOG_FILE")"
 

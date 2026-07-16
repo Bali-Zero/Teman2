@@ -191,7 +191,7 @@ def send_alert(results: list[dict]) -> None:
     dedup_key = f"job-health:{socket.gethostname().split('.')[0]}:{job_set}"
     gateway = PROJECT_ROOT / "scripts" / "tg_notify.py"
     if not gateway.is_file():
-        gateway = Path(os.path.expanduser("~/Desktop/nuzantara/scripts/tg_notify.py"))
+        gateway = Path(os.path.expanduser("~/nuzantara/scripts/tg_notify.py"))
     try:
         proc = subprocess.run(
             [sys.executable, str(gateway), "--tier", "p0",

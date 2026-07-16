@@ -1,7 +1,7 @@
 """Cron entrypoint — emits `scheduled_tick` event hourly.
 
 Wire via crontab:
-    0 * * * * PYTHONPATH=~/Desktop/nuzantara/apps/organism python3 -m organism.scheduled_tick
+    0 * * * * PYTHONPATH=~/nuzantara/apps/organism python3 -m organism.scheduled_tick
 
 Supervisor L0 rules match {kind: scheduled_tick, payload.hour: N} or
 {kind: scheduled_tick, payload.day_of_week: N} to trigger time-based

@@ -126,8 +126,13 @@ class Heartbeat:
                 db_size_bytes, bloat_top3, long_queries, lock_waits,
                 alerts_sent, recorded_at, pool_utilization,
                 cache_hit_ratio, top_tables_by_size, idx_scan_ratio, health_score
-            ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15)
+            ) VALUES ($1, $2, $3, $4, $5, $6::text::jsonb, $7, $8, $9, $10, $11, $12, $13::text::jsonb, $14, $15)
         """
+        # $6/$13::text::jsonb — the app pools register a jsonb codec whose
+        # encoder is json.dumps; a param inferred as jsonb would get the
+        # pre-serialized string dumped AGAIN and land as a jsonb string scalar
+        # (40k+ rows were, live-probe 2026-07-16). Typing the param as text
+        # makes the server parse it into an object.
         async with self._pool.acquire() as conn:
             await conn.execute(
                 query,

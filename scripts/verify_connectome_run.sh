@@ -6,8 +6,8 @@
 # ONE Telegram alert when any edge REGRESSED (declared healthy, probe fails).
 #
 # Runtime homes (REPO_ROOT, overridable via env):
-#   Pro : ~/Desktop/nuzantara-deploy   (hourly-synced to origin/main — W71 rule)
-#   M5  : ~/Desktop/nuzantara          (main checkout; NEVER mutated here)
+#   Pro : ~/nuzantara-deploy   (hourly-synced to origin/main — W71 rule)
+#   M5  : ~/nuzantara          (main checkout; NEVER mutated here)
 #
 # Exit codes: 0 = no REGRESSED · 1 = REGRESSED (alert sent) · 2 = setup error.
 # /bin/bash 3.2-compatible (macOS): no declare -A, no mapfile.
@@ -21,9 +21,9 @@ mkdir -p "$STATE_DIR"
 # ── resolve repo root per machine ────────────────────────────────────────────
 if [[ -z "${REPO_ROOT:-}" ]]; then
     if [[ "$(whoami)" == "balizero" ]]; then
-        REPO_ROOT="$HOME/Desktop/nuzantara"
+        REPO_ROOT="$HOME/nuzantara"
     else
-        REPO_ROOT="$HOME/Desktop/nuzantara-deploy"
+        REPO_ROOT="$HOME/nuzantara-deploy"
     fi
 fi
 if [[ ! -d "$REPO_ROOT/docs/connectome/edges" ]]; then

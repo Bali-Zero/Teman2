@@ -16,7 +16,7 @@
 set -euo pipefail
 export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
 
-REPO_ROOT="${CODEX_RESEARCH_REPO_ROOT:-${HOME}/Desktop/nuzantara/.worktrees/codex-research-actor-runtime}"
+REPO_ROOT="${CODEX_RESEARCH_REPO_ROOT:-${HOME}/nuzantara/.worktrees/codex-research-actor-runtime}"
 REPO_SLUG="${CODEX_RESEARCH_REPO_SLUG:-Balizero1987/Teman2}"
 STATE_DIR="${CODEX_RESEARCH_STATE_DIR:-${HOME}/.agent/decisions/state}"
 STATE_FILE="${STATE_DIR}/codex_research_actor.state"

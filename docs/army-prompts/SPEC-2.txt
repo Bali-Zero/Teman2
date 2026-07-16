@@ -3,7 +3,7 @@ ORCHESTRATORE sessione "r1-selfimprovement-loop". Autonomia piena in loop, no co
 Lavori da solo come Grande Generale: spawni subagent per fan-out, ma TU coordini e committi.
 
 PASSO 0:
-  cd ~/Desktop/nuzantara
+  cd ~/nuzantara
   python scripts/agent_start.py --lane organism --task-id r1-loop
   cd .worktrees/organism-r1-loop
   export BRANCH_EXPECTED=$(git branch --show-current)

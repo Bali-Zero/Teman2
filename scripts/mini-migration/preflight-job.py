@@ -74,14 +74,14 @@ PRO_BOUND_IMPORTS = {
 REQUIRED_REPOS = {
     "/Users/nuzantara/Desktop/OSINT-Nexus": None,  # filled at runtime
     "/Users/nuzantara/Desktop/MATA-GARUDA-NEXUS": None,
-    "/Users/nuzantara/Desktop/nuzantara-deploy": None,
+    "/Users/nuzantara/nuzantara-deploy": None,
     "/Users/nuzantara/Desktop/kbli-2025-navigator": None,
 }
 
 # Python interpreters that, when referenced, must exist on Mini
 REQUIRED_INTERPRETERS = [
     re.compile(r"(/Users/nuzantara/\.pyenv/versions/[^/\s]+/bin/python[\d.]*)"),
-    re.compile(r"(/Users/nuzantara/Desktop/nuzantara/apps/[^/]+/\.venv/bin/python[\d.]*)"),
+    re.compile(r"(/Users/nuzantara/nuzantara/apps/[^/]+/\.venv/bin/python[\d.]*)"),
     re.compile(r"(/Users/nuzantara/Desktop/[^/]+/\.venv/bin/python[\d.]*)"),
 ]
 
@@ -188,8 +188,8 @@ def fetch_pro_python_module(module_path: str) -> tuple[pathlib.Path | None, str]
 
     Returns (local_temp_path, content) or (None, "") if not found.
     Searches in:
-      - /Users/nuzantara/Desktop/nuzantara/apps/*/  (backend-rag, mata-garuda, etc)
-      - /Users/nuzantara/Desktop/nuzantara/scripts/
+      - /Users/nuzantara/nuzantara/apps/*/  (backend-rag, mata-garuda, etc)
+      - /Users/nuzantara/nuzantara/scripts/
       - /Users/nuzantara/scripts/
       - /Users/nuzantara/.claude/skills/
     """
@@ -199,12 +199,12 @@ def fetch_pro_python_module(module_path: str) -> tuple[pathlib.Path | None, str]
     # Convert module.path → relative file paths to try
     rel = module_path.replace(".", "/")
     candidates = [
-        f"/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/{rel}.py",
-        f"/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/{rel}/__init__.py",
-        f"/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/{rel}.py",
-        f"/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/{rel}/__init__.py",
-        f"/Users/nuzantara/Desktop/nuzantara/{rel}.py",
-        f"/Users/nuzantara/Desktop/nuzantara/{rel}/__init__.py",
+        f"/Users/nuzantara/nuzantara/apps/backend-rag/{rel}.py",
+        f"/Users/nuzantara/nuzantara/apps/backend-rag/{rel}/__init__.py",
+        f"/Users/nuzantara/nuzantara/apps/mata-garuda/{rel}.py",
+        f"/Users/nuzantara/nuzantara/apps/mata-garuda/{rel}/__init__.py",
+        f"/Users/nuzantara/nuzantara/{rel}.py",
+        f"/Users/nuzantara/nuzantara/{rel}/__init__.py",
         f"/Users/nuzantara/scripts/{rel}.py",
         f"/Users/nuzantara/.claude/skills/bali-zero-brand/{rel}.py",
     ]

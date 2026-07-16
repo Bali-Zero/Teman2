@@ -1,5 +1,5 @@
 #!/bin/bash
-# Mini-side periodic git pull for ~/Desktop/nuzantara on main.
+# Mini-side periodic git pull for ~/nuzantara on main.
 #
 # Runs ON Mini via com.nuzantara.git-pull-main.5min LaunchAgent.
 # Pattern: detect-mismatch → stash → fetch pro+origin → ff to most-advanced → stash pop.
@@ -36,7 +36,7 @@
 
 set -u
 
-REPO="$HOME/Desktop/nuzantara"
+REPO="$HOME/nuzantara"
 LOG_FILE="$HOME/logs/mini-git-pull.log"
 LOCK_FILE="/tmp/mini-git-pull.lock"
 STASH_RETENTION_THRESHOLD=5  # alert if more stashes than this accumulate

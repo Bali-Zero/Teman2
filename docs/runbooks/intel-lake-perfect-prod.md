@@ -83,7 +83,7 @@ Backend Fly rimane su (`/health` continua a rispondere). Solo producer Pro-local
 ## 6. Riferimenti
 
 - Endpoint: `GET https://nuzantara-rag.fly.dev/api/intel/health/pipeline`
-- Plist cronici: `~/Desktop/nuzantara/infra/launchagents/com.balizero.intel-lake.e2e-probe.6h.plist`
-- Probe script: `~/Desktop/nuzantara/scripts/probes/intel_lake_e2e_probe.py`
+- Plist cronici: `~/nuzantara/infra/launchagents/com.balizero.intel-lake.e2e-probe.6h.plist`
+- Probe script: `~/nuzantara/scripts/probes/intel_lake_e2e_probe.py`
 - Cleanup emergency: `docs/runbooks/synthetic-probe-cleanup.md`
 - Cicatrici (cosa è andato storto in passato): `.claude/rules/cicatrix-scars.md`

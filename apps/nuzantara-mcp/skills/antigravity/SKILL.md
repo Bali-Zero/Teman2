@@ -1,7 +1,8 @@
 ---
 name: antigravity
-description: 'Bridge to Google Antigravity IDE — open files in visual editor, launch browser subagent, trigger visual diff, delegate complex multi-file refactoring and architecture tasks. Use when task needs visual editing, browser automation, or multi-agent workspace coordination.'
-metadata: { 'openclaw': { 'emoji': '🚀', 'requires': { 'bins': ['antigravity'] } } }
+description: "Bridge to Google Antigravity IDE — open files in visual editor, launch browser subagent, trigger visual diff, delegate complex multi-file refactoring and architecture tasks. Use when task needs visual editing, browser automation, or multi-agent workspace coordination."
+metadata:
+  { "openclaw": { "emoji": "🚀", "requires": { "bins": ["antigravity"] } } }
 ---
 
 # Antigravity IDE Bridge
@@ -15,7 +16,7 @@ Google's agent-first IDE with visual editor, browser subagent, Knowledge Items (
 ### Open file in visual editor
 
 ```bash
-antigravity "/Users/nuzantara/Desktop/nuzantara/path/to/file.py"
+antigravity "/Users/nuzantara/nuzantara/path/to/file.py"
 ```
 
 ### Visual diff between files
@@ -27,7 +28,7 @@ antigravity -d file1.py file2.py
 ### Open workspace
 
 ```bash
-antigravity "/Users/nuzantara/Desktop/nuzantara"
+antigravity "/Users/nuzantara/nuzantara"
 ```
 
 ## When to Delegate to Antigravity
@@ -44,7 +45,7 @@ Use Antigravity (via bridge) when the task requires:
 To inject a task into Antigravity's context for its agents to pick up:
 
 ```bash
-/Users/nuzantara/Desktop/nuzantara/scripts/zan_to_antigravity.sh "task description here"
+/Users/nuzantara/nuzantara/scripts/zan_to_antigravity.sh "task description here"
 ```
 
 This appends the task to `.antigravity/context.md` and plays a macOS notification sound.

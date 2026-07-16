@@ -50,7 +50,7 @@ def _find_real_carousel_base() -> Path | None:
     # Also try the canonical main checkout (worktrees keep output/ in the main
     # checkout only).
     candidates.append(
-        Path("/Users/balizero/Desktop/nuzantara/apps/war-room/output/carousel")
+        Path("/Users/balizero/nuzantara/apps/war-room/output/carousel")
     )
     for c in candidates:
         if c.is_dir():

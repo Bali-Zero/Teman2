@@ -19,7 +19,7 @@
 #  - Logs to ~/logs/matagaruda-archiver.log
 set -euo pipefail
 
-REPO="$HOME/Desktop/nuzantara"
+REPO="$HOME/nuzantara"
 VENV="$REPO/apps/mata-garuda/.venv/bin/python"
 LABEL="com.matagaruda.archiver.hourly"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"

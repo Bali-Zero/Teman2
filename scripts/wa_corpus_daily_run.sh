@@ -12,7 +12,7 @@
 #   WA_CORPUS_DRY_RUN        — optional, "1" to decide-only (no Drive/NLM/CRM writes)
 set -euo pipefail
 
-REPO_ROOT="${WA_CORPUS_REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${WA_CORPUS_REPO_ROOT:-$HOME/nuzantara}"
 VENV_PY="$REPO_ROOT/apps/backend-rag/.venv/bin/python"
 LOG="$HOME/logs/wa-corpus-daily.log"
 mkdir -p "$HOME/logs"

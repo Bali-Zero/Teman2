@@ -274,7 +274,7 @@ except Exception: pass
     #
     # This rule scans every script_to_check that resolves to ~/scripts/
     # (HOME) and checks whether a same-basename copy exists in the repo at
-    # ~/Desktop/nuzantara/scripts/**/<name>. If both exist AND differ, the
+    # ~/nuzantara/scripts/**/<name>. If both exist AND differ, the
     # plist is silently running stale code — same family as W50/W51.
     #
     # Empirical W52 sweep (2026-05-23): out of 84 plists exec'ing HOME
@@ -285,7 +285,7 @@ except Exception: pass
         basename_only=$(basename "$script_to_check")
         # Search repo for same basename. Use -maxdepth 4 to skip deep nesting
         # (worktrees/, __pycache__/, .venv/ already excluded).
-        repo_match=$(find "$HOME/Desktop/nuzantara/scripts" -maxdepth 4 \
+        repo_match=$(find "$HOME/nuzantara/scripts" -maxdepth 4 \
                         -name "$basename_only" \
                         -not -path "*/.worktrees/*" \
                         -not -path "*/__pycache__/*" \

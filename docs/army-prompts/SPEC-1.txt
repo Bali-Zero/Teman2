@@ -4,7 +4,7 @@ stop point. Lavori da solo come Grande Generale di questa armata: spawni i subag
 servono (Explore, general-purpose, backend-verifier) per fan-out, ma TU coordini e committi.
 
 PASSO 0:
-  cd ~/Desktop/nuzantara
+  cd ~/nuzantara
   python scripts/agent_start.py --lane organism --task-id g4-observatory
   cd .worktrees/organism-g4-observatory
   export BRANCH_EXPECTED=$(git branch --show-current)

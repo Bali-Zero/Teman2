@@ -128,7 +128,7 @@ All cron commands must run with `CLAUDE_OAUTH_TOKEN` set (Max OAuth only,
 never `ANTHROPIC_API_KEY`). First dry-run manually before adding to launchd:
 
 ```bash
-cd ~/Desktop/nuzantara/apps/backend-rag && source .venv/bin/activate
+cd ~/nuzantara/apps/backend-rag && source .venv/bin/activate
 PYTHONPATH=. python -m backend.services.intel.trend_hunter.cli  # expect 2-5 adapters summary
 ```
 
@@ -137,7 +137,7 @@ PYTHONPATH=. python -m backend.services.intel.trend_hunter.cli  # expect 2-5 ada
 If the whole wave breaks:
 
 ```bash
-cd ~/Desktop/nuzantara
+cd ~/nuzantara
 git reset --hard pre-cleanup-wave-2026-04-19
 git push --force-with-lease origin main
 fly deploy --app nuzantara-rag --strategy rolling  # redeploy previous image

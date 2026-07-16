@@ -24,11 +24,11 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/zsh</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/apps/wa-mirror/scripts/run-wa-mirror.sh</string>
+        <string>/Users/nuzantara/nuzantara/apps/wa-mirror/scripts/run-wa-mirror.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara/apps/wa-mirror</string>
+    <string>/Users/nuzantara/nuzantara/apps/wa-mirror</string>
 
     <key>EnvironmentVariables</key>
     <dict>

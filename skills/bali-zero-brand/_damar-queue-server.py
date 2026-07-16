@@ -35,7 +35,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 SKILL_DIR = Path.home() / ".claude/skills/bali-zero-brand"
-QUEUE_PATH = Path.home() / "Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json"
+QUEUE_PATH = Path.home() / "nuzantara/apps/war-room/output/queue/human-review-queue.json"
 UI_HTML = SKILL_DIR / "_damar-queue-ui.html"
 TAG_UI_HTML = SKILL_DIR / "_damar-tag-ui.html"
 ANCHOR_UI_HTML = SKILL_DIR / "_damar-anchor-ui.html"
@@ -334,7 +334,7 @@ def trigger_metrics_refresh(item_id):
     if not script.exists():
         return {"ok": False, "error": "scraper script missing"}, 500
 
-    venv_py = "/Users/nuzantara/Desktop/nuzantara/.venv/bin/python"
+    venv_py = "/Users/nuzantara/nuzantara/.venv/bin/python"
     py = venv_py if Path(venv_py).exists() else sys.executable
     try:
         result = subprocess.run(
@@ -644,7 +644,7 @@ class Handler(BaseHTTPRequestHandler):
             # report_file/archetype are server-controlled, but use the same form for
             # uniformity.
             cmd = [
-                "/Users/nuzantara/Desktop/nuzantara/.venv/bin/python",
+                "/Users/nuzantara/nuzantara/.venv/bin/python",
                 str(SKILL_DIR / "_manual_inject_runner.py"),
                 f"--topic={topic}",
                 f"--report-file={report_file}",

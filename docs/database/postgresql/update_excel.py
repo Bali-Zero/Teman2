@@ -13,7 +13,7 @@ USO:
      python3 update_excel.py
 
 CRON (ogni giorno alle 6:00):
-  0 6 * * * cd /Users/antonellosiano/Desktop/nuzantara/POSTGRESQL && ./update_with_proxy.sh
+  0 6 * * * cd /Users/antonellosiano/nuzantara/POSTGRESQL && ./update_with_proxy.sh
 """
 
 import asyncio

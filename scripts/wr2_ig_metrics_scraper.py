@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-DEFAULT_QUEUE = Path.home() / "Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json"
+DEFAULT_QUEUE = Path.home() / "nuzantara/apps/war-room/output/queue/human-review-queue.json"
 GRAPH = "https://graph.instagram.com"
 
 

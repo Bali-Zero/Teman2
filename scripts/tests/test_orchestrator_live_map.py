@@ -51,14 +51,14 @@ def test_parse_remote_target_supports_default_and_explicit() -> None:
     default = olm.parse_remote_target("m5")
     assert default.name == "m5"
     assert default.host == "m5"
-    assert default.repo_root == "/Users/balizero/Desktop/nuzantara"
+    assert default.repo_root == "/Users/balizero/nuzantara"
 
     explicit = olm.parse_remote_target(
-        "staging=mini:/Users/nuzantara/Desktop/nuzantara"
+        "staging=mini:/Users/nuzantara/nuzantara"
     )
     assert explicit.name == "staging"
     assert explicit.host == "mini"
-    assert explicit.repo_root == "/Users/nuzantara/Desktop/nuzantara"
+    assert explicit.repo_root == "/Users/nuzantara/nuzantara"
 
 
 def test_parse_worktree_porcelain_tags_machine() -> None:
@@ -251,7 +251,7 @@ def test_render_markdown_includes_no_touch_and_candidates() -> None:
             olm.MachineStatus(
                 name="m5",
                 host="m5",
-                repo_root="/Users/balizero/Desktop/nuzantara",
+                repo_root="/Users/balizero/nuzantara",
                 reachable=True,
                 current_branch="HEAD",
                 head="40b28a2",

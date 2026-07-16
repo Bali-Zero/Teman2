@@ -13,7 +13,7 @@
 # no-op until the magazzino exceeds 10M.
 #
 # SAFETY (sibling-race aware, per cicatrix W59/W62/untracked-lost family):
-#   - Operates on the authoritative checkout ($REPO_ROOT, default ~/Desktop/nuzantara).
+#   - Operates on the authoritative checkout ($REPO_ROOT, default ~/nuzantara).
 #   - Runs the archiver in-place (it only rewrites the two scar md files).
 #   - Commits ONLY if: branch == $EXPECT_BRANCH AND the ONLY dirty paths are the
 #     two scar files. Any other dirty/staged content → archive stays on disk,
@@ -29,7 +29,7 @@ if [ "${CICATRIX_ARCHIVE_ENFORCEMENT:-true}" = "false" ]; then
     exit 0
 fi
 
-REPO_ROOT="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${REPO_ROOT:-$HOME/nuzantara}"
 ACTIVE=".claude/rules/cicatrix-scars.md"
 ARCHIVE=".claude/rules/cicatrix-scars-archive.md"
 LIMIT="${CICATRIX_SIZE_LIMIT_CHARS:-10000000}"

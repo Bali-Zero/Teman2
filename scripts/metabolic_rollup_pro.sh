@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-REPO="/Users/nuzantara/Desktop/nuzantara"
+REPO="/Users/nuzantara/nuzantara"
 CELLCORE="$REPO/packages/cell-core"
 LOG_DIR="$HOME/logs/cron"
 mkdir -p "$LOG_DIR"

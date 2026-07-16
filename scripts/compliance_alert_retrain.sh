@@ -5,7 +5,7 @@
 # observed in the configured window (default: 90 days).
 #
 # Cron entry on Air:
-#   0 3 * * 0  /bin/bash ~/Desktop/nuzantara/scripts/compliance_alert_retrain.sh
+#   0 3 * * 0  /bin/bash ~/nuzantara/scripts/compliance_alert_retrain.sh
 #
 # Kill-switch: system_settings.compliance_alert_autotune_enabled must be 'true'.
 # Safe to run when disabled — retrain() returns {reason: "autotune_disabled"}.

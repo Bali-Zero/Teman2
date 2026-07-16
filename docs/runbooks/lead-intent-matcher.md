@@ -41,7 +41,7 @@ Requirements:
 - `~/.nuzantara-secrets.env` (0600) must export `DATABASE_URL` pointing at the
   Fly Postgres reachable from the Pro. Until it does, every tick logs a
   `SKIP DATABASE_URL not set` line — unarmed-but-visible by design.
-- venv: `~/Desktop/nuzantara/apps/backend-rag/.venv` (needs `asyncpg`).
+- venv: `~/nuzantara/apps/backend-rag/.venv` (needs `asyncpg`).
 
 ## Verify
 

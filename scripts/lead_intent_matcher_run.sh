@@ -9,7 +9,7 @@
 # comes from the environment or from ~/.nuzantara-secrets.env (0600).
 set -uo pipefail
 
-REPO_ROOT="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${REPO_ROOT:-$HOME/nuzantara}"
 LOG_FILE="${LOG_FILE:-$HOME/logs/lead-intent-matcher.log}"
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -30,7 +30,7 @@ fi
 PYTHON_BIN=""
 for candidate in \
     "$REPO_ROOT/apps/backend-rag/.venv/bin/python" \
-    "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python"; do
+    "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python"; do
     if [ -x "$candidate" ] && "$candidate" -c "import asyncpg" 2>/dev/null; then
         PYTHON_BIN="$candidate"
         break

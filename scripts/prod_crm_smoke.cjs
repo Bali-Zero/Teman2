@@ -11,7 +11,7 @@ function loadChromium() {
     path.join(process.cwd(), "apps/mouth/node_modules/playwright"),
     path.join(
       os.homedir(),
-      "Desktop/nuzantara/apps/mouth/node_modules/playwright",
+      "nuzantara/apps/mouth/node_modules/playwright",
     ),
   ];
   let lastError = null;

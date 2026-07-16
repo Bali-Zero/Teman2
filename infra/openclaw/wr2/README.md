@@ -20,7 +20,7 @@ race conditions).
 When a change lands on this repo:
 
 ```bash
-cp ~/Desktop/nuzantara/infra/openclaw/wr2/wr2-script-wrapper.sh \
+cp ~/nuzantara/infra/openclaw/wr2/wr2-script-wrapper.sh \
    ~/.openclaw/bin/wr2/wr2-script-wrapper.sh
 chmod +x ~/.openclaw/bin/wr2/wr2-script-wrapper.sh
 ```

@@ -4,7 +4,7 @@ CONSERVATIVO: rimuove SOLO spazzatura inequivocabile, MAI pattern/mcp/read (quel
 Default dry-run. APPLY=1 per scrivere (con backup). Genesi: opus-mythos TAC harness — "il guardiano svuota"."""
 import json, os, re, sys
 
-P=os.path.expanduser("~/Desktop/nuzantara/.claude/settings.local.json")
+P=os.path.expanduser("~/nuzantara/.claude/settings.local.json")
 APPLY=os.environ.get("APPLY")=="1"
 d=json.load(open(P))
 allow=d["permissions"]["allow"]

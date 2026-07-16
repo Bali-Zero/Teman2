@@ -30,7 +30,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
-    @require_role("tax_consultant", "admin")
+    @require_role("admin")
     async def get_practice_invoice(practice_id: int) -> dict:
         """
         Get invoice details for a practice.
@@ -47,7 +47,7 @@ def register(mcp, _call, _call_safe):
         return await _call(f"/api/crm/practices/{practice_id}/invoice")
 
     @mcp.tool()
-    @require_role("tax_consultant", "admin")
+    @require_role("admin")
     async def list_pending_invoices(
         status: str = "unpaid",
         limit: int = 50,

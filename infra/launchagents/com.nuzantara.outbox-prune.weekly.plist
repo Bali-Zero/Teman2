@@ -15,10 +15,10 @@
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>source ~/.nuzantara-secrets.env 2>/dev/null; /Users/nuzantara/Desktop/nuzantara/.venv/bin/python /Users/nuzantara/Desktop/nuzantara/scripts/outbox_prune.py --older-than-days 30 --vacuum</string>
+        <string>source ~/.nuzantara-secrets.env 2>/dev/null; /Users/nuzantara/nuzantara/.venv/bin/python /Users/nuzantara/nuzantara/scripts/outbox_prune.py --older-than-days 30 --vacuum</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/nuzantara</string>
     <key>StartCalendarInterval</key>
     <dict>
         <key>Weekday</key>

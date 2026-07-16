@@ -47,7 +47,7 @@ Run browser work on Pro, not Air-M5:
 
 ```bash
 ssh pro 'bash -lc "
-cd ~/Desktop/nuzantara &&
+cd ~/nuzantara &&
 set -a &&
 source ~/.local/share/nuzantara/secrets/prod-smoke-login.env &&
 set +a &&
@@ -78,7 +78,7 @@ Snapshot:
 
 ```bash
 ssh pro 'bash -lc "
-cd ~/Desktop/nuzantara &&
+cd ~/nuzantara &&
 bash scripts/fly_permission_log_monitor.sh --snapshot
 "'
 ```
@@ -87,7 +87,7 @@ Long stream, for example 24 hours:
 
 ```bash
 ssh pro 'bash -lc "
-cd ~/Desktop/nuzantara &&
+cd ~/nuzantara &&
 bash scripts/fly_permission_log_monitor.sh \
   --duration-seconds 86400 \
   --output /tmp/nuzantara-rag-permission-monitor.log

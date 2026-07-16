@@ -40,7 +40,7 @@ def _default_project_root() -> Path:
     if env_root:
         return Path(env_root).expanduser()
 
-    legacy_root = Path(os.path.expanduser("~/Desktop/nuzantara"))
+    legacy_root = Path(os.path.expanduser("~/nuzantara"))
     if legacy_root.exists():
         return legacy_root
 

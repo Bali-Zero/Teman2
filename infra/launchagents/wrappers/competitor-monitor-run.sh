@@ -14,7 +14,7 @@ unset ANTHROPIC_API_KEY
 
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
 
-mkdir -p "$HOME/Desktop/nuzantara/research/competitive" "$HOME/.claude/projects/-Users-nuzantara/competitive-snapshots" "$HOME/logs"
+mkdir -p "$HOME/nuzantara/research/competitive" "$HOME/.claude/projects/-Users-nuzantara/competitive-snapshots" "$HOME/logs"
 LOG="$HOME/logs/competitor-monitor.log"
 MONTH=$(TZ=Asia/Makassar date +%Y-%m)
 
@@ -26,7 +26,7 @@ Read ~/.claude/agents/competitor-monitor.md for full spec.
 - Compare vs last month's snapshot in ~/.claude/projects/-Users-nuzantara/competitive-snapshots/
 - IG screenshot triage via Ollama qwen2.5vl:7b LOCAL pre-filter
 - Sonnet analysis on filtered posts
-- Output digest to ~/Desktop/nuzantara/research/competitive/${MONTH}-digest.md
+- Output digest to ~/nuzantara/research/competitive/${MONTH}-digest.md
 - Save snapshot for next month
 - Telegram digest if material changes detected
 - Cold-start logic: if no prior snapshot, mark cold_start: true in digest

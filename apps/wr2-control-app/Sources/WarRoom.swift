@@ -12,7 +12,7 @@ enum WarRoom {
     /// Honors the `WR2_WARROOM_ROOT` env override. The Mini/TV postazione uses this after
     /// `deploy/install-mini.sh` creates a local Pro-synced copy, because the Mini has no
     /// war-room output at the monorepo path. Falls back to:
-    /// ~/Desktop/nuzantara/apps/war-room/output.
+    /// ~/nuzantara/apps/war-room/output.
     static func defaultOutputRoot() -> URL {
         if let override = ProcessInfo.processInfo.environment["WR2_WARROOM_ROOT"],
            override.isEmpty == false {
@@ -20,7 +20,7 @@ enum WarRoom {
         }
         let home = FileManager.default.homeDirectoryForCurrentUser
         return home
-            .appendingPathComponent("Desktop/nuzantara/apps/war-room/output", isDirectory: true)
+            .appendingPathComponent("nuzantara/apps/war-room/output", isDirectory: true)
     }
 
     static func carouselRoot(outputRoot: URL? = nil) -> URL {

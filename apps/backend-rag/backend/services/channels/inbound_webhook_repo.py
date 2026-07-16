@@ -89,7 +89,7 @@ async def persist(
                 )
                 VALUES (
                     $1,
-                    $2::jsonb,
+                    $2::text::jsonb,
                     $3,
                     CASE
                         WHEN $4::integer > 0

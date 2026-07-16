@@ -1,7 +1,7 @@
 #!/bin/bash
 # Start Backend with minimal dependencies
 
-cd /sessions/epic-gifted-thompson/mnt/antonellosiano/Desktop/nuzantara/apps/backend-rag
+cd /sessions/epic-gifted-thompson/mnt/antonellosiano/nuzantara/apps/backend-rag
 
 echo "Installing critical dependencies..."
 python3 -m pip install --user \

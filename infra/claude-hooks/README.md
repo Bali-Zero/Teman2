@@ -31,13 +31,13 @@ Blocca scritture file sotto il main checkout ma fuori da ogni worktree registrat
 ## Path-aware (2026-06-01)
 
 Entrambi derivano `REPO_ROOT` a runtime (non più hardcoded `/Users/nuzantara/...`),
-così girano identici su Pro (`/Users/nuzantara/Desktop/nuzantara`) e Air-M5
-(`/Users/balizero/Desktop/nuzantara`). Ordine di derivazione in `_derive_repo_root()`:
+così girano identici su Pro (`/Users/nuzantara/nuzantara`) e Air-M5
+(`/Users/balizero/nuzantara`). Ordine di derivazione in `_derive_repo_root()`:
 
 1. env `NUZ_REPO_ROOT` (override esplicito)
 2. parent di `git rev-parse --git-common-dir`, **solo se** il root ha la firma
    `scripts/agent_start.py` (guard contro cwd dentro un altro repo, es. `~/.claude`)
-3. fallback `~/Desktop/nuzantara`
+3. fallback `~/nuzantara`
 
 ## Kill switch
 

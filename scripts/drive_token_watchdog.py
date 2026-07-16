@@ -255,7 +255,7 @@ def _send_telegram(text: str, bot_token: str) -> bool:
         return False
     gateway = PROJECT_ROOT / "scripts" / "tg_notify.py"
     if not gateway.is_file():
-        gateway = Path(os.path.expanduser("~/Desktop/nuzantara/scripts/tg_notify.py"))
+        gateway = Path(os.path.expanduser("~/nuzantara/scripts/tg_notify.py"))
     # Stable key (cohort-3 disk_watchdog.sh pattern) — the message body embeds
     # a live timestamp + variable days-left, so tg_notify's default
     # source+text[:160] hash never matches twice and dedup can't suppress

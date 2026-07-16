@@ -8,23 +8,23 @@ import time
 from datetime import datetime
 from dotenv import load_dotenv
 
-load_dotenv("/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.env", override=True)
+load_dotenv("/Users/nuzantara/nuzantara/apps/backend-rag/.env", override=True)
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable",
 )
-sys.path.insert(0, "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag")
+sys.path.insert(0, "/Users/nuzantara/nuzantara/apps/backend-rag")
 from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
 ITEMS = [
     # PP 41/1996 already ingested in single test (12 chunks). Skip.
-    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/property/PP_13-2017.pdf",
+    ("/Users/nuzantara/nuzantara/data/source_documents/peraturan/property/PP_13-2017.pdf",
      "PP 13/2017 — RTRWN Amendment", "property"),
-    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/tax/PMK_9-PMK.03-2018.pdf",
+    ("/Users/nuzantara/nuzantara/data/source_documents/peraturan/tax/PMK_9-PMK.03-2018.pdf",
      "PMK 9/PMK.03/2018 — SPT Filing Periods", "tax"),
-    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/tax/PER-7-PJ-2025.pdf",
+    ("/Users/nuzantara/nuzantara/data/source_documents/peraturan/tax/PER-7-PJ-2025.pdf",
      "PER-7/PJ/2025 — NIK-NPWP Coretax", "tax"),
-    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/tax/KEP-55-PJ-2026.pdf",
+    ("/Users/nuzantara/nuzantara/data/source_documents/peraturan/tax/KEP-55-PJ-2026.pdf",
      "KEP-55/PJ/2026 — Coretax Penalty Waiver", "tax"),
 ]
 

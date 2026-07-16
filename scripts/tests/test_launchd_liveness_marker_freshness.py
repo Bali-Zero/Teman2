@@ -34,7 +34,7 @@ def _write_log(path: Path, line: str, age_sec: float) -> None:
     os.utime(path, (ts, ts))
 
 
-MARKER_LINE = "bash: /Users/x/Desktop/nuzantara/scripts/lib/heartbeat.sh: Operation not permitted"
+MARKER_LINE = "bash: /Users/x/nuzantara/scripts/lib/heartbeat.sh: Operation not permitted"
 
 
 def test_fresh_marker_is_reported(tmp_path: Path) -> None:

@@ -42,7 +42,7 @@ DEFAULT_QDRANT_URL = os.environ.get("QDRANT_LOCAL_URL", "http://127.0.0.1:6333")
 DEFAULT_SQLITE_PATH = Path(
     os.environ.get(
         "MATA_GARUDA_KB_PATH",
-        str(Path.home() / "Desktop/nuzantara/apps/mata-garuda/data/knowledge.db"),
+        str(Path.home() / "nuzantara/apps/mata-garuda/data/knowledge.db"),
     ),
 )
 TARGET_TYPES: tuple[str, ...] = ("skill", "reflection", "insight")

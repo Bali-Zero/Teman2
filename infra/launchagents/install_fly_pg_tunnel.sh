@@ -38,7 +38,7 @@ set -uo pipefail
 
 LABEL="com.nuzantara.fly-pg-tunnel"
 DEST="$HOME/Library/LaunchAgents/$LABEL.plist"
-REPO_ROOT="$HOME/Desktop/nuzantara"
+REPO_ROOT="$HOME/nuzantara"
 SRC_RUNNER="$REPO_ROOT/scripts/fly_pg_tunnel_supervisor.sh"
 # TCC: launchd CANNOT execute files under ~/Desktop on M5 (macOS TCC blocks it →
 # the agent crashes with status 126 "Operation not permitted"). So we STAGE a copy
