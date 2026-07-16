@@ -23,7 +23,9 @@ SURFACES COVERED:
   - Edit / Write / NotebookEdit: `tool_input.file_path` (or `notebook_path`
     for NotebookEdit) resolved and matched against every registry glob.
   - Bash: DIRECT shell-level writes only — redirects (`>`/`>>`), `tee`,
-    `cp`/`mv`/`install`/`rsync` destination, `sed -i`, `truncate`, `rm`.
+    `cp`/`install`/`rsync` destination, `mv` source AND destination (mv
+    destroys its source, so a protected source blocks too — cp/install/rsync
+    sources are read-only and stay allowed), `sed -i`, `truncate`, `rm`.
     Reads (`cat`, `grep`, `jq`, a compiler invocation like `python3
     scripts/kbli_filiera/build.py`) are NOT a write operator and pass
     trivially — no write-hint keyword, no target extracted.
@@ -200,10 +202,16 @@ VERB_RE = re.compile(
 )
 SED_INVOCATION_RE = re.compile(r"\bsed\b((?:\s+(?:-\S+|[^\s|;&)]+))+)")
 
-# rm/tee can write MULTIPLE targets in one invocation (every non-flag arg is
-# a destination); cp/mv/install/rsync/truncate take the LAST non-flag token
-# (source(s)... DEST).
-_ALL_TARGETS_VERBS = {"rm", "tee"}
+# rm/tee/mv: every non-flag arg is a candidate target. rm/tee because every
+# arg is an independent destination. mv is the odd one out among the
+# "SRC... DEST" verbs: unlike cp/install/rsync it DESTROYS its source (the
+# source path stops existing), so a protected SOURCE must block exactly like
+# a protected dest would — moving a curated dataset out from under itself is
+# as much a hand-edit as overwriting it. cp/install/rsync/truncate stay
+# LAST-non-flag-token-only: their sources are read-only, reading FROM a
+# protected path is not a write (spec-confirmed: `cp protected/x /tmp/`
+# must stay ALLOWED).
+_ALL_TARGETS_VERBS = {"rm", "tee", "mv"}
 
 
 def _strip_noise(cmd: str) -> str:

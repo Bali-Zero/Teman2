@@ -96,6 +96,13 @@ CASES: list[tuple[dict, str, str, dict | None]] = [
      "Bash cp overwrites the KBLI gold file", None),
     (bash("sed -i '' 's/a/b/' data/kbli-filiera/manifest/m.json"), "BLOCK",
      "Bash sed -i (BSD two-arg form) edits a manifest in place", None),
+    (bash("rm -rf data/kbli-filiera"), "BLOCK",
+     "rm -rf on the BARE protected dir (no glob suffix) — the /** glob alone "
+     "does not match the directory itself, needs the exact entry too", None),
+    (bash("rm -rf data/kbli-filiera/"), "BLOCK",
+     "same, with a trailing slash", None),
+    (bash("mv data/source_documents/KBLI_2025_FINAL_CLEAN.json /tmp/x.json"), "BLOCK",
+     "mv of a protected SOURCE — mv destroys its source, unlike cp/install/rsync", None),
 
     # --------------------------------------------------------------- INNOCENCE
     (edit("data/kbli-filiera-README.md"), "ALLOW",
@@ -111,6 +118,13 @@ CASES: list[tuple[dict, str, str, dict | None]] = [
      "read-only grep over the protected dir", None),
     (bash("git add data/kbli-filiera/manifest.json && git commit"), "ALLOW",
      "git object writes are not hand-edits", None),
+    (bash("mv /tmp/a /tmp/b"), "ALLOW",
+     "mv entirely outside the repo — neither source nor dest is protected", None),
+    (bash("mv data/kbli-filiera-README.md /tmp/"), "ALLOW",
+     "mv source has the adjacent (non-matching) prefix, not the protected dir", None),
+    (bash("cp data/kbli-filiera/dossiers/x.json /tmp/"), "ALLOW",
+     "cp FROM a protected path is a read of the source, not a write — must "
+     "stay allowed (only cp's DEST is checked)", None),
     (edit("data/kbli-filiera/dossiers/68112.jsonl"), "ALLOW",
      "same GUILTY path, but registry unreachable from this project dir "
      "→ pass-through with WARN", {"CLAUDE_PROJECT_DIR": str(_NO_REGISTRY_DIR)}),

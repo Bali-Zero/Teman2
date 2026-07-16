@@ -7,6 +7,7 @@
       "owner": "GARUDA-FILIERA program (research/operations/2026-07-16-kbli-garuda-filiera-workflow.md)",
       "compilers": "scripts/kbli_filiera/",
       "protected": [
+        "data/kbli-filiera",
         "data/kbli-filiera/**",
         "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
         "data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json"
