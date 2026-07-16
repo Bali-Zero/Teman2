@@ -511,6 +511,7 @@ openclaw
 # Pattern: re-include directories first, then specific files, leaving everything else ignored.
 !.claude/
 .claude/*
+!.claude/agents/
 !.claude/commands/
 !.claude/scripts/
 !.claude/hooks/
