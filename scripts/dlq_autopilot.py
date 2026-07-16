@@ -53,9 +53,13 @@ import sys as _sys
 _sys.path.insert(0, str(NUZANTARA_ROOT / "scripts"))
 try:
     from sentinel_lib.escalations import write_escalation as _write_escalation
+    from sentinel_lib.escalations import mark_resolved as _mark_resolved
 except ImportError:
     def _write_escalation(entry: dict) -> None:  # type: ignore[misc]
         pass  # graceful degradation if sentinel_lib not importable
+
+    def _mark_resolved(job_id: str) -> int:  # type: ignore[misc]
+        return 0  # graceful degradation if sentinel_lib not importable
 
 # S3 (2026-06-02): per-job escalation cooldown. The sentinel's alerter already
 # gates Telegram by a 4h per-job cooldown (escalation_cooldown.json), but the
@@ -597,7 +601,8 @@ def _record_suppressed(job: str) -> None:
 def process_entry(entry: dict, registry: dict) -> str:
     """
     Process one DLQ entry. Returns action taken:
-    'skipped_terminal', 'skipped_preflight', 'retried_ok', 'aider_fixed', 'escalated', 'terminal', 'archived'
+    'skipped_terminal', 'skipped_preflight', 'skipped_noise', 'retried_ok',
+    'aider_fixed', 'codex_fixed', 'escalated', 'terminal', 'archived'
     """
     job = entry["job"]
     error = entry.get("error_summary", "")
@@ -645,6 +650,24 @@ def process_entry(entry: dict, registry: dict) -> str:
 
     # 3. Classifier itself failed — LLM reasoning would fail for the same reason
     if subtype in CLASSIFIER_FAILURE_SUBTYPES:
+        # Noise gate (board-honesty cure, 2026-07-16): a subset of classifier
+        # failures carries ZERO diagnostic content — empty/whitespace error_summary
+        # AND classification stuck at classifier.py's no_error_text short-circuit
+        # (type=UNKNOWN, confidence=0.0). Escalating these produces a content-free
+        # board entry an operator can never act on (dropbox_intake: repeat offender
+        # in shared/escalations_pro.jsonl). Match the FACT (both fields), not the
+        # subtype substring — other CLASSIFIER_FAILURE_SUBTYPES (no_api_key,
+        # cli_failed, ...) can carry a real error and stay escalatable.
+        if (
+            not error.strip()
+            and classification.get("type") == "UNKNOWN"
+            and classification.get("confidence") == 0.0
+        ):
+            logger.info(
+                f"{job}: subtype={subtype}, empty error + UNKNOWN/0.0 confidence "
+                f"— noise gate, logging only (no board write, no Telegram)"
+            )
+            return "skipped_noise"
         logger.info(f"{job}: subtype={subtype} (classifier failure) → escalating directly")
         escalate_to_claude_code(entry, None)
         return "skipped_preflight"
@@ -694,6 +717,7 @@ def process_entry(entry: dict, registry: dict) -> str:
                 if result.returncode == 0:
                     logger.info(f"{job}: retry OK ✅")
                     send_telegram(f"✅ Auto-retried `{job}` successfully")
+                    _resolve_job_escalation(job)
                     return "retried_ok"
             except Exception as e:
                 logger.warning(f"{job}: retry failed: {e}")
@@ -720,6 +744,7 @@ def process_entry(entry: dict, registry: dict) -> str:
                 send_telegram(
                     f"✅ Aider auto-fixed `{job}`: {reasoning['fix_instruction'][:80]}"
                 )
+                _resolve_job_escalation(job)
                 return "aider_fixed"
 
         # ── Tier 2.5: Codex CLI fix — multi-file, sandboxed ────────────────
@@ -743,6 +768,7 @@ def process_entry(entry: dict, registry: dict) -> str:
                     f"✅ Codex auto-fixed `{job}` (after Aider fail): "
                     f"{reasoning['fix_instruction'][:80]}"
                 )
+                _resolve_job_escalation(job)
                 return "codex_fixed"
 
         logger.warning(f"{job}: Codex also failed → escalating to Claude Code")
@@ -758,6 +784,47 @@ def process_entry(entry: dict, registry: dict) -> str:
     logger.info(f"{job}: {reason} → escalating to Claude Code")
     escalate_to_claude_code(entry, reasoning)
     return "escalated"
+
+
+def _resolve_swept_escalations(swept: list) -> int:
+    """Board-honesty cure (2026-07-16): append a resolution pair for each
+    corpse-swept job that has a pending escalation.
+
+    Root cause fixed: sweep_recovered_corpses() drains a DLQ entry once its
+    job proves fresh recovery, but nothing ever flipped the matching
+    shared/escalations_pro.jsonl entry from pending → resolved — the board
+    kept shouting about jobs that had already healed (alert-fatigue,
+    scar-family #2 Esiste≠Armato). ``mark_resolved`` is append-only (never
+    rewrites the original pending line — immutable log, D2.3) and is a no-op
+    (returns 0, writes nothing) for jobs with no matching pending entry, so
+    this is safe to call unconditionally for every swept job.
+    """
+    resolved = 0
+    for job in swept:
+        try:
+            if _mark_resolved(job):
+                resolved += 1
+        except Exception as exc:  # noqa: BLE001 — must never break the autopilot run
+            logger.warning(f"{job}: mark_resolved failed (escalation stays pending): {exc}")
+    return resolved
+
+
+def _resolve_job_escalation(job: str) -> None:
+    """W89 class-audit (2026-07-16): same bug as _resolve_swept_escalations,
+    different call site. A job healed WITHIN this tick (Tier 1 retry, Tier 2
+    Aider, Tier 2.5 Codex) never goes through sweep_recovered_corpses() —
+    it never enters the DLQ at all — so it needed its own resolution call.
+    "A cure applied to 1-of-N recovery paths is a time bomb": corpse-sweep
+    was the first path found; retried_ok / aider_fixed / codex_fixed are the
+    other three. Silent no-op (logs nothing) for the common case — most
+    auto-fixed jobs never escalated in the first place.
+    """
+    resolved = _resolve_swept_escalations([job])
+    if resolved:
+        logger.info(
+            f"{job}: resolved {resolved} pending escalation(s) on the board "
+            f"(same-tick recovery)"
+        )
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -779,7 +846,11 @@ def run_autopilot() -> None:
         queue, swept = sweep_recovered_corpses(queue)
         if swept:
             save_dlq(queue)
-            logger.info(f"corpse-sweep: drained {len(swept)} recovered entries: {swept}")
+            resolved_count = _resolve_swept_escalations(swept)
+            logger.info(
+                f"corpse-sweep: drained {len(swept)} recovered entries: {swept} "
+                f"(resolved {resolved_count} pending escalation(s) on the board)"
+            )
             send_telegram(
                 f"🧹 DLQ corpse-sweep: drained {len(swept)} recovered job(s): "
                 f"{', '.join(swept[:8])}"
@@ -799,7 +870,7 @@ def run_autopilot() -> None:
             action = process_entry(entry, registry)
             results[job] = action
 
-            if action in ("retried_ok", "aider_fixed", "archived"):
+            if action in ("retried_ok", "aider_fixed", "codex_fixed", "archived"):
                 pass  # Remove from DLQ
             elif action == "skipped_terminal":
                 # TERMINAL entries stay in DLQ for audit — DO NOT increment attempts
@@ -816,13 +887,15 @@ def run_autopilot() -> None:
         save_dlq(updated_queue)
 
         duration = time.time() - start
-        fixed = sum(1 for a in results.values() if a in ("retried_ok", "aider_fixed"))
+        fixed = sum(1 for a in results.values() if a in ("retried_ok", "aider_fixed", "codex_fixed"))
         escalated = sum(1 for a in results.values() if a == "escalated")
         skipped = sum(1 for a in results.values() if a == "skipped_preflight")
+        noise_skipped = sum(1 for a in results.values() if a == "skipped_noise")
 
         logger.info(
             f"=== DLQ Autopilot done: {len(queue)} processed, "
-            f"{fixed} fixed, {escalated} escalated, {skipped} skipped "
+            f"{fixed} fixed, {escalated} escalated, {skipped} skipped, "
+            f"{noise_skipped} noise-gated (no board write) "
             f"in {duration:.1f}s ==="
         )
 
