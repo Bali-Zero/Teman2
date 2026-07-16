@@ -28,6 +28,8 @@ calls. transaction() is a no-op async CM. The pool exposes execute() (reclaim)
 
 from __future__ import annotations
 
+import asyncio
+import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -581,3 +583,94 @@ async def test_fencing_returns_fenced_at_pre_send_when_lease_lost() -> None:
 
     assert result == "fenced"
     svc.send_message.assert_not_awaited()
+
+
+# ── P5/P6: lease heartbeat during generation ────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_lease_heartbeat_loop_renews_and_stops_on_cancel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Direct, timing-independent test of the heartbeat loop itself: each
+    sleep tick renews claim_expires_at fenced by claim_token+status, and a
+    CancelledError (task.cancel()) propagates rather than being swallowed."""
+    conn = ScriptedConn()
+    real_sleep = asyncio.sleep
+    tick_count = 0
+
+    async def _fast_sleep(_seconds: float) -> None:
+        nonlocal tick_count
+        tick_count += 1
+        if tick_count > 2:
+            raise asyncio.CancelledError
+        await real_sleep(0)
+
+    monkeypatch.setattr(wa_outbox_worker.asyncio, "sleep", _fast_sleep)
+
+    claim_token = uuid.uuid4()
+    with pytest.raises(asyncio.CancelledError):
+        await wa_outbox_worker._lease_heartbeat_loop(conn, 99, claim_token)
+
+    renewals = [
+        (s, a)
+        for s, a in conn.executed
+        if "claim_expires_at" in s and "status = 'generating'" in s
+    ]
+    assert len(renewals) == 2  # ticks 1 and 2 renewed; tick 3 raised before renewing
+    assert all(a[0] == 99 and a[1] == claim_token for _, a in renewals)
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_started_during_generation_and_cancelled_after() -> None:
+    """The heartbeat task must be created before bot_generate_fn is awaited
+    and reliably cancelled+awaited-to-completion once it returns, regardless
+    of how long generation actually took."""
+    events: list[str] = []
+
+    async def _fake_heartbeat_loop(
+        _conn: Any, _outbox_id: int, _claim_token: uuid.UUID
+    ) -> None:
+        events.append("started")
+        try:
+            await asyncio.sleep(1000)  # would hang the test if never cancelled
+        except asyncio.CancelledError:
+            events.append("cancelled")
+            raise
+
+    # bot_generate_fn must actually yield to the event loop at least once for
+    # the concurrently-created heartbeat task to ever get a scheduling slice
+    # before we cancel it — a non-yielding stub (module-level `_bot_gen`, used
+    # everywhere else in this file) runs to completion in the same tick with
+    # zero awaits inside it, so `heartbeat_task.cancel()` would fire before
+    # asyncio ever ran the task even once. In production this is a non-issue:
+    # the real bot_generate_fn (wa_inbox_bot.generate_bot_reply) always awaits
+    # a real httpx call.
+    async def _yielding_bot_gen(_thread: Any) -> str:
+        await asyncio.sleep(0)
+        return "generated bot reply"
+
+    original = wa_outbox_worker._lease_heartbeat_loop
+    wa_outbox_worker._lease_heartbeat_loop = _fake_heartbeat_loop
+    try:
+        candidate = _candidate(60, thread_id=7, message_id=6000, needs_generation=True)
+        conn = ScriptedConn(
+            fetchrow_results=[
+                _thread_row(human_handling=False),
+                {"id": 60},  # generating-transition fenced RETURNING
+                {"id": 60},  # pre-send fence RETURNING
+                {"id": 60},  # final commit RETURNING
+                None,  # no staged receipt
+            ],
+            fetchval_results=[True, False, True],
+            fetch_results=[[candidate], []],
+        )
+        pool = _make_pool(conn)
+        svc = _wa_service(send_result={"messages": [{"id": "wamid.HB2"}]})
+
+        result = await process_outbox_once(pool, svc, _yielding_bot_gen)
+    finally:
+        wa_outbox_worker._lease_heartbeat_loop = original
+
+    assert result == "sent"
+    assert events == ["started", "cancelled"]
