@@ -187,6 +187,75 @@ def test_node_modules_symlink_does_not_mask_real_wip(fake_repo):
     assert mod._worktree_has_wip(wt) is True
 
 
+def test_husky_shim_dir_symlinked_into_worktree(fake_repo):
+    """`.husky/_` must reach every worktree or the pre-push gate is OFF there.
+
+    `core.hooksPath` is the RELATIVE path `.husky/_`, resolved by git against
+    each working tree. `_` is husky's generated shim dir — `npm install` makes
+    it in the main checkout and `git worktree add` never carries it over. A
+    worktree without it resolves hooksPath to nothing, so every push from it
+    skips pre-push entirely: no banner, no suite, exit 0. Measured 2026-07-16:
+    three probe pushes from two worktrees ran no gate; symlinking the dir in
+    made the same push run the full suite.
+    """
+    mod, repo = fake_repo
+    (repo / ".husky" / "_").mkdir(parents=True)
+    (repo / ".husky" / "_" / "pre-push").write_text("#!/bin/sh\n")
+
+    wt = mod.cmd_create("infra", "husky-shim")
+    link = wt / ".husky" / "_"
+    assert link.is_symlink(), "worktree has no .husky/_ — its pushes would be ungated"
+    assert link.resolve() == (repo / ".husky" / "_").resolve()
+    assert (wt / ".husky" / "_" / "pre-push").exists()
+
+
+def test_husky_shim_symlink_not_counted_as_wip(fake_repo):
+    """Innocence: the broker's own shim symlink is not user WIP.
+
+    Same trap the node_modules note describes — `.husky/.gitignore` does not
+    cover `_`, so without the BROKER_GENERATED_FILES entry this symlink would
+    read as `?? .husky/_` in every worktree and make `--cleanup` a no-op
+    forever. Curing the gate must not re-open the reaper bug.
+    """
+    mod, repo = fake_repo
+    (repo / ".husky" / "_").mkdir(parents=True)
+    (repo / ".husky" / "_" / "pre-push").write_text("#!/bin/sh\n")
+    # A tracked file inside .husky/ is what the real repo has (pre-commit,
+    # pre-push, post-commit are all committed). Without one git collapses the
+    # whole untracked dir to `?? .husky/` and this test would pass or fail for
+    # a reason that cannot happen in production.
+    (repo / ".husky" / "pre-push").write_text("#!/bin/sh\necho gate\n")
+    _commit_in_worktree(repo, mod, ".husky/pre-push", "add tracked hook")
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True, capture_output=True)
+
+    wt = mod.cmd_create("infra", "husky-innocent", ttl_minutes=5)
+    assert (wt / ".husky" / "_").is_symlink()
+    # Pin the exact porcelain shape the exemption keys on: a symlink-to-a-dir
+    # is reported WITHOUT a trailing slash (a real dir would be `.husky/_/`).
+    porcelain = mod._run_git(["status", "--porcelain"], cwd=wt, check=False).stdout
+    assert "?? .husky/_\n" in porcelain, porcelain
+    assert mod._worktree_has_wip(wt) is False
+
+
+def test_husky_exemption_does_not_swallow_real_work_in_husky_dir(fake_repo):
+    """Guilt: the exemption is scoped to `_`, not to `.husky/` as a whole.
+
+    An edit to a tracked hook (`.husky/pre-push` — a real file people change,
+    and the subject of today's clone-owner fix) must still count as WIP.
+    """
+    mod, repo = fake_repo
+    (repo / ".husky" / "_").mkdir(parents=True)
+    (repo / ".husky" / "_" / "pre-push").write_text("#!/bin/sh\n")
+    (repo / ".husky" / "pre-push").write_text("#!/bin/sh\necho gate\n")
+    _commit_in_worktree(repo, mod, ".husky/pre-push", "add tracked hook")
+    subprocess.run(["git", "push", "origin", "main"], cwd=repo, check=True, capture_output=True)
+
+    wt = mod.cmd_create("infra", "husky-guilty", ttl_minutes=5)
+    assert (wt / ".husky" / "_").is_symlink()
+    (wt / ".husky" / "pre-push").write_text("#!/bin/sh\necho edited\n")
+    assert mod._worktree_has_wip(wt) is True
+
+
 def test_cleanup_reaps_expired_worktree_with_only_node_modules_symlink(fake_repo, capsys):
     """Integration-level: --cleanup must actually reap a TTL-expired worktree
     whose only 'dirty' porcelain entry is the broker's own node_modules
