@@ -398,6 +398,55 @@ def _resolve_expected_count(
     return None, "none"
 
 
+def _resolve_slides_dir(entry: dict[str, Any], carousel_root: Path) -> Path | None:
+    """Resolve an entry's slides directory across schema/path drift
+    (2026-07-17 fix — live case: `indonesia-visafree-myth-reality`, 8 real
+    PNGs on disk, mis-marked dirless/render_incomplete).
+
+    OLD-style queue entries (pre-`slides_dir` field, still live in the
+    queue) carry only `carousel_path` (often `~`-prefixed) and NO
+    `slides_dir` key at all. Trusting a missing `slides_dir` as "no dir" —
+    the pre-fix behavior — misclassified a real, fully-rendered carousel as
+    dirless.
+
+    Resolution order — only when ALL three fail is the entry genuinely
+    dirless:
+      1. entry["slides_dir"], expanduser()'d, if it is a real directory.
+      2. entry["carousel_path"], expanduser()'d — either already IS the
+         slides dir, or is the carousel dir one level up (try + "slides").
+      3. Suffix-match under `carousel_root` by the entry's own dir basename
+         (from carousel_path) or topic_slug — mirrors the app's own
+         `*-{draft_id[:8]}`-style matching convention (see
+         `_verify_visibility_or_backfill`) for entries whose recorded path
+         has since drifted (re-persisted/renamed carousel dir).
+    """
+    sd = entry.get("slides_dir")
+    if sd:
+        p = Path(sd).expanduser()
+        if p.is_dir():
+            return p
+
+    cp = entry.get("carousel_path")
+    cp_path: Path | None = None
+    if cp:
+        cp_path = Path(cp).expanduser()
+        if cp_path.name == "slides" and cp_path.is_dir():
+            return cp_path
+        candidate = cp_path / "slides"
+        if candidate.is_dir():
+            return candidate
+
+    needles = [n for n in (cp_path.name if cp_path is not None else None,
+                           entry.get("topic_slug")) if n]
+    if needles and carousel_root.is_dir():
+        for needle in needles:
+            for m in sorted(carousel_root.glob(f"*{needle}*")):
+                candidate = m / "slides"
+                if candidate.is_dir():
+                    return candidate
+    return None
+
+
 def _classify_completeness(*, disk: int, expected: int | None) -> str:
     """4-way classification (design spec A3; extended HIGH #3/#4, 2026-07-16):
 
@@ -447,6 +496,7 @@ def check_completeness(
     if not isinstance(queue, list):
         return []
 
+    carousel_root = viz._default_output_root() / "carousel"
     mismatches: list[CompletenessMismatch] = []
     for entry in queue:
         if not isinstance(entry, dict):
@@ -458,17 +508,16 @@ def check_completeness(
         if not isinstance(declared, int):
             continue
         entry_id = str(entry.get("id") or entry.get("item_id") or "?")
-        sd = entry.get("slides_dir")
-        if not sd or not Path(sd).is_dir():
+        slides_dir = _resolve_slides_dir(entry, carousel_root)
+        if slides_dir is None:
             mismatches.append(CompletenessMismatch(
                 entry_id=entry_id, draft_id=entry.get("draft_id"), state=state,
                 declared=declared, disk=0, expected=None, expected_source="none",
                 classification="dirless",
             ))
             continue
-        slides_dir = Path(sd)
         disk = viz.derive_slide_count(slides_dir)
-        car_dir = Path(entry.get("carousel_path")) if entry.get("carousel_path") else slides_dir.parent
+        car_dir = slides_dir.parent
         # HIGH #3 (2026-07-16): resolve expected BEFORE any disk==declared
         # shortcut — a queue whose declared count happens to match disk can
         # still be WRONG against a trusted independent source (e.g.
@@ -509,6 +558,7 @@ def apply_completeness_backfill(
     qp = queue_path or (viz._default_output_root() / "queue" / "human-review-queue.json")
     if not qp.exists():
         return []
+    carousel_root = viz._default_output_root() / "carousel"
     lock_path = qp.with_suffix(".lock")
     reports: list[dict[str, Any]] = []
     with open(lock_path, "w", encoding="utf-8") as lock_fh:
@@ -534,8 +584,8 @@ def apply_completeness_backfill(
                 if not isinstance(declared, int):
                     continue
                 entry_id = str(entry.get("id") or entry.get("item_id") or "?")
-                sd = entry.get("slides_dir")
-                if not sd or not Path(sd).is_dir():
+                slides_dir = _resolve_slides_dir(entry, carousel_root)
+                if slides_dir is None:
                     report = {
                         "entry_id": entry_id, "classification": "dirless",
                         "declared": declared, "disk": 0, "action": "mark_render_incomplete",
@@ -545,14 +595,13 @@ def apply_completeness_backfill(
                         entry.setdefault("state_history", []).append({
                             "state": RENDER_INCOMPLETE_STATE, "at": now_iso,
                             "by": "wr2-daily-reconciler-backfill",
-                            "reason": "dirless: slides_dir missing/not a directory",
+                            "reason": "dirless: slides_dir/carousel_path/suffix-match all missing",
                         })
                         changed = True
                     reports.append(report)
                     continue
-                slides_dir = Path(sd)
                 disk = viz.derive_slide_count(slides_dir)
-                car_dir = Path(entry.get("carousel_path")) if entry.get("carousel_path") else slides_dir.parent
+                car_dir = slides_dir.parent
                 # HIGH #3: resolve expected BEFORE any disk==declared
                 # shortcut — see the matching comment in check_completeness.
                 expected, expected_source = _resolve_expected_count(car_dir, entry)
@@ -823,6 +872,107 @@ async def _tick(
     return 0
 
 
+def repair_false_incomplete(
+    queue_path: Path | None = None,
+    *,
+    dry_run: bool = True,
+    exclude_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """One-shot repair (2026-07-17): the pre-fix dirless bug (missing/stale
+    `slides_dir` misread as "no dir" for old-schema `carousel_path`-only
+    entries — see `_resolve_slides_dir`) marked genuinely-complete carousels
+    render_incomplete. This scans every CURRENT `render_incomplete` entry and,
+    using the FIXED resolution, restores it to `drafted` when the resolved
+    slides dir actually has >=1 real slide PNG on disk.
+
+    Report-only by default; `--apply` mutates under the queue's fcntl lock +
+    tmp+rename protocol (same as `apply_completeness_backfill`) so a
+    concurrent render/repoint cannot be clobbered by a stale decision.
+    `exclude_ids` (operator override, e.g. `--exclude-id` repeatable on the
+    CLI) hard-excludes specific entry ids — for a genuinely-bad carousel that
+    happens to also be in render_incomplete. Never touches any other state
+    (published/terminal or otherwise) — this repair is scoped exclusively to
+    undoing the false positives this specific bug produced."""
+    import fcntl
+    import json as _json
+
+    import wr2_html_render_apply as viz  # same scripts/ dir, same venv
+
+    qp = queue_path or (viz._default_output_root() / "queue" / "human-review-queue.json")
+    if not qp.exists():
+        return []
+    excludes = exclude_ids or set()
+    carousel_root = viz._default_output_root() / "carousel"
+    lock_path = qp.with_suffix(".lock")
+    reports: list[dict[str, Any]] = []
+    with open(lock_path, "w", encoding="utf-8") as lock_fh:
+        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        try:
+            try:
+                queue = _json.loads(qp.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001 — corrupt queue: never guess, never write
+                logger.warning("repair-false-incomplete: queue unreadable at %s", qp, exc_info=True)
+                return []
+            if not isinstance(queue, list):
+                return []
+
+            changed = False
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            for entry in queue:
+                if not isinstance(entry, dict):
+                    continue
+                if entry.get("state") != RENDER_INCOMPLETE_STATE:
+                    continue  # scoped strictly to this state — never touches anything else
+                entry_id = str(entry.get("id") or entry.get("item_id") or "?")
+                if entry_id in excludes:
+                    continue
+                slides_dir = _resolve_slides_dir(entry, carousel_root)
+                if slides_dir is None:
+                    continue  # genuinely dirless even under the fixed resolution — leave it
+                disk = viz.derive_slide_count(slides_dir)
+                if disk < 1:
+                    continue  # resolved a dir, but it's empty — not a false positive
+                report = {
+                    "entry_id": entry_id, "resolved_slides_dir": str(slides_dir),
+                    "disk": disk, "action": "restore_to_drafted",
+                }
+                if not dry_run:
+                    entry["state"] = "drafted"
+                    entry["slide_count"] = disk
+                    entry["slides_dir"] = str(slides_dir)
+                    entry.setdefault("state_history", []).append({
+                        "state": "drafted", "at": now_iso,
+                        "by": "wr2-daily-reconciler-repair-false-incomplete",
+                        "reason": (
+                            f"restored: fixed slides_dir resolution finds {disk} "
+                            f"real PNG(s) on disk — pre-fix dirless bug had missed "
+                            f"the carousel_path-only/suffix-match resolution"
+                        ),
+                    })
+                    changed = True
+                reports.append(report)
+
+            if not dry_run and changed:
+                tmp = qp.with_suffix(f".tmp.{os.getpid()}")
+                tmp.write_text(_json.dumps(queue, indent=2, ensure_ascii=False), encoding="utf-8")
+                os.replace(tmp, qp)
+                logger.info("repair-false-incomplete applied: %d entries restored", len(reports))
+            return reports
+        finally:
+            fcntl.flock(lock_fh, fcntl.LOCK_UN)
+
+
+def _cmd_repair_false_incomplete(apply: bool, exclude_ids: list[str]) -> int:
+    """One-shot CLI mode: restore render_incomplete entries wrongly marked
+    dirless by the pre-fix bug back to drafted, when the FIXED resolution
+    finds real PNGs. Report-only by default; --apply mutates."""
+    import json as _json
+
+    reports = repair_false_incomplete(dry_run=not apply, exclude_ids=set(exclude_ids))
+    print(_json.dumps({"apply": apply, "count": len(reports), "reports": reports}, indent=2))
+    return 0
+
+
 def _cmd_backfill_completeness(apply: bool) -> int:
     """One-shot mode (A3): apply the 3-way completeness classification to
     every non-terminal queue entry. Default dry-run (report only); --apply
@@ -847,10 +997,27 @@ def main() -> int:
              "no DB, no decide()/kickstart. Combine with --apply to mutate.",
     )
     parser.add_argument(
+        "--repair-false-incomplete", action="store_true",
+        help="one-shot: restore render_incomplete entries wrongly marked dirless "
+             "by the pre-2026-07-17 slides_dir resolution bug (old-schema "
+             "carousel_path-only entries) back to drafted, when the FIXED "
+             "resolution finds real PNGs on disk. Report-only by default; "
+             "combine with --apply to mutate. Combine with --exclude-id to "
+             "hard-exclude specific entries.",
+    )
+    parser.add_argument(
+        "--exclude-id", action="append", default=[], metavar="ENTRY_ID",
+        help="with --repair-false-incomplete: hard-exclude this entry id from "
+             "restoration (repeatable)",
+    )
+    parser.add_argument(
         "--apply", action="store_true",
-        help="with --backfill-completeness: actually mutate the queue (default: report only)",
+        help="with --backfill-completeness or --repair-false-incomplete: "
+             "actually mutate the queue (default: report only)",
     )
     args = parser.parse_args()
+    if args.repair_false_incomplete:
+        return _cmd_repair_false_incomplete(apply=args.apply, exclude_ids=args.exclude_id)
     if args.backfill_completeness:
         return _cmd_backfill_completeness(apply=args.apply)
     dry = args.dry_run or os.environ.get("WR2_RECONCILER_DRY_RUN") == "1"
