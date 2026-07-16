@@ -66,7 +66,13 @@ TASK_METADATA_FILENAME = ".agent-task.json"
 # permanently tripping the WIP guard and making `--cleanup` a no-op forever
 # (found live: 3 worktrees sat 5-14h past a 60min TTL, silently "WARN"-skipped
 # by the daily cron every run). Reproduced empirically before this fix.
-BROKER_GENERATED_FILES = frozenset({".agent-task.json", ".env.worktree", "node_modules"})
+# `.husky/_` is here for the same reason as node_modules: it is a
+# SYMLINK_TARGETS entry, and .husky/.gitignore does not cover it, so without
+# this the broker's own shim symlink would read as `?? .husky/_` and re-create
+# the very never-cleanup-eligible bug the node_modules note describes.
+BROKER_GENERATED_FILES = frozenset(
+    {".agent-task.json", ".env.worktree", "node_modules", ".husky/_"}
+)
 LSOF_FALLBACK_PATHS: tuple[Path, ...] = (Path("/usr/sbin/lsof"),)
 
 # Lanes documented in CLAUDE.md + research synthesis.
@@ -97,10 +103,22 @@ ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9\-]{0,63}$")
 # Targets are relative paths inside the repo. If the target does not exist in
 # main, the symlink is skipped silently — the agent will still get a working
 # worktree, just without that helper artifact.
+#
+# `.husky/_` is load-bearing, not a convenience. `core.hooksPath` is the
+# RELATIVE path `.husky/_`, which git resolves against each working tree — and
+# `_` is husky's generated shim dir, produced by `npm install` in the main
+# checkout and therefore never carried over by `git worktree add`. Without it a
+# worktree resolves hooksPath to nothing and EVERY push from it silently skips
+# the pre-push gate: no banner, no suite, exit 0. That is the worst shape a gate
+# can fail in (superscar #2 — the push looks green because nothing ran), and it
+# lands exactly where CLAUDE.md mandates all agent work happen. Measured
+# 2026-07-16: three probe pushes from two worktrees, no gate; symlink the dir in
+# and the same push runs the full suite.
 SYMLINK_TARGETS: tuple[tuple[str, str], ...] = (
     ("apps/backend-rag/.venv", "apps/backend-rag/.venv"),
     ("apps/backend-rag/.env", "apps/backend-rag/.env"),
     ("node_modules", "node_modules"),
+    (".husky/_", ".husky/_"),
 )
 
 LOG_DIR = Path.home() / "logs"
