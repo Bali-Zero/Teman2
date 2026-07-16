@@ -44,37 +44,29 @@
 
 set -u
 
+SELF_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 REPO="${PRO_GIT_PULL_REPO:-$HOME/nuzantara}"
 LOG_FILE="${PRO_GIT_PULL_LOG:-$HOME/logs/pro-git-pull.log}"
 LOCK_DIR="${PRO_GIT_PULL_LOCK:-/tmp/pro-git-pull.lock.d}"
 BACKUP_ROOT="${PRO_GIT_PULL_BACKUP_ROOT:-$HOME/.git-pull-collision-backup}"
 LOCK_STALE_SECONDS=1800
-TELEGRAM_ALERT_COOLDOWN=3600
-TELEGRAM_STATE_DIR="$HOME/.agent/decisions/state"
 
-mkdir -p "$(dirname "$LOG_FILE")" "$TELEGRAM_STATE_DIR" 2>/dev/null
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 
+# All Telegram goes through the ONE gateway (scripts/tg_notify.py): it owns tiering,
+# dedup, budget and the token chain, and NEVER fails the caller. Direct Telegram HTTP
+# senders are forbidden by the anti-regrowth lint. tier=digest — a sync stall is
+# informative, not NOW-actionable-prod-down; tg_notify's dedup replaces the old cooldown.
 telegram_alert() {
   [ "${PRO_GIT_PULL_NO_ALERT:-0}" = "1" ] && return 0  # hermetic test / dry mode
-  local key="$1" message="$2"
-  local state_file="$TELEGRAM_STATE_DIR/pro-git-pull-alert-${key}.ts"
-  local now last_ts
-  now=$(date +%s)
-  if [ -f "$state_file" ]; then
-    last_ts=$(cat "$state_file" 2>/dev/null || echo 0)
-    [[ "$last_ts" =~ ^[0-9]+$ ]] || last_ts=0          # set -u / arithmetic-injection guard
-    [ $((now - last_ts)) -lt "$TELEGRAM_ALERT_COOLDOWN" ] && return 0
+  local key="$1" message="$2" tg="${SELF_DIR:-.}/../tg_notify.py"
+  if [ -f "$tg" ]; then
+    python3 "$tg" --tier digest --source pro-git-pull --dedup-key "pro-git-pull-${key}" "$message" >/dev/null 2>&1 || true
+  else
+    log "  (tg_notify.py not found at $tg — alert not sent: $message)"
   fi
-  if [ -f "$HOME/.nuzantara-secrets.env" ]; then
-    set +u; set -a; source "$HOME/.nuzantara-secrets.env" 2>/dev/null || true; set +a; set -u
-  fi
-  local token="${TELEGRAM_BOT_TOKEN:-}" chat="${TELEGRAM_OWNER_CHAT_ID:-1125336968}"
-  [ -z "$token" ] && { log "  (telegram skipped — no TELEGRAM_BOT_TOKEN)"; return 0; }
-  curl -s --max-time 8 "https://api.telegram.org/bot${token}/sendMessage" \
-    -d "chat_id=${chat}" -d "text=[pro-git-pull] ${message}" >/dev/null 2>&1 || true
-  echo "$now" > "$state_file"
 }
 
 # Atomic single-instance lock via mkdir (POSIX-atomic). Steals a lock older than
