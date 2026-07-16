@@ -31,12 +31,21 @@ Two independent bugs fixed, two test classes:
    Innocence: a job that still fails (falls through to Tier 3 escalate)
    never calls mark_resolved.
 
+4. TestCodexFixedDlqRemoval — W89 class-audit, second finding (2026-07-16):
+   run_autopilot()'s DLQ-removal tuple listed ("retried_ok", "aider_fixed",
+   "archived") but NOT "codex_fixed" — a codex-fixed job stayed in the DLQ
+   and got autopilot_attempts incremented every tick instead of being
+   removed, eventually reaching a false TERMINAL despite having already been
+   fixed. Board-honesty (the escalation resolution) was unaffected — this is
+   the DLQ-entry-on-disk half of the same bug.
+
 Run:
     cd ~/nuzantara/.worktrees/ops-board-honesty
     source apps/backend-rag/.venv/bin/activate
     python -m pytest scripts/tests/test_dlq_board_honesty.py -v
 """
 import importlib.util
+import json
 import sys
 import time
 import types
@@ -315,3 +324,36 @@ class TestSameTickRecoveryResolution:
 
         assert action == "escalated"
         assert resolved_jobs == [], "a still-failing job must never resolve its own escalation"
+
+
+class TestCodexFixedDlqRemoval:
+    """W89 class-audit, second finding — see module docstring #4. Drives the
+    real run_autopilot() end-to-end (real lock/DLQ-file/state-file I/O under
+    a tmp HOME, only process_entry() itself is mocked) so the assertion is
+    about actual on-disk DLQ state, not just the in-memory disposition
+    branch."""
+
+    def test_guilt_codex_fixed_entry_removed_from_dlq(self, dlq, monkeypatch):
+        d = dlq
+        d.AGENT_DIR.mkdir(parents=True, exist_ok=True)
+        d.DLQ_FILE.write_text(json.dumps({"queue": [
+            {
+                "job": "some_job",
+                "error_summary": "boom, something broke",
+                "classification": {},
+                "autopilot_attempts": 0,
+                "files_implicated": [],
+                "added_ts": time.time(),
+            },
+        ]}))
+
+        monkeypatch.setattr(d, "process_entry", lambda entry, registry: "codex_fixed")
+
+        d.run_autopilot()
+
+        saved = json.loads(d.DLQ_FILE.read_text())
+        assert saved["queue"] == [], (
+            "a codex_fixed job must be removed from the DLQ like retried_ok/"
+            "aider_fixed, not left to increment autopilot_attempts toward a "
+            "false TERMINAL"
+        )

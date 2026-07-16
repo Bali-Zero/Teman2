@@ -869,7 +869,7 @@ def run_autopilot() -> None:
             action = process_entry(entry, registry)
             results[job] = action
 
-            if action in ("retried_ok", "aider_fixed", "archived"):
+            if action in ("retried_ok", "aider_fixed", "codex_fixed", "archived"):
                 pass  # Remove from DLQ
             elif action == "skipped_terminal":
                 # TERMINAL entries stay in DLQ for audit — DO NOT increment attempts
