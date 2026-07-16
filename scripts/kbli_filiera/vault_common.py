@@ -134,6 +134,20 @@ class FetchResult:
     error: str | None = None
 
 
+# Live-proven 2026-07-16 (Mini, first Batch-0 run): peraturan.bpk.go.id's
+# Cloudflare rejects the default `Python-urllib/x.y` User-Agent with a bare
+# 403 — curl's default UA and this browser UA both got 200 on the SAME url,
+# same host, same minute. gw.oss.go.id has never shown this behavior, but a
+# real browser UA is harmless there too, so it's the default for every
+# caller, not endpoint-conditional.
+DEFAULT_HEADERS: dict[str, str] = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+    ),
+}
+
+
 def http_get(
     url: str,
     *,
@@ -148,12 +162,19 @@ def http_get(
     (P3; "never retry-storm it"). Any other non-2xx or network exception
     retries up to `retries` times with linear backoff, then returns a
     FetchResult with `error` set (never raises — callers decide fail-visible
-    handling, e.g. exit-1-after-full-sweep)."""
+    handling, e.g. exit-1-after-full-sweep).
+
+    Every request carries DEFAULT_HEADERS (currently just a browser
+    User-Agent) unless the caller overrides a given key — `headers` is
+    merged on top, so a caller-supplied "User-Agent" (or any other key)
+    always wins, and unrelated caller headers (e.g. OSS's `user_key`)
+    pass through untouched."""
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    request_headers = {**DEFAULT_HEADERS, **(headers or {})}
     last_status = 0
     last_error = "exhausted"
     for attempt in range(retries):
-        req = urllib.request.Request(url, headers=headers or {})
+        req = urllib.request.Request(url, headers=request_headers)
         try:
             with opener.open(req, timeout=timeout) as resp:
                 return FetchResult(status=resp.status, headers=dict(resp.headers), body=resp.read())

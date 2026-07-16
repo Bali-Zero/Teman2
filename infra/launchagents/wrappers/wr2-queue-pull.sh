@@ -66,59 +66,117 @@ esac
 MERGE_PY="$HOME/nuzantara/scripts/wr2_queue_pull_merge.py"
 
 while true; do
-  for f in human-review-queue.json queue-archive.json; do
-    # PID-suffixed tmp: a WR2_PULL_CHECKSUM one-shot may run while the daemon
-    # loop is live — a shared deterministic tmp path would interleave writes.
-    tmp="$DEST_DIR/.$f.pull.tmp.$$"
-    if ssh -o ConnectTimeout=10 -o BatchMode=yes pro "cat '$SRC_DIR/$f'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
-      # valida JSON prima di sostituire (mai clobberare con spazzatura)
-      if python3 -c "import json,sys; json.load(open('$tmp'))" 2>/dev/null; then
-        if [ "$f" = "human-review-queue.json" ] && [ -f "$MERGE_PY" ] && [ -f "$DEST_DIR/$f" ]; then
-          # merge instead of clobber: local publish transitions survive the pull
+  # queue-archive.json pulled FIRST (2026-07-17, archive-blind resurrect fix):
+  # the human-review-queue.json merge below needs THIS SAME iteration's fresh
+  # archive to tell "archived on Pro" apart from "genuinely new local entry" —
+  # a stale on-disk archive from last tick would resurrect an archived entry
+  # for up to one more interval every time. archive_tmp is kept alive (not
+  # rm'd) until the queue merge below has consumed it.
+  archive_tmp=""
+  archive_f="queue-archive.json"
+  tmp="$DEST_DIR/.$archive_f.pull.tmp.$$"
+  if ssh -o ConnectTimeout=10 -o BatchMode=yes pro "cat '$SRC_DIR/$archive_f'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+    if python3 -c "import json,sys; json.load(open('$tmp'))" 2>/dev/null; then
+      archive_tmp="$tmp"
+      if ! cmp -s "$tmp" "$DEST_DIR/$archive_f" 2>/dev/null; then
+        # atomic swap (Codex red-team, 2026-07-17): a plain `cp` truncated by
+        # a concurrent read or interrupted mid-write would still log
+        # "updated" here and lose the good temp at end of tick — cp into a
+        # sibling tmp then rename so the mirror is never observed partial.
+        if cp "$tmp" "$DEST_DIR/$archive_f.tmp.$$" && mv "$DEST_DIR/$archive_f.tmp.$$" "$DEST_DIR/$archive_f"; then
+          echo "[$(ts)] updated $archive_f" >> "$LOG"
+        else
+          echo "[$(ts)] WARN failed to atomically update $archive_f mirror, kept old" >> "$LOG"
+          rm -f "$DEST_DIR/$archive_f.tmp.$$"
+        fi
+      fi
+    else
+      echo "[$(ts)] WARN $archive_f pulled but invalid JSON, kept old" >> "$LOG"
+      rm -f "$tmp"
+    fi
+  else
+    echo "[$(ts)] WARN pull $archive_f failed (Pro unreachable?)" >> "$LOG"
+    rm -f "$tmp"
+  fi
+
+  f="human-review-queue.json"
+  # PID-suffixed tmp: a WR2_PULL_CHECKSUM one-shot may run while the daemon
+  # loop is live — a shared deterministic tmp path would interleave writes.
+  tmp="$DEST_DIR/.$f.pull.tmp.$$"
+  if ssh -o ConnectTimeout=10 -o BatchMode=yes pro "cat '$SRC_DIR/$f'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+    # valida JSON prima di sostituire (mai clobberare con spazzatura)
+    if python3 -c "import json,sys; json.load(open('$tmp'))" 2>/dev/null; then
+      if [ -f "$MERGE_PY" ] && [ -f "$DEST_DIR/$f" ]; then
+        # merge instead of clobber: local publish transitions survive the pull.
+        # NOTE: no bash arrays here — macOS ships bash 3.2, where an empty
+        # array expanded as "${arr[@]}" under `set -u` throws "unbound
+        # variable" (verified live), which would crash this loop every tick
+        # the archive pull fails/is skipped.
+        #
+        # rm -f "$tmp.merged" FIRST (Codex red-team, 2026-07-17): the daemon
+        # keeps the same PID (and thus the same $tmp path) across every tick
+        # of this loop — a merge that failed mid-write on a PRIOR tick can
+        # leave a stale non-empty .merged file that a LATER failed merge
+        # (one that crashes before writing --out at all) would otherwise
+        # re-install via the `[ -s "$tmp.merged" ]` check below, believing
+        # it to be this tick's fresh output.
+        rm -f "$tmp.merged"
+        if [ -n "$archive_tmp" ]; then
+          report=$(python3 "$MERGE_PY" --remote "$tmp" --local "$DEST_DIR/$f" --out "$tmp.merged" --remote-archive "$archive_tmp" 2>>"$LOG")
+        else
           report=$(python3 "$MERGE_PY" --remote "$tmp" --local "$DEST_DIR/$f" --out "$tmp.merged" 2>>"$LOG")
-          if [ -s "$tmp.merged" ]; then
-            if ! cmp -s "$tmp.merged" "$DEST_DIR/$f" 2>/dev/null; then
-              mv "$tmp.merged" "$DEST_DIR/$f"
-              echo "[$(ts)] merged $f ($report)" >> "$LOG"
-            else
-              rm -f "$tmp.merged"
-            fi
-            rm -f "$tmp"
-            # push protected publish transitions back to Pro (SSOT) via the
-            # canonical writer. ref/url are shell-safe by construction (strict
-            # regexes in the merge script); the writer re-validates on Pro.
-            echo "$report" | python3 -c 'import json,sys
+        fi
+        merge_rc=$?
+        # gate on BOTH exit code 0 AND re-parseable JSON (Codex red-team,
+        # 2026-07-17): ENOSPC mid-write can leave a partial-but-non-empty
+        # JSON file that `[ -s ... ]` alone would accept — the next tick
+        # would then treat the corrupt local queue as [] and wipe every
+        # local-only entry.
+        if [ "$merge_rc" -eq 0 ] && [ -s "$tmp.merged" ] \
+             && python3 -c "import json,sys; json.load(open('$tmp.merged'))" 2>/dev/null; then
+          if ! cmp -s "$tmp.merged" "$DEST_DIR/$f" 2>/dev/null; then
+            mv "$tmp.merged" "$DEST_DIR/$f"
+            echo "[$(ts)] merged $f ($report)" >> "$LOG"
+          else
+            rm -f "$tmp.merged"
+          fi
+          rm -f "$tmp"
+          # push protected publish transitions back to Pro (SSOT) via the
+          # canonical writer. ref/url are shell-safe by construction (strict
+          # regexes in the merge script); the writer re-validates on Pro.
+          echo "$report" | python3 -c 'import json,sys
 try: rep=json.load(sys.stdin)
 except Exception: rep={}
 for e in rep.get("push_back", []): print(e["ref_code"], e["ig_url"])' | \
-            while read -r ref url; do
-              if ssh -o ConnectTimeout=10 -o BatchMode=yes pro \
-                   "cd ~/nuzantara && python3 scripts/wr2_queue_writer.py mark-published '$ref' '$url'" >>"$LOG" 2>&1; then
-                echo "[$(ts)] pushed back $ref -> published on Pro" >> "$LOG"
-              else
-                echo "[$(ts)] WARN push-back $ref failed (state not publishable on Pro yet?)" >> "$LOG"
-              fi
-            done
-          else
-            # merge failed → keep old local file, log, fall back to nothing
-            echo "[$(ts)] WARN merge of $f produced no output, kept old" >> "$LOG"
-            rm -f "$tmp" "$tmp.merged"
-          fi
-        elif ! cmp -s "$tmp" "$DEST_DIR/$f" 2>/dev/null; then
-          mv "$tmp" "$DEST_DIR/$f"
-          echo "[$(ts)] updated $f" >> "$LOG"
+          while read -r ref url; do
+            if ssh -o ConnectTimeout=10 -o BatchMode=yes pro \
+                 "cd ~/nuzantara && python3 scripts/wr2_queue_writer.py mark-published '$ref' '$url'" >>"$LOG" 2>&1; then
+              echo "[$(ts)] pushed back $ref -> published on Pro" >> "$LOG"
+            else
+              echo "[$(ts)] WARN push-back $ref failed (state not publishable on Pro yet?)" >> "$LOG"
+            fi
+          done
         else
-          rm -f "$tmp"   # no change
+          # merge failed (rc) or produced empty/invalid output → keep old
+          # local file, log, wipe both tmps.
+          echo "[$(ts)] WARN merge of $f failed or produced invalid output (rc=$merge_rc), kept old" >> "$LOG"
+          rm -f "$tmp" "$tmp.merged"
         fi
+      elif ! cmp -s "$tmp" "$DEST_DIR/$f" 2>/dev/null; then
+        mv "$tmp" "$DEST_DIR/$f"
+        echo "[$(ts)] updated $f" >> "$LOG"
       else
-        echo "[$(ts)] WARN $f pulled but invalid JSON, kept old" >> "$LOG"
-        rm -f "$tmp"
+        rm -f "$tmp"   # no change
       fi
     else
-      echo "[$(ts)] WARN pull $f failed (Pro unreachable?)" >> "$LOG"
+      echo "[$(ts)] WARN $f pulled but invalid JSON, kept old" >> "$LOG"
       rm -f "$tmp"
     fi
-  done
+  else
+    echo "[$(ts)] WARN pull $f failed (Pro unreachable?)" >> "$LOG"
+    rm -f "$tmp"
+  fi
+  rm -f "$archive_tmp"
 
   # Pull the latest REAL ig-insights amendment (the Insights view reads it). Exclude the
   # "insufficient-data" stubs. Take the newest by filename date.
