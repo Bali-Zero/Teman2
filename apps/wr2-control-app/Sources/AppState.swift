@@ -17,6 +17,10 @@ final class AppState: ObservableObject {
     @Published var carousels: [Carousel] = []
     @Published var queue: [ReviewItem] = []
     @Published var lastRefresh: Date?
+    /// Dirs the A2 complete-or-nothing gate excluded on the last refresh (drafted/
+    /// unpublished carousels whose disk PNG count didn't match their declared count).
+    /// Surfaced in GalleryView so the exclusion stays observable, not silent (scar #2).
+    @Published var excludedIncompleteCount: Int = 0
 
     /// slug → live/just-finished run, rebuilt every refresh from TWO signals:
     /// the on-disk `.run.json` marker AND a `ps` scan (catches orphan/legacy runs
@@ -720,6 +724,7 @@ final class AppState: ObservableObject {
         let c = WarRoom.scanCarousels(queue: q)
         self.queue = q
         self.carousels = c
+        self.excludedIncompleteCount = WarRoom.excludedIncompleteCount
         self.liveRuns = Self.detectLiveRuns(carousels: c)
         self.lastRefresh = Date()
     }

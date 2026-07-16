@@ -8,7 +8,7 @@ sources:
   - "BPS Tabel Konversi KBLI 2020–KBLI 2025 (publication 2026-04-22, https://www.bps.go.id/id/publication/2026/04/22/909d503355d2b7664e43dea8/tabel-konversi-kbli-2020-kbli-2025.html)"
   - "Permen Investasi dan Hilirisasi/BKPM No. 5/2025 (in force 2025-10-02, revokes BKPM 3/2021, 4/2021, 5/2021 — https://peraturan.bpk.go.id/Details/332573/permeninvesbkpm-no-5-tahun-2025)"
   - "memory: discovery_kbli_68112_code_collision_pp28_vs_bps_2026_07_16, discovery_kbli_noscope_codes_per_skala_not_from_oss_2026_07_16, discovery_kg_perizinan_name_dedup_disease_2026_07_16, lesson_kbli_remap_gate_context_beats_title_2026_07_16"
-  - "adversarial panel 2026-07-16: Codex GPT-5.5 red-team (15 findings, 5 FATAL) + Gemini 3.1 Pro costruttivo (12 suggestions)"
+  - "adversarial panel 2026-07-16: Codex GPT-5.6-sol red-team (15 findings, 5 FATAL; CLI default gpt-5.6-sol, effort medium) + Gemini 3.1 Pro costruttivo (12 suggestions)"
 adversarial_review: codex
 ---
 
@@ -208,7 +208,7 @@ previous), and a permitted-use note (public portal data, no PII, snapshot-for-ve
    with liveness receptors, not just KeepAlive).
 
 ## Adversarial review (generator≠grader panel record)
-- Codex GPT-5.5 red-team: 15 findings (5 FATAL, 10 MAJOR) — all incorporated above; the two
+- Codex GPT-5.6-sol red-team (CLI default, effort medium): 15 findings (5 FATAL, 10 MAJOR) — all incorporated above; the two
   factual FATALs (Perpres annexes are 2020-vintage; BKPM 4/2021 revoked by 5/2025) independently
   verified this session (web, primary-source links in frontmatter).
 - Gemini 3.1 Pro costruttivo: 12 suggestions — incorporated: L2b sectoral layer, PB-UMKU, capital

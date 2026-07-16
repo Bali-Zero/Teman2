@@ -61,6 +61,79 @@ import Foundation
         expect(enqueued.contains("\"critic_overall_verdict\":\"not_run\""),
                "enqueueDrafted honestly records \"not_run\" (no critic ever ran on this path)")
 
+        // --- Publish-eligibility fail-closed gate (2026-07-16 cross-finding with the -
+        // Python A3 daily-reconciler): markPublished must refuse a not-ready state, and
+        // must leave the queue entry byte-for-byte unchanged when it does (no partial
+        // mutation snuck in before the guard fires).
+        func makeQueue(state: String, extra: String = "") -> URL {
+            let d = FileManager.default.temporaryDirectory.appendingPathComponent("wr2q-\(UUID().uuidString)")
+            try! FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+            let f = d.appendingPathComponent("q.json")
+            try! Data("""
+            [{"id":"a","topic_slug":"gate-test","state":"\(state)"\(extra)}]
+            """.utf8).write(to: f)
+            return f
+        }
+
+        // COLPEVOLEZZA — render_incomplete (the A3 reconciler's queue-level state for a
+        // declared/disk mismatch it could not explain as stale metadata) must refuse.
+        let qfIncomplete = makeQueue(state: "render_incomplete")
+        var threwIncomplete = false
+        do { try QueueWriter.markPublished(queueFile: qfIncomplete, slug: "gate-test", igURL: "https://instagram.com/p/X/", publishedAt: "2026-07-16") }
+        catch { threwIncomplete = true }
+        expect(threwIncomplete, "markPublished refuses a render_incomplete entry")
+        let afterIncomplete = try! JSONSerialization.jsonObject(with: Data(contentsOf: qfIncomplete)) as! [[String: Any]]
+        expect((afterIncomplete[0]["state"] as? String) == "render_incomplete",
+               "refused publish leaves state untouched (no partial mutation)")
+        expect(afterIncomplete[0]["instagram_post_url"] == nil,
+               "refused publish never writes instagram_post_url")
+
+        // COLPEVOLEZZA (generalization — not a hardcoded string check on just one
+        // literal) — any other not-ready state (in-flight render, quality bounce,
+        // rejection) must ALSO refuse, since the gate classifies via CarouselPhase, not
+        // a narrow allow-list of one string.
+        for badState in ["rendering", "soft_fail", "render_failed", "rejected", "missed"] {
+            let qf3 = makeQueue(state: badState)
+            var threw3 = false
+            do { try QueueWriter.markPublished(queueFile: qf3, slug: "gate-test", igURL: "https://instagram.com/p/X/", publishedAt: "2026-07-16") }
+            catch { threw3 = true }
+            expect(threw3, "markPublished refuses state \"\(badState)\"")
+        }
+
+        // INNOCENZA — genuinely ready states must still publish. "drafted" is already
+        // exercised as the baseline case at the top of this file; here we additionally
+        // prove the fix doesn't over-restrict the OTHER waitlist-band states.
+        for goodState in ["drafted", "rendered", "approved", "applied_ready_for_damar"] {
+            let qf4 = makeQueue(state: goodState)
+            do {
+                try QueueWriter.markPublished(queueFile: qf4, slug: "gate-test", igURL: "https://instagram.com/p/X/", publishedAt: "2026-07-16")
+                let after4 = try! JSONSerialization.jsonObject(with: Data(contentsOf: qf4)) as! [[String: Any]]
+                expect((after4[0]["state"] as? String) == "published",
+                       "markPublished still succeeds from state \"\(goodState)\" (innocence)")
+            } catch {
+                expect(false, "markPublished should NOT refuse state \"\(goodState)\": \(error)")
+            }
+        }
+
+        // INNOCENZA — a legacy-schema row with NO `state` field at all, only a
+        // critic_overall_verdict of "pass" (CarouselPhase.of treats bare "pass" as
+        // waitlist-equivalent), must still be publishable — the state-first fallback
+        // to criticVerdict must not regress legacy rows that never had a state field.
+        let dirLegacy = FileManager.default.temporaryDirectory.appendingPathComponent("wr2q-\(UUID().uuidString)")
+        try! FileManager.default.createDirectory(at: dirLegacy, withIntermediateDirectories: true)
+        let qfLegacy = dirLegacy.appendingPathComponent("q.json")
+        try! Data("""
+        [{"id":"a","topic_slug":"gate-test","critic_overall_verdict":"pass"}]
+        """.utf8).write(to: qfLegacy)
+        do {
+            try QueueWriter.markPublished(queueFile: qfLegacy, slug: "gate-test", igURL: "https://instagram.com/p/X/", publishedAt: "2026-07-16")
+            let afterLegacy = try! JSONSerialization.jsonObject(with: Data(contentsOf: qfLegacy)) as! [[String: Any]]
+            expect((afterLegacy[0]["state"] as? String) == "published",
+                   "legacy row with no state field, verdict \"pass\", still publishes (innocence)")
+        } catch {
+            expect(false, "legacy verdict-only \"pass\" row should NOT be refused: \(error)")
+        }
+
         print("RESULT: \(fails == 0 ? "GREEN" : "RED")")
         exit(fails == 0 ? 0 : 1)
     }

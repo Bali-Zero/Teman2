@@ -1,17 +1,21 @@
 # Runbook - Codex Nuzantara Profiles
 
-> **What it is.** The operating map for Codex 5.5 xhigh inside Nuzantara.
-> Codex executes work; Skill Coach extracts reusable lessons; Genome stores
-> accepted skills/scars; Symbiosis governs the boundaries.
+> **What it is.** The operating map for Codex inside Nuzantara. Migrated
+> 2026-07-16 (Zero "impostare a fonte") from the legacy single gpt-5.5/xhigh
+> baseline to per-profile gpt-5.6 family requirements — `nuzantara-core` runs
+> `gpt-5.6-sol` at `high` (everyday coding/review/architecture), `nuzantara-research`
+> runs `gpt-5.6-sol` at `xhigh` (deep synthesis). Codex executes work; Skill
+> Coach extracts reusable lessons; Genome stores accepted skills/scars;
+> Symbiosis governs the boundaries.
 
 ## Profiles
 
-| Profile | Wrapper | Use for | Default rule |
-| --- | --- | --- | --- |
-| `nuzantara-core` | `codex-nz-core` | normal coding, review, architecture, repo work | clean surface, plugins off |
-| `nuzantara-research` | `codex-nz-research` | deep research, specs, multi-source synthesis | clean surface, slightly more verbose |
-| `nuzantara-toolful` | not armed yet | Drive, Gmail, browser, Canva, connector-heavy tasks | opt-in only after plugin cache cleanup |
-| `nuzantara-operator` | not armed yet | explicit local operations | use only when the operator wants machine control |
+| Profile              | Wrapper             | Use for                                             | Default rule                                     |
+| -------------------- | ------------------- | --------------------------------------------------- | ------------------------------------------------ |
+| `nuzantara-core`     | `codex-nz-core`     | normal coding, review, architecture, repo work      | clean surface, plugins off                       |
+| `nuzantara-research` | `codex-nz-research` | deep research, specs, multi-source synthesis        | clean surface, slightly more verbose             |
+| `nuzantara-toolful`  | not armed yet       | Drive, Gmail, browser, Canva, connector-heavy tasks | opt-in only after plugin cache cleanup           |
+| `nuzantara-operator` | not armed yet       | explicit local operations                           | use only when the operator wants machine control |
 
 The default should stay `nuzantara-core`. Do not make a single always-loaded
 "monster" profile.
@@ -37,7 +41,9 @@ hide real task failures.
 `scripts/ops/codex_config_health.py` checks:
 
 - Nuzantara profile TOML parses.
-- `nuzantara-core` and `nuzantara-research` use `gpt-5.5` with `xhigh`.
+- `nuzantara-core` uses `gpt-5.6-sol` with `high`; `nuzantara-research` uses
+  `gpt-5.6-sol` with `xhigh` (per-profile requirement, `PROFILE_REQUIREMENTS`
+  in the script — the two diverge on purpose, see the profile table above).
 - clean profiles keep `plugins=false` and `plugin_hooks=false`.
 - Codex and Claude user hook configs have no active `SessionStart`,
   `UserPromptSubmit`, or `Stop` entries.
@@ -61,12 +67,12 @@ Escalate to a multi-LLM council only when at least one is true:
 
 Council roles:
 
-| Reviewer | Role |
-| --- | --- |
-| Codex | implementation and repo feasibility |
-| Claude/Opus | reasoning, ambiguity, instruction quality |
-| Gemini | long-context and external source synthesis |
-| DeepSeek | adversarial logic and cheap second opinion |
+| Reviewer    | Role                                       |
+| ----------- | ------------------------------------------ |
+| Codex       | implementation and repo feasibility        |
+| Claude/Opus | reasoning, ambiguity, instruction quality  |
+| Gemini      | long-context and external source synthesis |
+| DeepSeek    | adversarial logic and cheap second opinion |
 
 Consensus is not the criterion. The output is useful only when it changes the
 spec, test plan, or risk boundary.

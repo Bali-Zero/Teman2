@@ -11,10 +11,12 @@ from unittest.mock import MagicMock, patch
 
 from apps.evaluator.nlm_deep_research.multimodal_pipeline import (
     ARTIFACT_META,
+    DOWNLOAD_RETRY_ATTEMPTS,
     MIN_REGEN_INTERVAL,
     NOTEBOOKS,
     WEEKLY_SCHEDULE,
     RunResult,
+    _download_with_retry,
     _get_last_generated,
     _load_state,
     _record_success,
@@ -437,6 +439,81 @@ class TestGetStatus:
             status = get_status()
         for nb_key, nb_info in NOTEBOOKS.items():
             assert status[nb_key]["label"] == nb_info["label"]
+
+
+# ---------------------------------------------------------------------------
+# TestDownloadWithRetry
+# ---------------------------------------------------------------------------
+
+class TestDownloadWithRetry:
+    """mind-map/report downloads are an immediate fetch (no internal polling
+    in the `nlm download` subcommand) — the artifact may not be ready right
+    after `nlm create` returns, so a readiness retry is required. audio/
+    infographic subcommands poll internally, so they must NOT be retried
+    here (that would double-wrap their own polling)."""
+
+    def test_mindmap_retries_until_success(self):
+        """guilt: fails twice then succeeds -> ok, exactly 3 download calls, 2 sleeps."""
+        call_count = 0
+
+        def fake_download(artifact_type, notebook_id, output_path, dry_run=False):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                return False, "Error: Download failed for mind_map"
+            return True, output_path
+
+        with patch(
+            "apps.evaluator.nlm_deep_research.multimodal_pipeline.time.sleep",
+        ) as mock_sleep, patch(
+            "apps.evaluator.nlm_deep_research.multimodal_pipeline._run_nlm_download",
+            side_effect=fake_download,
+        ):
+            ok, msg = _download_with_retry("mind-map", "nb-id", "/tmp/out.json")
+
+        assert ok is True
+        assert call_count == 3
+        assert mock_sleep.call_count == 2
+
+    def test_mindmap_exhausts_retries(self):
+        """exhaustion: always fails -> error after DOWNLOAD_RETRY_ATTEMPTS invocations."""
+        with patch(
+            "apps.evaluator.nlm_deep_research.multimodal_pipeline.time.sleep",
+        ), patch(
+            "apps.evaluator.nlm_deep_research.multimodal_pipeline._run_nlm_download",
+            return_value=(False, "Error: Download failed for mind_map"),
+        ) as mock_dl:
+            ok, msg = _download_with_retry("mind-map", "nb-id", "/tmp/out.json")
+
+        assert ok is False
+        assert mock_dl.call_count == DOWNLOAD_RETRY_ATTEMPTS
+
+    def test_audio_does_not_retry_on_failure(self):
+        """innocence: audio download fails once -> single invocation, no retry."""
+        with patch(
+            "apps.evaluator.nlm_deep_research.multimodal_pipeline.time.sleep",
+        ) as mock_sleep, patch(
+            "apps.evaluator.nlm_deep_research.multimodal_pipeline._run_nlm_download",
+            return_value=(False, "network error"),
+        ) as mock_dl:
+            ok, msg = _download_with_retry("audio", "nb-id", "/tmp/out.m4a")
+
+        assert ok is False
+        assert mock_dl.call_count == 1
+        mock_sleep.assert_not_called()
+
+    def test_dry_run_does_not_retry(self):
+        with patch(
+            "apps.evaluator.nlm_deep_research.multimodal_pipeline.time.sleep",
+        ) as mock_sleep, patch(
+            "apps.evaluator.nlm_deep_research.multimodal_pipeline._run_nlm_download",
+            return_value=(True, "dry_run"),
+        ) as mock_dl:
+            ok, msg = _download_with_retry("mind-map", "nb-id", "/tmp/out.json", dry_run=True)
+
+        assert ok is True
+        assert mock_dl.call_count == 1
+        mock_sleep.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

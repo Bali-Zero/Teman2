@@ -16,8 +16,17 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 
-REQUIRED_MODEL = "gpt-5.5"
-REQUIRED_REASONING = "xhigh"
+# Per-profile requirement (2026-07-16: migrated from a single global gpt-5.5/xhigh
+# constant to per-profile gpt-5.6-family requirements — nuzantara-core and
+# nuzantara-research diverge on purpose: core is the everyday coding/review/
+# architecture driver (sol/high, matching its live [tui.model_availability_nux]
+# state), research is the deep-synthesis driver (sol/xhigh). See
+# docs/runbooks/codex-nuzantara-profiles.md for the purpose statements this
+# maps to. nuzantara-toolful has no requirement yet (not armed).
+PROFILE_REQUIREMENTS: dict[str, tuple[str, str]] = {
+    "nuzantara-core": ("gpt-5.6-sol", "high"),
+    "nuzantara-research": ("gpt-5.6-sol", "xhigh"),
+}
 MIN_PROJECT_DOC_BYTES = 65_536
 NOISY_HOOK_EVENTS = ("SessionStart", "UserPromptSubmit", "Stop")
 
@@ -38,6 +47,8 @@ def check_profile(
     label: str,
     *,
     require_quiet_plugins: bool,
+    required_model: str | None = None,
+    required_reasoning: str | None = None,
     min_project_doc_bytes: int = MIN_PROJECT_DOC_BYTES,
     missing_status: str = "FAIL",
 ) -> list[Check]:
@@ -53,27 +64,29 @@ def check_profile(
 
     checks.append(make_check(parse_name, "PASS", "TOML parses", path))
 
-    model = data.get("model")
-    checks.append(
-        make_check(
-            f"profile:{label}:model",
-            "PASS" if model == REQUIRED_MODEL else "FAIL",
-            "model is gpt-5.5" if model == REQUIRED_MODEL else "model is not gpt-5.5",
-            path,
+    if required_model is not None:
+        model = data.get("model")
+        checks.append(
+            make_check(
+                f"profile:{label}:model",
+                "PASS" if model == required_model else "FAIL",
+                f"model is {required_model}" if model == required_model else f"model is not {required_model} (got {model!r})",
+                path,
+            )
         )
-    )
 
-    reasoning = data.get("model_reasoning_effort")
-    checks.append(
-        make_check(
-            f"profile:{label}:reasoning",
-            "PASS" if reasoning == REQUIRED_REASONING else "FAIL",
-            "reasoning effort is xhigh"
-            if reasoning == REQUIRED_REASONING
-            else "reasoning effort is not xhigh",
-            path,
+    if required_reasoning is not None:
+        reasoning = data.get("model_reasoning_effort")
+        checks.append(
+            make_check(
+                f"profile:{label}:reasoning",
+                "PASS" if reasoning == required_reasoning else "FAIL",
+                f"reasoning effort is {required_reasoning}"
+                if reasoning == required_reasoning
+                else f"reasoning effort is not {required_reasoning} (got {reasoning!r})",
+                path,
+            )
         )
-    )
 
     project_doc_max_bytes = data.get("project_doc_max_bytes")
     budget_ok = isinstance(project_doc_max_bytes, int) and project_doc_max_bytes >= min_project_doc_bytes
@@ -117,6 +130,45 @@ def check_profile(
         )
     )
     return checks
+
+
+def resolve_profile_requirement(
+    label: str,
+    missing_status: str,
+    path: Path,
+) -> tuple[tuple[str | None, str | None], list[Check]]:
+    """Look up a profile's required (model, reasoning) from PROFILE_REQUIREMENTS.
+
+    2026-07-16 red-team finding (Codex gpt-5.6-terra, MEDIUM): the previous inline
+    `PROFILE_REQUIREMENTS.get(label, (None, None))` silently defaulted to (None,
+    None) for ANY unrecognized label — including a typo'd or renamed key for a
+    MANDATORY profile (missing_status="FAIL", i.e. nuzantara-core/-research,
+    which must exist and must match a real requirement). Because check_profile()
+    skips the model/reasoning checks entirely when required_model/required_reasoning
+    is None, that silent default is fail-OPEN: a profile that had drifted back to
+    legacy gpt-5.5 would show green with no model/reasoning check at all (scar-W82
+    class — a guard going silently green on a missing signal, not a wrong one).
+
+    Fix: a missing entry is only legitimate for an OPTIONAL profile
+    (missing_status == "WARN", e.g. nuzantara-toolful — not armed yet, no
+    requirement to check). For a MANDATORY profile, a missing entry is a
+    health-check CONFIGURATION GAP and must fail visibly via its own check,
+    not silently no-op the profile's model/reasoning gate.
+    """
+    requirement = PROFILE_REQUIREMENTS.get(label)
+    if requirement is not None:
+        return requirement, []
+    if missing_status == "FAIL":
+        return (None, None), [
+            make_check(
+                f"profile:{label}:requirements_missing",
+                "FAIL",
+                f"PROFILE_REQUIREMENTS has no entry for mandatory profile {label!r} "
+                "— add one, or the model/reasoning gate silently no-ops for it",
+                path,
+            )
+        ]
+    return (None, None), []
 
 
 def _hook_count(value: Any) -> int:
@@ -268,11 +320,17 @@ def run_checks(repo_root: Path, home: Path) -> list[Check]:
 
     checks: list[Check] = []
     for label, path, require_quiet_plugins, missing_status in profile_specs:
+        (required_model, required_reasoning), requirement_checks = resolve_profile_requirement(
+            label, missing_status, path
+        )
+        checks.extend(requirement_checks)
         checks.extend(
             check_profile(
                 path,
                 label,
                 require_quiet_plugins=require_quiet_plugins,
+                required_model=required_model,
+                required_reasoning=required_reasoning,
                 missing_status=missing_status,
             )
         )
