@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: eac1f03fbdb5e657be230710f250cb37cb901baa358b97101045186cc10af008
+checksum: eb8b8a5ee15c82b4d66789355dbb65fd19a98ca499ae334a6eae2b41e76a807a
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2002,5 +2002,24 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/wr2_control_app.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.git_pull_main
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: infra/launchagents/wrappers/pro-git-pull-main.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.git-pull-main.15min
+  severity_on_silence: warning
+  notes: Pro auto-sync of ~/nuzantara main checkout (collision-robust; Mini has the
+    5min sibling) (born via organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.git_pull_main.json
     timestamp_field: ts
     status_field: status

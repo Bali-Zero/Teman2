@@ -319,6 +319,16 @@
       "repo": "infra/launchagents/com.balizero.wr2.image-generator.plist",
       "_note": "2026-07-16: added WR2_IMAGE_VLM_URL=http://100.93.236.6:11434 (Mini tailscale IP) so the VLM quality-scorer routes off Pro's contended Ollama (176 daemons, ~60s+ under load) onto Mini's dedicated Ollama. Was undeclared before this pair was created.",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/pro-git-pull-main.sh",
+      "repo": "infra/launchagents/wrappers/pro-git-pull-main.sh",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.git-pull-main.15min.plist",
+      "repo": "infra/launchagents/com.nuzantara.git-pull-main.15min.plist",
+      "machines": ["pro"]
     }
   ],
   "allow": [
