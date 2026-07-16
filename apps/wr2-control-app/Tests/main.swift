@@ -886,8 +886,22 @@ func test_externalPostRegistrationTopicAndIdentity() {
 
     T.eq(ExternalPostRegistration.makeItemID(publishDate: date, slug: "my-manual-post"),
          "external_2026-07-17T090000_my-manual-post", "item_id format: external_<date>T<time>_<slug>")
+    // Codex red-team finding H, 2026-07-17: dir name now carries TIME too (matches
+    // makeItemID's date+time uniqueness) — was date+slug only, which let two
+    // same-day same-slug registrations collide into one directory.
     T.eq(ExternalPostRegistration.carouselDirName(publishDate: date, slug: "my-manual-post"),
-         "external-2026-07-17-my-manual-post", "carousel dir name: external-<date>-<slug>")
+         "external-2026-07-17T090000-my-manual-post", "carousel dir name: external-<date>T<time>-<slug>")
+
+    // GUILT (finding H): two same-day, same-slug registrations at DIFFERENT times
+    // must now produce DISTINCT dir names — the exact collision the date-only
+    // format allowed.
+    var comps2 = comps
+    comps2.hour = 14; comps2.minute = 30
+    let laterSameDay = cal.date(from: comps2)!
+    T.check(
+        ExternalPostRegistration.carouselDirName(publishDate: date, slug: "my-manual-post") !=
+        ExternalPostRegistration.carouselDirName(publishDate: laterSameDay, slug: "my-manual-post"),
+        "two same-day same-slug registrations at different times get DISTINCT dir names (finding H)")
 
     let entryNoImages = ExternalPostRegistration.buildQueueEntry(
         instagramURL: "https://www.instagram.com/p/Abc123/", topic: "My manual post",
@@ -903,7 +917,7 @@ func test_externalPostRegistrationTopicAndIdentity() {
     let entryWithImages = ExternalPostRegistration.buildQueueEntry(
         instagramURL: "https://www.instagram.com/p/Abc123/", topic: "My manual post",
         slug: "my-manual-post", publishDate: date, slideCount: 3,
-        carouselPath: "~/nuzantara/apps/war-room/output/carousel/external-2026-07-17-my-manual-post/")
+        carouselPath: "~/nuzantara/apps/war-room/output/carousel/external-2026-07-17T090000-my-manual-post/")
     T.eq(entryWithImages["slide_count"] as? Int, 3, "image entry slide_count reflects the copied-image count")
     T.check(entryWithImages["carousel_path"] != nil, "image entry HAS carousel_path")
 }

@@ -88,7 +88,6 @@ enum QueueWriter {
     /// classification the gallery band and `Carousel.isPublishEligible` use — so this
     /// is not a second, independently-maintained rule (scar #3).
     static func markPublished(queueFile: URL, slug: String, igURL: String, publishedAt: String) throws {
-        let mediaID = extractMediaID(from: igURL)
         try mutate(queueFile: queueFile, slug: slug) { item in
             let state = item["state"] as? String
             let verdict = item["critic_overall_verdict"] as? String
@@ -103,7 +102,14 @@ enum QueueWriter {
             }
             item["state"] = "published"
             item["instagram_post_url"] = igURL
-            if let m = mediaID { item["ig_media_id"] = m }
+            // NEVER write ig_media_id here (Codex red-team, 2026-07-17, finding B):
+            // extractMediaID(from:) returns the URL SHORTCODE, not the real numeric
+            // Graph media id — the scraper's media_id_of() (wr2_ig_metrics_scraper.py)
+            // now treats a present ig_media_id as AUTHORITATIVE and feeds it straight
+            // to the Graph API, so writing the shortcode here would poison metrics for
+            // every app-published post (Graph 400 / wrong media). The real numeric id
+            // is only ever known by wr2_ig_discovery.py's Graph fetch and is backfilled
+            // later via backfill_media_id — this writer must leave the field untouched.
             item["instagram_published_at"] = publishedAt
         }
     }
@@ -141,15 +147,45 @@ enum QueueWriter {
         let newID = entry["item_id"] as? String
         let newURL = (entry["instagram_post_url"] as? String)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let data = (try? Data(contentsOf: queueFile)) ?? Data("[]".utf8)
-        var arr = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] ?? []
+        // Only a genuine "no queue file yet" starts from an empty array (Codex
+        // red-team, 2026-07-17, finding A). The previous `(try? ...) ?? []` on
+        // BOTH the read and the parse meant ANY transient read error (a sandbox
+        // hiccup, a concurrent writer mid-replace) OR a decode failure (corrupt/
+        // truncated JSON) silently degraded to [], and the append below would
+        // then WRITE OVER THE WHOLE QUEUE with just this one entry. A real file
+        // that exists but fails to read or parse must THROW — visible in the UI,
+        // zero write — never be treated as "empty".
+        var arr: [[String: Any]]
+        if FileManager.default.fileExists(atPath: queueFile.path) {
+            let data = try Data(contentsOf: queueFile)
+            guard let parsed = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+                throw NSError(domain: "QueueWriter", code: 1, userInfo: [
+                    NSLocalizedDescriptionKey: "queue is not a JSON array — refusing to overwrite it"
+                ])
+            }
+            arr = parsed
+        } else {
+            arr = []
+        }
 
+        // Shortcode-first (Codex red-team, 2026-07-17, finding D, mirrored from the
+        // Python-side add_external fix): an existing entry's URL may carry a
+        // different query string/scheme/www variant (e.g. a stray ?utm_...) of
+        // the SAME post — comparing by shortcode first (WarRoom.igShortcode)
+        // catches that; exact-string is only the fallback when either URL
+        // doesn't parse a shortcode at all.
+        let newShortcode = newURL.flatMap { WarRoom.igShortcode(from: $0) }
         let isDuplicate = arr.contains { existing in
             if let nid = newID, (existing["item_id"] as? String) == nid { return true }
             if let nurl = newURL, nurl.isEmpty == false {
                 let existingURL = (existing["instagram_post_url"] as? String)?
                     .trimmingCharacters(in: .whitespacesAndNewlines)
-                if existingURL == nurl { return true }
+                if let newCode = newShortcode, let existingURL,
+                   let existingCode = WarRoom.igShortcode(from: existingURL) {
+                    if existingCode == newCode { return true }
+                } else if existingURL == nurl {
+                    return true
+                }
             }
             return false
         }

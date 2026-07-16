@@ -512,16 +512,22 @@ def test_add_external_invalid_payload_no_write(queue_file):
     assert queue_file.read_text() == before
 
 
-def test_add_external_duplicate_item_id_refused(queue_file):
+def test_add_external_same_item_id_different_post_is_conflict(queue_file):
+    """GUILT (Codex red-team, 2026-07-17, finding E): the SAME item_id but a
+    DIFFERENT post (different URL/shortcode) must be a distinct `conflict`
+    status with ok=False — NOT `already_present`/ok=True, which the wrapper
+    reads as "safe to mark synced" and would silently lose the genuinely
+    distinct post with no record it was ever dropped. Was previously
+    asserting the pre-finding-E (buggy) already_present/ok=True behavior."""
     payload = _external_payload()
     qw.add_external(queue_file, payload)
     n_after_first = len(json.loads(queue_file.read_text()))
-    # same item_id, different URL — must still be refused as a duplicate
+    # same item_id, DIFFERENT URL — a genuinely different post, must conflict
     dup = _external_payload(instagram_post_url="https://www.instagram.com/p/DIFFERENT99/")
     res = qw.add_external(queue_file, dup)
-    assert res.status == "already_present" and res.ok is True
+    assert res.status == "conflict" and res.ok is False
     items = json.loads(queue_file.read_text())
-    assert len(items) == n_after_first  # no duplicate appended
+    assert len(items) == n_after_first  # no duplicate appended, no write at all
     kept = next(i for i in items if qw.item_id_of(i) == payload["item_id"])
     assert kept["instagram_post_url"] == VALID_URL  # original untouched
 

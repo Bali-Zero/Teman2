@@ -8,7 +8,19 @@ struct ReviewView: View {
     @State private var selectedCarousel: Carousel? = nil
     @State private var showExternalImport = false
 
+    // Codex red-team finding J, 2026-07-17: `state.queue` is the RAW, unfiltered
+    // parse of human-review-queue.json — every state, including already-published
+    // entries (WR2-native AND the §A external-post feature's own state="published"
+    // rows). This surface is titled "Review" / "items in queue" — a published entry
+    // isn't waiting for anything, so it must not pollute the pending-review list.
+    // Reuses the SAME canonical predicate the gallery/completeness-gate use
+    // (`isQueueItemPublished`, Models.swift) rather than a second ad-hoc rule.
+    private var pendingReviewQueue: [ReviewItem] {
+        state.queue.filter { !isQueueItemPublished($0) }
+    }
+
     var body: some View {
+        let pending = pendingReviewQueue
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
@@ -16,7 +28,7 @@ struct ReviewView: View {
                         Text(lang.t("review.title")).font(Theme.titleFont).foregroundStyle(Theme.white)
                         HStack(spacing: 8) {
                             FactRule(width: 28)
-                            Text("\(state.queue.count) \(lang.t("review.count"))")
+                            Text("\(pending.count) \(lang.t("review.count"))")
                                 .font(Theme.bodyFont).foregroundStyle(Theme.muted)
                         }
                     }
@@ -35,11 +47,11 @@ struct ReviewView: View {
                     Text(n).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.green)
                 }
 
-                if state.queue.isEmpty {
+                if pending.isEmpty {
                     empty
                 } else {
                     VStack(spacing: 10) {
-                        ForEach(state.queue) { item in
+                        ForEach(pending) { item in
                             // Open the carousel detail (Migliora / Zero Design / mark-published)
                             // by joining the queue item to its on-disk carousel.
                             // WarRoom.matchCarousel handles both slug vocabularies (legacy

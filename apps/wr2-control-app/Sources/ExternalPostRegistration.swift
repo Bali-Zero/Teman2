@@ -69,9 +69,16 @@ enum ExternalPostRegistration {
     }
 
     /// The on-disk carousel dir name for an external post WITH images:
-    /// `external-<yyyy-MM-dd>-<slug>` (spec §A).
+    /// `external-<yyyy-MM-dd>T<HHmmss>-<slug>`.
+    ///
+    /// Includes TIME, not just date (Codex red-team, 2026-07-17, finding H):
+    /// `makeItemID` is unique on date+time+slug, but this dir name was date+slug
+    /// only — two same-day, same-slug external registrations (e.g. the operator
+    /// re-registers a correction, or two posts on the same topic in one day)
+    /// would collide into ONE directory, silently clobbering the first post's
+    /// images with the second's.
     static func carouselDirName(publishDate: Date, slug: String) -> String {
-        "external-\(utcDateFormatter("yyyy-MM-dd").string(from: publishDate))-\(slug)"
+        "external-\(utcDateFormatter("yyyy-MM-dd'T'HHmmss").string(from: publishDate))-\(slug)"
     }
 
     /// Build the queue entry — every field from §A. `carousel_path` is present only

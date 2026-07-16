@@ -92,10 +92,15 @@ def test_find_media_id_backfills_matches_native_entry_by_shortcode() -> None:
     # GUILT-adjacent live case: a WR2-native carousel published via the app's
     # own gate (permalink, no ig_media_id) — this run's Graph fetch happens to
     # carry the same shortcode with its real numeric id.
+    #
+    # 3rd tuple element (Codex red-team, 2026-07-17, finding F): the matched
+    # shortcode itself, so the caller can pass it to backfill_media_id as
+    # expected_shortcode (a compare-and-set guard taken under that call's own
+    # lock, re-verifying the entry hasn't moved to a different URL since).
     media = [{"id": "17895695668004550", "permalink": "https://www.instagram.com/p/ABC123/"}]
     queue = [{"id": "bali-pma-rental-crackdown", "instagram_post_url": "https://www.instagram.com/p/ABC123/"}]
     assert discovery.find_media_id_backfills(media, queue) == [
-        ("bali-pma-rental-crackdown", "17895695668004550")
+        ("bali-pma-rental-crackdown", "17895695668004550", "ABC123")
     ]
 
 

@@ -278,7 +278,16 @@ def test_external_manual_entry_archived_on_pro_still_kept_locally():
     SAME published-survives-despite-archive path as any other local publish
     transition (test_published_local_only_entry_survives_archive_on_pro
     above), never get silently classified as archived_dropped just because
-    the id happens to also appear in Pro's freshly-pulled archive."""
+    the id happens to also appear in Pro's freshly-pulled archive.
+
+    UPDATED (Codex red-team, 2026-07-17, finding C): the queue-merge outcome
+    (kept locally, published, local_only) is unchanged and still asserted
+    below — but `push_back_external` must NOT re-offer this id anymore. Pro
+    archiving it is a DELIBERATE SSOT decision; re-offering it here would let
+    the wrapper replay `add-external` and RE-CREATE it on Pro, overriding
+    that decision. This is the exact bug finding C describes — the assertion
+    below is the corrected expectation (was, pre-fix, asserting the entry
+    WAS still offered, which was the bug)."""
     entry = _external_manual_entry()
     merged, report = merge.merge_queues(
         [_remote_drafted("carousel_1")],
@@ -293,9 +302,10 @@ def test_external_manual_entry_archived_on_pro_still_kept_locally():
     assert report["local_only"] == [entry["item_id"]]
     assert report["archived_dropped"] == []
     assert report["published_local_kept_despite_archive"] == [entry["item_id"]]
-    # AND the orthogonal push_back_external pass still offers it independently —
-    # surviving the archive check must not accidentally suppress the sync channel.
-    assert [c["item_id"] for c in report["push_back_external"]] == [entry["item_id"]]
+    # the orthogonal push_back_external pass must NOT re-offer an id Pro
+    # already archived — re-offering would re-create it on Pro via
+    # add-external, overriding the SSOT archive decision (finding C).
+    assert report["push_back_external"] == []
 
 
 def test_external_push_candidates_picks_up_unsynced_external_manual_entry():
@@ -334,6 +344,77 @@ def test_external_push_candidates_excludes_invalid_payload():
 def test_merge_queues_report_includes_push_back_external():
     _, report = merge.merge_queues([_remote_drafted()], [_external_manual_entry()])
     assert [c["item_id"] for c in report["push_back_external"]] == ["external_2026-07-17T090000_my-manual-post"]
+
+
+# ── finding C — replay-churn + archive-override guard (Codex red-team, 2026-07-17) ──
+
+
+def test_external_push_candidates_excludes_id_present_in_known_remote_ids():
+    """GUILT (finding C, part ii): an external_manual entry whose id is
+    already present in Pro's live remote queue must never be re-offered —
+    it's already there, offering it again would replay add-external for no
+    reason (the `known_remote_ids` arg is `merge_queues`'s already-populated
+    `seen` set at the call site)."""
+    entry = _external_manual_entry()
+    candidates = merge.external_push_candidates(
+        [entry], known_remote_ids={entry["item_id"]},
+    )
+    assert candidates == []
+
+
+def test_external_push_candidates_excludes_id_present_in_archived_ids():
+    """GUILT (finding C, part ii): an external_manual entry whose id is
+    already present in Pro's freshly-pulled archive must never be
+    re-offered — Pro deliberately archived it; re-offering would let the
+    wrapper replay add-external and RE-CREATE it on Pro, overriding that
+    SSOT decision."""
+    entry = _external_manual_entry()
+    candidates = merge.external_push_candidates(
+        [entry], archived_ids={entry["item_id"]},
+    )
+    assert candidates == []
+
+
+def test_external_push_candidates_innocence_new_unsynced_entry_still_offered():
+    """INNOCENCE: a genuinely new, unsynced external_manual entry whose id is
+    in NEITHER the remote queue NOR the remote archive must still be
+    offered — the new known_remote_ids/archived_ids exclusion must not
+    become a way to silently swallow real, never-yet-synced entries."""
+    entry = _external_manual_entry()
+    candidates = merge.external_push_candidates(
+        [entry], known_remote_ids={"some_other_id"}, archived_ids={"yet_another_id"},
+    )
+    assert [c["item_id"] for c in candidates] == [entry["item_id"]]
+
+
+def test_merge_queues_never_offers_id_already_live_on_remote():
+    """GUILT via merge_queues end-to-end: an external_manual entry that is
+    ALSO already present (by id) in the remote queue itself (e.g. Pro
+    already has its own copy, perhaps from an earlier successful sync whose
+    synced_to_pro flag then got lost — see the replay-churn test below) must
+    not be re-offered by the orthogonal push_back_external pass."""
+    entry = _external_manual_entry()
+    remote_twin = dict(entry)  # Pro's own copy — same id, no synced_to_pro (Pro never writes that flag)
+    _, report = merge.merge_queues([remote_twin], [entry])
+    assert report["push_back_external"] == []
+
+
+def test_synced_flag_survives_remote_wins_no_replay_on_tick_two():
+    """GUILT (finding C, part i — the replay-churn bug): tick 1 already
+    confirmed sync (local copy carries synced_to_pro=True). Pro's OWN copy
+    of the entry (now present in the remote queue) does NOT carry that
+    LOCAL-only bookkeeping flag. Without carrying it forward through the
+    remote-wins branch, external_push_candidates would see an "unsynced"
+    entry again on this very tick and replay add-external forever. The
+    merged/report entry must both show synced_to_pro carried onto the
+    remote-wins copy, AND push_back_external must be empty."""
+    entry = _external_manual_entry(synced_to_pro=True)
+    remote_twin = _external_manual_entry()  # Pro's copy: same id, no synced_to_pro key at all
+    assert "synced_to_pro" not in remote_twin
+    merged, report = merge.merge_queues([remote_twin], [entry])
+    kept = next(e for e in merged if merge.item_id_of(e) == entry["item_id"])
+    assert kept["synced_to_pro"] is True
+    assert report["push_back_external"] == []
 
 
 def test_mark_synced_to_pro_marks_matching_entry_only():

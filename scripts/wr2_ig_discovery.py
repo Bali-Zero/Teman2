@@ -180,9 +180,9 @@ def build_known_shortcodes(queue_items: list[dict[str, Any]]) -> set[str]:
 def find_media_id_backfills(
     media_list: list[dict[str, Any]],
     queue_items: list[dict[str, Any]],
-) -> list[tuple[str, str]]:
-    """Pair up (item_id, ig_media_id) for queue items ALREADY known by
-    shortcode but missing `ig_media_id` — the RECONCILIATION half of §C
+) -> list[tuple[str, str, str]]:
+    """Pair up (item_id, ig_media_id, shortcode) for queue items ALREADY known
+    by shortcode but missing `ig_media_id` — the RECONCILIATION half of §C
     (`ingest_external_post`'s `ig_media_id` pass-through is the fresh-mint
     half; this closes the gap for posts that predate that field, notably
     WR2-NATIVE carousels published via the app's own gate, which records the
@@ -192,6 +192,12 @@ def find_media_id_backfills(
     query string/scheme/www; shortcode is the same load-bearing key
     `build_known_shortcodes()` already uses). Pure and read-only: callers
     (`main()`) drive the actual `backfill_media_id()` write + dry-run gating.
+
+    The shortcode is returned alongside the pair (Codex red-team, 2026-07-17,
+    finding F) so the caller can pass it to `backfill_media_id` as
+    `expected_shortcode` — a compare-and-set guard taken under that call's OWN
+    lock, re-verifying the entry hasn't moved to a different URL between THIS
+    snapshot and the write acquiring the lock (TOCTOU race).
     """
     media_by_shortcode: dict[str, str] = {}
     for m in media_list:
@@ -200,7 +206,7 @@ def find_media_id_backfills(
         if code and media_id:
             media_by_shortcode[code] = str(media_id)
 
-    pairs: list[tuple[str, str]] = []
+    pairs: list[tuple[str, str, str]] = []
     for item in queue_items:
         if item.get("ig_media_id"):
             continue  # already reconciled — nothing to do
@@ -216,7 +222,7 @@ def find_media_id_backfills(
         item_id = _qw.item_id_of(item)
         if not item_id:
             continue
-        pairs.append((item_id, media_id))
+        pairs.append((item_id, media_id, code))
     return pairs
 
 
@@ -436,11 +442,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     # exist in that snapshot) are ever candidates. ──────────────────────────
     backfill_pairs = find_media_id_backfills(media_list, queue_items)
     backfilled = 0
-    for item_id, media_id in backfill_pairs:
+    for item_id, media_id, matched_shortcode in backfill_pairs:
         if args.dry_run:
             print(f"[dry-run] would backfill ig_media_id={media_id} onto item_id={item_id}")
             continue
-        res = _qw.backfill_media_id(queue_path, item_id, media_id)
+        res = _qw.backfill_media_id(queue_path, item_id, media_id, expected_shortcode=matched_shortcode)
         if res.status == "backfilled":
             backfilled += 1
             print(f"BACKFILLED item_id={item_id} ig_media_id={media_id}")

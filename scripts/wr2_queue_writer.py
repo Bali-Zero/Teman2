@@ -211,6 +211,12 @@ def validate_external_payload(payload: dict[str, Any]) -> Optional[str]:
     convention `"manual_external"` — the two call sites mint entries for different
     origins: that one is Zero pasting a bare URL on Pro directly, this one is the app
     replaying a fully-formed entry it already built on M5).
+
+    Type-checks OPTIONAL fields too, when present (Codex red-team, 2026-07-17,
+    finding G): `slide_count` must be an int >= 0, `published_at` must be
+    ISO-parseable. A malformed value here would otherwise ride to Pro verbatim
+    and can break the Swift decode of the WHOLE queue array on the app's next
+    pull — these fields are optional (may be absent), never wrong-shaped.
     """
     for field in REQUIRED_EXTERNAL_PAYLOAD_FIELDS:
         if not payload.get(field):
@@ -221,6 +227,18 @@ def validate_external_payload(payload: dict[str, Any]) -> Optional[str]:
         return f"source must be {EXTERNAL_MANUAL_SOURCE!r}, got {payload.get('source')!r}"
     if not validate_ig_url(str(payload["instagram_post_url"])):
         return f"instagram_post_url is not a valid IG permalink: {payload['instagram_post_url']!r}"
+    if "slide_count" in payload and payload["slide_count"] is not None:
+        sc = payload["slide_count"]
+        if isinstance(sc, bool) or not isinstance(sc, int) or sc < 0:
+            return f"slide_count must be an int >= 0, got {sc!r}"
+    if "published_at" in payload and payload["published_at"] is not None:
+        pa = payload["published_at"]
+        if not isinstance(pa, str):
+            return f"published_at must be an ISO-8601 string, got {pa!r}"
+        try:
+            datetime.fromisoformat(pa.replace("Z", "+00:00"))
+        except ValueError:
+            return f"published_at is not ISO-parseable: {pa!r}"
     return None
 
 
@@ -443,7 +461,9 @@ def ingest_external_post(
         return PublishResult("ingested", True, compute_ref_code(iid), iid, f"registered external post {iid}")
 
 
-def backfill_media_id(path: Path, item_id: str, ig_media_id: str) -> PublishResult:
+def backfill_media_id(
+    path: Path, item_id: str, ig_media_id: str, expected_shortcode: Optional[str] = None,
+) -> PublishResult:
     """Attach the real numeric Graph media id onto an EXISTING queue item that
     lacks one (§C reconciliation, 2026-07-17 live Pro-side diagnosis).
 
@@ -458,9 +478,20 @@ def backfill_media_id(path: Path, item_id: str, ig_media_id: str) -> PublishResu
     lacking `ig_media_id` (see `find_media_id_backfills`) — this is the
     reconciliation half; `ingest_external_post` above is the fresh-mint half.
 
+    `expected_shortcode` (Codex red-team, 2026-07-17, finding F): the shortcode
+    `find_media_id_backfills` actually matched on, at SNAPSHOT time. Without a
+    compare-and-set under THIS call's own lock, a TOCTOU race is possible: if
+    the entry's `instagram_post_url` changes between that snapshot and this
+    write acquiring the lock, the OLD post's media id would get attached to
+    whatever URL now sits at that item_id. Re-derives the entry's CURRENT
+    shortcode under the lock and refuses (conflict) on any mismatch — `None`
+    skips the check (fresh-mint callers that never snapshotted a shortcode).
+
     Idempotent + conflict-safe, same discipline as `mark_published`:
       * not_found          — no item matches item_id -> NO write
-      * conflict           — item already has a DIFFERENT ig_media_id -> NO write (needs human)
+      * conflict           — item already has a DIFFERENT ig_media_id, OR its
+                              current shortcode no longer matches
+                              `expected_shortcode` (race) -> NO write (needs human/retry)
       * already_backfilled — same ig_media_id already present -> NO write (no-op)
       * backfilled         — field written atomically -> WRITE
     """
@@ -477,6 +508,17 @@ def backfill_media_id(path: Path, item_id: str, ig_media_id: str) -> PublishResu
                 "not_found", False, compute_ref_code(item_id), item_id,
                 "no queue item matches this item_id",
             )
+
+        if expected_shortcode:
+            current_url = str(item.get("instagram_post_url") or "")
+            current_shortcode = extract_ig_shortcode(current_url) if current_url else None
+            if current_shortcode != expected_shortcode:
+                return PublishResult(
+                    "conflict", False, compute_ref_code(item_id), item_id,
+                    f"item's current shortcode ({current_shortcode!r}) no longer matches "
+                    f"the snapshot this backfill was matched on ({expected_shortcode!r}); "
+                    "the entry's URL changed under us — refusing to attach a possibly-stale media id",
+                )
 
         existing = item.get("ig_media_id")
         if existing:
@@ -516,8 +558,22 @@ def add_external(path: Path, payload: dict[str, Any]) -> PublishResult:
     M5->Pro push-back loop may retry after a flaky ssh, and a real duplicate post
     submitted twice by the operator must be refused, not double-enqueued.
 
+    URL comparison is SHORTCODE-FIRST (Codex red-team, 2026-07-17, finding D):
+    an existing entry's `instagram_post_url` carrying a different query string or
+    scheme/www variant (e.g. a stray `?utm_...`) than the app's canonicalized URL
+    is still the SAME post — exact-string comparison alone would double-enqueue
+    it. Falls back to exact-string only when either URL doesn't parse a shortcode
+    at all (never silently treats two unparseable strings as equal-by-default).
+
       * invalid_payload  — missing/wrong-shaped field -> NO write
-      * already_present  — same item_id or instagram_post_url already in queue -> NO write (no-op)
+      * already_present  — same post (item_id+URL match, or URL/shortcode match
+                            alone) already in queue -> NO write (no-op)
+      * conflict         — SAME item_id but a DIFFERENT post (URL/shortcode
+                            mismatch, finding E) -> NO write, ok=False. Must never
+                            collapse into already_present: the wrapper's caller
+                            treats ok=True as "safe to mark synced_to_pro", and
+                            marking synced here would silently lose the genuinely
+                            distinct post with no record it was ever dropped.
       * added            — appended + written atomically -> WRITE
     """
     err = validate_external_payload(payload)
@@ -526,16 +582,34 @@ def add_external(path: Path, payload: dict[str, Any]) -> PublishResult:
 
     new_id = str(payload["item_id"])
     new_url = str(payload["instagram_post_url"]).strip()
+    new_shortcode = extract_ig_shortcode(new_url)
 
     with queue_lock(path):
         items = load_queue(path)
         for existing in items:
             eid = item_id_of(existing)
             existing_url = (existing.get("instagram_post_url") or "").strip()
-            if eid == new_id or (existing_url and existing_url == new_url):
+            existing_shortcode = extract_ig_shortcode(existing_url) if existing_url else None
+            if new_shortcode and existing_shortcode:
+                same_post = new_shortcode == existing_shortcode
+            else:
+                same_post = bool(existing_url) and existing_url == new_url
+
+            if eid == new_id:
+                if same_post:
+                    return PublishResult(
+                        "already_present", True, compute_ref_code(new_id), eid,
+                        "no-op: an entry with this item_id and URL already exists",
+                    )
+                return PublishResult(
+                    "conflict", False, compute_ref_code(new_id), eid,
+                    f"item_id {new_id!r} already exists with a DIFFERENT URL "
+                    f"({existing_url!r} vs {new_url!r}); refusing to overwrite",
+                )
+            if same_post:
                 return PublishResult(
                     "already_present", True, compute_ref_code(new_id), eid,
-                    "no-op: an entry with this item_id or instagram_post_url already exists",
+                    "no-op: an entry with this instagram_post_url already exists (different item_id)",
                 )
         items.append(dict(payload))
         write_queue_atomic(path, items)

@@ -42,8 +42,12 @@ echo "▸ compiling QueueWriter tests…"
 # isQueuePublishEligible/CarouselPhase (the fail-closed publish-state gate, cross-
 # finding with the Python A3 daily-reconciler) — a genuine new compile dependency, not
 # a workaround.
+# WarRoom.swift joined in 2026-07-17 (Codex red-team finding D mirror):
+# QueueWriter.addExternalPost's duplicate guard now calls WarRoom.igShortcode for
+# shortcode-first URL-equality — WarRoom.swift is Foundation-only (no SwiftUI/AppKit),
+# same constraint class as Models.swift/QueueWriter.swift, so it's a safe compile add.
 swiftc -parse-as-library -sdk "$SDK" -target "$TARGET" \
-  -o "$QW_BIN" "$ROOT/Sources/Models.swift" "$ROOT/Sources/QueueWriter.swift" "$ROOT/Tests/queuewritertest/main.swift"
+  -o "$QW_BIN" "$ROOT/Sources/Models.swift" "$ROOT/Sources/WarRoom.swift" "$ROOT/Sources/QueueWriter.swift" "$ROOT/Tests/queuewritertest/main.swift"
 echo "▸ running QueueWriter tests…"
 "$QW_BIN"
 

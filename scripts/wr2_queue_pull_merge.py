@@ -103,7 +103,11 @@ def _is_published(entry: dict[str, Any]) -> bool:
     return entry.get("state") in PUBLISHED_STATES
 
 
-def external_push_candidates(local: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def external_push_candidates(
+    local: list[dict[str, Any]],
+    known_remote_ids: Optional[set[str]] = None,
+    archived_ids: Optional[set[str]] = None,
+) -> list[dict[str, Any]]:
     """Local entries the WR2 Control app registered via the external-post feature
     (§A, 2026-07-17) that have NOT yet been confirmed synced to Pro. Pure — no I/O,
     no ssh; the wrapper (wr2-queue-pull.sh) replays each one via
@@ -118,8 +122,18 @@ def external_push_candidates(local: list[dict[str, Any]]) -> list[dict[str, Any]
         never be replayed forever (the local entry gets marked after success);
       - the payload passes `validate_external_payload` — a malformed/partial local
         entry (e.g. a write that raced a crash) must never be shipped over ssh as a
-        broken CLI argument; it stays local-only, unsynced, until it's fixed.
+        broken CLI argument; it stays local-only, unsynced, until it's fixed;
+      - `item_id` is NOT already present in Pro's remote queue OR remote archive
+        (Codex red-team, 2026-07-17, finding C): without this, Pro's own copy of
+        the entry (which never carries the LOCAL-only `synced_to_pro` bookkeeping
+        flag) looks "unsynced" again on the very next tick and gets replayed
+        forever (`already_present` loop) — or worse, if Pro deliberately
+        ARCHIVED it, add-external would RE-CREATE it on Pro, overriding that
+        SSOT decision. `merge_queues` passes the already-populated `seen` set
+        (every valid remote item_id) and `archived_ids` at the call site.
     """
+    known_remote_ids = known_remote_ids or set()
+    archived_ids = archived_ids or set()
     out: list[dict[str, Any]] = []
     for e in local:
         if not isinstance(e, dict):
@@ -127,6 +141,9 @@ def external_push_candidates(local: list[dict[str, Any]]) -> list[dict[str, Any]
         if e.get("source") != EXTERNAL_MANUAL_SOURCE:
             continue
         if e.get("synced_to_pro"):
+            continue
+        eid = item_id_of(e)
+        if eid and (eid in known_remote_ids or eid in archived_ids):
             continue
         if validate_external_payload(e) is not None:
             continue
@@ -213,6 +230,16 @@ def merge_queues(
             # the wrapper interpolates these into an ssh command line.
             if _REF_CODE_SAFE_RE.match(ref) and validate_ig_url(url):
                 push_back.append({"id": str(rid), "ref_code": ref, "ig_url": url.strip()})
+        elif loc is not None and loc.get("synced_to_pro"):
+            # CARRY synced_to_pro (Codex red-team, 2026-07-17, finding C-i):
+            # remote wins verbatim here, but Pro's own copy of an
+            # external_manual entry never carries this LOCAL-only bookkeeping
+            # flag — without carrying it forward, external_push_candidates
+            # would see an "unsynced" entry again next tick and replay
+            # add-external forever (already_present loop).
+            out = dict(r)
+            out["synced_to_pro"] = True
+            merged.append(out)
         else:
             merged.append(r)
 
@@ -251,7 +278,7 @@ def merge_queues(
         "archived_dropped": archived_dropped,
         "queue_and_archive_conflict": queue_and_archive_conflict,
         "published_local_kept_despite_archive": published_local_kept_despite_archive,
-        "push_back_external": external_push_candidates(local),
+        "push_back_external": external_push_candidates(local, known_remote_ids=seen, archived_ids=archived_ids),
     }
 
 

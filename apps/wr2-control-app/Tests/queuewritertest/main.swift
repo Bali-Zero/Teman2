@@ -22,7 +22,11 @@ import Foundation
         let after = try! JSONSerialization.jsonObject(with: Data(contentsOf: qf)) as! [[String: Any]]
         expect((after[0]["state"] as? String) == "published", "state advanced to published")
         expect((after[0]["instagram_post_url"] as? String) == "https://instagram.com/p/ABC123/", "ig url written")
-        expect((after[0]["ig_media_id"] as? String) == "ABC123", "media id written")
+        // Codex red-team finding B, 2026-07-17: markPublished must NEVER write
+        // ig_media_id — extractMediaID's output is a URL SHORTCODE, not the real
+        // numeric Graph media id, and the scraper now trusts a present ig_media_id
+        // as authoritative (would poison metrics for every app-published post).
+        expect(after[0]["ig_media_id"] == nil, "markPublished writes no ig_media_id (finding B)")
         expect((after[0]["instagram_published_at"] as? String) == "2026-06-22", "published_at written")
         expect((after[0]["UNKNOWN_FUTURE"] as? String) == "keepme", "unknown field preserved (scar #9)")
 
@@ -193,6 +197,56 @@ import Foundation
         expect(afterSecond.count == 2, "queue now has 2 entries")
         let firstStillThere = afterSecond.contains { ($0["item_id"] as? String) == "external_2026-07-17T090000_a-manual-post" }
         expect(firstStillThere, "the first entry is untouched by the second append")
+
+        // --- Codex red-team finding D (Swift mirror), 2026-07-17: shortcode-first ----
+        // dedup compare. A "?utm_..." query-string variant of the SAME post
+        // (ManualOne, already in qf3) must still be caught as a duplicate — exact
+        // string compare alone would have missed it and double-enqueued.
+        let dupSameShortcodeDifferentQuery = makeExternalEntry(
+            itemID: "external_2026-07-17T094000_utm-retry",
+            url: "https://www.instagram.com/p/ManualOne/?utm_source=ig")
+        var threwDupShortcode = false
+        do { try QueueWriter.addExternalPost(queueFile: qf3, entry: dupSameShortcodeDifferentQuery) }
+        catch { threwDupShortcode = true }
+        expect(threwDupShortcode, "addExternalPost throws on a same-shortcode-different-query duplicate (finding D)")
+        let afterShortcodeDup = try! JSONSerialization.jsonObject(with: Data(contentsOf: qf3)) as! [[String: Any]]
+        expect(afterShortcodeDup.count == 2, "same-shortcode duplicate attempt does not append (queue still has 2 entries)")
+
+        // INNOCENCE: a genuinely different shortcode must still append fine even
+        // though it shares the same URL prefix/domain as an existing entry.
+        let entry3 = makeExternalEntry(itemID: "external_2026-07-17T094500_third-post",
+                                        url: "https://www.instagram.com/p/ManualThree/")
+        let added3 = try! QueueWriter.addExternalPost(queueFile: qf3, entry: entry3)
+        expect(added3, "addExternalPost still appends a genuinely different shortcode (innocence, finding D)")
+
+        // --- Codex red-team finding A, 2026-07-17: corrupt/unparseable queue file ----
+        // must THROW, never silently degrade to []. `(try? ...) ?? []` on both the
+        // read AND the parse meant a transient read error or corrupt/truncated JSON
+        // was indistinguishable from "no queue file yet" — the subsequent append
+        // would then WRITE OVER THE WHOLE QUEUE with just the new entry. Only a
+        // genuine missing file may start from an empty array.
+        let dirCorrupt = FileManager.default.temporaryDirectory.appendingPathComponent("wr2q-\(UUID().uuidString)")
+        try! FileManager.default.createDirectory(at: dirCorrupt, withIntermediateDirectories: true)
+        let qfCorrupt = dirCorrupt.appendingPathComponent("q.json")
+        let corruptBytes = "{not valid json at all".data(using: .utf8)!
+        try! corruptBytes.write(to: qfCorrupt)
+        let entryForCorrupt = makeExternalEntry(itemID: "external_2026-07-17T094500_corrupt-test",
+                                                 url: "https://www.instagram.com/p/CorruptTest/")
+        var threwOnCorrupt = false
+        do { try QueueWriter.addExternalPost(queueFile: qfCorrupt, entry: entryForCorrupt) }
+        catch { threwOnCorrupt = true }
+        expect(threwOnCorrupt, "addExternalPost throws on a corrupt/unparseable queue file (finding A)")
+        let corruptAfter = try! Data(contentsOf: qfCorrupt)
+        expect(corruptAfter == corruptBytes, "corrupt queue file is left byte-for-byte untouched, not overwritten")
+
+        // INNOCENCE: a genuinely missing queue file still starts from [] and appends fine.
+        let dirMissing = FileManager.default.temporaryDirectory.appendingPathComponent("wr2q-\(UUID().uuidString)")
+        try! FileManager.default.createDirectory(at: dirMissing, withIntermediateDirectories: true)
+        let qfMissing = dirMissing.appendingPathComponent("q.json")  // never created
+        let entryForMissing = makeExternalEntry(itemID: "external_2026-07-17T095000_missing-file-test",
+                                                 url: "https://www.instagram.com/p/MissingFileTest/")
+        let addedToMissing = try! QueueWriter.addExternalPost(queueFile: qfMissing, entry: entryForMissing)
+        expect(addedToMissing, "addExternalPost still succeeds against a genuinely missing queue file (innocence)")
 
         print("RESULT: \(fails == 0 ? "GREEN" : "RED")")
         exit(fails == 0 ? 0 : 1)

@@ -145,6 +145,12 @@ def media_id_of(item: dict) -> Optional[str]:
        for a post whose real numeric id truly isn't known anywhere yet, this
        stays a DOCUMENTED LIMITATION (needs `wr2_ig_discovery.py`'s
        reconciliation pass to run and find/backfill it), not a bug fixed here.
+
+    Length floor (Codex red-team, 2026-07-17, finding I): all 45 real legacy
+    `ig-<digits>` ids on record are 17-digit Graph media ids. `isdigit()`
+    alone would also accept a THEORETICAL all-digit shortcode — requiring
+    `len(suffix) >= 15` keeps the legacy fallback scoped to what it was
+    actually built for.
     """
     authoritative = item.get("ig_media_id")
     if authoritative:
@@ -153,7 +159,7 @@ def media_id_of(item: dict) -> Optional[str]:
         iid = item.get(key) or ""
         if iid.startswith("ig-"):
             suffix = iid[3:]
-            if suffix.isdigit():
+            if suffix.isdigit() and len(suffix) >= 15:
                 return suffix
     return None
 
