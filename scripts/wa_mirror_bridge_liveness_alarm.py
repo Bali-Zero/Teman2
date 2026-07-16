@@ -167,12 +167,17 @@ def _save_cooldown(state: dict[str, float]) -> None:
         logger.warning("[wa_liveness] cooldown state write failed: %s", exc)
 
 
-def _send_telegram(text: str) -> bool:
+def _send_telegram(text: str, dedup_key: str = "") -> bool:
     """Route via the tg_notify gateway (2026-07-11 migration, cohort-5).
 
     p0 tier: this alarm only fires once liveness+grace+cooldown+business-hours
     have ALL confirmed a paralyzed bridge (see module docstring) — actionable
     now by construction, not a candidate for digest.
+
+    dedup_key defaults to "" (gateway falls back to source+text[:160] hash);
+    callers should pass a stable per-account key — text embeds a variable
+    last_seen timestamp that can straddle the 160-char truncation boundary,
+    the same flap-refiring class the drive_token_watchdog cohort-6 fix closed.
     """
     if _DRY_RUN:
         print(f"[DRY RUN] Telegram: {text}")
@@ -184,10 +189,14 @@ def _send_telegram(text: str) -> bool:
     gateway = Path(__file__).resolve().parent / "tg_notify.py"
     if not gateway.is_file():
         gateway = Path(os.path.expanduser("~/Desktop/nuzantara/scripts/tg_notify.py"))
+    cmd = [sys.executable, str(gateway), "--tier", "p0",
+           "--source", "wa-mirror-bridge-liveness"]
+    if dedup_key:
+        cmd += ["--dedup-key", dedup_key]
+    cmd += ["--", text]
     try:
         proc = subprocess.run(
-            [sys.executable, str(gateway), "--tier", "p0",
-             "--source", "wa-mirror-bridge-liveness", "--", text],
+            cmd,
             capture_output=True, text=True, timeout=30,
         )
         if proc.returncode != 0:
@@ -249,7 +258,7 @@ async def _run(now: dt.datetime) -> int:
             f"Durante orario di lavoro = intake CIECO su questa linea, non quiete.\n"
             f"Re-link: <code>bash ~/scripts/wa-mirror-launcher/start-one.sh {name} --qr</code>"
         )
-        if _send_telegram(msg):
+        if _send_telegram(msg, dedup_key=f"wa-mirror-bridge-liveness:{name}"):
             cooldown[name] = now_ts
             alarmed += 1
             logger.info("[wa_liveness] ALARM sent for %s (dead, past grace, business hours)", name)
