@@ -30,6 +30,15 @@ surface. It is scoped to this ONE known historical collision — a dataset-wide
 Penyelenggaraan ... MICE ...") and 82300 ("Penyelenggaraan Konvensi dan Pameran
 Bisnis"), which legitimately are MICE/venue/convention codes (verified 2026-07-16 —
 do not generalize this guard to those records).
+
+Follow-up (2026-07-16, same PR): the contamination had ALSO leaked into
+`intel_2026.whatYouNeed` ("Self-Assessment document covering MICE venue
+standards..."), a field the first pass of this fix did not touch. That field
+has now been replaced verbatim. `test_68112_record_has_no_mice_venue_outside_audit_key`
+is the whole-record guard added for this: it scans the ENTIRE 68112 record
+(every field) for "MICE"/"Venue", excluding only the intentional audit key
+`per_skala_disputed_pp28_mice` — so no other field (present or future) can
+carry the collision back in unnoticed.
 """
 
 from __future__ import annotations
@@ -102,6 +111,64 @@ def test_68112_has_advisory_data_note():
     assert "68111" in note, "advisory note should point to the nearest residential NSPK reference (68111)"
     assert "no_oss_risk" not in note  # note is prose, not a field-name echo
     assert "OSS" in note and "404" in note, "advisory note should explain the OSS 404 (no published NSPK yet)"
+
+
+AUDIT_KEY = "per_skala_disputed_pp28_mice"
+
+# A leaf string OUTSIDE the audit key is allowed to name "MICE"/"Venue" ONLY when
+# it is DISCLAIMING the collision (explaining that this MICE-venue text belonged
+# to a different activity and does not apply to 68112's residential leasing) —
+# never when it ASSERTS the MICE licensing as this code's own requirement (that
+# was the original bug: the old intel_2026.whatYouNeed named "MICE venue
+# standards" as part of 68112's OWN obligations, with no disclaiming language
+# anywhere in the field). "code-number collision" is the phrase both legitimate
+# disclaimers (_data_note and the corrected whatYouNeed) share verbatim, and is
+# absent from the original contaminated text — entity/intent match, not a bare
+# substring, per this repo's scar-family #3 guard discipline (guilt+innocence,
+# never over-match on the mere presence of "MICE").
+DISCLAIMER_MARKER = "code-number collision"
+
+
+def _iter_leaf_strings(obj, path=""):
+    """Yield (path, value) for every string leaf in a nested dict/list structure."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            yield from _iter_leaf_strings(v, f"{path}.{k}" if path else k)
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            yield from _iter_leaf_strings(v, f"{path}[{i}]")
+    elif isinstance(obj, str):
+        yield path, obj
+
+
+@pytest.mark.parametrize(
+    "path", _existing_paths(), ids=[str(p.relative_to(REPO_ROOT)) for p in _existing_paths()]
+)
+def test_68112_record_has_no_mice_venue_outside_audit_key(path: Path):
+    """Whole-record guard: no field of 68112 — intel_2026, l4_bali, pma_*, etc. —
+    may ASSERT the MICE-venue licensing as applicable, anywhere in the record,
+    EXCEPT the intentional audit key `per_skala_disputed_pp28_mice` (excluded
+    entirely — it exists precisely to preserve the original PP28 block verbatim).
+
+    A field outside the audit key MAY still name "MICE"/"Venue" if — and only
+    if — it is disclaiming the collision (contains DISCLAIMER_MARKER): this is
+    legitimate explanatory prose (`_data_note`, `intel_2026.whatYouNeed`), not
+    a resurgence of the bug. Any occurrence WITHOUT the disclaimer marker in the
+    same field fails — this is what catches contamination anywhere in the
+    record, not just per_skala (the shape of the intel_2026.whatYouNeed leak
+    the first pass of this fix missed).
+    """
+    rec = _load_record(path)
+    rec_without_audit_key = {k: v for k, v in rec.items() if k != AUDIT_KEY}
+    for field_path, value in _iter_leaf_strings(rec_without_audit_key):
+        if any(marker in value for marker in CONTAMINATION_MARKERS):
+            assert DISCLAIMER_MARKER in value.lower(), (
+                f"{path}: 68112.{field_path} contains MICE/Venue text with no "
+                f"{DISCLAIMER_MARKER!r} disclaimer in the same field — looks "
+                "like the PP28 MICE-venue licensing is being ASSERTED as this "
+                "code's own requirement again, not disclaimed as the collision "
+                "it is. Field value: " + value[:200]
+            )
 
 
 def test_68112_other_mice_codes_untouched():
