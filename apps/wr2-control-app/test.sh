@@ -20,6 +20,7 @@ SRC=(
   "$ROOT/Sources/PromptBuilder.swift"
   "$ROOT/Sources/InstagramCaption.swift"
   "$ROOT/Sources/ExternalImport.swift"
+  "$ROOT/Sources/ExternalPostRegistration.swift"
   "$ROOT/Tests/main.swift"
 )
 

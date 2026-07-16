@@ -230,6 +230,71 @@ enum WarRoom {
             || physicalSlugs.contains(where: { queueItemMatchesByFSMRegex(item, candidateSlug: $0) })
     }
 
+    // MARK: - Gallery recency sort key (§D, 2026-07-17 — "re-rendered cards must not
+    // stay buried under their original date")
+
+    /// Newest on-disk modification date among the given slide PNGs, or `nil` if empty.
+    static func newestSlideModificationDate(_ slidePNGs: [URL]) -> Date? {
+        slidePNGs
+            .compactMap { (try? $0.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate }
+            .max()
+    }
+
+    /// The gallery "recent" sort key for an on-disk carousel. A directory's own mtime
+    /// bumps only on add/remove/rename of entries WITHIN it — on APFS/HFS+, overwriting
+    /// an EXISTING file's bytes in place (a re-render replacing slides/1.png with fresh
+    /// content, same filename) does NOT bump the directory's mtime, so a carousel
+    /// re-rendered today kept sorting under its original creation date (ground
+    /// 2026-07-17: a carousel re-rendered 16/7 stayed buried under its 2026-07-14 dir).
+    /// Fix: take the max of the directory mtime and the newest slide PNG's OWN mtime —
+    /// the slide FILE's mtime DOES bump on an in-place overwrite.
+    ///
+    /// Published carousels are the one exception: they sort by `publishedAt` (when
+    /// parseable), never by file-touch recency — an unrelated LATER touch of a
+    /// published carousel's files (e.g. a metrics backfill writing into the same dir)
+    /// must never bump its position; publication date is what matters for a live post.
+    static func recencySortKey(
+        dirModified: Date, newestSlideModified: Date?, isPublished: Bool, publishedAt: String?
+    ) -> Date {
+        if isPublished, let pubAt = publishedAt, let parsed = parsePublishedAt(pubAt) {
+            return parsed
+        }
+        return max(dirModified, newestSlideModified ?? Date.distantPast)
+    }
+
+    // MARK: - Duplicate virtual-entry detection (§E, 2026-07-17)
+
+    /// Extract the IG shortcode (the `/p/<code>/` or `/reel/<code>/` segment) from a
+    /// post/reel URL, or `nil` if the string doesn't look like one. Mirrors
+    /// `QueueWriter.extractMediaID`'s shape (Swift) and Python's
+    /// `extract_ig_shortcode`/`ExternalPostRegistration`'s pattern — used here so a
+    /// cosmetic difference (trailing slash, query string) between two URLs referring to
+    /// the SAME post doesn't defeat a real duplicate match (entity-based match, not
+    /// bare substring — scar #3 discipline).
+    static func igShortcode(from url: String) -> String? {
+        let s = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let r = s.range(of: #"/(p|reel|tv)/([^/?#]+)"#, options: .regularExpression) else { return nil }
+        let seg = String(s[r])
+        return seg.components(separatedBy: "/").filter { !$0.isEmpty }.last
+    }
+
+    /// True if `igURL` refers to the SAME Instagram post as any URL in `knownURLs`
+    /// (compared by shortcode when both parse as IG post/reel URLs, else by trimmed
+    /// exact string). Used to hide a virtual `ig-*`-style queue entry when a REAL
+    /// on-disk carousel already carries the same `instagram_post_url` (live case:
+    /// `ig-DaxDJuYFPi6` duplicating `bali-pma-rental-crackdown`'s own queue-joined URL).
+    static func matchesAnyPhysicalInstagramURL(_ igURL: String, knownURLs: [String]) -> Bool {
+        let target = igURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard target.isEmpty == false else { return false }
+        let targetCode = igShortcode(from: target)
+        return knownURLs.contains { raw in
+            let known = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard known.isEmpty == false else { return false }
+            if let tc = targetCode, let kc = igShortcode(from: known) { return tc == kc }
+            return known == target
+        }
+    }
+
     // MARK: - Carousel gallery scan
 
     static func scanCarousels(carouselRoot root: URL? = nil,
@@ -335,8 +400,15 @@ enum WarRoom {
                 }
             }
 
-            let mod = (try? dir.resourceValues(forKeys: [.contentModificationDateKey]))?
+            // §D recency fix (2026-07-17): dir mtime alone misses in-place re-renders
+            // (same filenames, fresh bytes) — see recencySortKey's doc comment.
+            let dirModified = (try? dir.resourceValues(forKeys: [.contentModificationDateKey]))?
                 .contentModificationDate ?? Date.distantPast
+            let mod = recencySortKey(
+                dirModified: dirModified,
+                newestSlideModified: newestSlideModificationDate(pngs),
+                isPublished: published,
+                publishedAt: pubAtBySlug[slug])
             let brief = readBrief(in: dir)
 
             carousels.append(Carousel(
@@ -367,10 +439,21 @@ enum WarRoom {
         // (not a raw topic_slug/basename guess) — otherwise a physical dir the gate excluded, or
         // one whose queue row's topic_slug is a truncated FSM form, gets a duplicate phantom
         // entry here that shadows its real cover/slides (Codex red-team finding #4, 2026-07-16).
+        //
+        // §E dedup (2026-07-17): the slug/topic_slug-based resolver above only catches a
+        // duplicate when THIS item's OWN slug fields happen to match a physical dir. A
+        // SEPARATE queue row (e.g. an independent Graph-API backfill entry, `ig-<mediaid>`)
+        // whose slug fields point nowhere but whose `instagram_post_url` is the SAME post
+        // a real carousel already displays is missed by that check — live case:
+        // `ig-DaxDJuYFPi6` duplicating `bali-pma-rental-crackdown`'s own queue-joined URL.
+        // `igUrlBySlug` already holds, for every physical dir, the URL its OWN resolved
+        // queue item carries — comparing against those values (not just slugs) catches it.
+        let physicalInstagramURLs = Array(igUrlBySlug.values)
         for item in queue {
             guard let igURL = item.instagram_post_url,
                   igURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else { continue }
             guard resolvesToPhysicalDir(item, physicalSlugs: physicalSlugs) == false else { continue }
+            guard matchesAnyPhysicalInstagramURL(igURL, knownURLs: physicalInstagramURLs) == false else { continue }
             let slug = item.topic_slug
                 ?? item.carousel_path.map { ($0 as NSString).lastPathComponent }
                 ?? item.id

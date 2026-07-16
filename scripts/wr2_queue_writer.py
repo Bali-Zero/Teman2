@@ -37,10 +37,23 @@ CLI:
     python scripts/wr2_queue_writer.py list-ready
     python scripts/wr2_queue_writer.py ref-code <item_id>
     python scripts/wr2_queue_writer.py mark-published <ref_code> <ig_url> [--at ISO]
+    python scripts/wr2_queue_writer.py ingest-external <ig_url> [--topic T] [--at ISO]
+    python scripts/wr2_queue_writer.py add-external '<json payload>'
 
 Side-effect free functions (pure, unit-tested) are separated from the two I/O
 functions (`load_queue`, `write_queue_atomic`) so the matching/normalization
 logic is testable without touching disk.
+
+DOCUMENTED LIMITATION (external-post feature, §B, 2026-07-17): `add-external`
+lands the QUEUE ENTRY only — it never receives or writes the entry's images.
+When the WR2 Control app (M5) registers an external post WITH images, those
+PNGs stay local to M5's `carousel/external-<date>-<slug>/slides/` directory;
+this writer's Pro-side counterpart has no rsync/copy step for them, and Pro
+(the queue's SSOT) renders nothing for that carousel_path. Acceptable for v1
+because Pro's queue-consuming surfaces (scraper, analyst, mark-published) only
+need instagram_post_url/state/metrics, never the local slide PNGs — but a
+future viewer that expects Pro to render the carousel for an image-bearing
+external post will find the directory missing there.
 """
 
 from __future__ import annotations
@@ -159,6 +172,41 @@ def build_external_item(
         "source": "manual_external",
         "created_at": published_at_iso,
     }
+
+
+REQUIRED_EXTERNAL_PAYLOAD_FIELDS = (
+    "item_id",
+    "state",
+    "instagram_post_url",
+    "source",
+    "topic_slug",
+)
+EXTERNAL_MANUAL_SOURCE = "external_manual"
+
+
+def validate_external_payload(payload: dict[str, Any]) -> Optional[str]:
+    """Return an error string if `payload` is not a valid add-external entry, else None.
+
+    Distinct from `validate_ig_url` (URL shape only): this checks the FULL contract
+    the WR2 Control app (M5) is expected to build (`ExternalPostRegistration.swift`,
+    §A) before pushing it here for propagation to Pro (§B) — required fields present,
+    `state` must already be "published" (this writer never transitions state, only
+    lands an already-published entry), `source` must be the exact literal
+    `"external_manual"` (not the older `ingest_external_post`/`build_external_item`
+    convention `"manual_external"` — the two call sites mint entries for different
+    origins: that one is Zero pasting a bare URL on Pro directly, this one is the app
+    replaying a fully-formed entry it already built on M5).
+    """
+    for field in REQUIRED_EXTERNAL_PAYLOAD_FIELDS:
+        if not payload.get(field):
+            return f"missing required field: {field!r}"
+    if payload.get("state") != "published":
+        return f"state must be 'published', got {payload.get('state')!r}"
+    if payload.get("source") != EXTERNAL_MANUAL_SOURCE:
+        return f"source must be {EXTERNAL_MANUAL_SOURCE!r}, got {payload.get('source')!r}"
+    if not validate_ig_url(str(payload["instagram_post_url"])):
+        return f"instagram_post_url is not a valid IG permalink: {payload['instagram_post_url']!r}"
+    return None
 
 
 def find_by_ref_code(
@@ -374,6 +422,48 @@ def ingest_external_post(
         return PublishResult("ingested", True, compute_ref_code(iid), iid, f"registered external post {iid}")
 
 
+def add_external(path: Path, payload: dict[str, Any]) -> PublishResult:
+    """Append a FULLY-FORMED external-manual queue entry (M5->Pro propagation, §B).
+
+    Distinct from `ingest_external_post` above (which MINTS a minimal item from a
+    bare URL for Zero's manual CLI use, id `ig-<shortcode>`, source
+    `"manual_external"`): this accepts a payload the WR2 Control app already built
+    end-to-end (item_id `external_<date>T<time>_<slug>`, topic_slug, slide_count,
+    carousel_path, source `"external_manual"`, ...) and appends it VERBATIM after
+    validation — the app is the author, this call is only the sync landing point.
+
+    Refuses a duplicate on EITHER the same `instagram_post_url` OR the same
+    `item_id` already present (idempotency requirement, §B acceptance #2): the
+    M5->Pro push-back loop may retry after a flaky ssh, and a real duplicate post
+    submitted twice by the operator must be refused, not double-enqueued.
+
+      * invalid_payload  — missing/wrong-shaped field -> NO write
+      * already_present  — same item_id or instagram_post_url already in queue -> NO write (no-op)
+      * added            — appended + written atomically -> WRITE
+    """
+    err = validate_external_payload(payload)
+    if err:
+        return PublishResult("invalid_payload", False, "", detail=err)
+
+    new_id = str(payload["item_id"])
+    new_url = str(payload["instagram_post_url"]).strip()
+
+    with queue_lock(path):
+        items = load_queue(path)
+        for existing in items:
+            eid = item_id_of(existing)
+            existing_url = (existing.get("instagram_post_url") or "").strip()
+            if eid == new_id or (existing_url and existing_url == new_url):
+                return PublishResult(
+                    "already_present", True, compute_ref_code(new_id), eid,
+                    "no-op: an entry with this item_id or instagram_post_url already exists",
+                )
+        items.append(dict(payload))
+        write_queue_atomic(path, items)
+        return PublishResult("added", True, compute_ref_code(new_id), new_id,
+                              f"registered external post {new_id}")
+
+
 # ── CLI ────────────────────────────────────────────────────────────────────
 
 
@@ -429,6 +519,21 @@ def _cmd_ingest_external(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def _cmd_add_external(args: argparse.Namespace) -> int:
+    path = _resolve_queue_path(args.queue)
+    try:
+        payload = json.loads(args.payload)
+    except json.JSONDecodeError as e:
+        print(json.dumps({"status": "invalid_json", "ok": False, "detail": str(e)}, ensure_ascii=False))
+        return 1
+    if not isinstance(payload, dict):
+        print(json.dumps({"status": "invalid_json", "ok": False, "detail": "payload is not a JSON object"}))
+        return 1
+    result = add_external(path, payload)
+    print(json.dumps(result.as_dict(), ensure_ascii=False))
+    return 0 if result.ok else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="WR2 publish-feedback queue writer")
     p.add_argument("--queue", help="path to human-review-queue.json (default: env WR2_QUEUE_PATH or standard)")
@@ -456,6 +561,13 @@ def build_parser() -> argparse.ArgumentParser:
     ie.add_argument("--topic", help="human label for the post (default: auto from shortcode)")
     ie.add_argument("--at", help="ISO publication date (default: 25h ago, so it's immediately scraper-eligible)")
     ie.set_defaults(func=_cmd_ingest_external)
+
+    ae = sub.add_parser(
+        "add-external",
+        help="append a fully-formed external_manual entry built by the WR2 Control app (M5->Pro sync, §B)",
+    )
+    ae.add_argument("payload", help="JSON object: item_id/state/instagram_post_url/source/topic_slug/...")
+    ae.set_defaults(func=_cmd_add_external)
     return p
 
 

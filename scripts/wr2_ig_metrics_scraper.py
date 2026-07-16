@@ -116,11 +116,34 @@ def is_stale(metrics: Optional[dict], max_age_days: int) -> bool:
 
 
 def media_id_of(item: dict) -> Optional[str]:
-    # backfill ids are "ig-<mediaid>"; otherwise derive from the permalink shortcode is not
-    # enough (Graph needs the numeric media id) — rely on the ig-<id> convention.
-    iid = item.get("id") or ""
-    if iid.startswith("ig-"):
-        return iid[3:]
+    """Extract the Graph API numeric media id from a queue item's own id, if it
+    carries one. Checked on BOTH historical id keys — legacy `"id"` (the
+    Graph-API backfill's own convention) AND `"item_id"` (the newer FSM/app
+    schema — same dual-schema precedent as `wr2_queue_writer.item_id_of`) — so an
+    entry minted under either schema is considered rather than silently skipped.
+
+    §C verification note (external-post feature spec, 2026-07-17): the "keys by
+    instagram_post_url" assumption in that spec is only PARTIALLY true. Selection
+    in `main()` below already filters on `instagram_post_url` + `state=="published"`
+    for ANY queue entry regardless of pipeline origin — but the actual Graph
+    FETCH requires a resolvable id here, and the "ig-" prefix convention assumes
+    the suffix IS a Graph-resolvable NUMERIC media id. That holds for the
+    historical Graph-API backfill (which used the real numeric id), but does
+    NOT hold for `ig-<shortcode>` ids minted by `ingest_external_post`
+    (scripts/wr2_queue_writer.py) or for this feature's own `external_<date>_...`
+    ids — a post/reel permalink's shortcode is a DIFFERENT identifier than the
+    Graph media id, and there is no local mapping between them (resolving one
+    from the other needs an authenticated Business Discovery/oEmbed call this
+    scraper does not make). Entries that fail this id-derivation are now logged
+    explicitly in `main()` (`skipped_no_media_id=`) instead of vanishing into
+    the same silent gap as "not stale yet" — this is a DOCUMENTED LIMITATION,
+    not a bug fixed here: externally-registered posts without a known Graph
+    media id cannot get automated metrics until that resolution is built.
+    """
+    for key in ("id", "item_id"):
+        iid = item.get(key) or ""
+        if iid.startswith("ig-"):
+            return iid[3:]
     return None
 
 
@@ -140,20 +163,29 @@ def main() -> int:
     qpath = Path(args.queue)
     queue = json.loads(qpath.read_text())
 
-    # smart selection: published items whose metrics are missing/stale + have a media id
+    # smart selection: published items whose metrics are missing/stale + have a media id.
+    # Selection on instagram_post_url + state=="published" already applies to ANY queue
+    # entry regardless of pipeline origin (§C: this half of the spec's assumption holds).
+    # `no_media_id` makes the OTHER half — entries that qualify here but can never be
+    # fetched because no Graph-resolvable id can be derived (see media_id_of docstring,
+    # e.g. externally-registered posts) — an OBSERVABLE count instead of a silent drop
+    # indistinguishable from "not stale yet" (scar #2, esiste≠armato).
     todo = []
+    no_media_id = 0
     for item in queue:
         if not (item.get("instagram_post_url") and item.get("state") == "published"):
             continue
         if not media_id_of(item):
+            no_media_id += 1
             continue
         if is_stale(item.get("engagement_metrics"), args.max_age_days):
             todo.append(item)
     if args.limit > 0:
         todo = todo[: args.limit]
 
+    skip_note = f" skipped_no_media_id={no_media_id}" if no_media_id else ""
     print(f"published={sum(1 for i in queue if i.get('state')=='published')} "
-          f"to_refresh={len(todo)} (max_age={args.max_age_days}d)")
+          f"to_refresh={len(todo)} (max_age={args.max_age_days}d){skip_note}")
 
     updated = 0
     for item in todo:

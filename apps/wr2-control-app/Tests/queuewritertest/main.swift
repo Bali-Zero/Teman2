@@ -134,6 +134,66 @@ import Foundation
             expect(false, "legacy verdict-only \"pass\" row should NOT be refused: \(error)")
         }
 
+        // --- addExternalPost — external-post feature (§A, 2026-07-17) ----------------
+        func makeExternalEntry(itemID: String, url: String) -> [String: Any] {
+            [
+                "item_id": itemID,
+                "state": "published",
+                "instagram_post_url": url,
+                "source": "external_manual",
+                "published_at": "2026-07-17T09:00:00+00:00",
+                "instagram_published_at": "2026-07-17T09:00:00+00:00",
+                "topic": "A manual post",
+                "topic_slug": "a-manual-post",
+                "slide_count": 0,
+            ]
+        }
+
+        let dir3 = FileManager.default.temporaryDirectory.appendingPathComponent("wr2q-\(UUID().uuidString)")
+        try! FileManager.default.createDirectory(at: dir3, withIntermediateDirectories: true)
+        let qf3 = dir3.appendingPathComponent("q.json")
+        try! Data("[]".utf8).write(to: qf3)
+
+        let entry1 = makeExternalEntry(itemID: "external_2026-07-17T090000_a-manual-post",
+                                        url: "https://www.instagram.com/p/ManualOne/")
+        let added1 = try! QueueWriter.addExternalPost(queueFile: qf3, entry: entry1)
+        expect(added1, "addExternalPost returns true on a fresh append")
+        let afterAdd = try! JSONSerialization.jsonObject(with: Data(contentsOf: qf3)) as! [[String: Any]]
+        expect(afterAdd.count == 1, "queue now has exactly 1 entry")
+        expect((afterAdd[0]["state"] as? String) == "published", "external entry written with state=published")
+        expect((afterAdd[0]["source"] as? String) == "external_manual", "external entry written with source=external_manual")
+
+        // duplicate by SAME item_id (different URL) must be refused, no write.
+        let dupSameID = makeExternalEntry(itemID: "external_2026-07-17T090000_a-manual-post",
+                                           url: "https://www.instagram.com/p/DifferentURL/")
+        var threwDupID = false
+        do { try QueueWriter.addExternalPost(queueFile: qf3, entry: dupSameID) }
+        catch { threwDupID = true }
+        expect(threwDupID, "addExternalPost throws on duplicate item_id")
+        let afterDupID = try! JSONSerialization.jsonObject(with: Data(contentsOf: qf3)) as! [[String: Any]]
+        expect(afterDupID.count == 1, "duplicate item_id attempt does not append (queue still has 1 entry)")
+
+        // duplicate by SAME url (different item_id) must ALSO be refused, no write.
+        let dupSameURL = makeExternalEntry(itemID: "external_2026-07-17T091500_retry-post",
+                                            url: "https://www.instagram.com/p/ManualOne/")
+        var threwDupURL = false
+        do { try QueueWriter.addExternalPost(queueFile: qf3, entry: dupSameURL) }
+        catch { threwDupURL = true }
+        expect(threwDupURL, "addExternalPost throws on duplicate instagram_post_url (different item_id)")
+        let afterDupURL = try! JSONSerialization.jsonObject(with: Data(contentsOf: qf3)) as! [[String: Any]]
+        expect(afterDupURL.count == 1, "duplicate URL attempt does not append (queue still has 1 entry)")
+
+        // a genuinely different post (different id AND url) must append fine, alongside
+        // — and must NEVER disturb the existing entry (scar #9 discipline).
+        let entry2 = makeExternalEntry(itemID: "external_2026-07-17T093000_second-post",
+                                        url: "https://www.instagram.com/p/ManualTwo/")
+        let added2 = try! QueueWriter.addExternalPost(queueFile: qf3, entry: entry2)
+        expect(added2, "addExternalPost returns true for a genuinely new entry")
+        let afterSecond = try! JSONSerialization.jsonObject(with: Data(contentsOf: qf3)) as! [[String: Any]]
+        expect(afterSecond.count == 2, "queue now has 2 entries")
+        let firstStillThere = afterSecond.contains { ($0["item_id"] as? String) == "external_2026-07-17T090000_a-manual-post" }
+        expect(firstStillThere, "the first entry is untouched by the second append")
+
         print("RESULT: \(fails == 0 ? "GREEN" : "RED")")
         exit(fails == 0 ? 0 : 1)
     }

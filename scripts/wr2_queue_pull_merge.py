@@ -39,6 +39,13 @@ Merge semantics (monotone state lattice — remote wins EXCEPT):
     dropped), with a warning in `queue_and_archive_conflict`.
   - everything else: remote wins verbatim.
 
+`push_back_external` (§A/§B, 2026-07-17): a SEPARATE, read-only pass over
+`local` (see `external_push_candidates`) — entries the WR2 Control app
+registered via the external-post feature that are not yet confirmed synced
+to Pro. Orthogonal to the merge loop above: it never changes what lands in
+`merged`/`local_only`, it only surfaces what the wrapper should replay onto
+Pro via `wr2_queue_writer.py add-external`.
+
 CLI (used by infra/launchagents/wrappers/wr2-queue-pull.sh):
     python3 scripts/wr2_queue_pull_merge.py --remote R.json --local L.json \
         --out M.json [--remote-archive A.json]
@@ -46,7 +53,15 @@ prints a JSON report to stdout:
     {"protected": [ids], "local_only": [ids],
      "push_back": [{"id":..., "ref_code": "WR2-XXXXXX", "ig_url": ...}],
      "archived_dropped": [ids], "queue_and_archive_conflict": [ids],
-     "published_local_kept_despite_archive": [ids]}
+     "published_local_kept_despite_archive": [ids],
+     "push_back_external": [{"item_id":..., ...full payload}]}
+
+Secondary CLI mode (§B, standalone — does not need --remote/--local/--out):
+    python3 scripts/wr2_queue_pull_merge.py --mark-synced-item-id ID \
+        --mark-synced-file L.json
+marks the matching entry `synced_to_pro: true` on L.json after the wrapper
+confirms a `push_back_external` entry landed on Pro, and prints
+`{"ok": true, "marked": ID}`.
 """
 
 from __future__ import annotations
@@ -61,10 +76,13 @@ from typing import Any, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from wr2_queue_writer import (  # noqa: E402 — same scripts/ dir
+    EXTERNAL_MANUAL_SOURCE,
     PUBLISHED_STATES,
     compute_ref_code,
     item_id_of,
+    validate_external_payload,
     validate_ig_url,
+    write_queue_atomic,
 )
 
 _REF_CODE_SAFE_RE = re.compile(r"^WR2-[0-9A-F]{6}$")
@@ -83,6 +101,52 @@ _PUBLISH_FIELDS = (
 
 def _is_published(entry: dict[str, Any]) -> bool:
     return entry.get("state") in PUBLISHED_STATES
+
+
+def external_push_candidates(local: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Local entries the WR2 Control app registered via the external-post feature
+    (§A, 2026-07-17) that have NOT yet been confirmed synced to Pro. Pure — no I/O,
+    no ssh; the wrapper (wr2-queue-pull.sh) replays each one via
+    `scripts/wr2_queue_writer.py add-external` and then calls `mark_synced_to_pro`
+    below on confirmed success.
+
+    An entry qualifies when ALL of:
+      - `source == EXTERNAL_MANUAL_SOURCE` — only the app's own external-post writes
+        carry this exact marker, never a WR2-pipeline entry (never confuse this with
+        `ingest_external_post`'s `"manual_external"`, a DIFFERENT origin/convention);
+      - `synced_to_pro` is not already truthy — idempotent: a confirmed push must
+        never be replayed forever (the local entry gets marked after success);
+      - the payload passes `validate_external_payload` — a malformed/partial local
+        entry (e.g. a write that raced a crash) must never be shipped over ssh as a
+        broken CLI argument; it stays local-only, unsynced, until it's fixed.
+    """
+    out: list[dict[str, Any]] = []
+    for e in local:
+        if not isinstance(e, dict):
+            continue
+        if e.get("source") != EXTERNAL_MANUAL_SOURCE:
+            continue
+        if e.get("synced_to_pro"):
+            continue
+        if validate_external_payload(e) is not None:
+            continue
+        out.append(e)
+    return out
+
+
+def mark_synced_to_pro(items: list[dict[str, Any]], item_id: str) -> list[dict[str, Any]]:
+    """Pure: return a COPY of `items` with the entry matching `item_id` marked
+    `synced_to_pro: true`, so `external_push_candidates` never re-offers a
+    confirmed push. No-op (items returned unchanged, by value) if no entry matches
+    — the wrapper calling this after a successful ssh push always has a real id,
+    but a stale/raced call must never crash or silently invent an entry."""
+    out: list[dict[str, Any]] = []
+    for it in items:
+        if isinstance(it, dict) and item_id_of(it) == item_id:
+            it = dict(it)
+            it["synced_to_pro"] = True
+        out.append(it)
+    return out
 
 
 def merge_queues(
@@ -187,20 +251,48 @@ def merge_queues(
         "archived_dropped": archived_dropped,
         "queue_and_archive_conflict": queue_and_archive_conflict,
         "published_local_kept_despite_archive": published_local_kept_despite_archive,
+        "push_back_external": external_push_candidates(local),
     }
 
 
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--remote", type=Path, required=True, help="freshly pulled Pro queue")
-    ap.add_argument("--local", type=Path, required=True, help="current local queue")
-    ap.add_argument("--out", type=Path, required=True, help="merged output path")
+    # --remote/--local/--out are NOT required at the argparse level (only
+    # enforced below, ap.error) because the secondary --mark-synced-item-id
+    # mode (§B) is a standalone invocation that needs none of them.
+    ap.add_argument("--remote", type=Path, help="freshly pulled Pro queue")
+    ap.add_argument("--local", type=Path, help="current local queue")
+    ap.add_argument("--out", type=Path, help="merged output path")
     ap.add_argument(
         "--remote-archive", type=Path, default=None,
         help="freshly pulled Pro queue-archive.json — cross-checked so an "
              "entry Pro archived is dropped instead of resurrected as local_only",
     )
+    # Secondary mode (§B): after the wrapper successfully replays a push_back_external
+    # entry into Pro via `wr2_queue_writer.py add-external`, it calls back into THIS
+    # script to mark that entry `synced_to_pro: true` on the LOCAL file — so the next
+    # merge's `external_push_candidates` never re-offers it. Kept in this module
+    # (not a new script) because it operates on the same local-queue shape and reuses
+    # `mark_synced_to_pro` directly.
+    ap.add_argument("--mark-synced-item-id", help="mark this item_id synced_to_pro=true on --mark-synced-file")
+    ap.add_argument("--mark-synced-file", type=Path, help="local queue file to mutate (used with --mark-synced-item-id)")
     args = ap.parse_args(argv)
+
+    if args.mark_synced_item_id:
+        if not args.mark_synced_file:
+            print(json.dumps({"ok": False, "error": "--mark-synced-file is required with --mark-synced-item-id"}))
+            return 2
+        items = json.loads(args.mark_synced_file.read_text(encoding="utf-8"))
+        if not isinstance(items, list):
+            print(json.dumps({"ok": False, "error": "--mark-synced-file is not a list"}))
+            return 2
+        updated = mark_synced_to_pro(items, args.mark_synced_item_id)
+        write_queue_atomic(args.mark_synced_file, updated)
+        print(json.dumps({"ok": True, "marked": args.mark_synced_item_id}))
+        return 0
+
+    if not (args.remote and args.local and args.out):
+        ap.error("--remote, --local and --out are all required unless --mark-synced-item-id is given")
 
     remote = json.loads(args.remote.read_text(encoding="utf-8"))
     if not isinstance(remote, list):

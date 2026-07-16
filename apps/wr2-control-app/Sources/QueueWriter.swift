@@ -119,6 +119,61 @@ enum QueueWriter {
         }
     }
 
+    /// Duplicate error code for `addExternalPost` — mirrors `ineligibleStateErrorCode`.
+    static let duplicateExternalPostErrorCode = 4
+
+    /// Append a manually-registered external Instagram post (§A external-post feature,
+    /// 2026-07-17) — a post Zero/Damar published OUTSIDE the WR2 pipeline, so there is
+    /// no drafted carousel for it to advance. Unlike `enqueueDrafted` (state="drafted",
+    /// awaiting review) this writes directly in the ALREADY-published shape so it shows
+    /// up in the gallery immediately via `isQueueItemPublished`'s exemption from the A2
+    /// completeness gate — mirroring the existing ig-* virtual-entry convention
+    /// (WarRoom.swift:361-397) this feature is modeled on.
+    ///
+    /// Refuses a duplicate — same `instagram_post_url` (trimmed) OR same `item_id`
+    /// already present in the LOCAL queue — BEFORE any write (mirrors `markPublished`'s
+    /// guard-first discipline), so a double-tap of Save (or a retried M5→Pro replay)
+    /// never double-enqueues (acceptance criteria §A #2). This is the LOCAL/M5 half of
+    /// the duplicate check; `scripts/wr2_queue_writer.py add_external` re-checks
+    /// independently on the Pro side once the entry propagates (§B).
+    @discardableResult
+    static func addExternalPost(queueFile: URL, entry: [String: Any]) throws -> Bool {
+        let newID = entry["item_id"] as? String
+        let newURL = (entry["instagram_post_url"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let data = (try? Data(contentsOf: queueFile)) ?? Data("[]".utf8)
+        var arr = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] ?? []
+
+        let isDuplicate = arr.contains { existing in
+            if let nid = newID, (existing["item_id"] as? String) == nid { return true }
+            if let nurl = newURL, nurl.isEmpty == false {
+                let existingURL = (existing["instagram_post_url"] as? String)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if existingURL == nurl { return true }
+            }
+            return false
+        }
+        guard isDuplicate == false else {
+            throw NSError(domain: "QueueWriter", code: duplicateExternalPostErrorCode, userInfo: [
+                NSLocalizedDescriptionKey:
+                    "un post con questo URL o id è già registrato"
+            ])
+        }
+
+        arr.append(entry)
+        let out = try JSONSerialization.data(withJSONObject: arr, options: [.prettyPrinted, .sortedKeys])
+        let tmp = queueFile.deletingLastPathComponent()
+            .appendingPathComponent(".\(queueFile.lastPathComponent).tmp-\(UUID().uuidString)")
+        do {
+            try out.write(to: tmp)
+            _ = try FileManager.default.replaceItemAt(queueFile, withItemAt: tmp)
+        } catch {
+            try? FileManager.default.removeItem(at: tmp)
+            throw error
+        }
+        return true
+    }
+
     /// Append a fresh `drafted` review entry for a just-rendered carousel, so it surfaces
     /// in Revisione. Closes the Step-7 enqueue gap: the orchestrator renders to
     /// output/carousel/<slug>/ but does not always write the queue row itself.

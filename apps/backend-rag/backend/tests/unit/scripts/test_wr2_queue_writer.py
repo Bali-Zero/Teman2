@@ -322,3 +322,110 @@ def test_ingest_external_explicit_date(queue_file):
     items = json.loads(queue_file.read_text())
     new = next(i for i in items if qw.item_id_of(i) == "ig-Cabc123_-")
     assert new["instagram_published_at"] == "2026-05-01T12:00:00+00:00"
+
+
+# ── add_external / validate_external_payload — M5->Pro propagation (§B) ────
+
+
+def _external_payload(**overrides):
+    payload = {
+        "item_id": "external_2026-07-17T090000_my-manual-post",
+        "state": "published",
+        "instagram_post_url": VALID_URL,
+        "source": "external_manual",
+        "published_at": "2026-07-17T09:00:00+00:00",
+        "instagram_published_at": "2026-07-17T09:00:00+00:00",
+        "topic": "My manual post",
+        "topic_slug": "my-manual-post",
+        "slide_count": 0,
+        "created_at": "2026-07-17T09:00:00+00:00",
+    }
+    payload.update(overrides)
+    return payload
+
+
+@pytest.mark.parametrize("field", list(qw.REQUIRED_EXTERNAL_PAYLOAD_FIELDS))
+def test_validate_external_payload_rejects_missing_required_field(field):
+    payload = _external_payload()
+    del payload[field]
+    err = qw.validate_external_payload(payload)
+    assert err is not None and field in err
+
+
+def test_validate_external_payload_rejects_wrong_state():
+    err = qw.validate_external_payload(_external_payload(state="drafted"))
+    assert err is not None and "state" in err
+
+
+def test_validate_external_payload_rejects_wrong_source():
+    err = qw.validate_external_payload(_external_payload(source="manual_external"))
+    assert err is not None and "source" in err
+
+
+def test_validate_external_payload_rejects_bad_url():
+    err = qw.validate_external_payload(_external_payload(instagram_post_url="https://example.com/not-ig"))
+    assert err is not None and "instagram_post_url" in err
+
+
+def test_validate_external_payload_accepts_well_formed_payload():
+    assert qw.validate_external_payload(_external_payload()) is None
+
+
+def test_add_external_happy_path_appends_verbatim(queue_file):
+    before = len(json.loads(queue_file.read_text()))
+    payload = _external_payload()
+    res = qw.add_external(queue_file, payload)
+    assert res.status == "added" and res.ok is True
+    items = json.loads(queue_file.read_text())
+    assert len(items) == before + 1
+    new = next(i for i in items if qw.item_id_of(i) == payload["item_id"])
+    assert new["state"] == "published"
+    assert new["instagram_post_url"] == VALID_URL
+    assert new["source"] == "external_manual"
+    assert new["topic_slug"] == "my-manual-post"
+    assert new["slide_count"] == 0
+    # OTHER items untouched
+    alpha = next(i for i in items if qw.item_id_of(i) == "alpha-FIRSTPROD")
+    assert alpha["state"] == "applied_ready_for_damar"
+
+
+def test_add_external_invalid_payload_no_write(queue_file):
+    before = queue_file.read_text()
+    res = qw.add_external(queue_file, _external_payload(state="drafted"))
+    assert res.status == "invalid_payload" and res.ok is False
+    assert queue_file.read_text() == before
+
+
+def test_add_external_duplicate_item_id_refused(queue_file):
+    payload = _external_payload()
+    qw.add_external(queue_file, payload)
+    n_after_first = len(json.loads(queue_file.read_text()))
+    # same item_id, different URL — must still be refused as a duplicate
+    dup = _external_payload(instagram_post_url="https://www.instagram.com/p/DIFFERENT99/")
+    res = qw.add_external(queue_file, dup)
+    assert res.status == "already_present" and res.ok is True
+    items = json.loads(queue_file.read_text())
+    assert len(items) == n_after_first  # no duplicate appended
+    kept = next(i for i in items if qw.item_id_of(i) == payload["item_id"])
+    assert kept["instagram_post_url"] == VALID_URL  # original untouched
+
+
+def test_add_external_duplicate_url_different_item_id_refused(queue_file):
+    payload = _external_payload()
+    qw.add_external(queue_file, payload)
+    n_after_first = len(json.loads(queue_file.read_text()))
+    # different item_id, SAME url — must still be refused as a duplicate
+    dup = _external_payload(item_id="external_2026-07-17T091500_retry-post", topic_slug="retry-post")
+    res = qw.add_external(queue_file, dup)
+    assert res.status == "already_present" and res.ok is True
+    assert len(json.loads(queue_file.read_text())) == n_after_first
+
+
+def test_add_external_idempotent_replay_safe(queue_file):
+    """The M5->Pro push-back loop may retry the SAME payload after a flaky ssh —
+    replaying the identical payload twice must be a no-op, not an error."""
+    payload = _external_payload()
+    res1 = qw.add_external(queue_file, payload)
+    assert res1.status == "added"
+    res2 = qw.add_external(queue_file, payload)
+    assert res2.status == "already_present" and res2.ok is True

@@ -24,6 +24,7 @@ struct GalleryView: View {
     var onSelect: ((Carousel) -> Void)? = nil
     @State private var selected: Carousel?   // used only when onSelect is nil (legacy sheet)
     @State private var sort: GallerySort = .recent
+    @State private var showingAddExternalPost = false
 
     private let columns = [GridItem(.adaptive(minimum: 200, maximum: 240), spacing: 18)]
 
@@ -53,6 +54,10 @@ struct GalleryView: View {
                     .pickerStyle(.segmented)
                     .frame(width: 260)
 
+                    Button { showingAddExternalPost = true } label: {
+                        Label(lang.t("externalPost.button"), systemImage: "plus.square.on.square").font(.system(size: 12))
+                    }.buttonStyle(.bordered).tint(Theme.muted)
+
                     Button { state.refreshFromDisk() } label: {
                         Label(lang.t("gallery.refresh"), systemImage: "arrow.clockwise").font(.system(size: 12))
                     }.buttonStyle(.bordered).tint(Theme.muted)
@@ -74,6 +79,7 @@ struct GalleryView: View {
         }
         // legacy sheet — only shown when onSelect is nil (e.g. GalleryView used standalone)
         .sheet(item: $selected) { c in CarouselDetail(carousel: c, lang: lang) }
+        .sheet(isPresented: $showingAddExternalPost) { AddExternalPostView(lang: lang) }
     }
 
     private var emptyState: some View {
@@ -285,6 +291,96 @@ struct CarouselDetail: View {
                     Text(nums.prefix(6).joined(separator: "  ·  ")).font(Theme.numberFont).foregroundStyle(Theme.yellow)
                 }
             }
+        }
+    }
+}
+
+// MARK: - Add external post (§A, 2026-07-17)
+
+/// "Aggiungi post esterno" sheet — register an Instagram post that was published
+/// OUTSIDE the app (never went through the pipeline), optionally attaching images
+/// picked from disk. Validation + entry construction is pure (ExternalPostRegistration);
+/// this view only collects input and delegates the write to AppState.addExternalPost.
+struct AddExternalPostView: View {
+    @EnvironmentObject var state: AppState
+    let lang: LanguageManager
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var urlText: String = ""
+    @State private var topicText: String = ""
+    @State private var publishDate: Date = Date()
+    @State private var images: [URL] = []
+    @State private var errorText: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text(lang.t("externalPost.title"))
+                    .font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.white)
+                Spacer()
+                Button { dismiss() } label: { Image(systemName: "xmark") }
+                    .buttonStyle(.plain).foregroundStyle(Theme.muted)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(lang.t("externalPost.urlLabel")).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.muted)
+                TextField("https://instagram.com/p/…", text: $urlText).textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(lang.t("externalPost.topicLabel")).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.muted)
+                TextField("", text: $topicText).textFieldStyle(.roundedBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(lang.t("externalPost.dateLabel")).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.muted)
+                DatePicker("", selection: $publishDate, displayedComponents: [.date]).labelsHidden()
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(lang.t("externalPost.imagesLabel")).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.muted)
+                HStack(spacing: 10) {
+                    Button(lang.t("externalPost.pickImages")) { pickImages() }.buttonStyle(.bordered).tint(Theme.muted)
+                    if images.isEmpty == false {
+                        Text(String(format: lang.t("externalPost.imagesCount"), images.count))
+                            .font(.system(size: 11)).foregroundStyle(Theme.muted)
+                    }
+                }
+            }
+
+            if let errorText {
+                Text(errorText).font(.system(size: 11)).foregroundStyle(.red)
+            }
+
+            HStack {
+                Spacer()
+                Button(lang.t("studio.cancel")) { dismiss() }.buttonStyle(.bordered).tint(Theme.muted)
+                Button(lang.t("externalPost.save")) { save() }.buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(20)
+        .frame(width: 420)
+        .background(Theme.ink)
+    }
+
+    private func pickImages() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.allowedContentTypes = [.png, .jpeg]
+        guard panel.runModal() == .OK else { return }
+        images = panel.urls
+    }
+
+    private func save() {
+        errorText = nil
+        do {
+            try state.addExternalPost(igURLRaw: urlText, topicRaw: topicText,
+                                       publishDate: publishDate, images: images, lang: lang)
+            dismiss()
+        } catch {
+            errorText = error.localizedDescription
         }
     }
 }

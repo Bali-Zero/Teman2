@@ -247,3 +247,108 @@ def test_cli_missing_remote_archive_file_degrades_gracefully(tmp_path):
                           "--remote-archive", str(tmp_path / "does-not-exist.json")])
     assert rc == 0
     assert json.loads(out.read_text())[0]["state"] == "published"
+
+
+# ── external_push_candidates / mark_synced_to_pro — M5->Pro propagation (§B) ─
+
+
+def _external_manual_entry(**overrides) -> dict:
+    entry = {
+        "item_id": "external_2026-07-17T090000_my-manual-post",
+        "state": "published",
+        "instagram_post_url": "https://www.instagram.com/p/ManualPost1/",
+        "source": "external_manual",
+        "published_at": "2026-07-17T09:00:00+00:00",
+        "instagram_published_at": "2026-07-17T09:00:00+00:00",
+        "topic": "My manual post",
+        "topic_slug": "my-manual-post",
+        "slide_count": 0,
+        "created_at": "2026-07-17T09:00:00+00:00",
+    }
+    entry.update(overrides)
+    return entry
+
+
+def test_external_push_candidates_picks_up_unsynced_external_manual_entry():
+    local = [_remote_drafted(), _external_manual_entry()]
+    candidates = merge.external_push_candidates(local)
+    assert [c["item_id"] for c in candidates] == ["external_2026-07-17T090000_my-manual-post"]
+
+
+def test_external_push_candidates_excludes_already_synced():
+    local = [_external_manual_entry(synced_to_pro=True)]
+    assert merge.external_push_candidates(local) == []
+
+
+def test_external_push_candidates_excludes_pipeline_entries():
+    # a normal published WR2-pipeline entry (no source=="external_manual") must NEVER
+    # be offered for push-back on this channel — that's the OTHER push_back list.
+    local = [_local_published()]
+    assert merge.external_push_candidates(local) == []
+
+
+def test_external_push_candidates_excludes_manual_external_source_confusion():
+    # "manual_external" (ingest_external_post's convention) is a DIFFERENT origin —
+    # must not be conflated with "external_manual" (this feature's exact marker).
+    local = [_external_manual_entry(source="manual_external")]
+    assert merge.external_push_candidates(local) == []
+
+
+def test_external_push_candidates_excludes_invalid_payload():
+    # a malformed local entry (missing topic_slug here) must never be shipped over
+    # ssh as a broken CLI argument.
+    entry = _external_manual_entry()
+    del entry["topic_slug"]
+    assert merge.external_push_candidates([entry]) == []
+
+
+def test_merge_queues_report_includes_push_back_external():
+    _, report = merge.merge_queues([_remote_drafted()], [_external_manual_entry()])
+    assert [c["item_id"] for c in report["push_back_external"]] == ["external_2026-07-17T090000_my-manual-post"]
+
+
+def test_mark_synced_to_pro_marks_matching_entry_only():
+    items = [_external_manual_entry(item_id="a"), _external_manual_entry(item_id="b")]
+    updated = merge.mark_synced_to_pro(items, "a")
+    a = next(i for i in updated if i["item_id"] == "a")
+    b = next(i for i in updated if i["item_id"] == "b")
+    assert a["synced_to_pro"] is True
+    assert "synced_to_pro" not in b
+    # pure — input list's dicts not mutated
+    assert "synced_to_pro" not in items[0]
+
+
+def test_mark_synced_to_pro_noop_on_unknown_id():
+    items = [_external_manual_entry(item_id="a")]
+    updated = merge.mark_synced_to_pro(items, "does-not-exist")
+    assert updated == items
+
+
+def test_mark_synced_then_excluded_from_next_push_candidates():
+    entry = _external_manual_entry()
+    synced = merge.mark_synced_to_pro([entry], entry["item_id"])
+    assert merge.external_push_candidates(synced) == []
+
+
+def test_cli_mark_synced_item_id_writes_atomically(tmp_path):
+    f = tmp_path / "local.json"
+    f.write_text(json.dumps([_external_manual_entry(item_id="x")]))
+    import io
+    from contextlib import redirect_stdout
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        rc = merge.main(["--mark-synced-item-id", "x", "--mark-synced-file", str(f)])
+    assert rc == 0
+    resp = json.loads(buf.getvalue())
+    assert resp == {"ok": True, "marked": "x"}
+    updated = json.loads(f.read_text())
+    assert updated[0]["synced_to_pro"] is True
+
+
+def test_cli_mark_synced_requires_file_arg():
+    import io
+    from contextlib import redirect_stdout
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        rc = merge.main(["--mark-synced-item-id", "x"])
+    assert rc == 2
