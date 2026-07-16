@@ -24,6 +24,9 @@ export function EditClientModal({
   const { options: teamMemberOptions } = useTeamMemberOptions();
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  // Tracks an explicit "remove photo" so the save can clear the avatar. Uploads
+  // persist server-side on their own; the save never re-sends the URL.
+  const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [formData, setFormData] = useState({
     full_name: client.full_name || "",
     email: client.email || "",
@@ -72,6 +75,7 @@ export function EditClientModal({
       setIsUploadingAvatar(true);
       const res = await api.crm.uploadClientAvatar(client.id, uploadFile);
       setFormData((prev) => ({ ...prev, avatar_url: res.avatar_url }));
+      setAvatarRemoved(false);
       toast.success("Avatar uploaded");
     } catch (error) {
       logger.error(
@@ -87,6 +91,7 @@ export function EditClientModal({
 
   const removeAvatar = () => {
     setFormData((prev) => ({ ...prev, avatar_url: "" }));
+    setAvatarRemoved(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -125,6 +130,9 @@ export function EditClientModal({
           if (tagsArray.length > 0) updates[key] = tagsArray;
           return;
         }
+        // avatar_url is owned by the dedicated upload endpoint and handled
+        // explicitly below — never forwarded through this generic field loop.
+        if (key === "avatar_url") return;
         if (
           value !== undefined &&
           value !== null &&
@@ -133,6 +141,21 @@ export function EditClientModal({
           updates[key] = value;
         }
       });
+
+      // avatar_url is managed out-of-band: an upload is already persisted to the
+      // DB by POST /api/crm/clients/{id}/avatar, so the save must never re-send
+      // the URL — it would be redundant, and it would clobber a concurrently
+      // changed avatar with the stale value this modal opened with. The only
+      // avatar signal this save still owns is an explicit removal.
+      //
+      // A legacy `data:` URI loaded from the DB is therefore never echoed back:
+      // the backend rejects data: URIs on update, which used to fail the whole
+      // PATCH and block every edit of pre-#2208 clients (even edits that never
+      // touched the photo).
+      if (avatarRemoved) {
+        updates.avatar_url = "";
+      }
+
       await api.crm.updateClient(client.id, updates, user.email);
       onSave();
       onClose();
@@ -185,6 +208,7 @@ export function EditClientModal({
             <button
               type="button"
               onClick={removeAvatar}
+              aria-label="Remove avatar"
               className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
             >
               <X className="w-4 h-4" />
@@ -212,6 +236,7 @@ export function EditClientModal({
             <input
               type="file"
               accept="image/*"
+              aria-label="Upload client photo"
               onChange={handleAvatarUpload}
               disabled={isUploadingAvatar}
               className="hidden"

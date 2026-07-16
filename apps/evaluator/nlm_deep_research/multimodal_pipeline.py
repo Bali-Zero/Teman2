@@ -130,6 +130,12 @@ ARTIFACT_META: dict[str, dict[str, str]] = {
     "report":      {"download_cmd": "report",     "ext": "md",   "display": "Report"},
 }
 
+# Artifact types whose `nlm download <cmd>` subcommand supports --no-progress.
+# Verified via `nlm download <cmd> --help`: audio/infographic have it,
+# mind-map/report do not (mind-map download was failing 100% of the time
+# with "No such option: --no-progress" until this was made conditional).
+NO_PROGRESS_SUPPORTED: set[str] = {"audio", "infographic"}
+
 # Re-generation interval per artifact type (hours)
 MIN_REGEN_INTERVAL: dict[str, int] = {
     "audio":       7 * 24,   # weekly
@@ -354,8 +360,9 @@ def _run_nlm_download(
         NLM_CLI, "download", meta["download_cmd"],
         notebook_id,
         "--output", output_path,
-        "--no-progress",
     ]
+    if artifact_type in NO_PROGRESS_SUPPORTED:
+        cmd.append("--no-progress")
 
     if dry_run:
         logger.info("[DRY-RUN] Would download: %s → %s", artifact_type, output_path)
