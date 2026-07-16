@@ -20,6 +20,11 @@
 #      invented; this is the SAME `--tier p0` path every other sane wrapper in
 #      this directory (matagaruda-redis-split-brain-check.sh, audit-launchd
 #      digest tier) already uses.
+#   5. Honors LAUNCHD_LIVENESS_DETECTOR_ENABLED=false as a kill switch
+#      (G5_kill_switch, organ-conformance gate): the operator can stop this
+#      organ without uninstalling the plist; a final "disabled" heartbeat
+#      keeps the healer from resurrecting an intentionally-stopped run — same
+#      idiom as pro-git-pull-main.sh / mini-fleet-watch.sh / wr2-worktree-gc-run.sh.
 #
 # Cadence: daily, one-shot (see the paired .daily.plist: KeepAlive=false,
 # StartCalendarInterval). This is deliberately NOT a persistent daemon —
@@ -43,6 +48,29 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 mkdir -p "$HOME/logs"
 LOG="$HOME/logs/launchd-liveness-detector.log"
+REPO_ROOT="${HOME}/nuzantara"
+
+# --- organism heartbeat sidecar (scripts/lib/heartbeat.{sh,py} convention) ---
+# Resolved early (before the kill switch / trampoline below) so a disabled
+# run can still prove a "disabled" liveness signal. Resolution order mirrors
+# regulatory-watcher-run.sh: prefer a HOME-forked copy outside the repo, fall
+# back to repo canon (works both pre- and post-install of the HOME-fork pair).
+if [ -n "${ORGANISM_HEARTBEAT_LIB:-}" ]; then
+    HEARTBEAT_LIB="$ORGANISM_HEARTBEAT_LIB"
+elif [ -r "$HOME/scripts/lib/heartbeat.sh" ]; then
+    HEARTBEAT_LIB="$HOME/scripts/lib/heartbeat.sh"
+else
+    HEARTBEAT_LIB="$REPO_ROOT/scripts/lib/heartbeat.sh"
+fi
+
+# G5_kill_switch — operator stop without uninstall; disabled heartbeat keeps
+# the healer from resurrecting an intentionally-stopped organ. Checked before
+# the trampoline so a disabled organ never pays the TCC-probe/ssh-reexec cost.
+if [ "${LAUNCHD_LIVENESS_DETECTOR_ENABLED:-true}" = "false" ]; then
+    echo "[$(date)] kill switch LAUNCHD_LIVENESS_DETECTOR_ENABLED=false — exiting" >> "$LOG"
+    [ -f "$HEARTBEAT_LIB" ] && bash "$HEARTBEAT_LIB" "pro.launchd_liveness" "disabled" "kill switch"
+    exit 0
+fi
 
 # --- W84 trampoline (shared lib; see infra/launchagents/wrappers/lib/trampoline.sh) ---
 TRAMPOLINE_LIB="$HOME/scripts/lib/trampoline.sh"
@@ -52,7 +80,6 @@ if [ -f "$TRAMPOLINE_LIB" ]; then
     w84_trampoline_or_die "$LOG" "$0"
 fi
 
-REPO_ROOT="${HOME}/nuzantara"
 DETECTOR="$REPO_ROOT/scripts/launchd_liveness_detector.py"
 
 if [ ! -f "$DETECTOR" ]; then
@@ -65,18 +92,6 @@ PYBIN="$(command -v python3 || echo /usr/bin/python3)"
 TMPOUT=$(mktemp)
 "$PYBIN" "$DETECTOR" --json > "$TMPOUT" 2>>"$LOG"
 DETECTOR_EXIT=$?
-
-# --- organism heartbeat sidecar (scripts/lib/heartbeat.{sh,py} convention) ---
-# Resolution order mirrors regulatory-watcher-run.sh: prefer a HOME-forked
-# copy outside the repo, fall back to repo canon (works both pre- and
-# post-install of the HOME-fork pair).
-if [ -n "${ORGANISM_HEARTBEAT_LIB:-}" ]; then
-    HEARTBEAT_LIB="$ORGANISM_HEARTBEAT_LIB"
-elif [ -r "$HOME/scripts/lib/heartbeat.sh" ]; then
-    HEARTBEAT_LIB="$HOME/scripts/lib/heartbeat.sh"
-else
-    HEARTBEAT_LIB="$REPO_ROOT/scripts/lib/heartbeat.sh"
-fi
 
 ALARMS=$("$PYBIN" -c "
 import json, sys
