@@ -22,7 +22,7 @@ if [[ -n "${NUZANTARA_REPO:-}" ]]; then
 fi
 REPO_CANDIDATES+=(
     "$(cd "$SCRIPT_DIR/.." && pwd)"
-    "$HOME/Desktop/nuzantara"
+    "$HOME/nuzantara"
     "$HOME/Projects/nuzantara"
 )
 
@@ -68,7 +68,7 @@ log() { echo "[$(date '+%H:%M:%S')] $*"; }
 _tg_gateway() {
     local g
     g="$(dirname "$0")/tg_notify.py"
-    [ -f "$g" ] || g="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    [ -f "$g" ] || g="$HOME/nuzantara/scripts/tg_notify.py"
     echo "$g"
 }
 alert() {

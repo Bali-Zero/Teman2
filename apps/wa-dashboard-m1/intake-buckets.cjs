@@ -4,7 +4,7 @@ const HIGH_CONFIDENCE_THRESHOLD = 0.7;
 const TEXT_PARSER_MIN_CHARS = 100;
 const DEFAULT_QWEN_MODEL = "qwen3.5:9b";
 const AUTOCATALOG_DRY_RUN_COMMAND =
-  "cd ~/Desktop/nuzantara && source apps/backend-rag/.venv/bin/activate && " +
+  "cd ~/nuzantara && source apps/backend-rag/.venv/bin/activate && " +
   "python scripts/intake_reprocess_backlog.py --autocatalog-direct-unknown-text";
 const AUTOCATALOG_APPLY_COMMAND = `${AUTOCATALOG_DRY_RUN_COMMAND} --apply`;
 

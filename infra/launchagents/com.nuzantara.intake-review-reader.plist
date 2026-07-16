@@ -15,7 +15,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/nuzantara/Desktop/nuzantara/scripts/intake_review_reader_run.sh</string>
+    <string>/Users/nuzantara/nuzantara/scripts/intake_review_reader_run.sh</string>
   </array>
 
   <key>EnvironmentVariables</key>
@@ -29,7 +29,7 @@
     <!-- checkout that night; this makes that durable so a reinstall never reverts to     -->
     <!-- the broken deploy-worktree path. The wrapper also self-falls-back to this venv.  -->
     <key>INTAKE_REVIEW_REPO_ROOT</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/nuzantara</string>
     <!-- All secrets (JWT_SECRET_KEY / API_KEYS / DSN / X-Bridge-Auth) come from the    -->
     <!-- 0600 env-file ~/.cell-bridge-state/intake-review-reader.env, sourced by the    -->
     <!-- wrapper at runtime. NONE are set here.                                         -->

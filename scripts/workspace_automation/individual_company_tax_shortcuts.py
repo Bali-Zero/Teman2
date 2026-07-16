@@ -15,7 +15,7 @@ Strategy:
     (SA scope 'drive' alone has insufficient permissions on My Drive files)
 
 Run:
-  cd ~/Desktop/nuzantara
+  cd ~/nuzantara
   ./apps/backend-rag/.venv/bin/python scripts/workspace_automation/individual_company_tax_shortcuts.py --dry-run
   ./apps/backend-rag/.venv/bin/python scripts/workspace_automation/individual_company_tax_shortcuts.py --apply
 """

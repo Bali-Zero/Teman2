@@ -53,7 +53,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 DEFAULT_SQLITE_PATH = Path(
     os.environ.get(
         "MATA_GARUDA_KB_PATH",
-        str(Path.home() / "Desktop/nuzantara/apps/mata-garuda/data/knowledge.db"),
+        str(Path.home() / "nuzantara/apps/mata-garuda/data/knowledge.db"),
     ),
 )
 

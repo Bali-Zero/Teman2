@@ -41,8 +41,8 @@ def _load_registry(repo: Path) -> list[dict]:
 
 
 def _plist_paths(plist_text: str) -> list[str]:
-    """Extract every /Users/.../Desktop/nuzantara* path string from a plist."""
-    return re.findall(r"/Users/[^<\s]+/Desktop/nuzantara[A-Za-z0-9_./-]*", plist_text)
+    """Extract every /Users/.../nuzantara* path string from a plist."""
+    return re.findall(r"/Users/[^<\s]+/nuzantara[A-Za-z0-9_./-]*", plist_text)
 
 
 def _classify_root(paths: list[str]) -> str:
@@ -50,8 +50,8 @@ def _classify_root(paths: list[str]) -> str:
         return "unknown"
     if any(DEPLOY_MARKER in p for p in paths):
         return "deploy"
-    # any plain Desktop/nuzantara path that is NOT -deploy = the dirty main checkout
-    if any(re.search(r"/Desktop/nuzantara(?![A-Za-z0-9-])", p) for p in paths):
+    # any plain nuzantara path that is NOT -deploy = the dirty main checkout
+    if any(re.search(r"/nuzantara(?![A-Za-z0-9-])", p) for p in paths):
         return "dirty-main"
     return "external"
 

@@ -9,7 +9,7 @@
 # Prerequisites:
 # - ~/.nuzantara-secrets.env contains MINIMAX_API_KEY, EVENTBUS_DATABASE_URL,
 #   OBSERVATORY_API_KEY (and optionally OBSERVATORY_API_PORT, default 17891)
-# - cell-observatory-collector is installed at ~/Desktop/nuzantara/apps/cell-observatory-collector/.venv
+# - cell-observatory-collector is installed at ~/nuzantara/apps/cell-observatory-collector/.venv
 # - The collector LaunchAgent is loaded (com.nuzantara.cell-observatory)
 # - Postgres is reachable from Pro
 # - sqlite3 + psql are on PATH (brew install sqlite3 postgresql@17)
@@ -36,7 +36,7 @@ echo "Pulse ID: $PULSE_ID"
 echo
 
 echo "1) Inject test pulse via cell_core.observatory.emit_pulse_observed..."
-~/Desktop/nuzantara/apps/cell-observatory-collector/.venv/bin/python <<PYEOF
+~/nuzantara/apps/cell-observatory-collector/.venv/bin/python <<PYEOF
 import asyncio
 import os
 import time

@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from eventbus import publish
 
-DIGEST_DIR = Path.home() / "Desktop/nuzantara/research/competitive"
+DIGEST_DIR = Path.home() / "nuzantara/research/competitive"
 LOG_PATH = Path.home() / "logs" / "competitor-signal-router.log"
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 

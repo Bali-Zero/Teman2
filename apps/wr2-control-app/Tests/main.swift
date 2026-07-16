@@ -152,7 +152,7 @@ func test_pathDriftResolver() {
     _ = makeCarousel(in: root, slug: "e33g-visa-2026", slides: ["01.png", "02.png"])
 
     // a FOREIGN absolute path (as stored in queue JSON on the Pro)
-    let foreign = "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/carousel/e33g-visa-2026/"
+    let foreign = "/Users/nuzantara/nuzantara/apps/war-room/output/carousel/e33g-visa-2026/"
     let resolved = WarRoom.resolveCarouselDir(foreignPath: foreign, carouselRoot: croot)
     T.check(resolved != nil, "foreign /Users/nuzantara path re-rooted to live machine")
     T.eq(resolved?.lastPathComponent, "e33g-visa-2026", "resolves to correct slug dir")
@@ -288,7 +288,7 @@ func test_reviewQueueJoin() {
     let json = """
     [
       {"id":"fsm","topic_slug":"lkpm-panic-myth",
-       "carousel_path":"/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/carousel/2026-07-08-lkpm-panic-myth-79d3c3a9","state":"drafted"},
+       "carousel_path":"/Users/nuzantara/nuzantara/apps/war-room/output/carousel/2026-07-08-lkpm-panic-myth-79d3c3a9","state":"drafted"},
       {"id":"legacy","topic_slug":"golden-visa","carousel_path":"/x/carousel/golden-visa/","state":"drafted"},
       {"id":"gone","topic_slug":"golden-visa-attracts-rp2-trillion",
        "carousel_path":"/x/carousel/missing-efd58430","state":"drafted"},

@@ -8,7 +8,7 @@ existed. This canon plist follows the W84 trampoline sweep pattern (#2421):
 ProgramArguments points to the wrapper deployed OUTSIDE the TCC-protected
 ~/Desktop (infra/launchagents/wrappers/wr2-worktree-gc-run.sh, declared in
 infra/home-fork/declared-pairs.json), which probes TCC + trampolines via
-ssh-localhost before touching ~/Desktop/nuzantara.
+ssh-localhost before touching ~/nuzantara.
 
 REPORT-ONLY BY DESIGN: the wrapper never passes the apply flag to
 scripts/wr2_worktree_gc.py. Two blocking gaps found during promotion (see

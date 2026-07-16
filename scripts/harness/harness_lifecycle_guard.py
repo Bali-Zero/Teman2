@@ -7,7 +7,7 @@ import json, os, re, sys
 
 HOME = os.path.expanduser("~")
 MEM = f"{HOME}/.claude/projects/-Users-balizero-Desktop-nuzantara/memory/MEMORY.md"
-PROJ = f"{HOME}/Desktop/nuzantara/.claude/settings.local.json"
+PROJ = f"{HOME}/nuzantara/.claude/settings.local.json"
 MEM_HARD, MEM_SOFT, ALLOW_SOFT = 25600, 20000, 600
 
 

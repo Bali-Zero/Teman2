@@ -3,7 +3,7 @@
 # Called by com.cell.organism.plist instead of python directly
 set -euo pipefail
 
-CELL_DIR="/Users/nuzantara/Desktop/nuzantara/apps/cell"
+CELL_DIR="/Users/nuzantara/nuzantara/apps/cell"
 ENV_FILE="$CELL_DIR/.env"
 
 if [ ! -f "$ENV_FILE" ]; then

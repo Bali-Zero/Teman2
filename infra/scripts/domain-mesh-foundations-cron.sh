@@ -23,7 +23,7 @@ LOG_FILE="$LOG_DIR/foundations-daily-$(date +%Y%m%d).log"
 SNAPSHOT_FILE="$SNAPSHOT_DIR/gov-apis-health-$(date +%Y%m%d).json"
 SNAPSHOT_TMP="${SNAPSHOT_FILE}.tmp.$$"
 
-REPO_ROOT="${HOME}/Desktop/nuzantara"
+REPO_ROOT="${HOME}/nuzantara"
 cd "$REPO_ROOT/apps/mata-garuda" || {
     echo "$(date) FAILED: cannot cd to $REPO_ROOT/apps/mata-garuda" >> "$LOG_FILE"
     exit 1

@@ -11,7 +11,7 @@ graceful degrade to mock, that would be a production identity-gate bypass):
   - opencv-python (cv2)
 
 Reference anchor:
-  ~/Desktop/nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/
+  ~/nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/
   zantara-anchor-A007.embedding.npy  (pre-computed)
 
 Mock mode: if WR3_ARCFACE_MOCK=true returns deterministic PASS — INTENDED
@@ -28,7 +28,7 @@ from pathlib import Path
 
 ANCHOR_EMBEDDING_PATH = Path(os.environ.get(
     "WR3_ARCFACE_ANCHOR",
-    str(Path.home() / "Desktop/nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/zantara-anchor-A007.embedding.npy"),
+    str(Path.home() / "nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/zantara-anchor-A007.embedding.npy"),
 ))
 MIN_COSINE = float(os.environ.get("WR3_ARCFACE_MIN_COSINE", "0.6"))
 HARD_FAIL_COSINE = float(os.environ.get("WR3_ARCFACE_HARD_FAIL", "0.55"))

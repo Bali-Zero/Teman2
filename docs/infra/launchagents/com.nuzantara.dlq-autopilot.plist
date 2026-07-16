@@ -7,7 +7,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/docs/infra/launchagents/launch_dlq_autopilot.sh</string>
+        <string>/Users/nuzantara/nuzantara/docs/infra/launchagents/launch_dlq_autopilot.sh</string>
     </array>
     <key>StartInterval</key>
     <integer>1800</integer>

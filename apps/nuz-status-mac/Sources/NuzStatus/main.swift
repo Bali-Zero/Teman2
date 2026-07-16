@@ -104,7 +104,7 @@ func defaultRepoRoot() -> String {
         cursor = parent
     }
 
-    for candidate in ["/Users/balizero/Desktop/nuzantara", "/Users/nuzantara/Desktop/nuzantara"] {
+    for candidate in ["/Users/balizero/nuzantara", "/Users/nuzantara/nuzantara"] {
         if fileManager.fileExists(atPath: "\(candidate)/scripts/nuz_status.py") {
             return candidate
         }

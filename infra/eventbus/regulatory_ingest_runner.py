@@ -45,10 +45,10 @@ log = logging.getLogger("reg-ingest")
 # ──────────────────────────────────────────────────────────────────────────
 # Constants — canonical paths and IDs
 # ──────────────────────────────────────────────────────────────────────────
-PERATURAN_BASE = Path.home() / "Desktop/nuzantara/data/source_documents/peraturan"
+PERATURAN_BASE = Path.home() / "nuzantara/data/source_documents/peraturan"
 SHEET_ID = "1Je7eAK3ya_P5yY9L_JtnwRzkTDrucnzgZ4PvvWlb2us"
 DRIVE_SA_PATH = Path.home() / ".nuzantara-drive-sa.json"
-BACKEND_ENV = Path.home() / "Desktop/nuzantara/apps/backend-rag/.env"
+BACKEND_ENV = Path.home() / "nuzantara/apps/backend-rag/.env"
 PYTHON_BIN = "/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3"
 
 # NB UUID map (mirror of devils_advocate_runner.NB_REGISTRY)
@@ -382,7 +382,7 @@ def step6_qdrant_ingest(pdf_path: str, reg_code: str, official_title: str,
     if not Path(pdf_path).exists():
         return {"ok": False, "error": f"PDF not found at {pdf_path}"}
 
-    backend_dir = Path.home() / "Desktop/nuzantara/apps/backend-rag"
+    backend_dir = Path.home() / "nuzantara/apps/backend-rag"
     venv_python = backend_dir / ".venv/bin/python"
     if not venv_python.exists():
         return {"ok": False, "error": f"backend venv not found: {venv_python}"}
@@ -432,7 +432,7 @@ asyncio.run(main())
 # Step 7 — KG entity extraction (incremental)
 # ──────────────────────────────────────────────────────────────────────────
 def step7_kg_extract(domain: str, limit: int = 200) -> dict:
-    backend_dir = Path.home() / "Desktop/nuzantara/apps/backend-rag"
+    backend_dir = Path.home() / "nuzantara/apps/backend-rag"
     venv_python = backend_dir / ".venv/bin/python"
     script = backend_dir / "scripts/kg_incremental_extraction.py"
     if not script.exists():

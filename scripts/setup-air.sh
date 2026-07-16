@@ -146,10 +146,10 @@ fi
 # Ensure 'pro' remote exists for direct sync
 PRO_REMOTE=$(cd "$REPO_DIR" && git remote get-url pro 2>/dev/null || echo "")
 if [ -z "$PRO_REMOTE" ]; then
-    cd "$REPO_DIR" && git remote add pro "nuzantara@Nuzantara.local:/Users/nuzantara/Desktop/nuzantara"
+    cd "$REPO_DIR" && git remote add pro "nuzantara@Nuzantara.local:/Users/nuzantara/nuzantara"
     ok "Added 'pro' git remote"
 elif ! echo "$PRO_REMOTE" | grep -q "nuzantara@"; then
-    cd "$REPO_DIR" && git remote set-url pro "nuzantara@Nuzantara.local:/Users/nuzantara/Desktop/nuzantara"
+    cd "$REPO_DIR" && git remote set-url pro "nuzantara@Nuzantara.local:/Users/nuzantara/nuzantara"
     ok "Fixed 'pro' git remote URL"
 else
     ok "Git remote 'pro' OK"

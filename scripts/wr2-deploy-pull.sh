@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # wr2-deploy-pull.sh
 #
-# Keeps the WR2 deploy worktree at ~/Desktop/nuzantara-deploy fast-forwarded
+# Keeps the WR2 deploy worktree at ~/nuzantara-deploy fast-forwarded
 # to origin/main for launchd jobs that run from a stable production checkout.
 
 set -uo pipefail
 
-DEPLOY_DIR="${WR2_DEPLOY_DIR:-${HOME}/Desktop/nuzantara-deploy}"
-SOURCE_REPO="${WR2_SOURCE_REPO:-${HOME}/Desktop/nuzantara}"
+DEPLOY_DIR="${WR2_DEPLOY_DIR:-${HOME}/nuzantara-deploy}"
+SOURCE_REPO="${WR2_SOURCE_REPO:-${HOME}/nuzantara}"
 # 2026-06-27: track `main` directly. The old `deploy/main` intermediate branch made sense
 # only when -deploy was a WORKTREE (to isolate its HEAD from the main checkout's branch).
 # Now -deploy is an isolated CLONE, so a separate branch is pure overhead — and it caused a
@@ -203,7 +203,7 @@ if [[ ! -d "$DEPLOY_DIR/.git" ]]; then
   if ! bootstrap_deploy_clone; then
     log "ERROR: deploy clone missing at ${DEPLOY_DIR}"
     send_telegram "deploy_missing" \
-      "WR2 deploy CLONE missing at \`${DEPLOY_DIR}\`. Self-heal failed. Run: \`git clone --branch deploy/main https://github.com/Balizero1987/Teman2.git ~/Desktop/nuzantara-deploy\`"
+      "WR2 deploy CLONE missing at \`${DEPLOY_DIR}\`. Self-heal failed. Run: \`git clone --branch deploy/main https://github.com/Balizero1987/Teman2.git ~/nuzantara-deploy\`"
     OUTCOME_STATUS="error:clone-missing"
     exit 1
   fi

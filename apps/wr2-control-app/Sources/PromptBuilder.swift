@@ -27,7 +27,7 @@ enum PromptBuilder {
     /// a fresh topic. The agent reads output/carousel/<slug>/ as input.
     static func revisePrompt(slug: String, feedback: String) -> String {
         let fb = feedback.trimmingCharacters(in: .whitespacesAndNewlines)
-        let path = "~/Desktop/nuzantara/apps/war-room/output/carousel/\(slug)/"
+        let path = "~/nuzantara/apps/war-room/output/carousel/\(slug)/"
         var p = "revise the existing carousel at \(path) (slug: \(slug)). "
         p += "Reuse its brief.json, slides.json and research; keep the verified facts. "
         if fb.isEmpty {

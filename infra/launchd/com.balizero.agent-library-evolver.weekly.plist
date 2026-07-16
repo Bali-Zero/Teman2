@@ -32,7 +32,7 @@
     <key>ProgramArguments</key>
     <array>
       <string>/bin/bash</string>
-      <string>/Users/nuzantara/Desktop/nuzantara/scripts/agent-library-evolver-run.sh</string>
+      <string>/Users/nuzantara/nuzantara/scripts/agent-library-evolver-run.sh</string>
     </array>
 
     <!-- Sunday 03:00 WITA (after wr2 Reflexion 02:30, before Mon SessionStart) -->
@@ -54,7 +54,7 @@
 
     <!-- Working dir = repo root so relative paths in run.sh resolve -->
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/nuzantara</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -67,7 +67,7 @@
       <key>SECRETS_FILE</key>
       <string>/Users/nuzantara/.nuzantara-secrets.env</string>
       <key>REPO_ROOT</key>
-      <string>/Users/nuzantara/Desktop/nuzantara</string>
+      <string>/Users/nuzantara/nuzantara</string>
       <key>TELEMETRY_DIR</key>
       <string>/Users/nuzantara/.agent/decisions/agent-library-evolver/telemetry</string>
       <!-- Budget default $1.00 prod. Override per-run via:

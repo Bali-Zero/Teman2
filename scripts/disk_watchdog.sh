@@ -90,7 +90,7 @@ Hint: git gc, prune build artifacts, rotate logs."
 # Notification gateway (cohort-3, 2026-07-07): disk full = act-now → tier p0.
 # Gateway owns token resolution + 6h dedup; this script keeps its own cooldown.
 gateway="$(dirname "$0")/tg_notify.py"
-[ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+[ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
 python3 "$gateway" --tier p0 --source disk-watchdog \
     --dedup-key "disk-watchdog:$(hostname -s)" -- "$msg" >/dev/null 2>&1 || true
 

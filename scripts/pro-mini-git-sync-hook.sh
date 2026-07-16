@@ -55,11 +55,11 @@ case "$HOST" in
     log "pro->mini start local=$LOCAL_HEAD"
     if run_with_timeout 180 ssh -o ConnectTimeout=8 -o BatchMode=yes \
       -o ServerAliveInterval=10 -o ServerAliveCountMax=2 mini \
-      'cd ~/Desktop/nuzantara && /bin/bash ~/scripts/mini-git-pull.sh' \
+      'cd ~/nuzantara && /bin/bash ~/scripts/mini-git-pull.sh' \
       >> "$LOG_FILE" 2>&1; then
       REMOTE_HEAD=$(run_with_timeout 30 ssh -o ConnectTimeout=8 -o BatchMode=yes \
         -o ServerAliveInterval=10 -o ServerAliveCountMax=2 mini \
-        'cd ~/Desktop/nuzantara && git rev-parse --short HEAD' 2>/dev/null || echo "unknown")
+        'cd ~/nuzantara && git rev-parse --short HEAD' 2>/dev/null || echo "unknown")
       if [ "$REMOTE_HEAD" = "$LOCAL_HEAD" ]; then
         log "pro->mini OK head=$LOCAL_HEAD"
       else
@@ -75,7 +75,7 @@ case "$HOST" in
     if run_with_timeout 180 git push pro main >> "$LOG_FILE" 2>&1; then
       REMOTE_HEAD=$(run_with_timeout 30 ssh -o ConnectTimeout=8 -o BatchMode=yes \
         -o ServerAliveInterval=10 -o ServerAliveCountMax=2 pro \
-        'cd ~/Desktop/nuzantara && git rev-parse --short HEAD' 2>/dev/null || echo "unknown")
+        'cd ~/nuzantara && git rev-parse --short HEAD' 2>/dev/null || echo "unknown")
       if [ "$REMOTE_HEAD" = "$LOCAL_HEAD" ]; then
         log "mini->pro OK head=$LOCAL_HEAD"
       else
