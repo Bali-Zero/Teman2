@@ -9,7 +9,7 @@ sources:
   - "Permen Investasi dan Hilirisasi/BKPM No. 5/2025 (in force 2025-10-02, revokes BKPM 3/2021, 4/2021, 5/2021 — https://peraturan.bpk.go.id/Details/332573/permeninvesbkpm-no-5-tahun-2025)"
   - "memory: discovery_kbli_68112_code_collision_pp28_vs_bps_2026_07_16, discovery_kbli_noscope_codes_per_skala_not_from_oss_2026_07_16, discovery_kg_perizinan_name_dedup_disease_2026_07_16, lesson_kbli_remap_gate_context_beats_title_2026_07_16"
   - "adversarial panel 2026-07-16: Codex GPT-5.5 red-team (15 findings, 5 FATAL) + Gemini 3.1 Pro costruttivo (12 suggestions)"
-adversarial_review: "Codex GPT-5.5 (red-team, 15 findings) + Gemini 3.1 Pro (costruttivo, 12 suggestions) — 2026-07-16, generator≠grader"
+adversarial_review: codex
 ---
 
 # Filiera KBLI — corpus methodology (assessment + rebuild plan)
@@ -207,7 +207,7 @@ previous), and a permitted-use note (public portal data, no PII, snapshot-for-ve
 4. Consent for the standing OSS snapshot cron (new daemon on Mini — W81/W84 lessons apply; it ships
    with liveness receptors, not just KeepAlive).
 
-## Panel record (generator≠grader)
+## Adversarial review (generator≠grader panel record)
 - Codex GPT-5.5 red-team: 15 findings (5 FATAL, 10 MAJOR) — all incorporated above; the two
   factual FATALs (Perpres annexes are 2020-vintage; BKPM 4/2021 revoked by 5/2025) independently
   verified this session (web, primary-source links in frontmatter).
