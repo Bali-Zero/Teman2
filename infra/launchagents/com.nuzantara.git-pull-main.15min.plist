@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.nuzantara.git-pull-main.15min — Pro-side auto-sync of ~/nuzantara (2026-07-16).
+
+  WHY: Pro's ~/nuzantara (the interactive/dev main checkout) had NO automated
+  origin/main sync since nuz-sync was archived 2026-05-05. It stayed current only as
+  a side-effect of interactive Claude sessions pulling; when session activity paused
+  (2026-07-15) it drifted 66 commits behind and Pro's crontab jobs that exec from the
+  main checkout ran ~2-day-stale code. Mini already has com.nuzantara.git-pull-main.5min;
+  this is Pro's equivalent, at 15min (Pro is an interactive box — lighter cadence).
+
+  Runs scripts/pro/pro-git-pull.sh, which — unlike Mini's — RESOLVES untracked
+  collisions (moves the colliding runtime artifact aside to a recoverable backup)
+  instead of skipping the tick forever. Rationale in the script header.
+
+  EXECUTES FROM ~/nuzantara-deploy (kept current by com.balizero.wr2.deploy-puller),
+  NOT from ~/nuzantara — a puller must not live in the tree it rewrites (self-mod).
+  TARGETS ~/nuzantara. Single-instance via its own /tmp lock; Telegram-alerted on
+  diverge / stash-conflict / fetch-fail (1h cooldown per key).
+
+  Install (on Pro, after this file is on origin/main AND pulled into ~/nuzantara-deploy):
+    cp infra/launchagents/com.nuzantara.git-pull-main.15min.plist ~/Library/LaunchAgents/
+    chmod 0444 ~/Library/LaunchAgents/com.nuzantara.git-pull-main.15min.plist
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.git-pull-main.15min.plist
+    launchctl kickstart -k gui/$(id -u)/com.nuzantara.git-pull-main.15min   # seed first run
+
+  Plist permissions hardened to 0444 per cicatrix P0-3.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.git-pull-main.15min</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/nuzantara-deploy/scripts/pro/pro-git-pull.sh</string>
+    </array>
+
+    <!-- Every 15 min. RunAtLoad seeds an immediate pull on (re)load. -->
+    <key>StartInterval</key>
+    <integer>900</integer>
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/pro-git-pull.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/pro-git-pull.launchd.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <!-- Avoid tight respawn loops if git/network fails. -->
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+</dict>
+</plist>
