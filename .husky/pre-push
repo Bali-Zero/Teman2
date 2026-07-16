@@ -108,10 +108,32 @@ else
     # this firing more than once (e.g. once from the failure branch's `exit 1`
     # and again from the EXIT trap it triggers) is harmless.
     trap cleanup_clone EXIT INT TERM
+    # The clone must inherit the TEMPLATE's owner, not the cloner's identity.
+    # Since PG15 `public` is owned by the pseudo-role pg_database_owner, which
+    # resolves to whoever owns the database. CREATE DATABASE re-parents the
+    # clone to the creating role — the OS user, `balizero` on M5 — so a template
+    # owned by `test` silently loses test's CREATE on public inside the clone:
+    # every schema-building test then dies with "permission denied for schema
+    # public" and drags a cascade of "relation ... does not exist" behind it
+    # (measured 2026-07-16: 39 failed + 79 errors of 17339, blocking the push).
+    # Table-level ownership IS copied by the clone; only this schema privilege,
+    # held implicitly through ownership rather than by an explicit GRANT,
+    # evaporates. The bug stayed latent from #2489 until nuzantara_test happened
+    # to be re-created with owner=test — while template-owner == cloner nothing
+    # showed. Deriving the owner keeps the clone faithful whoever pushes.
+    TEMPLATE_OWNER="$("$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc \
+        "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '$PRE_PUSH_DB';" 2>/dev/null | tr -d '[:space:]')"
+    if [ -n "$TEMPLATE_OWNER" ]; then
+        OWNER_CLAUSE=" OWNER \"$TEMPLATE_OWNER\""
+    else
+        # Unreadable owner must not wedge the push: fall back to the old
+        # behaviour (clone owned by the cloner) rather than refusing to clone.
+        OWNER_CLAUSE=""
+    fi
     CREATE_OK=0
     ATTEMPT=1
     while [ "$ATTEMPT" -le 3 ]; do
-        if "$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc "CREATE DATABASE \"$CLONE_DB\" TEMPLATE \"$PRE_PUSH_DB\";" >/dev/null 2>&1; then
+        if "$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc "CREATE DATABASE \"$CLONE_DB\" TEMPLATE \"$PRE_PUSH_DB\"$OWNER_CLAUSE;" >/dev/null 2>&1; then
             CREATE_OK=1
             CLONE_CREATED=1
             break

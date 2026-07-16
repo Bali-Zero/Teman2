@@ -29,7 +29,7 @@
 #
 # Env (optional):
 #   TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_CHAT_ID — for abort alert (defaults to 1125336968)
-#   ORGANISM_REPO — repo dir (defaults to /Users/nuzantara/Desktop/nuzantara/apps/organism)
+#   ORGANISM_REPO — repo dir (defaults to /Users/nuzantara/nuzantara/apps/organism)
 #   VERIFY_TIMEOUT_SECONDS — bootstrap-to-running timeout (default 30)
 #
 # Authoritative spec: docs/innervation-2026-04-29/99c_w0a_bis_kickoff.md §3.3
@@ -40,7 +40,7 @@ set -euo pipefail
 
 # ----- config ---------------------------------------------------------------
 
-ORGANISM_REPO="${ORGANISM_REPO:-/Users/nuzantara/Desktop/nuzantara/apps/organism}"
+ORGANISM_REPO="${ORGANISM_REPO:-/Users/nuzantara/nuzantara/apps/organism}"
 REPO="${ORGANISM_REPO}/organism/launchd"
 TARGET="${HOME}/Library/LaunchAgents"
 VERIFY_TIMEOUT_SECONDS="${VERIFY_TIMEOUT_SECONDS:-30}"

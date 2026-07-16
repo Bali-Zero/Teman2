@@ -40,7 +40,7 @@ GOOD_WRAPPER = """#!/bin/bash
 set -u
 PIDFILE=/tmp/test-good.pid
 [ "${GOOD_ORGAN_ENABLED:-true}" = "false" ] && organism_heartbeat good disabled && exit 0
-source ~/Desktop/nuzantara/scripts/lib/heartbeat.sh
+source ~/nuzantara/scripts/lib/heartbeat.sh
 organism_heartbeat "test.good" "ok"
 """
 
@@ -92,7 +92,7 @@ def add_organ(repo: Path, label: str, wrapper_name: str, wrapper_body: str) -> s
     wrapper.write_text(wrapper_body, encoding="utf-8")
     plist = repo / "infra/launchagents" / f"{label}.plist"
     plist.write_text(
-        PLIST_TMPL.format(label=label, wrapper=f"/Users/x/Desktop/nuzantara/infra/launchagents/wrappers/{wrapper_name}"),
+        PLIST_TMPL.format(label=label, wrapper=f"/Users/x/nuzantara/infra/launchagents/wrappers/{wrapper_name}"),
         encoding="utf-8",
     )
     return str(plist.relative_to(repo))

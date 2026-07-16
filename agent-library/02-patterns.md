@@ -86,7 +86,7 @@ CAS atomico in SQL: UPDATE...WHERE lease_owner IS NULL RETURNING. Worker che per
 
 **Anti-pattern**: producer fires-and-forgets (HTTP POST, pg_notify, Redis publish) senza outbox — listener crash window = eventi persi for-ever. Cf. cicatrix `EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams`.
 
-**Esempio concreto**: `~/Desktop/nuzantara/scripts/intel-lake-outbox-drain/intel-lake-outbox-drain.py` (outbox drain pattern)
+**Esempio concreto**: `~/nuzantara/scripts/intel-lake-outbox-drain/intel-lake-outbox-drain.py` (outbox drain pattern)
 
 ```python
 # Producer (in transaction):
@@ -115,7 +115,7 @@ Companion: `scripts/outbox_prune.py` (daily, retention 30d), `~/.claude/agents/.
 
 **Anti-pattern**: monitor solo `process running` (PID exist) — non distingue stuck-loop da working. Heartbeat senza watchdog = log nessuno guarda.
 
-**Esempio concreto**: `~/Desktop/nuzantara/scripts/wr2_supervisor.py:455-482` (`_write_heartbeat` con dedicated conn)
+**Esempio concreto**: `~/nuzantara/scripts/wr2_supervisor.py:455-482` (`_write_heartbeat` con dedicated conn)
 
 ```python
 async def _write_heartbeat(conn_hb: asyncpg.Connection, note: str) -> None:

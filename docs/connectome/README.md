@@ -41,7 +41,7 @@ directory is the machine-readable counterpart meant to STAY true over time.
 ## Running the verifier
 
 ```bash
-cd ~/Desktop/nuzantara
+cd ~/nuzantara
 apps/backend-rag/.venv/bin/python scripts/verify_connectome.py            # local + ssh probes
 apps/backend-rag/.venv/bin/python scripts/verify_connectome.py --no-ssh   # local only
 apps/backend-rag/.venv/bin/python scripts/verify_connectome.py --json /tmp/connectome.json
@@ -51,7 +51,7 @@ Exit 1 ⇔ at least one REGRESSED edge.
 
 **Cron (authorized by Antonello 2026-06-13):** `com.nuzantara.verify-connectome`
 via `infra/launchagents/install_verify_connectome.sh` —
-daily 07:30 WITA on the Pro (runtime home `~/Desktop/nuzantara-deploy`) and
+daily 07:30 WITA on the Pro (runtime home `~/nuzantara-deploy`) and
 weekly Monday 08:30 on M5 (covers m5-local edges the Pro cannot probe).
 Wrapper `scripts/verify_connectome_run.sh` writes the alive-signal
 `~/.agent/decisions/state/verify_connectome.json` (deadman-family convention)

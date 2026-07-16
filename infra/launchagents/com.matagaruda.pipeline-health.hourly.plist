@@ -9,7 +9,7 @@
 		<key>PATH</key>
 		<string>/opt/homebrew/bin:/usr/local/bin:/Users/nuzantara/.local/bin:/usr/bin:/bin</string>
 		<key>PYTHONPATH</key>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+		<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 		<key>TELEGRAM_OWNER_CHAT_ID</key>
 		<string>1125336968</string>
 	</dict>
@@ -17,7 +17,7 @@
 	<string>com.matagaruda.pipeline-health.hourly</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+		<string>/Users/nuzantara/nuzantara/apps/mata-garuda/.venv/bin/python</string>
 		<string>-u</string>
 		<string>-m</string>
 		<string>mata_garuda.workers.pipeline_health</string>
@@ -31,6 +31,6 @@
 	<key>StartInterval</key>
 	<integer>3600</integer>
 	<key>WorkingDirectory</key>
-	<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+	<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 </dict>
 </plist>

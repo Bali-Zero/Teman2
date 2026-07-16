@@ -6,7 +6,7 @@ silently neuter a rule (cicatrix W64 — a guard with no test rots) and the lint
 would pass everything while detecting nothing.
 
 Run:
-    cd ~/Desktop/nuzantara && python3 -m pytest scripts/test_lint_test_reward_hacking.py -v
+    cd ~/nuzantara && python3 -m pytest scripts/test_lint_test_reward_hacking.py -v
 """
 
 from __future__ import annotations

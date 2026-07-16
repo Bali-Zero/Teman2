@@ -49,7 +49,7 @@ final class Conversationalist {
         }
 
         // 2) past carousel topics — so it doesn't re-propose what's done
-        let carouselRoot = home.appendingPathComponent("Desktop/nuzantara/apps/war-room/output/carousel")
+        let carouselRoot = home.appendingPathComponent("nuzantara/apps/war-room/output/carousel")
         var topics: [String] = []
         if let dirs = try? FileManager.default.contentsOfDirectory(at: carouselRoot,
                           includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) {

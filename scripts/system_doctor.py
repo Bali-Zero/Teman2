@@ -1160,7 +1160,7 @@ def collect_import_chain() -> list[SystemCheck]:
     name = "Import Chain"
     log("Testing import chain on Pro...")
     cmd = (
-        "cd ~/Desktop/nuzantara/apps/backend-rag && "
+        "cd ~/nuzantara/apps/backend-rag && "
         "source .venv/bin/activate && "
         'python -c "from backend.app.dependencies import get_current_user; print(\'OK\')" 2>&1'
     )

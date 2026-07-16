@@ -49,7 +49,7 @@ trap 'rm -f "$PIDFILE"' EXIT
 
 # ---- payload (cron one-shot; G8_keepalive_sane: plist uses StartInterval, no KeepAlive)
 log "run start"
-/usr/bin/python3 "$HOME/Desktop/nuzantara/scripts/fleet_watch.py" >> "$LOG" 2>&1
+/usr/bin/python3 "$HOME/nuzantara/scripts/fleet_watch.py" >> "$LOG" 2>&1
 RC=$?
 
 if [ $RC -eq 0 ]; then

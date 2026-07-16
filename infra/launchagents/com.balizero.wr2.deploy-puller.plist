@@ -3,11 +3,11 @@
 <!--
   com.balizero.wr2.deploy-puller — Sprint C C1 (2026-05-08).
 
-  Pulls origin/main into ~/Desktop/nuzantara-deploy every hour so the
+  Pulls origin/main into ~/nuzantara-deploy every hour so the
   WR2 production cron scripts (canva-apply, fact-extractor,
   fact-checker, supervisor, image-generator) — which run via
   ~/.openclaw/bin/wr2/wr2-script-wrapper.sh with WR2_REPO_ROOT
-  defaulting to ~/Desktop/nuzantara-deploy — pick up merged code
+  defaulting to ~/nuzantara-deploy — pick up merged code
   automatically within ~1h.
 
   Failure modes (all alerted via Telegram with 6h cooldown):

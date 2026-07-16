@@ -25,7 +25,7 @@ Kill switch (without removing plist):
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/agent_worktree_cleanup_cron.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/agent_worktree_cleanup_cron.sh</string>
     </array>
 
     <key>StartCalendarInterval</key>
@@ -38,7 +38,7 @@ Kill switch (without removing plist):
     <!-- 00:15 UTC = 08:15 WITA (15min after WR2 worktree-gc at 00:00) -->
 
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/nuzantara</string>
 
     <key>EnvironmentVariables</key>
     <dict>

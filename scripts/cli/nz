@@ -6,7 +6,7 @@
 # the right launchctl/fly/ssh path based on registry runtime.
 #
 # Install:
-#   ln -sf "$HOME/Desktop/nuzantara/scripts/cli/nz" "$HOME/.local/bin/nz"
+#   ln -sf "$HOME/nuzantara/scripts/cli/nz" "$HOME/.local/bin/nz"
 #
 # Run `nz` with no args for the help screen.
 
@@ -16,7 +16,7 @@ set -o pipefail
 # Constants
 # ─────────────────────────────────────────────────────────────────────────
 
-readonly REPO_ROOT="${NZ_REPO_ROOT:-$HOME/Desktop/nuzantara}"
+readonly REPO_ROOT="${NZ_REPO_ROOT:-$HOME/nuzantara}"
 readonly REGISTRY="$REPO_ROOT/apps/organism/organism/organs_registry.yaml"
 readonly AGGREGATE="$HOME/.organism/aggregate.json"
 readonly OUTBOX_PRUNE_SH="$REPO_ROOT/scripts/outbox-prune.sh"
@@ -297,7 +297,7 @@ cmd_bus() {
             "$DEFAULT_PYTHON" - <<'PY'
 from importlib import import_module
 import sys
-sys.path.insert(0, "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag")
+sys.path.insert(0, "/Users/nuzantara/nuzantara/apps/backend-rag")
 try:
     mod = import_module("backend.services.events.event_bus")
     chans = getattr(mod, "PG_CHANNEL_MAP", {})
@@ -755,7 +755,7 @@ commands:
   help                         this screen
 
 env:
-  NZ_REPO_ROOT     repo location (default: \$HOME/Desktop/nuzantara)
+  NZ_REPO_ROOT     repo location (default: \$HOME/nuzantara)
   NZ_PYTHON        python interpreter (default: pyenv 3.11.11)
 
 Each subcommand accepts \`help\` for its own usage.

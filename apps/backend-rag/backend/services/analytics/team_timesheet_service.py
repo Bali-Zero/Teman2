@@ -154,7 +154,7 @@ class TeamTimesheetService:
             await conn.execute(
                 """
                 INSERT INTO team_timesheet (user_id, email, action_type, metadata)
-                VALUES ($1, $2, 'clock_in', $3::jsonb)
+                VALUES ($1, $2, 'clock_in', $3::text::jsonb)
                 """,
                 user_id,
                 email,
@@ -217,7 +217,7 @@ class TeamTimesheetService:
             await conn.execute(
                 """
                 INSERT INTO team_timesheet (user_id, email, action_type, metadata)
-                VALUES ($1, $2, 'clock_out', $3::jsonb)
+                VALUES ($1, $2, 'clock_out', $3::text::jsonb)
                 """,
                 user_id,
                 email,

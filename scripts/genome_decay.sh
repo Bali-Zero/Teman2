@@ -12,7 +12,7 @@ set -euo pipefail
 # Machine-aware repo + python (Pro vs Air). Dirname fallback so a future
 # user rename doesn't silently fail.
 case "$(whoami)" in
-    nuzantara)      REPO="$HOME/Desktop/nuzantara" ;;
+    nuzantara)      REPO="$HOME/nuzantara" ;;
     antonellosiano) REPO="$HOME/Projects/nuzantara" ;;
     *)
         SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

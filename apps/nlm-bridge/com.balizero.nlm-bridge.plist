@@ -6,7 +6,7 @@
     <string>com.balizero.nlm-bridge</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/nuzantara/Desktop/nuzantara/apps/nlm-bridge/.venv/bin/uvicorn</string>
+        <string>/Users/nuzantara/nuzantara/apps/nlm-bridge/.venv/bin/uvicorn</string>
         <string>main:app</string>
         <string>--host</string>
         <string>0.0.0.0</string>
@@ -14,7 +14,7 @@
         <string>18790</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara/apps/nlm-bridge</string>
+    <string>/Users/nuzantara/nuzantara/apps/nlm-bridge</string>
     <key>KeepAlive</key>
     <true/>
     <key>RunAtLoad</key>

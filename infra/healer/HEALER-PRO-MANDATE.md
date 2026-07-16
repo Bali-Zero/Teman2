@@ -30,17 +30,17 @@ il repo → 1 riga Telegram a Zero (il guaritore Mini o una sessione interattiva
      `runtime: pro_launchd` e sidecar DEAD (mai `disabled`).
    - Refresh HOME←canone per coppie DICHIARATE in `infra/home-fork/declared-pairs.json`
      con `machines` che include `pro` (cmp prima e dopo; il canone è
-     `~/Desktop/nuzantara` già allineato a origin/main — verifica con `git log -1`).
+     `~/nuzantara` già allineato a origin/main — verifica con `git log -1`).
    - Raccolta log-evidenza (read-only) da allegare al Telegram.
    - Re-run di reconciler esistenti in report-mode.
-   Ogni cura: PROVA PER CONTENUTO dopo (sidecar rinfrescato, processo vivo, cmp pulito)
-   — mai fidarsi dell'exit code (W88/W89).
+     Ogni cura: PROVA PER CONTENUTO dopo (sidecar rinfrescato, processo vivo, cmp pulito)
+     — mai fidarsi dell'exit code (W88/W89).
 4. **CHIUDI**: ultima riga di output = `result: <cosa curato/alertato/skippato>` — il
    wrapper la manda a Zero via Telegram. Denso e onesto.
 
 ## FUORI PERIMETRO (HARD — tutto il resto, e in più)
 
-- **Il repo** (vedi asse invertito). Anche `~/Desktop/nuzantara-deploy` (worktree deploy) NO.
+- **Il repo** (vedi asse invertito). Anche `~/nuzantara-deploy` (worktree deploy) NO.
 - Il guaritore stesso (pro-healer.sh, questo mandato, il suo plist), il guaritore Mini,
   la skill modus, hook/guardrail, `.github/workflows/**`, migrations, secrets VALORI,
   publish/social/email (Legge 5), deploy Fly, Postgres mutazioni.

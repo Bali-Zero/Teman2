@@ -3,7 +3,7 @@
 
 set -eo pipefail
 
-WA_MIRROR_DIR="$HOME/Desktop/nuzantara/apps/wa-mirror"
+WA_MIRROR_DIR="$HOME/nuzantara/apps/wa-mirror"
 ACCOUNTS_JSON="$HOME/.wa-mirror.accounts.json"
 LOG_DIR="/tmp/wa-mirror-logs"
 PID_DIR="/tmp/wa-mirror-pids"

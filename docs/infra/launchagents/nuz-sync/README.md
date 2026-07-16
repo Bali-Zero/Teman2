@@ -65,7 +65,7 @@ which failed silently when the peer was offline or had a dirty working tree.
 
 | Node | Host          | User             | Repo path              | Peer remote |
 | ---- | ------------- | ---------------- | ---------------------- | ----------- |
-| Pro  | `Nuzantara`   | `nuzantara`      | `~/Desktop/nuzantara`  | `air`       |
+| Pro  | `Nuzantara`   | `nuzantara`      | `~/nuzantara`  | `air`       |
 | Air  | `Nuzantara-9` | `antonellosiano` | `~/Projects/nuzantara` | `pro`       |
 
 Both nodes run identical logic. Host detection is automatic via `scutil --get LocalHostName`.
@@ -204,7 +204,7 @@ tail -20 ~/logs/nuz-sync/sync.log
 
 ```bash
 # Before doing manual git surgery
-touch ~/Desktop/nuzantara/.git/sync-pause   # Pro
+touch ~/nuzantara/.git/sync-pause   # Pro
 touch ~/Projects/nuzantara/.git/sync-pause  # Air
 
 # When done
@@ -281,7 +281,7 @@ have unique commits. You must merge manually. Typical recipe:
 
 ```bash
 # On the machine that's behind
-cd ~/Desktop/nuzantara  # or ~/Projects/nuzantara on Air
+cd ~/nuzantara  # or ~/Projects/nuzantara on Air
 git fetch origin
 git merge origin/main   # resolve conflicts
 git push origin main
@@ -322,7 +322,7 @@ ssh air 'brew cleanup --prune=all'
 
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.nuzantara.nuz-sync*.plist
-touch ~/Desktop/nuzantara/.git/sync-pause
+touch ~/nuzantara/.git/sync-pause
 ```
 
 ### "I want to roll back to the old post-commit hooks"
@@ -331,8 +331,8 @@ They're still there, just renamed:
 
 ```bash
 # Pro
-mv ~/Desktop/nuzantara/.git/hooks/post-commit.disabled-nuz-sync-20260411 \
-   ~/Desktop/nuzantara/.git/hooks/post-commit
+mv ~/nuzantara/.git/hooks/post-commit.disabled-nuz-sync-20260411 \
+   ~/nuzantara/.git/hooks/post-commit
 
 # Air
 ssh air 'mv ~/Projects/nuzantara/.git/hooks/post-commit.disabled-nuz-sync-20260411 \

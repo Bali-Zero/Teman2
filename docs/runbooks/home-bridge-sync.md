@@ -43,7 +43,7 @@ Self-test of the alert path: `FORCE_ALERT=1 bash scripts/verify_home_bridge_sync
 ## How to run it
 
 ```bash
-cd ~/Desktop/nuzantara
+cd ~/nuzantara
 bash scripts/verify_home_bridge_sync.sh ; echo "exit=$?"
 ```
 
@@ -60,7 +60,7 @@ origin/main, and only then be re-deployed to HOME.
 To re-deploy origin/main → HOME:
 
 ```bash
-cd ~/Desktop/nuzantara
+cd ~/nuzantara
 git fetch origin main
 # materialise the ground-truth blob straight into the live HOME path:
 git show origin/main:scripts/openclaw_whatsapp_bridge.py > ~/.openclaw/bin/openclaw_whatsapp_bridge.py
@@ -88,7 +88,7 @@ operator decision). Recommended: run every ~30 min via launchd. Sketch:
 <key>ProgramArguments</key>
 <array>
   <string>/bin/bash</string>
-  <string>/Users/nuzantara/Desktop/nuzantara/scripts/verify_home_bridge_sync.sh</string>
+  <string>/Users/nuzantara/nuzantara/scripts/verify_home_bridge_sync.sh</string>
 </array>
 <key>StartInterval</key><integer>1800</integer>   <!-- 30 min -->
 <key>RunAtLoad</key><true/>

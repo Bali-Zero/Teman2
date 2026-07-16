@@ -77,7 +77,7 @@ def _skill_dir() -> Path:
 
 def _queue_path() -> Path:
     env = os.environ.get("WR2_QUEUE_PATH")
-    return Path(env) if env else (Path.home() / "Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json")
+    return Path(env) if env else (Path.home() / "nuzantara/apps/war-room/output/queue/human-review-queue.json")
 
 
 def _layouts_proposed_dir() -> Path:

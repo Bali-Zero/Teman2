@@ -112,7 +112,7 @@ enum QueueWriter {
             "topic_slug": slug,
             "state": "drafted",
             "media_type": "CAROUSEL_ALBUM",
-            "carousel_path": "~/Desktop/nuzantara/apps/war-room/output/carousel/\(slug)/",
+            "carousel_path": "~/nuzantara/apps/war-room/output/carousel/\(slug)/",
             "slide_count": slideCount,
             // Honest vocabulary (audit §6/§5a, A3 edit spec D2, 2026-07-14): the app
             // enqueues drafted carousels WITHOUT ever running a critic — including raw

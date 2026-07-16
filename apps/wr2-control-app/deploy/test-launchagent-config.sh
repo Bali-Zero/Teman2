@@ -33,10 +33,10 @@ for plist in "$AIR" "$PRO" "$MINI"; do
 done
 
 assert_plist_value "$AIR" "ProgramArguments:0" "/Users/balizero/Applications/WR2 Control.app/Contents/MacOS/WR2Control"
-assert_plist_value "$AIR" "EnvironmentVariables:WR2_WARROOM_ROOT" "/Users/balizero/Desktop/nuzantara/apps/war-room/output"
+assert_plist_value "$AIR" "EnvironmentVariables:WR2_WARROOM_ROOT" "/Users/balizero/nuzantara/apps/war-room/output"
 
 assert_plist_value "$PRO" "ProgramArguments:0" "/Users/nuzantara/Applications/WR2 Control.app/Contents/MacOS/WR2Control"
-assert_plist_value "$PRO" "EnvironmentVariables:WR2_WARROOM_ROOT" "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output"
+assert_plist_value "$PRO" "EnvironmentVariables:WR2_WARROOM_ROOT" "/Users/nuzantara/nuzantara/apps/war-room/output"
 
 assert_plist_value "$MINI" "ProgramArguments:0" "/Users/nuzantara/Applications/WR2 Control.app/Contents/MacOS/WR2Control"
 assert_plist_value "$MINI" "ProgramArguments:1" "--ambient"

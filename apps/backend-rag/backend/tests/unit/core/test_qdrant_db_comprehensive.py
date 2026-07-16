@@ -6,7 +6,7 @@ Composer: 1
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import httpx
 import pytest
@@ -778,24 +778,24 @@ class TestRetryWithBackoff:
     @pytest.mark.asyncio
     async def test_retry_exponential_backoff(self):
         """Test that retry uses exponential backoff"""
-        import time
-
         call_count = 0
-        timestamps = []
 
         async def retry_func():
             nonlocal call_count
             call_count += 1
-            timestamps.append(time.time())
             if call_count < 3:
                 raise ValueError("Error")
             return "success"
 
-        await _retry_with_backoff(retry_func, max_retries=2, base_delay=0.1)
+        # Deterministic clock: assert on the computed delay sequence passed to
+        # asyncio.sleep, not on real elapsed time (was flaky under CPU contention).
+        with patch(
+            "backend.core.qdrant_db.asyncio.sleep",
+            new_callable=AsyncMock,
+        ) as mock_sleep:
+            result = await _retry_with_backoff(retry_func, max_retries=2, base_delay=0.1)
 
+        assert result == "success"
         assert call_count == 3
-        # Verify delays increase exponentially
-        delay1 = timestamps[1] - timestamps[0]
-        delay2 = timestamps[2] - timestamps[1]
-        # delay2 should be approximately 2x delay1 (exponential backoff)
-        assert delay2 >= delay1 * 1.5  # Allow some tolerance
+        # base_delay * 2**attempt for attempt 0, 1 -> exponential sequence 0.1, 0.2
+        assert mock_sleep.call_args_list == [call(0.1), call(0.2)]

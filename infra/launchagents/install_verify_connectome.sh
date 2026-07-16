@@ -4,7 +4,7 @@
 #
 # Schedule by machine:
 #   Pro (user nuzantara) : DAILY  07:30 WITA — canonical guardian, runs from
-#                          ~/Desktop/nuzantara-deploy (hourly-synced, W71 rule)
+#                          ~/nuzantara-deploy (hourly-synced, W71 rule)
 #   M5  (user balizero)  : WEEKLY Monday 08:30 WITA — covers m5-local edges
 #                          the Pro cannot probe (no ssh map to M5)
 #
@@ -20,7 +20,7 @@ LOG_DIR="$HOME/logs"
 mkdir -p "$LOG_DIR"
 
 if [[ "$(whoami)" == "balizero" ]]; then
-    REPO_ROOT="$HOME/Desktop/nuzantara"
+    REPO_ROOT="$HOME/nuzantara"
     # Weekly: Monday 08:30 (Weekday 1)
     CALENDAR='<dict>
             <key>Weekday</key><integer>1</integer>
@@ -28,7 +28,7 @@ if [[ "$(whoami)" == "balizero" ]]; then
             <key>Minute</key><integer>30</integer>
         </dict>'
 else
-    REPO_ROOT="$HOME/Desktop/nuzantara-deploy"
+    REPO_ROOT="$HOME/nuzantara-deploy"
     # Daily 07:30
     CALENDAR='<dict>
             <key>Hour</key><integer>7</integer>

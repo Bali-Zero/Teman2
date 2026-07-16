@@ -18,7 +18,7 @@ Repo-tracked so any change ships to Mini via the next git-pull tick.
 
 ## mini-git-pull.sh
 
-Periodic (5 min) fast-forward sync for `~/Desktop/nuzantara`
+Periodic (5 min) fast-forward sync for `~/nuzantara`
 on Mini.
 
 The source-of-truth order is:
@@ -77,7 +77,7 @@ should invoke this script via:
 <array>
   <string>/bin/bash</string>
   <string>-lc</string>
-  <string>/Users/nuzantara/Desktop/nuzantara/scripts/mini/mini-git-pull.sh</string>
+  <string>/Users/nuzantara/nuzantara/scripts/mini/mini-git-pull.sh</string>
 </array>
 ```
 

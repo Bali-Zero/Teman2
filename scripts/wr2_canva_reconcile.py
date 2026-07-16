@@ -46,7 +46,7 @@ import asyncpg
 logger = logging.getLogger("wr2.canva_reconcile")
 
 _LEGACY_OUTPUT_ROOT = Path(
-    "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva"
+    "/Users/nuzantara/nuzantara/apps/war-room/output/canva"
 )
 _OUTPUT_ROOT = Path(
     os.environ.get("WR2_OUTPUT_ROOT") or str(_LEGACY_OUTPUT_ROOT)

@@ -157,7 +157,7 @@ In addition to the 7 voice registers in `voice/register-examples.md`, FB surface
 6. **QA checklist** (below).
 7. **Schedule** via Meta Business Suite for next available slot per "Time of day" + "Day of week" rules.
 8. **Antonello review**: posts touching regulation, fee changes, or government policy → Antonello approves before publish. Civic/pedagogical/concrete-data posts → Subhi publishes directly, weekly review.
-9. **Telemetry**: 7 days post-publish, log reach + engagement to `~/Desktop/nuzantara/research/marketing/fb-metrics/YYYY-MM-DD.json` for trend analysis.
+9. **Telemetry**: 7 days post-publish, log reach + engagement to `~/nuzantara/research/marketing/fb-metrics/YYYY-MM-DD.json` for trend analysis.
 
 ## QA checklist (mandatory before schedule)
 

@@ -2,7 +2,7 @@
 
 Invoked every 2h on Pro (OpenClaw/launchd). Usage:
 
-    cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag
+    cd /Users/nuzantara/nuzantara/apps/backend-rag
     source .venv/bin/activate
     PYTHONPATH=. python -m backend.services.intel.trend_hunter.cli
 

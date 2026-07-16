@@ -437,7 +437,7 @@ INSERT INTO crm_workspace_ai_snapshots (
     source_file_ids,
     facts,
     created_by
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::text::jsonb, $9)
 RETURNING
     id,
     company_id,

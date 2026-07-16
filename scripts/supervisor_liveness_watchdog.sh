@@ -58,7 +58,7 @@ send_telegram() {
   local msg="$1"
   local gateway
   gateway="$(dirname "$0")/tg_notify.py"
-  [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+  [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
   python3 "$gateway" --tier p0 --source supervisor-liveness \
     --dedup-key "supervisor-liveness:$(hostname -s)" -- "$msg" \
     >/dev/null 2>&1 || log "telegram: gateway send failed"
@@ -156,7 +156,7 @@ log "ACTION done"
 # Tier-2 escalation check: wait 60s, re-check gap; if still > threshold,
 # the simple respawn didn't fix it (bug in code/config, not just stale
 # process). Spawn tier-2 autofix script which invokes claude/codex.
-TIER2_SCRIPT="${TIER2_SCRIPT:-$HOME/Desktop/nuzantara/scripts/supervisor_autofix_tier2.sh}"
+TIER2_SCRIPT="${TIER2_SCRIPT:-$HOME/nuzantara/scripts/supervisor_autofix_tier2.sh}"
 if [ -x "$TIER2_SCRIPT" ]; then
   log "post-kickstart: sleeping 60s before tier-2 check"
   sleep 60

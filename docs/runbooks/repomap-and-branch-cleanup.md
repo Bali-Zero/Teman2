@@ -23,14 +23,14 @@ silently growing past 162:
 
 ## File map
 
-| File | Purpose |
-|------|---------|
-| `scripts/build_repomap.sh` | Generate repomap via aider (fallback: ctags). Output `~/.nuzantara-repomap.txt`. |
-| `scripts/branch_graveyard_cleanup.sh` | Classify + report remote branches; optional `--apply` for category 1. |
-| `infra/launchagents/com.nuzantara.repomap.15min.plist` | 15-min repomap cron (Pro). |
-| `infra/launchagents/com.nuzantara.branch-cleanup.weekly.plist` | Weekly Monday 08:00 WITA report (Pro). |
-| `infra/launchagents/install_repomap_cron.sh` | One-shot bootstrap: copy plists → `~/Library/LaunchAgents/` + `launchctl bootstrap`. |
-| `infra/launchagents/add_repomap_sessionstart_hook.py` | Idempotent installer for the `~/.claude/settings.json` SessionStart hook that cats the repomap. |
+| File                                                           | Purpose                                                                                         |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `scripts/build_repomap.sh`                                     | Generate repomap via aider (fallback: ctags). Output `~/.nuzantara-repomap.txt`.                |
+| `scripts/branch_graveyard_cleanup.sh`                          | Classify + report remote branches; optional `--apply` for category 1.                           |
+| `infra/launchagents/com.nuzantara.repomap.15min.plist`         | 15-min repomap cron (Pro).                                                                      |
+| `infra/launchagents/com.nuzantara.branch-cleanup.weekly.plist` | Weekly Monday 08:00 WITA report (Pro).                                                          |
+| `infra/launchagents/install_repomap_cron.sh`                   | One-shot bootstrap: copy plists → `~/Library/LaunchAgents/` + `launchctl bootstrap`.            |
+| `infra/launchagents/add_repomap_sessionstart_hook.py`          | Idempotent installer for the `~/.claude/settings.json` SessionStart hook that cats the repomap. |
 
 ---
 
@@ -100,18 +100,18 @@ ls -la ~/logs/branch-cleanup-*.md  # daily report files written by cron
 
 ## Environment variables (kill-switches + tuning)
 
-| Variable | Default | Effect |
-|----------|---------|--------|
-| `REPOMAP_ENABLED` | `true` | `false` -> `build_repomap.sh` exits 0 (no-op). |
-| `REPOMAP_MAX_TOKENS` | `1024` | Token budget passed to aider `--map-tokens`. |
-| `REPOMAP_OUTPUT` | `~/.nuzantara-repomap.txt` | Output path override (useful for tests). |
-| `REPOMAP_REPO_ROOT` | `/Users/nuzantara/Desktop/nuzantara` | Working repo. |
-| `BRANCH_CLEANUP_ENABLED` | `true` | `false` -> `branch_graveyard_cleanup.sh` exits 0. |
-| `BRANCH_CLEANUP_REMOTE` | `origin` | Remote to enumerate / push --delete against. |
-| `BRANCH_CLEANUP_MAIN` | `main` | Branch used for merge-base ancestor check. |
-| `BRANCH_CLEANUP_CLAUDE_AGE_DAYS` | `30` | Threshold to flag `claude/*` as zombie. |
-| `BRANCH_CLEANUP_STALE_AGE_DAYS` | `90` | Threshold for "stale other" category. |
-| `BRANCH_CLEANUP_TELEGRAM_THRESHOLD` | `10` | Min zombie count to trigger alert. |
+| Variable                                       | Default                         | Effect                                                           |
+| ---------------------------------------------- | ------------------------------- | ---------------------------------------------------------------- |
+| `REPOMAP_ENABLED`                              | `true`                          | `false` -> `build_repomap.sh` exits 0 (no-op).                   |
+| `REPOMAP_MAX_TOKENS`                           | `1024`                          | Token budget passed to aider `--map-tokens`.                     |
+| `REPOMAP_OUTPUT`                               | `~/.nuzantara-repomap.txt`      | Output path override (useful for tests).                         |
+| `REPOMAP_REPO_ROOT`                            | `/Users/nuzantara/nuzantara`    | Working repo.                                                    |
+| `BRANCH_CLEANUP_ENABLED`                       | `true`                          | `false` -> `branch_graveyard_cleanup.sh` exits 0.                |
+| `BRANCH_CLEANUP_REMOTE`                        | `origin`                        | Remote to enumerate / push --delete against.                     |
+| `BRANCH_CLEANUP_MAIN`                          | `main`                          | Branch used for merge-base ancestor check.                       |
+| `BRANCH_CLEANUP_CLAUDE_AGE_DAYS`               | `30`                            | Threshold to flag `claude/*` as zombie.                          |
+| `BRANCH_CLEANUP_STALE_AGE_DAYS`                | `90`                            | Threshold for "stale other" category.                            |
+| `BRANCH_CLEANUP_TELEGRAM_THRESHOLD`            | `10`                            | Min zombie count to trigger alert.                               |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_CHAT_ID` | from `~/.nuzantara-secrets.env` | Sourced by `--telegram-alert`. Owner chat defaults `1125336968`. |
 
 ---
@@ -128,6 +128,7 @@ ls -la ~/logs/branch-cleanup-*.md  # daily report files written by cron
 ```
 
 Common causes:
+
 - **Aider tags cache stale**: `rm -rf .aider.tags.cache.v4/` (regenerates in ~25s on first re-run).
 - **`--no-gui` missing**: aider v0.86 shim path occasionally tries to launch streamlit GUI. The wrapper forces `--no-gui --no-browser`. If you see streamlit traceback, confirm the script uses `/Users/nuzantara/.pyenv/versions/3.11.11/bin/aider` (preferred over the pyenv shim).
 - **Repo too large**: aider can take 10–30s for the initial `--subtree-only` scan on 82k files. Subsequent runs use the on-disk tags cache.

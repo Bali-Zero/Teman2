@@ -237,7 +237,7 @@ def _build_oauth_user_drive():
     # Load env for OAuth client id/secret and DB URL
     env_file = Path(__file__).resolve().parents[4] / "apps" / "backend-rag" / ".env"
     if not env_file.exists():
-        env_file = Path.home() / "Desktop/nuzantara/apps/backend-rag/.env"
+        env_file = Path.home() / "nuzantara/apps/backend-rag/.env"
     env: dict[str, str] = {}
     for line in env_file.read_text().splitlines():
         if "=" in line and not line.startswith("#"):

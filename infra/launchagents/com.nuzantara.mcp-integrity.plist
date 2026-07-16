@@ -14,7 +14,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/Desktop/nuzantara-deploy/scripts/verify_mcp_integrity.sh</string>
+        <string>/Users/nuzantara/nuzantara-deploy/scripts/verify_mcp_integrity.sh</string>
     </array>
     <key>StartInterval</key>
     <integer>900</integer>

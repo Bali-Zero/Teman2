@@ -1,0 +1,412 @@
+# infra/tcc-desktop-paths/allowlist.txt
+#
+# Declared exceptions to the W84 TCC-Desktop-path sweep/lint (scar #1 HOME-fork,
+# superscar family). Consumed by BOTH:
+#   scripts/tcc_migrate_desktop_paths.py --git-scope --exclude-file  (one-time sweep,
+#     never touches these)
+#   scripts/lint_tcc_desktop_paths.py --check                        (permanent CI
+#     guard, never flags these as violations)
+#
+# Every entry here is a DELIBERATE decision, not an oversight (scar #3 discipline:
+# an exception list makes exclusions declared, not implicit). Two classes:
+#
+#   1. HISTORICAL RECORD — research/, docs/superpowers/, docs/audits/, dated
+#      plan/session/audit/report files elsewhere, and .claude/rules/cicatrix-*.md.
+#      These describe what WAS true at a point in time (a scar, a dated research
+#      capture, a post-mortem, a FROZEN snapshot). Rewriting the path inside them
+#      would falsify the historical record they exist to preserve. Per CLAUDE.md
+#      §15, research/ is explicitly ad-hoc/never-promoted — the entire tree is
+#      historical by convention, not just the .md reports.
+#
+#   2. GUARD-TEST CORPUS — infra/claude-hooks/test_tilde_target_resolver.py and
+#      test_w84_strip_noise_cross_line.py. The worktree-isolation hook (superscar
+#      #3, 6 prior over/under-match recidives — W83/W84/W85/W91/W92/W94) has its
+#      OWN guilt/innocence tests keyed on recognizing `~/Desktop/nuzantara` /
+#      `$HOME/Desktop/nuzantara` shell notations as equivalent to the main
+#      checkout. That recognition remains load-bearing AFTER the repo move: the
+#      compat symlink `~/Desktop/nuzantara -> ~/nuzantara` still exists (COMPAT
+#      ONLY per the migration brief — reading it still traverses Desktop), so a
+#      session can still type the old notation and the hook must still catch it.
+#      Rewriting these fixtures would silently narrow coverage of a real,
+#      still-live attack surface. test_w84_strip_noise_cross_line.py additionally
+#      reproduces the EXACT historical trigger string from the 2026-06-16
+#      incident — changing it would blur what is being regression-tested.
+#
+# All OTHER test files with a Desktop/nuzantara literal were inspected by hand
+# (2026-07-16 TCC repo-paths PR) and found to use it as incidental placeholder/
+# example data disconnected from the guard logic under test (verified against
+# each guard's actual matching code) — those were swept normally, not excluded.
+#
+# NOT-A-MATCH BUCKET (final-gate review 2026-07-16): a raw `grep Desktop/
+# nuzantara` over tracked *.sh/*.py/*.plist also surfaces 10 files that do
+# NOT match PATTERN's anchored regex (`nuzantara` must not be followed by a
+# word-char or hyphen) and therefore need NO allowlist entry — the lint
+# already ignores them by construction, not by exception:
+#   apps/backend-rag/scripts/{analyze_duplicates,deduplicate_report,
+#     register_drive_documents,scan_drive_fast}.py — reference a SIBLING
+#     scratch file `~/Desktop/nuzantara_drive_scan_report[_deduped].txt`
+#     (underscore breaks the lookahead) — an ad-hoc report artifact these
+#     one-shot drive-migration utilities write, unrelated to where the repo
+#     itself lives.
+#   apps/backend-rag/scripts/bulk_populate_clients.py — references
+#     `~/Desktop/nuzantara-9ae2756d7fcc.json`, a service-account credential
+#     file (hyphen+hash breaks the lookahead) — a differently-named file,
+#     not the repo.
+#   scripts/test_{call_llm_deepseek,deepseek_executor,entailment_check,
+#     evidence_lint,redact_pii}.py — reference
+#     `~/Desktop/nuzantara-wt-evoskill-phase1`, a DIFFERENT worktree
+#     directory name (hyphen breaks the lookahead), not the main repo path.
+# Widening PATTERN to catch these would risk exactly the guard-over-match
+# failure mode this repo has a whole scar family for (#3): "nuzantara-*" is
+# deliberately NOT swept as a class (cf. nuzantara-deploy handling), because
+# treating every nuzantara-prefixed name as the repo would silently rewrite
+# unrelated files. Left as no-op by design, documented here so a future
+# reviewer doesn't have to re-derive the regex reasoning from scratch.
+#
+# infra/home-fork/declared-pairs.json is class 1 despite not living under
+# research/docs/superpowers/audits: its ONLY hit is a free-text "_note" field
+# narrating a 2026-07-14 fix ("...fixed to REPO_ROOT-aware ($HOME/Desktop/
+# nuzantara default)...") — a historical description of what the default WAS
+# on that date, not a live "live"/"repo" pair value the lint compares against.
+# Sweeping it would misattribute today's (2026-07-16) path convention to a
+# fix that landed two days earlier.
+#
+#   3. THE TOOLS' OWN SOURCE/TESTS — scripts/tcc_migrate_desktop_paths.py,
+#      scripts/lint_tcc_desktop_paths.py, and their test files
+#      (scripts/tests/test_tcc_migrate_desktop_paths.py,
+#      scripts/tests/test_lint_tcc_desktop_paths.py). These reference
+#      `Desktop/nuzantara` as SUBJECT MATTER — the regex pattern source, its
+#      docstring rationale/examples, and guilt-case test fixtures literally
+#      constructing that string to prove detection works — never as a path
+#      the tool itself depends on. Self-referential by construction: any tool
+#      whose job is detecting a literal string will contain that literal in
+#      its own source. Sweeping these would either corrupt the regex (turning
+#      the detector into a no-op) or invert the guilt tests (making them
+#      assert on the wrong string). Same reasoning extends to this file
+#      itself (this documentation talks ABOUT the pattern) and to
+#      .github/workflows/immune-enforcement.yml's step name/comments for the
+#      lint step this PR adds.
+#
+# SIZE NOTE (added 2026-07-16, final-gate review): this file has ~298 declared
+# entries, which reads as a large exception surface for a guard meant to be
+# strict. It is NOT — the standing lint's own extension filter
+# (LINT_EXTENSIONS = {.sh, .py, .plist}) discards a line before ever checking
+# whether it's allowlisted, so only entries with those THREE extensions are
+# load-bearing for scripts/lint_tcc_desktop_paths.py's ongoing CI gate. As of
+# this writing that's 10 lines: the 2 guard-test-corpus files (class 2), the
+# 1 historical audit script + 2 dated research renderers + 1 frozen research
+# note (class 1), and the 4 self-referential tool source/test files (class 3).
+# The remaining ~288 entries (.md/.json/.txt/.yml/.tsv) exist ONLY as
+# provenance for scripts/tcc_migrate_desktop_paths.py's one-time --git-scope
+# --extensions .md sweep (commit 2 of the migration PR) — they document why
+# each historical doc was deliberately left un-swept, but the standing lint
+# never reads them because it never reads .md files at all. Kept per-file
+# (not directory-glob'd to research/**, docs/audits/**, etc.) deliberately:
+# scar #3 discipline ("no guard ships without its exceptions being explicit")
+# argues for explicit enumeration over implicit directory exemption, and the
+# guard's REAL exception surface is already narrow (10 lines) once you
+# account for the extension filter — collapsing 288 lines that don't affect
+# the guard's behavior into a directory glob would trade a currently-tiny,
+# fully-auditable surface for a coarser one, to solve a bloat problem that
+# turns out not to exist for the thing actually being guarded.
+#
+# Format: one repo-relative path per line. Blank lines and #-comments ignored.
+
+.github/workflows/immune-enforcement.yml
+.claude/rules/cicatrix-scars-archive.md
+.claude/rules/cicatrix-scars.md
+.claude/rules/cicatrix-superscar.md
+apps/backend-rag/backend/tests/api/app/routers/WAVE3_NOTES.md
+apps/backend-rag/tests/unit/routers/TEST_CRM_PRACTICES_COVERAGE_REPORT.md
+apps/mouth/public/kbli-navigator/PHASE_2_DEPLOYMENT_SUMMARY.md
+apps/mouth/public/kbli-navigator/PHASE_2_IMPLEMENTATION_LOG.md
+apps/mouth/scripts/PHASE_1_COMPLETE_SUMMARY.md
+apps/mouth/scripts/SESSION_HANDOVER_PHASE_1.md
+apps/wr2-control-app/docs/plans/2026-06-22-wr2-control-grande.md
+apps/wr2-control-app/docs/superpowers/plans/2026-07-11-instagram-caption-editor.md
+data/kb_sources/audit_automazioni/01_PRO_CRONTAB.md
+data/kb_sources/audit_automazioni/05_BACKEND_AGENTS.md
+docs/audits/2026-04-29-zero-crash-audit/_codex_iteration_3_final.md
+docs/audits/2026-04-29-zero-crash-audit/03_codex_analysis.md
+docs/audits/2026-04-29-zero-crash-audit/09_intervention_plan.md
+docs/audits/2026-04-29-zero-crash-audit/11_brainstorms/P0-3_launchagents_audit.md
+docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/_coordination.sh
+docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/kakuro-S1.md
+docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/kakuro-S2.md
+docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/kakuro-S4-final.md
+docs/audits/2026-04-29-zero-crash-audit/prompts/wave1/kakuro-S4.md
+docs/audits/2026-04-29-zero-crash-audit/prompts/wave2/00_README.md
+docs/audits/2026-04-29-zero-crash-audit/prompts/wave2/wave2-team-air.md
+docs/audits/2026-04-29-zero-crash-audit/prompts/wave2/wave2-team-pro.md
+docs/audits/2026-04-29-zero-crash-audit/prompts/wave3/00_README.md
+docs/audits/2026-04-29-zero-crash-audit/prompts/wave3/wave3-team-pro.md
+docs/audits/2026-05-02-cell-openclaw-brainstorm/00b_briefing_v2.md
+docs/audits/2026-05-02-cell-openclaw-brainstorm/06_openclaw_ecosystem_audit.md
+docs/audits/2026-05-02-cell-openclaw-brainstorm/07_openclaw_deep_research.md
+docs/audits/2026-05-05-phase-1-5-spike/nlm_callsite_map.md
+docs/audits/2026-05-05-phase-1-5-spike/README.md
+docs/audits/2026-05-12-phase3-spec-brainstorm/00_briefing.md
+docs/audits/2026-05-12-phase3-spec-brainstorm/01_claude_self_critique.md
+docs/audits/2026-05-12-ticket-a1-spec-brainstorm/00_briefing.md
+docs/audits/2026-05-13-ticket-c-spec-brainstorm/01_claude.md
+docs/audits/2026-05-13-ticket-c-spec-brainstorm/03_deepseek.md
+docs/audits/sprint0/intel-scraper-main-path.md
+docs/audits/sprint0/mcporter-usage.md
+docs/innervation-2026-04-29/99_handoff.md
+docs/innervation-2026-04-29/99c_w0a_bis_kickoff.md
+docs/operations/cron-canonical-2026-05-20.md
+docs/ops/2026-04-30-followup-heartbeat-telegram-html.md
+docs/ops/2026-04-30-pr-c3-missing-env.md
+docs/ops/2026-04-30-pr-c5-dead-code.md
+docs/runbooks/2026-05-20-wr2-zombie-fix.md
+docs/superpowers/plans/2026-03-20-process-kanban-redesign.md
+docs/superpowers/plans/2026-03-26-crm-global-fix.md
+docs/superpowers/plans/2026-04-02-kbli-enrichment-pipeline.md
+docs/superpowers/plans/2026-04-04-visa-oracle-implementation.md
+docs/superpowers/plans/2026-04-13-automations-reference-v2-unified.md
+docs/superpowers/plans/2026-04-13-llm-infrastructure-reorganization.md
+docs/superpowers/plans/2026-04-14-automation-deep-scan-prompt.md
+docs/superpowers/plans/2026-04-14-organism-phase1-sinapsi.md
+docs/superpowers/plans/2026-04-14-organism-phase2-riflessi.md
+docs/superpowers/plans/2026-04-17-v2-rollout-00-master.md
+docs/superpowers/plans/2026-04-17-v2-rollout-01-foundation.md
+docs/superpowers/plans/2026-04-17-v2-rollout-02-funnel-hub.md
+docs/superpowers/plans/2026-04-17-v2-rollout-03-client-app.md
+docs/superpowers/plans/2026-04-17-v2-rollout-04-team-ops.md
+docs/superpowers/plans/2026-04-18-backend-compliance-intel-e2e-plan.md
+docs/superpowers/plans/2026-04-18-pf3a-prime-perf-ux.md
+docs/superpowers/plans/2026-04-18-portal-client-app-pf1.md
+docs/superpowers/plans/2026-04-19-llm-cost-tracking-v2.md
+docs/superpowers/plans/2026-04-19-seo-cell-A-prenatal-foundation.md
+docs/superpowers/plans/2026-04-21-visa-catalogue-rebuild.md
+docs/superpowers/plans/2026-04-21-visa-funnel-fusion.md
+docs/superpowers/plans/2026-04-22-autonomic-organism-implementation.md
+docs/superpowers/plans/2026-04-22-bali-zero-social-sota-research-loop.md
+docs/superpowers/plans/2026-04-22-bali-zero-social-sota-research-phase0-part1.md
+docs/superpowers/plans/2026-04-22-bali-zero-social-sota-research-phase0-part2.md
+docs/superpowers/plans/2026-04-22-bali-zero-social-sota-research-phase0-part3.md
+docs/superpowers/plans/2026-04-22-bali-zero-social-sota-research.md
+docs/superpowers/plans/2026-04-24-air-retirement-phase1.md
+docs/superpowers/plans/2026-04-24-docs-hygiene-plan.md
+docs/superpowers/plans/2026-05-01-cell-observatory-fase0-implementation.md
+docs/superpowers/plans/2026-05-02-sprint-1a-skill-registry-extension.md
+docs/superpowers/plans/2026-05-02-sprint-1b-heartbeat-cell-bridge.md
+docs/superpowers/plans/2026-05-04-subhi-tutor-implementation.md
+docs/superpowers/plans/2026-05-06-bali-zero-pricelist-2026.md
+docs/superpowers/plans/2026-05-07-nb-mitochondrial-monitor.md
+docs/superpowers/plans/2026-05-07-nb-senescent-decomm.md
+docs/superpowers/plans/2026-05-07-skills-qdrant-local-mirror.md
+docs/superpowers/plans/2026-05-07-symbiosis-w1-genome-enroll.md
+docs/superpowers/plans/2026-05-07-symbiosis-w2-kg-mcp-bridge.md
+docs/superpowers/plans/2026-05-08-canva-apply-image-residue-cleanup.md
+docs/superpowers/plans/2026-05-08-domain-mesh-phase0-foundations.md
+docs/superpowers/plans/2026-05-13-wr2-orchestrator-pdf-render.md
+docs/superpowers/plans/2026-05-15-agent-library-inventory.md
+docs/superpowers/plans/2026-05-16-automation-cleanup-plan-v3.md
+docs/superpowers/plans/2026-05-16-automation-cleanup-plan-v4.md
+docs/superpowers/plans/2026-05-16-automation-cleanup-plan.md
+docs/superpowers/plans/2026-05-16-router-todos-77-80-plan.md
+docs/superpowers/plans/2026-05-17-zantara-cockpit-s1-foundation.md
+docs/superpowers/plans/2026-05-29-wr2-canva-headless-actuator.md
+docs/superpowers/plans/2026-05-31-office-personal-channel-block.md
+docs/superpowers/plans/2026-06-02-g4-observatory-ollama-classifier.md
+docs/superpowers/plans/2026-06-04-wa-corpus-miner-build.md
+docs/superpowers/plans/2026-06-16-zantara-captain-depth-stack.md
+docs/superpowers/plans/FASE1-RESUME-PROMPT.md
+docs/superpowers/prompts/domain-mesh/02-phase3-tax-engine.md
+docs/superpowers/prompts/domain-mesh/03-phase4-marketing.md
+docs/superpowers/prompts/domain-mesh/04-phase5-antonello-lab.md
+docs/superpowers/reviews/2026-04-21-partners-v1/02-codex.md
+docs/superpowers/sessions/2026-04-17-strategic-8/DOCKER-CLAUDE-CLI.md
+docs/superpowers/sessions/2026-04-17-strategic-8/pro-1-l2-client-app.md
+docs/superpowers/sessions/2026-04-17-strategic-8/pro-2-opus47-routing.md
+docs/superpowers/sessions/2026-04-17-strategic-8/pro-3-l3-team-ops.md
+docs/superpowers/sessions/2026-04-17-strategic-8/pro-4-bundle-qa.md
+docs/superpowers/specs/_panel-mata-garuda-stage1/feasibility-codex-verdict.txt
+docs/superpowers/specs/2026-03-26-cell-essere-perfetto-design.md
+docs/superpowers/specs/2026-04-05-ghostty-tmux-session-resilience-design.md
+docs/superpowers/specs/2026-04-15-libri-sacri-canonici-design.md
+docs/superpowers/specs/2026-04-17-organismo-prossimo-passo-design.md
+docs/superpowers/specs/2026-04-17-v2-subdomain-rollout-design.md
+docs/superpowers/specs/2026-04-18-backend-compliance-intel-e2e-design.md
+docs/superpowers/specs/2026-04-20-partners-brainstorm/02-codex.md
+docs/superpowers/specs/2026-04-24-air-retirement-cloud-offload-design.md
+docs/superpowers/specs/2026-04-24-docs-hygiene-design.md
+docs/superpowers/specs/2026-04-30-federation-alert-dispatcher.md
+docs/superpowers/specs/2026-05-01-cell-observatory-fase0-design.md
+docs/superpowers/specs/2026-05-04-subhi-tutor-design.md
+docs/superpowers/specs/2026-05-07-nb-mitochondrial-monitor-design.md
+docs/superpowers/specs/2026-05-07-nb-senescent-decomm-design.md
+docs/superpowers/specs/2026-05-07-symbiosis-w2-kg-mcp-bridge-design.md
+docs/superpowers/specs/2026-05-08-domain-mesh-autonomic-design.md
+docs/superpowers/specs/2026-05-08-domain-mesh-research/external-reviews-wave2/sonnet-w2.md
+docs/superpowers/specs/2026-05-08-domain-mesh-research/r3-djp-coretax-tax-tech-2026-05-08.md
+docs/superpowers/specs/2026-05-08-domain-mesh-research/r5-research-agents-2026-05-08.md
+docs/superpowers/specs/2026-05-08-domain-mesh-research/r6-country-intelligence-id-2026-05-08.md
+docs/superpowers/specs/2026-05-08-nb-source-freshness-alternative.md
+docs/superpowers/specs/2026-05-10-mini-h24-server-migration-design.md
+docs/superpowers/specs/2026-05-12-phase3-hgt-execution-spec.md
+docs/superpowers/specs/2026-05-12-symbiosis-gap-closure-loop-design.md
+docs/superpowers/specs/2026-05-13-wr2-orchestrator-pdf-render-design.md
+docs/superpowers/specs/2026-05-14-agent-library-inventory-design.md
+docs/superpowers/specs/2026-05-17-agent-library-patterns-lessons-design.md
+docs/superpowers/specs/2026-05-17-zantara-cockpit-design.md
+docs/wr2/2026-05-08-sprint-b-to-f-detailed-plan.md
+docs/wr2/skill-snapshots/canva-apply-2026-05-07-prewipe.md
+docs/wr2/skill-snapshots/canva-apply-2026-05-07-quality-pass.md
+docs/wr2/skill-snapshots/canva-oauth-watchdog-2026-05-08.md
+docs/wr2/skill-snapshots/deploy-pull-2026-05-08.md
+infra/claude-hooks/test_tilde_target_resolver.py
+infra/claude-hooks/test_w84_strip_noise_cross_line.py
+infra/home-fork/declared-pairs.json
+infra/tcc-desktop-paths/allowlist.txt
+research/2026-04-24-nlm-automations-audit.md
+research/agent-craft/proposed-agents/client-onboarding-orchestrator.md
+research/agent-craft/proposed-agents/company-docs-consistency-auditor.md
+research/agent-craft/proposed-agents/compliance-deadline-sentinel.md
+research/agent-craft/proposed-agents/document-intake-classifier.md
+research/agent-craft/proposed-agents/lead-intake-qualifier.md
+research/agent-library/_proposed/S13_build_frozen.py
+research/agent-library/2026-05-19-resume-evoskill-phase1.md
+research/agent-library/S13-evolution-FROZEN.json
+research/codex-config/2026-05-15-claude-restart-verification-prompt.md
+research/marketing/2026-05-13-flow-veo-3.1-mastery-manual.md
+research/marketing/2026-05-16-tts-provider-benchmark.md
+research/marketing/bvcl-sampling/sample-prompts-zantara.md
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_gen_001_identity_front_neutral.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_gen_002_identity_front_slight_smile.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_gen_003_identity_front_serious.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_003_left_profile.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_004_right_profile.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_005_full_body_standing.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_006_half_body_seated.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_007_side_light_left.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_008_side_light_right.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_009_high_key_white.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_010_dark_gray_editorial.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_011_charcoal_blouse.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_012_black_blazer_studio.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_013_no_earrings.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_014_pearl_studs.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_015_bali_rice_terrace.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_016_temple_courtyard.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_017_office_blazer.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_018_banyan_cinematic.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_019_hair_behind_ears.json
+research/marketing/zantara-visual-dataset/v1/generated_candidates/logs/zan_v1_pri_020_loose_low_bun.json
+research/marketing/zantara-visual-dataset/v1/metadata/manifest.json
+research/nb-health/2026-05-22-health.md
+research/operations/2026-05-19-claude-code-best-config-may-2026.md
+research/operations/2026-05-19-wave3-sentinel-panel-deepseek.md
+research/operations/2026-05-19-wave3-sentinel-panel-gemini.md
+research/operations/2026-05-19-wave3-sentinel-panel-prompt.md
+research/operations/2026-05-19-wave3-sentinel-triage.md
+research/operations/2026-05-19-wr2-intel-lake-fixes-panel.md
+research/operations/2026-05-19-wr2-intel-lake-health-snapshot.md
+research/operations/2026-05-22-cursor-3-5-nuzantara-integration.md
+research/operations/2026-05-23-w33-autoremediation-kill-switch.md
+research/operations/2026-05-23-w47-watchdog-keepalive.md
+research/operations/2026-05-23-w50-dlq-autopilot-home-fork-desync.md
+research/operations/2026-05-23-w51-sentinel-plist-home-fork.md
+research/operations/2026-05-23-w52-launchagents-lint-home-fork-rule.md
+research/operations/2026-05-24-sota-multi-agent-repo-architecture-synthesis.md
+research/operations/2026-05-25-arsenale-completo.md
+research/operations/2026-05-25-gap-fixes-and-generale-test.md
+research/operations/2026-05-25-pro-cleanup-state.md
+research/operations/2026-05-25-sota-workflow-gap-analysis-and-l5-spec.md
+research/operations/2026-05-26-wr2-canva-ig-4llm-panel-synthesis.md
+research/operations/2026-05-28-dlq-autopilot-retry-storm.md
+research/operations/2026-05-28-zero-point-recovery.md
+research/operations/2026-05-29-worktree-failure-patterns-3llm-panel.md
+research/operations/2026-05-31-m5-memory-integrity-topology-STUDY.md
+research/operations/2026-05-31-MASTER-audit-aggregate.md
+research/operations/2026-05-31-organism-truth-FROZEN.json
+research/operations/2026-05-31-structural-debt-FROZEN.json
+research/operations/2026-05-31-structural-debt-surface.md
+research/operations/2026-05-31-system-audit-FROZEN.json
+research/operations/2026-06-01-iterm2-power-features-study.md
+research/operations/2026-06-04-codex-orchestrator-map.md
+research/operations/2026-06-11-domande-per-fable5.md
+research/operations/2026-06-11-kita-uiux-fable5-handoff.md
+research/operations/2026-06-11-system-audit-fable5.md
+research/operations/2026-06-14-mythos-m4-intake-pipeline.md
+research/operations/2026-06-14-mythos-p1-immune-system.md
+research/operations/2026-06-14-mythos-p2-fleet-governance.md
+research/operations/2026-06-15-tac-armamento-sospeso.md
+research/operations/2026-06-16-codex-55-xhigh-configuration-architecture.md
+research/operations/2026-06-19-kbli-cantieri-4-5-runbook.md
+research/operations/2026-06-20-intake-reader-5bug-heal-chain.md
+research/operations/2026-06-28-intake-orphan-leak-root-cause.md
+research/operations/2026-07-02-full-system-tac-first-pass.md
+research/operations/2026-07-03-sonnet5-cron-migration.md
+research/operations/2026-07-05-full-system-tac-second-pass.md
+research/operations/2026-07-11-fleet-ledger-burndown.md
+research/operations/2026-07-11-guard-fuzz-immune.md
+research/operations/2026-07-11-merge-train.md
+research/operations/2026-07-14-wr2-deep-audit.md
+research/operations/audits/2026-05-23-launchd-audit-snapshot.json
+research/operations/audits/FROZEN-2026-05-31.json
+research/operations/campaign/00-CAMPAIGN-STATE.md
+research/operations/campaign/PROMPT-MINI-AUDIT-KNOWLEDGE.md
+research/operations/crontab-backup-2026-05-19.txt
+research/operations/doc-intake-unified/05a-reusable-code-internal.md
+research/operations/S15-symbiosis-FROZEN.json
+research/operations/S18-rag-eval-FROZEN.json
+research/operations/S2-spec-graveyard-FROZEN.json
+research/operations/S3-escalation-debt-FROZEN.json
+research/operations/specs/_panel-review-opus47-max-effort.json
+research/operations/specs/2026-05-28-codex-autofix-ci-exit128-triage.md
+research/operations/specs/2026-05-31-dirty-worktree-triage.md
+research/operations/specs/2026-06-12-M5-postgres-local-spec.md
+research/operations/specs/2026-06-15-dirty-main-snapshot-triage.md
+research/operations/specs/G1-inter-wave-validation-gate.md
+research/operations/specs/G3-global-rollback.md
+research/operations/specs/L5.1-agent-worktree-enforcement-2026-05-25.md
+research/operations/specs/L5.1-iter2-agent-worktree-enforcement-2026-05-26.md
+research/operations/specs/P1-panel-raw-2026-06-11/gemini-redteam.txt
+research/operations/specs/P1-wr2-pipeline-consolidation.md
+research/operations/specs/phase-aware-guardrails.md
+research/operations/specs/T-1-pre-execution-global-backup.md
+research/operations/specs/T0.1-orphan-memory-triage.md
+research/operations/specs/T0.2-fix-nuzantara-mcp-dns.md
+research/operations/specs/T1.2-guardrails-hook.md
+research/operations/specs/T1.4-karpathy-discipline-skill.md
+research/operations/specs/T2.1-superpowers-install.md
+research/operations/specs/T2.2-playwright-mcp.md
+research/operations/specs/T2.5-precompact-mnemos-hook.md
+research/operations/specs/T2.6-stop-verify-hook.md
+research/operations/specs/T2.7-claude-md-project-refactor.md
+research/operations/specs/T2.7-claude-md-refactor.md
+research/operations/specs/T3.3-6-named-subagent-lanes.md
+research/operations/specs/T3.4-custom-slash-commands.md
+research/operations/specs/T3.5-session-start-consolidation.md
+research/operations/specs/WR3-supervisor-revival.md
+research/symbiosis/2026-05-12-cell-silenti-root-cause-and-fix.md
+research/symbiosis/2026-05-12-gap6-closed-archive-and-delete.md
+research/symbiosis/2026-05-12-gap7-uuid-split-brain-phase-0-5a.md
+research/symbiosis/2026-05-12-intel-lake-wave4-plan.md
+research/symbiosis/2026-05-12-phase2-core-plumbing-complete.md
+research/symbiosis/2026-05-12-phase2-live-execution-complete.md
+research/symbiosis/2026-05-12-tst-empirical-architecture.md
+research/symbiosis/2026-05-13-ticket-c-narrow-spec.md
+research/symbiosis/2026-05-13-ticket-G-narrow-spec-DRAFT.md
+research/symbiosis/2026-05-13-ticket-G-narrow-spec.md
+research/symbiosis/2026-05-16-reflection-regression-2026-05-08.md
+research/visa/2026-05-26-c5a-step1-followup-prompt.md
+research/visa/2026-05-28-c5a-operational-status-verify.md
+research/visa/2026-06-01-influencer-visa-gap-panel.md
+research/visa/c5a-render-2026-05-26/render_c5a_report.py
+research/wr2-pilots/2026-05-22-permenkumham-22-2024-kitap/_render.py
+research/wr2-pilots/2026-05-22-permenkumham-22-2024-kitap/slides.json
+research/wr2/2026-05-26-wr2-cron-audit.md
+research/wr2/2026-05-27-claude-print-capabilities.md
+research/wr3/04-lifecycle-agents.md
+research/wr3/06-architecture-skeleton.md
+research/wr3/07-genesis-execution-state.md
+research/wr3/08-s78-pilot-runbook.md
+scripts/mini-migration/preflight-results-2026-05-10.tsv
+scripts/lint_tcc_desktop_paths.py
+scripts/tcc_migrate_desktop_paths.py
+scripts/tests/test_lint_tcc_desktop_paths.py
+scripts/tests/test_tcc_migrate_desktop_paths.py
+skills/bali-zero-brand/_external-bench-2026-05.md

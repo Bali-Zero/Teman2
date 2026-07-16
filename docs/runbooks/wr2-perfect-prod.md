@@ -80,7 +80,7 @@ Re-attivazione: flip kill-switch a `'true'` + re-bootstrap LaunchAgent.
 ## 6. Riferimenti
 
 - Endpoint: `GET https://nuzantara-rag.fly.dev/api/intel/health/pipeline` (sezione `wr2`)
-- Plist: `~/Desktop/nuzantara/infra/launchagents/com.balizero.wr2.e2e-probe.daily.plist`
-- Probe script: `~/Desktop/nuzantara/scripts/probes/wr2_e2e_probe.py`
+- Plist: `~/nuzantara/infra/launchagents/com.balizero.wr2.e2e-probe.daily.plist`
+- Probe script: `~/nuzantara/scripts/probes/wr2_e2e_probe.py`
 - Cleanup emergency: `docs/runbooks/synthetic-probe-cleanup.md`
 - Master template (fisso): `DAHJEkWpkzY` (locked dietro master-template-guard CI)

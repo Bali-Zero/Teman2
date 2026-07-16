@@ -2,7 +2,7 @@
 # Reproducible setup for the WR2 HTML renderer venv (.venv-wr2-html).
 #
 # WHY THIS EXISTS (scar W81 / html-venv-evaporation):
-#   The deploy worktree (~/Desktop/nuzantara-deploy) is periodically re-added
+#   The deploy worktree (~/nuzantara-deploy) is periodically re-added
 #   (git worktree add) which restores only tracked files. Venvs are gitignored,
 #   so .venv-wr2-html evaporates on every re-add and the html-apply worker dies
 #   with "No such file or directory: .../.venv-wr2-html/bin/python".
@@ -16,7 +16,7 @@
 #       backend's own requirements-prod.txt (minus the editable cell-core line,
 #       which is DNA-recording, unused by the renderer, and unresolvable here).
 set -euo pipefail
-REPO="${WR2_REPO_ROOT:-$HOME/Desktop/nuzantara-deploy}"
+REPO="${WR2_REPO_ROOT:-$HOME/nuzantara-deploy}"
 PYENV_PY="${PYENV_PY311:-$HOME/.pyenv/versions/3.11.11/bin/python}"
 VENV="$REPO/.venv-wr2-html"
 VPY="$VENV/bin/python"

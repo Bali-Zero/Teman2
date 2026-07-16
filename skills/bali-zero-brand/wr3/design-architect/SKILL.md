@@ -54,6 +54,6 @@ Skill cortex created at S7.3 step of WR3 genesis. No operational lessons yet.
 ## Resources
 
 - Agent definition: `~/.claude/agents/wr3-design-architect.md`
-- I/O contract: `~/Desktop/nuzantara/docs/wr3/contracts/design-architect.yaml`
+- I/O contract: `~/nuzantara/docs/wr3/contracts/design-architect.yaml`
 - Brand cortex (shared): `~/.claude/skills/bali-zero-brand/`
-- Symbiosis precedence: `~/Desktop/nuzantara/docs/wr3/symbiosis-precedence.md`
+- Symbiosis precedence: `~/nuzantara/docs/wr3/symbiosis-precedence.md`

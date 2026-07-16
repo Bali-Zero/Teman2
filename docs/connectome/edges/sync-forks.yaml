@@ -37,7 +37,7 @@ edges:
   - id: wr2-deploy-puller-sync
     kind: file_sync
     producer: "origin/main"
-    consumer: "Pro ~/Desktop/nuzantara-deploy (hourly pull)"
+    consumer: "Pro ~/nuzantara-deploy (hourly pull)"
     machine: pro
     status: STALE
     notes: "census: dirty=1 + 17 behind + alerts suppressed (W55 replay #3). Sibling session realigned ~00:41 06-13; verify"
@@ -45,7 +45,7 @@ edges:
       {
         type: cmd,
         via: "ssh:pro-lan",
-        cmd: 'cd ~/Desktop/nuzantara-deploy && test -z "$(git status --porcelain)" && git fetch -q origin && test "$(git rev-list --count HEAD..origin/main)" -lt 5',
+        cmd: 'cd ~/nuzantara-deploy && test -z "$(git status --porcelain)" && git fetch -q origin && test "$(git rev-list --count HEAD..origin/main)" -lt 5',
       }
   - id: repomap-pro
     kind: file_sync
@@ -69,7 +69,7 @@ edges:
       {
         type: cmd,
         via: "ssh:pro-lan",
-        cmd: 'test "$(md5 -q ~/.openclaw/bin/openclaw_whatsapp_bridge.py)" = "$(cd ~/Desktop/nuzantara-deploy && git show origin/main:scripts/openclaw_whatsapp_bridge.py | md5 -q)"',
+        cmd: 'test "$(md5 -q ~/.openclaw/bin/openclaw_whatsapp_bridge.py)" = "$(cd ~/nuzantara-deploy && git show origin/main:scripts/openclaw_whatsapp_bridge.py | md5 -q)"',
       }
   - id: fork-fly-pg-backup
     kind: home_fork
@@ -79,7 +79,7 @@ edges:
       {
         type: cmd,
         via: "ssh:pro-lan",
-        cmd: 'test "$(md5 -q ~/scripts/fly-pg-backup.sh)" = "$(cd ~/Desktop/nuzantara-deploy && git show origin/main:scripts/fly-pg-backup.sh | md5 -q)"',
+        cmd: 'test "$(md5 -q ~/scripts/fly-pg-backup.sh)" = "$(cd ~/nuzantara-deploy && git show origin/main:scripts/fly-pg-backup.sh | md5 -q)"',
       }
   - id: fork-fly-qdrant-backup
     kind: home_fork
@@ -90,7 +90,7 @@ edges:
       {
         type: cmd,
         via: "ssh:pro-lan",
-        cmd: 'test "$(md5 -q ~/scripts/fly-qdrant-backup.sh)" = "$(cd ~/Desktop/nuzantara-deploy && git show origin/main:scripts/fly-qdrant-backup.sh | md5 -q)"',
+        cmd: 'test "$(md5 -q ~/scripts/fly-qdrant-backup.sh)" = "$(cd ~/nuzantara-deploy && git show origin/main:scripts/fly-qdrant-backup.sh | md5 -q)"',
       }
   - id: fork-wr2-deploy-pull
     kind: home_fork

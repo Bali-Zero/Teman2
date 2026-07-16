@@ -30,7 +30,7 @@ logger = logging.getLogger("nuzantara-mcp-advanced")
 # --- Configuration ---
 BACKEND_URL = os.getenv("NUZANTARA_BACKEND_URL", "https://nuzantara-rag.fly.dev")
 FLY_APP = os.getenv("FLY_APP", "nuzantara-rag")
-PROJECT_ROOT = os.getenv("NUZANTARA_ROOT", "/Users/nuzantara/Desktop/nuzantara")
+PROJECT_ROOT = os.getenv("NUZANTARA_ROOT", "/Users/nuzantara/nuzantara")
 BACKEND_ROOT = os.path.join(PROJECT_ROOT, "apps/backend-rag")
 MUTATION_CONFIRM_ENV = "NUZANTARA_MCP_ADVANCED_ALLOW_MUTATION"
 

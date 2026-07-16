@@ -29,7 +29,7 @@ echo "▸ 3/5 syncing war-room DATA Pro→Mini (queue + carousel covers) into ~/
 # sync does not produce the queue + carousel root the app needs.
 ssh "$MINI" 'set -e
 mkdir -p "$HOME/.wr2-warroom-sync/output"
-rsync -a --delete pro:/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/ "$HOME/.wr2-warroom-sync/output/"
+rsync -a --delete pro:/Users/nuzantara/nuzantara/apps/war-room/output/ "$HOME/.wr2-warroom-sync/output/"
 test -f "$HOME/.wr2-warroom-sync/output/queue/human-review-queue.json"
 test -d "$HOME/.wr2-warroom-sync/output/carousel"
 count=$(find "$HOME/.wr2-warroom-sync/output/carousel" -maxdepth 1 -type d | wc -l | tr -d " ")

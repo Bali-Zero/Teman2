@@ -44,7 +44,7 @@ PDF splitting tries PyMuPDF (`import fitz`) first, falls back to `pdftoppm`
 neither is available — it never silently drops pages.
 
 Env `WR2_OUTPUT_ROOT` overrides the carousel output base (default
-`~/Desktop/nuzantara/apps/war-room/output/carousel`) so tests/smokes never
+`~/nuzantara/apps/war-room/output/carousel`) so tests/smokes never
 write into the real pipeline output tree (scar W96 — redirectable-by-design).
 """
 
@@ -84,7 +84,7 @@ MAX_SLIDES = 20  # Instagram carousel cap
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".heic"}
 SIPS = "/usr/bin/sips"
 
-DEFAULT_OUTPUT_ROOT = Path.home() / "Desktop/nuzantara/apps/war-room/output/carousel"
+DEFAULT_OUTPUT_ROOT = Path.home() / "nuzantara/apps/war-room/output/carousel"
 
 
 def _log(msg: str) -> None:

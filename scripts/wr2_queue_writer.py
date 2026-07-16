@@ -62,7 +62,7 @@ from typing import Any, Optional
 # ── Constants ──────────────────────────────────────────────────────────────
 
 DEFAULT_QUEUE_PATH = (
-    Path.home() / "Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json"
+    Path.home() / "nuzantara/apps/war-room/output/queue/human-review-queue.json"
 )
 
 # States from which an item may legitimately transition to `published`.

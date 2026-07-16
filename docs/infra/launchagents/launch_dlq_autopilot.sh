@@ -27,7 +27,7 @@ set -a
 source "$ENV_FILE"
 set +a
 
-REPO_DIR="$HOME/Desktop/nuzantara"
+REPO_DIR="$HOME/nuzantara"
 SCRIPT="$REPO_DIR/scripts/dlq_autopilot.py"
 
 if [ ! -f "$SCRIPT" ]; then

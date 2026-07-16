@@ -54,7 +54,7 @@ mkdir -p "$HOME/.agent/decisions/state" "$HOME/logs" "$HOME/Desktop"
 export TELEGRAM_BOT_TOKEN=""
 
 # Default: point the puller at a sandbox deploy dir we'll create per-test.
-DEPLOY_DIR="$HOME/Desktop/nuzantara-deploy"
+DEPLOY_DIR="$HOME/nuzantara-deploy"
 export WR2_DEPLOY_DIR="$DEPLOY_DIR"
 
 PASS=0

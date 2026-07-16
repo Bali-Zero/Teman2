@@ -79,8 +79,8 @@ def test_iso_z_format():
 def test_to_tilde_path_under_home(tmp_path):
     home = tmp_path / "home" / "someuser"
     home.mkdir(parents=True)
-    target = home / "Desktop/nuzantara/apps/war-room/output/carousel/my-slug"
-    assert wci.to_tilde_path(target, home=home) == "~/Desktop/nuzantara/apps/war-room/output/carousel/my-slug"
+    target = home / "nuzantara/apps/war-room/output/carousel/my-slug"
+    assert wci.to_tilde_path(target, home=home) == "~/nuzantara/apps/war-room/output/carousel/my-slug"
 
 
 def test_to_tilde_path_outside_home_unchanged(tmp_path):
@@ -199,7 +199,7 @@ def test_import_source_label_joins_basenames():
 def test_build_queue_item_shape_and_state(tmp_path):
     home = tmp_path / "home" / "someuser"
     home.mkdir(parents=True)
-    carousel_dir = home / "Desktop/nuzantara/apps/war-room/output/carousel/my-slug"
+    carousel_dir = home / "nuzantara/apps/war-room/output/carousel/my-slug"
     now = datetime(2026, 7, 14, 5, 16, 22, tzinfo=timezone.utc)
 
     item = wci.build_queue_item(
@@ -211,8 +211,8 @@ def test_build_queue_item_shape_and_state(tmp_path):
     assert item["topic_slug"] == "my-slug"
     assert item["topic"] == "My Topic"
     assert item["drafted_at"] == "2026-07-14T05:16:22Z"
-    assert item["carousel_path"] == "~/Desktop/nuzantara/apps/war-room/output/carousel/my-slug/"
-    assert item["slides_dir"] == "~/Desktop/nuzantara/apps/war-room/output/carousel/my-slug/slides/"
+    assert item["carousel_path"] == "~/nuzantara/apps/war-room/output/carousel/my-slug/"
+    assert item["slides_dir"] == "~/nuzantara/apps/war-room/output/carousel/my-slug/slides/"
     assert item["drive_url"] is None
     assert item["media_type"] == "carousel"
     assert item["slide_count"] == 5

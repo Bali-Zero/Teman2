@@ -26,7 +26,7 @@ Mini (Tailscale 100.93.236.6, mDNS mini-pro2.local)
 
 ```bash
 ssh nuzantara@100.93.236.6
-cd ~/Desktop/nuzantara
+cd ~/nuzantara
 git pull origin main
 
 # Logs dir
@@ -98,7 +98,7 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.matagaruda.kg-query-
 From Pro:
 
 ```bash
-python3 ~/Desktop/nuzantara/apps/mata-garuda/scripts/bench_kg_api.py \
+python3 ~/nuzantara/apps/mata-garuda/scripts/bench_kg_api.py \
   http://100.93.236.6:8990 100 "/kg/search?q=imigrasi" \
   | tee /tmp/kg-bench.txt
 ```

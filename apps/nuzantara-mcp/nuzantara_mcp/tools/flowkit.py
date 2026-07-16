@@ -21,7 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 LOCAL_PYTHON = REPO_ROOT / "apps/backend-rag/.venv/bin/python"
 LOCAL_CLI = REPO_ROOT / "scripts/flowkit_cli.py"
 PRO_ALIAS = "pro"
-PRO_REPO = "~/Desktop/nuzantara"
+PRO_REPO = "~/nuzantara"
 PRO_PYTHON = "apps/backend-rag/.venv/bin/python"
 PRO_REMOTE_CLI = "/tmp/nuz-flowkit-bridge/flowkit_cli.py"
 

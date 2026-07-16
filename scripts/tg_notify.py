@@ -67,7 +67,7 @@ DEDUP_HOURS = _env_num("TG_DEDUP_HOURS", 6, float)
 DRY_RUN = os.environ.get("TG_DRY_RUN", "") == "1"
 RELAY_SSH = os.environ.get("TG_RELAY_SSH", "")  # e.g. "pro" on M5
 RELAY_GATEWAY = os.environ.get(
-    "TG_RELAY_GATEWAY", "/Users/nuzantara/Desktop/nuzantara/scripts/tg_notify.py"
+    "TG_RELAY_GATEWAY", "/Users/nuzantara/nuzantara/scripts/tg_notify.py"
 )
 
 TIERS = ("p0", "digest", "log")

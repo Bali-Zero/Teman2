@@ -7,7 +7,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/nuzantara/Desktop/nuzantara/scripts/launchd_env_loader.sh</string>
+    <string>/Users/nuzantara/nuzantara/scripts/launchd_env_loader.sh</string>
   </array>
   <key>RunAtLoad</key>
   <true/>

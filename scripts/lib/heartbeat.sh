@@ -5,13 +5,13 @@
 # Atomic via write-to-tmp + mv. Idempotent (overwrites previous).
 #
 # Source pattern (bash):
-#   source ~/Desktop/nuzantara/scripts/lib/heartbeat.sh
+#   source ~/nuzantara/scripts/lib/heartbeat.sh
 #   organism_heartbeat "pro.my_organ" "ok"
 #   organism_heartbeat "pro.my_organ" "error" "rc=42 timeout"
 #
 # CLI pattern (any shell that can't source):
-#   ~/Desktop/nuzantara/scripts/lib/heartbeat.sh pro.my_organ ok
-#   ~/Desktop/nuzantara/scripts/lib/heartbeat.sh pro.my_organ error "rc=42"
+#   ~/nuzantara/scripts/lib/heartbeat.sh pro.my_organ ok
+#   ~/nuzantara/scripts/lib/heartbeat.sh pro.my_organ error "rc=42"
 
 set -o pipefail
 

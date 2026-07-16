@@ -14,7 +14,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/opt/homebrew/bin/python3</string>
-        <string>/Users/nuzantara/Desktop/nuzantara-deploy/scripts/verify_the_verifiers.py</string>
+        <string>/Users/nuzantara/nuzantara-deploy/scripts/verify_the_verifiers.py</string>
         <string>--scope</string>
         <string>all</string>
     </array>

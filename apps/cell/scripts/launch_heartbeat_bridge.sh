@@ -5,7 +5,7 @@
 # Cicatrix: 2026-05-02 test-mock-vs-prod (new 3-PR chain that this resolves).
 set -euo pipefail
 
-REPO_ROOT="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${REPO_ROOT:-$HOME/nuzantara}"
 CELL_DIR="$REPO_ROOT/apps/cell"
 CELL_CORE_DIR="$REPO_ROOT/packages/cell-core"
 

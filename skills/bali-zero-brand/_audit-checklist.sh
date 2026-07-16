@@ -23,7 +23,7 @@ SLUG="${SLUG:-}"
 DOMAIN="${DOMAIN:-tax}"
 SKILL_DIR="${HOME}/.claude/skills/bali-zero-brand"
 AGENTS_DIR="${HOME}/.claude/agents"
-CAROUSEL_ROOT="${HOME}/Desktop/nuzantara/apps/war-room/output/carousel"
+CAROUSEL_ROOT="${HOME}/nuzantara/apps/war-room/output/carousel"
 OUTDIR="${CAROUSEL_ROOT}/${SLUG}"
 
 emit() { printf '%s=%s\n' "$1" "$2"; }

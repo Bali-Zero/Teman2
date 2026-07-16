@@ -15,7 +15,7 @@
 #  - Logs to ~/logs/matagaruda-pipeline-health.log
 set -euo pipefail
 
-REPO="$HOME/Desktop/nuzantara"
+REPO="$HOME/nuzantara"
 VENV="$REPO/apps/mata-garuda/.venv/bin/python"
 LABEL="com.matagaruda.pipeline-health.hourly"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"

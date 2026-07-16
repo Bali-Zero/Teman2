@@ -5,7 +5,7 @@
 # Cron: daily — see com.balizero.wr2.ig-metrics-scrape.daily.plist.
 set -uo pipefail
 export PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
-REPO="/Users/nuzantara/Desktop/nuzantara"
+REPO="/Users/nuzantara/nuzantara"
 LOG="$HOME/logs/wr2-ig-metrics-scrape.log"
 ENV_MASTER="$HOME/.openclaw/workspace/.env.master"
 mkdir -p "$HOME/logs"

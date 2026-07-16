@@ -188,7 +188,7 @@ def _send_telegram(text: str, dedup_key: str = "") -> bool:
         return False
     gateway = Path(__file__).resolve().parent / "tg_notify.py"
     if not gateway.is_file():
-        gateway = Path(os.path.expanduser("~/Desktop/nuzantara/scripts/tg_notify.py"))
+        gateway = Path(os.path.expanduser("~/nuzantara/scripts/tg_notify.py"))
     cmd = [sys.executable, str(gateway), "--tier", "p0",
            "--source", "wa-mirror-bridge-liveness"]
     if dedup_key:

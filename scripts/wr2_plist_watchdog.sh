@@ -18,7 +18,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="${WR2_REPO_ROOT:-${HOME}/Desktop/nuzantara-deploy}"
+REPO_ROOT="${WR2_REPO_ROOT:-${HOME}/nuzantara-deploy}"
 SOURCE_DIR="${REPO_ROOT}/infra/launchagents"
 TARGET_DIR="${HOME}/Library/LaunchAgents"
 SECRETS_FILE="${HOME}/.nuzantara-secrets.env"

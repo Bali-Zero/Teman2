@@ -16,7 +16,7 @@
 #
 # The exporter is installed BEFORE the breaker so the JSONL exists on the
 # breaker's first tick. RUNTIME HOME = the deploy worktree
-# (~/Desktop/nuzantara-deploy), the deploy-puller-refreshed checkout that carries
+# (~/nuzantara-deploy), the deploy-puller-refreshed checkout that carries
 # these scripts (W69 convention).
 #
 # GRACEFUL (W64): a label whose runtime script is not yet present in the deploy
@@ -39,7 +39,7 @@ EXPORT_DIR="$HOME/.agent/cost-ledger"
 UID_VAL="$(id -u)"
 
 # The runtime checkout the plists point at. Must carry the bridge scripts.
-RUNTIME_ROOT="$HOME/Desktop/nuzantara-deploy"
+RUNTIME_ROOT="$HOME/nuzantara-deploy"
 
 # Install order: the exporter (signal-writer) first, the breaker (consumer) last.
 LABELS=(
