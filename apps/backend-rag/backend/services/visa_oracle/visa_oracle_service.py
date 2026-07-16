@@ -129,6 +129,27 @@ SCORE_FAMILY_MATCH = 1.0
 WHATSAPP_NUMBER = "+62 821 3465 159"
 WHATSAPP_BASE_URL = "https://wa.me/6282230102328"
 
+# PR0 hardening (Codex red-team P1 #4, Markdown injection): the 4 chars
+# Telegram's LEGACY Markdown parse_mode (`send_message(..., parse_mode=
+# "Markdown")`, as used by the visa-oracle handoff notification) actually
+# treats as formatting syntax. Deliberately NOT the full MarkdownV2 set
+# (`_*[]()~>#+-=|{}.!`) — this message is sent as legacy v1, which does not
+# recognize backslash as an escape prefix outside these 4 characters;
+# escaping e.g. `.`/`-`/`!` under v1 would insert a literal stray backslash
+# into the rendered message instead of hiding one.
+_TELEGRAM_MARKDOWN_V1_SPECIAL_CHARS: tuple[str, ...] = ("_", "*", "`", "[")
+
+
+def _escape_telegram_markdown_v1(value: Any) -> str:
+    """Escape legacy-Telegram-Markdown special chars in a value about to be
+    interpolated into a `parse_mode="Markdown"` message. Applied at the
+    string-composition boundary in `build_telegram_summary` for every
+    quiz-answer / visa field that ultimately traces back to user input."""
+    text = str(value)
+    for ch in _TELEGRAM_MARKDOWN_V1_SPECIAL_CHARS:
+        text = text.replace(ch, f"\\{ch}")
+    return text
+
 
 # ---------------------------------------------------------------------------
 # Service
@@ -299,13 +320,20 @@ class VisaOracleService:
         Returns:
             Formatted Markdown string for Telegram.
         """
-        nationality = quiz_answers.get("nationality", "Unknown")
-        purpose = quiz_answers.get("purpose", "Unknown")
-        duration = quiz_answers.get("duration", "Unknown")
+        # PR0 hardening (Codex red-team P1 #4): escape every user-influenced
+        # string right at this composition boundary — nationality/purpose/
+        # duration originate from client-declared quiz input (even the
+        # server-snapshot-preferred path traces back to the original
+        # /recommend POST); visa_name is defense-in-depth even though the
+        # router now resolves it server-side.
+        nationality = _escape_telegram_markdown_v1(quiz_answers.get("nationality", "Unknown"))
+        purpose = _escape_telegram_markdown_v1(quiz_answers.get("purpose", "Unknown"))
+        duration = _escape_telegram_markdown_v1(quiz_answers.get("duration", "Unknown"))
         family = quiz_answers.get("family", False)
 
         visa_lines = "\n".join(
-            f"  {i + 1}. {v.get('visa_name', '?')} — {v.get('price', '?')} "
+            f"  {i + 1}. {_escape_telegram_markdown_v1(v.get('visa_name', '?'))} — "
+            f"{_escape_telegram_markdown_v1(v.get('price', '?'))} "
             f"(score: {v.get('score', 0):.1f})"
             for i, v in enumerate(recommended_visas[:3])
         )

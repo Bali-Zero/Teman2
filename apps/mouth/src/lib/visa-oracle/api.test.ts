@@ -157,6 +157,149 @@ describe("parseRecommendResponse", () => {
     expect(() => parseRecommendResponse({})).toThrow();
     expect(() => parseRecommendResponse({ success: true })).toThrow();
   });
+
+  // ---------------------------------------------------------------------
+  // FIX-3 (Codex red-team P1 #2, garbage candidates): a visa row is only
+  // valid with a non-empty `visa_name` AND a finite, non-negative `score`.
+  // ---------------------------------------------------------------------
+
+  it("FIX-3 guilt: a row missing visa_name entirely is not a valid candidate", () => {
+    const raw = {
+      success: true,
+      session_id: "s1",
+      state: "SUPPORTED_CANDIDATES",
+      visas: [{ score: 2 }],
+    };
+
+    const parsed = parseRecommendResponse(raw);
+    expect(parsed.visas).toEqual([]);
+  });
+
+  it("FIX-3 guilt: a row with an empty-string visa_name is not a valid candidate", () => {
+    const raw = {
+      success: true,
+      session_id: "s1",
+      state: "SUPPORTED_CANDIDATES",
+      visas: [
+        {
+          visa_name: "   ",
+          category: "x",
+          price: "1 IDR",
+          duration: "",
+          validity: "",
+          notes: "",
+          score: 2,
+        },
+      ],
+    };
+
+    const parsed = parseRecommendResponse(raw);
+    expect(parsed.visas).toEqual([]);
+  });
+
+  it("FIX-3 guilt: a row with a negative score is not a valid candidate", () => {
+    const raw = {
+      success: true,
+      session_id: "s1",
+      state: "SUPPORTED_CANDIDATES",
+      visas: [
+        {
+          visa_name: "Suspicious Visa",
+          category: "x",
+          price: "1 IDR",
+          duration: "",
+          validity: "",
+          notes: "",
+          score: -1,
+        },
+      ],
+    };
+
+    const parsed = parseRecommendResponse(raw);
+    expect(parsed.visas).toEqual([]);
+  });
+
+  it("FIX-3 guilt: a row with a non-finite score (NaN/Infinity) is not a valid candidate", () => {
+    const raw = {
+      success: true,
+      session_id: "s1",
+      state: "SUPPORTED_CANDIDATES",
+      visas: [
+        {
+          visa_name: "NaN Visa",
+          category: "x",
+          price: "1 IDR",
+          duration: "",
+          validity: "",
+          notes: "",
+          score: NaN,
+        },
+        {
+          visa_name: "Infinity Visa",
+          category: "x",
+          price: "1 IDR",
+          duration: "",
+          validity: "",
+          notes: "",
+          score: Infinity,
+        },
+      ],
+    };
+
+    const parsed = parseRecommendResponse(raw);
+    expect(parsed.visas).toEqual([]);
+  });
+
+  it("FIX-3 innocence: a well-formed row with score 0 IS a valid candidate (0 is not negative)", () => {
+    const raw = {
+      success: true,
+      session_id: "s1",
+      state: "SUPPORTED_CANDIDATES",
+      visas: [
+        {
+          visa_name: "Zero Score Visa",
+          category: "x",
+          price: "1 IDR",
+          duration: "",
+          validity: "",
+          notes: "",
+          score: 0,
+        },
+      ],
+    };
+
+    const parsed = parseRecommendResponse(raw);
+    expect(parsed.visas).toHaveLength(1);
+  });
+
+  it("FIX-8 (b): SUPPORTED_CANDIDATES with an all-invalid visas array ends up empty, never trusted", () => {
+    const raw = {
+      success: true,
+      session_id: "s1",
+      state: "SUPPORTED_CANDIDATES",
+      visas: [
+        { score: 2 },
+        { visa_name: "", score: 5 },
+        { visa_name: "X", score: -3 },
+      ],
+    };
+
+    const parsed = parseRecommendResponse(raw);
+    expect(parsed.state).toBe("SUPPORTED_CANDIDATES");
+    expect(parsed.visas).toEqual([]);
+  });
+
+  it("FIX-8 (c): passes through success=false unchanged (legacy no-state path)", () => {
+    const raw = {
+      success: false,
+      session_id: "s1",
+      visas: [],
+    };
+
+    const parsed = parseRecommendResponse(raw);
+    expect(parsed.success).toBe(false);
+    expect(parsed.state).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -286,6 +429,78 @@ describe("describeRecommendOutcome", () => {
     );
     expect(outcome.headline).toBeTruthy();
     expect(outcome.detail).toBeTruthy();
+    expect(outcome.showWhatsAppEscape).toBe(true);
+  });
+
+  // ---------------------------------------------------------------------
+  // FIX-8 (Codex red-team P2 #7, success semantics + parser contradictions)
+  // ---------------------------------------------------------------------
+
+  it("FIX-8 (a) guilt: success=false always yields an error outcome, never 'here's what fits'", () => {
+    const outcome = describeRecommendOutcome(
+      response({
+        success: false,
+        state: "TEMPORARILY_UNAVAILABLE",
+        visas: [],
+      }),
+    );
+    expect(outcome.headline).not.toMatch(/here's what fits/i);
+    expect(outcome.showWhatsAppEscape).toBe(true);
+  });
+
+  it("FIX-8 (a) guilt: success=false wins even when state/visas look like a clean match", () => {
+    // A contradictory payload (should never happen from a well-behaved
+    // backend, but the frontend must not trust the label alone) — success
+    // is a stronger signal than a non-empty visas array.
+    const outcome = describeRecommendOutcome(
+      response({
+        success: false,
+        state: "SUPPORTED_CANDIDATES",
+        visas: [
+          {
+            visa_name: "Working KITAS",
+            category: "x",
+            price: "1 IDR",
+            duration: "",
+            validity: "",
+            notes: "",
+            score: 4,
+          },
+        ],
+      }),
+    );
+    expect(outcome.headline).not.toMatch(/here's what fits/i);
+    expect(outcome.showWhatsAppEscape).toBe(true);
+  });
+
+  it("FIX-8 (a) innocence: success=true with a real match still renders 'here's what fits'", () => {
+    const outcome = describeRecommendOutcome(
+      response({
+        success: true,
+        state: "SUPPORTED_CANDIDATES",
+        visas: [
+          {
+            visa_name: "Working KITAS",
+            category: "x",
+            price: "1 IDR",
+            duration: "",
+            validity: "",
+            notes: "",
+            score: 4,
+          },
+        ],
+      }),
+    );
+    expect(outcome.headline).toMatch(/here's what fits/i);
+    expect(outcome.showWhatsAppEscape).toBe(false);
+  });
+
+  it("FIX-8 (b) guilt: SUPPORTED_CANDIDATES with empty visas downgrades to a human-review outcome, never a fabricated match", () => {
+    const outcome = describeRecommendOutcome(
+      response({ success: true, state: "SUPPORTED_CANDIDATES", visas: [] }),
+    );
+    expect(outcome.headline).not.toMatch(/here's what fits/i);
+    expect(outcome.headline.toLowerCase()).toContain("human");
     expect(outcome.showWhatsAppEscape).toBe(true);
   });
 });

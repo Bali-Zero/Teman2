@@ -308,6 +308,97 @@ def test_build_telegram_summary_contains_nationality(service: VisaOracleService)
 
 
 # ---------------------------------------------------------------------------
+# build_telegram_summary — FIX-5 (Codex red-team P1 #4) Markdown escaping
+# ---------------------------------------------------------------------------
+#
+# `build_telegram_summary` is sent with `parse_mode="Markdown"` (legacy
+# Telegram v1), which treats `_`, `*`, backtick, and `[` as formatting
+# syntax. A user who types e.g. `nationality: "_pwned_"` into the quiz can
+# otherwise inject formatting/link-like structure into the message Damar's
+# team reads. Deliberately NOT the full MarkdownV2 char set — legacy v1
+# doesn't recognize backslash as an escape prefix outside these 4 chars, so
+# escaping e.g. `.`/`-`/`!` would insert a literal stray backslash instead
+# of hiding one.
+
+
+def test_build_telegram_summary_escapes_underscore_in_nationality(
+    service: VisaOracleService,
+) -> None:
+    """Guilt: an underscore in a user-controlled field must not survive
+    unescaped — Markdown v1 would render `_pwned_` as italic."""
+    summary = service.build_telegram_summary(
+        session_id="x" * 32,
+        quiz_answers={"nationality": "_pwned_", "purpose": "visit", "duration": "short"},
+        recommended_visas=[],
+        messages=[],
+        language="en",
+    )
+    assert "_pwned_" not in summary
+    assert "\\_pwned\\_" in summary
+
+
+def test_build_telegram_summary_escapes_asterisk_and_backtick(
+    service: VisaOracleService,
+) -> None:
+    """Guilt: `*` (bold) and backtick (code span) must also be escaped."""
+    summary = service.build_telegram_summary(
+        session_id="x" * 32,
+        quiz_answers={"nationality": "US", "purpose": "*bold* `code`", "duration": "short"},
+        recommended_visas=[],
+        messages=[],
+        language="en",
+    )
+    assert "*bold*" not in summary
+    assert "`code`" not in summary
+    assert "\\*bold\\*" in summary
+    assert "\\`code\\`" in summary
+
+
+def test_build_telegram_summary_escapes_visa_name_and_price(
+    service: VisaOracleService,
+) -> None:
+    """Guilt: `visa_name`/`price` in `recommended_visas` are also
+    user-influenced (they trace back to a client-declared session in the
+    body-only handoff fallback path) — defense-in-depth even though the
+    router now resolves them server-side for the verified path."""
+    summary = service.build_telegram_summary(
+        session_id="x" * 32,
+        quiz_answers={"nationality": "US", "purpose": "work", "duration": "long"},
+        recommended_visas=[{"visa_name": "[Fake_Visa]", "price": "1_000_000 IDR", "score": 1.0}],
+        messages=[],
+        language="en",
+    )
+    assert "[Fake_Visa]" not in summary
+    assert "\\[Fake\\_Visa]" in summary
+
+
+def test_build_telegram_summary_plain_text_unaffected(service: VisaOracleService) -> None:
+    """Innocence: ordinary text with none of the 4 special chars renders
+    byte-for-byte unchanged — no stray backslashes inserted."""
+    summary = service.build_telegram_summary(
+        session_id="x" * 32,
+        quiz_answers={"nationality": "Brazilian", "purpose": "retire", "duration": "long"},
+        recommended_visas=[],
+        messages=[],
+        language="en",
+    )
+    assert "\\" not in summary
+
+
+def test_escape_telegram_markdown_v1_only_escapes_four_chars() -> None:
+    """Unit test for the escape helper directly: legacy Markdown v1 doesn't
+    treat `.`/`-`/`!`/`(`/`)` as syntax — escaping them would introduce a
+    stray literal backslash into the rendered message rather than hiding
+    one, so they must pass through untouched."""
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _escape_telegram_markdown_v1,
+    )
+
+    result = _escape_telegram_markdown_v1("a_b*c`d[e.f-g!h(i)j")
+    assert result == "a\\_b\\*c\\`d\\[e.f-g!h(i)j"
+
+
+# ---------------------------------------------------------------------------
 # hash_ip and generate_session_id
 # ---------------------------------------------------------------------------
 

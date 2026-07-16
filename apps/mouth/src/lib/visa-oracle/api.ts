@@ -60,13 +60,22 @@ function isVisaRecommendation(value: unknown): value is VisaRecommendation {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
+    // FIX-3 (Codex red-team P1 #2, garbage candidates): a non-empty
+    // `visa_name` string and a finite, non-negative `score` are the two
+    // fields this row is actually rendered/sorted by — an empty name or a
+    // NaN/Infinity/negative score is not a "row missing some polish", it's
+    // not a real candidate at all. Mirrors the backend's
+    // `_filter_complete_visas` completeness gate.
     typeof v.visa_name === "string" &&
+    v.visa_name.trim().length > 0 &&
     typeof v.category === "string" &&
     typeof v.price === "string" &&
     typeof v.duration === "string" &&
     typeof v.validity === "string" &&
     typeof v.notes === "string" &&
-    typeof v.score === "number"
+    typeof v.score === "number" &&
+    Number.isFinite(v.score) &&
+    v.score >= 0
   );
 }
 
@@ -156,6 +165,20 @@ export interface RecommendOutcome {
 export function describeRecommendOutcome(
   response: RecommendResponse,
 ): RecommendOutcome {
+  // FIX-8 (Codex red-team P2 #7, success semantics): `success=false` is a
+  // genuine backend failure (the scoring-exception path) — it must win
+  // over any `state`/`visas` reading, unconditionally. A parser or a
+  // future backend revision could in principle pair `success=false` with a
+  // non-empty `visas` array; never render "here's what fits" on a call
+  // the backend itself flagged as failed.
+  if (response.success === false) {
+    return {
+      headline: "Something went wrong on our end",
+      detail: "Please try again shortly, or talk to our team now.",
+      showWhatsAppEscape: true,
+    };
+  }
+
   if (response.visas.length > 0) {
     const n = response.visas.length;
     return {
@@ -177,6 +200,14 @@ export function describeRecommendOutcome(
       };
     case "HUMAN_REVIEW_REQUIRED":
     case "NO_SUPPORTED_PATH":
+    case "SUPPORTED_CANDIDATES":
+      // FIX-8: the backend labeled this SUPPORTED_CANDIDATES, but the
+      // `visas.length > 0` guard above didn't fire — every row was
+      // missing/non-array/failed runtime validation (parseRecommendResponse
+      // already empties `visas` in this case, but never trust the label
+      // alone here either). This is a confirmed "needs a human" case, not
+      // an ambiguous/unrecognized one — do not let it fall through to the
+      // generic default copy below.
       return {
         headline: "This case needs a human specialist",
         detail:

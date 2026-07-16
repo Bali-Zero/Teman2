@@ -60,8 +60,10 @@ def _weak_search(score: float = 0.10) -> _StubSearch:
 
 @pytest.mark.asyncio
 async def test_obsolete_code_weak_evidence_stays_abstain(monkeypatch):
-    """B211A mentioned + top_score below 0.30 -> confidence stays ABSTAIN and
-    the LLM is never called."""
+    """B211A mentioned + top_score below 0.30 -> confidence stays ABSTAIN,
+    the LLM is never called, and (FIX-7, Codex red-team P2 #6) the answer is
+    the DETERMINISTIC zero-LLM obsolete-code template — not the generic
+    fallback, and not a generated explanation."""
     from backend.app.routers import visa_oracle as mod
 
     monkeypatch.setattr(
@@ -79,7 +81,10 @@ async def test_obsolete_code_weak_evidence_stays_abstain(monkeypatch):
 
     assert resp.confidence == mod.CONFIDENCE_ABSTAIN
     assert resp.sources == []
-    assert resp.answer == mod.ABSTAIN_FALLBACK_BY_LANG["en"]
+    assert resp.answer == mod._obsolete_code_static_answer(("B211A", "irrelevant"))
+    assert resp.answer != mod.ABSTAIN_FALLBACK_BY_LANG["en"]
+    assert "B211A" in resp.answer
+    assert "C1" in resp.answer
 
 
 @pytest.mark.asyncio
@@ -182,3 +187,81 @@ async def test_obsolete_code_strong_evidence_still_answers_normally(monkeypatch)
 
     assert resp.confidence == mod.CONFIDENCE_NORMAL
     assert "C1" in resp.answer
+
+
+@pytest.mark.asyncio
+async def test_high_score_but_empty_content_stays_abstain(monkeypatch):
+    """FIX-4 (Codex red-team P1 #3, empty-content generation): a hit can
+    carry a real similarity score (0.9, well past the 0.55 NORMAL floor)
+    but empty `content` — nothing for the LLM to ground on. Guilt: this
+    must ABSTAIN, not reach generation on an empty context string."""
+    from backend.app.routers import visa_oracle as mod
+
+    monkeypatch.setattr(
+        "backend.services.rag.hybrid_search.HybridSearchService",
+        lambda: _StubSearch([{"content": "", "score": 0.9, "source": "x"}]),
+    )
+    monkeypatch.setattr(
+        "backend.llm.genai_client.get_genai_client",
+        lambda: _NeverCalledGemini(),
+    )
+
+    req = _build_request()
+    body = mod.ChatRequest(session_id="s1", message="What visa do I need for surfing?")
+    resp = await mod.chat(req, body, db_pool=None)
+
+    assert resp.confidence == mod.CONFIDENCE_ABSTAIN
+    assert resp.sources == []
+
+
+@pytest.mark.asyncio
+async def test_whitespace_only_content_stays_abstain(monkeypatch):
+    """Guilt (variant): whitespace-only content is not "usable" content
+    either — same ABSTAIN outcome as a fully empty string."""
+    from backend.app.routers import visa_oracle as mod
+
+    monkeypatch.setattr(
+        "backend.services.rag.hybrid_search.HybridSearchService",
+        lambda: _StubSearch([{"content": "   \n\t  ", "score": 0.9, "source": "x"}]),
+    )
+    monkeypatch.setattr(
+        "backend.llm.genai_client.get_genai_client",
+        lambda: _NeverCalledGemini(),
+    )
+
+    req = _build_request()
+    body = mod.ChatRequest(session_id="s1", message="What visa do I need for surfing?")
+    resp = await mod.chat(req, body, db_pool=None)
+
+    assert resp.confidence == mod.CONFIDENCE_ABSTAIN
+
+
+@pytest.mark.asyncio
+async def test_mixed_results_empty_content_row_dropped_real_content_kept(monkeypatch):
+    """Innocence: a high-score EMPTY-content row alongside a genuine
+    lower-score row with real content must not push the empty row's score
+    into `top_score` — the filter runs before top_score is computed, so
+    the surviving real row's score (0.9 here) legitimately drives NORMAL."""
+    from backend.app.routers import visa_oracle as mod
+
+    class _Gemini:
+        async def generate_content(self, *, contents, **_kw):
+            return {"text": "Real grounded answer."}
+
+    monkeypatch.setattr(
+        "backend.services.rag.hybrid_search.HybridSearchService",
+        lambda: _StubSearch(
+            [
+                {"content": "", "score": 0.95, "source": "empty-but-scored"},
+                {"content": "Real visa content here.", "score": 0.9, "source": "real"},
+            ]
+        ),
+    )
+    monkeypatch.setattr("backend.llm.genai_client.get_genai_client", lambda: _Gemini())
+
+    req = _build_request()
+    body = mod.ChatRequest(session_id="s1", message="What visa do I need for surfing?")
+    resp = await mod.chat(req, body, db_pool=None)
+
+    assert resp.confidence == mod.CONFIDENCE_NORMAL
+    assert resp.sources == ["real"]
