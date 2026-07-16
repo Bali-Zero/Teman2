@@ -582,6 +582,49 @@ func test_publishEligibilityCrossFinding() {
             "guilt: already-published carousel is not eligible for a fresh publish")
 }
 
+func test_isPublishedIndependentFieldCheck() {
+    T.suite("isQueueItemPublished / Carousel.isPublished — state & verdict checked independently (2026-07-16 final-gate finding)")
+
+    func item(state: String?, verdict: String?, url: String? = nil) -> ReviewItem {
+        var obj: [String: Any] = ["id": "x", "topic_slug": "x"]
+        if let s = state { obj["state"] = s }
+        if let v = verdict { obj["critic_overall_verdict"] = v }
+        if let u = url { obj["instagram_post_url"] = u }
+        let data = try! JSONSerialization.data(withJSONObject: obj)
+        return try! JSONDecoder().decode(ReviewItem.self, from: data)
+    }
+
+    func fakeCarousel(state: String?, criticVerdict: String?, instagramURL: String? = nil) -> Carousel {
+        Carousel(slug: "x", directory: URL(fileURLWithPath: "/tmp/x"),
+                 slidesDir: URL(fileURLWithPath: "/tmp/x/slides"), slidePNGs: [],
+                 modified: Date(), topic: nil, domain: nil, criticVerdict: criticVerdict,
+                 slideCount: 8, imagegenFallback: false, coverURL: nil, metrics: nil,
+                 instagramURL: instagramURL, publishedAt: nil, canvaURL: nil, state: state)
+    }
+
+    // COLPEVOLEZZA — the exact corner caught in final-gate review: verdict="pass" is
+    // non-nil, so the OLD coalesced `critic_overall_verdict ?? state` NEVER even looked
+    // at `state`. An app-enqueued legacy row (pre-#2442 fabricated "pass" verdict)
+    // later marked `state: "published"` with no URL backfill must still read as
+    // published — each field is now checked independently, not coalesced.
+    T.check(isQueueItemPublished(item(state: "published", verdict: "pass")),
+            "guilt: verdict=\"pass\" no longer masks state=\"published\" (isQueueItemPublished)")
+    T.check(fakeCarousel(state: "published", criticVerdict: "pass").isPublished,
+            "guilt: same corner case on Carousel.isPublished")
+
+    // INNOCENZA — every previously-working path must still work.
+    T.check(isQueueItemPublished(item(state: nil, verdict: nil, url: "https://instagram.com/p/x/")),
+            "innocence: URL alone still marks published")
+    T.check(isQueueItemPublished(item(state: "published", verdict: nil)),
+            "innocence: state alone (no verdict) still marks published")
+    T.check(isQueueItemPublished(item(state: nil, verdict: "published")),
+            "innocence: verdict alone (no state) still marks published")
+    T.check(isQueueItemPublished(item(state: "drafted", verdict: "pass")) == false,
+            "innocence: neither field says \"published\" -> not published (independent OR doesn't over-trigger)")
+    T.check(fakeCarousel(state: "drafted", criticVerdict: "pass").isPublished == false,
+            "innocence: same non-trigger case on Carousel.isPublished")
+}
+
 func test_stateWiredThroughScanCarousels() {
     T.suite("WarRoom.scanCarousels wires raw state through the queue join (not just verdict)")
 
@@ -802,6 +845,7 @@ let suites: [() -> Void] = [
     test_matchCarouselPrecedenceOrder,
     test_completeOrNothingGateHardening,
     test_publishEligibilityCrossFinding,
+    test_isPublishedIndependentFieldCheck,
     test_stateWiredThroughScanCarousels,
     test_carouselPhaseMapping,
     test_instagramCaptionValidation,

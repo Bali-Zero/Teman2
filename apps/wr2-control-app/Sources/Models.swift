@@ -171,14 +171,23 @@ struct Carousel: Identifiable, Equatable {
 
     /// Mirrors `isQueueItemPublished(_:)` below, applied to this struct's already-
     /// flattened fields (a Carousel doesn't retain the raw ReviewItem it was joined
-    /// from). A trimmed non-empty `instagramURL` OR a trusted `criticVerdict=="published"`
-    /// (fed from `item.critic_overall_verdict ?? item.state` at join time) — never bare
+    /// from). Published if EITHER: a trimmed non-empty `instagramURL`, OR `state`
+    /// trimmed+lowercased == "published", OR `criticVerdict` trimmed+lowercased ==
+    /// "published" — `state` and `criticVerdict` are checked INDEPENDENTLY, never
+    /// coalesced (`??`). Coalescing was the bug (2026-07-16 finding-3 corner, caught in
+    /// final-gate review): `criticVerdict` is ITSELF `critic_overall_verdict ?? state`
+    /// at join time, so a row with a non-nil verdict (e.g. an app-enqueued legacy
+    /// "pass", pre-#2442 fabricated) permanently hides `state` even after that row is
+    /// later marked `state: "published"` without a URL backfill — an independent
+    /// per-field OR check is required to catch it, matching the "state must not be
+    /// masked" spirit already applied to `phase`/`effectiveStatus` above. Never bare
     /// presence of the URL key, which an empty string could satisfy (Codex red-team
     /// finding #3, 2026-07-16).
     var isPublished: Bool {
         let urlNonEmpty = instagramURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-        let trustedPublishedState = criticVerdict?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "published"
-        return urlNonEmpty || trustedPublishedState
+        let normalizedState = (state ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedVerdict = (criticVerdict ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return urlNonEmpty || normalizedState == "published" || normalizedVerdict == "published"
     }
 
     /// L10n key for the critic verdict (or the raw value if unknown). Kept Foundation-pure;
@@ -319,23 +328,32 @@ struct ReviewItem: Identifiable, Equatable, Decodable {
 
 /// Canonical "is this genuinely published" predicate — the ONE rule shared by the A2
 /// completeness gate's exemption (WarRoom.scanCarousels), `Carousel.isPublished` above,
-/// and the queue's second-pass virtual-carousel materialization. Two conditions, either
-/// sufficient:
+/// and the queue's second-pass virtual-carousel materialization. Published if ANY of:
 ///  - a trimmed non-empty `instagram_post_url` — an empty string (present but blank,
 ///    not absent) must NEVER count, or an incomplete render could bypass the
 ///    completeness gate just by carrying a stray blank field (Codex red-team finding
 ///    #3, 2026-07-16, guilt direction);
-///  - a trusted `state`/`critic_overall_verdict` of exactly `"published"` — a legacy row
-///    that reached this state before its URL/timestamp were backfilled must still count,
+///  - `state` trimmed+lowercased == `"published"`;
+///  - `critic_overall_verdict` trimmed+lowercased == `"published"` — a legacy row that
+///    reached this verdict before its URL/timestamp were backfilled must still count,
 ///    or it silently vanishes from the gallery (same finding, innocence direction).
+/// `state` and `critic_overall_verdict` are checked INDEPENDENTLY, never coalesced
+/// (`?? `) — final-gate finding, 2026-07-16: the original coalesced form
+/// `(critic_overall_verdict ?? state)` let a non-nil verdict (e.g. an app-enqueued
+/// legacy "pass", pre-#2442 fabricated verdict) permanently hide `state` even after
+/// that row was later marked `state: "published"` — an app-side markPublished with no
+/// URL backfill would then read as UNPUBLISHED, and if the carousel were also
+/// disk-incomplete it would wrongly vanish from the gallery instead of being exempted.
 func isQueueItemPublished(_ item: ReviewItem) -> Bool {
     if let url = item.instagram_post_url,
        url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
         return true
     }
-    let state = (item.critic_overall_verdict ?? item.state ?? "")
+    let normalizedState = (item.state ?? "")
         .trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    return state == "published"
+    let normalizedVerdict = (item.critic_overall_verdict ?? "")
+        .trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return normalizedState == "published" || normalizedVerdict == "published"
 }
 
 /// Raw-dict variant of `Carousel.isPublishEligible`, for `QueueWriter` — which mutates
