@@ -1270,6 +1270,57 @@ def _check_forbidden_phrases(slide: dict[str, Any], *, index: int) -> None:
         )
 
 
+# ---------------------------------------------------------------------------
+# take_label variety gate (evidence-carved, 2026-07-16 — kills the single-
+# example "OUR TAKE"/"OUR READ" anchor: scar family #3, ground-ourread audit
+# found 6/6 evidence-carved carousels in the corpus used the same pair,
+# because it was the ONLY example present anywhere in the doctrine —
+# evidence-carved.md, brand-bali-zero.md x3, wr2_draft_generator.py x2,
+# dark-status-list.md legacy. See skills/bali-zero-brand/layouts/
+# evidence-carved.md "## take_label variants" for the replacement
+# vocabulary.
+#
+# WARN-only here by design, not an oversight: this function sees one slide
+# dict, never the queue/DB state that says whether the draft is already
+# published. Hard-failing here would also brick a legitimate REPOINT
+# re-render of an already-published legacy carousel that still carries the
+# old label (history is immutable — see wr2_html_render_apply.py's
+# _REPOINTABLE_STATES doctrine). The HARD gate for genuinely new,
+# not-yet-published drafts lives in wr2_html_render_apply.py, which DOES
+# have queue-state visibility (_is_prepublish_draft).
+# ---------------------------------------------------------------------------
+TAKE_LABEL_BANNED = {
+    "OUR TAKE", "OUR READ", "OUR VIEW",
+    "TAKE", "FACT", "FACTS", "NOTE", "REALITY", "KEY FACT",
+}
+
+
+def _take_label_violation(slide: dict[str, Any]) -> str | None:
+    """Whole-string match after strip+uppercase — NEVER substring (scar
+    family #3 over-match discipline): a legitimate kicker like "TAKEAWAY FOR
+    SELLERS" contains "TAKE" but must not trigger. Returns the offending
+    take_label verbatim (original case, for the log message) or None."""
+    label = str(slide.get("take_label") or "").strip()
+    if not label:
+        return None
+    if label.upper() in TAKE_LABEL_BANNED:
+        return label
+    return None
+
+
+def _check_take_label_variety(slide: dict[str, Any], *, index: int) -> None:
+    """Logs (never raises — see module-level rationale above) when a slide's
+    evidence-carved take_label matches the retired single-example anchor."""
+    hit = _take_label_violation(slide)
+    if hit:
+        logger.warning(
+            "take_label variety: slide %d uses retired anchor label %r — "
+            "see evidence-carved.md '## take_label variants' for the "
+            "replacement vocabulary",
+            index, hit,
+        )
+
+
 # Article 6.1: "Body length: 25-50 words per slide. Hard fail if outside
 # range. Cover slide exempt (title only)."
 _ART_6_1_BODY_WORD_MIN = 25
@@ -1326,11 +1377,13 @@ def _check_body_word_count(skeleton: str, slide: dict[str, Any], *, index: int, 
 
 
 def _check_slide_constitution_gates(skeleton: str, slide: dict[str, Any], *, index: int, family: str) -> None:
-    """Run both Article 7 + Article 6.1 gates for one slide. Single call site
-    so compose_carousel and materialize_slide_html stay in lockstep (both
-    build one HTML file per slide from the same skeleton + slide dict)."""
+    """Run Article 7, Article 6.1, and the take_label variety check for one
+    slide. Single call site so compose_carousel and materialize_slide_html
+    stay in lockstep (both build one HTML file per slide from the same
+    skeleton + slide dict)."""
     _check_forbidden_phrases(slide, index=index)
     _check_body_word_count(skeleton, slide, index=index, family=family)
+    _check_take_label_variety(slide, index=index)
 
 
 def _default_heading_subhead_colors(slide: dict[str, Any]) -> tuple[str, str]:

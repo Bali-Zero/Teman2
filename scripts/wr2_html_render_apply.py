@@ -870,6 +870,74 @@ async def _ensure_live(conn: "asyncpg.Connection", dsn: str) -> "asyncpg.Connect
     return conn
 
 
+# ── take_label hard gate (evidence-carved, 2026-07-16) ──────────────────────────
+#
+# composer.py's _check_take_label_variety is WARN-only by design (it sees one
+# slide, never queue/publish state). THIS worker DOES know that state (via the
+# review queue, same source _append_review_queue already reads for its
+# REPOINTABLE_STATES contract), so the hard fail lives here: a genuinely new,
+# not-yet-published draft carrying the retired "OUR TAKE"/"OUR READ" anchor is
+# blocked before Playwright/Drive spend; a REPOINT re-render of an
+# already-published/archived legacy carousel is exempt (history is immutable —
+# warn only, via composer's per-slide check).
+
+
+def _take_label_hard_gate_violations(slides: list[dict]) -> list[str]:
+    """Pure function, no I/O — collects banned take_label hits across every
+    slide. Reuses composer's single banned-set checker so the WARN gate and
+    this HARD gate can never drift apart on what counts as a violation."""
+    from wr2_html_renderer.composer import _take_label_violation
+
+    hits: list[str] = []
+    for i, slide in enumerate(slides, 1):
+        hit = _take_label_violation(slide)
+        if hit:
+            hits.append(f"slide {i}: {hit!r}")
+    return hits
+
+
+def _queue_state_for_draft(draft_id: str, queue: list[dict]) -> str | None:
+    """Pure lookup: the existing queue entry's state for this draft_id, or
+    None if this draft_id has never been queued before (a brand-new draft,
+    never a repoint)."""
+    for item in queue:
+        if isinstance(item, dict) and item.get("draft_id") == draft_id:
+            return item.get("state")
+    return None
+
+
+def _is_prepublish_draft(draft_id: str, *, queue_path: Path | None = None) -> bool:
+    """True when a hard take_label gate is safe to apply: this draft_id has
+    no queue entry (brand-new) or its existing entry is still in
+    _REPOINTABLE_STATES (drafted/reviewed/rejected/drafted_needs_human_edit).
+    False when the entry is already published/archived/legacy-no-state —
+    history is immutable (same contract _append_review_queue enforces for
+    REPOINT), so a re-render of OLD content must warn, never hard-fail, or a
+    legitimate REPOINT of a published carousel would get bricked.
+
+    Best-effort UNLOCKED peek — this only decides WARN-vs-HARD, not the queue
+    write itself (that stays behind _append_review_queue's fcntl lock). A
+    missing or unreadable queue defaults to True (apply the hard gate): the
+    fail-closed direction here is "catch a genuinely new bad draft", never
+    "silently let a banned label slip through because the queue read hiccuped".
+    """
+    import json as _json
+
+    qp = queue_path if queue_path is not None else (_default_output_root() / "queue" / "human-review-queue.json")
+    if not qp.exists():
+        return True
+    try:
+        queue = _json.loads(qp.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return True
+    if not isinstance(queue, list):
+        return True
+    state = _queue_state_for_draft(draft_id, queue)
+    if state is None:
+        return True
+    return state in _REPOINTABLE_STATES
+
+
 # ── apply one draft ──────────────────────────────────────────────────────────────
 async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str:
     """Full lifecycle for one draft. Uses a dedicated connection for the heartbeat so it
@@ -898,6 +966,16 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
             await _pg.release_lease_permanent(main_conn, draft_id=draft_id, status="render_failed", reason="no_slides")
             await _ops_alert(f"WR2 HTML: draft {draft_id} has no slides -> render_failed")
             return "no_slides"
+
+        # take_label hard gate (2026-07-16) — fail BEFORE the ~15min render +
+        # Drive spend, and before any published-legacy REPOINT is at risk of
+        # bricking. See _is_prepublish_draft docstring for the exemption.
+        take_label_hits = _take_label_hard_gate_violations(slides)
+        if take_label_hits and _is_prepublish_draft(str(draft_id)):
+            reason = f"take_label banned: {'; '.join(take_label_hits)}"
+            await _pg.release_lease_permanent(main_conn, draft_id=draft_id, status="render_failed", reason=reason)
+            await _ops_alert(f"WR2 HTML: draft {draft_id} {reason} -> render_failed (evidence-carved retired-anchor gate)")
+            return "take_label_banned"
 
         hb_task = asyncio.create_task(_heartbeat_loop(hb_conn, str(draft_id), owner, stop, hb_interval))
 

@@ -13,7 +13,13 @@ import urllib.request
 from pathlib import Path
 
 import pytest
-from scripts.wr2_html_render_apply import _HeroServer, _normalize_heroes
+from scripts.wr2_html_render_apply import (
+    _HeroServer,
+    _is_prepublish_draft,
+    _normalize_heroes,
+    _queue_state_for_draft,
+    _take_label_hard_gate_violations,
+)
 
 # ── hero normalizer (#13) ────────────────────────────────────────────────────
 
@@ -55,6 +61,89 @@ def test_normalizer_no_fake_url_for_missing_hero():
     with _HeroServer(hero_dir) as server:
         norm = _normalize_heroes(slides, hero_dir, server)
         assert "image_url" not in norm[0]
+
+
+# ── take_label hard gate (evidence-carved, 2026-07-16) ───────────────────────
+# Composer's _check_take_label_variety is WARN-only (no queue-state
+# visibility); THIS worker's gate is the HARD fail for not-yet-published
+# drafts. Guilt+innocence per scar family #3 (guard-conformance): fires on a
+# real violation, does NOT brick a REPOINT of an already-published carousel.
+
+
+def test_take_label_hard_gate_guilt_collects_all_violations():
+    slides = [
+        {"headline": "COVER"},
+        {"take_label": "OUR TAKE", "take_line": "one month, one category."},
+        {"take_label": "the verdict"},  # legit, not a hit
+        {"take_label": "KEY FACT"},
+    ]
+    hits = _take_label_hard_gate_violations(slides)
+    assert len(hits) == 2
+    assert any("slide 2" in h and "OUR TAKE" in h for h in hits)
+    assert any("slide 4" in h and "KEY FACT" in h for h in hits)
+
+
+def test_take_label_hard_gate_innocence_no_hits():
+    slides = [{"take_label": "THE UPSHOT"}, {"take_label": "THE STAKES"}]
+    assert _take_label_hard_gate_violations(slides) == []
+
+
+def test_queue_state_for_draft_finds_matching_entry():
+    queue = [
+        {"draft_id": "aaa", "state": "published"},
+        {"draft_id": "bbb", "state": "drafted"},
+    ]
+    assert _queue_state_for_draft("bbb", queue) == "drafted"
+    assert _queue_state_for_draft("aaa", queue) == "published"
+
+
+def test_queue_state_for_draft_none_when_absent():
+    assert _queue_state_for_draft("zzz", [{"draft_id": "aaa", "state": "published"}]) is None
+
+
+def test_is_prepublish_draft_true_when_no_queue_file(tmp_path):
+    """No queue on disk at all -> nothing has ever been published -> hard
+    gate is safe to apply (fail-closed toward catching a genuinely new bad
+    draft, never toward silently skipping the check)."""
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    assert _is_prepublish_draft("new-draft-1", queue_path=qp) is True
+
+
+def test_is_prepublish_draft_true_for_brand_new_draft_id(tmp_path):
+    qp = tmp_path / "human-review-queue.json"
+    qp.write_text('[{"draft_id": "other", "state": "published"}]', encoding="utf-8")
+    assert _is_prepublish_draft("new-draft-1", queue_path=qp) is True
+
+
+def test_is_prepublish_draft_true_for_repointable_states(tmp_path):
+    qp = tmp_path / "human-review-queue.json"
+    for state in ("drafted", "reviewed", "rejected", "drafted_needs_human_edit"):
+        qp.write_text(
+            f'[{{"draft_id": "d1", "state": "{state}"}}]', encoding="utf-8"
+        )
+        assert _is_prepublish_draft("d1", queue_path=qp) is True, state
+
+
+def test_is_prepublish_draft_false_for_published_or_archived():
+    """The core exemption: a REPOINT re-render of an already-public carousel
+    must NOT be hard-gated even if it still carries the old label — that
+    history is immutable per _append_review_queue's own contract."""
+    import json as _json
+    import tempfile as _tempfile
+    from pathlib import Path as _Path
+
+    for state in ("published", "archived"):
+        qp = _Path(_tempfile.mkdtemp()) / "queue.json"
+        qp.write_text(_json.dumps([{"draft_id": "d1", "state": state}]), encoding="utf-8")
+        assert _is_prepublish_draft("d1", queue_path=qp) is False, state
+
+
+def test_is_prepublish_draft_true_on_corrupt_queue_file(tmp_path):
+    """Unreadable/corrupt queue defaults to the stricter (hard-gate) branch —
+    never silently waves a bad draft through because the queue was broken."""
+    qp = tmp_path / "human-review-queue.json"
+    qp.write_text("{not valid json", encoding="utf-8")
+    assert _is_prepublish_draft("d1", queue_path=qp) is True
 
 
 # ── vision fail-closed (v4 condition E / GO#3 c1/c5) ─────────────────────────

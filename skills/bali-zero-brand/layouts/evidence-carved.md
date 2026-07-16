@@ -163,7 +163,7 @@ take_label: string
     "SCOPE: PT, PT PMA, CV, UD ONLY — ORANG PRIBADI EXCLUDED",
     "AUTOMATIC. NO APPLICATION. NO LAMPIRAN."
   ],
-  "take_label": "OUR TAKE",
+  "take_label": "THE VERDICT",
   "take_line": "ONE MONTH. ONE CATEGORY. NO APPLICATION."
 }
 ```
@@ -176,6 +176,41 @@ take_label: string
 - **THE LEDGER** — tax/financial
 - **WHAT THE LAW SAYS** — legal explicit
 - **WHAT WE FOUND** — story-driven, investigative
+
+## take_label variants (2026-07-16 — kills the invariant "OUR TAKE"/"OUR READ")
+
+Before this section existed, `take_label` had exactly ONE documented example
+anywhere in the doctrine ("OUR TAKE" / "OUR READ") — every evidence-carved
+carousel in the corpus (6/6) copied it verbatim, because a single example is
+read as a template, not a choice. Same disease, same cure as the heading
+variants above: a real vocabulary, keyed by register/domain, picked per
+carousel angle — not a fixed slot.
+
+- **THE UPSHOT** — analitico default
+- **THE VERDICT** — militante, decisive/closing beats
+- **THE BOTTOM LINE** — pedagogico, plain-spoken/audience-first
+- **WHERE THIS LANDS** — audience-first, "what changes for you" framing
+- **WHAT WE'RE SEEING** — investigative, trend/pattern pieces
+- **THE STAKES** — militante, deadline/urgency-driven
+- **BETWEEN THE LINES** — analitico, interpretive/nuance pieces
+- **THE SIGNAL** — analitico, data-driven pieces
+- **THE TRADE-OFF** — pedagogico, comparison/decision-tree archetype
+- **WHAT CHANGES NOW** — militante/pedagogico, consequence-first pieces
+
+Rules:
+
+- Pick the one that fits THIS carousel's angle — do not default to the
+  first entry in the list.
+- Free coinage in the same register is allowed: ≤3 words, uppercase,
+  editorial-stance signal (it names a STANCE toward the facts, not another
+  fact). Coin one if none of the above fits.
+- **NEVER** the retired pair `OUR TAKE` / `OUR READ` / `OUR VIEW` (single-
+  example anchors that produced the invariant — banned outright, not just
+  discouraged) and never the `dark-status-list` generic-label ban set
+  (`FACT`, `TAKE`, `NOTE`, `FACTS`, `REALITY`, `KEY FACT` — same disease,
+  different layout).
+- Do not repeat the immediately previous carousel's `take_label` choice —
+  rotate.
 
 ## Common failures
 
