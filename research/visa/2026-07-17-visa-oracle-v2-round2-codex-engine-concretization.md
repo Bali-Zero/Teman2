@@ -4,6 +4,7 @@ domain: visa
 client_case: none — product research (Visa Oracle v2 rebuild)
 sources: multi-LLM panel round 2 (lane: codex-gpt-5.6-sol-ultra)
 status: round-2 raw lane output, faithfully preserved
+adversarial_review: gemini-3.1-pro
 ---
 
 [Air-M5]
@@ -3283,3 +3284,18 @@ Gate blockers:
 - Gate 4: retention worker observed deleting expired payloads; all surfaces `ENFORCE`; rollback uses a signed higher-sequence pack; `rg` shows zero imports of deleted modules; no legacy fallback remains.
 
 No repository files were modified.
+
+## Adversarial review
+
+**Seat:** gemini-3.1-pro (Gemini 3.1 Pro High adversarial grading, 2026-07-17)
+**Verdict:** SURVIVES-WITH-CAVEATS
+
+Challenged points:
+- The custom AST + strong-Kleene evaluator design is judged over-engineered by the grader relative to
+  off-the-shelf alternatives.
+- Hand-rolling the evaluator shifts risk from LLM-hallucination-class errors to untested solo-dev logic
+  errors; mitigation is the spec's own property/metamorphic test investment plus the gold-persona test
+  harness, which the grader did not weigh against its concern.
+
+This section is an appended R1-gate artifact (generator≠grader); the file body above is preserved
+verbatim as the faithful record of this panel lane's original output.

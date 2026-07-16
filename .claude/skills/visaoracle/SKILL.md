@@ -103,6 +103,9 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 - 2026-07-17 (dawn): OWNER RULING R1 applied to draft — single client-facing price, no PNBP/fee split
   (honesty = citations/assumptions/abstention, not price anatomy). Draft review ongoing, further rulings
   expected.
+- 2026-07-17: R1 cross-family reviews done (codex×7, gemini×4; 2 REFUTED handled with recorded
+  dispositions). Calling-visa corrected 8→7 (live-verified). Bridging ≥3-day interview-lane correction
+  recorded.
 
 ## PENDING (W81 ledger, project-scoped)
 

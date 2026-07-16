@@ -4,6 +4,7 @@ domain: visa
 client_case: none — product research (Visa Oracle v2 rebuild)
 sources: multi-LLM panel round 1 (lane: glm-5.2)
 status: round-1 raw lane output, faithfully preserved
+adversarial_review: codex
 ---
 
 # Visa Oracle — Design-Language Proposal
@@ -190,3 +191,18 @@ Prossimi passi che ti propongo (dimmi quale vuoi che parta subito):
 4. **Mappo i ~90 visti** del KB esistente sull'albero decisionale (nodi, branch, gating) per dimensionare il vero scope dell'intervista.
 
 Quale parto? Non ho usato tool esterni qui: il deliverable è sintesi di design, e i dati regolatori specifici andranno presi dal KB/NotebookLM a build time, non inventati in questo doc — se vuoi posso verificare su web lo stato corrente del View Transitions API o recuperare screenshot dei pattern di riferimento come follow-up.
+
+## Adversarial review
+
+**Seat:** codex (GPT-5.6-terra-high adversarial grading, 2026-07-17)
+**Verdict:** SURVIVES-WITH-CAVEATS
+
+Challenged points:
+- The central fee-split design conflicts with owner ruling R1 (one client-facing price, no PNBP/fee
+  split) — R1 is already applied in the product design draft, superseding this lane's original proposal.
+- Compressed answers encoded in URLs expose sensitive quiz answers via browser history/logs/referrers —
+  needs a privacy model; the v2 engine design already replaces this with server-side snapshots instead.
+- "90 visa types" and "nobody does this" are unsupported market claims with no cited baseline.
+
+This section is an appended R1-gate artifact (generator≠grader); the file body above is preserved
+verbatim as the faithful record of this panel lane's original output.

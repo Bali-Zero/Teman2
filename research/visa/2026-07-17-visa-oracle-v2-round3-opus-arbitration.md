@@ -4,6 +4,7 @@ domain: visa
 client_case: none
 sources: round 3 arbitration (lane: claude-opus-4.8-xhigh, fresh context, generator≠grader)
 status: round-3 verdict, faithfully preserved
+adversarial_review: gemini-3.1-pro
 ---
 
 Crux confirmed independently — [GoRules ZEN docs](https://docs.gorules.io/docs/decision-table) support **only `first` and `collect`** hit policies (also confirmed for Switch nodes); the [ZEN expression language](https://docs.gorules.io/learn/zen-language/syntax) evaluates unary tests to **boolean**, with no documented three-valued/null-propagating semantics. (Bonus signal for criterion 3: an open [issue #257](https://github.com/gorules/zen/discussions/257) reports `Decision.Evaluate` not returning the trace as expected — ZEN's trace is its own thing.) The dossier's two load-bearing claims hold. Ruling:
@@ -59,3 +60,23 @@ Adopting ZEN as the *core executor* is the highest-lock-in choice on the board: 
 - **Team growth** (no longer solo) lowers A's "own every bug" cost — but note this pushes *further* toward A (more hands maintain readable Python), it does not rescue B.
 
 **Bottom line:** Build the evaluator (A). ZEN cannot hold the two semantics that define this product's correctness, and wrapping it splits truth and trace across a seam no government auditor should have to reason about. Borrow its *editor and visualization* for authoring and the demo — never its runtime.
+
+## Adversarial review
+
+**Seat:** gemini-3.1-pro (Gemini 3.1 Pro High adversarial grading, 2026-07-17)
+**Verdict:** REFUTED
+
+Challenged points:
+- Rejecting ZEN to avoid a wrapper seam while hand-rolling a bespoke Kleene/set-cover engine is internally
+  contradictory and increases silent-correctness risk for a solo developer.
+
+**Disposition (orchestrator, final gate):** dissent RECORDED, does not overturn the verdict. The argument
+is the arbitration's own §4 "strongest-counter," already weighed there: the dangerous semantics (tri-state
+propagation, set-cover, precedence) do not exist in ZEN and would live in the Python wrapper either way, so
+ZEN de-risks only the trivial matcher, not the load-bearing logic. The correct mitigation is the
+already-specified property/metamorphic test investment (§ above), not adopting ZEN as a second authority.
+The grader supplies no new facts against the three verified ZEN limitations (first/collect-only hit
+policies, boolean-only unary tests, no canonical trace hook). The flip conditions already recorded in this
+document (spike >2× estimate; audited legal-tech production peers on ZEN; native set-cover+tri-state+trace
+in ZEN) remain the armed guardrails that would actually revisit this verdict — this dissent does not meet
+any of them. File body above preserved verbatim as the faithful record of the round-3 verdict.

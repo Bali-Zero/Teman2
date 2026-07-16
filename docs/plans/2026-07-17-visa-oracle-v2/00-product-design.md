@@ -201,15 +201,19 @@ right now?" carries more downstream weight than any other question — offshore,
 it's a countdown, and the catalog itself narrows to what's convertible. A "yes" is immediately followed by
 "When does your current stay permit expire?" (date picker), routing four lanes:
 
-| Days remaining  | Lane                       | UI tone                                             |
-| --------------- | -------------------------- | --------------------------------------------------- |
-| Already expired | Overstay-help              | Reassuring, straight to human review, no alarm copy |
-| 1-7 days        | Bridging / urgent extend   | Amber, expiry tile prominent                        |
-| 8-60 days       | Extend or Convert          | Neutral, full choice                                |
-| 60+ days        | Convert / Extend (planned) | Neutral planning                                    |
+| Days remaining  | Lane                       | UI tone                                              |
+| --------------- | -------------------------- | ---------------------------------------------------- |
+| Already expired | Overstay-help              | Reassuring, straight to human review, no alarm copy  |
+| 1-2 days        | Urgent human review        | Red, no algorithmic routing — bridging window missed |
+| 3-7 days        | Bridging-urgent            | Amber, expiry tile prominent                         |
+| 8-60 days       | Extend or Convert          | Neutral, full choice                                 |
+| 60+ days        | Convert / Extend (planned) | Neutral planning                                     |
 
 **Bridging Visa** (60-day onshore transition, Permenkumham 11/2024) is flagged as **the under-marketed lane
-Bali Zero should own** — live, active, under-covered by every competitor reviewed. Overstay-help is never
+Bali Zero should own** — live, active, under-covered by every competitor reviewed. It must be filed **≥3
+days before expiry** (Permenkumham 11/2024) — the R1 adversarial pass flagged the original 1-7-day bridging
+band as unsafe (it would have routed a 1-2-day-remaining case into a lane that statutorily cannot accept
+the filing); 1-2 days remaining now routes to urgent human review, never to bridging. Overstay-help is never
 algorithmic — always human-review, statutory fine stated as information, with the reassurance "Overstay is
 fixable. It is not the end of your story here." Three honest escape valves off Q0 (dual citizen / just left
 and need to return / on a visa run) surface a clarifier and, if unresolved, route to human-review — never
@@ -458,8 +462,10 @@ indefinite ITAP. Already its own interview category (#9, §4) rather than folded
 non-extendable, filed ≤3 days before expiry, voided if the holder leaves Indonesian territory. Recommended
 as a first-class, well-marketed lane (echoed in §4).
 
-**Calling-visa is an 8-nation procedural overlay, never a separate visa class** — Afghanistan, Guinea,
-Israel, Cameroon, North Korea, Liberia, Nigeria, Somalia require onshore clearance layered on top of
+**Calling-visa is a 7-nation procedural overlay, never a separate visa class** — Afghanistan, Guinea,
+Israel, North Korea, Liberia, Nigeria, Somalia (live-verified 2026-07-17 on
+imigrasi.go.id/wna/daftarnegara-voa-bvk-calling-visa — no Cameroon; an earlier draft's 8-nation list was
+refuted by the R1 adversarial pass and corrected here) require onshore clearance layered on top of
 whatever product they'd otherwise qualify for; the engine applies it as an overlay (§5.3), never invents it
 as its own code.
 
@@ -495,8 +501,9 @@ HTTP, kept on file in case ever needed.
 
 **SKIP:** OpenFisca/PolicyEngine as direct deps (AGPL, blocked); Blawx (stale 20mo); 18F
 eligibility-rules-service (archived); `json-rules-engine`/`durable_rules` (JS-only/stale); XState wizard
-libs (redundant vs. proven `AppWizard`); **Stepperize — 1,586 stars but no LICENSE, legally unusable
-regardless of popularity**; `d3-hierarchy` (redundant vs. xyflow+elkjs); Mermaid for the live tree (caps
+libs (redundant vs. proven `AppWizard`); **Stepperize — 1,586 stars, license status contested (repo
+LICENSE file missing at review time but the published npm package `@stepperize/react` declares MIT);
+stays SKIP for now, recheck before any adoption**; `d3-hierarchy` (redundant vs. xyflow+elkjs); Mermaid for the live tree (caps
 ~30-40 nodes, fine only for small docs).
 
 **Net:** ~30-40% of the combined engine+wizard build, concentrated in scaffolding (schema validation,

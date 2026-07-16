@@ -4,6 +4,7 @@ domain: visa
 client_case: none — product research (Visa Oracle v2 rebuild)
 sources: multi-LLM panel round 2 (lane: sonnet-web-grounded-reuse-first)
 status: round-2 raw lane output, faithfully preserved
+adversarial_review: codex
 ---
 
 # Round 2 — Reuse-first OSS survey (live-verified via GitHub API, 2026-07-17)
@@ -59,3 +60,19 @@ Adopting the top candidates saves ~30-40% of the combined engine+wizard build, c
 evaluator core + /visualise. Frontend wizard: ~0% external reuse (already covered by
 @balizero/core). Regulatory-specific parts (bitemporal signed RulePacks, four-eyes, provenance
 chains, visa-tuned gap/overlap) remain custom by necessity.
+
+## Adversarial review
+
+**Seat:** codex (GPT-5.6-terra-high adversarial grading, 2026-07-17)
+**Verdict:** SURVIVES-WITH-CAVEATS
+
+Challenged points:
+- "Stepperize has no licence" is contested — the published npm package `@stepperize/react` declares MIT
+  even though the repo's LICENSE file was missing at review time; recheck before any adoption, stays SKIP
+  for now.
+- "Adopt ZEN" was pending arbitration at the time this lane was written and was superseded by the round-3
+  verdict (custom evaluator; ZEN restricted to authoring/visual tooling only).
+- The 25-40% savings figure and "legally safe" conclusions have no measured baseline behind them.
+
+This section is an appended R1-gate artifact (generator≠grader); the file body above is preserved
+verbatim as the faithful record of this panel lane's original output.

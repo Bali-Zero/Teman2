@@ -4,6 +4,7 @@ domain: visa
 client_case: none — product research (Visa Oracle v2 rebuild)
 sources: multi-LLM panel round 1 (lane: codex-gpt-5.6-sol-ultra)
 status: round-1 raw lane output, faithfully preserved
+adversarial_review: gemini-3.1-pro
 ---
 
 [Air-M5]
@@ -679,3 +680,17 @@ Do not launch as an authoritative Visa Oracle until:
 - The system has demonstrated that it can abstain safely.
 
 **Final recommendation:** rebuild Visa Oracle as a small, deterministic regulatory product with an exceptional interface around it. Do not rebuild it as a better-looking chatbot.
+
+## Adversarial review
+
+**Seat:** gemini-3.1-pro (Gemini 3.1 Pro High adversarial grading, 2026-07-17)
+**Verdict:** SURVIVES-WITH-CAVEATS
+
+Challenged points:
+- Classifying anonymous nationality/marital status as PII under UU 27/2022 is an overclaim absent
+  linkable identifiers — the design keeps the conservative posture deliberately anyway.
+- Dismissing standard rule engines (OPA/Drools) in favor of a bespoke evaluator carries maintenance and
+  correctness risk that the redteam does not fully price in.
+
+This section is an appended R1-gate artifact (generator≠grader); the file body above is preserved
+verbatim as the faithful record of this panel lane's original output.

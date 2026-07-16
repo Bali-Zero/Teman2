@@ -4,6 +4,7 @@ domain: visa
 client_case: none — product research (Visa Oracle v2 rebuild)
 sources: multi-LLM panel round 1 (lane: sonnet-explore-scout)
 status: round-1 raw lane output, faithfully preserved
+adversarial_review: codex
 ---
 
 # Round 1 — Scout lane (Explore/Sonnet): existing Visa Oracle v1 map (2026-07-17)
@@ -54,3 +55,18 @@ Shared lib: `packages/core/` (@balizero/core) — components/apps/AppFrame.tsx, 
 
 ## 5. Assessment
 Reusable even in rebuild: @balizero/core funnel primitives, 114-code seed, match_tree.py logic (as input), DB schema. Dead/uncertain: (assessment)/ flow, apps/kb/data/immigration. GA4: 11 visa_quiz_* events instrumented (April).
+
+## Adversarial review
+
+**Seat:** codex (GPT-5.6-terra-high adversarial grading, 2026-07-17)
+**Verdict:** SURVIVES-WITH-CAVEATS
+
+Challenged points:
+- UI/router files and their line counts match disk — confirmed.
+- Both cited migration paths are wrong; the actual paths are `backend/db/migrations_v2/` and
+  `backend/migrations/scripts/`.
+- "114 canonical codes" is a seed-data count, not a regulatory-authority count — should not be cited as
+  if it were the latter.
+
+This section is an appended R1-gate artifact (generator≠grader); the file body above is preserved
+verbatim as the faithful record of this panel lane's original output.

@@ -4,6 +4,7 @@ domain: visa
 client_case: none — product research (Visa Oracle v2 rebuild)
 sources: multi-LLM panel round 1 (lane: gemini-3.1-pro-high)
 status: round-1 raw lane output, faithfully preserved
+adversarial_review: codex
 ---
 
 # DEEP RESEARCH — Visa Oracle Decision Tree (Lane: GLOBAL SURVEY / WIDTH)
@@ -116,3 +117,18 @@ Here are the concrete features to implement, ranked by impact/effort.
 | **18** | **"Save for Later" via Email** | TurboTax | Capture the lead: "Send these results to my email to review later." | M |
 | **19** | **Contextual Warnings** | Custom | e.g., If they select "Working," a polite but firm warning: "Note: Working on a tourist visa risks deportation." | S |
 | **20** | **The "Apply Now" Handoff** | iVisa | A seamless transition from the Oracle's result directly into Bali Zero's service onboarding flow. | L |
+
+## Adversarial review
+
+**Seat:** codex (GPT-5.6-terra-high adversarial grading, 2026-07-17)
+**Verdict:** SURVIVES-WITH-CAVEATS
+
+Challenged points:
+- GeoIP detects location, not nationality — should prefill only with explicit user confirmation, never
+  presented as a silent inferred fact.
+- B211A is treated as current in the survey, but the official visa list now presents C1/C2 in its place.
+- The "checking databases" fake-delay UX pattern would be deceptive if implemented literally — no such
+  check actually runs behind it.
+
+This section is an appended R1-gate artifact (generator≠grader); the file body above is preserved
+verbatim as the faithful record of this panel lane's original output.

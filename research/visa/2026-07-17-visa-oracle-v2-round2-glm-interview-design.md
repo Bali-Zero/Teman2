@@ -4,6 +4,7 @@ domain: visa
 client_case: none — product research (Visa Oracle v2 rebuild)
 sources: multi-LLM panel round 2 (lane: glm-5.2)
 status: round-2 raw lane output, faithfully preserved
+adversarial_review: codex
 ---
 
 # Visa Oracle — Round 2: The Interview Design
@@ -461,3 +462,19 @@ The paths-remaining counter is a fact, not a celebration.
 - **The shared review-gate ★ (W4/R5) and family ★ (W6/R6) questions are identical across lanes** — build them once, compose them in. That keeps the engine honest and the content team's surface area small.
 
 Want me to (a) run the NB-INTEL grounding pass on the ⚑ items and return a verified appendix, (b) draft the same full tree for the next three categories (Family & marriage, Retirement & second home, Diaspora & ex-WNI), or (c) save this as a research capture under `research/visa/`?
+
+## Adversarial review
+
+**Seat:** codex (GPT-5.6-terra-high adversarial grading, 2026-07-17)
+**Verdict:** SURVIVES-WITH-CAVEATS
+
+Challenged points:
+- The "1-7 days remaining → bridging-urgent" routing is UNSAFE: Bridging Visa applications must be filed
+  ≥3 days before expiry (Permenkumham 11/2024), so 1-2 days remaining requires urgent human review, not a
+  bridging route — correction recorded in the product design draft in this same PR.
+- The repeated separate-fee ledger design is superseded by owner ruling R1 (single client-facing price).
+- "~110 paths" and "one working day" turnaround are ungrounded operational claims with no cited source.
+
+This section is an appended R1-gate artifact (generator≠grader); the file body above is preserved
+verbatim as the faithful record of this panel lane's original output — the routing correction lives in
+the design draft, not by editing this record.

@@ -4,6 +4,7 @@ domain: visa
 client_case: none — product research (Visa Oracle v2 rebuild)
 sources: multi-LLM panel round 1 (lane: sonnet-web-grounded)
 status: round-1 raw lane output, faithfully preserved
+adversarial_review: codex
 ---
 
 # Round 1 — Web-grounded lane (Sonnet, live-verified URLs) — 2026-07-17
@@ -65,3 +66,18 @@ Estonia e-Residency (LIVE-FETCHED): NOT a wizard — linear 4-step post-decision
 
 ## Verification gaps
 403-blocked: IRCC, Australia, US Visa Wizard (browser automation could unblock). evisa.imigrasi.go.id homepage unverified (JS SPA — needs screenshot check). Awwwards section weakest-verified (search summaries, not full fetches).
+
+## Adversarial review
+
+**Seat:** codex (GPT-5.6-terra-high adversarial grading, 2026-07-17)
+**Verdict:** SURVIVES-WITH-CAVEATS
+
+Challenged points:
+- The flat list, `golden_visa=1` filter, and the 1,274/Rp52.1T statistic survive live re-checks.
+- The "TOP-15 verified" label is internally false — several listed entries were actually 403/unverified,
+  not verified.
+- Universal negatives ("no Indonesian wizard exists anywhere") are unsupported beyond the specific
+  surfaces this lane actually checked.
+
+This section is an appended R1-gate artifact (generator≠grader); the file body above is preserved
+verbatim as the faithful record of this panel lane's original output.

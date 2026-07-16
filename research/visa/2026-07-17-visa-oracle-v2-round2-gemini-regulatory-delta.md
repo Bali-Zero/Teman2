@@ -4,6 +4,7 @@ domain: visa
 client_case: none — product research (Visa Oracle v2 rebuild)
 sources: multi-LLM panel round 2 (lane: gemini-3.1-pro-high)
 status: round-2 raw lane output, faithfully preserved
+adversarial_review: codex
 ---
 
 Here is your deep-research report on the Indonesian visa and immigration regulatory state as of **July 2026**. I have fact-checked the regulatory movers against official sources and corrected some timelines.
@@ -62,3 +63,25 @@ Over the last ~24 months, the regulatory landscape has been highly volatile, lar
 *   **Mid 2024**: Permenkumham 11/2024 (Bridging Visa intro)
 
 **Recommendation for your pipeline:** You are experiencing a major regulatory event every **3-4 months**. A static rules-engine will rot quickly. You should set up a quarterly pipeline SLO to parse new Permen Imipas decrees.
+
+## Adversarial review
+
+**Seat:** codex (GPT-5.6-terra-high adversarial grading, 2026-07-17)
+**Verdict:** REFUTED
+
+Challenged points:
+- (a) The claimed 8-country calling-visa list is FALSE — the official list has 7 nations, no Cameroon.
+- (b) "No official 2026 Golden Visa statistics" is false — bengkalis.imigrasi.go.id published a 2026-05-22
+  release: 1,274 visas / Rp52.1T.
+- (c) The Permen Imipas 10/2026 six-country BVK addition lacks a direct primary-source citation in this
+  lane's output.
+- The E33 visa family is overgeneralized as "Second Home" in this lane.
+
+**Disposition (orchestrator, final gate):** refutation UPHELD on (a) — independently confirmed live by
+the orchestrator on imigrasi.go.id/wna/daftarnegara-voa-bvk-calling-visa (Daftar Negara: Afghanistan,
+Guinea, Israel, Korea Utara, Liberia, Nigeria, Somalia — 7 nations, no Cameroon); the product design draft
+is corrected to 7 nations in this same PR. On (b) the refutation matches the in-session golden-visa
+arbitration already recorded elsewhere in this corpus (stats VERIFIED-OFFICIAL). On (c): flagged ⚑ for the
+catalog-bonifica NB-verify pass, not resolved here. The file body above is preserved verbatim as the
+faithful record of this lane's original output — the correction lives in the design draft, not by
+editing this record.
