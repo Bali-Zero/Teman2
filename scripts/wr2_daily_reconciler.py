@@ -220,7 +220,10 @@ def _verify_visibility_or_backfill(row: dict[str, Any], *, dry_run: bool) -> str
         car_dir = candidates[-1] if candidates else (
             viz._default_output_root() / "carousel" / f"missing-{draft_id[:8]}"
         )
-        slide_count = len(list((car_dir / "slides").glob("*.png"))) if car_dir.exists() else 0
+        # A1: same derive_slide_count helper every writer routes through —
+        # not a bare *.png glob, which would count staged chrome (logo.png)
+        # as a "slide".
+        slide_count = viz.derive_slide_count(car_dir / "slides") if car_dir.exists() else 0
         from datetime import datetime as _dt, timezone as _tz
 
         entry = viz._make_queue_entry(
@@ -239,6 +242,299 @@ def _verify_visibility_or_backfill(row: dict[str, Any], *, dry_run: bool) -> str
     except Exception as exc:  # noqa: BLE001
         logger.warning("visibility verify/backfill failed: %s", exc, exc_info=exc)
         return "backfill_failed"
+
+
+# ── A3: queue completeness sweep + backfill (2026-07-16) ────────────────────
+# "Nothing anywhere re-verifies slide_count vs reality" (design ground fact,
+# live-measured: 13-16 mismatched entries, always the LAST slide missing on
+# disk vs meta.json/queue's own recorded count — a post-render disk-level
+# drift the render-time A1 gate cannot see, because it happens AFTER a
+# carousel already reached 'drafted' honestly). This sweep is the durable
+# receptor: it re-verifies every non-terminal queue entry against disk on
+# every tick (report-only) and offers a dedicated one-shot backfill mode
+# (mutating, --apply) for the classified 3-way fix.
+
+# Anything not yet published is fair game for drift — broader than
+# wr2_html_render_apply._REPOINTABLE_STATES (which is scoped to the REPOINT
+# decision) because a completeness check must also catch e.g.
+# 'applied_ready_for_damar'/'approved' entries sitting between review and
+# Damar's manual IG publish.
+TERMINAL_QUEUE_STATES = {"published", "published_with_edits", "archived"}
+
+# New queue-level state (2026-07-16): an entry whose declared slide_count no
+# longer matches verified disk reality and could NOT be safely explained as
+# stale metadata (see _classify_completeness). Distinct from the DB-level
+# 'render_failed' status (war_room_drafts) — this is a QUEUE-entry state, and
+# every queue-server action (_damar-queue-server.py mark-published/rejected/
+# flag) already refuses any state outside its own allow-list, so an entry in
+# this state is inert to every existing consumer by construction — no new
+# guard needed downstream.
+RENDER_INCOMPLETE_STATE = "render_incomplete"
+
+
+@dataclass(frozen=True)
+class CompletenessMismatch:
+    entry_id: str
+    draft_id: str | None
+    state: str
+    declared: int
+    disk: int
+    expected: int | None
+    expected_source: str  # "slides.json" | "meta.json" | "none"
+    classification: str  # "queue_stale" | "genuinely_incomplete" | "dirless"
+
+
+def _resolve_expected_count(car_dir: Path) -> tuple[int | None, str]:
+    """Ground-truth intended slide count for `car_dir`, best signal first.
+
+    slides.json (the render input, when a copy lives beside the artifact) is
+    more authoritative than meta.json (the render's own self-report) which is
+    more authoritative than nothing. Returns (None, "none") when neither is
+    readable — callers must NOT assume completeness in that case."""
+    import json as _json
+
+    sj = car_dir / "slides.json"
+    if sj.is_file():
+        try:
+            data = _json.loads(sj.read_text(encoding="utf-8"))
+            slides = data.get("slides", data) if isinstance(data, dict) else data
+            if isinstance(slides, list):
+                return len(slides), "slides.json"
+        except Exception:  # noqa: BLE001 — unreadable slides.json, fall through
+            logger.warning("unreadable slides.json at %s", sj, exc_info=True)
+    mj = car_dir / "meta.json"
+    if mj.is_file():
+        try:
+            meta = _json.loads(mj.read_text(encoding="utf-8"))
+            sc = meta.get("slide_count")
+            if isinstance(sc, int):
+                return sc, "meta.json"
+        except Exception:  # noqa: BLE001
+            logger.warning("unreadable meta.json at %s", mj, exc_info=True)
+    return None, "none"
+
+
+def _classify_completeness(*, declared: int, disk: int, expected: int | None) -> str:
+    """3-way classification (design spec A3):
+
+    (i)   queue_stale         — disk matches the independently-resolved
+                                 expected count; only the queue's own
+                                 slide_count field disagrees. The carousel
+                                 IS complete — fix the number in place.
+    (ii)  genuinely_incomplete — expected > disk (or expected unknown and
+                                 declared != disk): a real slide is missing
+                                 from the durable artifact. Never silently
+                                 renumber down to disk — that would fake
+                                 "complete" at the wrong count.
+    """
+    if expected is not None and expected == disk:
+        return "queue_stale"
+    return "genuinely_incomplete"
+
+
+def check_completeness(
+    queue_path: Path | None = None,
+) -> list[CompletenessMismatch]:
+    """Read-only sweep: every non-terminal queue entry, disk-verified.
+
+    Never mutates. Pure reporting — the dedicated backfill mode (`--backfill-
+    completeness [--apply]`) applies the fix; the regular 3x/day tick calls
+    this in report-only mode so a drift is VISIBLE the same day it's found,
+    without racing an in-flight render/repoint with an automatic mutation.
+    """
+    import json as _json
+
+    import wr2_html_render_apply as viz  # same scripts/ dir, same venv
+
+    qp = queue_path or (viz._default_output_root() / "queue" / "human-review-queue.json")
+    if not qp.exists():
+        return []
+    try:
+        queue = _json.loads(qp.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 — corrupt queue is _queue_hygiene_sweep's/
+        # the append-writers' problem to surface; this sweep just skips it.
+        logger.warning("completeness sweep: queue unreadable at %s", qp, exc_info=True)
+        return []
+    if not isinstance(queue, list):
+        return []
+
+    mismatches: list[CompletenessMismatch] = []
+    for entry in queue:
+        if not isinstance(entry, dict):
+            continue
+        state = entry.get("state")
+        if state in TERMINAL_QUEUE_STATES:
+            continue
+        declared = entry.get("slide_count")
+        if not isinstance(declared, int):
+            continue
+        entry_id = str(entry.get("id") or entry.get("item_id") or "?")
+        sd = entry.get("slides_dir")
+        if not sd or not Path(sd).is_dir():
+            mismatches.append(CompletenessMismatch(
+                entry_id=entry_id, draft_id=entry.get("draft_id"), state=state,
+                declared=declared, disk=0, expected=None, expected_source="none",
+                classification="dirless",
+            ))
+            continue
+        slides_dir = Path(sd)
+        disk = viz.derive_slide_count(slides_dir)
+        if disk == declared:
+            continue  # honest, no mismatch
+        car_dir = Path(entry.get("carousel_path")) if entry.get("carousel_path") else slides_dir.parent
+        expected, expected_source = _resolve_expected_count(car_dir)
+        classification = _classify_completeness(declared=declared, disk=disk, expected=expected)
+        mismatches.append(CompletenessMismatch(
+            entry_id=entry_id, draft_id=entry.get("draft_id"), state=state,
+            declared=declared, disk=disk, expected=expected,
+            expected_source=expected_source, classification=classification,
+        ))
+    return mismatches
+
+
+def apply_completeness_backfill(
+    queue_path: Path | None = None,
+    *,
+    dry_run: bool = True,
+) -> list[dict[str, Any]]:
+    """Apply the 3-way backfill classification under the queue's fcntl lock
+    (same lock file + tmp+rename protocol as wr2_html_render_apply.
+    _append_review_queue / wr2_queue_hygiene.sweep_queue — never a second,
+    unsynchronized writer). Returns one report dict per mismatch, in dry-run
+    or applied form. Re-reads + re-checks under the lock so a concurrent
+    render/repoint between the report-only check and this call cannot be
+    clobbered by a stale decision."""
+    import fcntl
+    import json as _json
+
+    import wr2_html_render_apply as viz  # same scripts/ dir, same venv
+
+    qp = queue_path or (viz._default_output_root() / "queue" / "human-review-queue.json")
+    if not qp.exists():
+        return []
+    lock_path = qp.with_suffix(".lock")
+    reports: list[dict[str, Any]] = []
+    with open(lock_path, "w", encoding="utf-8") as lock_fh:
+        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        try:
+            try:
+                queue = _json.loads(qp.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001 — corrupt queue: never guess, never write
+                logger.warning("backfill: queue unreadable at %s", qp, exc_info=True)
+                return []
+            if not isinstance(queue, list):
+                return []
+
+            changed = False
+            now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            for entry in queue:
+                if not isinstance(entry, dict):
+                    continue
+                state = entry.get("state")
+                if state in TERMINAL_QUEUE_STATES:
+                    continue
+                declared = entry.get("slide_count")
+                if not isinstance(declared, int):
+                    continue
+                entry_id = str(entry.get("id") or entry.get("item_id") or "?")
+                sd = entry.get("slides_dir")
+                if not sd or not Path(sd).is_dir():
+                    report = {
+                        "entry_id": entry_id, "classification": "dirless",
+                        "declared": declared, "disk": 0, "action": "mark_render_incomplete",
+                    }
+                    if not dry_run and state != RENDER_INCOMPLETE_STATE:
+                        entry["state"] = RENDER_INCOMPLETE_STATE
+                        entry.setdefault("state_history", []).append({
+                            "state": RENDER_INCOMPLETE_STATE, "at": now_iso,
+                            "by": "wr2-daily-reconciler-backfill",
+                            "reason": "dirless: slides_dir missing/not a directory",
+                        })
+                        changed = True
+                    reports.append(report)
+                    continue
+                slides_dir = Path(sd)
+                disk = viz.derive_slide_count(slides_dir)
+                if disk == declared:
+                    continue
+                car_dir = Path(entry.get("carousel_path")) if entry.get("carousel_path") else slides_dir.parent
+                expected, expected_source = _resolve_expected_count(car_dir)
+                classification = _classify_completeness(declared=declared, disk=disk, expected=expected)
+                if classification == "queue_stale":
+                    report = {
+                        "entry_id": entry_id, "classification": classification,
+                        "declared": declared, "disk": disk, "expected": expected,
+                        "expected_source": expected_source,
+                        "action": f"fix slide_count {declared} -> {disk}",
+                    }
+                    if not dry_run:
+                        entry["slide_count"] = disk
+                        entry.setdefault("state_history", []).append({
+                            "state": state, "at": now_iso,
+                            "by": "wr2-daily-reconciler-backfill",
+                            "reason": f"slide_count corrected {declared} -> {disk} "
+                                      f"(disk matches {expected_source} at {expected})",
+                        })
+                        changed = True
+                    reports.append(report)
+                else:  # genuinely_incomplete
+                    report = {
+                        "entry_id": entry_id, "classification": classification,
+                        "declared": declared, "disk": disk, "expected": expected,
+                        "expected_source": expected_source,
+                        "action": "mark_render_incomplete",
+                    }
+                    if not dry_run and state != RENDER_INCOMPLETE_STATE:
+                        entry["slide_count"] = disk  # never lie about physical reality
+                        entry["state"] = RENDER_INCOMPLETE_STATE
+                        entry.setdefault("state_history", []).append({
+                            "state": RENDER_INCOMPLETE_STATE, "at": now_iso,
+                            "by": "wr2-daily-reconciler-backfill",
+                            "reason": (
+                                f"genuinely incomplete: expected {expected} "
+                                f"({expected_source}) but disk has {disk}"
+                            ),
+                        })
+                        changed = True
+                    reports.append(report)
+
+            if not dry_run and changed:
+                tmp = qp.with_suffix(f".tmp.{os.getpid()}")
+                tmp.write_text(_json.dumps(queue, indent=2, ensure_ascii=False), encoding="utf-8")
+                os.replace(tmp, qp)
+                logger.info("completeness backfill applied: %d entries mutated", len(reports))
+            return reports
+        finally:
+            fcntl.flock(lock_fh, fcntl.LOCK_UN)
+
+
+def _completeness_report(*, dry_run: bool) -> None:
+    """Report-only completeness sweep, called every regular tick (A3). Never
+    mutates the queue — the fix lives in `--backfill-completeness [--apply]`,
+    run as a dedicated one-shot so a mid-render/repoint entry can never be
+    clobbered by an automatic mutation racing the pipeline's own writer.
+    Best-effort: a sweep failure must never affect the day's decision."""
+    try:
+        mismatches = check_completeness()
+        if not mismatches:
+            return
+        logger.warning(
+            "completeness sweep: %d non-terminal queue entr(y/ies) mismatched: %s",
+            len(mismatches),
+            [(m.entry_id, m.classification, f"declared={m.declared} disk={m.disk}") for m in mismatches[:10]],
+        )
+        if dry_run:
+            return
+        _tg_notify(
+            "digest", f"wr2-completeness-{datetime.now(WITA).date()}",
+            f"🧩 WR2 completeness sweep: {len(mismatches)} entry con slide_count "
+            f"disallineato dal disco (drift post-render, non un render partial "
+            f"nuovo). Esegui `wr2_daily_reconciler.py --backfill-completeness "
+            f"--apply` per correggerli (classificazione 3-way: queue_stale / "
+            f"genuinely_incomplete / dirless).",
+        )
+    except Exception as exc:  # noqa: BLE001 — never break the reconciler tick
+        logger.warning("completeness sweep failed: %s", exc, exc_info=exc)
 
 
 def _queue_hygiene_sweep(*, dry_run: bool) -> None:
@@ -354,6 +650,7 @@ async def _tick(
     max_attempts: int,
 ) -> int:
     _queue_hygiene_sweep(dry_run=dry_run)
+    _completeness_report(dry_run=dry_run)
     rows = await _fetch_today(conn, day_start_utc)
     decision = decide(
         rows, now_wita,
@@ -409,11 +706,36 @@ async def _tick(
     return 0
 
 
+def _cmd_backfill_completeness(apply: bool) -> int:
+    """One-shot mode (A3): apply the 3-way completeness classification to
+    every non-terminal queue entry. Default dry-run (report only); --apply
+    mutates under the queue's fcntl lock. Intended to be run once on Pro
+    (queue source of truth) right after this fix merges, to clear the
+    pre-existing mismatch backlog — the regular tick's `_completeness_report`
+    keeps reporting new drift afterward, but never auto-applies."""
+    import json as _json
+
+    reports = apply_completeness_backfill(dry_run=not apply)
+    print(_json.dumps({"apply": apply, "count": len(reports), "reports": reports}, indent=2))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dry-run", action="store_true",
                         help="decide + log only; no DB writes, no kickstarts, no heartbeat")
+    parser.add_argument(
+        "--backfill-completeness", action="store_true",
+        help="one-shot: classify+report queue/disk slide_count mismatches (A3); "
+             "no DB, no decide()/kickstart. Combine with --apply to mutate.",
+    )
+    parser.add_argument(
+        "--apply", action="store_true",
+        help="with --backfill-completeness: actually mutate the queue (default: report only)",
+    )
     args = parser.parse_args()
+    if args.backfill_completeness:
+        return _cmd_backfill_completeness(apply=args.apply)
     dry = args.dry_run or os.environ.get("WR2_RECONCILER_DRY_RUN") == "1"
     return asyncio.run(run(dry_run=dry))
 
