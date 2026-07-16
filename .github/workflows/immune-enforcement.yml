@@ -77,6 +77,10 @@ jobs:
               scripts/tests/test_tcc_migrate_desktop_paths.py|\
               scripts/tests/test_lint_tcc_desktop_paths.py|\
               infra/tcc-desktop-paths/allowlist.txt|\
+              scripts/launchd_liveness_detector.py|\
+              scripts/tests/test_launchd_liveness_exit_status_decode.py|\
+              scripts/tests/test_launchd_liveness_marker_freshness.py|\
+              scripts/tests/test_launchd_liveness_stale_exit_recovery.py|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/immune-enforcement.yml)
                 RELEVANT=true
@@ -108,6 +112,9 @@ jobs:
             scripts/tests/test_lint_doc_executable_refs.py \
             scripts/tests/test_tcc_migrate_desktop_paths.py \
             scripts/tests/test_lint_tcc_desktop_paths.py \
+            scripts/tests/test_launchd_liveness_exit_status_decode.py \
+            scripts/tests/test_launchd_liveness_marker_freshness.py \
+            scripts/tests/test_launchd_liveness_stale_exit_recovery.py \
             scripts/test_lint_test_reward_hacking.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
