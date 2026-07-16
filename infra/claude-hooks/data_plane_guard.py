@@ -8,64 +8,80 @@ to every program in the org via `infra/claude-hooks/data-plane-registry.json`
 — a new program registers its data plane by adding one entry there; this file
 never needs to change.
 
-WHY THIS EXISTS: a compiled dataset hand-edited once by a session "just this
-once" silently diverges from the pipeline that is supposed to be its single
-source of truth — the exact state-schema-mutation-drift disease (superscar
-#9) one layer earlier: catching the edit BEFORE it lands, not after a reader
-breaks on it.
-
 CONTRACT (identical stdin/exit-code shape to host_boundary.py /
 worktree_isolation.py in this same dir): JSON payload on stdin with
 `tool_name` (or `name`), `tool_input`, `cwd`. Exit 2 + stderr = BLOCK.
 Exit 0 (no stderr, or a WARN line) = ALLOW.
 
 SURFACES COVERED:
-  - Edit / Write / NotebookEdit: `tool_input.file_path` (or `notebook_path`
-    for NotebookEdit) resolved and matched against every registry glob.
-  - Bash: DIRECT shell-level writes only — redirects (`>`/`>>`), `tee`,
-    `cp`/`install`/`rsync` destination, `mv` source AND destination (mv
-    destroys its source, so a protected source blocks too — cp/install/rsync
-    sources are read-only and stay allowed), `sed -i`, `truncate`, `rm`.
-    Reads (`cat`, `grep`, `jq`, a compiler invocation like `python3
-    scripts/kbli_filiera/build.py`) are NOT a write operator and pass
-    trivially — no write-hint keyword, no target extracted.
+  - Edit / Write / NotebookEdit: `tool_input.file_path` (or `notebook_path`).
+  - Bash AND Monitor (both execute arbitrary shell commands via
+    `tool_input.command` — Monitor is not a lesser surface, it is the SAME
+    shell channel with different scheduling): direct shell-level writes —
+    redirects, `tee`, `cp`/`install`/`rsync` destination, `mv` source AND
+    destination, `sed -i`/`truncate` (ALL non-flag files, not just the
+    last), `dd of=`, `touch`, `perl -i`, `rm`.
 
-WORKTREE-AWARE MATCHING (superscar #3, W83/W84/W91/W92/W94 studied first —
-guard-over-match on substrings, cross-line quote fusion, relative paths
-resolved against the wrong cwd, whole-command exemptions): a protected glob
-is repo-RELATIVE (`data/kbli-filiera/**`), but a session usually edits inside
-`.worktrees/<lane>-<task-id>/...`, not the main checkout. Resolving the
-absolute file path against a hardcoded main-checkout root would silently
-under-block every worktree edit — exactly where sessions do their work. So
-matching walks UP from the resolved absolute path looking for the nearest
-`.git` entry (a worktree carries its OWN `.git` file; the main checkout
-carries a `.git` directory) and relativizes against THAT — the file's own
-git root, whichever checkout it happens to live in.
+MATCHING (case-folded — APFS/macOS is case-insensitive, a lowercase edit of
+the same real file must still block; W96-adjacent lesson) is worktree-aware:
+walks UP from the resolved absolute path to the nearest `.git` entry and
+relativizes against THAT root — but only if that root ALSO carries our own
+`infra/claude-hooks/data-plane-registry.json` (a foreign git repo that merely
+happens to be an ancestor directory, e.g. `/tmp/other/.git`, is never treated
+as a Nuzantara checkout/worktree — it falls through to the safe absolute-path
+comparison, which cannot match a repo-relative glob).
 
-Quote/heredoc noise-stripping on the Bash channel reuses the W84-fixed
-recipe (character classes exclude `\n` so a stray apostrophe/quote on one
-line can never fuse with a quote on a LATER line and swallow real commands
-into "quoted text"). Bash target extraction is deliberately simpler than
-worktree_isolation.py's segment-scoped remote-dispatch machinery — that
-machinery exists to decide "did this git op touch OUR checkout", a question
-this guard doesn't ask. Here the write-hint tokens already stop at
-`&`/`;`/`|`/whitespace by construction (the same char classes), so a target
-can never bleed across a `&&`/`;`/`|` boundary into the wrong segment. Per
-the spec: Edit/Write is the primary surface; Bash is deliberately
-conservative and prefers UNDER-blocking over a new over-match member of
-family #3.
+BASH/MONITOR COMMAND PARSING (superscar #3 studied first: W83/W84/W91/W92/W94
+— over-match on substrings, cross-line quote fusion, whole-command
+exemptions):
+  - The command is noise-stripped (heredoc bodies dropped; quoted strings
+    either unwrapped to their bare content — if that content itself looks
+    like a plain path, so `> "protected/file"` isn't invisible — or blanked
+    otherwise; then unquoted `#`-comments stripped) BEFORE anything else.
+  - It is split into SEGMENTS on `&& || ; & | <newline>` (arg separators
+    within a segment are `[ \t]` only, never `\s` — an arg-loop must not
+    cross a newline and swallow the NEXT, unrelated command).
+  - Within each segment, write-verbs are matched ONLY at command position
+    (segment start, or right after `$(`/backtick) — `grep rm <file>` or
+    `brew install jq` are never mistaken for the verb `rm`/`install` just
+    because the word appears; a verb is a command, not a substring.
+  - A segment whose command position is `ssh`/`scp` is skipped ENTIRELY for
+    THAT segment only (W94: never a whole-command exemption) — the write
+    happens on the far end, not here.
+  - A pure `cd <path>` segment updates a running list of candidate base
+    dirs; every later target is tried against the session cwd AND every
+    accumulated cd-dir.
+  - A candidate containing glob metacharacters (`*?[`) is expanded against
+    the real filesystem (`glob.glob`, capped) so `rm protected/*.jsonl`
+    cannot hide behind "no literal path token".
+  - Only REDIRECT-sourced targets go through the bare-word plausibility
+    filter (needs a separator/extension/dotfile/glob-char to look path-like,
+    filtering shell-residue like `2>&1`'s stray `2`); VERB-sourced args
+    (cp/mv/rm/tee/etc.) skip that filter — the command-position anchor
+    already proves they are real arguments, so a bare `rm manifest` inside
+    a protected cwd is not silently exempted just for lacking a slash.
 
-Kill switch: DATA_PLANE_GUARD_OFF=1 → always exit 0 (behaviour = before this
-hook). Missing/corrupt registry → PASS-THROUGH with a WARN (an infra-file
-problem must never brick unrelated Edit/Write/Bash calls).
+Registry robustness (a malformed registry must degrade to a WARN + pass-
+through, NEVER crash the hook and NEVER accidentally protect/block
+everything): non-object top-level JSON, a non-list `entries`, a non-object
+entry, or a `protected` field that isn't a list of strings (a bare STRING
+iterates as characters — `"*"` alone would then match every file) are all
+rejected per-item with a WARN, never trusted. The whole dispatch body is
+wrapped so ANY unexpected exception degrades to WARN + ALLOW — `sys.exit(2)`
+(a real block) is the one thing that still propagates through that wrapper.
+
+Kill switch: DATA_PLANE_GUARD_OFF=1 → always exit 0.
 
 Reference: cicatrix-superscar.md #3 (guard-over-match) + #9 (state-schema
 drift) · registry: infra/claude-hooks/data-plane-registry.json · conformance:
-infra/guard-conformance/registry.json.
+infra/guard-conformance/registry.json · wave-2 adversarial review (Codex
+gpt-5.6-sol xhigh, 2026-07-16): 2 CRITICAL + 10 MAJOR + 3 MINOR, all fixed
+here.
 """
 from __future__ import annotations
 
 import fnmatch
+import glob as glob_mod
 import json
 import os
 import pathlib
@@ -73,6 +89,33 @@ import re
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent  # infra/claude-hooks
+
+# --------------------------------------------------------------------------
+# Shared path-plausibility constants (used by both the quote-unwrap step in
+# _strip_noise and the redirect-target filter in _is_plausible_path).
+# --------------------------------------------------------------------------
+_PATH_LIKE_RE = re.compile(r"^[~$]?[\w./@+-]+$")
+_FILE_EXT_RE = re.compile(r"\.[A-Za-z][A-Za-z0-9]{0,7}$")
+_GLOB_CHARS_RE = re.compile(r"[*?\[]")
+_GLOB_MATCH_CAP = 2000
+
+
+def _is_plausible_path(t: str) -> bool:
+    """Real write targets have a directory separator, a file extension, a
+    dotfile prefix, or glob metacharacters. Rejects operator/shell residue
+    that survived noise-stripping (`2`, `''`, `=0.9`). Applied ONLY to
+    redirect-sourced targets (C8) — verb-sourced args are already proven
+    real by the command-position anchor."""
+    if not t or len(t) > 256:
+        return False
+    if not _PATH_LIKE_RE.match(t):
+        return bool(_GLOB_CHARS_RE.search(t))  # glob chars aren't in the path charset
+    if "=" in t:
+        return False
+    has_sep = "/" in t
+    has_ext = bool(_FILE_EXT_RE.search(t))
+    is_dotfile = t.startswith(".") and len(t) > 1
+    return has_sep or has_ext or is_dotfile
 
 
 # --------------------------------------------------------------------------
@@ -94,8 +137,11 @@ def _registry_path() -> pathlib.Path:
 
 
 def _load_registry() -> list[dict] | None:
-    """Registry entries, or None (+ WARN on stderr) on any load failure —
-    never block on our own infra breaking."""
+    """Validated registry entries, or None (+ WARN) on any load failure —
+    never block on our own infra breaking, and never trust a malformed
+    entry (B1: a bare-string `protected` iterates as characters; `"*"`
+    alone would then match every file — that entry is skipped, not the
+    whole registry)."""
     path = _registry_path()
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -105,6 +151,12 @@ def _load_registry() -> list[dict] | None:
             "— pass-through\n"
         )
         return None
+    if not isinstance(data, dict):
+        sys.stderr.write(
+            f"data_plane_guard WARN: registry malformed (top-level JSON is "
+            f"not an object at {path}) — pass-through\n"
+        )
+        return None
     entries = data.get("entries")
     if not isinstance(entries, list):
         sys.stderr.write(
@@ -112,11 +164,28 @@ def _load_registry() -> list[dict] | None:
             f"at {path}) — pass-through\n"
         )
         return None
-    return entries
+    valid: list[dict] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            sys.stderr.write(
+                f"data_plane_guard WARN: registry entry is not an object, "
+                f"skipped: {entry!r}\n"
+            )
+            continue
+        protected = entry.get("protected")
+        if not isinstance(protected, list) or not all(isinstance(p, str) for p in protected):
+            sys.stderr.write(
+                f"data_plane_guard WARN: entry `{entry.get('id', '?')}` has "
+                "a malformed 'protected' field (must be a list of strings), "
+                "skipped\n"
+            )
+            continue
+        valid.append(entry)
+    return valid
 
 
 # --------------------------------------------------------------------------
-# Path resolution — worktree-aware repo-relative matching
+# Path resolution — worktree-aware, foreign-repo-aware, case-folded matching
 # --------------------------------------------------------------------------
 
 def _git_root_for(path: pathlib.Path) -> pathlib.Path | None:
@@ -130,17 +199,31 @@ def _git_root_for(path: pathlib.Path) -> pathlib.Path | None:
     return None
 
 
+def _is_nuzantara_checkout(root: pathlib.Path) -> bool:
+    """A5/foreign-repo guard: a `.git` ancestor is only trusted as OUR repo
+    root if it also carries our own registry file — any other git
+    repository (e.g. `/tmp/other/.git`) is foreign, not a Nuzantara
+    checkout/worktree, no matter how it happens to nest."""
+    return (root / "infra" / "claude-hooks" / "data-plane-registry.json").exists()
+
+
 def _repo_relative(resolved: pathlib.Path) -> str:
-    """`resolved` relative to its own git root (worktree-aware); falls back
-    to `_repo_root()`, then to the absolute path (which then simply will
-    not match any repo-relative glob — safe under-block, never a false
-    block)."""
+    """`resolved` relative to its own (trusted) git root; falls back to
+    `_repo_root()` only when NO git root was found at all, else to the
+    absolute path — which then simply cannot match a repo-relative glob
+    (safe under-block, never a false block)."""
     git_root = _git_root_for(resolved)
     if git_root is not None:
-        try:
-            return resolved.relative_to(git_root).as_posix()
-        except ValueError:
-            pass
+        if _is_nuzantara_checkout(git_root):
+            try:
+                return resolved.relative_to(git_root).as_posix()
+            except ValueError:
+                pass
+        else:
+            # Foreign repository — do not fall through to _repo_root() at
+            # all; relativizing a foreign path against OUR root could never
+            # legitimately match, so go straight to the safe absolute form.
+            return resolved.as_posix()
     try:
         return resolved.relative_to(_repo_root()).as_posix()
     except ValueError:
@@ -159,68 +242,89 @@ def _resolve_target(path_str: str, cwd: str) -> pathlib.Path | None:
         return None
 
 
-# Residue filter (adapted from worktree_isolation.py's _is_plausible_path):
-# a real write target has a directory separator, a file extension, or is a
-# dotfile. Rejects operator/shell residue that survived noise-stripping
-# (`2`, `''`, `=0.9`) so it can never be mistaken for a protected path.
-_PATH_LIKE_RE = re.compile(r"^[~$]?[\w./@+-]+$")
-_FILE_EXT_RE = re.compile(r"\.[A-Za-z][A-Za-z0-9]{0,7}$")
-
-
-def _is_plausible_path(t: str) -> bool:
-    if not t or len(t) > 256:
-        return False
-    if not _PATH_LIKE_RE.match(t):
-        return False
-    if "=" in t:
-        return False
-    has_sep = "/" in t
-    has_ext = bool(_FILE_EXT_RE.search(t))
-    is_dotfile = t.startswith(".") and len(t) > 1
-    return has_sep or has_ext or is_dotfile
-
-
 def _matched_entry(rel: str, entries: list[dict]) -> tuple[dict, str] | None:
-    """First (entry, matched_glob) whose `protected` list matches `rel`."""
+    """First (entry, matched_glob) whose `protected` list matches `rel`,
+    case-folded (C1: APFS/macOS is case-insensitive by default — a
+    lowercase edit of the SAME real file must still be caught)."""
+    rel_l = rel.lower()
     for entry in entries:
         for pattern in entry.get("protected", []):
-            if fnmatch.fnmatchcase(rel, pattern):
+            if fnmatch.fnmatchcase(rel_l, pattern.lower()):
                 return entry, pattern
     return None
 
 
 # --------------------------------------------------------------------------
-# Bash channel — direct shell-level writes only
+# Bash/Monitor channel — direct shell-level writes only
 # --------------------------------------------------------------------------
 
 WRITE_HINT_RE = re.compile(
-    r"(>>?|\btee\b|\bsed\b[^|;&]*-i|\btruncate\b|\brm\b|\b(?:cp|mv|install|rsync)\b)"
+    r"(>>?|\btee\b|\bsed\b[^\n]*-i|\btruncate\b|\brm\b|\btouch\b|\bdd\b|\bperl\b|"
+    r"\b(?:cp|mv|install|rsync)\b)"
 )
-REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?\s*([^\s|;&)]+)")
-VERB_RE = re.compile(
-    r"\b(cp|mv|install|rsync|truncate|rm|tee)\b((?:\s+(?:-\S+|[^\s|;&)]+))+)"
-)
-SED_INVOCATION_RE = re.compile(r"\bsed\b((?:\s+(?:-\S+|[^\s|;&)]+))+)")
 
-# rm/tee/mv: every non-flag arg is a candidate target. rm/tee because every
-# arg is an independent destination. mv is the odd one out among the
-# "SRC... DEST" verbs: unlike cp/install/rsync it DESTROYS its source (the
-# source path stops existing), so a protected SOURCE must block exactly like
-# a protected dest would — moving a curated dataset out from under itself is
-# as much a hand-edit as overwriting it. cp/install/rsync/truncate stay
-# LAST-non-flag-token-only: their sources are read-only, reading FROM a
-# protected path is not a write (spec-confirmed: `cp protected/x /tmp/`
-# must stay ALLOWED).
-_ALL_TARGETS_VERBS = {"rm", "tee", "mv"}
+# Command-position anchor: a write-verb only counts as a COMMAND if it sits
+# at the start of a segment, or right after a nested command-substitution
+# opener. Segments are already split on `&& || ; & | <newline>` (see
+# SEGMENT_SPLIT_RE) so those separators never need to appear in this anchor.
+_CMD_ANCHOR = r"(?:^|\$\(|`)[ \t]*"
+_TOKEN = r"[^\s|;&)]+"  # a single non-flag token (never crosses whitespace)
+
+REDIR_RE = re.compile(r"(?:[0-9]?>|&>)>?[ \t]*(" + _TOKEN + r")")
+VERB_RE = re.compile(
+    _CMD_ANCHOR + r"(cp|mv|install|rsync|truncate|rm|tee|touch)\b"
+    r"((?:[ \t]+(?:-\S+|" + _TOKEN + r"))*)"
+)
+SED_INVOCATION_RE = re.compile(
+    _CMD_ANCHOR + r"sed\b((?:[ \t]+(?:-\S+|" + _TOKEN + r"))*)"
+)
+DD_RE = re.compile(_CMD_ANCHOR + r"dd\b.*?\bof=(" + _TOKEN + r")")
+PERL_INVOCATION_RE = re.compile(
+    _CMD_ANCHOR + r"perl\b((?:[ \t]+(?:-\S+|" + _TOKEN + r"))*)"
+)
+
+SEGMENT_SPLIT_RE = re.compile(r"&&|\|\||;|&|\||\n")
+_SEGMENT_REMOTE_RE = re.compile(r"^[ \t]*(?:ssh|scp)\b")
+_CD_SEGMENT_RE = re.compile(r"^[ \t]*cd\b[ \t]+(" + _TOKEN + r")[ \t]*$")
+
+# rm/tee/mv/truncate/touch: every non-flag arg is a candidate target.
+# rm/tee/touch because every arg IS an independent destination. mv/truncate
+# are the odd ones out among "SRC... DEST"-shaped verbs: mv DESTROYS its
+# source (unlike cp/install/rsync, whose sources are read-only reads); C5
+# multi-file truncate/sed -i truncate/overwrite EVERY file argument, not
+# just the last one. cp/install/rsync stay LAST-non-flag-token-only.
+_ALL_TARGETS_VERBS = {"rm", "tee", "mv", "truncate", "touch"}
+
+
+def _perl_has_inplace(args: list[str]) -> bool:
+    """True if any short-flag cluster in `args` carries `i` (perl combines
+    flags like `-pi`, `-i.bak`, `-i`) — perl only writes files with -i."""
+    for a in args:
+        if a.startswith("--"):
+            continue
+        if a.startswith("-") and "i" in a[1:]:
+            return True
+    return False
 
 
 def _strip_noise(cmd: str) -> str:
-    """Neutralize heredoc bodies + quoted strings before scanning for write
-    targets (W79/W84 false-positive killer, cloned from worktree_isolation.py
-    / host_boundary.py). W84: the quote char-classes MUST exclude `\\n` — a
-    class that crosses newlines fuses an apostrophe on one line with a quote
-    several lines later, collapsing multiple commands into one mangled
-    string and producing a phantom write-target."""
+    """Neutralize heredoc bodies, quoted strings, and unquoted comments
+    before scanning for write targets.
+
+    Order matters: heredocs first (their body text is free-form and must
+    never leak into the scan), then quotes, then comments (a `#` that WAS
+    inside a quoted string is already resolved by the time comment-
+    stripping runs, so it is never mistaken for a comment marker).
+
+    Quoted strings are UNWRAPPED to their bare inner content when that
+    content itself looks like a plain path (C3: `echo x > "protected/file"`
+    must not become invisible just because the target is quoted — quoting a
+    path is normal, not an escape technique); otherwise they are blanked as
+    before (a quoted sed script, a commit message, anything with
+    whitespace/metacharacters stays `''`/`\"\"`). W84: char classes exclude
+    `\\n` so a stray quote on one line can never fuse with a quote several
+    lines later and swallow real commands into "quoted text"."""
+
     def _drop_heredocs(s: str) -> str:
         lines = s.split("\n")
         out: list[str] = []
@@ -240,58 +344,135 @@ def _strip_noise(cmd: str) -> str:
             i += 1
         return "\n".join(out)
 
+    def _quote_sub(quote_char: str):
+        def _sub(m: re.Match) -> str:
+            inner = m.group(1)
+            if _PATH_LIKE_RE.match(inner):
+                return inner
+            return quote_char * 2
+
+        return _sub
+
     s = _drop_heredocs(cmd)
-    s = re.sub(r"'[^'\n]*'", "''", s)
-    s = re.sub(r'"[^"\n]*"', '""', s)
+    s = re.sub(r"'([^'\n]*)'", _quote_sub("'"), s)
+    s = re.sub(r'"([^"\n]*)"', _quote_sub('"'), s)
+    # A2: strip unquoted shell comments (whitespace-or-line-start `#` to
+    # EOL) — `true # rm <protected>` must not leak the comment's content
+    # into the scan as if it were a real command.
+    s = re.sub(r"(?m)(?:^|(?<=\s))#.*$", "", s)
     return s
 
 
-def _extract_bash_write_targets(cmd: str) -> list[str]:
-    """Best-effort candidate write-destination paths. Conservative: a target
-    we cannot confidently extract is simply not returned (→ command is
-    ALLOWED, per the spec's under-block preference on this channel)."""
-    stripped = _strip_noise(cmd)
-    if not WRITE_HINT_RE.search(stripped):
+def _expand_glob_target(raw: str, cwd: str) -> list[pathlib.Path]:
+    """C4: a candidate containing glob metacharacters is expanded against
+    the REAL filesystem (glob.glob), capped, and each real match is
+    returned as its own candidate. A pattern matching nothing (or an
+    unresolvable base) yields an empty list — safe under-block."""
+    try:
+        p = pathlib.Path(os.path.expanduser(os.path.expandvars(raw)))
+        if not p.is_absolute() and cwd:
+            p = pathlib.Path(cwd) / p
+        pattern = str(p)
+    except Exception:
         return []
+    try:
+        matches = glob_mod.glob(pattern, recursive=True)
+    except Exception:
+        return []
+    out: list[pathlib.Path] = []
+    for m in matches[:_GLOB_MATCH_CAP]:
+        try:
+            out.append(pathlib.Path(m).resolve())
+        except Exception:
+            continue
+    return out
 
-    targets: list[str] = []
 
-    for m in REDIR_RE.finditer(stripped):
-        targets.append(m.group(1))
+def _resolve_candidates(raw: str, base_cwd: str) -> list[pathlib.Path]:
+    if _GLOB_CHARS_RE.search(raw):
+        return _expand_glob_target(raw, base_cwd)
+    resolved = _resolve_target(raw, base_cwd)
+    return [resolved] if resolved is not None else []
 
-    for m in VERB_RE.finditer(stripped):
+
+def _extract_from_segment(seg: str) -> list[tuple[str, bool]]:
+    """Candidate (raw_target, is_redirect) pairs from a SINGLE segment
+    (already confirmed local — never remote-dispatched). Verb/sed/dd/perl
+    matches are anchored to command position so a verb-shaped WORD that is
+    really an argument to a different command (grep's pattern, echo's
+    text, brew's subcommand) is never mistaken for a command of its own."""
+    out: list[tuple[str, bool]] = []
+
+    for m in REDIR_RE.finditer(seg):
+        out.append((m.group(1), True))
+
+    for m in VERB_RE.finditer(seg):
         verb = m.group(1)
         args = [a for a in m.group(2).split() if not a.startswith("-")]
         if not args:
             continue
-        if verb in _ALL_TARGETS_VERBS:
-            targets.extend(args)
-        else:
-            targets.append(args[-1])
+        picks = args if verb in _ALL_TARGETS_VERBS else [args[-1]]
+        out.extend((a, False) for a in picks)
 
-    # sed -i: take the LAST non-flag token of the whole invocation, not a
-    # positional "script argument" guess — robust to BOTH GNU
-    # (`sed -i 's/a/b/' file`, one quoted-script arg) and BSD/macOS
-    # (`sed -i '' 's/a/b/' file`, an EXTRA empty-suffix arg before the
-    # script) forms, since after noise-stripping every quoted arg collapses
-    # to `''`/`""` and the real file path is always the tail token either way.
-    for m in SED_INVOCATION_RE.finditer(stripped):
+    # sed -i: ALL non-flag tokens (C5) — robust to both GNU (`sed -i
+    # 's/a/b/' file`) and BSD (`sed -i '' 's/a/b/' file`) forms, and to
+    # multi-file invocations that mutate every file argument, not just the
+    # last one.
+    for m in SED_INVOCATION_RE.finditer(seg):
         args = m.group(1).split()
         if not any(a == "-i" or a.startswith("-i") for a in args):
             continue  # sed without -i writes to stdout, not a file write
         nonflag = [a for a in args if not a.startswith("-")]
-        if nonflag:
-            targets.append(nonflag[-1])
+        out.extend((a, False) for a in nonflag)
 
-    cleaned: list[str] = []
-    for t in targets:
-        t = t.strip().strip("'\"")
+    for m in DD_RE.finditer(seg):
+        out.append((m.group(1), False))
+
+    for m in PERL_INVOCATION_RE.finditer(seg):
+        args = m.group(1).split()
+        if not _perl_has_inplace(args):
+            continue
+        nonflag = [a for a in args if not a.startswith("-")]
+        out.extend((a, False) for a in nonflag)
+
+    return out
+
+
+def _extract_bash_write_targets(cmd: str, cwd: str) -> list[pathlib.Path]:
+    """Resolved absolute candidate paths for a Bash/Monitor command,
+    honoring segment-scoped ssh/scp skip (A3), cd-tracking (C7), and glob
+    expansion (C4). C8: only REDIRECT-sourced candidates go through the
+    bare-word plausibility filter — verb-sourced args are already proven
+    real by the command-position anchor."""
+    stripped = _strip_noise(cmd)
+    if not WRITE_HINT_RE.search(stripped):
+        return []
+
+    segments = SEGMENT_SPLIT_RE.split(stripped)
+    cd_bases: list[str] = [cwd]
+    raw_candidates: list[tuple[str, bool]] = []
+
+    for seg in segments:
+        if _SEGMENT_REMOTE_RE.match(seg):
+            continue  # A3: this segment's write happens on another host
+        cd_m = _CD_SEGMENT_RE.match(seg)
+        if cd_m:
+            new_base = _resolve_target(cd_m.group(1), cd_bases[-1])
+            if new_base is not None:
+                cd_bases.append(str(new_base))
+            continue
+        raw_candidates.extend(_extract_from_segment(seg))
+
+    resolved: list[pathlib.Path] = []
+    for raw, is_redirect in raw_candidates:
+        t = raw.strip().strip("'\"")
         if not t or t.startswith("/dev/") or t in {"&1", "&2"} or t.startswith("$("):
             continue
-        if not _is_plausible_path(t):
+        if is_redirect and not _is_plausible_path(t):
             continue
-        cleaned.append(t)
-    return cleaned
+        for base in cd_bases:
+            resolved.extend(_resolve_candidates(t, base))
+    return resolved
 
 
 # --------------------------------------------------------------------------
@@ -314,10 +495,7 @@ def _block(rel: str, entry: dict, pattern: str, surface: str) -> None:
     sys.exit(2)
 
 
-def main() -> int:
-    if os.environ.get("DATA_PLANE_GUARD_OFF") == "1":
-        return 0
-
+def _dispatch() -> int:
     try:
         payload = json.load(sys.stdin)
     except Exception:
@@ -343,20 +521,32 @@ def main() -> int:
                     _block(rel, entry, pattern, f"{tool} file_path")
         return 0
 
-    if tool == "Bash":
+    if tool in ("Bash", "Monitor"):
         cmd = tool_input.get("command", "")
-        for raw in _extract_bash_write_targets(cmd):
-            resolved = _resolve_target(raw, cwd)
-            if resolved is None:
-                continue
+        for resolved in _extract_bash_write_targets(cmd, cwd):
             rel = _repo_relative(resolved)
             hit = _matched_entry(rel, entries)
             if hit is not None:
                 entry, pattern = hit
-                _block(rel, entry, pattern, "Bash write")
+                _block(rel, entry, pattern, f"{tool} write")
         return 0
 
     return 0
+
+
+def main() -> int:
+    if os.environ.get("DATA_PLANE_GUARD_OFF") == "1":
+        return 0
+    try:
+        return _dispatch()
+    except SystemExit:
+        raise  # a real block must never be swallowed by the safety net below
+    except Exception as exc:
+        sys.stderr.write(
+            f"data_plane_guard WARN: unexpected internal error ({exc!r}) "
+            "— pass-through (never crash-block)\n"
+        )
+        return 0
 
 
 if __name__ == "__main__":
