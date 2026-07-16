@@ -25,6 +25,11 @@ spot-verified on disk in this same session. This is a **draft for owner analysis
 the corner mandate (`.claude/skills/visaoracle/SKILL.md`), work stays worktree-only until Zero reviews it.
 That is a deliberate firebreak (business-shape/sequencing = Legge 5), not a stalled ship-lifecycle.
 
+### Owner rulings
+
+**R1** (2026-07-17, Zero): client-facing pricing is ONE all-inclusive price — never split PNBP/official
+fee vs Bali Zero fee. A single price is not dishonest; splitting confuses. Applied throughout this draft.
+
 ---
 
 ## 1. Product thesis & positioning
@@ -45,10 +50,13 @@ official visa-list URL supports an undocumented `?golden_visa=1` filter — cate
 exists, never exposed as UI. If a partnership ever happens, the ask is "expose this," not "build new infra."
 
 **The moat is visible honesty, not the quiz.** GLM R1: _"the product's moat is the visible, citable
-separation of official truth from agency service. No one in this market does that cleanly."_ Concretely:
-fees always shown split (official PNBP vs. Bali Zero fee, never blended); every skip surfaces its
-conservative assumption on a dated honesty receipt; every fact carries a pinpoint citation and effective
-date; the system visibly abstains rather than guesses.
+separation of official truth from agency service. No one in this market does that cleanly."_ That
+separation is conceptual, not a pricing-display mechanic (Owner ruling R1, §0) — client-facing pricing is
+one all-inclusive Bali Zero price, sourced from PricingTool, never a line-item split of official vs. agency
+cost. Concretely, the moat's pillars: every fact carries a pinpoint citation and effective date; every skip
+surfaces its conservative assumption on a dated honesty receipt; the system visibly abstains rather than
+guesses; and the three concepts below (legal eligibility / operational availability / Bali Zero service
+availability) are never collapsed into one.
 
 **The contract is narrower than "zero wrong answers."** In a system that regulatorily moves every 3-4
 months (§6), that guarantee isn't honest. The Codex R1 contract, verbatim: **"Zero unsupported
@@ -137,8 +145,9 @@ visibly flags the assumption on the outcome page — momentum without hidden unc
 
 **Ten signature interactions** (feasibility in parens): tree breathes — ineligible branches fade/curl
 (medium, FLIP); paths-remaining counter (easy); "why we ask" whisper (easy); "Oracle deals your card" —
-verdict node detaches into a hero card (medium, shared-element transition); honest ledger — fees slide
-apart to a total (easy-medium); rewritable path minimap, tap any past answer, never "start over" (medium);
+verdict node detaches into a hero card (medium, shared-element transition); price reveal — the single
+all-inclusive total resolves into view, no breakdown (easy-medium); rewritable path minimap, tap any past
+answer, never "start over" (medium);
 timeline anchored to today (easy); QR handoff to WhatsApp with session pre-loaded (easy); assumptions
 surfaced as a dated receipt (easy); regulation-verified watermark (easy to render; the freshness pipeline
 behind it is medium ops, §5.8). Throughline: interactions 3/5/9/10 all express **visible honesty**, the
@@ -147,8 +156,8 @@ product's real moat; 1/2 are a paired narrowing-encoding; 4/6 are craft flexes; 
 **Outcome-page anatomy, top to bottom:** verdict headline (single strongest path, or "3 paths fit — here's
 the strongest"); eligibility card, never binary — 4 states (Eligible/Likely/Conditional/Likely not), color+
 icon+text never color-alone; visa comparison table when ≥2 fit; personalized timeline anchored to TODAY,
-honest ranges never false precision; **the honesty ledger** — official vs. agency fees, two columns, never
-blended, cited; document checklist, checkable, downloadable; "your next 3 steps," concrete and time-bound;
+honest ranges never false precision; **the single all-inclusive price** — one number per path, sourced
+from PricingTool, cited; document checklist, checkable, downloadable; "your next 3 steps," concrete and time-bound;
 share/print/PDF; **QR → WhatsApp**, session pre-loaded; assumptions & caveats footer, dated, with
 "regulations verified as of \<date\>" and the mandatory Ditjen-decides disclaimer.
 
@@ -170,9 +179,10 @@ description), plain language (~grade 8).
 **Theming: dark + light, default light for the Jakarta demo** — dark reads premium/oracle, light reads
 clean/government; both fully contrast-compliant.
 
-**Anti-patterns:** no fake linear progress bar; never blend official/agency fees; no literal
-tarot/fortune-telling visuals; no 3D overworld/parallax/cursor-chasing particles; no forced login to see a
-result; no autoplay; never hide assumptions or caveats — they're the credential.
+**Anti-patterns:** no fake linear progress bar; never split official/agency fees into line items — one
+all-inclusive price, always; no literal tarot/fortune-telling visuals; no 3D overworld/parallax/
+cursor-chasing particles; no forced login to see a result; no autoplay; never hide assumptions or caveats —
+they're the credential.
 
 ---
 
@@ -246,8 +256,8 @@ unless the user surfaced an overstay themselves (and even then, informational), 
 register reads headline-assertions as bureaucratic, a genuine structural divergence, not just vocabulary.
 
 **Confirmation card** — the honesty receipt made visible: "Here's what you told us" (grouped, editable);
-"Assumptions we made" (only if skips occurred, each with inline Edit); a two-line preview that fees will
-show split, never blended; the final paths-remaining count; CTA "See my options."
+"Assumptions we made" (only if skips occurred, each with inline Edit); a two-line preview of the single
+all-inclusive price to come; the final paths-remaining count; CTA "See my options."
 
 **Five outcome-copy skeletons**, one per decision state — single winner, 2-3 trade-offs (no fake
 "recommended" badge without a real stated reason), `HUMAN_REVIEW_REQUIRED`, `NO_SUPPORTED_PATH` (three
@@ -255,7 +265,8 @@ mandatory "what instead" blocks, never a bare "no results"), `TEMPORARILY_UNAVAI
 no "coming soon" theatre).
 
 **Ten microcopy rules:** name the situation not the code in headlines; state what a permit does _and_
-doesn't; never blend fees, anywhere; make "I don't know" first-class and rewarded; explain consequences,
+doesn't; one all-inclusive price, never a fee breakdown, anywhere; make "I don't know" first-class and
+rewarded; explain consequences,
 never threaten penalties; plain verbs over bureaucratese; no gamification/scores/badges — the counter is a
 fact, not a celebration; reassure before redirecting; say plainly when a regulation is unclear/changing;
 address the reader directly and warmly (_Anda_, never _kamu_).

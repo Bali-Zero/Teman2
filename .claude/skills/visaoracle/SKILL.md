@@ -100,6 +100,9 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   ZEN → authoring/visual only). RESEARCH PHASE CLOSED. Final draft composed:
   docs/plans/2026-07-17-visa-oracle-v2/00-product-design.md — awaiting owner analysis (mandate firebreak:
   worktree-only until analyzed). DeepSeek burn hunt still in flight.
+- 2026-07-17 (dawn): OWNER RULING R1 applied to draft — single client-facing price, no PNBP/fee split
+  (honesty = citations/assumptions/abstention, not price anatomy). Draft review ongoing, further rulings
+  expected.
 
 ## PENDING (W81 ledger, project-scoped)
 
