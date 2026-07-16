@@ -195,7 +195,7 @@ async def ingest_funnel_event(
             SET step_state = step_state || jsonb_build_object(
                     'last_event', $2::text,
                     'last_event_at', to_jsonb(NOW()),
-                    'last_event_payload', $3::jsonb,
+                    'last_event_payload', $3::text::jsonb,
                     'last_hostname', $4::text
                 ),
                 last_touched_at = NOW()

@@ -70,10 +70,14 @@ class ConversationRepository(BaseRepository):
                         await conn.execute(
                             """
                         UPDATE conversations
-                        SET messages = $1,
-                            metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb
+                        SET messages = $1::text::jsonb,
+                            metadata = COALESCE(metadata, '{}'::jsonb) || $2::text::jsonb
                         WHERE id = $3
                         """,
+                            # ::text::jsonb — the app pools register a jsonb
+                            # codec (encoder=json.dumps); a param inferred as
+                            # jsonb double-encodes to_jsonb()'s already-
+                            # serialized string into a jsonb string scalar.
                             to_jsonb(merged_messages),
                             to_jsonb(metadata or {}),
                             conversation_id,
@@ -91,7 +95,7 @@ class ConversationRepository(BaseRepository):
                         row = await conn.fetchrow(
                             """
                         INSERT INTO conversations (user_id, session_id, messages, metadata, created_at)
-                        VALUES ($1, $2, $3, $4, $5)
+                        VALUES ($1, $2, $3::text::jsonb, $4::text::jsonb, $5)
                         RETURNING id
                         """,
                             user_id,

@@ -66,9 +66,14 @@ class GraphService:
         # Merge description into properties if provided
         props = self._merge_description(entity.properties, entity.description)
 
+        # $4::text::jsonb — the app pools register a jsonb codec (encoder=
+        # json.dumps); a bare param inferred as jsonb double-encodes
+        # json.dumps(props) into a jsonb string scalar (kg_nodes.properties
+        # had 1517 polluted rows across its several writers, live-probe
+        # 2026-07-16).
         query = """
             INSERT INTO kg_nodes (entity_id, entity_type, name, properties, confidence, source_chunk_ids, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, 1.0, ARRAY[]::TEXT[], NOW(), NOW())
+            VALUES ($1, $2, $3, $4::text::jsonb, 1.0, ARRAY[]::TEXT[], NOW(), NOW())
             ON CONFLICT (entity_id) DO UPDATE SET
                 name = EXCLUDED.name,
                 properties = kg_nodes.properties || EXCLUDED.properties,
@@ -97,9 +102,12 @@ class GraphService:
             relation.target_id,
         )
 
+        # $5::text::jsonb — same jsonb-codec double-encoding fix as add_entity
+        # above (kg_edges.properties had 4735 polluted rows, live-probe
+        # 2026-07-16).
         query = """
             INSERT INTO kg_edges (relationship_id, source_entity_id, target_entity_id, relationship_type, properties, source_chunk_ids, created_at)
-            VALUES ($1, $2, $3, $4, $5, ARRAY[]::TEXT[], NOW())
+            VALUES ($1, $2, $3, $4, $5::text::jsonb, ARRAY[]::TEXT[], NOW())
             ON CONFLICT (relationship_id) DO UPDATE SET
                 properties = kg_edges.properties || EXCLUDED.properties
             RETURNING relationship_id

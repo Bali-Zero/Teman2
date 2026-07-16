@@ -79,13 +79,19 @@ class CRMAuditLogger:
                     INSERT INTO crm_audit_log (
                         entity_type, entity_id, change_type, user_email,
                         old_state, new_state, changes, metadata, timestamp
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    ) VALUES ($1, $2, $3, $4, $5::text::jsonb, $6::text::jsonb, $7::text::jsonb, $8::text::jsonb, $9)
                     """,
                     entity_type,
                     entity_id,
                     change_type,
                     user_email,
-                    # orjson 3-10× faster; .decode() because CRM audit columns are TEXT not JSONB
+                    # orjson 3-10x faster; .decode() to text, then ::text::jsonb
+                    # server-side cast. These columns ARE jsonb in prod (the old
+                    # comment claiming "TEXT not JSONB" was stale/wrong — 713/713
+                    # rows were jsonb string scalars, live-probe 2026-07-16). With
+                    # no cast, asyncpg infers the param type from the jsonb column
+                    # and the pool's jsonb codec (encoder=json.dumps) re-encodes
+                    # this already-serialized string a second time.
                     orjson.dumps(old_state, default=str).decode(),
                     orjson.dumps(new_state, default=str).decode(),
                     orjson.dumps(changes, default=str).decode(),

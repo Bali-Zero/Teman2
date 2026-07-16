@@ -7,6 +7,7 @@ Uses asyncpg directly (no ORM) following the project pattern.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import uuid
 from datetime import date, timedelta
@@ -51,8 +52,8 @@ async def save_session(
                         $9, $10, $11,
                         $12, $13, $14,
                         $15, $16,
-                        $17::jsonb, $18,
-                        $19::jsonb, $20,
+                        $17::text::jsonb, $18,
+                        $19::text::jsonb, $20,
                         $21, NOW()
                     )
                     """,
@@ -72,9 +73,17 @@ async def save_session(
                     state.get("avg_confidence", 0.0),
                     state.get("report_markdown", ""),
                     "",  # report_drive_path
-                    "[]",  # action_items jsonb
+                    # was a hardcoded "[]" literal that silently discarded the
+                    # real state["action_items"]/state["sub_questions"] the
+                    # orchestrator produces (naga/orchestrator.py). The bare
+                    # param also inferred jsonb from the column and the pool's
+                    # codec (encoder=json.dumps) re-encoded the literal into a
+                    # jsonb string scalar (10/245 rows were, live-probe
+                    # 2026-07-16). ::text::jsonb below fixes the encoding;
+                    # reading from state fixes the data loss.
+                    json.dumps(state.get("action_items", []), default=str),
                     state.get("evidence_map_uri", ""),
-                    "[]",  # sub_questions jsonb
+                    json.dumps(state.get("sub_questions", []), default=str),
                     state.get("url_history", []),
                     "",  # langgraph_thread_id
                 )

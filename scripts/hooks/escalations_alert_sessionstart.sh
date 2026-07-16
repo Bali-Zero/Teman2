@@ -26,6 +26,7 @@
 #
 # Kill-switch: ESCALATIONS_RECEPTOR_ENABLED=false
 # Freshness window override: ESCALATIONS_FRESH_DAYS=<n>
+# Escalations file override (tests only): ESCALATIONS_FILE_OVERRIDE=<path>
 
 set -o pipefail
 
@@ -34,7 +35,7 @@ set -o pipefail
 HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 REPO_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
 
-ESC_FILE="$REPO_ROOT/shared/escalations_pro.jsonl"
+ESC_FILE="${ESCALATIONS_FILE_OVERRIDE:-$REPO_ROOT/shared/escalations_pro.jsonl}"
 TASKS_DIR="${CLAUDE_TASKS_DIR:-$HOME/.agent/decisions/claude_tasks}"
 FRESH_DAYS="${ESCALATIONS_FRESH_DAYS:-14}"
 
@@ -64,26 +65,50 @@ high = []          # list of (source, job, summary)
 normal_pending = 0
 
 # --- 1. live board: shared/escalations_pro.jsonl ---
+# D2.3's writer is append-only (sentinel_lib.escalations.mark_resolved): a
+# recovered job gets a NEW {"status": "resolved", ...} line appended, the
+# original pending line is never rewritten in place. So per-line status
+# filtering alone is not enough — a healed job's ORIGINAL pending line still
+# reads status=="pending" forever. Net-pending fix (board-honesty, 2026-07-16):
+# a pending entry only still counts as OPEN if no resolution for the same job
+# was appended at or after it (match job+ts, mirroring how mark_resolved pairs
+# them). Recurring jobs (escalate → resolve → escalate again) are handled
+# correctly because each pending entry is checked against the LATEST
+# resolution timestamp for its job.
 if os.path.isfile(esc_file):
     try:
+        raw = []
         with open(esc_file) as fh:
             for ln in fh:
                 ln = ln.strip()
                 if not ln:
                     continue
                 try:
-                    d = json.loads(ln)
+                    raw.append(json.loads(ln))
                 except Exception:
                     continue
-                if str(d.get("status", "pending")).lower() == "resolved":
-                    continue
-                prio = str(d.get("priority") or d.get("severity") or "NORMAL").upper()
-                job = d.get("job") or d.get("type") or "?"
-                summ = " ".join((d.get("error_summary") or "").split())[:80]
-                if prio == "HIGH":
-                    high.append(("escalations_pro.jsonl", job, summ))
-                else:
-                    normal_pending += 1
+
+        resolved_latest_ts = {}  # job -> latest resolved ts
+        for d in raw:
+            if str(d.get("status", "pending")).lower() == "resolved":
+                job = d.get("job") or "?"
+                ts = d.get("resolved_at", d.get("ts", 0)) or 0
+                if ts >= resolved_latest_ts.get(job, -1):
+                    resolved_latest_ts[job] = ts
+
+        for d in raw:
+            if str(d.get("status", "pending")).lower() == "resolved":
+                continue  # resolution marker itself is never a board item
+            job = d.get("job") or d.get("type") or "?"
+            entry_ts = d.get("ts", 0) or 0
+            if job in resolved_latest_ts and entry_ts <= resolved_latest_ts[job]:
+                continue  # covered by a later resolution — net-resolved, not open
+            prio = str(d.get("priority") or d.get("severity") or "NORMAL").upper()
+            summ = " ".join((d.get("error_summary") or "").split())[:80]
+            if prio == "HIGH":
+                high.append(("escalations_pro.jsonl", job, summ))
+            else:
+                normal_pending += 1
     except Exception:
         pass
 
