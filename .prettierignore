@@ -82,6 +82,14 @@ docs/DOCS_INVENTORY.md
 # (authored by another session) is blocked locally though CI is green.
 research/
 
+# PENDING-ARMS.md — append-only W81 ledger of prose entries. Its text carries
+# bare globs/wildcards (e.g. `agent/air-m5/*`, `claude/*`) that prettier's
+# markdown formatter misreads as emphasis and CORRUPTS (rewrites `.../*` → `.../_`,
+# silently changing the meaning of a path). It is prose + audit, not formattable
+# code, so any commit appending an entry was tripping the pre-commit prettier
+# --check on a pre-existing sibling line. Same rationale as research/ above.
+.claude/skills/modus/PENDING-ARMS.md
+
 # Quarantined attempts kept for audit only — should NOT be reformatted
 # (the byte-identical content is the point: it shows what we tried).
 .disabled/
