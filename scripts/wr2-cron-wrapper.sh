@@ -68,12 +68,29 @@ if [[ "$MODULE" == "backend.services.newsletter.newsletter_cli" ]]; then
     exec fly ssh console -a nuzantara-rag -g api -C "$remote_cmd"
 fi
 
+# 1.7 Heartbeat lib (best-effort; never blocks the wrapper — same idiom as
+# scripts/outbox-prune.sh / scripts/agent_worktree_cleanup_cron.sh). Guard
+# failures below used to die mute: an honest stderr line but NO sidecar, so a
+# reconciler/monitor reading only ~/.organism/last_seen/*.json never learns the
+# pre-flight guard tripped (cicatrix family #2 "esiste != armato" — green
+# heartbeat/log mismatch). GUARD_ORGAN_ID is namespaced per invoked module so it
+# never collides with that module's own success-path organ id.
+if [[ -f "$REPO_ROOT/scripts/lib/heartbeat.sh" ]]; then
+    # shellcheck disable=SC1091
+    source "$REPO_ROOT/scripts/lib/heartbeat.sh"
+fi
+if ! declare -F organism_heartbeat >/dev/null 2>&1; then
+    organism_heartbeat() { :; }
+fi
+GUARD_ORGAN_ID="pro.wr2_wrapper_guard.$MODULE"
+
 # 2. DATABASE_URL resolution
 # Force DATABASE_URL_LOCAL on Pro/Mini. The shared secrets file may define
 # DATABASE_URL with a Fly 6PN hostname; that only resolves inside Fly and makes
 # launchd jobs fail locally with socket.gaierror.
 if [[ -z "${DATABASE_URL_LOCAL:-}" ]]; then
     echo "[wr2-wrapper] ERROR: DATABASE_URL_LOCAL not set in $SECRETS_FILE. Add it (e.g. postgres://backend_rag_v2:<password>@127.0.0.1:15432/nuzantara_rag?sslmode=disable) and load com.balizero.wr2.pg-proxy first." >&2
+    organism_heartbeat "$GUARD_ORGAN_ID" "error" "DATABASE_URL_LOCAL not set in $SECRETS_FILE"
     exit 74
 fi
 DATABASE_URL="$DATABASE_URL_LOCAL"
@@ -82,6 +99,7 @@ export DATABASE_URL
 # Sanity: fail fast if localhost:15432 is unreachable (pg-proxy down)
 if ! nc -z 127.0.0.1 15432 2>/dev/null; then
     echo "[wr2-wrapper] ERROR: cannot reach 127.0.0.1:15432 — is com.balizero.wr2.pg-proxy loaded? (launchctl list | grep pg-proxy)" >&2
+    organism_heartbeat "$GUARD_ORGAN_ID" "error" "pg-proxy 127.0.0.1:15432 unreachable"
     exit 74
 fi
 
