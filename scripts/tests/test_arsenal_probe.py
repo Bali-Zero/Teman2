@@ -673,14 +673,22 @@ def test_write_heartbeat_ok_status_when_not_degraded(tmp_path, monkeypatch):
     hb = json.loads((tmp_path / "m5.arsenal_probe.json").read_text())
     assert hb["organ"] == "m5.arsenal_probe"
     assert hb["status"] == "ok"
+    assert hb["degraded"] is False
     assert hb["note"] == "all fine"
 
 
-def test_write_heartbeat_degraded_status(tmp_path, monkeypatch):
+def test_write_heartbeat_status_stays_ok_when_arsenal_degraded(tmp_path, monkeypatch):
+    """The sidecar's status is the PROBE's own liveness, never the observed
+    arsenal's health (TAC 2026-07-03, same fix as pro.fly_restart_loop_detector
+    PR #1924) — a dead AI seat must not flip organs_heartbeat's UNHEALTHY_STATUSES
+    gate. The finding still travels via the `degraded` field + note, and via the
+    dedicated arsenal_seats proprioception probe."""
     monkeypatch.setattr(ap, "HEARTBEAT_DIR", tmp_path)
     ap.write_heartbeat("mini", degraded=True, summary_line="codex auth dead")
     hb = json.loads((tmp_path / "mini.arsenal_probe.json").read_text())
-    assert hb["status"] == "degraded"
+    assert hb["status"] == "ok"
+    assert hb["degraded"] is True
+    assert hb["note"] == "codex auth dead"
 
 
 # ---------------------------------------------------------------------------
