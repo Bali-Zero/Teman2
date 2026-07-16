@@ -187,3 +187,76 @@ def test_68112_other_mice_codes_untouched():
             f"{code} unexpectedly lost its legitimate MICE/Venue per_skala text — "
             "this guard is scoped to 68112 only, do not touch this record."
         )
+
+
+# --- Third contaminated surface (2026-07-16, follow-up PR): apps/mouth/data/kbli-gold-all.json ---
+#
+# This gold file is a SEPARATE curated dataset (428 records, keyed directly by code — not the
+# `{"data": [...]}` list shape of KBLI_2025_FINAL_CLEAN.json above) consumed by
+# apps/mouth/src/lib/kbli-data.server.ts. It is NOT one of the copies scripts/sync_kbli_dataset.sh
+# propagates, so PR #2508's per_skala fix never reached it: its 68112.whatYouNeed kept asserting
+# "NIB + Standard Certificate (... Medium-Low risk)" and "Standard Certificate (auto-issued)" —
+# the same PP28-MICE collision, served live on balizero.com/kbli/68112, invisible to every test
+# above because none of them touch this file.
+
+GOLD_PATH = REPO_ROOT / "apps/mouth/data/kbli-gold-all.json"
+
+
+def _load_gold_record() -> dict:
+    data = json.loads(GOLD_PATH.read_text(encoding="utf-8"))
+    rec = data.get(CODE)
+    if rec is None:
+        raise AssertionError(f"{GOLD_PATH}: record {CODE} not found")
+    return rec
+
+
+def test_68112_gold_what_you_need_has_no_medium_low_risk():
+    """Regression pin for the gold-specific bug: whatYouNeed (the customer-facing step
+    list) must never again assert the collision-derived "Medium-Low risk" tier as this
+    code's own requirement — not even in disclaimer form. This is a stricter bar than the
+    whole-record guard below: whatYouNeed is what a client reads to know what to file: it
+    should describe "not yet defined" plainly, not repeat the specific wrong risk-tier
+    label even while debunking it."""
+    rec = _load_gold_record()
+    wyn = rec.get("whatYouNeed", "")
+    assert "Medium-Low risk" not in wyn, (
+        f"{GOLD_PATH}: 68112.whatYouNeed still asserts 'Medium-Low risk' — the "
+        "PP28-MICE collision-derived licensing tier has leaked back into the "
+        "customer-facing step list."
+    )
+
+
+@pytest.mark.parametrize("path", [GOLD_PATH], ids=["apps/mouth/data/kbli-gold-all.json"])
+def test_68112_gold_record_has_no_mice_venue_without_disclaimer(path: Path):
+    """Whole-gold-record guard, same discipline as
+    test_68112_record_has_no_mice_venue_outside_audit_key above: the gold record has no
+    `per_skala_disputed_pp28_mice`-style audit key to exclude (gold never carried the raw
+    per_skala block), so every leaf string is in scope. Any field naming "MICE"/"Venue"
+    must carry the DISCLAIMER_MARKER in the same field, or it looks like the collision is
+    being asserted rather than debunked."""
+    rec = _load_gold_record()
+    for field_path, value in _iter_leaf_strings(rec):
+        if any(marker in value for marker in CONTAMINATION_MARKERS):
+            assert DISCLAIMER_MARKER in value.lower(), (
+                f"{path}: 68112.{field_path} contains MICE/Venue text with no "
+                f"{DISCLAIMER_MARKER!r} disclaimer in the same field — looks like the "
+                "PP28 MICE-venue licensing is being asserted as this code's own "
+                "requirement again. Field value: " + value[:200]
+            )
+
+
+def test_68112_gold_bali_context_untouched_and_innocent():
+    """Innocence case (scar-family #3 guilt+innocence discipline): baliContext's mention
+    of "Standard Certificate for Hospitality (SLHS)" is a LEGITIMATE reference (explaining
+    that daily/Airbnb rentals need a different KBLI + SLHS, not this code) — it must
+    survive this fix untouched, and the whole-record guard above must not have needed to
+    touch it, because it never names "MICE"/"Venue" in the first place."""
+    rec = _load_gold_record()
+    bali_context = rec.get("baliContext", "")
+    assert "SLHS" in bali_context and "Standard Certificate for Hospitality" in bali_context, (
+        "baliContext's legitimate SLHS/hospitality explanation must be preserved verbatim."
+    )
+    assert not any(marker in bali_context for marker in CONTAMINATION_MARKERS), (
+        "baliContext should not mention MICE/Venue at all — if it does now, the "
+        "disclaimer-aware guard above, not a bare-substring ban, is what must clear it."
+    )
