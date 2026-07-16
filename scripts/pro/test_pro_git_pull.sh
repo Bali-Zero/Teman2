@@ -114,17 +114,48 @@ eq_ne "$(head_of)" "$(remote_head)" "C HEAD advanced"
 [ ! -d "$SANDBOX/backup" ] && ok "C no backup" || bad "C spurious backup"
 rm -rf "$SANDBOX"
 
-# ── D: tracked-modified → SKIP (Option B: never stash sibling WIP) ──
-echo "[D] tracked-modified → SKIP, no stash, no advance"
-setup_case D; advance_origin "docs/d.md" "x"
-printf '%s' "LOCAL EDIT" > "$LOCAL/README.md"    # dirty a TRACKED file
+# ── D1: tracked file locally modified AND changed by incoming → backup+reset, ff succeeds ──
+echo "[D1] tracked collision (local mod + incoming change) → backed up, origin wins"
+setup_case D1
+advance_origin "README.md" "ORIGIN README"             # origin changes the SAME tracked file
+printf '%s' "LOCAL RUNTIME EDIT" > "$LOCAL/README.md"   # local in-place mod (pipeline-style)
 git -C "$LOCAL" fetch -q origin main
-LOCAL_BEFORE=$(head_of); RC=$(run_puller)
-eq_ne "$RC" "0" "D rc=0 (deliberate skip)"
-eq_ne "$(head_of)" "$LOCAL_BEFORE" "D HEAD NOT advanced (skipped)"
-ne_ne "$(head_of)" "$(remote_head)" "D still behind origin (correctly not pulled)"
-[ "$(cat "$LOCAL/README.md")" = "LOCAL EDIT" ] && ok "D tracked edit untouched" || bad "D tracked edit disturbed"
-[ "$(stash_count)" = "0" ] && ok "D no stash created (Law 5)" || bad "D created a stash (BAD)"
+RC=$(run_puller); eq_ne "$RC" "0" "D1 rc=0 (pulled despite tracked collision)"
+eq_ne "$(head_of)" "$(remote_head)" "D1 HEAD advanced"
+[ "$(cat "$LOCAL/README.md")" = "ORIGIN README" ] && ok "D1 tree has ORIGIN content" || bad "D1 wrong tree content"
+BK=$(find "$SANDBOX/backup" -name 'README.md' 2>/dev/null | head -1)
+[ -n "$BK" ] && [ "$(cat "$BK")" = "LOCAL RUNTIME EDIT" ] && ok "D1 local content recoverable in backup" || bad "D1 local content NOT backed up (LOSS!)"
+[ "$(stash_count)" = "0" ] && ok "D1 no stash created (no shared-repo stash risk)" || bad "D1 created a stash (BAD)"
+rm -rf "$SANDBOX"
+
+# ── D2: tracked mod NOT touched by incoming → PRESERVED through ff (the core Pro guarantee) ──
+echo "[D2] tracked local mod, no incoming collision → preserved (Pro syncs while dirty)"
+setup_case D2
+advance_origin "docs/other.md" "x"                     # origin changes a DIFFERENT file
+printf '%s' "LOCAL RUNTIME STATE" > "$LOCAL/README.md"  # persistent runtime dirt, origin didn't touch
+git -C "$LOCAL" fetch -q origin main
+RC=$(run_puller); eq_ne "$RC" "0" "D2 rc=0 (synced despite dirty tree)"
+eq_ne "$(head_of)" "$(remote_head)" "D2 HEAD advanced (did NOT skip on dirt)"
+[ "$(cat "$LOCAL/README.md")" = "LOCAL RUNTIME STATE" ] && ok "D2 non-colliding runtime mod PRESERVED" || bad "D2 clobbered a non-colliding local mod"
+[ ! -d "$SANDBOX/backup" ] && ok "D2 no backup (nothing collided)" || bad "D2 spurious backup"
+rm -rf "$SANDBOX"
+
+# ── D3: incoming collision on a pathspec-magic filename ('*') must NOT glob-reset others ──
+echo "[D3] pathspec-magic filename → literal checkout, non-colliding file preserved (#2)"
+setup_case D3
+printf 'base star' > "$LOCAL/*"                                    # a tracked file literally named '*'
+GIT_LITERAL_PATHSPECS=1 git -C "$LOCAL" add '*'
+git -C "$LOCAL" commit -qm 'add star' && git -C "$LOCAL" push -q origin HEAD:main || fatal "D3 star base"
+tmp="$(mktemp -d)"; git clone -q "$ORIGIN" "$tmp/w"; git -C "$tmp/w" config user.email t@t; git -C "$tmp/w" config user.name t
+printf 'ORIGIN STAR' > "$tmp/w/*"; GIT_LITERAL_PATHSPECS=1 git -C "$tmp/w" add '*'
+git -C "$tmp/w" commit -qm 'mod star' && git -C "$tmp/w" push -q origin HEAD:main || fatal "D3 star origin"; rm -rf "$tmp"
+git -C "$LOCAL" fetch -q origin main
+printf 'LOCAL STAR' > "$LOCAL/*"                                   # collides (local mod to incoming-changed '*')
+printf 'LOCAL README MOD' > "$LOCAL/README.md"                     # non-colliding tracked mod
+RC=$(run_puller); eq_ne "$RC" "0" "D3 rc=0"
+eq_ne "$(head_of)" "$(remote_head)" "D3 HEAD advanced"
+[ "$(cat "$LOCAL/README.md")" = "LOCAL README MOD" ] && ok "D3 non-colliding README preserved (checkout stayed literal)" || bad "D3 glob-reset clobbered README (#2 regressed!)"
+[ "$(cat "$LOCAL/*")" = "ORIGIN STAR" ] && ok "D3 the '*' file got ORIGIN content" || bad "D3 '*' file wrong content"
 rm -rf "$SANDBOX"
 
 # ── E: up to date → no-op ──

@@ -8,27 +8,27 @@
 # that exec from the main checkout ran ~2-day-stale code. Mini has
 # com.nuzantara.git-pull-main.5min; Pro had no equivalent. This restores it.
 #
-# TWO WAYS IT DIFFERS FROM scripts/mini/mini-git-pull.sh (both deliberate):
+# HOW IT DIFFERS FROM scripts/mini/mini-git-pull.sh (deliberate): it RESOLVES the local
+# changes that block a fast-forward instead of skipping the tick, and it never stashes.
+# Pro's main checkout is ~ALWAYS dirty from pipeline output — untracked runtime artifacts
+# written into tracked dirs (research/*, apps/*/output/, …) AND in-place modifications to
+# TRACKED files (apps/bali-intel-scraper/data/published_articles.json,
+# docs/AUTOMATIONS_REFERENCE.md, shared/escalations_pro.jsonl). Those same artifacts land
+# on main via other machines, so an incoming path collides with the local version and a
+# plain `git merge --ff-only` aborts. Mini SKIPS such a tick (its dirt is short-lived
+# sibling WIP that self-resolves); on Pro it never self-resolves, so skipping = NEVER
+# syncing (verified 2026-07-16: those 3 tracked files are persistently dirty).
 #
-#  1. UNTRACKED COLLISIONS ARE RESOLVED, NOT SKIPPED. Pro's pipelines write runtime
-#     artifacts (research/*, apps/*/output/, docs/AUTOMATIONS_REFERENCE.md,
-#     shared/*.jsonl) as untracked files into TRACKED dirs; the same artifacts arrive
-#     on main via other machines, so an incoming tracked path collides with the local
-#     untracked (or .gitignore-ignored!) file and a plain `git merge --ff-only` would
-#     abort forever. Mini SKIPS such a tick (its collisions are sibling WIP that self-
-#     resolves); on Pro they never self-resolve, so it MOVES the colliding path aside
-#     to a timestamped, PID-unique, no-clobber backup and proceeds. Move-aside is
-#     Law-5-safe by RECOVERABILITY (nothing deleted; every move logged + alerted).
-#     NOTE: ignored files are covered too — `git merge --ff-only` SILENTLY overwrites
-#     an ignored untracked file (verified 2026-07-16), so `--exclude-standard` is the
-#     WRONG lens; we test each incoming path for "exists on disk ∧ not tracked".
-#
-#  2. TRACKED-DIRTY = SKIP, NEVER STASH. If the working tree has uncommitted TRACKED
-#     changes, that is almost certainly a sibling session's WIP (sessions run in
-#     .worktrees/, so the main checkout is dirty only from the operator or a stray).
-#     Stashing it — Mini's approach — is the exact Law-5 violation, and stash/pop on a
-#     shared checkout can apply/drop ANOTHER session's stash. So we SKIP + alert and
-#     let sync resume once the tree is clean. No stash logic at all.
+# So, for each INCOMING path that collides with a LOCAL change, this puller backs the
+# local version up to a timestamped PID-unique no-clobber backup and clears it (untracked
+# → move aside; tracked mod → `git checkout HEAD`), then fast-forwards. NON-colliding local
+# changes — runtime writes to files origin did NOT touch this pull — are LEFT UNTOUCHED (the
+# common case). Law-5-safe by RECOVERABILITY (nothing deleted; every backup logged + alerted),
+# and correct because the main checkout carries no human WIP to protect (sessions run in
+# .worktrees/). No stash logic — so no risk of popping a sibling's shared-repo stash.
+# Ignored files are covered too: `git merge --ff-only` SILENTLY overwrites an ignored
+# untracked file (verified), so detection is per-incoming-path ("exists on disk ∧ not
+# tracked", or "tracked ∧ locally modified"), never the `--exclude-standard` lens.
 #
 # EXECUTION LOCATION: run from ~/nuzantara-deploy (kept current by the deploy-puller),
 # NOT from ~/nuzantara — a puller must not live in the tree it rewrites (self-mod).
@@ -37,7 +37,10 @@
 # FAIL-SAFE INVARIANT: every error path leaves the repo untouched or recoverable and
 # retries next tick. Known accepted stalls (abort + alert, never data-loss): a local
 # untracked FILE named like an incoming DIRECTORY (file/dir conflict), or a path with
-# a literal newline in its name (git C-quotes it → mv fails). Both are visible.
+# a literal newline in its name (git C-quotes it → mv fails). Both are visible. Accepted
+# residual race (not closed — would need to lock every pipeline writer): a writer that
+# rewrites a colliding tracked file in the microsecond window between its backup-cp and
+# `git checkout HEAD` loses that single write from the backup; it is regenerated next cycle.
 #
 # Cron: StartInterval on the Pro LaunchAgent (com.nuzantara.git-pull-main.15min).
 # Log:  ~/logs/pro-git-pull.log   Backups: ~/.git-pull-collision-backup/<ts>-<pid>/
@@ -50,6 +53,11 @@ LOG_FILE="${PRO_GIT_PULL_LOG:-$HOME/logs/pro-git-pull.log}"
 LOCK_DIR="${PRO_GIT_PULL_LOCK:-/tmp/pro-git-pull.lock.d}"
 BACKUP_ROOT="${PRO_GIT_PULL_BACKUP_ROOT:-$HOME/.git-pull-collision-backup}"
 LOCK_STALE_SECONDS=1800
+
+# Every `-- "$f"` below is an EXACT filename taken from git's own output. Force literal
+# pathspecs so an exotic tracked name (`:(glob)**`, `*`, `:/`) can never be read as
+# pathspec magic and reset unrelated files (would silently discard non-colliding mods).
+export GIT_LITERAL_PATHSPECS=1
 
 mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null
 
@@ -85,37 +93,61 @@ acquire_lock() {
   return 1
 }
 
-# Move aside any local on-disk path that collides with an incoming tracked path
-# (exists locally ∧ not tracked → untracked OR ignored). Per-incoming-path (the
-# incoming set is small and its names are clean git history) so a huge ignore tree
-# is never enumerated and weird LOCAL filenames never get parsed as text.
-# Returns 0 on success (incl. nothing to do); 1 on ANY mv/mkdir failure (fail-safe:
-# caller then skips the merge, leaving everything recoverable).
-resolve_untracked_collisions() {
-  local changed f backup moved=0 first="" ts
+# Neutralise every LOCAL change that would block the fast-forward: an INCOMING tracked
+# path that also exists locally as (a) an untracked/ignored file, or (b) a tracked file
+# with LOCAL modifications. Each is backed up (recoverable) then cleared, so the ff can
+# land origin's version. NON-colliding local changes — runtime writes to files origin did
+# NOT touch this pull — are LEFT UNTOUCHED. That is the whole point on Pro's main checkout:
+# its tracked-dirty state is pipeline output (published_articles.json, AUTOMATIONS_REFERENCE.md,
+# shared/escalations_pro.jsonl, …) that is ~always dirty and almost never in the incoming
+# diff, so skipping on "any tracked dirt" would mean never syncing. There is no human WIP on
+# the main checkout to protect (sessions run in .worktrees/); recoverability + alert cover
+# the rare case a colliding local change was unexpected.
+# Per-incoming-path: the incoming set is small and its names are clean git history, so a huge
+# ignore tree is never enumerated and weird LOCAL filenames are never parsed as text.
+# Returns 0 on success (incl. nothing to do); 1 on ANY failure (fail-safe: caller skips the
+# merge, everything recoverable).
+resolve_collisions() {
+  local changed f backup n=0 first="" ts
   changed=$(git -c core.quotepath=false diff --name-only HEAD "$REMOTE" 2>/dev/null)
   [ -z "$changed" ] && return 0
   ts="$(date '+%Y%m%d-%H%M%S')-$$"
   backup="$BACKUP_ROOT/$ts"
   while IFS= read -r f; do
     [ -z "$f" ] && continue
-    [ -e "$REPO/$f" ] || continue                                  # incoming path absent locally
-    git ls-files --error-unmatch -- "$f" >/dev/null 2>&1 && continue  # tracked → not a collision
-    if ! mkdir -p "$backup/$(dirname "$f")" 2>>"$LOG_FILE"; then
-      log "  ERROR: mkdir backup dir failed for $f — aborting tick (fail-safe)"; return 1
-    fi
-    if mv -n "$REPO/$f" "$backup/$f" 2>>"$LOG_FILE" && [ ! -e "$REPO/$f" ]; then
-      moved=$((moved + 1)); [ -z "$first" ] && first="$f"
-      log "  moved colliding path -> $backup/$f"
+    if git ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
+      # tracked: a collision ONLY if locally modified (else ff updates it cleanly, mod-free)
+      git diff --quiet HEAD -- "$f" 2>/dev/null && continue
+      mkdir -p "$backup/$(dirname "$f")" 2>>"$LOG_FILE" || { log "  ERROR: mkdir backup for $f"; return 1; }
+      # cp -p saves only the WORKING-TREE version; if a distinct STAGED version exists,
+      # `git checkout HEAD` would discard it unrecoverably — back the index blob up too.
+      if ! git diff --quiet --cached HEAD -- "$f" 2>/dev/null; then
+        git show ":$f" > "$backup/$f.staged" 2>>"$LOG_FILE" || { log "  ERROR: staged-blob backup failed for $f — aborting (fail-safe)"; return 1; }
+      fi
+      if cp -p "$REPO/$f" "$backup/$f" 2>>"$LOG_FILE" && git checkout HEAD -- "$f" 2>>"$LOG_FILE"; then
+        n=$((n + 1)); [ -z "$first" ] && first="$f (tracked)"
+        log "  backed up + reset colliding tracked mod: $f -> $backup/$f"
+      else
+        log "  ERROR: backup/checkout failed for tracked $f — aborting tick (fail-safe)"; return 1
+      fi
     else
-      log "  ERROR: mv failed / backup dest existed for $f — aborting tick (fail-safe)"; return 1
+      # untracked/ignored: a collision ONLY if it exists on disk at the incoming path
+      # (-L too: a DANGLING symlink is invisible to -e but still blocks/loses on ff)
+      [ -e "$REPO/$f" ] || [ -L "$REPO/$f" ] || continue
+      mkdir -p "$backup/$(dirname "$f")" 2>>"$LOG_FILE" || { log "  ERROR: mkdir backup for $f"; return 1; }
+      if mv -n "$REPO/$f" "$backup/$f" 2>>"$LOG_FILE" && [ ! -e "$REPO/$f" ]; then
+        n=$((n + 1)); [ -z "$first" ] && first="$f (untracked)"
+        log "  moved colliding untracked/ignored: $f -> $backup/$f"
+      else
+        log "  ERROR: mv failed / backup dest existed for $f — aborting tick (fail-safe)"; return 1
+      fi
     fi
   done < <(printf '%s\n' "$changed")
 
-  if [ "$moved" -gt 0 ]; then
-    log "Relocated $moved colliding path(s) to $backup (recoverable)."
-    telegram_alert "untracked-collision" \
-      "Pro pull: moved ${moved} colliding untracked/ignored path(s) aside to ${backup} (e.g. ${first}). Runtime artifacts by design; restore from backup if one was real WIP."
+  if [ "$n" -gt 0 ]; then
+    log "Neutralised $n colliding local path(s) into $backup (recoverable)."
+    telegram_alert "collision" \
+      "Pro pull: backed up + cleared ${n} local path(s) colliding with incoming (e.g. ${first}) into ${backup}. Runtime output by design; restore from backup if any was real WIP."
   fi
   return 0
 }
@@ -151,17 +183,13 @@ if ! git merge-base --is-ancestor HEAD "$REMOTE" 2>/dev/null; then
   exit 1
 fi
 
-# Tracked-dirty = sibling WIP → skip, never stash (Law 5 / #5 sibling-race).
-if [ -n "$(git diff --name-only HEAD 2>/dev/null)" ] || [ -n "$(git diff --cached --name-only 2>/dev/null)" ]; then
-  log "Tracked-dirty working tree (sibling WIP?), skip — not stashing (Law 5)"
-  telegram_alert "tracked-dirty" "Pro ~/nuzantara has uncommitted TRACKED changes; auto-sync skipped (not touching sibling WIP). Commit/discard to resume."
-  exit 0
-fi
-
 COMMITS_BEHIND=$(git rev-list --count HEAD.."$REMOTE" 2>/dev/null || echo "?")
 
-# Move aside runtime-artifact untracked/ignored collisions before the ff.
-if ! resolve_untracked_collisions; then
+# Neutralise local changes that collide with incoming (tracked mods + untracked/ignored),
+# backing each up first. Non-colliding local runtime state is preserved (the common case on
+# Pro's main checkout) — see resolve_collisions. We do NOT skip merely because tracked files
+# are dirty: on Pro they ~always are (pipeline output), and skipping would mean never syncing.
+if ! resolve_collisions; then
   telegram_alert "collision-resolve-failed" "Pro pull: collision-resolve errored; tick skipped, nothing merged. Check ~/logs/pro-git-pull.log."
   exit 1
 fi
