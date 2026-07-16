@@ -3,14 +3,13 @@
 #
 # Reproduces the 2026-07-11 incident: a sibling session has an uncommitted
 # new file on Mini's main checkout (e.g. a new test file), and origin/main
-# advances with a commit that ALSO adds a file at that same path. The old
-# script stashed tracked changes, attempted `git merge --ff-only`, failed
-# on the untracked-path collision, restored the stash, and repeated the
-# whole cycle every 5 minutes forever. The fix detects the collision
-# BEFORE stashing and skips cleanly with one targeted alert.
+# advances with a commit that ALSO adds a file at that same path.
 #
-# This test also has an unrelated tracked-dirty file present, to prove the
-# collision check runs — and skips — before the stash step even fires.
+# 2026-07-17 upgrade (skip → RESOLVE): the puller now backs up + moves the
+# colliding untracked file aside (recoverable) and PROCEEDS with the ff, instead
+# of stalling the whole tick. This test asserts the resolve: the pull lands, the
+# sibling's file is preserved in the backup (not lost), the working tree holds
+# origin's version, and an UNRELATED tracked-dirty file survives via stash+pop.
 
 set -e
 
@@ -69,33 +68,40 @@ LOG_FILE="$WORK/logs/mini-git-pull.log"
 echo "[test] exit: $RC"
 sed 's/^/  | /' "$LOG_FILE"
 
-if [ "$RC" -ne 1 ]; then
-  echo "[test] FAIL: expected exit 1 (collision, needs sibling to resolve), got $RC"
+if [ "$RC" -ne 0 ]; then
+  echo "[test] FAIL: expected exit 0 (collision resolved, pull applied), got $RC"
   exit 1
 fi
-if ! grep -q "untracked file(s) collide" "$LOG_FILE"; then
-  echo "[test] FAIL: log should name the untracked-collision detection"
+if ! grep -q "moved colliding untracked" "$LOG_FILE"; then
+  echo "[test] FAIL: log should name the moved-aside untracked collision"
   exit 1
 fi
-if grep -q "Stashed tracked changes" "$LOG_FILE"; then
-  echo "[test] FAIL: script stashed before checking for the collision — should skip pre-stash"
+# The sibling's file must be RECOVERABLE in the backup (moved aside, not deleted).
+BK=$(find "$WORK/.git-pull-collision-backup" -name 'new_test.py' 2>/dev/null | head -1)
+if [ -z "$BK" ] || [ "$(cat "$BK")" != "sibling WIP draft" ]; then
+  echo "[test] FAIL: sibling's untracked file not recoverable in backup (data loss!)"
   exit 1
 fi
-if ! git -C "$LOCAL" stash list | grep -q "^$"; then
-  : # stash list empty is expected — no assertion needed beyond the grep below
+# The working tree must now hold ORIGIN's version at that path (the ff landed).
+if [ "$(cat "$LOCAL/scripts/new_test.py")" != "committed upstream version" ]; then
+  echo "[test] FAIL: working tree does not have origin's version after ff"
+  exit 1
 fi
+# The pull must have applied (HEAD advanced to origin).
+if [ "$(git -C "$LOCAL" rev-parse HEAD)" != "$(git -C "$ORIGIN_WORK" rev-parse HEAD)" ]; then
+  echo "[test] FAIL: local HEAD did NOT advance — pull should have applied after resolve"
+  exit 1
+fi
+# The UNRELATED tracked-dirty file must survive the stash+pop around the ff.
+if ! grep -q "unrelated local edit" "$LOCAL/docs.md"; then
+  echo "[test] FAIL: unrelated tracked-dirty edit was lost across the pull (stash/pop)"
+  exit 1
+fi
+# No stash should linger (pop succeeded).
 if [ -n "$(git -C "$LOCAL" stash list 2>/dev/null)" ]; then
-  echo "[test] FAIL: a stash was created — sibling's tracked-dirty file should not have been touched"
-  exit 1
-fi
-if [ "$(cat "$LOCAL/scripts/new_test.py")" != "sibling WIP draft" ]; then
-  echo "[test] FAIL: sibling's untracked WIP file was modified — must be left alone"
-  exit 1
-fi
-if [ "$(git -C "$LOCAL" rev-parse HEAD)" = "$(git -C "$ORIGIN_WORK" rev-parse HEAD)" ]; then
-  echo "[test] FAIL: local HEAD advanced despite the collision — pull should have been skipped"
+  echo "[test] FAIL: a stash lingered — pop failed"
   exit 1
 fi
 
 rm -rf "$WORK"
-echo "[test] PASS — untracked-collision: skipped pre-stash, sibling WIP untouched, no pull applied."
+echo "[test] PASS — untracked-collision RESOLVED: moved aside (recoverable), ff applied, unrelated dirty edit preserved."
