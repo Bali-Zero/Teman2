@@ -20,13 +20,26 @@ Two independent bugs fixed, two test classes:
    with no matching pending escalation, and must never let one job's failure
    block the rest.
 
+3. TestSameTickRecoveryResolution — W89 class-audit (2026-07-16): the
+   corpse-sweep fix in #2 covered only 1-of-4 job-recovery paths.
+   process_entry()'s Tier 1 (retried_ok), Tier 2 (aider_fixed), and Tier 2.5
+   (codex_fixed) returns are jobs healed WITHIN this tick — they never touch
+   sweep_recovered_corpses() at all, since they never even entered the DLQ
+   loop as "still broken". _resolve_job_escalation() (a single-job wrapper
+   around _resolve_swept_escalations) is now called at all three return
+   points. Guilt: each of the three paths resolves a pending escalation.
+   Innocence: a job that still fails (falls through to Tier 3 escalate)
+   never calls mark_resolved.
+
 Run:
     cd ~/nuzantara/.worktrees/ops-board-honesty
     source apps/backend-rag/.venv/bin/activate
     python -m pytest scripts/tests/test_dlq_board_honesty.py -v
 """
 import importlib.util
+import sys
 import time
+import types
 from pathlib import Path
 
 import pytest
@@ -174,3 +187,131 @@ class TestResolveSweptEscalations:
 
         assert calls == ["job_ok_1", "job_boom", "job_ok_2"], "every job must still be attempted"
         assert resolved_count == 2
+
+
+class TestSameTickRecoveryResolution:
+    """W89 class-audit — see module docstring #3. Same helper, three more
+    call sites: a job healed in THIS tick (never entered the DLQ as
+    'still broken') needed its own resolution call, distinct from the
+    corpse-sweep path in TestResolveSweptEscalations."""
+
+    def test_guilt_retried_ok_resolves_escalation(self, dlq, monkeypatch):
+        d = dlq
+        monkeypatch.setattr(
+            d, "claude_reason",
+            lambda entry: {
+                "fix_type": "restart", "fix_instruction": "restart the service",
+                "confidence": 0.99, "needs_code_change": False,
+                "llm_suggested_only": True,
+            },
+        )
+        resolved_jobs = []
+        monkeypatch.setattr(
+            d, "_mark_resolved", lambda job: (resolved_jobs.append(job), 1)[1]
+        )
+
+        entry = _entry("fly_backup", "connection refused talking to fly api endpoint", {})
+        registry = {"fly_backup": {"restart_cmd": "true"}}  # real no-op success command
+
+        action = d.process_entry(entry, registry)
+
+        assert action == "retried_ok"
+        assert resolved_jobs == ["fly_backup"]
+
+    def test_guilt_aider_fixed_resolves_escalation(self, dlq, monkeypatch, tmp_path):
+        d = dlq
+        monkeypatch.setattr(
+            d, "claude_reason",
+            lambda entry: {
+                "fix_type": "code", "fix_instruction": "patch the retry loop",
+                "confidence": 0.95, "needs_code_change": True,
+                "llm_suggested_only": True,
+            },
+        )
+        monkeypatch.setattr(
+            d, "dispatch_aider", lambda entry, reasoning, registry: (True, "applied")
+        )
+        monkeypatch.setattr(d, "verify_fix", lambda test_cmd: (True, ""))
+        resolved_jobs = []
+        monkeypatch.setattr(
+            d, "_mark_resolved", lambda job: (resolved_jobs.append(job), 1)[1]
+        )
+
+        real_file = tmp_path / "some_service.py"
+        real_file.write_text("# placeholder\n")
+
+        entry = _entry("some_job", "TypeError in handler at line 42, traceback follows", {})
+        entry["files_implicated"] = [str(real_file)]
+        registry = {"some_job": {"test_cmd": "true"}}
+
+        action = d.process_entry(entry, registry)
+
+        assert action == "aider_fixed"
+        assert resolved_jobs == ["some_job"]
+
+    def test_guilt_codex_fixed_resolves_escalation(self, dlq, monkeypatch, tmp_path):
+        """Tier 2.5 (codex_fixed) — extended past the two paths literally
+        named in the mandate: it is the third instance of the SAME class
+        (job healed within this tick), so leaving it uncured would repeat
+        the exact 1-of-N mistake this audit exists to close. dispatch_codex_fix
+        is imported lazily inside process_entry (`from sentinel_lib.repairer
+        import dispatch_codex_fix`), so it's faked via sys.modules rather than
+        monkeypatch.setattr on the dlq module."""
+        d = dlq
+        monkeypatch.setattr(
+            d, "claude_reason",
+            lambda entry: {
+                "fix_type": "code", "fix_instruction": "patch the retry loop",
+                "confidence": 0.95, "needs_code_change": True,
+                "llm_suggested_only": True,
+            },
+        )
+        monkeypatch.setattr(
+            d, "dispatch_aider", lambda entry, reasoning, registry: (False, "aider failed")
+        )
+        monkeypatch.setattr(d, "verify_fix", lambda test_cmd: (True, ""))
+
+        fake_repairer = types.ModuleType("sentinel_lib.repairer")
+        fake_repairer.dispatch_codex_fix = lambda **kwargs: (True, "codex applied")
+        monkeypatch.setitem(sys.modules, "sentinel_lib.repairer", fake_repairer)
+
+        resolved_jobs = []
+        monkeypatch.setattr(
+            d, "_mark_resolved", lambda job: (resolved_jobs.append(job), 1)[1]
+        )
+
+        real_file = tmp_path / "some_service.py"
+        real_file.write_text("# placeholder\n")
+
+        entry = _entry("some_job", "TypeError in handler at line 42, traceback follows", {})
+        entry["files_implicated"] = [str(real_file)]
+        registry = {"some_job": {"test_cmd": "true"}}
+
+        action = d.process_entry(entry, registry)
+
+        assert action == "codex_fixed"
+        assert resolved_jobs == ["some_job"]
+
+    def test_innocence_still_failing_job_never_resolves(self, dlq, monkeypatch):
+        """A job that falls through to Tier 3 (escalate) must NEVER call
+        mark_resolved — it hasn't recovered, the board must keep it pending."""
+        d = dlq
+        monkeypatch.setattr(
+            d, "claude_reason",
+            lambda entry: {
+                "fix_type": "unknown", "fix_instruction": "needs manual triage",
+                "confidence": 0.3, "needs_code_change": False,
+                "llm_suggested_only": True,
+            },
+        )
+        monkeypatch.setattr(d, "escalate_to_claude_code", lambda *a, **k: None)
+        resolved_jobs = []
+        monkeypatch.setattr(
+            d, "_mark_resolved", lambda job: (resolved_jobs.append(job), 1)[1]
+        )
+
+        entry = _entry("still_broken_job", "connection refused talking to some endpoint", {})
+        action = d.process_entry(entry, {})
+
+        assert action == "escalated"
+        assert resolved_jobs == [], "a still-failing job must never resolve its own escalation"

@@ -716,6 +716,7 @@ def process_entry(entry: dict, registry: dict) -> str:
                 if result.returncode == 0:
                     logger.info(f"{job}: retry OK ✅")
                     send_telegram(f"✅ Auto-retried `{job}` successfully")
+                    _resolve_job_escalation(job)
                     return "retried_ok"
             except Exception as e:
                 logger.warning(f"{job}: retry failed: {e}")
@@ -742,6 +743,7 @@ def process_entry(entry: dict, registry: dict) -> str:
                 send_telegram(
                     f"✅ Aider auto-fixed `{job}`: {reasoning['fix_instruction'][:80]}"
                 )
+                _resolve_job_escalation(job)
                 return "aider_fixed"
 
         # ── Tier 2.5: Codex CLI fix — multi-file, sandboxed ────────────────
@@ -765,6 +767,7 @@ def process_entry(entry: dict, registry: dict) -> str:
                     f"✅ Codex auto-fixed `{job}` (after Aider fail): "
                     f"{reasoning['fix_instruction'][:80]}"
                 )
+                _resolve_job_escalation(job)
                 return "codex_fixed"
 
         logger.warning(f"{job}: Codex also failed → escalating to Claude Code")
@@ -803,6 +806,24 @@ def _resolve_swept_escalations(swept: list) -> int:
         except Exception as exc:  # noqa: BLE001 — must never break the autopilot run
             logger.warning(f"{job}: mark_resolved failed (escalation stays pending): {exc}")
     return resolved
+
+
+def _resolve_job_escalation(job: str) -> None:
+    """W89 class-audit (2026-07-16): same bug as _resolve_swept_escalations,
+    different call site. A job healed WITHIN this tick (Tier 1 retry, Tier 2
+    Aider, Tier 2.5 Codex) never goes through sweep_recovered_corpses() —
+    it never enters the DLQ at all — so it needed its own resolution call.
+    "A cure applied to 1-of-N recovery paths is a time bomb": corpse-sweep
+    was the first path found; retried_ok / aider_fixed / codex_fixed are the
+    other three. Silent no-op (logs nothing) for the common case — most
+    auto-fixed jobs never escalated in the first place.
+    """
+    resolved = _resolve_swept_escalations([job])
+    if resolved:
+        logger.info(
+            f"{job}: resolved {resolved} pending escalation(s) on the board "
+            f"(same-tick recovery)"
+        )
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
