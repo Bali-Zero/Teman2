@@ -106,6 +106,7 @@ jobs:
             infra/claude-hooks/test_host_boundary.py \
             infra/claude-hooks/test_phase.py \
             infra/claude-hooks/test_w79_shell_write.py \
+            infra/claude-hooks/test_data_plane_guard.py \
             scripts/test_guardrails_overmatch.py \
             scripts/test_guardrails_core_overmatch.py ; do
             if [ -f "$t" ]; then

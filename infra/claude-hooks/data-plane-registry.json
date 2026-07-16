@@ -1,0 +1,16 @@
+{
+  "_doc": "Data-plane registry (superscar #3 generalization, 2026-07-16). Maps curated datasets that must ONLY be written by their program's deterministic compiler scripts, never hand-edited by an interactive session or a stray Bash write. ANY program registers its own data plane by appending an entry here — this file, not the hook code, is the extension point: a new program never needs to touch infra/claude-hooks/data_plane_guard.py, it just adds {id, owner, compilers, protected} to `entries`. `protected` globs are matched against the path RELATIVE TO THE GIT ROOT (main checkout or a .worktrees/* worktree — the hook resolves whichever git root actually contains the file), so protection follows the dataset into every worktree. Missing/corrupt registry = the hook PASSES THROUGH with a WARN (infra failure must never brick Edit/Write/Bash).",
+  "version": 1,
+  "entries": [
+    {
+      "id": "kbli-filiera",
+      "owner": "GARUDA-FILIERA program (research/operations/2026-07-16-kbli-garuda-filiera-workflow.md)",
+      "compilers": "scripts/kbli_filiera/",
+      "protected": [
+        "data/kbli-filiera/**",
+        "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
+        "data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json"
+      ]
+    }
+  ]
+}
