@@ -5,7 +5,9 @@ CRM Utilities - RBAC and Shared Business Logic
 import json
 import logging
 import re
-from typing import Any
+from typing import Annotated, Any
+
+from pydantic import AfterValidator
 
 from backend.app.core.config import settings
 
@@ -25,6 +27,44 @@ CRM_EXTRA_ADMIN_EMAILS: frozenset[str] = frozenset(
 # Practices accounting role — sees full practice history for audit/reconciliation.
 # Separate from admin because accounting users are not admins for everything else.
 PRACTICES_EXTRA_VIEW_EMAILS: frozenset[str] = frozenset({"ruslana@balizero.com"})
+
+
+# ============================================================
+# clients.avatar_url — the one storage-URL invariant (SSOT)
+# ============================================================
+
+AVATAR_DATA_URI_ERROR = (
+    "avatar_url must be a storage URL; upload the image via "
+    "POST /api/crm/clients/{id}/avatar instead of an inline data: URI"
+)
+
+
+def reject_data_uri_avatar(v: str | None) -> str | None:
+    """Reject inline base64 `data:` URIs for clients.avatar_url.
+
+    Avatars must be storage URLs. Inline base64 blobs (avg 20KB, max 518KB per
+    row) bloated the clients list to ~10MB, and once one was persisted it also
+    422'd every subsequent edit of that client — the value came back on the next
+    update and tripped this very check (19 of 1744 rows, PR #2494).
+
+    Image bytes go through POST /api/crm/clients/{id}/avatar, which uploads to
+    Tigris and stores a public https URL.
+
+    Prefer the `AvatarUrl` annotated type over calling this directly: the guard
+    then travels with the type, so a new model cannot declare an avatar field
+    and silently forget to validate it (which is exactly how ClientCreate,
+    ClientProfileUpdate and ClientValidator ended up unguarded while
+    ClientUpdate was protected).
+    """
+    if v and v.startswith("data:"):
+        raise ValueError(AVATAR_DATA_URI_ERROR)
+    return v
+
+
+# The ONLY type any request/validation model should use for clients.avatar_url.
+# `scripts/lint_avatar_url_validators.py` fails the build on a model that
+# declares avatar_url without this guard.
+AvatarUrl = Annotated[str | None, AfterValidator(reject_data_uri_avatar)]
 
 
 def _settings_admin_emails() -> frozenset[str]:

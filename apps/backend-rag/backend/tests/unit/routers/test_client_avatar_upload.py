@@ -12,26 +12,142 @@ from fastapi import HTTPException, UploadFile
 
 from backend.app.setup.route_walk import iter_leaf_routes
 
+DATA_URI = "data:image/png;base64,AAAABBBB"
+STORAGE_URL = (
+    "https://nuzantara-warroom-images.fly.storage.tigris.dev/client-avatar/1/ab12cd34.jpg"
+)
 
-class TestClientUpdateRejectsDataUri:
-    def test_data_uri_rejected(self):
-        from backend.app.routers.crm_clients import ClientUpdate
 
+def _build_create(**kw):
+    from backend.app.routers.crm_clients import ClientCreate
+
+    return ClientCreate(full_name="Test Client", **kw)
+
+
+def _build_update(**kw):
+    from backend.app.routers.crm_clients import ClientUpdate
+
+    return ClientUpdate(**kw)
+
+
+def _build_profile_update(**kw):
+    from backend.app.routers.crm_enhanced import ClientProfileUpdate
+
+    return ClientProfileUpdate(**kw)
+
+
+def _build_validator(**kw):
+    from backend.services.crm.client_core import ClientValidator
+
+    return ClientValidator(full_name="Test Client", **kw)
+
+
+# Every model that can write clients.avatar_url. #2208 guarded ONLY ClientUpdate;
+# the other three stayed open and kept minting the inline-base64 rows that 422'd
+# every edit of those clients (19 of 1744). They share one validator now — the
+# `AvatarUrl` type in crm_utils — and this matrix is what keeps them sharing it.
+AVATAR_WRITE_MODELS = [
+    ("ClientCreate", _build_create),
+    ("ClientUpdate", _build_update),
+    ("ClientProfileUpdate", _build_profile_update),
+    ("ClientValidator", _build_validator),
+]
+
+
+class TestEveryWritePathRejectsDataUri:
+    """GUILT: no write-path may accept an inline base64 avatar."""
+
+    @pytest.mark.parametrize("name,build", AVATAR_WRITE_MODELS)
+    def test_data_uri_rejected(self, name, build):
         with pytest.raises(ValueError):
-            ClientUpdate(avatar_url="data:image/png;base64,AAAABBBB")
+            build(avatar_url=DATA_URI)
 
-    def test_storage_url_accepted(self):
-        from backend.app.routers.crm_clients import ClientUpdate
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "data:image/jpeg;base64,/9j/4AAQSkZJRg==",
+            "data:image/webp;base64,UklGRg==",
+            "data:text/plain,hello",
+        ],
+    )
+    def test_data_uri_variants_rejected(self, uri):
+        """The guard keys on the `data:` scheme, not on one sample mime."""
+        with pytest.raises(ValueError):
+            _build_create(avatar_url=uri)
 
-        u = ClientUpdate(
-            avatar_url="https://nuzantara-warroom-images.fly.storage.tigris.dev/client-avatar/1/ab12cd34.jpg"
+
+class TestEveryWritePathAcceptsStorageUrl:
+    """INNOCENCE: the guard must not clobber legitimate values."""
+
+    @pytest.mark.parametrize("name,build", AVATAR_WRITE_MODELS)
+    def test_storage_url_accepted(self, name, build):
+        assert build(avatar_url=STORAGE_URL).avatar_url == STORAGE_URL
+
+    @pytest.mark.parametrize("name,build", AVATAR_WRITE_MODELS)
+    def test_none_accepted(self, name, build):
+        assert build(avatar_url=None).avatar_url is None
+
+    @pytest.mark.parametrize("name,build", AVATAR_WRITE_MODELS)
+    def test_empty_string_accepted(self, name, build):
+        """"" clears the avatar — the edit modal sends it on remove (#2494)."""
+        assert build(avatar_url="").avatar_url == ""
+
+    @pytest.mark.parametrize("name,build", AVATAR_WRITE_MODELS)
+    def test_omitted_field_accepted(self, name, build):
+        """A payload that never mentions avatar_url must validate untouched."""
+        assert build().avatar_url is None
+
+
+class TestReadPathStillServesLegacyRows:
+    """The 19 legacy rows must keep rendering: guard the WRITE, never the READ.
+
+    Putting the validator on ClientResponse would 500 every GET of a client whose
+    stored avatar_url is still a data: URI — turning a cosmetic debt into an
+    outage. The list endpoint nulls them and GET /{id}/avatar serves them.
+    """
+
+    def test_client_response_accepts_legacy_data_uri(self):
+        from backend.app.routers.crm_clients import ClientResponse
+
+        r = ClientResponse(
+            id=1,
+            uuid="u-1",
+            full_name="Test Client",
+            status="lead",
+            client_type="individual",
+            avatar_url=DATA_URI,
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
         )
-        assert u.avatar_url.startswith("https://")
+        assert r.avatar_url == DATA_URI
 
-    def test_none_accepted(self):
-        from backend.app.routers.crm_clients import ClientUpdate
 
-        assert ClientUpdate(avatar_url=None).avatar_url is None
+class TestSharedValidatorIsSingleSourceOfTruth:
+    def test_models_use_the_shared_type(self):
+        """Each write-model's avatar_url carries the shared AfterValidator.
+
+        Pinning the wiring itself: a future model that re-declares
+        `avatar_url: str | None` locally would still pass the behavioural tests
+        above only by duplicating the check — this asserts they share ONE.
+        """
+        from backend.app.utils.crm_utils import reject_data_uri_avatar
+
+        for name, build in AVATAR_WRITE_MODELS:
+            model = build().__class__
+            meta = model.model_fields["avatar_url"].metadata
+            funcs = [getattr(m, "func", None) for m in meta]
+            assert reject_data_uri_avatar in funcs, (
+                f"{name}.avatar_url does not use the shared AvatarUrl type"
+            )
+
+    def test_validator_function_is_pure_and_direct(self):
+        from backend.app.utils.crm_utils import reject_data_uri_avatar
+
+        assert reject_data_uri_avatar(None) is None
+        assert reject_data_uri_avatar("") == ""
+        assert reject_data_uri_avatar(STORAGE_URL) == STORAGE_URL
+        with pytest.raises(ValueError):
+            reject_data_uri_avatar(DATA_URI)
 
 
 class TestUploadRouteRegistered:

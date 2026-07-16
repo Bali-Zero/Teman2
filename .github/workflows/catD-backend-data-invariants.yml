@@ -41,12 +41,16 @@ on:
   pull_request:
     paths:
       - "apps/backend-rag/**"
+      - "scripts/lint_avatar_url_validators.py"
+      - "scripts/tests/test_lint_avatar_url_validators.py"
       - ".github/workflows/catD-backend-data-invariants.yml"
   push:
     branches:
       - main
     paths:
       - "apps/backend-rag/**"
+      - "scripts/lint_avatar_url_validators.py"
+      - "scripts/tests/test_lint_avatar_url_validators.py"
       - ".github/workflows/catD-backend-data-invariants.yml"
 
 permissions:
@@ -63,6 +67,19 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v7
+
+      # ── avatar_url guard — every Pydantic model that writes clients.avatar_url
+      # must reject inline base64 data: URIs (PR #2494: inline base64 bloated the
+      # clients list to ~10MB and 422'd every edit of 19/1744 poisoned rows).
+      # ClientUpdate carried the guard alone for a while; ClientCreate,
+      # ClientProfileUpdate and ClientValidator were unguarded siblings — the exact
+      # "esiste != armato" shape this repo keeps getting bitten by
+      # (cicatrix-superscar.md #2/#3). This static AST lint is what stops a FIFTH
+      # unguarded model being born silently; --strict fails the build on one.
+      - name: Lint avatar_url validators (no unguarded data:-URI model)
+        run: |
+          set -uo pipefail
+          python3 scripts/lint_avatar_url_validators.py --strict
 
       # ── #32 — the /health advertised embedding dim must match the FROZEN model ──
       # text-embedding-3-small = 1536 dims (Data Invariant #9, never change without
