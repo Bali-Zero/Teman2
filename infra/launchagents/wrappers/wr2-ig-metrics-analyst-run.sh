@@ -153,12 +153,14 @@ if command -v stdbuf &>/dev/null; then
   stdbuf -o L -e L /Users/nuzantara/.local/bin/claude -p \
     --model claude-sonnet-5 \
     --permission-mode bypassPermissions \
+    --max-budget-usd "${WR2_IG_MAX_BUDGET_USD:-10}" \
     "$CLAUDE_PROMPT" \
     >> "$LOG" 2>> "$ERR" &
 else
   /Users/nuzantara/.local/bin/claude -p \
     --model claude-sonnet-5 \
     --permission-mode bypassPermissions \
+    --max-budget-usd "${WR2_IG_MAX_BUDGET_USD:-10}" \
     "$CLAUDE_PROMPT" \
     >> "$LOG" 2>> "$ERR" &
 fi

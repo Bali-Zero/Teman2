@@ -113,6 +113,7 @@ log "step1: ingest+extract via claude opus (web search)"
 timeout 1800 "$CLAUDE_BIN" -p \
   --model claude-opus-4-8 \
   --permission-mode bypassPermissions \
+  --max-budget-usd "${WORLD_SCAN_MAX_BUDGET_USD:-5}" \
   "$INGEST_PROMPT" >> "$LOG" 2>> "$ERR" || log "WARN: ingest agent exit=$?"
 
 if [ ! -s "$PATTERNS_JSON" ]; then
