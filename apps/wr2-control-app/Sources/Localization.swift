@@ -120,6 +120,7 @@ enum L10n {
         // gallery
         "gallery.title":    [.it: "Caroselli",             .id: "Karosel"],
         "gallery.count":    [.it: "caroselli generati",    .id: "karosel dibuat"],
+        "gallery.incompleteHidden": [.it: "nascosti (slide incomplete)", .id: "disembunyikan (slide belum lengkap)"],
         "gallery.refresh":  [.it: "Aggiorna",              .id: "Segarkan"],
         "gallery.empty":    [.it: "Nessun carosello ancora", .id: "Belum ada karosel"],
         "gallery.empty.sub":[.it: "Creane uno dallo Studio", .id: "Buat satu dari Studio"],

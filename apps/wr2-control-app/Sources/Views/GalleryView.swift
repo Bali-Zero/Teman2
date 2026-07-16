@@ -38,6 +38,10 @@ struct GalleryView: View {
                             Text("\(visible(state.carousels).count) \(lang.t("gallery.count"))")
                                 .font(Theme.bodyFont).foregroundStyle(Theme.muted)
                         }
+                        if state.excludedIncompleteCount > 0 {
+                            Text("\(state.excludedIncompleteCount) \(lang.t("gallery.incompleteHidden"))")
+                                .font(.system(size: 10)).foregroundStyle(Theme.muted)
+                        }
                     }
                     Spacer()
                     // Sort picker

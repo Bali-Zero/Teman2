@@ -63,22 +63,100 @@ enum WarRoom {
     ///  1. basename of `carousel_path` (authoritative — same join scanCarousels uses)
     ///  2. `topic_slug` exact (legacy schema)
     ///  3. anchored FSM pattern `^\d{4}-\d{2}-\d{2}-<topic_slug>-[0-9a-f]{6,}$`
+    ///
+    /// Steps extracted into `queueItemMatchesByPath`/`queueItemMatchesByTopicSlug` so the
+    /// A2 completeness gate below (which only has a candidate SLUG, not a built Carousel
+    /// array, while it's still deciding whether the dir belongs in the gallery at all) can
+    /// reuse the exact same resolution rule instead of growing a second, driftable copy
+    /// (scar #3: a guard and its untested twin are how over/under-match pairs are born).
     static func matchCarousel(for item: ReviewItem, in carousels: [Carousel]) -> Carousel? {
-        if let p = item.carousel_path {
-            let trimmed = p.hasSuffix("/") ? String(p.dropLast()) : p
-            let slug = (trimmed as NSString).lastPathComponent
-            if slug.isEmpty == false,
-               let c = carousels.first(where: { $0.slug == slug }) { return c }
+        if let c = carousels.first(where: { queueItemMatchesByPath(item, candidateSlug: $0.slug) }) {
+            return c
         }
-        guard let ts = item.topic_slug, ts.isEmpty == false else { return nil }
-        if let c = carousels.first(where: { $0.slug == ts }) { return c }
+        guard item.topic_slug?.isEmpty == false else { return nil }
+        return carousels.first(where: { queueItemMatchesByTopicSlug(item, candidateSlug: $0.slug) })
+    }
+
+    /// Step 1: does `item.carousel_path`'s basename equal `slug`?
+    static func queueItemMatchesByPath(_ item: ReviewItem, candidateSlug slug: String) -> Bool {
+        guard let p = item.carousel_path else { return false }
+        let trimmed = p.hasSuffix("/") ? String(p.dropLast()) : p
+        let pathSlug = (trimmed as NSString).lastPathComponent
+        return pathSlug.isEmpty == false && pathSlug == slug
+    }
+
+    /// Steps 2+3: does `item.topic_slug` match `slug` exactly (legacy schema) or via the
+    /// anchored FSM `date-topic_slug-id8` pattern?
+    static func queueItemMatchesByTopicSlug(_ item: ReviewItem, candidateSlug slug: String) -> Bool {
+        guard let ts = item.topic_slug, ts.isEmpty == false else { return false }
+        if ts == slug { return true }
         let escaped = NSRegularExpression.escapedPattern(for: ts)
         let pattern = "^\\d{4}-\\d{2}-\\d{2}-\(escaped)-[0-9a-f]{6,}$"
-        guard let re = try? NSRegularExpression(pattern: pattern) else { return nil }
-        return carousels.first(where: { c in
-            let r = NSRange(c.slug.startIndex..., in: c.slug)
-            return re.firstMatch(in: c.slug, range: r) != nil
-        })
+        guard let re = try? NSRegularExpression(pattern: pattern) else { return false }
+        let r = NSRange(slug.startIndex..., in: slug)
+        return re.firstMatch(in: slug, range: r) != nil
+    }
+
+    // MARK: - A2 complete-or-nothing gate (2026-07-16, Zero mandate: "the app must NEVER
+    // receive drafted carousels with a single/partial slide — complete or nothing")
+
+    /// Count of on-disk dirs the gate excluded on the MOST RECENT `scanCarousels` call
+    /// (reset at the top of each scan). Exclusion must be observable, not silent (scar
+    /// #2, esiste≠armato) — this is the cheapest surface that doesn't require threading a
+    /// new return type through every call site (AppState, galleryproof, and the test
+    /// harness all call `scanCarousels() -> [Carousel]` today). AppState republishes it so
+    /// GalleryView can show "N nascosti" next to the existing carousel count.
+    private(set) static var excludedIncompleteCount: Int = 0
+
+    private static func logGateExclusion(slug: String, reason: String) {
+        FileHandle.standardError.write("wr2-gate: excluded '\(slug)' — \(reason)\n".data(using: .utf8)!)
+        excludedIncompleteCount += 1
+    }
+
+    /// Resolve the DECLARED slide count for an on-disk carousel directory — the number the
+    /// gate compares against the REAL PNG count. Three sources, first hit wins:
+    ///  (a) `slides.json` in the dir — count of entries in the `slides` array (or the bare
+    ///      top-level array in older files). NEVER the top-level `slide_count` int field:
+    ///      that metadata can go stale after an in-place revise (scar #9 — ground fact
+    ///      2026-07-16: 13 live queue entries found off-by-one after post-draft edits that
+    ///      never re-derived it; trusting the array length itself is what the render
+    ///      pipeline's own A1 gate does, so the app agrees with the producer).
+    ///  (b) `manifest.json` `total_slides` — the external-import path
+    ///      (`wr2_carousel_import.py`, MIN_SLIDES=1) writes this shape with no slides.json.
+    ///  (c) the review queue's `slide_count`, joined via the SAME path/topic_slug
+    ///      resolution `matchCarousel` uses.
+    /// `nil` = undeclarable — no source exists, so the dir is not eligible for the gallery
+    /// at all (see scanCarousels): silently trusting raw disk PNGs is the disease, not the cure.
+    static func declaredSlideCount(in dir: URL, slug: String, queue: [ReviewItem]) -> Int? {
+        if let n = slideCountFromSlidesJSON(in: dir) { return n }
+        if let n = slideCountFromManifest(in: dir) { return n }
+        return queueDeclaredSlideCount(forSlug: slug, in: queue)
+    }
+
+    private static func slideCountFromSlidesJSON(in dir: URL) -> Int? {
+        let url = dir.appendingPathComponent("slides.json")
+        guard let data = try? Data(contentsOf: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) else { return nil }
+        if let arr = obj as? [[String: Any]] { return arr.count }
+        if let d = obj as? [String: Any], let arr = d["slides"] as? [[String: Any]] { return arr.count }
+        return nil
+    }
+
+    private static func slideCountFromManifest(in dir: URL) -> Int? {
+        let url = dir.appendingPathComponent("manifest.json")
+        guard let data = try? Data(contentsOf: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return obj["total_slides"] as? Int
+    }
+
+    private static func queueDeclaredSlideCount(forSlug slug: String, in queue: [ReviewItem]) -> Int? {
+        if let item = queue.first(where: { queueItemMatchesByPath($0, candidateSlug: slug) }) {
+            return item.slide_count
+        }
+        if let item = queue.first(where: { queueItemMatchesByTopicSlug($0, candidateSlug: slug) }) {
+            return item.slide_count
+        }
+        return nil
     }
 
     // MARK: - Carousel gallery scan
@@ -91,6 +169,8 @@ enum WarRoom {
             at: croot,
             includingPropertiesForKeys: [.contentModificationDateKey, .isDirectoryKey],
             options: [.skipsHiddenFiles]) else { return [] }
+
+        excludedIncompleteCount = 0
 
         // build slug -> verdict/metrics/url/published maps from the queue (defensive across schemas)
         var verdictBySlug: [String: String] = [:]
@@ -135,6 +215,25 @@ enum WarRoom {
             let pngs = slidePNGs(in: slidesDir)
             guard pngs.isEmpty == false else { continue }   // only real carousels
 
+            // A2 complete-or-nothing gate (mandate 2026-07-16): a drafted/unpublished
+            // carousel is listed ONLY when the real PNG count matches its DECLARED count.
+            // Published/history entries are exempt — immutable, REPOINT-guarded, and
+            // already passed the render pipeline's own completeness gate before going
+            // live, so a later local drift here must never hide them retroactively.
+            let published = pubAtBySlug[slug] != nil || igUrlBySlug[slug] != nil
+            let declared = declaredSlideCount(in: dir, slug: slug, queue: queue)
+            if published == false {
+                guard let d = declared else {
+                    logGateExclusion(slug: slug,
+                                      reason: "undeclarable — no slides.json/manifest.json/queue slide_count")
+                    continue
+                }
+                guard pngs.count == d else {
+                    logGateExclusion(slug: slug, reason: "incomplete — disk=\(pngs.count) declared=\(d)")
+                    continue
+                }
+            }
+
             let mod = (try? dir.resourceValues(forKeys: [.contentModificationDateKey]))?
                 .contentModificationDate ?? Date.distantPast
             let brief = readBrief(in: dir)
@@ -148,7 +247,7 @@ enum WarRoom {
                 topic: brief?.topic,
                 domain: brief?.domain,
                 criticVerdict: verdictBySlug[slug],
-                slideCount: pngs.count,
+                slideCount: declared ?? pngs.count,   // displayed count = declared, never raw disk
                 imagegenFallback: detectImagegenFallback(in: dir),
                 coverURL: coverURL(slidesDir: slidesDir, slidePNGs: pngs),
                 metrics: metricsBySlug[slug],
