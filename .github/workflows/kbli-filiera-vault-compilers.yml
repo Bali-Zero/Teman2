@@ -1,0 +1,45 @@
+name: kbli-filiera-vault-compilers
+
+# Batch-0 vault-bootstrap compilers for GARUDA-FILIERA
+# (research/operations/2026-07-16-kbli-garuda-filiera-workflow.md §4):
+# scripts/kbli_filiera/{vault_fetch_pp28,vault_fetch_oss,vault_fetch_bps,
+# vault_manifest}.py + vault_mirror_tigris.sh. Pure-stdlib compilers, zero
+# network in the test battery (unittest.mock/monkeypatch fixtures only —
+# these are the sole sanctioned writers of the raw-evidence vault per
+# infra/claude-hooks/data-plane-registry.json, id "kbli-filiera").
+on:
+  pull_request:
+    paths:
+      - "scripts/kbli_filiera/**"
+      - ".github/workflows/kbli-filiera-vault-compilers.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/kbli_filiera/**"
+      - ".github/workflows/kbli-filiera-vault-compilers.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kbli-filiera-vault-compilers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kbli-filiera-vault-compilers:
+    name: kbli-filiera-vault-compilers
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Run vault compiler test battery
+        run: |
+          set -uo pipefail
+          python -m pip install --quiet pytest
+          python -m pytest scripts/kbli_filiera/tests/ -v
