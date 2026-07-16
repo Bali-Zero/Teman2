@@ -51,7 +51,7 @@ trap 'rm -f "$PIDFILE"' EXIT
 log "run start"
 # Flush the tg_notify spool into ONE grouped Telegram digest. Exit 3 =
 # send-failed-spool-preserved (fail-visible → heartbeat error → healer).
-/usr/bin/python3 "$HOME/Desktop/nuzantara/scripts/tg_digest_flush.py" >> "$LOG" 2>&1
+/usr/bin/python3 "$HOME/nuzantara/scripts/tg_digest_flush.py" >> "$LOG" 2>&1
 RC=$?
 
 if [ $RC -eq 0 ]; then
