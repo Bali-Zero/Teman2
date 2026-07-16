@@ -28,6 +28,12 @@ class LeadSource(str, Enum):
     # selection modal, /services/[slug] pages. No fixed hash route — the
     # service slug + package name are carried in context, not result_hash.
     PRICING_MODAL = "pricing_modal"
+    # Homepage hero primary CTA (2026-07-06 frontend, enum landed 2026-07-16):
+    # HeroCTA.tsx, the single red primary action of balizero.com. Shipped
+    # against this enum before the value existed, so every hero click 422'd
+    # and fell back to the bare wa.me link — clicks tracked, leads unlogged.
+    # No result page: the visitor has not run a tool, they came off the hero.
+    HOMEPAGE_HERO = "homepage_hero"
 
     @property
     def human_name(self) -> str:
@@ -44,6 +50,7 @@ class LeadSource(str, Enum):
             LeadSource.ZANTARA_WIDGET_HANDOFF: "the Zantara chat",
             LeadSource.CTA_HANDOFF: "Bali Zero",
             LeadSource.PRICING_MODAL: "the pricing page",
+            LeadSource.HOMEPAGE_HERO: "the homepage",
         }[self]
 
     @property
@@ -67,4 +74,6 @@ class LeadSource(str, Enum):
             LeadSource.CTA_HANDOFF: "/",
             # No fixed hash route — service slug varies; carried in context.
             LeadSource.PRICING_MODAL: "/",
+            # The hero IS the homepage; no tool result to link back to.
+            LeadSource.HOMEPAGE_HERO: "/",
         }[self]

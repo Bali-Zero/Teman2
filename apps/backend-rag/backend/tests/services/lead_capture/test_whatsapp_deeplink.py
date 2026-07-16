@@ -146,3 +146,9 @@ class TestSourceEnum:
         # Wire-format values: the mouth frontend sends these literal strings.
         assert LeadSource.ARTICLE.value == "article"
         assert LeadSource.KBLI_NAVIGATOR.value == "kbli_navigator"
+        # HeroCTA.tsx posts source="homepage_hero". It shipped 2026-07-06
+        # against an enum that did not carry the value: the router's
+        # `source: LeadSource` rejected every homepage hero click with 422
+        # until 2026-07-16, so the site's single primary CTA wrote no
+        # lead_intents row for 10 days. Pinning the wire value here.
+        assert LeadSource("homepage_hero") is LeadSource.HOMEPAGE_HERO
