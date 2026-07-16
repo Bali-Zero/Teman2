@@ -383,30 +383,62 @@ class TestInvalidRecommendVocabulary:
 
 
 class TestFilterCompleteVisas:
-    """Unit tests for the FIX-3 candidate-completeness filter."""
+    """Unit tests for the FIX-3 / R2-A candidate-completeness filter.
 
-    def test_keeps_rows_with_nonempty_name(self) -> None:
+    R2-A (Codex re-review, F2 residue): completeness requires BOTH a
+    non-empty `visa_name` AND a non-empty `price` — `price` is the
+    consequential field /handoff renders into the WhatsApp deep-link and
+    the Telegram lead, so a named row with no price is exactly as unusable
+    a "candidate" as a nameless one."""
+
+    def test_keeps_rows_with_name_and_price(self) -> None:
         from backend.app.routers.visa_oracle import _filter_complete_visas
 
-        visas = [{"visa_name": "C1 Tourism", "score": 2.0}]
+        visas = [{"visa_name": "C1 Tourism", "price": "1.500.000 IDR", "score": 2.0}]
         assert _filter_complete_visas(visas) == visas
 
     def test_drops_row_missing_visa_name(self) -> None:
         from backend.app.routers.visa_oracle import _filter_complete_visas
 
-        assert _filter_complete_visas([{"score": 2}]) == []
+        assert _filter_complete_visas([{"price": "1 IDR", "score": 2}]) == []
 
     def test_drops_row_with_blank_visa_name(self) -> None:
         from backend.app.routers.visa_oracle import _filter_complete_visas
 
-        assert _filter_complete_visas([{"visa_name": "   ", "score": 2}]) == []
+        assert _filter_complete_visas([{"visa_name": "   ", "price": "1 IDR", "score": 2}]) == []
+
+    def test_drops_row_missing_price(self) -> None:
+        """R2-A guilt (probe from the task spec): a name with no price at
+        all must NOT be treated as complete."""
+        from backend.app.routers.visa_oracle import _filter_complete_visas
+
+        assert _filter_complete_visas([{"visa_name": "X", "score": 2}]) == []
+
+    def test_drops_row_with_blank_price(self) -> None:
+        from backend.app.routers.visa_oracle import _filter_complete_visas
+
+        assert _filter_complete_visas([{"visa_name": "X", "price": "   ", "score": 2}]) == []
+
+    def test_drops_row_with_none_price(self) -> None:
+        from backend.app.routers.visa_oracle import _filter_complete_visas
+
+        assert _filter_complete_visas([{"visa_name": "X", "price": None, "score": 2}]) == []
+
+    def test_keeps_row_with_numeric_zero_price(self) -> None:
+        """Innocence: `price` may legitimately be a non-string (a numeric
+        0, e.g.) — the spec is "non-empty/non-null", not "truthy/non-zero"."""
+        from backend.app.routers.visa_oracle import _filter_complete_visas
+
+        visas = [{"visa_name": "Free Consultation", "price": 0, "score": 1.0}]
+        assert _filter_complete_visas(visas) == visas
 
     def test_mixed_list_keeps_only_complete_rows(self) -> None:
         from backend.app.routers.visa_oracle import _filter_complete_visas
 
-        good = {"visa_name": "C1 Tourism", "score": 2.0}
-        bad = {"visa_name": "", "score": 1.0}
-        assert _filter_complete_visas([good, bad, {"score": 5}]) == [good]
+        good = {"visa_name": "C1 Tourism", "price": "1 IDR", "score": 2.0}
+        bad_name = {"visa_name": "", "price": "1 IDR", "score": 1.0}
+        bad_price = {"visa_name": "Y", "price": "", "score": 1.0}
+        assert _filter_complete_visas([good, bad_name, bad_price, {"score": 5}]) == [good]
 
 
 class TestRecommendEndpointFiveState:
@@ -484,14 +516,15 @@ class TestRecommendEndpointFiveState:
         self, mock_get_service, mock_persist, client: TestClient
     ) -> None:
         """Isolates the low_confidence_match path: purpose/duration are
-        BOTH valid vocabulary (FIX-1's gate must NOT fire here) — the
-        only reason this drops to NEEDS_INPUT is the zero score."""
+        BOTH valid vocabulary (FIX-1's gate must NOT fire here) and the row
+        has a real `price` (R2-A's completeness gate must NOT fire either)
+        — the only reason this drops to NEEDS_INPUT is the zero score."""
         mock_service = MagicMock()
         mock_service.recommend_visas.return_value = [
             {
                 "visa_name": "Irrelevant Visa",
                 "category": "single_entry_visas",
-                "price": "",
+                "price": "1.000.000 IDR",
                 "duration": "",
                 "validity": "",
                 "notes": "",
@@ -620,6 +653,39 @@ class TestRecommendEndpointFiveState:
         assert data["visas"] == []
         assert data["review_reasons"] == ["catalog_degraded"]
         assert data["success"] is True  # scorer ran fine — this isn't an exception
+
+    @patch("backend.app.routers.visa_oracle._persist_session_create")
+    @patch("backend.app.routers.visa_oracle.get_visa_oracle_service")
+    def test_state_temporarily_unavailable_when_row_has_name_but_no_price(
+        self, mock_get_service, mock_persist, client: TestClient
+    ) -> None:
+        """R2-A (Codex re-review, F2 residue): the exact probe from the
+        finding — a row with `visa_name` + `score` but NO `price` at all
+        must NOT reach SUPPORTED_CANDIDATES. `price` is what /handoff
+        renders; a named-but-priceless row is a catalog gap, same class as
+        a nameless one."""
+        mock_service = MagicMock()
+        mock_service.recommend_visas.return_value = [{"visa_name": "X", "score": 2}]
+        mock_service.generate_session_id.return_value = "abc123"
+        mock_service.hash_ip.return_value = "hashed_ip"
+        mock_get_service.return_value = mock_service
+
+        response = client.post(
+            "/api/v1/visa-oracle/recommend",
+            json={
+                "nationality": "US",
+                "purpose": "work",
+                "duration": "long",
+                "family": "no",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["state"] != "SUPPORTED_CANDIDATES"
+        assert data["state"] == "TEMPORARILY_UNAVAILABLE"
+        assert data["visas"] == []
+        assert data["review_reasons"] == ["catalog_degraded"]
 
 
 class TestRecommendEndpointRealService:

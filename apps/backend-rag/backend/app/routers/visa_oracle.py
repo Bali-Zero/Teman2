@@ -124,35 +124,52 @@ OBSOLETE_VISA_CODES: dict[str, tuple[str, str]] = {
 OBSOLETE_CODE_REGULATORY_BASIS = "PERMENKUMHAM 22/2023"
 
 
-def _detect_obsolete_code(text: str) -> tuple[str, str] | None:
-    """Return (obsolete_code, expansion_hint) if the message mentions a
-    retired visa code that needs query expansion + regulatory flagging.
-    Matches word-boundary (B211 won't match B2115 etc.)."""
+def _detect_obsolete_codes(text: str) -> list[tuple[str, str]]:
+    """R2-C (Codex re-review NEW-BUG, F6): a message can mention MORE THAN
+    ONE retired visa code (e.g. "is B211 or B211A still valid?") — the
+    prior single-match version silently dropped every code after the
+    first, understating both the review_reasons annotation and the static
+    answer. Returns EVERY match, word-boundary (B211 won't match B211A —
+    no boundary between the shared "211" and the trailing "A" — nor
+    B2115 etc.), in `OBSOLETE_VISA_CODES` dict order."""
     import re
 
     upper = text.upper()
+    hits: list[tuple[str, str]] = []
     for code, (_replacement, hint) in OBSOLETE_VISA_CODES.items():
         if re.search(rf"\b{re.escape(code)}\b", upper):
-            return code, hint
-    return None
+            hits.append((code, hint))
+    return hits
 
 
-def _obsolete_review_reasons(obsolete_hit: tuple[str, str] | None) -> list[str]:
-    """PR0 W2: the review_reasons annotation carried on a (still-safe)
-    ABSTAIN response when the user's message mentioned a retired visa code.
-    Replaces the removed ABSTAIN→CAUTIOUS promotion — the code is still
-    named, but no candidate/answer is ever generated on the strength of it."""
-    if obsolete_hit is None:
-        return []
-    code, _hint = obsolete_hit
-    return [f"obsolete_code_mentioned:{code}"]
+def _detect_obsolete_code(text: str) -> tuple[str, str] | None:
+    """Thin single-value wrapper around `_detect_obsolete_codes` — returns
+    the first match, or None. No internal call site needs this shape
+    anymore (all use the plural form); kept for any future caller that
+    only needs "was ANY obsolete code mentioned"."""
+    hits = _detect_obsolete_codes(text)
+    return hits[0] if hits else None
 
 
-def _obsolete_code_static_answer(obsolete_hit: tuple[str, str] | None) -> str | None:
-    """PR0 hardening (Codex red-team P2 #6): a DETERMINISTIC, zero-LLM
-    explanation for the ABSTAIN + obsolete-code-mentioned path. Restores the
-    informational value the removed ABSTAIN->CAUTIOUS promotion used to
-    provide (via ungrounded LLM generation) WITHOUT ever calling the LLM.
+def _obsolete_review_reasons(obsolete_hits: list[tuple[str, str]]) -> list[str]:
+    """PR0 W2 + R2-C: the review_reasons annotation carried on a
+    (still-safe) ABSTAIN response when the user's message mentioned one or
+    more retired visa codes. One `obsolete_code_mentioned:<code>` entry per
+    DISTINCT code — replaces the removed ABSTAIN→CAUTIOUS promotion; the
+    code(s) are still named, but no candidate/answer is ever generated on
+    the strength of any of them."""
+    return [f"obsolete_code_mentioned:{code}" for code, _hint in obsolete_hits]
+
+
+def _obsolete_code_static_answer(obsolete_hits: list[tuple[str, str]]) -> str | None:
+    """PR0 hardening (Codex red-team P2 #6) + R2-C (multi-code): a
+    DETERMINISTIC, zero-LLM explanation for the ABSTAIN + obsolete-code-
+    mentioned path. Restores the informational value the removed
+    ABSTAIN->CAUTIOUS promotion used to provide (via ungrounded LLM
+    generation) WITHOUT ever calling the LLM. Enumerates EVERY distinct
+    retired code mentioned, one line each, from its own hint data — a
+    message mentioning both B211 and B211A must not silently answer for
+    only one of them.
 
     Built entirely from data already present in `OBSOLETE_VISA_CODES` (the
     replacement code + hint, both already curated in this file) plus the
@@ -165,19 +182,24 @@ def _obsolete_code_static_answer(obsolete_hit: tuple[str, str] | None) -> str | 
     Returns None when no obsolete code was mentioned — callers fall back to
     the existing generic ABSTAIN fallback (innocence path, unchanged).
     """
-    if obsolete_hit is None:
+    lines: list[str] = []
+    for code, _hint in obsolete_hits:
+        replacement, _ = OBSOLETE_VISA_CODES.get(code, (None, None))
+        if replacement is None:
+            continue
+        lines.append(
+            f"The visa code {code} was retired as part of the "
+            f"{OBSOLETE_CODE_REGULATORY_BASIS} visa reform and is no longer issued. "
+            f"Based on the most common intent, {replacement} is the closest current "
+            "equivalent."
+        )
+    if not lines:
         return None
-    code, _hint = obsolete_hit
-    replacement, _ = OBSOLETE_VISA_CODES.get(code, (None, None))
-    if replacement is None:
-        return None
-    return (
-        f"The visa code {code} was retired as part of the "
-        f"{OBSOLETE_CODE_REGULATORY_BASIS} visa reform and is no longer issued. "
-        f"Based on the most common intent, {replacement} is the closest current "
-        "equivalent — a Bali Zero consultant can confirm the exact match for your "
-        "specific case on WhatsApp (+62 821-3107-363)."
+    lines.append(
+        "A Bali Zero consultant can confirm the exact match for your specific "
+        "case on WhatsApp (+62 821-3107-363)."
     )
+    return "\n".join(lines)
 
 
 # Telegram chat ID for Damar / team lead notifications
@@ -398,14 +420,21 @@ def _invalid_recommend_vocabulary(purpose: str, duration: str) -> list[str]:
 
 
 def _filter_complete_visas(visas: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """FIX-3 (Codex red-team P1 #2, garbage candidates): drop any scored
-    row lacking a non-empty string `visa_name` before it ever reaches state
-    determination or the response body — an upstream pricing-JSON gap
-    should never surface as a nameless "candidate" client-side."""
+    """FIX-3 (Codex red-team P1 #2, garbage candidates) + R2-A (Codex
+    re-review residue on the same finding): drop any scored row lacking
+    EITHER a non-empty string `visa_name` OR a non-empty `price` before it
+    ever reaches state determination or the response body. `price` is the
+    consequential field — it is what `/handoff` renders into the WhatsApp
+    deep-link and the Telegram lead — so a row with a name but no price is
+    exactly as unusable a "candidate" as a nameless one. An upstream
+    pricing-JSON gap should never surface as a candidate client-side."""
     complete: list[dict[str, Any]] = []
     for visa in visas:
         name = visa.get("visa_name")
-        if isinstance(name, str) and name.strip():
+        price = visa.get("price")
+        has_name = isinstance(name, str) and name.strip()
+        has_price = price is not None and str(price).strip()
+        if has_name and has_price:
             complete.append(visa)
     return complete
 
@@ -667,30 +696,48 @@ _HANDOFF_TRIGGERED_UPDATE_SQL = """
     """
 
 
+_HANDOFF_UPDATE_RETRY_ATTEMPTS = 3
+_HANDOFF_UPDATE_RETRY_BACKOFF_SECONDS = 5.0  # 2 gaps × 5s ≈ 10s total across 3 attempts
+
+
 async def _persist_session_handoff(db_pool: Any, session_id: str) -> None:
     """Mark handoff_triggered = TRUE. Non-fatal — failures are logged, not
-    raised.
+    raised. Called fire-and-forget via `spawn()` at the call site (see
+    `handoff()`), so every attempt/sleep below already runs off the
+    request/response path — nothing here can add HTTP latency.
 
-    FIX-6 (Codex red-team P1 #5, async-persist race): /recommend persists
-    the session via a non-blocking `spawn()`'d INSERT — a fast-clicking
-    user (or a client that skips /recommend and calls /handoff directly)
-    can reach this UPDATE before that INSERT lands, matching 0 rows. Retry
-    ONCE after 1s, then log-and-continue either way — this UPDATE has
-    always been best-effort telemetry, never a gate on the handoff response.
+    FIX-6 (Codex red-team P1 #5, async-persist race) + R2-E (Codex
+    re-review, F5 residue — DECLARED-ACCEPTABLE MITIGATION, not a full
+    cure): /recommend persists the session via a non-blocking `spawn()`'d
+    INSERT — a fast-clicking user (or a client that skips /recommend and
+    calls /handoff directly) can reach this UPDATE before that INSERT
+    lands, matching 0 rows. Retries up to
+    `_HANDOFF_UPDATE_RETRY_ATTEMPTS` times, backing off
+    `_HANDOFF_UPDATE_RETRY_BACKOFF_SECONDS` between attempts (~10s total),
+    then logs and gives up — this UPDATE has always been best-effort
+    telemetry, never a gate on the handoff response.
+
+    RESIDUE (accepted for the freeze, not fixed here): `handoff_triggered`
+    can still be lost if /recommend's INSERT lands MORE than ~10s late — a
+    real cure needs UPSERT/marker-row schema semantics, which is
+    repository-layer work out of scope for a safety-freeze hardening pass
+    (see commit body; tracked for PR4).
     """
     try:
-        async with db_pool.acquire() as conn:
-            status = await conn.execute(_HANDOFF_TRIGGERED_UPDATE_SQL, session_id)
-        if _update_row_count(status) == 0:
-            await asyncio.sleep(1.0)
+        for attempt in range(_HANDOFF_UPDATE_RETRY_ATTEMPTS):
             async with db_pool.acquire() as conn:
                 status = await conn.execute(_HANDOFF_TRIGGERED_UPDATE_SQL, session_id)
-            if _update_row_count(status) == 0:
-                logger.info(
-                    "visa-oracle session persist (handoff): no row for session=%s "
-                    "after 1s retry — logging and continuing",
-                    session_id[:12],
-                )
+            if _update_row_count(status) > 0:
+                return
+            if attempt < _HANDOFF_UPDATE_RETRY_ATTEMPTS - 1:
+                await asyncio.sleep(_HANDOFF_UPDATE_RETRY_BACKOFF_SECONDS)
+        logger.info(
+            "visa-oracle session persist (handoff): no row for session=%s "
+            "after %d attempts (~%.0fs) — logging and continuing",
+            session_id[:12],
+            _HANDOFF_UPDATE_RETRY_ATTEMPTS,
+            _HANDOFF_UPDATE_RETRY_BACKOFF_SECONDS * (_HANDOFF_UPDATE_RETRY_ATTEMPTS - 1),
+        )
     except Exception as exc:
         logger.warning("visa-oracle session persist (handoff) failed: %s", exc)
 
@@ -994,14 +1041,19 @@ async def chat(
         # downstream: we have enough pretraining knowledge + SYSTEM_PROMPT
         # guidance to correct the code mention, even if the KB top_score
         # is weak (KB is thin on ex-codes precisely because they no longer
-        # exist).
-        obsolete_hit = _detect_obsolete_code(body.message)
-        if obsolete_hit:
-            code, hint = obsolete_hit
-            enriched_query = f"{quiz_ctx}{body.message} {hint}"
+        # exist). R2-C: a message can name more than one retired code —
+        # expand with every DISTINCT hint (B211/B211A share an identical
+        # hint today, so dedupe rather than repeat it verbatim).
+        obsolete_hits = _detect_obsolete_codes(body.message)
+        if obsolete_hits:
+            distinct_hints: list[str] = []
+            for _code, hint in obsolete_hits:
+                if hint not in distinct_hints:
+                    distinct_hints.append(hint)
+            enriched_query = f"{quiz_ctx}{body.message} {' '.join(distinct_hints)}"
             logger.info(
-                "visa-oracle /chat: obsolete code %s detected, expanded query session=%s",
-                code,
+                "visa-oracle /chat: obsolete code(s) %s detected, expanded query session=%s",
+                ",".join(code for code, _hint in obsolete_hits),
                 body.session_id[:12],
             )
         else:
@@ -1025,7 +1077,7 @@ async def chat(
 
         if not search_results:
             logger.info("visa-oracle /chat: no results for session=%s", body.session_id[:12])
-            obsolete_answer = _obsolete_code_static_answer(obsolete_hit)
+            obsolete_answer = _obsolete_code_static_answer(obsolete_hits)
             return ChatResponse(
                 success=True,
                 answer=obsolete_answer
@@ -1033,7 +1085,7 @@ async def chat(
                 confidence=CONFIDENCE_ABSTAIN,
                 sources=[],
                 session_id=body.session_id,
-                review_reasons=_obsolete_review_reasons(obsolete_hit),
+                review_reasons=_obsolete_review_reasons(obsolete_hits),
             )
 
         # --- Use vector similarity scores directly (cross-encoder not available on Fly) ---
@@ -1069,7 +1121,7 @@ async def chat(
             # from the existing OBSOLETE_VISA_CODES data (no generation, no
             # new legal claim). Innocence: no obsolete code -> generic
             # ABSTAIN fallback, unchanged.
-            obsolete_answer = _obsolete_code_static_answer(obsolete_hit)
+            obsolete_answer = _obsolete_code_static_answer(obsolete_hits)
             return ChatResponse(
                 success=True,
                 answer=obsolete_answer
@@ -1077,7 +1129,7 @@ async def chat(
                 confidence=CONFIDENCE_ABSTAIN,
                 sources=[],
                 session_id=body.session_id,
-                review_reasons=_obsolete_review_reasons(obsolete_hit),
+                review_reasons=_obsolete_review_reasons(obsolete_hits),
             )
 
         # --- Build context for LLM ---
@@ -1189,8 +1241,8 @@ async def handoff(
     a later handoff POST to alter it — falling back to the client body only
     when no snapshot (or an empty one) exists. A body-only handoff (no
     server session backing it at all) still fires the Telegram lead —
-    leads matter commercially — but is tagged `[UNVERIFIED — no server
-    session]` rather than presented as if server-verified.
+    leads matter commercially — but is tagged `UNVERIFIED (no server
+    session):` rather than presented as if server-verified.
     """
     from backend.services.integrations.telegram_bot_service import telegram_bot
 
@@ -1266,10 +1318,11 @@ async def handoff(
                     language=language,
                 )
                 if not session_verified:
-                    # FIX-5: never present a body-only lead as if
-                    # server-verified — the escaped brackets keep this
-                    # constant marker inert under legacy Telegram Markdown.
-                    summary = f"\\[UNVERIFIED — no server session\\]\n{summary}"
+                    # FIX-5 + R2-B (Codex re-review): never present a
+                    # body-only lead as if server-verified. Bracket-free
+                    # plain text — no escaping needed at all, and nothing
+                    # for legacy Telegram Markdown to (mis)parse as syntax.
+                    summary = f"UNVERIFIED (no server session):\n{summary}"
                 await telegram_bot.send_message(
                     chat_id=TELEGRAM_LEAD_CHAT_ID,
                     text=summary,

@@ -81,7 +81,7 @@ async def test_obsolete_code_weak_evidence_stays_abstain(monkeypatch):
 
     assert resp.confidence == mod.CONFIDENCE_ABSTAIN
     assert resp.sources == []
-    assert resp.answer == mod._obsolete_code_static_answer(("B211A", "irrelevant"))
+    assert resp.answer == mod._obsolete_code_static_answer([("B211A", "irrelevant")])
     assert resp.answer != mod.ABSTAIN_FALLBACK_BY_LANG["en"]
     assert "B211A" in resp.answer
     assert "C1" in resp.answer
@@ -129,6 +129,37 @@ async def test_obsolete_code_no_search_results_stays_abstain_with_reason(monkeyp
 
     assert resp.confidence == mod.CONFIDENCE_ABSTAIN
     assert resp.review_reasons == ["obsolete_code_mentioned:B211"]
+
+
+@pytest.mark.asyncio
+async def test_multiple_obsolete_codes_both_named_in_answer_and_reasons(monkeypatch):
+    """R2-C guilt (Codex re-review NEW-BUG, F6): a message mentioning TWO
+    distinct retired codes (B211 and B211A) must not silently answer for
+    only the first match — both must appear in the deterministic answer
+    AND both must get their own review_reasons entry."""
+    from backend.app.routers import visa_oracle as mod
+
+    monkeypatch.setattr(
+        "backend.services.rag.hybrid_search.HybridSearchService",
+        lambda: _StubSearch([]),
+    )
+    monkeypatch.setattr(
+        "backend.llm.genai_client.get_genai_client",
+        lambda: _NeverCalledGemini(),
+    )
+
+    req = _build_request()
+    body = mod.ChatRequest(session_id="s1", message="Is B211 or B211A still valid?")
+    resp = await mod.chat(req, body, db_pool=None)
+
+    assert resp.confidence == mod.CONFIDENCE_ABSTAIN
+    assert "B211" in resp.answer
+    assert "B211A" in resp.answer
+    assert set(resp.review_reasons) == {
+        "obsolete_code_mentioned:B211",
+        "obsolete_code_mentioned:B211A",
+    }
+    assert len(resp.review_reasons) == 2
 
 
 @pytest.mark.asyncio

@@ -399,6 +399,125 @@ def test_escape_telegram_markdown_v1_only_escapes_four_chars() -> None:
 
 
 # ---------------------------------------------------------------------------
+# R2-B (Codex re-review NEW-BUG, F4) — code-span sanitization for
+# session_id/language, distinct from escaping (which is invalid inside a
+# Telegram Markdown code span).
+# ---------------------------------------------------------------------------
+
+
+def test_sanitize_session_id_strips_disallowed_chars() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_session_id,
+    )
+
+    assert _sanitize_code_entity_session_id("abc`*_[123") == "abc_123"
+
+
+def test_sanitize_session_id_truncates_to_40_chars() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_session_id,
+    )
+
+    result = _sanitize_code_entity_session_id("a" * 100)
+    assert result == "a" * 40
+
+
+def test_sanitize_session_id_falls_back_to_unknown_when_emptied() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_session_id,
+    )
+
+    assert _sanitize_code_entity_session_id("`*[]()~>!.,") == "unknown"
+
+
+def test_sanitize_session_id_passes_through_valid_charset_unchanged() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_session_id,
+    )
+
+    assert _sanitize_code_entity_session_id("deadbeef-1234_5678") == "deadbeef-1234_5678"
+
+
+def test_sanitize_language_strips_disallowed_chars() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_language,
+    )
+
+    assert _sanitize_code_entity_language("en`*_[9") == "en"
+
+
+def test_sanitize_language_truncates_to_8_chars() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_language,
+    )
+
+    assert _sanitize_code_entity_language("abcdefghij") == "abcdefgh"
+
+
+def test_sanitize_language_falls_back_to_unknown_when_emptied() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_language,
+    )
+
+    assert _sanitize_code_entity_language("123`*_[") == "unknown"
+
+
+def test_sanitize_language_lowercases_and_passes_through_hyphen() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_language,
+    )
+
+    assert _sanitize_code_entity_language("EN-us") == "en-us"
+
+
+def test_build_telegram_summary_session_id_with_backtick_does_not_break_entity(
+    service: VisaOracleService,
+) -> None:
+    """R2-B adversarial test (Codex re-review): a `session_id` containing a
+    backtick plus `*_[` characters must not break the code-span entity nor
+    inject formatting into the surrounding message. Structural check: every
+    backtick in the summary is part of a properly PAIRED code span (an even
+    total count), and none of the injected symbols survive verbatim."""
+    malicious_session_id = "abc`*_[def`123"
+    summary = service.build_telegram_summary(
+        session_id=malicious_session_id,
+        quiz_answers={"nationality": "US", "purpose": "work", "duration": "long"},
+        recommended_visas=[],
+        messages=[],
+        language="en",
+    )
+
+    # The raw malicious payload must not appear anywhere in the output.
+    assert malicious_session_id not in summary
+    assert "abc`*_[def`123" not in summary
+
+    # Every backtick present belongs to a well-formed code span — an odd
+    # count would mean a span was left open (or one was force-closed
+    # early), corrupting the rest of the message's formatting.
+    assert summary.count("`") % 2 == 0
+
+    # The sanitized session_id keeps only the whitelisted charset — no
+    # backtick/asterisk/underscore/bracket survives into the code span.
+    assert "abc_def123"[:12] in summary or "abc_def" in summary
+
+
+def test_build_telegram_summary_language_with_backtick_does_not_break_entity(
+    service: VisaOracleService,
+) -> None:
+    """Same adversarial property for `language`."""
+    summary = service.build_telegram_summary(
+        session_id="x" * 32,
+        quiz_answers={"nationality": "US", "purpose": "work", "duration": "long"},
+        recommended_visas=[],
+        messages=[],
+        language="en`*_[injected",
+    )
+
+    assert "en`*_[injected" not in summary
+    assert summary.count("`") % 2 == 0
+
+
+# ---------------------------------------------------------------------------
 # hash_ip and generate_session_id
 # ---------------------------------------------------------------------------
 

@@ -250,7 +250,7 @@ describe("parseRecommendResponse", () => {
     expect(parsed.visas).toEqual([]);
   });
 
-  it("FIX-3 innocence: a well-formed row with score 0 IS a valid candidate (0 is not negative)", () => {
+  it("R2-D guilt: a well-formed row with score 0 is NOT a valid candidate (backend maps <=0 to NEEDS_INPUT)", () => {
     const raw = {
       success: true,
       session_id: "s1",
@@ -264,6 +264,28 @@ describe("parseRecommendResponse", () => {
           validity: "",
           notes: "",
           score: 0,
+        },
+      ],
+    };
+
+    const parsed = parseRecommendResponse(raw);
+    expect(parsed.visas).toEqual([]);
+  });
+
+  it("FIX-3 innocence: a well-formed row with a strictly positive score IS a valid candidate", () => {
+    const raw = {
+      success: true,
+      session_id: "s1",
+      state: "SUPPORTED_CANDIDATES",
+      visas: [
+        {
+          visa_name: "Positive Score Visa",
+          category: "x",
+          price: "1 IDR",
+          duration: "",
+          validity: "",
+          notes: "",
+          score: 0.5,
         },
       ],
     };

@@ -501,13 +501,15 @@ async def test_fetch_snapshot_with_retry_no_sleep_when_immediately_found(monkeyp
 
 
 @pytest.mark.asyncio
-async def test_persist_session_handoff_retries_once_when_row_not_found(monkeypatch):
-    """FIX-6: the UPDATE runs before /recommend's INSERT lands (0 rows
-    affected) — retry once after 1s, then log-and-continue either way."""
+async def test_persist_session_handoff_retries_across_three_attempts_over_10s(monkeypatch):
+    """R2-E (Codex re-review, F5 residue): the UPDATE runs before
+    /recommend's INSERT lands (0 rows affected) on the first TWO attempts,
+    succeeds on the third — total 3 attempts, ~10s of backoff (2 gaps ×
+    5s), all inside the already-`spawn()`'d background task."""
     from backend.app.routers import visa_oracle as mod
 
     conn = AsyncMock()
-    conn.execute = AsyncMock(side_effect=["UPDATE 0", "UPDATE 1"])
+    conn.execute = AsyncMock(side_effect=["UPDATE 0", "UPDATE 0", "UPDATE 1"])
     pool = MagicMock()
     pool.acquire = MagicMock(return_value=_AcquireCM(conn))
 
@@ -520,15 +522,17 @@ async def test_persist_session_handoff_retries_once_when_row_not_found(monkeypat
 
     await mod._persist_session_handoff(pool, "s1")
 
-    assert conn.execute.await_count == 2
-    assert sleep_calls == [1.0]
+    assert conn.execute.await_count == 3
+    assert sleep_calls == [5.0, 5.0]
 
 
 @pytest.mark.asyncio
 async def test_persist_session_handoff_logs_and_continues_when_row_never_appears(
     monkeypatch, caplog
 ):
-    """Still 0 rows after the retry — must log and return, never raise."""
+    """Still 0 rows after all 3 attempts — must log and return, never
+    raise. This is the DECLARED-ACCEPTABLE residue: a row that lands more
+    than ~10s late is lost (analytics-grade telemetry, not a gate)."""
     from backend.app.routers import visa_oracle as mod
 
     conn = AsyncMock()
@@ -544,14 +548,14 @@ async def test_persist_session_handoff_logs_and_continues_when_row_never_appears
     with caplog.at_level("INFO"):
         await mod._persist_session_handoff(pool, "s1")
 
-    assert conn.execute.await_count == 2
-    assert any("after 1s retry" in r.message for r in caplog.records)
+    assert conn.execute.await_count == 3
+    assert any("after 3 attempts" in r.message for r in caplog.records)
 
 
 @pytest.mark.asyncio
 async def test_persist_session_handoff_no_retry_when_row_found_immediately(monkeypatch):
     """Innocence: the common case succeeds on the first UPDATE — no sleep,
-    no second query."""
+    no second/third query."""
     from backend.app.routers import visa_oracle as mod
 
     conn = AsyncMock()
@@ -570,6 +574,29 @@ async def test_persist_session_handoff_no_retry_when_row_found_immediately(monke
 
     assert conn.execute.await_count == 1
     assert sleep_calls == []
+
+
+@pytest.mark.asyncio
+async def test_persist_session_handoff_succeeds_on_second_attempt(monkeypatch):
+    """Middle case: row appears on the 2nd attempt — 2 queries, 1 sleep."""
+    from backend.app.routers import visa_oracle as mod
+
+    conn = AsyncMock()
+    conn.execute = AsyncMock(side_effect=["UPDATE 0", "UPDATE 1"])
+    pool = MagicMock()
+    pool.acquire = MagicMock(return_value=_AcquireCM(conn))
+
+    sleep_calls: list[float] = []
+
+    async def _fake_sleep(seconds):
+        sleep_calls.append(seconds)
+
+    monkeypatch.setattr(mod.asyncio, "sleep", _fake_sleep)
+
+    await mod._persist_session_handoff(pool, "s1")
+
+    assert conn.execute.await_count == 2
+    assert sleep_calls == [5.0]
 
 
 class TestUpdateRowCount:

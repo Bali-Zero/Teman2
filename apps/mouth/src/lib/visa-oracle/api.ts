@@ -60,12 +60,16 @@ function isVisaRecommendation(value: unknown): value is VisaRecommendation {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
-    // FIX-3 (Codex red-team P1 #2, garbage candidates): a non-empty
-    // `visa_name` string and a finite, non-negative `score` are the two
-    // fields this row is actually rendered/sorted by — an empty name or a
-    // NaN/Infinity/negative score is not a "row missing some polish", it's
-    // not a real candidate at all. Mirrors the backend's
-    // `_filter_complete_visas` completeness gate.
+    // FIX-3 (Codex red-team P1 #2, garbage candidates) + R2-D (Codex
+    // re-review, F7 residue): a non-empty `visa_name` string and a
+    // finite, STRICTLY POSITIVE `score` are the two fields this row is
+    // actually rendered/sorted by — an empty name or a NaN/Infinity/
+    // zero/negative score is not a "row missing some polish", it's not a
+    // real candidate at all. `score > 0` (not `>= 0`) mirrors the
+    // backend's own `_determine_recommend_state`: `best_score <= 0` maps
+    // to NEEDS_INPUT there, so a zero-score row reaching the frontend as
+    // a "valid" VisaRecommendation would contradict the backend's own
+    // low_confidence_match rule.
     typeof v.visa_name === "string" &&
     v.visa_name.trim().length > 0 &&
     typeof v.category === "string" &&
@@ -75,7 +79,7 @@ function isVisaRecommendation(value: unknown): value is VisaRecommendation {
     typeof v.notes === "string" &&
     typeof v.score === "number" &&
     Number.isFinite(v.score) &&
-    v.score >= 0
+    v.score > 0
   );
 }
 
