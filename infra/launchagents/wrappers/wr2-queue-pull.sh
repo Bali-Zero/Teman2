@@ -47,6 +47,17 @@ iter_n=0
 
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
+# LOW #8 (Codex red-team, 2026-07-16): a non-numeric/negative override made
+# the `[ "$CHECKSUM_EVERY_N" -gt 0 ]` test below throw "integer expression
+# expected" on EVERY iteration (nonzero `[` exit, so the periodic checksum
+# feature silently disabled itself) instead of failing loud once at startup.
+case "$CHECKSUM_EVERY_N" in
+  ''|*[!0-9]*)
+    echo "[$(ts)] WARN WR2_PULL_CHECKSUM_EVERY_N='$CHECKSUM_EVERY_N' is not a non-negative integer — falling back to default 12" >> "$LOG"
+    CHECKSUM_EVERY_N=12
+    ;;
+esac
+
 # Merge helper (split-brain cure, 2026-07-13): the WR2 Control app writes
 # publish transitions LOCALLY (QueueWriter.markPublished) and a blind replace
 # reverted them within one poll cycle. The merge keeps Pro as SSOT but protects
@@ -139,6 +150,12 @@ for e in rep.get("push_back", []): print(e["ref_code"], e["ig_url"])' | \
   # a per-dir --exclude doesn't scale. --ignore-errors lets rsync skip the tagged
   # file and continue the rest of the batch (already-synced files are unaffected
   # by --ignore-existing regardless).
+  # LOW #8 (Codex red-team, 2026-07-16, comment corrected): --ignore-errors does
+  # NOT make the batch "succeed" when files are skipped — rsync still exits
+  # nonzero (23 = some file(s)/attrs could not be transferred; 24 = a source
+  # file vanished mid-transfer, e.g. a concurrent render). Those two codes are
+  # the EXPECTED/tolerated shape of "protected file skipped, rest of batch
+  # continued", distinct from "Pro unreachable" — handled explicitly below.
   iter_n=$((iter_n + 1))
   carousel_mode="$RSYNC_MODE"
   if [ "${WR2_PULL_CHECKSUM:-0}" != "1" ] && [ "$CHECKSUM_EVERY_N" -gt 0 ] \
@@ -151,7 +168,15 @@ for e in rep.get("push_back", []): print(e["ref_code"], e["ig_url"])' | \
        "pro:$CAROUSEL_SRC/" "$CAROUSEL_DEST/" >/dev/null 2>>"$LOG"; then
     : # silent on success (rsync is chatty enough on error)
   else
-    echo "[$(ts)] WARN carousel rsync failed (Pro unreachable?)" >> "$LOG"
+    rsync_rc=$?
+    if [ "$rsync_rc" = "23" ] || [ "$rsync_rc" = "24" ]; then
+      # tolerated: protected/vanished files skipped, rest of the batch
+      # continued (see the --ignore-errors comment above) — not "Pro
+      # unreachable", so log quietly instead of alarming.
+      echo "[$(ts)] carousel rsync rc=$rsync_rc (partial: protected/vanished files skipped, batch continued)" >> "$LOG"
+    else
+      echo "[$(ts)] WARN carousel rsync failed rc=$rsync_rc (Pro unreachable?)" >> "$LOG"
+    fi
   fi
 
   if [ "$ONCE" = "1" ]; then

@@ -177,7 +177,7 @@ async def _fetch_today(conn: Any, day_start_utc: datetime) -> list[dict[str, Any
     rows = await conn.fetch(
         """
         SELECT id, status, COALESCE(html_render_attempts, 0) AS attempts,
-               updated_at, topic, drive_url
+               updated_at, topic, drive_url, slides_json
           FROM war_room_drafts
          WHERE created_at >= $1
          ORDER BY created_at DESC
@@ -187,12 +187,42 @@ async def _fetch_today(conn: Any, day_start_utc: datetime) -> list[dict[str, Any
     return [dict(r) for r in rows]
 
 
+def _row_intended_slide_count(row: dict[str, Any]) -> int | None:
+    """DB-sourced ground truth: how many slides this draft's OWN input
+    (war_room_drafts.slides_json) declares — independent of anything derived
+    from disk. Returns None when unparseable (caller must not assume 0)."""
+    import json as _json
+
+    sj = row.get("slides_json")
+    if sj is None:
+        return None
+    if isinstance(sj, str):
+        try:
+            sj = _json.loads(sj)
+        except Exception:  # noqa: BLE001
+            return None
+    slides = sj.get("slides", sj) if isinstance(sj, dict) else sj
+    return len(slides) if isinstance(slides, list) else None
+
+
 def _verify_visibility_or_backfill(row: dict[str, Any], *, dry_run: bool) -> str:
     """Codex red-team #1/#15: DB status='rendered' is a PROXY — the outcome is
     "the human can see it": a review-queue entry + (ideally) durable PNGs.
     Verify by content; when the queue entry is missing (e.g. the visibility
     chain failed after persist), BACKFILL it from the DB row + whatever durable
-    artifacts exist. Returns verified|backfilled|backfill_failed|dry_run."""
+    artifacts exist.
+
+    Codex red-team HIGH #2 (2026-07-16): the append-if-missing path used to
+    trust `slide_count` from a bare disk glob and append a normal reviewable
+    "drafted" entry even when that count was 0 (a DB row already status=
+    'rendered' but `_publish_visibility` failed AFTER wiping/never-populating
+    slides_dir) — a real, reproduced scenario. Resolve the DRAFT'S OWN intent
+    (war_room_drafts.slides_json) first: append as "drafted" only when disk
+    matches that intent AND is > 0; otherwise mark render_incomplete instead
+    of a lying "drafted".
+
+    Returns verified|backfilled|backfilled_incomplete|backfill_failed|dry_run.
+    """
     try:
         import wr2_html_render_apply as viz  # same scripts/ dir, same venv
 
@@ -224,21 +254,50 @@ def _verify_visibility_or_backfill(row: dict[str, Any], *, dry_run: bool) -> str
         # not a bare *.png glob, which would count staged chrome (logo.png)
         # as a "slide".
         slide_count = viz.derive_slide_count(car_dir / "slides") if car_dir.exists() else 0
+        intended = _row_intended_slide_count(row)
         from datetime import datetime as _dt, timezone as _tz
 
         entry = viz._make_queue_entry(
             draft_id=draft_id, topic=str(row.get("topic") or ""),
             carousel_dir=car_dir, drive_url=str(row.get("drive_url") or ""),
-            slide_count=slide_count, weak_count=0, fact_check_status=None,
+            slide_count=slide_count, intended_slide_count=intended or 0,
+            weak_count=0, fact_check_status=None,
             drafted_at=_dt.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         )
+        complete = intended is not None and intended > 0 and slide_count == intended
         if slide_count == 0:
             # honest entry: no local slides — review happens on Drive
             entry["slides_dir"] = None
             entry["critic_summary"] = "backfilled by reconciler — local PNGs missing, review on Drive"
+        if not complete:
+            # HIGH #2 fix: never append a normal "drafted" for a mismatch —
+            # a human sees render_incomplete, not a reviewable-looking entry
+            # that is secretly missing slides.
+            now_iso = _dt.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            entry["state"] = RENDER_INCOMPLETE_STATE
+            entry["state_history"] = [{
+                "state": RENDER_INCOMPLETE_STATE, "at": now_iso,
+                "by": "wr2-daily-reconciler",
+                "reason": (
+                    f"backfill: disk={slide_count} intended={intended!r} "
+                    f"— not verifiably complete"
+                ),
+            }]
         viz._append_review_queue(entry)
-        logger.info("visibility backfilled for draft %s (slides=%d)", draft_id, slide_count)
-        return "backfilled"
+        if complete:
+            logger.info("visibility backfilled for draft %s (slides=%d)", draft_id, slide_count)
+            return "backfilled"
+        logger.warning(
+            "visibility backfilled INCOMPLETE for draft %s (disk=%d intended=%r) "
+            "— enqueued as render_incomplete", draft_id, slide_count, intended,
+        )
+        _tg_notify(
+            "p1", f"wr2-visibility-incomplete-{draft_id}",
+            f"⚠️ WR2: carosello draft {draft_id} rientrato in coda come "
+            f"render_incomplete dal backfill (disco={slide_count}, "
+            f"intento={intended!r}) — serve sguardo umano prima di pubblicare.",
+        )
+        return "backfilled_incomplete"
     except Exception as exc:  # noqa: BLE001
         logger.warning("visibility verify/backfill failed: %s", exc, exc_info=exc)
         return "backfill_failed"
@@ -280,18 +339,51 @@ class CompletenessMismatch:
     declared: int
     disk: int
     expected: int | None
-    expected_source: str  # "slides.json" | "meta.json" | "none"
-    classification: str  # "queue_stale" | "genuinely_incomplete" | "dirless"
+    expected_source: str  # "intended_slide_count" | "slides.json" | "none"
+    classification: str  # "queue_stale" | "genuinely_incomplete" | "unknown_intent" | "dirless"
 
 
-def _resolve_expected_count(car_dir: Path) -> tuple[int | None, str]:
-    """Ground-truth intended slide count for `car_dir`, best signal first.
+def _resolve_expected_count(
+    car_dir: Path, entry: dict[str, Any] | None = None,
+) -> tuple[int | None, str]:
+    """Ground-truth intended slide count, best signal first.
 
-    slides.json (the render input, when a copy lives beside the artifact) is
-    more authoritative than meta.json (the render's own self-report) which is
-    more authoritative than nothing. Returns (None, "none") when neither is
-    readable — callers must NOT assume completeness in that case."""
+    Codex red-team HIGH #4 (2026-07-16): meta.json's plain `slide_count`
+    field is NOT independent ground truth — `_persist_local_artifacts`
+    computes it from the SAME disk scan this sweep re-checks, so it can
+    NEVER disagree with disk by construction. Trusting it as "expected" used
+    to let a genuine post-render loss be misclassified as `queue_stale` (a
+    lived scenario: intent/queue=9, disk=8, meta.slide_count=8 — the backfill
+    "fixed" the queue down to 8 and called the carousel complete).
+
+    Priority:
+      1. entry["intended_slide_count"] — DB-sourced (war_room_drafts.
+         slides_json), persisted once at render time, independent of disk.
+      2. car_dir/meta.json["intended_slide_count"] — same DB-sourced value,
+         redundant persistence (covers entries whose queue record predates
+         this field but whose artifact dir was re-persisted since this fix).
+      3. car_dir/slides.json — an actual render-input spec file, when one
+         exists beside the artifact (manual-import / rerender_local path).
+      4. Nothing — meta.json's bare disk-echoing `slide_count` is
+         deliberately NOT used as a fallback anymore.
+    Returns (None, "none") when nothing independent is available — callers
+    must classify that as `unknown_intent`, never assume completeness."""
     import json as _json
+
+    if entry is not None:
+        v = entry.get("intended_slide_count")
+        if isinstance(v, int) and v > 0:
+            return v, "intended_slide_count"
+
+    mj = car_dir / "meta.json"
+    if mj.is_file():
+        try:
+            meta = _json.loads(mj.read_text(encoding="utf-8"))
+            v = meta.get("intended_slide_count")
+            if isinstance(v, int) and v > 0:
+                return v, "intended_slide_count"
+        except Exception:  # noqa: BLE001
+            logger.warning("unreadable meta.json at %s", mj, exc_info=True)
 
     sj = car_dir / "slides.json"
     if sj.is_file():
@@ -302,34 +394,31 @@ def _resolve_expected_count(car_dir: Path) -> tuple[int | None, str]:
                 return len(slides), "slides.json"
         except Exception:  # noqa: BLE001 — unreadable slides.json, fall through
             logger.warning("unreadable slides.json at %s", sj, exc_info=True)
-    mj = car_dir / "meta.json"
-    if mj.is_file():
-        try:
-            meta = _json.loads(mj.read_text(encoding="utf-8"))
-            sc = meta.get("slide_count")
-            if isinstance(sc, int):
-                return sc, "meta.json"
-        except Exception:  # noqa: BLE001
-            logger.warning("unreadable meta.json at %s", mj, exc_info=True)
+
     return None, "none"
 
 
-def _classify_completeness(*, declared: int, disk: int, expected: int | None) -> str:
-    """3-way classification (design spec A3):
+def _classify_completeness(*, disk: int, expected: int | None) -> str:
+    """4-way classification (design spec A3; extended HIGH #3/#4, 2026-07-16):
 
-    (i)   queue_stale         — disk matches the independently-resolved
-                                 expected count; only the queue's own
-                                 slide_count field disagrees. The carousel
-                                 IS complete — fix the number in place.
-    (ii)  genuinely_incomplete — expected > disk (or expected unknown and
-                                 declared != disk): a real slide is missing
-                                 from the durable artifact. Never silently
-                                 renumber down to disk — that would fake
-                                 "complete" at the wrong count.
-    """
-    if expected is not None and expected == disk:
-        return "queue_stale"
-    return "genuinely_incomplete"
+    (i)    queue_stale         — disk matches the independently-resolved
+                                  expected count; only the queue's own
+                                  slide_count field disagrees. The carousel
+                                  IS complete — fix the number in place.
+    (ii)   genuinely_incomplete — expected is known and != disk: a real slide
+                                  is missing (or extra) vs a TRUSTED source.
+                                  Never silently renumber to "fix" this.
+    (iii)  unknown_intent      — no independent source exists at all (HIGH
+                                  #4): we cannot safely tell whether disk or
+                                  the queue's declared count is the wrong
+                                  one. Report only, NEVER mutate/renumber —
+                                  blindly assuming "disk must be right" here
+                                  is exactly the bug this classification
+                                  exists to stop.
+    Caller handles the separate "dirless" case (no slides_dir) itself."""
+    if expected is None:
+        return "unknown_intent"
+    return "queue_stale" if expected == disk else "genuinely_incomplete"
 
 
 def check_completeness(
@@ -379,11 +468,19 @@ def check_completeness(
             continue
         slides_dir = Path(sd)
         disk = viz.derive_slide_count(slides_dir)
-        if disk == declared:
-            continue  # honest, no mismatch
         car_dir = Path(entry.get("carousel_path")) if entry.get("carousel_path") else slides_dir.parent
-        expected, expected_source = _resolve_expected_count(car_dir)
-        classification = _classify_completeness(declared=declared, disk=disk, expected=expected)
+        # HIGH #3 (2026-07-16): resolve expected BEFORE any disk==declared
+        # shortcut — a queue whose declared count happens to match disk can
+        # still be WRONG against a trusted independent source (e.g.
+        # slides.json says 9, queue==disk==8 — both agree with each other and
+        # BOTH are wrong; the old `if disk == declared: continue` never even
+        # looked at slides.json in that case, so this class of loss was
+        # invisible to the sweep entirely).
+        expected, expected_source = _resolve_expected_count(car_dir, entry)
+        disagreement = declared != disk or (expected is not None and expected != disk)
+        if not disagreement:
+            continue  # honest end-to-end: queue, disk, and any known intent all agree
+        classification = _classify_completeness(disk=disk, expected=expected)
         mismatches.append(CompletenessMismatch(
             entry_id=entry_id, draft_id=entry.get("draft_id"), state=state,
             declared=declared, disk=disk, expected=expected,
@@ -455,11 +552,14 @@ def apply_completeness_backfill(
                     continue
                 slides_dir = Path(sd)
                 disk = viz.derive_slide_count(slides_dir)
-                if disk == declared:
-                    continue
                 car_dir = Path(entry.get("carousel_path")) if entry.get("carousel_path") else slides_dir.parent
-                expected, expected_source = _resolve_expected_count(car_dir)
-                classification = _classify_completeness(declared=declared, disk=disk, expected=expected)
+                # HIGH #3: resolve expected BEFORE any disk==declared
+                # shortcut — see the matching comment in check_completeness.
+                expected, expected_source = _resolve_expected_count(car_dir, entry)
+                disagreement = declared != disk or (expected is not None and expected != disk)
+                if not disagreement:
+                    continue
+                classification = _classify_completeness(disk=disk, expected=expected)
                 if classification == "queue_stale":
                     report = {
                         "entry_id": entry_id, "classification": classification,
@@ -477,7 +577,7 @@ def apply_completeness_backfill(
                         })
                         changed = True
                     reports.append(report)
-                else:  # genuinely_incomplete
+                elif classification == "genuinely_incomplete":
                     report = {
                         "entry_id": entry_id, "classification": classification,
                         "declared": declared, "disk": disk, "expected": expected,
@@ -497,6 +597,16 @@ def apply_completeness_backfill(
                         })
                         changed = True
                     reports.append(report)
+                else:  # unknown_intent (HIGH #4): NEVER mutate — no independent
+                    # source exists to tell whether disk or the queue's own
+                    # declared count is the wrong one. Report only, so a human
+                    # can look, instead of guessing "disk must be right".
+                    reports.append({
+                        "entry_id": entry_id, "classification": classification,
+                        "declared": declared, "disk": disk, "expected": expected,
+                        "expected_source": expected_source,
+                        "action": "report_only (no independent ground truth — refusing to guess)",
+                    })
 
             if not dry_run and changed:
                 tmp = qp.with_suffix(f".tmp.{os.getpid()}")
@@ -530,8 +640,9 @@ def _completeness_report(*, dry_run: bool) -> None:
             f"🧩 WR2 completeness sweep: {len(mismatches)} entry con slide_count "
             f"disallineato dal disco (drift post-render, non un render partial "
             f"nuovo). Esegui `wr2_daily_reconciler.py --backfill-completeness "
-            f"--apply` per correggerli (classificazione 3-way: queue_stale / "
-            f"genuinely_incomplete / dirless).",
+            f"--apply` per correggerli (classificazione: queue_stale / "
+            f"genuinely_incomplete / unknown_intent / dirless — unknown_intent "
+            f"non viene mai auto-corretto).",
         )
     except Exception as exc:  # noqa: BLE001 — never break the reconciler tick
         logger.warning("completeness sweep failed: %s", exc, exc_info=exc)
@@ -678,6 +789,12 @@ async def _tick(
                 f"e il backfill è fallito (draft {decision.draft_id}). "
                 f"Il PNG vive su Drive; serve sguardo umano.",
             )
+        elif vis == "backfilled_incomplete":
+            # HIGH #2: the entry landed as render_incomplete, not a lying
+            # "drafted" — degraded (not "failed", the P1 alert already fired
+            # inside _verify_visibility_or_backfill; not "ok", a human still
+            # needs to look before this carousel can be reviewed/published).
+            _heartbeat("degraded", f"{decision.reason}; visibility={vis}")
         else:
             _heartbeat("ok", f"{decision.reason}; visibility={vis}")
         return 0

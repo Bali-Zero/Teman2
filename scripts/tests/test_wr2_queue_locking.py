@@ -138,6 +138,67 @@ def test_server_save_queue_is_atomic_no_partial_tmp_left(tmp_path, monkeypatch):
     assert leftovers == []
 
 
+# ── CRITICAL #1 (Codex red-team, 2026-07-16): render_incomplete fail-closed ──
+
+
+def test_server_capture_delta_refuses_render_incomplete(tmp_path, monkeypatch):
+    """capture_delta had NO state guard at all — it flipped ANY state
+    straight to 'reviewed', including render_incomplete, which
+    mark_published already accepts. That was a live render_incomplete ->
+    reviewed -> published path with zero completeness check in between."""
+    qpath = _seed_server_queue(tmp_path, monkeypatch, [
+        {"id": "it-ri", "state": "render_incomplete"},
+    ])
+    before = qpath.read_text()
+    body, code = server.capture_delta("it-ri")
+    assert code == 400 and not body["ok"]
+    assert qpath.read_text() == before  # untouched
+
+
+def test_server_capture_delta_allows_drafted(tmp_path, monkeypatch):
+    """INNOCENCE: a normal drafted carousel can still advance via capture_delta."""
+    qpath = _seed_server_queue(tmp_path, monkeypatch, [
+        {"id": "it-ok", "state": "drafted"},
+    ])
+    body, code = server.capture_delta("it-ok")
+    assert code == 200 and body["ok"]
+    assert json.loads(qpath.read_text())[0]["state"] == "reviewed"
+
+
+def test_server_mark_published_refuses_disk_intent_mismatch(tmp_path, monkeypatch):
+    """Defense-in-depth (CRITICAL #1): even from an allow-listed state,
+    publish is refused if disk disagrees with the item's own recorded intent —
+    re-verified independently of whatever state-machine guard let us reach
+    this point."""
+    slides_dir = tmp_path / "carousel" / "x" / "slides"
+    slides_dir.mkdir(parents=True)
+    (slides_dir / "01.png").write_bytes(b"\x89PNG")
+    (slides_dir / "02.png").write_bytes(b"\x89PNG")
+    qpath = _seed_server_queue(tmp_path, monkeypatch, [
+        {"id": "it-mismatch", "state": "reviewed",
+         "slides_dir": str(slides_dir), "intended_slide_count": 3},
+    ])
+    body, code = server.mark_published("it-mismatch", "https://www.instagram.com/p/ABC/")
+    assert code == 409 and not body["ok"]
+    assert json.loads(qpath.read_text())[0]["state"] == "reviewed"  # unchanged
+
+
+def test_server_mark_published_allows_when_disk_matches_intent(tmp_path, monkeypatch):
+    """INNOCENCE: a genuinely complete carousel still publishes normally
+    through the new defense-in-depth check."""
+    slides_dir = tmp_path / "carousel" / "y" / "slides"
+    slides_dir.mkdir(parents=True)
+    (slides_dir / "01.png").write_bytes(b"\x89PNG")
+    (slides_dir / "02.png").write_bytes(b"\x89PNG")
+    qpath = _seed_server_queue(tmp_path, monkeypatch, [
+        {"id": "it-complete", "state": "reviewed",
+         "slides_dir": str(slides_dir), "intended_slide_count": 2},
+    ])
+    body, code = server.mark_published("it-complete", "https://www.instagram.com/p/ABC/")
+    assert code == 200 and body["ok"]
+    assert json.loads(qpath.read_text())[0]["state"] == "published"
+
+
 def test_queue_writer_mark_published_locks_and_publishes(tmp_path):
     qpath = tmp_path / "human-review-queue.json"
     item_id = "carousel_x"

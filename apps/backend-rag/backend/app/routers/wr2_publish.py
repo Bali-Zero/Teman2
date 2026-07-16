@@ -170,6 +170,58 @@ def _build_draft(
     )
 
 
+# ── Completeness gate (Codex red-team CRITICAL #1, 2026-07-16) ─────────────────
+# This endpoint receives `image_urls` the app already uploaded to Tigris — it
+# never touches slides_dir/slides.json, so it cannot re-derive a disk count
+# the way scripts/wr2_ig_publish.py and the Damar queue server do. But it CAN
+# reach the SAME Postgres DB this router already uses for the ledger, and
+# war_room_drafts.slides_json is the draft's own render input — independent
+# ground truth for "how many slides was this draft ASKED to have", with no
+# need to trust anything the client claims.
+
+
+async def _resolve_intended_slide_count(slug: str) -> int | None:
+    """DB-sourced intended slide count for `slug` (== war_room_drafts.topic),
+    newest draft first. None when no matching draft exists or slides_json is
+    unparseable — callers must NOT treat that as "0 expected", only as
+    "nothing to cross-check against" (this endpoint also serves manually
+    published carousels that never went through the war_room_drafts pipeline
+    at all, so a miss here must fail OPEN, not refuse everything)."""
+    dsn = settings.database_url
+    if not dsn:
+        return None
+    try:
+        conn = await asyncpg.connect(dsn)
+    except Exception as exc:  # best-effort cross-check, not a hard gate
+        logger.warning("wr2_publish: intended-count DB lookup failed: %s", exc)
+        return None
+    try:
+        try:
+            row = await conn.fetchrow(
+                "SELECT slides_json FROM war_room_drafts WHERE topic = $1 "
+                "ORDER BY created_at DESC LIMIT 1",
+                slug,
+            )
+        except Exception as exc:  # best-effort cross-check, not a hard gate:
+            # a missing table (e.g. a test DB without the WR2 migrations) or
+            # any other query-level error must fail OPEN, same as a
+            # connect-level failure — never crash the publish endpoint.
+            logger.warning("wr2_publish: intended-count query failed: %s", exc)
+            return None
+        if row is None or row["slides_json"] is None:
+            return None
+        sj = row["slides_json"]
+        if isinstance(sj, str):
+            try:
+                sj = json.loads(sj)
+            except (ValueError, TypeError):
+                return None
+        slides = sj.get("slides", sj) if isinstance(sj, dict) else sj
+        return len(slides) if isinstance(slides, list) else None
+    finally:
+        await conn.close()
+
+
 # ── Ledger (anti-double-publish) — replicated from scripts/wr2_ig_publish.py ────
 
 
@@ -406,17 +458,36 @@ async def publish_ig(body: PublishIGRequest) -> dict[str, Any]:
     called and ``approval_state`` stays ``"pending"``. ``confirm == True`` =>
     ledger precondition + real publish with ``approval_state == "approved"``.
     """
+    from backend.services.publisher.base import PublisherError
     from backend.services.publisher.ig_publisher import (
         IGPublisher,
         close_ig_publisher_client,
     )
-    from backend.services.publisher.base import PublisherError
 
     slug = body.slug
     image_urls = body.image_urls
     caption = body.caption
     draft_id = uuid.uuid5(_WR2_DRAFT_NAMESPACE, slug)
     content_hash = _content_hash(image_urls, caption)
+
+    # CRITICAL #1 fail-closed gate: cross-check against the draft's OWN DB
+    # input, independent of what the client (the app) sent as image_urls.
+    # Fails open (proceeds) only when no matching draft is found at all —
+    # this endpoint also serves carousels published without ever going
+    # through the war_room_drafts auto-render pipeline.
+    intended = await _resolve_intended_slide_count(slug)
+    if intended is not None and len(image_urls) != intended:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "incomplete_carousel",
+                "message": (
+                    f"war_room_drafts.slides_json for slug={slug!r} declares "
+                    f"{intended} slide(s) but {len(image_urls)} were provided "
+                    f"— refusing to publish an incomplete carousel"
+                ),
+            },
+        )
 
     # ── DRY path (LEGGE 5): build draft (pending) + validate, NEVER publish. ──
     if not body.confirm:

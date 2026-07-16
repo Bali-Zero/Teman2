@@ -212,13 +212,13 @@ def _write_queue(qp: Path, entries: list[dict]) -> None:
 
 
 def test_classify_queue_stale_when_expected_matches_disk(tmp_path):
-    """(i) slides.json/meta.json agree with disk at N-1; only the queue's
-    own slide_count field is wrong -> queue_stale, carousel is genuinely
-    complete at the smaller count."""
+    """(i) meta.json's intended_slide_count (DB-sourced, HIGH #4) agrees with
+    disk at N-1; only the queue's own slide_count field is wrong ->
+    queue_stale, carousel is genuinely complete at the smaller count."""
     car_dir = tmp_path / "carousel" / "topic-abcd1234"
     slides_dir = car_dir / "slides"
     _make_pngs(slides_dir, 8)
-    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 8}))
+    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 8, "intended_slide_count": 8}))
 
     qp = tmp_path / "queue" / "human-review-queue.json"
     _write_queue(qp, [{
@@ -232,13 +232,35 @@ def test_classify_queue_stale_when_expected_matches_disk(tmp_path):
     assert m.disk == 8 and m.declared == 9 and m.expected == 8
 
 
+def test_classify_queue_stale_when_entry_carries_intended_slide_count(tmp_path):
+    """Same as above but the QUEUE ENTRY itself carries intended_slide_count
+    (the field this PR adds to _make_queue_entry) — the highest-priority
+    source, checked before meta.json."""
+    car_dir = tmp_path / "carousel" / "topic-entry-src"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    # no meta.json at all — the entry's own field must be sufficient
+
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    _write_queue(qp, [{
+        "id": "carousel_e", "draft_id": "d1e", "state": "drafted",
+        "slide_count": 9, "intended_slide_count": 8,
+        "carousel_path": str(car_dir), "slides_dir": str(slides_dir),
+    }])
+    mismatches = reconciler.check_completeness(queue_path=qp)
+    assert len(mismatches) == 1
+    m = mismatches[0]
+    assert m.classification == "queue_stale"
+    assert m.expected == 8 and m.expected_source == "intended_slide_count"
+
+
 def test_classify_genuinely_incomplete_when_expected_exceeds_disk(tmp_path):
-    """(ii) meta.json/slides.json say N but disk only has N-1 -> genuinely
-    incomplete: a real slide is missing from the durable artifact."""
+    """(ii) meta.json's intended_slide_count says N but disk only has N-1 ->
+    genuinely incomplete: a real slide is missing from the durable artifact."""
     car_dir = tmp_path / "carousel" / "topic-deadbeef"
     slides_dir = car_dir / "slides"
     _make_pngs(slides_dir, 8)
-    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 9}))
+    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 8, "intended_slide_count": 9}))
 
     qp = tmp_path / "queue" / "human-review-queue.json"
     _write_queue(qp, [{
@@ -250,6 +272,30 @@ def test_classify_genuinely_incomplete_when_expected_exceeds_disk(tmp_path):
     m = mismatches[0]
     assert m.classification == "genuinely_incomplete"
     assert m.disk == 8 and m.expected == 9
+
+
+def test_classify_genuinely_incomplete_even_when_queue_matches_disk(tmp_path):
+    """HIGH #3 regression: queue's declared count matches disk (8==8) but an
+    independent slides.json says the TRUE intent was 9 — the old code's
+    `if disk == declared: continue` shortcut made this class of loss
+    completely invisible to the sweep. Must now be reported as
+    genuinely_incomplete, not silently skipped."""
+    car_dir = tmp_path / "carousel" / "topic-queue-disk-agree-both-wrong"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    (car_dir / "slides.json").write_text(json.dumps({"slides": [{}] * 9}))
+
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    _write_queue(qp, [{
+        "id": "carousel_qd", "draft_id": "d_qd", "state": "drafted",
+        "slide_count": 8, "carousel_path": str(car_dir), "slides_dir": str(slides_dir),
+    }])
+    mismatches = reconciler.check_completeness(queue_path=qp)
+    assert len(mismatches) == 1
+    m = mismatches[0]
+    assert m.classification == "genuinely_incomplete"
+    assert m.declared == 8 and m.disk == 8 and m.expected == 9
+    assert m.expected_source == "slides.json"
 
 
 def test_classify_dirless(tmp_path):
@@ -264,13 +310,15 @@ def test_classify_dirless(tmp_path):
     assert len(mismatches) == 1 and mismatches[0].classification == "dirless"
 
 
-def test_no_ground_truth_defaults_to_genuinely_incomplete_conservative(tmp_path):
-    """When neither slides.json nor meta.json exist, the classifier must NOT
-    silently trust disk as "complete" — conservative genuinely_incomplete,
-    never a silent auto-lower of the declared count."""
+def test_no_ground_truth_classifies_unknown_intent_never_mutates(tmp_path):
+    """HIGH #4 (2026-07-16): when NO independent source exists (no entry/
+    meta.json intended_slide_count, no slides.json), the classifier must NOT
+    guess either way — not "complete" (queue_stale) and not "incomplete"
+    (genuinely_incomplete). unknown_intent is report-only; apply_backfill
+    must never mutate this entry (see test_backfill_unknown_intent_never_mutates)."""
     car_dir = tmp_path / "carousel" / "topic-noground"
     slides_dir = car_dir / "slides"
-    _make_pngs(slides_dir, 8)  # no meta.json, no slides.json
+    _make_pngs(slides_dir, 8)  # no meta.json, no slides.json, no entry field
 
     qp = tmp_path / "queue" / "human-review-queue.json"
     _write_queue(qp, [{
@@ -280,8 +328,29 @@ def test_no_ground_truth_defaults_to_genuinely_incomplete_conservative(tmp_path)
     mismatches = reconciler.check_completeness(queue_path=qp)
     assert len(mismatches) == 1
     m = mismatches[0]
-    assert m.classification == "genuinely_incomplete"
+    assert m.classification == "unknown_intent"
     assert m.expected is None and m.expected_source == "none"
+
+
+def test_backfill_unknown_intent_never_mutates(tmp_path):
+    """HIGH #4: apply_completeness_backfill must NOT touch an unknown_intent
+    entry even with --apply — report only, regardless of dry_run."""
+    car_dir = tmp_path / "carousel" / "topic-noground2"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    before = [{
+        "id": "carousel_w2", "draft_id": "d4b", "state": "drafted",
+        "slide_count": 9, "carousel_path": str(car_dir), "slides_dir": str(slides_dir),
+    }]
+    _write_queue(qp, before)
+
+    reports = reconciler.apply_completeness_backfill(queue_path=qp, dry_run=False)
+    assert len(reports) == 1
+    assert reports[0]["classification"] == "unknown_intent"
+    assert reports[0]["action"].startswith("report_only")
+    # queue file byte-for-byte untouched despite dry_run=False
+    assert json.loads(qp.read_text()) == before
 
 
 def test_innocence_matching_entries_are_never_flagged(tmp_path):
@@ -319,7 +388,7 @@ def test_backfill_dry_run_never_mutates(tmp_path):
     car_dir = tmp_path / "carousel" / "topic-abcd1234"
     slides_dir = car_dir / "slides"
     _make_pngs(slides_dir, 8)
-    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 8}))
+    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 8, "intended_slide_count": 8}))
     qp = tmp_path / "queue" / "human-review-queue.json"
     before = [{
         "id": "carousel_x", "draft_id": "d1", "state": "drafted",
@@ -338,7 +407,7 @@ def test_backfill_apply_fixes_queue_stale_slide_count_in_place(tmp_path):
     car_dir = tmp_path / "carousel" / "topic-abcd1234"
     slides_dir = car_dir / "slides"
     _make_pngs(slides_dir, 8)
-    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 8}))
+    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 8, "intended_slide_count": 8}))
     qp = tmp_path / "queue" / "human-review-queue.json"
     _write_queue(qp, [{
         "id": "carousel_x", "draft_id": "d1", "state": "drafted",
@@ -362,7 +431,7 @@ def test_backfill_apply_marks_genuinely_incomplete_render_incomplete(tmp_path):
     car_dir = tmp_path / "carousel" / "topic-deadbeef"
     slides_dir = car_dir / "slides"
     _make_pngs(slides_dir, 8)
-    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 9}))
+    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 9, "intended_slide_count": 9}))
     qp = tmp_path / "queue" / "human-review-queue.json"
     _write_queue(qp, [{
         "id": "carousel_y", "draft_id": "d2", "state": "drafted",
@@ -398,7 +467,7 @@ def test_backfill_apply_preserves_other_queue_entries(tmp_path):
     car_dir = tmp_path / "carousel" / "topic-abcd1234"
     slides_dir = car_dir / "slides"
     _make_pngs(slides_dir, 8)
-    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 8}))
+    (car_dir / "meta.json").write_text(json.dumps({"slide_count": 8, "intended_slide_count": 8}))
     qp = tmp_path / "queue" / "human-review-queue.json"
     published = {"id": "carousel_old", "draft_id": "d0", "state": "published", "slide_count": 9999}
     _write_queue(qp, [
@@ -412,3 +481,179 @@ def test_backfill_apply_preserves_other_queue_entries(tmp_path):
     queue = json.loads(qp.read_text())
     assert queue[0] == published
     assert queue[1]["slide_count"] == 8
+
+
+# ── HIGH #5: staging + atomic swap in _persist_local_artifacts ─────────────
+
+
+def test_persist_local_artifacts_rerender_replaces_stale_pngs_atomically(tmp_path):
+    """A shorter re-render (9 -> 8 slides) must fully replace the old
+    slides_dir contents via the staging+swap — no ghost 09.png survives, and
+    content is genuinely swapped, not just counted (Codex red-team HIGH #5:
+    the old in-place clear+copy left a window where a partial dir was
+    observable to a concurrent reader; the new staging+swap must still fully
+    replace content end to end)."""
+    out_root = tmp_path / "output"
+    src = tmp_path / "render-tmp-1"
+    src.mkdir()
+    first_pngs = []
+    for i in range(1, 10):  # 9 slides
+        p = src / f"{i:02d}.png"
+        p.write_bytes(b"\x89PNG-v1")
+        first_pngs.append(p)
+    car_dir = html._persist_local_artifacts(
+        draft_id="rerender1", topic="Topic", png_paths=first_pngs,
+        drive_url="https://drive/x", weak_count=0, fact_check_status="pass",
+        intended_slide_count=9, out_root=out_root, rendered_at="2026-07-16T00:00:00Z",
+    )
+    assert html.derive_slide_count(car_dir / "slides") == 9
+    assert (car_dir / "slides" / "09.png").is_file()
+
+    src2 = tmp_path / "render-tmp-2"
+    src2.mkdir()
+    second_pngs = []
+    for i in range(1, 9):  # 8 slides — a shorter re-render
+        p = src2 / f"{i:02d}.png"
+        p.write_bytes(b"\x89PNG-v2")
+        second_pngs.append(p)
+    car_dir2 = html._persist_local_artifacts(
+        draft_id="rerender1", topic="Topic", png_paths=second_pngs,
+        drive_url="https://drive/y", weak_count=0, fact_check_status="pass",
+        intended_slide_count=8, out_root=out_root, rendered_at="2026-07-16T01:00:00Z",
+    )
+    assert car_dir2 == car_dir  # same draft/day -> same carousel dir
+    assert html.derive_slide_count(car_dir / "slides") == 8
+    assert not (car_dir / "slides" / "09.png").exists()  # ghost must be gone
+    assert (car_dir / "slides" / "01.png").read_bytes() == b"\x89PNG-v2"  # content actually swapped
+    # no leftover staging/old dirs
+    assert not list(car_dir.glob(".slides.new.*"))
+    assert not list(car_dir.glob(".slides.old.*"))
+
+
+def test_persist_local_artifacts_failed_copy_leaves_old_slides_untouched(tmp_path, monkeypatch):
+    """Rollback safety of the staging+swap (HIGH #5): if the NEW copy fails
+    verification, the OLD slides_dir (from a prior successful persist) must
+    be left completely intact — never partially clobbered."""
+    import shutil
+
+    out_root = tmp_path / "output"
+    src = tmp_path / "render-tmp-1"
+    src.mkdir()
+    first_pngs = [src / "01.png", src / "02.png"]
+    for p in first_pngs:
+        p.write_bytes(b"\x89PNG-good")
+    car_dir = html._persist_local_artifacts(
+        draft_id="rollback1", topic="Topic", png_paths=first_pngs,
+        drive_url="https://drive/x", weak_count=0, fact_check_status="pass",
+        intended_slide_count=2, out_root=out_root, rendered_at="2026-07-16T00:00:00Z",
+    )
+    assert html.derive_slide_count(car_dir / "slides") == 2
+
+    src2 = tmp_path / "render-tmp-2"
+    src2.mkdir()
+    second_pngs = [src2 / "01.png", src2 / "02.png", src2 / "03.png"]
+    for p in second_pngs:
+        p.write_bytes(b"\x89PNG-bad")
+
+    real_copy2 = shutil.copy2
+
+    def _flaky_copy2(s, d, *a, **kw):
+        if Path(s).name == "03.png":
+            return  # silently drop -> staging verification will raise
+        return real_copy2(s, d, *a, **kw)
+
+    monkeypatch.setattr(shutil, "copy2", _flaky_copy2)
+    with pytest.raises(RuntimeError, match="completeness mismatch"):
+        html._persist_local_artifacts(
+            draft_id="rollback1", topic="Topic", png_paths=second_pngs,
+            drive_url="https://drive/y", weak_count=0, fact_check_status="pass",
+            intended_slide_count=3, out_root=out_root, rendered_at="2026-07-16T01:00:00Z",
+        )
+    # OLD content must survive untouched — the swap never happened
+    assert html.derive_slide_count(car_dir / "slides") == 2
+    assert (car_dir / "slides" / "01.png").read_bytes() == b"\x89PNG-good"
+    assert not list(car_dir.glob(".slides.new.*"))  # staging cleaned up
+
+
+# ── HIGH #5b: render_incomplete is repointable by a complete re-render ─────
+
+
+def test_render_incomplete_entry_is_repointed_by_a_complete_rerender(tmp_path):
+    """A re-render that reaches _append_review_queue has ALREADY passed the
+    A1 gate (verified complete) — repoint FROM render_incomplete must succeed
+    so a fixed carousel flows back into review instead of staying stuck
+    pointing at the old incomplete artifact forever (Codex red-team HIGH #5)."""
+    entry_old = {
+        "id": "carousel_old_id", "draft_id": "d-stuck", "state": "render_incomplete",
+        "carousel_path": "/old", "slides_dir": "/old/slides", "slide_count": 0,
+        "state_history": [{"state": "render_incomplete", "at": "t0"}],
+    }
+    entry_new = {
+        "id": "carousel_new_id", "draft_id": "d-stuck", "topic_slug": "x", "topic": "X",
+        "drafted_at": "t1", "carousel_path": "/new", "slides_dir": "/new/slides",
+        "drive_url": "https://drive/y", "media_type": "carousel", "slide_count": 8,
+        "intended_slide_count": 8, "critic_overall_verdict": "legibility_only_pass",
+        "critic_summary": "all slides converged", "fact_check_status": None,
+        "state": "drafted", "state_history": [{"state": "drafted", "at": "t1"}],
+        "instagram_post_url": None, "instagram_published_at": None, "engagement_metrics": None,
+    }
+    qp = tmp_path / "queue.json"
+    qp.write_text(json.dumps([entry_old]), encoding="utf-8")
+    appended = html._append_review_queue(entry_new, queue_path=qp)
+    assert appended is True
+    queue = json.loads(qp.read_text())
+    assert len(queue) == 1  # repointed, not appended as a second entry
+    item = queue[0]
+    assert item["id"] == "carousel_old_id"  # identity/ref_code survives repoint
+    assert item["state"] == "drafted"  # un-stuck
+    assert item["slides_dir"] == "/new/slides"
+    assert item["slide_count"] == 8
+    assert item["intended_slide_count"] == 8
+
+
+# ── HIGH #2: _verify_visibility_or_backfill never lies "drafted" ───────────
+
+
+def test_backfill_visibility_never_appends_drafted_when_disk_mismatches_intent(tmp_path, monkeypatch):
+    """HIGH #2 (2026-07-16): DB row already status='rendered' but
+    _publish_visibility failed AFTER wiping/never-populating slides_dir
+    (disk=0) — a real, reproduced scenario. The old code appended a normal
+    'drafted' entry with slide_count=0 anyway. Must now land as
+    render_incomplete, never a lying 'drafted'."""
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path / "wr2-output"))
+    row = {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "topic": "Some Topic", "drive_url": "https://drive/z",
+        "slides_json": json.dumps({"slides": [{}] * 9}),  # DB says 9 intended
+    }
+    result = reconciler._verify_visibility_or_backfill(row, dry_run=False)
+    assert result == "backfilled_incomplete"
+
+    qp = tmp_path / "wr2-output" / "queue" / "human-review-queue.json"
+    queue = json.loads(qp.read_text())
+    assert len(queue) == 1
+    entry = queue[0]
+    assert entry["state"] == reconciler.RENDER_INCOMPLETE_STATE
+    assert entry["slide_count"] == 0
+    assert entry["intended_slide_count"] == 9
+
+
+def test_backfill_visibility_appends_drafted_only_when_disk_matches_intent(tmp_path, monkeypatch):
+    """INNOCENCE: a genuinely complete backfill (disk == DB-declared intent,
+    both > 0) must still land as a normal reviewable 'drafted' entry."""
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path / "wr2-output"))
+    draft_id = "22222222-2222-2222-2222-222222222222"
+    car_dir = tmp_path / "wr2-output" / "carousel" / f"missing-{draft_id[:8]}"
+    _make_pngs(car_dir / "slides", 3)
+    row = {
+        "id": draft_id, "topic": "Some Topic", "drive_url": "https://drive/z",
+        "slides_json": json.dumps({"slides": [{}] * 3}),
+    }
+    result = reconciler._verify_visibility_or_backfill(row, dry_run=False)
+    assert result == "backfilled"
+
+    qp = tmp_path / "wr2-output" / "queue" / "human-review-queue.json"
+    entry = json.loads(qp.read_text())[0]
+    assert entry["state"] == "drafted"
+    assert entry["slide_count"] == 3
+    assert entry["intended_slide_count"] == 3
