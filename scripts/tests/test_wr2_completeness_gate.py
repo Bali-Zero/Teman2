@@ -461,6 +461,192 @@ def test_backfill_apply_marks_dirless_render_incomplete(tmp_path):
     assert entry["state"] == reconciler.RENDER_INCOMPLETE_STATE
 
 
+# ── old-schema carousel_path-only resolution fix (2026-07-17) ──────────────
+# WHY: OLD-style queue entries (pre-`slides_dir` field, still live in the
+# queue) carry only `carousel_path` and NO `slides_dir` key at all. The old
+# code treated the missing key as "no dir" and misclassified a real,
+# fully-rendered carousel as dirless (live case: indonesia-visafree-myth-
+# reality, 8 real PNGs, mis-marked tonight).
+
+
+def test_guilt_old_schema_carousel_path_only_entry_is_not_dirless(tmp_path):
+    """GUILT: an entry with ONLY carousel_path (no slides_dir key at all) and
+    real PNGs under carousel_path/slides must resolve correctly — not dirless,
+    and (with a correct declared count) not flagged as any mismatch at all."""
+    car_dir = tmp_path / "carousel" / "indonesia-visafree-myth-reality"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    _write_queue(qp, [{
+        "id": "carousel_old", "draft_id": "d-old", "state": "drafted",
+        "slide_count": 8, "carousel_path": str(car_dir),
+        # deliberately NO "slides_dir" key — old-schema shape
+    }])
+    mismatches = reconciler.check_completeness(queue_path=qp)
+    assert mismatches == []
+
+
+def test_innocence_genuinely_dirless_entry_without_slides_dir_key_stays_dirless(tmp_path):
+    """INNOCENCE: an entry with only carousel_path, where NEITHER
+    carousel_path/slides NOR any carousel_root suffix-match exists, must
+    still classify as dirless — the fix must not make everything resolve."""
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    _write_queue(qp, [{
+        "id": "carousel_gone", "draft_id": "d-gone", "state": "drafted",
+        "slide_count": 8, "carousel_path": str(tmp_path / "carousel" / "gone-topic"),
+    }])
+    mismatches = reconciler.check_completeness(queue_path=qp)
+    assert len(mismatches) == 1 and mismatches[0].classification == "dirless"
+
+
+def test_backfill_apply_never_mutates_old_schema_entry_with_real_pngs(tmp_path):
+    """GUILT (backfill path): the same old-schema entry must not be mutated to
+    render_incomplete by apply_completeness_backfill either."""
+    car_dir = tmp_path / "carousel" / "indonesia-visafree-myth-reality"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    before = [{
+        "id": "carousel_old", "draft_id": "d-old", "state": "drafted",
+        "slide_count": 8, "carousel_path": str(car_dir),
+    }]
+    _write_queue(qp, before)
+    reports = reconciler.apply_completeness_backfill(queue_path=qp, dry_run=False)
+    assert reports == []
+    assert json.loads(qp.read_text()) == before
+
+
+def test_suffix_match_resolves_when_both_recorded_paths_are_stale(tmp_path, monkeypatch):
+    """Resolution step 3: neither slides_dir nor carousel_path point at a real
+    directory anymore (the carousel dir was renamed/re-persisted), but a
+    directory under carousel_root (check_completeness resolves this from
+    WR2_OUTPUT_ROOT, same as _verify_visibility_or_backfill) matches by
+    topic_slug — the entry must still resolve, not be classified dirless."""
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path / "wr2-output"))
+    carousel_root = tmp_path / "wr2-output" / "carousel"
+    real_dir = carousel_root / "2026-07-01-indonesia-visafree-myth-reality-abcd1234"
+    slides_dir = real_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    stale = tmp_path / "carousel" / "stale-dir-no-longer-exists"
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    _write_queue(qp, [{
+        "id": "carousel_drifted", "draft_id": "d-drift", "state": "drafted",
+        "slide_count": 8,
+        "carousel_path": str(stale),
+        "slides_dir": str(stale / "slides"),
+        "topic_slug": "indonesia-visafree-myth-reality",
+    }])
+    mismatches = reconciler.check_completeness(queue_path=qp)
+    assert mismatches == []
+
+
+def test_resolve_slides_dir_pure_unit_all_three_paths():
+    """Direct unit coverage of _resolve_slides_dir()'s 3-step priority,
+    independent of check_completeness()'s queue/env plumbing."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        carousel_root = root / "carousel"
+
+        # step 1: slides_dir present and real
+        sd = root / "direct-slides"
+        sd.mkdir()
+        assert reconciler._resolve_slides_dir({"slides_dir": str(sd)}, carousel_root) == sd
+
+        # step 1 fallback -> step 2: slides_dir stale, carousel_path resolves
+        cp = root / "carousel-dir"
+        (cp / "slides").mkdir(parents=True)
+        entry = {"slides_dir": str(root / "nope"), "carousel_path": str(cp)}
+        assert reconciler._resolve_slides_dir(entry, carousel_root) == cp / "slides"
+
+        # step 2b: carousel_path itself IS the slides dir already
+        direct_slides_as_cp = root / "already-slides"
+        direct_slides_as_cp.mkdir()
+        entry2 = {"carousel_path": str(direct_slides_as_cp / "slides")}
+        (direct_slides_as_cp / "slides").mkdir()
+        assert reconciler._resolve_slides_dir(entry2, carousel_root) == direct_slides_as_cp / "slides"
+
+        # step 3: both stale, suffix-match under carousel_root by topic_slug
+        carousel_root.mkdir()
+        matched = carousel_root / "2026-01-01-my-topic-slug-deadbeef"
+        (matched / "slides").mkdir(parents=True)
+        entry3 = {
+            "slides_dir": str(root / "gone" / "slides"),
+            "carousel_path": str(root / "gone"),
+            "topic_slug": "my-topic-slug",
+        }
+        assert reconciler._resolve_slides_dir(entry3, carousel_root) == matched / "slides"
+
+        # all three fail -> None
+        entry4 = {
+            "slides_dir": str(root / "gone2" / "slides"),
+            "carousel_path": str(root / "gone2"),
+            "topic_slug": "no-such-topic-anywhere",
+        }
+        assert reconciler._resolve_slides_dir(entry4, carousel_root) is None
+
+
+def test_resolve_slides_dir_suffix_match_prefers_newest_dir():
+    """GUILT (gate finding, 2026-07-17): when step 3's suffix-match has MULTIPLE
+    candidates (a topic re-rendered into a second dir), the resolver must
+    return the NEWEST (later-dated) one, never the oldest. Carousel dirs are
+    date-prefixed (2026-07-08-..., 2026-07-14-...); a naive ascending sort
+    picks the OLDEST match — reproduced live before this fix: two dirs
+    2026-07-08-visa-myth-aaa and 2026-07-14-visa-myth-bbb, both with valid
+    slides, resolved to 2026-07-08 (stale)."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        carousel_root = root / "carousel"
+        old_dir = carousel_root / "2026-07-08-visa-myth-aaa"
+        new_dir = carousel_root / "2026-07-14-visa-myth-bbb"
+        (old_dir / "slides").mkdir(parents=True)
+        (old_dir / "slides" / "01.png").write_bytes(b"\x89PNG-old")
+        (new_dir / "slides").mkdir(parents=True)
+        (new_dir / "slides" / "01.png").write_bytes(b"\x89PNG-new")
+
+        entry = {
+            "slides_dir": str(root / "gone" / "slides"),
+            "carousel_path": str(root / "gone"),
+            "topic_slug": "visa-myth",
+        }
+        resolved = reconciler._resolve_slides_dir(entry, carousel_root)
+        assert resolved == new_dir / "slides"
+        assert resolved != old_dir / "slides"
+
+
+def test_resolve_slides_dir_suffix_match_rejects_cross_topic_over_match():
+    """GUILT (Codex red-team HIGH #2, 2026-07-17): a bare `*{needle}*` glob
+    over-matches ACROSS topics — needle `visa-myth` also matches dir
+    `2026-07-17-evisa-mythology-bbbb` ("e"+"visa-myth"+"ology", no hyphen
+    boundary), and being newer would make the OLD newest-first sort PREFER
+    the foreign dir. The segment-anchored match must reject it and resolve
+    to the genuine `2026-07-14-visa-myth-aaaa` dir instead, even though the
+    foreign dir is lexicographically later."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        carousel_root = root / "carousel"
+        genuine_dir = carousel_root / "2026-07-14-visa-myth-aaaa"
+        foreign_dir = carousel_root / "2026-07-17-evisa-mythology-bbbb"
+        (genuine_dir / "slides").mkdir(parents=True)
+        (genuine_dir / "slides" / "01.png").write_bytes(b"\x89PNG-genuine")
+        (foreign_dir / "slides").mkdir(parents=True)
+        (foreign_dir / "slides" / "01.png").write_bytes(b"\x89PNG-foreign")
+
+        entry = {
+            "slides_dir": str(root / "gone" / "slides"),
+            "carousel_path": str(root / "gone"),
+            "topic_slug": "visa-myth",
+        }
+        resolved = reconciler._resolve_slides_dir(entry, carousel_root)
+        assert resolved == genuine_dir / "slides"
+        assert resolved != foreign_dir / "slides"
+
+
 def test_backfill_apply_preserves_other_queue_entries(tmp_path):
     """INNOCENCE: entries with no mismatch (including published history) must
     be byte-for-byte preserved by the backfill write."""
@@ -481,6 +667,171 @@ def test_backfill_apply_preserves_other_queue_entries(tmp_path):
     queue = json.loads(qp.read_text())
     assert queue[0] == published
     assert queue[1]["slide_count"] == 8
+
+
+# ── repair_false_incomplete() one-shot repair (2026-07-17) ─────────────────
+# WHY: the pre-fix dirless bug (see _resolve_slides_dir section above) had
+# already mutated some render_incomplete entries in the live queue before the
+# fix merged. This one-shot CLI restores the false positives it produced,
+# without touching genuinely dirless entries or any other state.
+
+
+def test_repair_guilt_false_incomplete_restored_to_drafted_under_apply(tmp_path):
+    """GUILT: a render_incomplete entry whose resolved slides dir (using the
+    FIXED resolution) has real PNGs, AND independent ground truth agrees
+    with disk (expected == disk == 8 via intended_slide_count), is restored
+    to drafted with the correct disk-derived slide_count, under --apply."""
+    car_dir = tmp_path / "carousel" / "indonesia-visafree-myth-reality"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    _write_queue(qp, [{
+        "id": "carousel_old", "draft_id": "d-old", "state": reconciler.RENDER_INCOMPLETE_STATE,
+        "slide_count": 8, "intended_slide_count": 8, "carousel_path": str(car_dir),
+        "state_history": [{"state": reconciler.RENDER_INCOMPLETE_STATE, "at": "t0",
+                            "reason": "dirless: slides_dir missing/not a directory"}],
+    }])
+    reports = reconciler.repair_false_incomplete(queue_path=qp, dry_run=False)
+    assert len(reports) == 1
+    assert reports[0]["action"] == "restore_to_drafted"
+    assert reports[0]["disk"] == 8
+    assert reports[0]["expected"] == 8
+    assert reports[0]["expected_source"] == "intended_slide_count"
+
+    entry = json.loads(qp.read_text())[0]
+    assert entry["state"] == "drafted"
+    assert entry["slide_count"] == 8
+    assert entry["slides_dir"] == str(slides_dir)
+    assert entry["state_history"][-1]["by"] == "wr2-daily-reconciler-repair-false-incomplete"
+
+
+def test_repair_dry_run_never_mutates(tmp_path):
+    car_dir = tmp_path / "carousel" / "indonesia-visafree-myth-reality"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    before = [{
+        "id": "carousel_old", "draft_id": "d-old", "state": reconciler.RENDER_INCOMPLETE_STATE,
+        "slide_count": 8, "intended_slide_count": 8, "carousel_path": str(car_dir),
+    }]
+    _write_queue(qp, before)
+    reports = reconciler.repair_false_incomplete(queue_path=qp, dry_run=True)
+    assert len(reports) == 1 and reports[0]["action"] == "restore_to_drafted"
+    assert json.loads(qp.read_text()) == before
+
+
+def test_repair_guilt_genuinely_incomplete_not_restored(tmp_path):
+    """GUILT (Codex red-team HIGH #3, 2026-07-17): a GENUINELY incomplete
+    carousel (disk=8, but slides.json — independent ground truth — says 9)
+    sitting in render_incomplete must NOT be restored to drafted. Restoring
+    it would make a real partial render publish-eligible, defeating the
+    complete-or-nothing gate."""
+    car_dir = tmp_path / "carousel" / "genuinely-incomplete-topic"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    (car_dir / "slides.json").write_text(json.dumps({"slides": [{}] * 9}))
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    before = [{
+        "id": "carousel_incomplete", "draft_id": "d-inc", "state": reconciler.RENDER_INCOMPLETE_STATE,
+        "slide_count": 8, "carousel_path": str(car_dir),
+    }]
+    _write_queue(qp, before)
+    reports = reconciler.repair_false_incomplete(queue_path=qp, dry_run=False)
+    assert reports == []
+    assert json.loads(qp.read_text()) == before
+
+
+def test_repair_guilt_no_ground_truth_not_restored(tmp_path):
+    """GUILT (Codex red-team HIGH #3, 2026-07-17): an entry with real PNGs on
+    disk but NO independent ground truth at all (no intended_slide_count
+    field, no meta.json, no slides.json) must NOT be restored — refusing to
+    guess is the same doctrine as apply_completeness_backfill's
+    unknown_intent."""
+    car_dir = tmp_path / "carousel" / "no-ground-truth-topic"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    before = [{
+        "id": "carousel_noground", "draft_id": "d-noground", "state": reconciler.RENDER_INCOMPLETE_STATE,
+        "slide_count": 8, "carousel_path": str(car_dir),
+    }]
+    _write_queue(qp, before)
+    reports = reconciler.repair_false_incomplete(queue_path=qp, dry_run=False)
+    assert reports == []
+    assert json.loads(qp.read_text()) == before
+
+
+def test_repair_innocence_genuinely_dirless_entry_untouched(tmp_path):
+    """INNOCENCE: an entry genuinely dirless even under the fixed resolution
+    (no slides_dir/carousel_path/suffix-match resolves) must stay
+    render_incomplete — the repair must not resurrect a real false negative."""
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    before = [{
+        "id": "carousel_gone", "draft_id": "d-gone", "state": reconciler.RENDER_INCOMPLETE_STATE,
+        "slide_count": 8, "carousel_path": str(tmp_path / "carousel" / "truly-gone"),
+    }]
+    _write_queue(qp, before)
+    reports = reconciler.repair_false_incomplete(queue_path=qp, dry_run=False)
+    assert reports == []
+    assert json.loads(qp.read_text()) == before
+
+
+def test_repair_innocence_published_and_other_states_never_touched(tmp_path):
+    """INNOCENCE: entries in ANY state other than render_incomplete —
+    including a published entry whose disk mismatches its declared count —
+    must never be considered by the repair, even if their resolved dir would
+    have real PNGs."""
+    car_dir = tmp_path / "carousel" / "some-published-topic"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 5)
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    before = [
+        {"id": "carousel_pub", "draft_id": "d-pub", "state": "published",
+         "slide_count": 9999, "carousel_path": str(car_dir)},
+        {"id": "carousel_drafted", "draft_id": "d-draft", "state": "drafted",
+         "slide_count": 5, "carousel_path": str(car_dir)},
+    ]
+    _write_queue(qp, before)
+    reports = reconciler.repair_false_incomplete(queue_path=qp, dry_run=False)
+    assert reports == []
+    assert json.loads(qp.read_text()) == before
+
+
+def test_repair_exclude_id_hard_excludes_entry(tmp_path):
+    """--exclude-id: an operator override that skips a specific entry even
+    though it would otherwise resolve cleanly (e.g. a genuinely-bad carousel
+    that happens to share the render_incomplete state)."""
+    car_dir = tmp_path / "carousel" / "excluded-topic"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    before = [{
+        "id": "carousel_excluded", "draft_id": "d-excl", "state": reconciler.RENDER_INCOMPLETE_STATE,
+        "slide_count": 8, "intended_slide_count": 8, "carousel_path": str(car_dir),
+    }]
+    _write_queue(qp, before)
+    reports = reconciler.repair_false_incomplete(
+        queue_path=qp, dry_run=False, exclude_ids={"carousel_excluded"},
+    )
+    assert reports == []
+    assert json.loads(qp.read_text()) == before
+
+
+def test_repair_preserves_other_queue_entries_byte_for_byte(tmp_path):
+    car_dir = tmp_path / "carousel" / "indonesia-visafree-myth-reality"
+    slides_dir = car_dir / "slides"
+    _make_pngs(slides_dir, 8)
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    published = {"id": "carousel_pub", "draft_id": "d0", "state": "published", "slide_count": 9999}
+    _write_queue(qp, [
+        published,
+        {"id": "carousel_old", "draft_id": "d-old", "state": reconciler.RENDER_INCOMPLETE_STATE,
+         "slide_count": 8, "intended_slide_count": 8, "carousel_path": str(car_dir)},
+    ])
+    reconciler.repair_false_incomplete(queue_path=qp, dry_run=False)
+    queue = json.loads(qp.read_text())
+    assert queue[0] == published
+    assert queue[1]["state"] == "drafted"
 
 
 # ── HIGH #5: staging + atomic swap in _persist_local_artifacts ─────────────
