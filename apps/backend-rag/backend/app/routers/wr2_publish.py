@@ -313,7 +313,7 @@ async def _ledger_record_result(
             idempotency_key = f"{carousel_id}:{_PLATFORM}:{content_hash[:16]}"
             await conn.execute(
                 "UPDATE wr2_publish_attempts "
-                "SET state = $1, provider_response = $2::jsonb, updated_at = now() "
+                "SET state = $1, provider_response = $2::text::jsonb, updated_at = now() "
                 "WHERE idempotency_key = $3",
                 state,
                 json.dumps(provider_response or {}),
@@ -406,11 +406,11 @@ async def publish_ig(body: PublishIGRequest) -> dict[str, Any]:
     called and ``approval_state`` stays ``"pending"``. ``confirm == True`` =>
     ledger precondition + real publish with ``approval_state == "approved"``.
     """
+    from backend.services.publisher.base import PublisherError
     from backend.services.publisher.ig_publisher import (
         IGPublisher,
         close_ig_publisher_client,
     )
-    from backend.services.publisher.base import PublisherError
 
     slug = body.slug
     image_urls = body.image_urls
