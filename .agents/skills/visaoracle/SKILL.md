@@ -80,6 +80,22 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   fired: Gemini regulatory-delta (catalog staleness vs Kepmen M.IP-08/2025 index reclassification
   133→110 + Permen Imipas 10/2026), Codex engine-concretization, GLM interview design, Sonnet
   reuse-first OSS survey.
+- 2026-07-17 (pre-dawn): ROUND 2 COMPLETE — 4 lanes delivered and persisted (gemini
+  regulatory-delta: catalog has DEAD B211\* codes since Kepmen M.IP-08/2025 effective 2026-06-02,
+  133→110 indexes, BVK now nationality-only per Permen Imipas 10/2026 [+6 states: TR/BR/PE/KZ/MO/BY],
+  Permenkumham 36/2021 guarantor rules revoked by Permen Imipas 5/2025, regulatory-event cadence
+  ~every 3-4 months; glm interview-design: framing card + Q0 date-driven onshore lanes + 10
+  categories EN/ID + full behavioral trees Work/Invest/Remote + 5-state outcome skeletons + 10
+  microcopy rules; codex engine-concretization: 110KB spec — visa_engine module layout, complete
+  JSON Schema 2020-12 contract, RFC8785+Ed25519 signed anti-rollback bundles, tri-state evaluator
+  with purpose-coverage hit policy, bitemporal SQL with append-only triggers, strangler plan with
+  per-surface OFF/SHADOW/ENFORCE flags, 20 gold personas, file-by-file salvage map, 10 PR increments
+  ≈41-56 eng-days; reuse-first: ZEN Engine MIT found [arbitration pending], xyflow+elkjs for
+  /visualise, AGPL blockers identified, Stepperize license trap caught). Golden-visa stats conflict
+  ARBITRATED by orchestrator: 1,274 visas / Rp52.1T VERIFIED-OFFICIAL (imigrasi.go.id siaran pers +
+  Antara + CNN, as-of 2026-05-18; E28D Rp50.88T). Codex R2 spot-checks verified on disk: AppWizard
+  onComplete is synchronous (packages/core/components/apps/AppWizard.tsx), api.ts hardcodes Fly
+  fallback URL. Round 3 fired: Opus 4.8 xhigh fresh-context arbitration ZEN-vs-custom-evaluator.
 
 ## PENDING (W81 ledger, project-scoped)
 
@@ -90,3 +106,8 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   an attended session.
 - WORKTREE-REBASE: branch is behind origin/main (2+ commits at last check) — rebase before the final
   draft PR.
+- DEEPSEEK-BURN-ATTRIBUTION: fleet key consumed ~$48.75/30d (~1,100 req/day bursts; $10 top-up of
+  2026-07-15 burned in 48h). Eliminated: instrumented scripts (ledger=pennies), Fly backend
+  (llm_cost_events=0 rows), CI, OpenClaw config, intel pipeline, devils-advocate. Hunt agent
+  dispatched (leads: cognitive oracle, war-room-v2, healer, mata-garuda). Do NOT top up until
+  attributed.
