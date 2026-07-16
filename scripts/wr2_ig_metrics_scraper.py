@@ -164,6 +164,19 @@ def media_id_of(item: dict) -> Optional[str]:
     return None
 
 
+def _display_id(item: dict) -> str:
+    """Schema-agnostic label for a queue item's log lines (Codex red-team hotfix,
+    2026-07-17, live Pro prove-live): the success/skip/dry-run prints in main()'s
+    fetch loop used a bare `item['id']` fallback after `topic_slug` — old-schema
+    entries (§C reconciliation candidates like bali-pma-rental-crackdown) only
+    carry `item_id`, never `id`, so the scraper KeyError'd mid-loop BEFORE the
+    write at the end of the run. `media_id_of` already handles this dual-schema
+    split correctly (checks BOTH `id` and `item_id`); these print lines never got
+    the same treatment. Never raises — `'?'` is the last resort for a genuinely
+    unlabeled item, never a crash."""
+    return item.get("topic_slug") or item.get("id") or item.get("item_id") or "?"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--queue", default=str(DEFAULT_QUEUE))
@@ -209,14 +222,14 @@ def main() -> int:
         mid = media_id_of(item)
         m = fetch_metrics(mid, token)
         if m is None:
-            print(f"  skip {item.get('topic_slug') or item['id']}: no metrics returned")
+            print(f"  skip {_display_id(item)}: no metrics returned")
             continue
         if args.dry_run:
-            print(f"  [dry] {item.get('topic_slug') or item['id']}: {m}")
+            print(f"  [dry] {_display_id(item)}: {m}")
         else:
             item["engagement_metrics"] = m
             updated += 1
-            print(f"  ok   {item.get('topic_slug') or item['id']}: "
+            print(f"  ok   {_display_id(item)}: "
                   f"likes={m.get('likes')} reach={m.get('reach')} "
                   f"saved={m.get('saved')} shares={m.get('shares')}")
         time.sleep(0.3)  # be gentle on the API
