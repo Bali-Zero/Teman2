@@ -1,0 +1,79 @@
+name: npm lock sync
+
+# The gate that would have caught the 2026-07-16 desync on day one.
+#
+# WHAT HAPPENED: this is an npm-workspaces monorepo with ONE hoisted root
+# package-lock.json, but Dependabot was configured on `directory: /apps/mouth`,
+# so it bumped apps/mouth/package.json and never touched the root lock. Four
+# MAJOR bumps landed that way (#2384 @vitejs/plugin-react, #2385 ai 6->7,
+# #2386 @ai-sdk/react 3->4, #2387 @types/node) and `npm ci` on main started
+# failing with EUSAGE.
+#
+# WHY NOBODY NOTICED: the only jobs that run `npm ci` — SonarQube, Snyk
+# Node.js, Cross-import integrity, Lighthouse — are all NON-REQUIRED, so they
+# went red and blocked nothing. Everything that gates a merge (tests.yml) and
+# everything that ships (vercel.json) uses `npm install`, which silently
+# re-resolves from package.json and ignores the stale lock. Result: four
+# scanners dead for days, and prod builds resolving `^`-ranges fresh on every
+# deploy instead of installing a pinned tree.
+#
+# The dependabot.yml npm block already DOCUMENTED this exact failure mode (see
+# the lucide-react ignore, PR #956) — but the cure was scoped to one dependency
+# instead of the class, so the disease came back through four other packages.
+#
+# THIS gate is the class-level cure: it runs on EVERY pull request and fails if
+# the lock cannot satisfy the manifests. It is the npm sibling of
+# test_lock_honors_requirements.py (scar W98, the pip side of the same family).
+#
+# NO `paths:` FILTER — DELIBERATE. This job is a REQUIRED check, and a required
+# check that is path-skipped stays "pending" forever on non-matching PRs,
+# blocking every merge. The whole file must keep running everywhere. If you add
+# a paths filter here, you must first remove it from the required contexts.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-lock-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lock-honors-manifest:
+    name: npm lock honors manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      # `npm ci` is the contract: it refuses to install when package.json and
+      # package-lock.json disagree. --dry-run keeps it read-only — we want the
+      # verdict, not the node_modules tree.
+      - name: npm ci --dry-run (fails on lock/manifest desync)
+        id: locksync
+        run: npm ci --dry-run --no-audit --no-fund
+
+      - name: Explain the failure
+        if: failure() && steps.locksync.conclusion == 'failure'
+        run: |
+          echo "::error title=npm lock is out of sync with package.json::The root package-lock.json cannot satisfy the workspace manifests."
+          echo ""
+          echo "This usually means a package.json was bumped without regenerating the root lock."
+          echo "Dependabot bumping a workspace manifest alone is the classic cause."
+          echo ""
+          echo "Fix, from the repo root:"
+          echo "    npm install --package-lock-only"
+          echo "    git add package-lock.json && git commit"
+          echo ""
+          echo "Do NOT work around this by switching a workflow to 'npm install' —"
+          echo "that is what hid this class of bug for days (see the header of"
+          echo "this file). The lock is meant to be the pinned truth."
+          exit 1
