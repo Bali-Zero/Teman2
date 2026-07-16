@@ -2,5 +2,5 @@
   "version": 2,
   "framework": "nextjs",
   "buildCommand": "next build --webpack",
-  "installCommand": "npm install --include=dev"
+  "installCommand": "cd ../.. && npm ci --include=dev"
 }
