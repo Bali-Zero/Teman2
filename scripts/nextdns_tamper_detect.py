@@ -142,7 +142,7 @@ def main() -> int:
     registry = os.environ.get(
         "NEXTDNS_DEVICE_REGISTRY",
         os.path.expanduser(
-            "~/Desktop/nuzantara/research/hr/device-enrollment-registry.md"
+            "~/nuzantara/research/hr/device-enrollment-registry.md"
         ),
     )
     if not all([api_key, profile_id, tg_token, tg_chat]):

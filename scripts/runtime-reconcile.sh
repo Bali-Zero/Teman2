@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # runtime-reconcile.sh — anti-W81 reconciliation watchdog (SPEC runtime/dev split, P0).
 #
-# THE SCAR IT KILLS: ~/Desktop/nuzantara-deploy (the stable runtime checkout the launchd
+# THE SCAR IT KILLS: ~/nuzantara-deploy (the stable runtime checkout the launchd
 # organs are meant to run from) VANISHED once and nobody noticed for weeks (W81). The
 # deploy-puller kept exiting 1 in silence; 20 organs ran at nothing. This watchdog makes
 # the absence LOUD — the reconciliation-report pattern of superscar #2 (built-but-vanished
@@ -18,8 +18,8 @@
 # Exit: 0 = all invariants hold (or disabled). 1 = a P0/invariant breach was found+alerted.
 set -uo pipefail
 
-DEPLOY_DIR="${WR2_DEPLOY_DIR:-${HOME}/Desktop/nuzantara-deploy}"
-SOURCE_REPO="${WR2_SOURCE_REPO:-${HOME}/Desktop/nuzantara}"
+DEPLOY_DIR="${WR2_DEPLOY_DIR:-${HOME}/nuzantara-deploy}"
+SOURCE_REPO="${WR2_SOURCE_REPO:-${HOME}/nuzantara}"
 DEPLOY_BRANCH="${WR2_DEPLOY_BRANCH:-deploy/main}"
 MAX_PULL_AGE_SEC="${RUNTIME_RECONCILE_MAX_PULL_AGE_SEC:-7200}"   # deploy must have pulled within 2h
 STRICT="${RUNTIME_RECONCILE_STRICT:-0}"                          # P0 default 0 = warn, don't page
@@ -134,7 +134,7 @@ printf '{"ts":"%s","status":"%s","note":"breaches=%d deploy_exists=%s strict=%s"
 
 if (( breaches > 0 )); then
   # A3: a confirmed breach is a verified organism failure → learn it (cooldown-deduped).
-  save_lesson "runtime-root breach detected (deploy_exists=${deploy_exists}, breaches=${breaches}). W81 vector recurred — check ~/Desktop/nuzantara-deploy + the deploy-puller before trusting any merge reached the live organs."
+  save_lesson "runtime-root breach detected (deploy_exists=${deploy_exists}, breaches=${breaches}). W81 vector recurred — check ~/nuzantara-deploy + the deploy-puller before trusting any merge reached the live organs."
   if [[ "$STRICT" == "1" ]]; then
     alert "$breaches invariant breach(es) — see $LOG"
     exit 1

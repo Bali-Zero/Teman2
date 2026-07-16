@@ -45,7 +45,7 @@ if [ -f "$TRAMPOLINE_LIB" ]; then
     w84_trampoline_or_die "$LOG" "$0"
 fi
 
-REPO="$HOME/Desktop/nuzantara/apps/mata-garuda"
+REPO="$HOME/nuzantara/apps/mata-garuda"
 VENV_PY="$REPO/.venv/bin/python"
 STATE_DIR="$HOME/.agent/decisions"
 STATE_FILE="$STATE_DIR/matagaruda-split-brain-last.txt"
@@ -110,11 +110,11 @@ except Exception:
 
     if [ -n "$NEW_ALERTS" ]; then
         GATEWAY="$(dirname "$0")/tg_notify.py"
-        [ -f "$GATEWAY" ] || GATEWAY="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+        [ -f "$GATEWAY" ] || GATEWAY="$HOME/nuzantara/scripts/tg_notify.py"
         MSG="Mata Garuda Redis Split-Brain
 
 ${NEW_ALERTS}
-Run manually: python3 ~/Desktop/nuzantara/apps/mata-garuda/scripts/check_redis_split_brain.py"
+Run manually: python3 ~/nuzantara/apps/mata-garuda/scripts/check_redis_split_brain.py"
         python3 "$GATEWAY" --tier p0 --source matagaruda-redis-split-brain \
             --dedup-key "matagaruda-split-brain:$(hostname -s)" -- "$MSG" >/dev/null 2>&1 || true
     fi

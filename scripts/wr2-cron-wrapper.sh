@@ -6,7 +6,7 @@
 #
 # Example (from a plist):
 #   <array>
-#     <string>/Users/nuzantara/Desktop/nuzantara/scripts/wr2-cron-wrapper.sh</string>
+#     <string>/Users/nuzantara/nuzantara/scripts/wr2-cron-wrapper.sh</string>
 #     <string>backend.services.intel.trend_hunter.cli</string>
 #   </array>
 #
@@ -32,7 +32,7 @@ fi
 MODULE="$1"
 shift
 
-REPO_ROOT="${NUZANTARA_REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${NUZANTARA_REPO_ROOT:-$HOME/nuzantara}"
 SECRETS_FILE="${NUZANTARA_SECRETS:-$HOME/.nuzantara-secrets.env}"
 LOG_DIR="${WR2_LOG_DIR:-$HOME/.openclaw/workspace/logs/war-room-v2}"
 mkdir -p "$LOG_DIR"

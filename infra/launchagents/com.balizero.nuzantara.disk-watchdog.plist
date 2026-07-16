@@ -34,7 +34,7 @@
     <key>ProgramArguments</key>
     <array>
       <string>/bin/bash</string>
-      <string>/Users/nuzantara/Desktop/nuzantara/scripts/disk_watchdog.sh</string>
+      <string>/Users/nuzantara/nuzantara/scripts/disk_watchdog.sh</string>
     </array>
 
     <!-- 09:00 WITA daily -->
@@ -64,6 +64,6 @@
     </dict>
 
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/nuzantara</string>
   </dict>
 </plist>

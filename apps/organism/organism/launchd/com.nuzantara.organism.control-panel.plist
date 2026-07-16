@@ -17,7 +17,7 @@
   <dict>
     <key>ORGANISM_TOKEN_PATH</key><string>/Users/nuzantara/.organism/token</string>
     <key>ORGANISM_BLACKOUT_FLAG</key><string>/Users/nuzantara/tmp/organism-pause.flag</string>
-    <key>PYTHONPATH</key><string>/Users/nuzantara/Desktop/nuzantara/apps/organism</string>
+    <key>PYTHONPATH</key><string>/Users/nuzantara/nuzantara/apps/organism</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>

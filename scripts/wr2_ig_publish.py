@@ -99,7 +99,7 @@ def _carousel_root() -> Path:
     return Path(
         os.environ.get(
             "WR2_CAROUSEL_ROOT",
-            str(Path.home() / "Desktop/nuzantara/apps/war-room/output/carousel"),
+            str(Path.home() / "nuzantara/apps/war-room/output/carousel"),
         )
     )
 

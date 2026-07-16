@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   com.nuzantara.runtime-reconcile — anti-W81 runtime-root watchdog (P1, 2026-06-27).
-  Asserts ~/Desktop/nuzantara-deploy exists + is pulled-recently + on the right branch, and
+  Asserts ~/nuzantara-deploy exists + is pulled-recently + on the right branch, and
   PAGES Telegram on breach (STRICT=1). Runs the wrapper from ~/scripts/ (OUTSIDE both checkouts)
   by intent: a vanished main must not take its own watchdog down (superscar #1 HOME-fork + the
   exact W81 it guards). The ~/scripts copy is cmp-checked against the repo source of truth

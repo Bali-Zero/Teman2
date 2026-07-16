@@ -58,11 +58,11 @@ done
 
 # --- HOME-fork fixes: /Users/nuzantara → $HOME-relative -----------------------
 # SKILL.md is documentation; the path appears in prose/examples. The cleanest
-# machine-agnostic doc is "the main checkout" (~/Desktop/nuzantara). We rewrite
-# the literal /Users/nuzantara/Desktop/nuzantara → $HOME/Desktop/nuzantara form
-# (in .md as the literal "~/Desktop/nuzantara" so it reads on any machine).
-# Strategy: `/Users/nuzantara/Desktop/nuzantara` is the REPO root — identical on
-# every machine, so → `~/Desktop/nuzantara` (.md docs) or `$HOME/Desktop/nuzantara`
+# machine-agnostic doc is "the main checkout" (~/nuzantara). We rewrite
+# the literal /Users/nuzantara/nuzantara → $HOME/nuzantara form
+# (in .md as the literal "~/nuzantara" so it reads on any machine).
+# Strategy: `/Users/nuzantara/nuzantara` is the REPO root — identical on
+# every machine, so → `~/nuzantara` (.md docs) or `$HOME/nuzantara`
 # (.py runtime). NON-repo /Users/nuzantara paths (Voice-Corpus, ~/scripts wrappers)
 # are machine-specific or genuinely portable-via-$HOME — handled per-file below.
 say "1. HOME-fork: doc files (.md) — /Users/nuzantara → ~ (portable on any machine)"

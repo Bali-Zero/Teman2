@@ -93,8 +93,17 @@ updates:
           - "patch"
 
   # Node.js frontend
+  #
+  # directory MUST stay "/" — this is an npm-workspaces monorepo whose single
+  # hoisted package-lock.json lives at the root. Pointed at "/apps/mouth" (as it
+  # was until 2026-07-16) Dependabot can see that workspace's package.json but
+  # NOT the root lock, so every PR it opened bumped the manifest and left the
+  # lock behind. Four majors landed that way (#2384/#2385/#2386/#2387) and broke
+  # `npm ci` on main for days; the only jobs that run `npm ci` are non-required,
+  # so nothing went red that anyone had to look at. From "/" Dependabot resolves
+  # the workspace tree and updates the manifest AND the root lock in one PR.
   - package-ecosystem: "npm"
-    directory: "/apps/mouth"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -103,15 +112,18 @@ updates:
       - "dependencies"
       - "security"
     ignore:
-      # lucide-react majors are not safely auto-mergeable here. This is an
-      # npm-workspaces monorepo with a single hoisted root package-lock.json,
-      # but Dependabot bumps only apps/mouth/package.json, leaving the lock
-      # (and the hashFiles-keyed node_modules cache) at the old version. The
-      # mouth vitest runner inlines packages/core, so vite's import-analysis
-      # resolver fails on the bare `lucide-react` import when declared != lock,
-      # breaking the required Frontend (mouth) check (see closed PR #956). Bump
-      # majors deliberately with a synced root lockfile. Mirrors the
-      # torch / sentence-transformers semver-major ignore in the pip block.
+      # lucide-react majors are not safely auto-mergeable here: the mouth vitest
+      # runner inlines packages/core, so vite's import-analysis resolver fails on
+      # the bare `lucide-react` import when declared != lock (closed PR #956).
+      #
+      # NOTE 2026-07-16: the *desync* half of that old rationale is now fixed at
+      # the root (directory "/" above + the required `npm lock honors manifest`
+      # gate), so this ignore no longer carries the structural cure — it is now
+      # just an ordinary "icon-library majors get a human" hold, mirroring the
+      # torch / sentence-transformers semver-major ignore in the pip block. It
+      # was ALSO the scar: scoping the fix to one dependency instead of the class
+      # is exactly why the disease came back through four other packages. Do not
+      # add per-package ignores here to paper over a lock desync — fix the lock.
       - dependency-name: "lucide-react"
         update-types: ["version-update:semver-major"]
     groups:

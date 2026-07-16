@@ -1,6 +1,6 @@
 """Weekly markdown report generator for nb_monitor.
 
-Output path: ~/Desktop/nuzantara/research/nb-monitor/report-YYYY-Www.md
+Output path: ~/nuzantara/research/nb-monitor/report-YYYY-Www.md
 Renderer is pure -- takes entries + timestamp, returns markdown string. The
 caller writes to disk.
 

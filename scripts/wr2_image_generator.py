@@ -1321,6 +1321,11 @@ async def _acquire_image_lease(
     Status is re-checked in the same CAS (not just at `_fetch_pending`
     time) so a draft that moved on between fetch and lease attempt is
     never claimed. Release happens in `_persist_imaged` / `_mark_image_failed`.
+
+    No steal-on-acquire: a lease abandoned by a dead holder (crash/SIGTERM
+    before release) is reclaimed by the separate `_reset_stale_image_leases`
+    sweep at the top of `run()`, not by this CAS's WHERE clause — mirrors the
+    sibling lanes (see that function's docstring).
     """
     row = await conn.fetchrow(
         """
@@ -1335,6 +1340,53 @@ async def _acquire_image_lease(
         lease_owner,
     )
     return row is not None
+
+
+IMAGE_LEASE_STALE_MINUTES = 40
+"""TTL for reclaiming an abandoned image-gen lease (steal-on-sweep, 2026-07-16).
+
+`_acquire_image_lease` above had NO stale-lease steal: a holder that
+crashed/was SIGTERM'd before releasing (`_persist_imaged`/`_mark_image_failed`
+never ran) left `lease_owner` set forever, starving the draft on every
+subsequent run — live proof: draft a9e4e5d8-5afa-41ff-8c8a-dad947701037 held
+by a dead PID for ~31h, skipped hourly the whole time.
+
+40min gives a 2x safety margin over the observed per-draft ceiling (~8 hero
+slides x ~150s Codex/FlowKit round-trip each ≈ 20min) so a lease is never
+stolen out from under a genuinely still-running worker. Scaled up from the
+Canva lane's `stale_after_minutes=15` (`_pg.py::reset_stale_leases`) because
+image-gen's per-draft work is heavier than a single Canva apply.
+"""
+
+
+async def _reset_stale_image_leases(
+    conn: asyncpg.Connection, stale_after_minutes: int = IMAGE_LEASE_STALE_MINUTES,
+) -> list[uuid.UUID]:
+    """Watchdog sweep — reclaim leases abandoned by a dead holder.
+
+    Mirrors the sibling lanes' convention (`_pg.py::reset_stale_leases` for
+    Canva, `reset_stale_html_leases` for HTML): the steal lives in a separate
+    sweep called once at the top of `run()` BEFORE the fetch, not baked into
+    `_acquire_image_lease`'s CAS WHERE clause — a dead holder's lease is freed
+    here so the draft re-enters the normal CAS-acquire path on this same tick.
+    Scoped to `status IN ('drafts_checked', 'drafts')` because that's the only
+    range `_acquire_image_lease` ever claims (this lane, unlike Canva/HTML,
+    does not transition status while leased — see its docstring).
+    """
+    rows = await conn.fetch(
+        """
+        UPDATE war_room_drafts
+           SET lease_owner       = NULL,
+               lease_acquired_at = NULL,
+               updated_at        = NOW()
+         WHERE lease_owner IS NOT NULL
+           AND lease_acquired_at < NOW() - ($1 || ' minutes')::interval
+           AND status IN ('drafts_checked', 'drafts')
+        RETURNING id
+        """,
+        str(stale_after_minutes),
+    )
+    return [r["id"] for r in rows]
 
 
 async def _persist_imaged(
@@ -1671,6 +1723,16 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
     pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=2, command_timeout=600)
     try:
         async with pool.acquire() as conn:
+            if not dry_run:
+                reclaimed = await _reset_stale_image_leases(conn)
+                if reclaimed:
+                    logger.warning(
+                        "Reclaimed %d stale image-gen lease(s) (dead holder, TTL=%dmin): %s",
+                        len(reclaimed),
+                        IMAGE_LEASE_STALE_MINUTES,
+                        [str(x)[:8] for x in reclaimed[:5]],
+                    )
+
             if draft_id:
                 rows = await conn.fetch(
                     """

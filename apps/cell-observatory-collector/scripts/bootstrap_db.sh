@@ -2,7 +2,7 @@
 set -euo pipefail
 mkdir -p ~/.cell-observatory ~/logs/cell-observatory
 set -a; source ~/.nuzantara-secrets.env; set +a
-~/Desktop/nuzantara/apps/cell-observatory-collector/.venv/bin/python \
+~/nuzantara/apps/cell-observatory-collector/.venv/bin/python \
     -c "
 import asyncio
 from cell_observatory.storage import Storage

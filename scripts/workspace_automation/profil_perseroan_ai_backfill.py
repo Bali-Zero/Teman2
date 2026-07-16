@@ -17,7 +17,7 @@ Cost: ~$0.01/PDF × 431 PDFs = ~$4.31 total one-time backfill.
 After backfill: cron weekly catches new uploads (~5-10/week = $0.10/week).
 
 Run:
-  cd ~/Desktop/nuzantara
+  cd ~/nuzantara
   ./apps/backend-rag/.venv/bin/python scripts/workspace_automation/profil_perseroan_ai_backfill.py --limit 5    # test 5 PDFs
   ./apps/backend-rag/.venv/bin/python scripts/workspace_automation/profil_perseroan_ai_backfill.py --apply --limit 5
   ./apps/backend-rag/.venv/bin/python scripts/workspace_automation/profil_perseroan_ai_backfill.py --apply       # full backfill (~431 PDFs)

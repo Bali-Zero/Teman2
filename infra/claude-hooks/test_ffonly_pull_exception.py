@@ -88,8 +88,8 @@ def main() -> int:
         "git pull --ff-only",
         "git pull --ff-only origin main",
         "git pull origin main --ff-only",
-        "git -C /Users/x/Desktop/nuzantara pull --ff-only origin main",
-        "cd /Users/x/Desktop/nuzantara && git pull --ff-only",
+        "git -C /Users/x/nuzantara pull --ff-only origin main",
+        "cd /Users/x/nuzantara && git pull --ff-only",
         # comment elsewhere must not disqualify a REAL ff-only pull
         "git pull --ff-only origin main  # fleet self-align",
         "# align main\ngit pull --ff-only origin main",

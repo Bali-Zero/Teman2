@@ -1,18 +1,18 @@
 # Telegram notification gateway — tg_notify / tg_digest_flush / lint
 
-**Born**: 2026-07-06, Zero's mandate: *"stiamo riorganizzando telegram perché non posso
-più ricevere 600 messaggi al giorno."* The census found **171 tracked executable files**
+**Born**: 2026-07-06, Zero's mandate: _"stiamo riorganizzando telegram perché non posso
+più ricevere 600 messaggi al giorno."_ The census found **171 tracked executable files**
 calling `api.telegram.org` directly, each deciding alone whether Zero's phone buzzes.
 This gateway makes that decision ONE place with three tiers, a daily P0 budget, and
 dedup — and a CI lint guarantees the direct-sender family only shrinks.
 
 ## The three tiers
 
-| Tier | Meaning | Delivery |
-|---|---|---|
-| `p0` | Zero must act NOW (prod hotfix, guardian red, money, client blocked) | immediate send; max `TG_P0_BUDGET` (12) per day per machine; dedup window `TG_DEDUP_HOURS` (6h) |
-| `digest` | informative (cron green, cures, merges, watcher findings) | spooled → ONE grouped message at 08:00 + 20:00 WITA |
-| `log` | heartbeat / liveness / retry-ok | disk only (`log-only.jsonl`), counted in the digest footer, never sent |
+| Tier     | Meaning                                                              | Delivery                                                                                        |
+| -------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `p0`     | Zero must act NOW (prod hotfix, guardian red, money, client blocked) | immediate send; max `TG_P0_BUDGET` (12) per day per machine; dedup window `TG_DEDUP_HOURS` (6h) |
+| `digest` | informative (cron green, cures, merges, watcher findings)            | spooled → ONE grouped message at 08:00 + 20:00 WITA                                             |
+| `log`    | heartbeat / liveness / retry-ok                                      | disk only (`log-only.jsonl`), counted in the digest footer, never sent                          |
 
 ## Components
 
@@ -50,10 +50,12 @@ Then remove the file from `infra/tg-gateway/grandfathered.json` (or run
 `lint_tg_direct_senders.py --prune` to list prunable entries).
 
 Migrated in the gateway-birth PR (pilot cohort):
+
 - `scripts/cron-wrapper.sh` — cron failures → p0, dedup per job (flapping collapses)
 - `scripts/dlq_autopilot.py` — escalations/TERMINAL → p0 · auto-fixes/sweeps → digest
 
 Migrated in cohort-2 (2026-07-07):
+
 - `scripts/sentinel_lib/alerter.py` — the shared sentinel library: one migration
   routes the whole family (nuzantara-sentinel, intake sentinel, system_doctor,
   daily fleet report). CRITICAL/DEADMAN → p0, WARNING/INFO → digest. Local 1h
@@ -63,6 +65,7 @@ Migrated in cohort-2 (2026-07-07):
   gateway digest). HTML stripped: the gateway sends plain text.
 
 Migrated in cohort-3 (2026-07-07):
+
 - `scripts/disk_watchdog.sh` — disk full → p0 (dedup per host)
 - `scripts/log_size_watchdog.sh` — log housekeeping → digest (dedup per file)
 - `scripts/supervisor_liveness_watchdog.sh` — organism down → p0
@@ -71,6 +74,7 @@ Migrated in cohort-3 (2026-07-07):
 - `scripts/fly-qdrant-backup.sh` — failure → p0 · success green ping → digest
 
 Migrated in cohort-4 (2026-07-07) — first TypeScript adopter:
+
 - `apps/wa-mirror/bridge/telegram.ts` — the live Baileys bridge daemon on Pro.
   `sendTelegramAlert(text, logger, {tier, dedupKey})` shells out to
   `python3 tg_notify.py` (execFile, 90s cap, best-effort). Tiers: LOGGED OUT
@@ -79,10 +83,10 @@ Migrated in cohort-4 (2026-07-07) — first TypeScript adopter:
   collapses into one digest line instead of a message flood. Gateway path
   resolution: `WA_MIRROR_TG_GATEWAY` env override → `NUZANTARA_ROOT` →
   ancestor walk from the module (works from both `bridge/` source and
-  `dist/bridge/` compiled) → `~/Desktop/nuzantara` fallback.
+  `dist/bridge/` compiled) → `~/nuzantara` fallback.
   **Deploy leg (W81 — merged ≠ live)**: the daemon runs compiled `dist/` on
   Pro; after merge run `git pull && npm run build` in
-  `~/Desktop/nuzantara/apps/wa-mirror` and restart the wa-mirror LaunchAgent,
+  `~/nuzantara/apps/wa-mirror` and restart the wa-mirror LaunchAgent,
   or the old direct-sender code keeps running.
 
 Each migrated script keeps its own cooldown/state machinery; the gateway adds
@@ -90,7 +94,7 @@ the token chain and its 6h dedup on top. **HOME-pair caveat (family #1)**: on
 Pro several of these execute from `~/scripts/` copies — after merging a cohort,
 sync the live pairs (`cp` + `cmp -s`) and declare them in
 `infra/home-fork/declared-pairs.json`. The gateway path fallback
-(`$(dirname $0)/tg_notify.py` → `~/Desktop/nuzantara/scripts/tg_notify.py`)
+(`$(dirname $0)/tg_notify.py` → `~/nuzantara/scripts/tg_notify.py`)
 keeps HOME copies working without a local tg_notify.
 
 ## Spool anatomy (`~/.organism/tg_spool/`)

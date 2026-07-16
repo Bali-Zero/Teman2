@@ -1000,10 +1000,15 @@ async def _append_practice_document(
             "doc_id": doc_id,
         }
     )
-    # Write jsonb via explicit dumps + cast (pool has no json codec — passing a list
-    # raw makes asyncpg reject it as "expected str, got list").
+    # ::text::jsonb — the app pools DO register a jsonb codec (encoder=json.dumps,
+    # app/core/database.py) despite the stale claim this comment used to make.
+    # A param inferred as jsonb would get the pre-serialized string dumped AGAIN
+    # and land as a jsonb string scalar (practices.documents had 150 polluted
+    # rows, live-probe 2026-07-16). Typing the param as text makes the server
+    # parse it into an object; json.dumps stays because a raw list would
+    # otherwise need the codec's own encoder, which has no default= handler.
     await conn.execute(
-        "UPDATE practices SET documents = $1::jsonb, updated_at = NOW() WHERE id = $2",
+        "UPDATE practices SET documents = $1::text::jsonb, updated_at = NOW() WHERE id = $2",
         json.dumps(documents),
         plan.practice_id,
     )
@@ -1109,7 +1114,7 @@ async def rollback_commit(
                     if not (isinstance(d, dict) and d.get("doc_id") == doc_id)
                 ]
                 await conn.execute(
-                    "UPDATE practices SET documents = $1::jsonb, updated_at = NOW() WHERE id = $2",
+                    "UPDATE practices SET documents = $1::text::jsonb, updated_at = NOW() WHERE id = $2",
                     json.dumps(remaining),
                     practice_id,
                 )

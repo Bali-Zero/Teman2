@@ -233,6 +233,11 @@ class T4RelevanceFilter:
 
     def __init__(self) -> None:
         self._openai_client: Optional[object] = None
+        # T4-monitor-cure (2026-07-16): honest-classifier bookkeeping. A run
+        # where every Haiku attempt failed is BLIND — admits in that run were
+        # decided by L1 keywords alone, not by the classifier. See classify().
+        self.classifier_attempts: int = 0
+        self.classifier_unavailable_count: int = 0
 
     def _get_openai_client(self) -> Any:
         if self._openai_client is None:
@@ -273,7 +278,7 @@ class T4RelevanceFilter:
         text_vec = await self._embed(text)
         return self._cosine(text_vec, ref)
 
-    async def _haiku_classify(self, text: str) -> float:
+    async def _haiku_classify(self, text: str) -> Optional[float]:
         """Call Haiku via the ``claude`` CLI (OAuth Max plan, never the SDK).
 
         Project rule (CLAUDE.md Golden Rule #13 + .claude/rules/python-backend.md):
@@ -282,6 +287,14 @@ class T4RelevanceFilter:
         ``CLAUDE_CODE_OAUTH_TOKEN`` from the Max subscription. Pattern mirrors
         ``apps/backend-rag/backend/llm/claude_oauth_client.py`` (kept inline here
         because evaluator must not import from backend-rag).
+
+        Returns ``None`` — never a fabricated ``0.0`` — when the classifier
+        could not run at all (timeout / non-zero exit / unparseable output).
+        T4-monitor-cure (2026-07-16): the 3-week admit=0 incident traced to
+        this method returning 0.0 on every headless-Keychain failure, which
+        ``classify()`` then read as a genuine "irrelevant" verdict and
+        REJECTed every article. ``None`` lets the caller distinguish
+        "classifier said no" from "classifier didn't answer".
         """
         prompt = (
             "You are an immigration advisor for Bali, Indonesia. "
@@ -314,15 +327,15 @@ class T4RelevanceFilter:
         except asyncio.TimeoutError:
             with contextlib.suppress(ProcessLookupError):
                 proc.kill()
-            logger.warning("Haiku via OAuth CLI timed out — defaulting to 0.0")
-            return 0.0
+            logger.warning("Haiku via OAuth CLI timed out — classifier unavailable")
+            return None
 
         if proc.returncode != 0:
             logger.warning(
-                "claude CLI exit=%s stderr=%r — defaulting to 0.0",
+                "claude CLI exit=%s stderr=%r — classifier unavailable",
                 proc.returncode, stderr.decode("utf-8", errors="replace")[:200],
             )
-            return 0.0
+            return None
 
         raw = stdout.decode("utf-8", errors="replace").strip()
         try:
@@ -333,11 +346,11 @@ class T4RelevanceFilter:
             m = _re.search(r"^\d+(?:\.\d+)?", raw)
             if m:
                 return float(m.group())
-            logger.warning("CLI returned non-float: %r — defaulting to 0.0", raw)
-            return 0.0
+            logger.warning("CLI returned non-float: %r — classifier unavailable", raw)
+            return None
 
-    async def layer3_haiku(self, text: str) -> float:
-        """Return Haiku relevance score for text."""
+    async def layer3_haiku(self, text: str) -> Optional[float]:
+        """Return Haiku relevance score for text, or None if unavailable."""
         return await self._haiku_classify(text)
 
     async def classify(
@@ -347,12 +360,28 @@ class T4RelevanceFilter:
         ref_embedding: Optional[list[float]] = None,
     ) -> FilterResult:
         """Run filter pipeline. L2 embedding skipped (OpenAI quota exhausted).
-        L1 keyword gate → L3 Haiku classify."""
+        L1 keyword gate → L3 Haiku classify.
+
+        If Haiku is unavailable (returns None — timeout/exit-failure/unparseable,
+        never a fabricated score), fail OPEN to ADMIT: the text already passed
+        the L1 keyword gate, so admitting it is the conservative choice versus
+        silently rejecting everything (the 3-week admit=0 incident this cures).
+        ``classifier_attempts``/``classifier_unavailable_count`` let the caller
+        (T4Monitor.run) detect a fully-blind run and flag it DEGRADED.
+        """
         if not self.layer1_keywords(text):
             return FilterResult.REJECT
 
         # L2 DISABLED: OpenAI quota exhausted — go straight to L3
+        self.classifier_attempts += 1
         score = await self.layer3_haiku(text)
+        if score is None:
+            self.classifier_unavailable_count += 1
+            logger.warning(
+                "Haiku classifier unavailable — failing open to L1 ADMIT "
+                "(text already passed the keyword gate)"
+            )
+            return FilterResult.ADMIT
         return FilterResult.ADMIT if score >= 0.5 else FilterResult.REJECT
 
 
@@ -603,6 +632,7 @@ class T4RunResult:
     skipped_budget: int = 0
     rejected: int = 0
     errors: int = 0
+    classifier_unavailable: int = 0
 
 
 class T4Monitor:
@@ -737,13 +767,26 @@ class T4Monitor:
 
         state.last_run_at = datetime.now(timezone.utc)
         self._persistence.save(state)
+
+        result.classifier_unavailable = self._filter.classifier_unavailable_count
+        # DEGRADED: every single Haiku attempt this run failed, so any admits
+        # above were decided by L1 keywords alone (fail-open), not the
+        # classifier — the run was completely blind. Explicit in the summary
+        # because 3 weeks of per-article warnings went unnoticed (2026-07-16).
+        run_is_degraded = (
+            self._filter.classifier_unavailable_count > 0
+            and self._filter.classifier_unavailable_count == self._filter.classifier_attempts
+        )
         logger.info(
-            "T4 run complete: fetched=%d admit=%d ingested=%d dedup=%d rejected=%d",
+            "T4 run complete: fetched=%d admit=%d ingested=%d dedup=%d rejected=%d "
+            "classifier_unavailable=%d%s",
             result.fetched,
             result.filtered_admit,
             result.ingested,
             result.skipped_dedup,
             result.rejected,
+            result.classifier_unavailable,
+            " (DEGRADED)" if run_is_degraded else "",
         )
         return result
 
@@ -939,6 +982,6 @@ if __name__ == "__main__":
     print(  # noqa: T201
         f"T4 run complete: fetched={result.fetched} "
         f"ingested={result.ingested} rejected={result.rejected} "
-        f"errors={result.errors}"
+        f"errors={result.errors} classifier_unavailable={result.classifier_unavailable}"
     )
     sys.exit(0 if result.errors == 0 else 1)

@@ -17,7 +17,7 @@ Given a finished WR2 carousel at `apps/war-room/output/carousel/<slug>/slides/{1
 ```python
 from PIL import Image
 import os
-slides_dir = "~/Desktop/nuzantara/apps/war-room/output/carousel/<slug>/slides"
+slides_dir = "~/nuzantara/apps/war-room/output/carousel/<slug>/slides"
 pngs = sorted([f for f in os.listdir(slides_dir)
                if f.endswith('.png') and not f.startswith('logo')],
               key=lambda x: int(x.split('.')[0]))
@@ -36,7 +36,7 @@ Result: ~0.9 MB PDF for an 8-slide carousel.
   set -a
   source ~/.nuzantara-secrets.env
   set +a
-  ~/Desktop/nuzantara/apps/backend-rag/.venv/bin/python << PYEOF
+  ~/nuzantara/apps/backend-rag/.venv/bin/python << PYEOF
 import os, boto3, time
 ENDPOINT = "https://fly.storage.tigris.dev"
 BUCKET = "nuzantara-warroom-images"

@@ -31,7 +31,7 @@ if [[ "${REPOMAP_ENABLED:-true}" == "false" ]]; then
 fi
 
 # === Config ===
-REPO_ROOT="${REPOMAP_REPO_ROOT:-/Users/nuzantara/Desktop/nuzantara}"
+REPO_ROOT="${REPOMAP_REPO_ROOT:-/Users/nuzantara/nuzantara}"
 OUTPUT_PATH="${REPOMAP_OUTPUT:-$HOME/.nuzantara-repomap.txt}"
 OUTPUT_TMP="${OUTPUT_PATH}.tmp.$$"
 MAX_TOKENS="${REPOMAP_MAX_TOKENS:-1024}"

@@ -9,7 +9,7 @@
 		<key>PATH</key>
 		<string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/shims</string>
 		<key>PYTHONPATH</key>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+		<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 	</dict>
 	<key>KeepAlive</key>
 	<false/>
@@ -17,9 +17,9 @@
 	<string>com.matagaruda.reg-alert.30min</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+		<string>/Users/nuzantara/nuzantara/apps/mata-garuda/.venv/bin/python</string>
 		<string>-u</string>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/scripts/run_regulation_alert.py</string>
+		<string>/Users/nuzantara/nuzantara/apps/mata-garuda/scripts/run_regulation_alert.py</string>
 	</array>
 	<key>RunAtLoad</key>
 	<false/>
@@ -30,6 +30,6 @@
 	<key>StartInterval</key>
 	<integer>1800</integer>
 	<key>WorkingDirectory</key>
-	<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+	<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 </dict>
 </plist>

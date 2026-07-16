@@ -106,7 +106,7 @@ curl -H "api-key: $QDRANT_API_KEY" \
 ## Manual Run
 
 ```bash
-cd /Users/nuzantara/Desktop/nuzantara/apps/zantara-media
+cd /Users/nuzantara/nuzantara/apps/zantara-media
 source .venv/bin/activate
 
 # Normal run
@@ -130,7 +130,7 @@ garuda-gc --batch-size 50
 1. Apply DB migration:
 
    ```bash
-   cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag
+   cd /Users/nuzantara/nuzantara/apps/backend-rag
    source .venv/bin/activate
    python -c "
    from backend.db.migration_manager import MigrationManager
@@ -145,7 +145,7 @@ garuda-gc --batch-size 50
 2. Create Qdrant collection:
 
    ```bash
-   cd /Users/nuzantara/Desktop/nuzantara/apps/zantara-media
+   cd /Users/nuzantara/nuzantara/apps/zantara-media
    source .venv/bin/activate
    garuda-bootstrap
    ```
@@ -166,7 +166,7 @@ garuda-gc --batch-size 50
 
 ```bash
 # Install cron config
-cp /Users/nuzantara/Desktop/nuzantara/apps/zantara-media/config/openclaw_cron.yaml \
+cp /Users/nuzantara/nuzantara/apps/zantara-media/config/openclaw_cron.yaml \
    ~/.openclaw/crons/garuda_curator.yaml
 
 # Verify

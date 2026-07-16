@@ -34,7 +34,7 @@ class _FakeProc:
 
 class TestSlug:
     def test_basic_path_becomes_safe_filename(self):
-        slug = gc._slug("/Users/nuz/Desktop/nuzantara/.worktrees/ops-foo")
+        slug = gc._slug("/Users/nuz/nuzantara/.worktrees/ops-foo")
         assert "/" not in slug
         assert slug == "Users_nuz_Desktop_nuzantara_.worktrees_ops-foo"
 
@@ -78,19 +78,19 @@ class TestKillSwitch:
 
 
 SAMPLE_PORCELAIN = """\
-worktree /Users/nuz/Desktop/nuzantara
+worktree /Users/nuz/nuzantara
 HEAD a26da9e96aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 branch refs/heads/main
 
-worktree /Users/nuz/Desktop/nuzantara/.worktrees/ops-foo
+worktree /Users/nuz/nuzantara/.worktrees/ops-foo
 HEAD 1111111111111111111111111111111111111111
 branch refs/heads/feat/ops-foo
 
-worktree /Users/nuz/Desktop/nuzantara/.worktrees/detached-lane
+worktree /Users/nuz/nuzantara/.worktrees/detached-lane
 HEAD 2222222222222222222222222222222222222222
 detached
 
-worktree /Users/nuz/Desktop/nuzantara/.bare
+worktree /Users/nuz/nuzantara/.bare
 bare
 """
 

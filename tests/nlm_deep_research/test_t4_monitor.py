@@ -1,14 +1,23 @@
 """Tests for T4Monitor fetch layer (mocked HTTP)."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import logging
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
-from apps.evaluator.nlm_deep_research.t4_monitor import Article, Post, T4Fetcher, T4Monitor
+from apps.evaluator.nlm_deep_research.t4_monitor import (
+    Article,
+    FilterResult,
+    Post,
+    T4Fetcher,
+    T4Monitor,
+    T4RelevanceFilter,
+)
 from apps.evaluator.nlm_deep_research.t4_state import T4State, T4StatePersistence
 
 
@@ -291,3 +300,222 @@ class TestT4MonitorIngest:
         assert "[SOURCE]: imngurahrai" in formatted
         assert "[SVS]: 0.62" in formatted
         assert "Timpora razia overstay." in formatted
+
+
+# ---------------------------------------------------------------------------
+# T4-monitor-cure (2026-07-16): classifier honesty.
+#
+# Root cause of the 3-week admit=0 incident: the cron ran without
+# CLAUDE_CODE_OAUTH_TOKEN in its env, `claude -p` fell back to the
+# macOS-Keychain-stored token (inaccessible headlessly), exited non-zero on
+# every call, and _haiku_classify defaulted to a FABRICATED 0.0 — read by
+# classify() as a genuine "irrelevant" verdict, REJECTing every article that
+# had already passed the L1 keyword gate. The cure: _haiku_classify/
+# layer3_haiku return Optional[float] (None on failure, never 0.0), and
+# classify() fails OPEN to ADMIT on None (L1 already filtered), tracking the
+# fail-open so a fully-blind run can be flagged DEGRADED in the summary.
+# ---------------------------------------------------------------------------
+
+
+class TestHaikuClassifyHonesty:
+    """Guilt+innocence for _haiku_classify's None-vs-fabricated-0.0 contract."""
+
+    @pytest.mark.asyncio
+    async def test_timeout_returns_none_not_zero(self):
+        filt = T4RelevanceFilter()
+        mock_proc = AsyncMock()
+        mock_proc.communicate = AsyncMock(side_effect=asyncio.TimeoutError())
+        mock_proc.kill = MagicMock()
+        with patch("asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_proc)):
+            score = await filt._haiku_classify("some article text")
+        assert score is None
+
+    @pytest.mark.asyncio
+    async def test_nonzero_exit_returns_none_not_zero(self):
+        """guilt: this is the exact failure mode of the 3-week incident —
+        `claude -p` exits 1 ("Not logged in") under a headless Keychain."""
+        filt = T4RelevanceFilter()
+        mock_proc = AsyncMock()
+        mock_proc.communicate = AsyncMock(return_value=(b"", b"Not logged in"))
+        mock_proc.returncode = 1
+        with patch("asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_proc)):
+            score = await filt._haiku_classify("some article text")
+        assert score is None
+
+    @pytest.mark.asyncio
+    async def test_unparseable_output_returns_none_not_zero(self):
+        filt = T4RelevanceFilter()
+        mock_proc = AsyncMock()
+        mock_proc.communicate = AsyncMock(return_value=(b"I cannot compute a score.", b""))
+        mock_proc.returncode = 0
+        with patch("asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_proc)):
+            score = await filt._haiku_classify("some article text")
+        assert score is None
+
+    @pytest.mark.asyncio
+    async def test_verbose_output_extracts_leading_float(self):
+        """innocence: a real, parseable score is never coerced to None."""
+        filt = T4RelevanceFilter()
+        mock_proc = AsyncMock()
+        mock_proc.communicate = AsyncMock(
+            return_value=(b"0.85\n\nExplanation: highly relevant enforcement news.", b"")
+        )
+        mock_proc.returncode = 0
+        with patch("asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_proc)):
+            score = await filt._haiku_classify("some article text")
+        assert score == 0.85
+
+    @pytest.mark.asyncio
+    async def test_clean_float_output_returns_score(self):
+        """innocence: the common-case exact-float response still works."""
+        filt = T4RelevanceFilter()
+        mock_proc = AsyncMock()
+        mock_proc.communicate = AsyncMock(return_value=(b"0.0\n", b""))
+        mock_proc.returncode = 0
+        with patch("asyncio.create_subprocess_exec", new=AsyncMock(return_value=mock_proc)):
+            score = await filt._haiku_classify("some article text")
+        assert score == 0.0
+
+
+class TestClassifyFailOpen:
+    """Guilt+innocence for classify()'s fail-open-on-unavailable contract."""
+
+    @pytest.mark.asyncio
+    async def test_l1_positive_classifier_unavailable_fails_open_to_admit(self):
+        """guilt: before this cure, classifier-unavailable == fabricated 0.0 ==
+        always REJECT. After: L1-positive + classifier None -> ADMIT, tracked."""
+        filt = T4RelevanceFilter()
+        with patch.object(filt, "_haiku_classify", new=AsyncMock(return_value=None)):
+            result = await filt.classify("Deportasi WNA overstay di Bali")
+        assert result == FilterResult.ADMIT
+        assert filt.classifier_unavailable_count == 1
+        assert filt.classifier_attempts == 1
+
+    @pytest.mark.asyncio
+    async def test_l1_positive_real_zero_score_still_rejected(self):
+        """innocence: a REAL 0.0 verdict (classifier ran fine, scored low) must
+        still REJECT — fail-open only covers unavailability, not low scores."""
+        filt = T4RelevanceFilter()
+        with patch.object(filt, "_haiku_classify", new=AsyncMock(return_value=0.0)):
+            result = await filt.classify("Deportasi WNA overstay di Bali")
+        assert result == FilterResult.REJECT
+        assert filt.classifier_unavailable_count == 0
+        assert filt.classifier_attempts == 1
+
+    @pytest.mark.asyncio
+    async def test_l1_negative_never_invokes_haiku(self):
+        """innocence: text that fails the keyword gate must not even attempt
+        the classifier (no attempt = no possible fail-open)."""
+        filt = T4RelevanceFilter()
+        mock_haiku = AsyncMock(return_value=0.9)
+        with patch.object(filt, "_haiku_classify", new=mock_haiku):
+            result = await filt.classify("Harga properti Bali naik tahun ini")
+        assert result == FilterResult.REJECT
+        mock_haiku.assert_not_called()
+        assert filt.classifier_attempts == 0
+        assert filt.classifier_unavailable_count == 0
+
+
+class TestT4RunDegradedSummary:
+    """The EMENDAMENTO: a fully-blind run (every Haiku attempt failed) must
+    say so explicitly in the summary, not just log a per-article warning —
+    3 weeks of invisible per-article warnings is what caused this incident to
+    go unnoticed in the first place."""
+
+    @pytest.mark.asyncio
+    async def test_run_flags_degraded_when_every_attempt_fails(self, tmp_path, caplog, monkeypatch):
+        monkeypatch.delenv("TWITTER_BEARER_TOKEN", raising=False)
+        monkeypatch.delenv("X_BEARER_TOKEN", raising=False)
+        monitor = T4Monitor(state_path=tmp_path / "state.json", dry_run=False)
+        rss_article = Article(
+            source_handle="imngurahrai",
+            article_id="rss-blind-1",
+            url="https://ngurahrai.imigrasi.go.id/berita/deportasi-2",
+            title="Deportasi WNA 2",
+            content="Timpora deportasi WNA overstay.",
+            scraped_at=datetime.now(timezone.utc),
+            platform="rss",
+        )
+        with patch.object(T4Fetcher, "fetch_rss", new=AsyncMock(return_value=[rss_article])), \
+             patch.object(T4Fetcher, "fetch_website", new=AsyncMock(return_value=[])), \
+             patch.object(T4RelevanceFilter, "_haiku_classify", new=AsyncMock(return_value=None)), \
+             patch.object(T4RelevanceFilter, "_embed", new=AsyncMock(side_effect=RuntimeError("no key in test"))), \
+             patch.object(T4Monitor, "_call_nlm_cli", new=AsyncMock(return_value=True)), \
+             caplog.at_level(logging.INFO, logger="apps.evaluator.nlm_deep_research.t4_monitor"):
+            result = await monitor.run()
+
+        assert result.classifier_unavailable == 1
+        assert result.ingested == 1  # fail-open admitted it (already L1-positive)
+        assert "(DEGRADED)" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_run_not_degraded_when_classifier_healthy(self, tmp_path, caplog, monkeypatch):
+        """innocence: a healthy run (classifier answers) must never be
+        flagged DEGRADED, even though it also ends up admitting."""
+        monkeypatch.delenv("TWITTER_BEARER_TOKEN", raising=False)
+        monkeypatch.delenv("X_BEARER_TOKEN", raising=False)
+        monitor = T4Monitor(state_path=tmp_path / "state.json", dry_run=False)
+        rss_article = Article(
+            source_handle="imngurahrai",
+            article_id="rss-healthy-1",
+            url="https://ngurahrai.imigrasi.go.id/berita/deportasi-3",
+            title="Deportasi WNA 3",
+            content="Timpora deportasi WNA overstay.",
+            scraped_at=datetime.now(timezone.utc),
+            platform="rss",
+        )
+        with patch.object(T4Fetcher, "fetch_rss", new=AsyncMock(return_value=[rss_article])), \
+             patch.object(T4Fetcher, "fetch_website", new=AsyncMock(return_value=[])), \
+             patch.object(T4RelevanceFilter, "_haiku_classify", new=AsyncMock(return_value=0.9)), \
+             patch.object(T4RelevanceFilter, "_embed", new=AsyncMock(side_effect=RuntimeError("no key in test"))), \
+             patch.object(T4Monitor, "_call_nlm_cli", new=AsyncMock(return_value=True)), \
+             caplog.at_level(logging.INFO, logger="apps.evaluator.nlm_deep_research.t4_monitor"):
+            result = await monitor.run()
+
+        assert result.classifier_unavailable == 0
+        assert result.ingested == 1
+        assert "(DEGRADED)" not in caplog.text
+
+
+class TestWebsiteErrorDoesNotBlockRSSIngestion:
+    @pytest.mark.asyncio
+    async def test_website_connect_error_does_not_block_rss_ingestion(self, tmp_path, monkeypatch):
+        """A website source being down must not starve ingestion from a
+        healthy RSS source (root-cause item 3's secondary symptom).
+
+        fetch_rss is stubbed directly rather than exercised through httpx:
+        feedparser is not installed in this venv (pre-existing, unrelated
+        environment gap — out of scope for this cure) so the real fetch_rss
+        path is untestable here regardless of this fix.
+        """
+        monkeypatch.delenv("TWITTER_BEARER_TOKEN", raising=False)
+        monkeypatch.delenv("X_BEARER_TOKEN", raising=False)
+        monitor = T4Monitor(state_path=tmp_path / "state.json", dry_run=False)
+        rss_article = Article(
+            source_handle="imngurahrai",
+            article_id="rss-ok-1",
+            url="https://ngurahrai.imigrasi.go.id/berita/deportasi-4",
+            title="Deportasi WNA 4",
+            content="Timpora deportasi WNA overstay.",
+            scraped_at=datetime.now(timezone.utc),
+            platform="rss",
+        )
+
+        async def _website_get(url, **kwargs):
+            raise httpx.ConnectError("website down")
+
+        with patch.object(T4Fetcher, "fetch_rss", new=AsyncMock(return_value=[rss_article])), \
+             patch("httpx.AsyncClient") as mock_client_cls, \
+             patch.object(T4RelevanceFilter, "_haiku_classify", new=AsyncMock(return_value=0.9)), \
+             patch.object(T4RelevanceFilter, "_embed", new=AsyncMock(side_effect=RuntimeError("no key in test"))), \
+             patch.object(T4Monitor, "_call_nlm_cli", new=AsyncMock(return_value=True)):
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.get = _website_get
+            mock_client_cls.return_value = mock_client
+
+            result = await monitor.run()
+
+        assert result.ingested >= 1
+        assert result.errors == 0

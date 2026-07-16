@@ -28,7 +28,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-QUEUE_PATH = Path.home() / "Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json"
+QUEUE_PATH = Path.home() / "nuzantara/apps/war-room/output/queue/human-review-queue.json"
 
 
 def load_queue():

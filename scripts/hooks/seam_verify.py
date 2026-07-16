@@ -80,14 +80,14 @@ UNDECLARED_WATCH = (
     "backend/channels/",
 )
 
-REPO_MARKER = "Desktop/nuzantara"  # legacy path fallback (see _in_nuzantara_repo)
+REPO_MARKER = "nuzantara"  # legacy path fallback (see _in_nuzantara_repo)
 
 
 def _in_nuzantara_repo(cwd: str) -> bool:
     """True iff cwd is inside a git checkout named 'nuzantara'.
 
     Robust to non-default paths/worktrees (DeepSeek review of #1237 flagged the
-    old hardcoded "Desktop/nuzantara" marker as a silent no-op outside that exact
+    old hardcoded "nuzantara" marker as a silent no-op outside that exact
     path). Detects the repo via git toplevel basename; falls back to the legacy
     path marker if git is unavailable. Never raises — defaults to the marker.
     """

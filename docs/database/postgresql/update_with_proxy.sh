@@ -8,7 +8,7 @@
 #
 # CRON (ogni giorno alle 6:00 AM):
 #   crontab -e
-#   0 6 * * * /Users/antonellosiano/Desktop/nuzantara/POSTGRESQL/update_with_proxy.sh >> /tmp/postgresql_export.log 2>&1
+#   0 6 * * * /Users/antonellosiano/nuzantara/POSTGRESQL/update_with_proxy.sh >> /tmp/postgresql_export.log 2>&1
 #
 
 set -e

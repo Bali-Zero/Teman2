@@ -344,6 +344,15 @@ def probe_claude(timeout: float, env_overrides: Optional[dict] = None) -> tuple[
     # while reporting it as the MAX seat — strip both for a clean MAX-context probe.
     env.pop("ANTHROPIC_AUTH_TOKEN", None)
     env.pop("ANTHROPIC_BASE_URL", None)
+    # Headless/cron callers (launchd, sshd) often carry only the slotted
+    # CLAUDE_CODE_OAUTH_TOKEN_{1,2,3} vars, never the bare one the `claude`
+    # binary actually reads — same fallback already established in
+    # organ_birth.py / regulatory-watcher-run.sh (CLAUDE.md's sanctioned
+    # CLI-subprocess auth path). Without this the probe reports a false
+    # UNKNOWN_ERR ("Not logged in") even when the MAX-plan session backing
+    # slot 1 is perfectly alive.
+    if not env.get("CLAUDE_CODE_OAUTH_TOKEN") and env.get("CLAUDE_CODE_OAUTH_TOKEN_1"):
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = env["CLAUDE_CODE_OAUTH_TOKEN_1"]
     if env_overrides:
         env.update(env_overrides)
     res = run_probe_cmd(

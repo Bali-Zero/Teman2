@@ -418,7 +418,12 @@ Use null for unclear fields. Return ONLY JSON."""
 
         # Update client record with extracted data
         async with db_pool.acquire() as conn:
-            update_parts = ["passport_ocr_data = $1"]
+            # ::text::jsonb — the app pools register a jsonb codec (encoder=
+            # json.dumps); to_jsonb() already serializes to text, so without
+            # this cast the bare $1 (inferred jsonb from the column) gets
+            # double-encoded into a jsonb string scalar (clients.passport_ocr_data
+            # had 225 polluted rows, live-probe 2026-07-16).
+            update_parts = ["passport_ocr_data = $1::text::jsonb"]
             # Use to_jsonb for asyncpg JSONB compatibility (handles Decimal, datetime, UUID)
             params = [to_jsonb(ocr_data)]
             param_idx = 2

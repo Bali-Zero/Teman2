@@ -225,7 +225,7 @@ export function PersonaDoors() {
                 <a
                   href={href}
                   data-door={door}
-                  className="mt-1 font-semibold hover:underline underline-offset-4"
+                  className="mt-1 font-semibold hover:underline underline-offset-4 inline-flex items-center min-h-[44px]"
                   style={{
                     fontSize: 15,
                     color: NAVY,

@@ -17,7 +17,7 @@ set -u
 TARGET_DATE="2026-06-02"
 TODAY="$(date -u +%Y-%m-%d)"
 SENTINEL="$HOME/.agent/l5-2-phase2b-fired.sentinel"
-ANALYZER="$HOME/Desktop/nuzantara/scripts/ci/l5_2_phase2b_auto_analyzer.py"
+ANALYZER="$HOME/nuzantara/scripts/ci/l5_2_phase2b_auto_analyzer.py"
 LAUNCH_AGENT_LABEL="com.balizero.l5-2-phase2b-trigger"
 LOG_DIR="$HOME/logs/l5-2-phase2b-analyzer"
 mkdir -p "$(dirname "$SENTINEL")" "$LOG_DIR"

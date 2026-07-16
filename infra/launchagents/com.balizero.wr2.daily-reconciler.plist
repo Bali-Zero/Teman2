@@ -9,9 +9,9 @@
 		<key>PATH</key>
 		<string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
 		<key>WR2_REPO_ROOT</key>
-		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
+		<string>/Users/nuzantara/nuzantara-deploy</string>
 		<key>WR2_HTML_VENV_PY</key>
-		<string>/Users/nuzantara/Desktop/nuzantara-deploy/.venv-wr2-html/bin/python</string>
+		<string>/Users/nuzantara/nuzantara-deploy/.venv-wr2-html/bin/python</string>
 	</dict>
 	<key>Label</key>
 	<string>com.balizero.wr2.daily-reconciler</string>
@@ -48,7 +48,7 @@ if ! nc -z 127.0.0.1 15432 2&gt;/dev/null; then
   hb error "pg-proxy 15432 unreachable"
   exit 74
 fi
-REPO="${WR2_REPO_ROOT:-$HOME/Desktop/nuzantara-deploy}"
+REPO="${WR2_REPO_ROOT:-$HOME/nuzantara-deploy}"
 PY="${WR2_HTML_VENV_PY:-$REPO/.venv-wr2-html/bin/python}"
 cd "$REPO"
 if [ ! -x "$PY" ]; then

@@ -24,13 +24,13 @@ HOSTNAME_SHORT=$(hostname -s)
 if [[ "$WHOAMI" == "nuzantara" ]]; then
     MACHINE="Pro"
     PEER="air"
-    LOCAL_REPO="$HOME/Desktop/nuzantara"
+    LOCAL_REPO="$HOME/nuzantara"
     PEER_REPO="~/Projects/nuzantara"
 elif [[ "$WHOAMI" == "antonellosiano" ]]; then
     MACHINE="Air"
     PEER="pro"
     LOCAL_REPO="$HOME/Projects/nuzantara"
-    PEER_REPO="~/Desktop/nuzantara"
+    PEER_REPO="~/nuzantara"
 else
     err "Unknown machine: $WHOAMI@$HOSTNAME_SHORT"
     exit 1

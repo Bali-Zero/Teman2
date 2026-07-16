@@ -11,18 +11,30 @@ echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 # suite emitted ~141 "Connect call failed (::1, 5432)" errors + ~2min of noise, and
 # the old `|| { Continuing }` swallowed it — the gate never gated.
 #
-# Three gate states (in order):
+# Four gate states (in order):
 #   1. PG absent on 127.0.0.1:5432 → clean SKIP (dev without local PG; CI has its own
 #      service container so this branch never runs in CI).
 #   2. PG present but NOT provisioned (db `nuzantara_test` missing the migrated schema)
 #      → SKIP with a "run the one-time bootstrap" pointer. We do NOT block here: a bare
 #      `brew services start postgresql@17` must not wedge every push.
-#   3. PG present AND provisioned → run the REAL suite with CI-parity env, and a genuine
-#      failure BLOCKS the push (exit 1).
+#   3. PG provisioned but apps/backend-rag/.venv missing → clean SKIP, checked before
+#      touching Postgres at all. A bare `git worktree add` does NOT create the venv
+#      symlink the main checkout has; without this gate, `source .venv/bin/activate
+#      2>/dev/null` swallows the missing-file error, the `&&` chain aborts mid-subshell,
+#      and the hook falls straight into the generic "❌ Python tests FAILED" branch —
+#      blocking a push that never ran a single test (L243, 2026-07-16: 4 legitimate
+#      pushes blocked this way in one session).
+#   4. PG present AND provisioned AND venv present → clone `nuzantara_test` into a
+#      throwaway per-push database (state 4 rationale is inline below, where the clone
+#      is created), run the REAL suite against the clone with CI-parity env, and a
+#      genuine failure BLOCKS the push (exit 1). PRE_PUSH_TEST_DB, if set, overrides
+#      which db is used as the TEMPLATE for the clone (still defaults to
+#      `nuzantara_test`) — it no longer runs the suite directly against a fixed db.
 #
 # CI-parity env (mirrors .github/workflows/tests.yml): DATABASE_URL + TEST_DATABASE_URL
-# both point at test:test@localhost:5432/nuzantara_test. This override is load-bearing —
-# the db conftest default is `postgresql://nuzantara@localhost/nuzantara_dev` (role
+# both point at test:test@localhost:5432/<the per-push clone, templated off nuzantara_test>.
+# This override is load-bearing — the db conftest default is
+# `postgresql://nuzantara@localhost/nuzantara_dev` (role
 # `nuzantara`, which does NOT exist locally); CI redirects it via these two env vars and
 # so must this hook, else every push fails with `role "nuzantara" does not exist`.
 # PYTHONPATH=.:../crm-cell also matches CI (crm-cell is a sibling package).
@@ -59,18 +71,90 @@ elif [ "$("$PSQL" -h 127.0.0.1 -p 5432 -d "$PRE_PUSH_DB" -tAc "SELECT to_regclas
     echo "     PYTHONPATH=.:../crm-cell python scripts/ci_bootstrap_schema.py && \\"
     echo "     PYTHONPATH=.:../crm-cell python -m backend.db.migrate apply-all"
     echo "   (see research/operations/specs/2026-06-12-M5-postgres-local-spec.md §AC2)"
+elif [ ! -f apps/backend-rag/.venv/bin/activate ]; then
+    echo "⏭️  SKIP Python tests — worktree has no apps/backend-rag/.venv (bare 'git worktree add' doesn't create it)."
+    echo "   Fix: symlink it from the main checkout, or create the worktree via scripts/agent_start.py."
+    echo "   CI remains the real gate for this push."
 else
-    if ! ( cd apps/backend-rag \
+    # Isolated DB clone per push (2026-07-16). Under ~10 concurrent agent pushes,
+    # the suite used to run straight against the shared "$PRE_PUSH_DB" — every
+    # push's schema-setup/teardown collided with every other's, producing
+    # "deadlock detected" / "relation does not exist" FALSE failures that
+    # blocked legitimate pushes. The escape hatch people reached for
+    # (PRE_PUSH_TEST_DB=<unprovisioned>) is a blunt total-SKIP of the gate, not
+    # a fix. Cloning gives every push its own throwaway schema, so the full
+    # suite + CI-parity env stay exactly as strict as before — only the
+    # contention is gone.
+    #
+    # CLONE_DB is unique per push (shell PID, $$), so concurrent pushes never
+    # collide. `CREATE DATABASE ... TEMPLATE x` fails if any session is
+    # CONNECTED to x — the suite only ever talks to CLONE_DB, never
+    # "$PRE_PUSH_DB", so the template stays connection-free during normal
+    # operation; the bounded retry below only guards a transient connection
+    # (e.g. someone mid-bootstrap on the base db). Concurrent CREATE...TEMPLATE
+    # off the SAME un-connected template is fine — Postgres allows N
+    # simultaneous clones, that's the whole point.
+    CLONE_DB="nuzantara_test_run_$$"
+    CLONE_CREATED=0
+    cleanup_clone() {
+        if [ "$CLONE_CREATED" = "1" ]; then
+            "$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc "DROP DATABASE IF EXISTS \"$CLONE_DB\" WITH (FORCE);" >/dev/null 2>&1
+        fi
+    }
+    # Fires on normal exit, a genuine test failure (`exit 1` below), AND a
+    # killed/interrupted push (SIGINT/SIGTERM) — a crashed push must never
+    # leak a clone DB (same stale-resource class as the DLQ/worktree scars;
+    # see cicatrix-superscar.md #2/#5). DROP ... IF EXISTS is idempotent, so
+    # this firing more than once (e.g. once from the failure branch's `exit 1`
+    # and again from the EXIT trap it triggers) is harmless.
+    trap cleanup_clone EXIT INT TERM
+    # The clone must inherit the TEMPLATE's owner, not the cloner's identity.
+    # Since PG15 `public` is owned by the pseudo-role pg_database_owner, which
+    # resolves to whoever owns the database. CREATE DATABASE re-parents the
+    # clone to the creating role — the OS user, `balizero` on M5 — so a template
+    # owned by `test` silently loses test's CREATE on public inside the clone:
+    # every schema-building test then dies with "permission denied for schema
+    # public" and drags a cascade of "relation ... does not exist" behind it
+    # (measured 2026-07-16: 39 failed + 79 errors of 17339, blocking the push).
+    # Table-level ownership IS copied by the clone; only this schema privilege,
+    # held implicitly through ownership rather than by an explicit GRANT,
+    # evaporates. The bug stayed latent from #2489 until nuzantara_test happened
+    # to be re-created with owner=test — while template-owner == cloner nothing
+    # showed. Deriving the owner keeps the clone faithful whoever pushes.
+    TEMPLATE_OWNER="$("$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc \
+        "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '$PRE_PUSH_DB';" 2>/dev/null | tr -d '[:space:]')"
+    if [ -n "$TEMPLATE_OWNER" ]; then
+        OWNER_CLAUSE=" OWNER \"$TEMPLATE_OWNER\""
+    else
+        # Unreadable owner must not wedge the push: fall back to the old
+        # behaviour (clone owned by the cloner) rather than refusing to clone.
+        OWNER_CLAUSE=""
+    fi
+    CREATE_OK=0
+    ATTEMPT=1
+    while [ "$ATTEMPT" -le 3 ]; do
+        if "$PSQL" -h 127.0.0.1 -p 5432 -d postgres -tAc "CREATE DATABASE \"$CLONE_DB\" TEMPLATE \"$PRE_PUSH_DB\"$OWNER_CLAUSE;" >/dev/null 2>&1; then
+            CREATE_OK=1
+            CLONE_CREATED=1
+            break
+        fi
+        ATTEMPT=$((ATTEMPT + 1))
+        sleep 2
+    done
+    if [ "$CREATE_OK" != "1" ]; then
+        echo "⏭️  SKIP Python tests — could not clone '$PRE_PUSH_DB' into '$CLONE_DB' after 3 attempts (template busy?)."
+    elif ! ( cd apps/backend-rag \
         && rm -rf .pytest_cache backend/.pytest_cache \
         && source .venv/bin/activate 2>/dev/null \
-        && DATABASE_URL="postgresql://test:test@localhost:5432/$PRE_PUSH_DB" \
-           TEST_DATABASE_URL="postgresql://test:test@localhost:5432/$PRE_PUSH_DB" \
+        && DATABASE_URL="postgresql://test:test@localhost:5432/$CLONE_DB" \
+           TEST_DATABASE_URL="postgresql://test:test@localhost:5432/$CLONE_DB" \
            JWT_SECRET_KEY="${JWT_SECRET_KEY:-test_jwt_secret_key_for_testing_only_min_32_chars_long}" \
            API_KEYS="${API_KEYS:-test_api_key_1,test_api_key_2}" \
            OLLAMA_URL="http://127.0.0.1:9" \
            PYTHONPATH=.:../crm-cell python -m pytest backend/tests/ --ignore=backend/tests/e2e --tb=short -q ); then
         echo "❌ Python tests FAILED — push blocked."
-        echo "   Reproduce: cd apps/backend-rag && source .venv/bin/activate && \\"
+        echo "   Reproduce (against the persistent base db, not the dropped clone): \\"
+        echo "     cd apps/backend-rag && source .venv/bin/activate && \\"
         echo "     DATABASE_URL=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
         echo "     TEST_DATABASE_URL=postgresql://test:test@localhost:5432/$PRE_PUSH_DB \\"
         echo "     OLLAMA_URL=http://127.0.0.1:9 \\"

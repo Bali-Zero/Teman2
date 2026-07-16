@@ -1,8 +1,8 @@
 """Score and diff two A/B dossier batches by model.
 
 Reads:
-- timing JSON: ~/Desktop/nuzantara/research/crm/<date>-timing-<model>.json
-- dossier txt: ~/Desktop/nuzantara/research/crm/<date>-wa-dossier-<model>-batch-*.txt
+- timing JSON: ~/nuzantara/research/crm/<date>-timing-<model>.json
+- dossier txt: ~/nuzantara/research/crm/<date>-wa-dossier-<model>-batch-*.txt
 
 Emits markdown scorecard comparing two models on:
 - latency per client + total

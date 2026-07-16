@@ -8,31 +8,31 @@ import time
 from datetime import datetime
 from dotenv import load_dotenv
 
-ENV = "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.env"
+ENV = "/Users/nuzantara/nuzantara/apps/backend-rag/.env"
 load_dotenv(ENV, override=True)
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable",
 )
 
-sys.path.insert(0, "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag")
+sys.path.insert(0, "/Users/nuzantara/nuzantara/apps/backend-rag")
 from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
 # Skip PP 41/1996 (already done in single test). 7 remaining.
 ITEMS = [
-    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/visa/Permenkumham_22-2023.pdf",
+    ("/Users/nuzantara/nuzantara/data/source_documents/peraturan/visa/Permenkumham_22-2023.pdf",
      "Permenkumham 22/2023 — Visa Dan Izin Tinggal", "visa", 7128),
-    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/visa/Permenkumham_11-2024.pdf",
+    ("/Users/nuzantara/nuzantara/data/source_documents/peraturan/visa/Permenkumham_11-2024.pdf",
      "Permenkumham 11/2024 — Golden Visa C-318", "visa", 11238),
-    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/property/PP_13-2017.pdf",
+    ("/Users/nuzantara/nuzantara/data/source_documents/peraturan/property/PP_13-2017.pdf",
      "PP 13/2017 — RTRWN Amendment", "property", 245),
-    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/property/Permen_ATR-BPN_18-2021.pdf",
+    ("/Users/nuzantara/nuzantara/data/source_documents/peraturan/property/Permen_ATR-BPN_18-2021.pdf",
      "Permen ATR/BPN 18/2021 — Hak Pengelolaan", "property", 4870),
-    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/tax/PER-7-PJ-2025.pdf",
+    ("/Users/nuzantara/nuzantara/data/source_documents/peraturan/tax/PER-7-PJ-2025.pdf",
      "PER-7/PJ/2025 — NIK-NPWP Coretax", "tax", 612),
-    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/tax/PMK_9-PMK.03-2018.pdf",
+    ("/Users/nuzantara/nuzantara/data/source_documents/peraturan/tax/PMK_9-PMK.03-2018.pdf",
      "PMK 9/PMK.03/2018 — SPT Filing Periods", "tax", 285),
-    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/tax/KEP-55-PJ-2026.pdf",
+    ("/Users/nuzantara/nuzantara/data/source_documents/peraturan/tax/KEP-55-PJ-2026.pdf",
      "KEP-55/PJ/2026 — Coretax Penalty Waiver", "tax", 55),
 ]
 

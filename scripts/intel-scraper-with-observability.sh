@@ -15,13 +15,13 @@
 #   <key>ProgramArguments</key>
 #   <array>
 #       <string>/bin/bash</string>
-#       <string>/Users/nuzantara/Desktop/nuzantara/scripts/intel-scraper-with-observability.sh</string>
+#       <string>/Users/nuzantara/nuzantara/scripts/intel-scraper-with-observability.sh</string>
 #   </array>
 #
 # Required env (set in the plist EnvironmentVariables block):
 #   OBSERVED_SHELL_API_URL    — typically http://127.0.0.1:8080
 #   OBSERVED_SHELL_API_KEY    — same X-API-Key Brevo + other internal eps use
-#   PIPELINE_PYTHON           — venv python (default $HOME/Desktop/nuzantara/apps/bali-intel-scraper/venv/bin/python)
+#   PIPELINE_PYTHON           — venv python (default $HOME/nuzantara/apps/bali-intel-scraper/venv/bin/python)
 #   PIPELINE_SCRIPT           — default: apps/bali-intel-scraper/scripts/run_intel_pipeline.py
 #   PIPELINE_ARGS             — extra args, default: --mode full
 #
@@ -32,7 +32,7 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$REPO_ROOT/scripts/observed-shell-emit.sh"
 
-PIPELINE_PYTHON="${PIPELINE_PYTHON:-$HOME/Desktop/nuzantara/apps/bali-intel-scraper/venv/bin/python}"
+PIPELINE_PYTHON="${PIPELINE_PYTHON:-$HOME/nuzantara/apps/bali-intel-scraper/venv/bin/python}"
 PIPELINE_SCRIPT="${PIPELINE_SCRIPT:-$REPO_ROOT/apps/bali-intel-scraper/scripts/run_intel_pipeline.py}"
 PIPELINE_ARGS="${PIPELINE_ARGS:---mode full}"
 

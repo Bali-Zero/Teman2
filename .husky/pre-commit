@@ -42,7 +42,7 @@ fi
 if [ "${PII_GATE_ENFORCEMENT:-true}" != "false" ]; then
     PII_PATH_REGEX='(^|/)research/[^/]+/clients/|(^|/)[^/]*-case\.md$|(^|/)[^/]*-guidance\.(html|pdf)$|(^|/)DOSSIER_[^/]*\.md$|(^|/)OSINT-Nexus/'
     PII_NUM='\b(npwp|nik|ktp)\b[[:space:]:#=.]*[0-9][0-9.\-]{5,}'
-    PII_PASS='passport[[:space:]]*(no\.?|number|#|:)[[:space:]:#=]*[A-Za-z0-9]{6,}'
+    PII_PASS='passport[[:space:]]*(no\.|no\b|number\b|#|:)[[:space:]:#=]*[A-Za-z0-9]{6,}'
     PII_STAGED=$(git diff --cached --name-only --diff-filter=d | grep -EI "$PII_PATH_REGEX" || true)
     PII_CONTENT=""
     for f in $(git diff --cached --name-only --diff-filter=d | grep -Evi '\.(png|jpg|jpeg|pdf|gif|webp|zip|gz|bin)$' || true); do

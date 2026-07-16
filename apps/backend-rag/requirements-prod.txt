@@ -116,7 +116,7 @@ aiosmtplib>=5.1.2
 apscheduler==3.11.3
 
 # Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
-setuptools>=78.1.1
+setuptools>=83.0.0
 langsmith>=0.10.2  # Observability: @traceable on RAG nodes + KG nodes
 
 # Langfuse + OpenInference instrumentation (PR #312, prod runtime — was

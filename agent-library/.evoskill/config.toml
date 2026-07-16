@@ -31,7 +31,7 @@ model = "deepseek-v4-pro"
 
 # Read-scope directory the harness can pull context from.
 data_dirs = [
-    "/Users/nuzantara/Desktop/nuzantara/agent-library",
+    "/Users/nuzantara/nuzantara/agent-library",
 ]
 
 # Max time per agent attempt (seconds). Phase 1 first-run is small,
@@ -72,7 +72,7 @@ failure_samples = 3
 # from agent-library/02-patterns.md. Sufficient for smoke; produces
 # zero or near-zero proposals on first --dry-run because evidence
 # linter (Task #25) + entailment check rejects unsupported claims.
-path = "/Users/nuzantara/Desktop/nuzantara/agent-library/.evoskill/data/seed-patterns.csv"
+path = "/Users/nuzantara/nuzantara/agent-library/.evoskill/data/seed-patterns.csv"
 
 # CSV column names (must match seed-patterns.csv header).
 question_column = "question"

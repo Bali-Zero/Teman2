@@ -23,7 +23,7 @@ THREE NON-NEGOTIABLE GUARDRAILS (CLAUDE.md §5, §14 / SYMBIOSIS Law 2)
    call so an abort never re-does work.
 
 RUN (on Pro or Mini, where the NLM auth lives — NOT M5):
-    cd ~/Desktop/nuzantara
+    cd ~/nuzantara
     source apps/nlm-bridge/.venv/bin/activate   # has notebooklm_tools + auth
     python scripts/nb_export_corpus.py --discover                  # fill the regulation id
     python scripts/nb_export_corpus.py --nb nb-intel-regulation    # Phase A: one NB

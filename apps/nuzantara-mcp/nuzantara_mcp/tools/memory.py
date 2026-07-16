@@ -15,7 +15,7 @@ logger = logging.getLogger("nuzantara-mcp.memory")
 def register(mcp, _call: Callable, _call_safe: Callable) -> None:
 
     @mcp.tool()
-    @require_role("visa_specialist", "tax_consultant", "company_setup", "admin")
+    @require_role("admin")
     async def save_episode(
         content: str,
         agent: str = "main",

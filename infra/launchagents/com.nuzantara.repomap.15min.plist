@@ -7,7 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/build_repomap.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/build_repomap.sh</string>
     </array>
 
     <key>StartInterval</key>
@@ -35,7 +35,7 @@
     </dict>
 
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/nuzantara</string>
 
     <key>StandardOutPath</key>
     <string>/Users/nuzantara/logs/repomap.log</string>

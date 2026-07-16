@@ -18,7 +18,7 @@
     <string>com.balizero.wr2.newsletter</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/wr2-cron-wrapper.sh</string>
+        <string>/Users/nuzantara/nuzantara/scripts/wr2-cron-wrapper.sh</string>
         <string>backend.services.newsletter.newsletter_cli</string>
         <string>--daily</string>
     </array>

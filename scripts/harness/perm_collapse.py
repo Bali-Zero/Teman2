@@ -2,7 +2,7 @@
 """perm_collapse2.py — SOLO mosse a colpo sicuro: (1) rimuovi path-morti, (2) dedup literali già
 coperti da un pattern * esistente. NESSUN nuovo pattern (parsing troppo sporco per autogenerarli)."""
 import json, os, re, sys
-P=os.path.expanduser("~/Desktop/nuzantara/.claude/settings.local.json")
+P=os.path.expanduser("~/nuzantara/.claude/settings.local.json")
 APPLY=os.environ.get("APPLY")=="1"
 d=json.load(open(P)); allow=d["permissions"]["allow"]; before=len(allow)
 

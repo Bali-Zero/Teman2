@@ -396,6 +396,42 @@ def test_probe_claude_strips_anthropic_api_key_from_env(monkeypatch):
     assert "ANTHROPIC_API_KEY" not in captured_env
 
 
+def test_probe_claude_falls_back_to_oauth_token_slot_1(monkeypatch):
+    # guilt: bare CLAUDE_CODE_OAUTH_TOKEN absent, slotted _1 present (the real
+    # headless/cron shape) — probe_claude must promote it so the claude binary
+    # can actually authenticate instead of reporting a false UNKNOWN_ERR.
+    captured_env = {}
+
+    def fake_run(cmd, **kwargs):
+        captured_env.update(kwargs.get("env") or {})
+        return _FakeProc(0, "PONG\n", "")
+
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slot1-token-value")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(ap.subprocess, "run", fake_run)
+    ap.probe_claude(timeout=5)
+    assert captured_env.get("CLAUDE_CODE_OAUTH_TOKEN") == "slot1-token-value"
+
+
+def test_probe_claude_never_overrides_explicit_oauth_token(monkeypatch):
+    # innocence: a bare CLAUDE_CODE_OAUTH_TOKEN already set (interactive/agent
+    # session shape) must survive untouched — the slot-1 fallback is a
+    # last-resort, never a clobber.
+    captured_env = {}
+
+    def fake_run(cmd, **kwargs):
+        captured_env.update(kwargs.get("env") or {})
+        return _FakeProc(0, "PONG\n", "")
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "explicit-token-value")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "slot1-token-value")
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: "/opt/homebrew/bin/claude")
+    monkeypatch.setattr(ap.subprocess, "run", fake_run)
+    ap.probe_claude(timeout=5)
+    assert captured_env.get("CLAUDE_CODE_OAUTH_TOKEN") == "explicit-token-value"
+
+
 def test_probe_claude_binary_absent_is_not_installed(monkeypatch):
     monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: None)
     monkeypatch.delenv("ARSENAL_CLAUDE_BIN", raising=False)

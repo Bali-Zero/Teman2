@@ -13,8 +13,8 @@
 	<string>com.balizero.wr3.reflexion.weekly</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/Users/nuzantara/Desktop/nuzantara-deploy/apps/backend-rag/.venv/bin/python</string>
-		<string>/Users/nuzantara/Desktop/nuzantara-deploy/scripts/wr3_reflexion_synthesis.py</string>
+		<string>/Users/nuzantara/nuzantara-deploy/apps/backend-rag/.venv/bin/python</string>
+		<string>/Users/nuzantara/nuzantara-deploy/scripts/wr3_reflexion_synthesis.py</string>
 	</array>
 	<key>EnvironmentVariables</key>
 	<dict>
@@ -23,7 +23,7 @@
 		<key>PATH</key>
 		<string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
 		<key>WR3_REPO_ROOT</key>
-		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
+		<string>/Users/nuzantara/nuzantara-deploy</string>
 	</dict>
 	<key>StartCalendarInterval</key>
 	<dict>

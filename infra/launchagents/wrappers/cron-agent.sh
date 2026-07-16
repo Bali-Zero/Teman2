@@ -77,7 +77,7 @@ send_telegram() {
         [[ $age -lt 1800 ]] && { log "Telegram cooldown active (${age}s < 1800s)"; return; }
     fi
     local gateway="$(dirname "$0")/tg_notify.py"
-    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
     python3 "$gateway" --tier p0 --source cron-agent \
         --dedup-key "cron-agent:${JOB_NAME}:$(hostname -s)" -- "$msg" >/dev/null 2>&1 || true
     touch "$COOLDOWN_FILE"

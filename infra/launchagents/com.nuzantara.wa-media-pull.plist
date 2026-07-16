@@ -12,9 +12,9 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python</string>
+    <string>/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python</string>
     <string>-u</string>
-    <string>/Users/nuzantara/Desktop/nuzantara/scripts/wa_media_pull_worker.py</string>
+    <string>/Users/nuzantara/nuzantara/scripts/wa_media_pull_worker.py</string>
   </array>
 
   <key>EnvironmentVariables</key>

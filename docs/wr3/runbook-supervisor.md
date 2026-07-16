@@ -12,7 +12,7 @@ status: PLACEHOLDER (S7.5 implements supervisor; this runbook expands then)
 
 ```bash
 # (S7.5 will implement)
-cd ~/Desktop/nuzantara
+cd ~/nuzantara
 source apps/backend-rag/.venv/bin/activate
 PYTHONPATH=apps/backend-rag/backend python scripts/wr3_supervisor.py
 ```

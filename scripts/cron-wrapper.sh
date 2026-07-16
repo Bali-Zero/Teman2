@@ -116,7 +116,7 @@ send_telegram() {
     # checkout so the alert never dies with the fork (superscar #1).
     local gateway
     gateway="$(dirname "$0")/tg_notify.py"
-    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
     python3 "$gateway" \
         --tier p0 \
         --source "cron:${JOB_NAME}" \

@@ -9,15 +9,15 @@
 		<key>PATH</key>
 		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
 		<key>PYTHONPATH</key>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+		<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 	</dict>
 	<key>Label</key>
 	<string>com.matagaruda.public-channel</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+		<string>/Users/nuzantara/nuzantara/apps/mata-garuda/.venv/bin/python</string>
 		<string>-u</string>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/scripts/run_public_channel.py</string>
+		<string>/Users/nuzantara/nuzantara/apps/mata-garuda/scripts/run_public_channel.py</string>
 	</array>
 	<key>RunAtLoad</key>
 	<false/>
@@ -65,6 +65,6 @@
 		</dict>
 	</array>
 	<key>WorkingDirectory</key>
-	<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+	<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 </dict>
 </plist>

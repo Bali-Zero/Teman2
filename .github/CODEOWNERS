@@ -80,6 +80,25 @@
 /apps/backend-rag/backend/services/billing/          @Balizero1987
 
 # ---------------------------------------------------------------------------
+# RAG data-invariants — TIER 1 (silent-corruption class)
+# Added 2026-07-16. These are the paths where a plausible-but-wrong change
+# passes every test and CI-green while silently corrupting: the exact class
+# an independent review is WEAKEST at catching, so it gets an owner gate.
+# Rationale = CLAUDE.md §9 Data Invariants:
+#   - embeddings.py: model text-embedding-3-small is FROZEN (1536 dims) —
+#     changing it invalidates 93,283 vectors with no test failure.
+#   - agentic/: the 5 named abstain gates (reasoning.py generation gate,
+#     _abstain_policy.py SSOT, orchestrator_response.py label gate). A tweak
+#     here = tax advice at 0.11 evidence, a safety regression that's green.
+#   - kb/: curated knowledge base — "NEVER auto-promote" (CLAUDE.md §15).
+#   - lead_capture/: the LeadSource enum contract that 422'd the homepage CTA
+#     for 10 days (2026-07-16) when it drifted from the frontend.
+/apps/backend-rag/backend/core/embeddings.py         @Balizero1987
+/apps/backend-rag/backend/services/rag/agentic/      @Balizero1987
+/apps/backend-rag/backend/kb/                         @Balizero1987
+/apps/backend-rag/backend/services/lead_capture/     @Balizero1987
+
+# ---------------------------------------------------------------------------
 # Subhi lane (write access, owner co-review per SYMBIOSIS protocol)
 # Perimeter ref: CLAUDE.md §13 + memory reference_bali_zero_team.md
 # ---------------------------------------------------------------------------

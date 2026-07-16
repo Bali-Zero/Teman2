@@ -16,7 +16,7 @@
 #  INTAKE_WRITER_ENABLED=1 in this env-file + kickstart the LaunchAgent.)
 set -euo pipefail
 
-REPO_ROOT="${INTAKE_REVIEW_REPO_ROOT:-/Users/nuzantara/Desktop/nuzantara}"
+REPO_ROOT="${INTAKE_REVIEW_REPO_ROOT:-/Users/nuzantara/nuzantara}"
 BACKEND_DIR="${REPO_ROOT}/apps/backend-rag"
 VENV_PY="${BACKEND_DIR}/.venv/bin/python"
 ENV_FILE="${INTAKE_REVIEW_ENV_FILE:-${HOME}/.cell-bridge-state/intake-review-reader.env}"
@@ -29,7 +29,7 @@ PORT="18795"
 # MAIN_REPO_ROOT names the main checkout so a from-scratch deploy-venv install that is
 # UNRESOLVABLE (py3.14 google-cloud matrix) can fall back to the known-good main venv.
 # Overridable for tests; defaults to the canonical main checkout used by INTAKE_REVIEW_REPO_ROOT.
-MAIN_REPO_ROOT="${INTAKE_REVIEW_MAIN_REPO_ROOT:-/Users/nuzantara/Desktop/nuzantara}"
+MAIN_REPO_ROOT="${INTAKE_REVIEW_MAIN_REPO_ROOT:-/Users/nuzantara/nuzantara}"
 MAIN_VENV_PY="${MAIN_REPO_ROOT}/apps/backend-rag/.venv/bin/python"
 
 # Heal coordination (BUG 2 — KeepAlive restart-storm guard, superscar #7).

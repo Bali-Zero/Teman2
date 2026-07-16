@@ -13,7 +13,7 @@
 # pointless duplicate processes).
 set -euo pipefail
 
-REPO_ROOT="${INTAKE_REPO_ROOT:-/Users/nuzantara/Desktop/nuzantara}"
+REPO_ROOT="${INTAKE_REPO_ROOT:-/Users/nuzantara/nuzantara}"
 BACKEND="${REPO_ROOT}/apps/backend-rag"
 LOCKFILE="/tmp/com.nuzantara.intake-worker.lock"
 

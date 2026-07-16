@@ -8,7 +8,7 @@
 #   bash infra/launchagents/install_wr3_reflexion.sh --uninstall
 #
 # PRECONDITION: the plist points at the deploy worktree
-#   /Users/nuzantara/Desktop/nuzantara-deploy/scripts/wr3_reflexion_synthesis.py
+#   /Users/nuzantara/nuzantara-deploy/scripts/wr3_reflexion_synthesis.py
 # which only exists AFTER this PR merges to main and the deploy-puller syncs it.
 # Run this on the Pro AFTER merge+sync (same runtime-host pattern as the supervisor).
 set -uo pipefail
@@ -22,7 +22,7 @@ UID_VAL="$(id -u)"
 LABEL="com.balizero.wr3.reflexion.weekly"
 SRC="$PLIST_SRC_DIR/$LABEL.plist"
 DEST="$PLIST_DEST_DIR/$LABEL.plist"
-TARGET_SCRIPT="/Users/nuzantara/Desktop/nuzantara-deploy/scripts/wr3_reflexion_synthesis.py"
+TARGET_SCRIPT="/Users/nuzantara/nuzantara-deploy/scripts/wr3_reflexion_synthesis.py"
 
 MODE="${1:-install}"
 mkdir -p "$PLIST_DEST_DIR" "$LOG_DIR"
@@ -55,8 +55,8 @@ case "$MODE" in
         echo "[install] bootstrapping $LABEL"
         launchctl bootstrap "gui/$UID_VAL" "$DEST"
         echo "[install] done. Verify: launchctl print gui/$UID_VAL/$LABEL | grep -E 'state|runs'"
-        echo "[install] Manual run: WR3_REPO_ROOT=/Users/nuzantara/Desktop/nuzantara-deploy \\"
-        echo "            /Users/nuzantara/Desktop/nuzantara-deploy/apps/backend-rag/.venv/bin/python \\"
+        echo "[install] Manual run: WR3_REPO_ROOT=/Users/nuzantara/nuzantara-deploy \\"
+        echo "            /Users/nuzantara/nuzantara-deploy/apps/backend-rag/.venv/bin/python \\"
         echo "            $TARGET_SCRIPT"
         ;;
     --uninstall)

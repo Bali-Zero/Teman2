@@ -9,7 +9,7 @@ set -uo pipefail
 
 PSQL=/opt/homebrew/opt/postgresql@17/bin/psql
 DB="postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev"
-REPO=/Users/nuzantara/Desktop/nuzantara
+REPO=/Users/nuzantara/nuzantara
 UID_N=$(id -u)
 
 echo "=== STEP 0: stop the feeders/consumer (reversible) ==="

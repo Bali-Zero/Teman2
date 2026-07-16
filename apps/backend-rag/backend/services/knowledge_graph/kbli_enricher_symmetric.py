@@ -47,7 +47,7 @@ class KBLIEnricher:
                             await conn.execute(
                                 """
                                 INSERT INTO kg_nodes (entity_id, entity_type, name, properties, confidence)
-                                VALUES ($1, 'kbli', $2, $3, 1.0)
+                                VALUES ($1, 'kbli', $2, $3::text::jsonb, 1.0)
                                 """,
                                 entity_id,
                                 f"KBLI {code}",
@@ -55,8 +55,11 @@ class KBLIEnricher:
                             )
                             current_props = {}
                         else:
+                            raw_props = row["properties"]
                             current_props = (
-                                json.loads(row["properties"]) if row["properties"] else {}
+                                raw_props
+                                if isinstance(raw_props, dict)
+                                else (json.loads(raw_props) if raw_props else {})
                             )
 
                         # 2. Merge intelligence (The Circumstance)
@@ -78,7 +81,7 @@ class KBLIEnricher:
                         await conn.execute(
                             """
                             UPDATE kg_nodes
-                            SET properties = $1, updated_at = NOW()
+                            SET properties = $1::text::jsonb, updated_at = NOW()
                             WHERE entity_id = $2
                             """,
                             json.dumps(updated_props),

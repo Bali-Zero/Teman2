@@ -125,7 +125,7 @@
   },
   "skills": {
     "load": {
-      "extraDirs": ["~/Desktop/nuzantara/apps/nuzantara-mcp/skills"]
+      "extraDirs": ["~/nuzantara/apps/nuzantara-mcp/skills"]
     },
     "entries": {
       "claude-mem": {

@@ -313,6 +313,12 @@
       "repo": "scripts/wr2-cron-wrapper.sh",
       "_note": "WR2 deep audit 2026-07-14 (§4): the HOME copy (f17092b3) had DIVERGED from the repo copy (3cd52391) on the same machine — oracle/connector/newsletter were running the stale fork. Declared so --check catches this class of drift going forward. RESOLVED same day: the live copy self-realigned via a routine pull (mtime 14:05 WITA), re-verified read-only on Pro 2026-07-14 ~15:30 WITA — sha 3cd52391 both sides, byte-identical. No manual sync pending. Consumers verified via ProgramArguments grep: com.balizero.wr2.{oracle,connector,newsletter,dossier-compiler,learner-nightly,measurer,sla-worker,strategos,trend-hunter} + com.balizero.sota.m13-* all exec ~/.openclaw/bin/wr2/wr2-cron-wrapper.sh (NOT ~/scripts/, which does not exist on Pro).",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.balizero.wr2.image-generator.plist",
+      "repo": "infra/launchagents/com.balizero.wr2.image-generator.plist",
+      "_note": "2026-07-16: added WR2_IMAGE_VLM_URL=http://100.93.236.6:11434 (Mini tailscale IP) so the VLM quality-scorer routes off Pro's contended Ollama (176 daemons, ~60s+ under load) onto Mini's dedicated Ollama. Was undeclared before this pair was created.",
+      "machines": ["pro"]
     }
   ],
   "allow": [

@@ -22,7 +22,7 @@ export default function KBLILayout({
 
   return (
     <div
-      className={`${montserrat.variable} relative z-1`}
+      className={`${montserrat.variable} relative`}
       style={{
         fontFamily: "var(--font-montserrat), system-ui, sans-serif",
       }}

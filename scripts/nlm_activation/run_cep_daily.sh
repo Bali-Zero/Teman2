@@ -8,7 +8,7 @@
 # Schedule (manual install when ready for Stage 5):
 #   crontab -e
 #   0 6 * * * /bin/bash /Users/nuzantara/scripts/cron-runner.sh \
-#       /Users/nuzantara/Desktop/nuzantara/scripts/nlm_activation/run_cep_daily.sh \
+#       /Users/nuzantara/nuzantara/scripts/nlm_activation/run_cep_daily.sh \
 #       >> /tmp/cron-cep.log 2>&1
 #
 # Env required:
@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${REPO_ROOT:-$HOME/nuzantara}"
 LOG_FILE="$HOME/.openclaw/logs/nlm_cep.log"
 mkdir -p "$(dirname "$LOG_FILE")"
 

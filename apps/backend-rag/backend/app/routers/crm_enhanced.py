@@ -20,7 +20,11 @@ from pydantic import BaseModel
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.utils.crm_utils import extract_json_from_llm_response, verify_client_access
+from backend.app.utils.crm_utils import (
+    AvatarUrl,
+    extract_json_from_llm_response,
+    verify_client_access,
+)
 from backend.app.utils.json_utils import to_jsonb
 from backend.core.cache import invalidate_cache
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
@@ -308,7 +312,7 @@ async def _auto_ocr_passport(db_pool: Any, client_id: int, file_id: str) -> dict
 
         # Update client record
         async with db_pool.acquire() as conn:
-            update_parts = ["passport_ocr_data = $1"]
+            update_parts = ["passport_ocr_data = $1::text::jsonb"]
             # Use to_jsonb for asyncpg JSONB compatibility (handles Decimal, datetime, UUID)
             params = [to_jsonb(ocr_data)]
             param_idx = 2
@@ -411,7 +415,7 @@ async def _auto_ocr_visa(
             update_parts = [
                 "ocr_status = 'completed'",
                 "ocr_completed_at = NOW()",
-                "ocr_extracted_data = $1",
+                "ocr_extracted_data = $1::text::jsonb",
             ]
             params: list[Any] = [to_jsonb(ocr_data)]
             param_idx = 2
@@ -535,7 +539,7 @@ async def _auto_ocr_nib(
                 await conn.execute(
                     """UPDATE documents
                     SET ocr_status = 'completed', ocr_completed_at = NOW(),
-                        ocr_extracted_data = $1, updated_at = NOW()
+                        ocr_extracted_data = $1::text::jsonb, updated_at = NOW()
                     WHERE id = $2""",
                     to_jsonb(ocr_data),
                     doc_id,
@@ -614,7 +618,7 @@ async def _auto_ocr_npwp(
                 await conn.execute(
                     """UPDATE documents
                     SET ocr_status = 'completed', ocr_completed_at = NOW(),
-                        ocr_extracted_data = $1, updated_at = NOW()
+                        ocr_extracted_data = $1::text::jsonb, updated_at = NOW()
                     WHERE id = $2""",
                     to_jsonb(ocr_data),
                     doc_id,
@@ -642,7 +646,7 @@ async def _auto_ocr_npwp(
                     # Personal NPWP → update clients custom_fields
                     await conn.execute(
                         """UPDATE clients
-                        SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || $1::jsonb,
+                        SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || $1::text::jsonb,
                             updated_at = NOW()
                         WHERE id = $2""",
                         to_jsonb(
@@ -735,7 +739,7 @@ async def _auto_ocr_company_profile(
                 }
                 await conn.execute(
                     """UPDATE documents SET ocr_status = 'completed', ocr_completed_at = NOW(),
-                       ocr_extracted_data = $1, updated_at = NOW() WHERE id = $2""",
+                       ocr_extracted_data = $1::text::jsonb, updated_at = NOW() WHERE id = $2""",
                     to_jsonb(ocr_data),
                     doc_id,
                 )
@@ -762,7 +766,7 @@ async def _auto_ocr_company_profile(
                 merged.update(custom_fields)
 
                 # Also update dedicated columns
-                update_parts = ["custom_fields = $1", "updated_at = NOW()"]
+                update_parts = ["custom_fields = $1::text::jsonb", "updated_at = NOW()"]
                 params: list[Any] = [json_module.dumps(merged)]
                 idx = 2
 
@@ -964,7 +968,7 @@ class DocumentUpdate(BaseModel):
 
 
 class ClientProfileUpdate(BaseModel):
-    avatar_url: str | None = None
+    avatar_url: AvatarUrl = None
     google_drive_folder_id: str | None = None
     date_of_birth: str | None = None
     passport_expiry: str | None = None

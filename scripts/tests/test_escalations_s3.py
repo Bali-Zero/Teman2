@@ -8,7 +8,7 @@ Covers the three artifacts shipped by the S3 escalation-debt session:
   3. escalations_suppressed_digest.py — W55 weekly digest build + reset
 
 Run:
-    cd ~/Desktop/nuzantara
+    cd ~/nuzantara
     source apps/backend-rag/.venv/bin/activate
     python -m pytest scripts/tests/test_escalations_s3.py -v
 """
@@ -138,16 +138,27 @@ class TestRotation:
         for t in threads:
             t.join()
 
-        # No torn lines anywhere.
+        # No torn lines anywhere, and no lines silently dropped by the rotate.
         gz = list(arch.glob("*.jsonl.gz"))[0]
+        archived_lines = 0
         with gzip.open(gz, "rt") as fh:
             for l in fh:
                 if l.strip():
                     json.loads(l)  # raises on corruption
+                    archived_lines += 1
+        live_lines = 0
         with p.open() as fh:
             for l in fh:
                 if l.strip():
-                    json.loads(l)
+                    json.loads(l)  # raises on corruption
+                    live_lines += 1
+        # every one of the 3000 pre-rotation lines must have landed somewhere
+        # (archive or, if a hammering writer's O_APPEND raced the truncate,
+        # the live file) — a silent drop would pass the corruption-only check
+        # above while still violating the "0 data loss" half of the claim.
+        assert archived_lines + live_lines >= 3000, (
+            f"expected >=3000 surviving lines, got archived={archived_lines} live={live_lines}"
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
