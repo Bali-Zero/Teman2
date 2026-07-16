@@ -440,7 +440,12 @@ def _resolve_slides_dir(entry: dict[str, Any], carousel_root: Path) -> Path | No
                            entry.get("topic_slug")) if n]
     if needles and carousel_root.is_dir():
         for needle in needles:
-            for m in sorted(carousel_root.glob(f"*{needle}*")):
+            # newest-first: carousel dirs are date-prefixed (2026-07-08-...,
+            # 2026-07-14-...), so lexicographic descending == newest-first.
+            # A topic re-rendered into a second dir must resolve to that
+            # newer render, never the stale one from a prior attempt.
+            # Deliberately sort-by-name (deterministic), not by mtime.
+            for m in sorted(carousel_root.glob(f"*{needle}*"), reverse=True):
                 candidate = m / "slides"
                 if candidate.is_dir():
                     return candidate

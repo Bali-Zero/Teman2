@@ -587,6 +587,36 @@ def test_resolve_slides_dir_pure_unit_all_three_paths():
         assert reconciler._resolve_slides_dir(entry4, carousel_root) is None
 
 
+def test_resolve_slides_dir_suffix_match_prefers_newest_dir():
+    """GUILT (gate finding, 2026-07-17): when step 3's suffix-match has MULTIPLE
+    candidates (a topic re-rendered into a second dir), the resolver must
+    return the NEWEST (later-dated) one, never the oldest. Carousel dirs are
+    date-prefixed (2026-07-08-..., 2026-07-14-...); a naive ascending sort
+    picks the OLDEST match — reproduced live before this fix: two dirs
+    2026-07-08-visa-myth-aaa and 2026-07-14-visa-myth-bbb, both with valid
+    slides, resolved to 2026-07-08 (stale)."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        carousel_root = root / "carousel"
+        old_dir = carousel_root / "2026-07-08-visa-myth-aaa"
+        new_dir = carousel_root / "2026-07-14-visa-myth-bbb"
+        (old_dir / "slides").mkdir(parents=True)
+        (old_dir / "slides" / "01.png").write_bytes(b"\x89PNG-old")
+        (new_dir / "slides").mkdir(parents=True)
+        (new_dir / "slides" / "01.png").write_bytes(b"\x89PNG-new")
+
+        entry = {
+            "slides_dir": str(root / "gone" / "slides"),
+            "carousel_path": str(root / "gone"),
+            "topic_slug": "visa-myth",
+        }
+        resolved = reconciler._resolve_slides_dir(entry, carousel_root)
+        assert resolved == new_dir / "slides"
+        assert resolved != old_dir / "slides"
+
+
 def test_backfill_apply_preserves_other_queue_entries(tmp_path):
     """INNOCENCE: entries with no mismatch (including published history) must
     be byte-for-byte preserved by the backfill write."""
