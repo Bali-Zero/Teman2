@@ -516,6 +516,8 @@ openclaw
 !.claude/hooks/
 !.claude/rules/
 !.claude/skills/
+!.claude/agents/
+!.claude/agent-memory/
 !.claude/settings.json
 .serena/
 OPENCLAW_MASTER_GUIDE_2026.md
