@@ -1042,10 +1042,10 @@
       "63900"
     ],
     "successor_candidates_unverified_phantom": [],
-    "final_confidence": "high",
-    "successor": "63900",
-    "apply": true,
-    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+    "final_confidence": "unresolved-contextual",
+    "successor": null,
+    "apply": false,
+    "reasoning": "REVERTED after gate review (team-lead, PR #2523). Sole citing entry is 85595 (bimbingan belajar / tutoring), bullet \"if you operate an online tutoring platform\" — a COMMERCIAL digital platform claim. The originally-applied 63900 \"Aktivitas Jasa Portal Pencarian Web dan Informasi Lainnya\" is a web SEARCH/information portal, not a commercial platform — misleading on a live licensing page. Other candidate 47901 \"Platform Digital Intermediasi Perdagangan Eceran\" rejected: goods-retail intermediation, not services. The same gold entry's next bullet (85610 \"Jasa Perantara Kursus dan Tutor\") already covers the platform-intermediary case for this business, so the 63120 phantom reference has no distinct correct 2025 successor identified yet. Leave UNRESOLVED-CONTEXTUAL pending NB-3/BPS crosswalk research — do not force a pick among candidates that are semantically wrong for the citing context."
   },
   "69100": {
     "judul_2020": "Aktivitas Hukum",
