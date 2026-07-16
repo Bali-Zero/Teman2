@@ -19,13 +19,24 @@ Merge semantics (monotone state lattice — remote wins EXCEPT):
     when its ref-code/IG-URL are shell-safe by construction (strict regex).
   - entry only in LOCAL (app-created: upload/auto-enqueue): kept, appended
     after remote entries, reported as local_only. Never pushed back.
+    EXCEPTION (2026-07-17, archive-blind resurrect fix): if the entry's id
+    is present in `remote_archive` (Pro's freshly-pulled queue-archive.json),
+    Pro deliberately ARCHIVED it — it is dropped instead of resurrected, and
+    reported under `archived_dropped`. Live case: a golden-visa entry
+    archived on Pro kept reappearing on M5 every tick because the old code
+    treated "gone from remote queue" as always meaning "new local entry".
+    Pathological case (present in BOTH remote queue and remote archive):
+    the live queue wins — kept as a normal remote entry (not local_only, not
+    dropped), with a warning in `queue_and_archive_conflict`.
   - everything else: remote wins verbatim.
 
 CLI (used by infra/launchagents/wrappers/wr2-queue-pull.sh):
-    python3 scripts/wr2_queue_pull_merge.py --remote R.json --local L.json --out M.json
+    python3 scripts/wr2_queue_pull_merge.py --remote R.json --local L.json \
+        --out M.json [--remote-archive A.json]
 prints a JSON report to stdout:
     {"protected": [ids], "local_only": [ids],
-     "push_back": [{"id":..., "ref_code": "WR2-XXXXXX", "ig_url": ...}]}
+     "push_back": [{"id":..., "ref_code": "WR2-XXXXXX", "ig_url": ...}],
+     "archived_dropped": [ids], "queue_and_archive_conflict": [ids]}
 """
 
 from __future__ import annotations
@@ -65,9 +76,19 @@ def _is_published(entry: dict[str, Any]) -> bool:
 
 
 def merge_queues(
-    remote: list[dict[str, Any]], local: list[dict[str, Any]]
+    remote: list[dict[str, Any]],
+    local: list[dict[str, Any]],
+    remote_archive: Optional[list[dict[str, Any]]] = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Merge Pro's queue (remote, SSOT) with the M5 local copy.
+
+    `remote_archive` (2026-07-17): Pro's freshly-pulled queue-archive.json —
+    entries Pro deliberately archived. Without this, an entry archived on Pro
+    (removed from its live queue) looks identical, to this function, to a
+    genuinely-new local-only entry — and gets resurrected into the merged
+    output forever (live case: a golden-visa entry archived on Pro kept
+    reappearing on M5 every pull). `None`/empty = old behavior (no archive
+    cross-check), so callers that don't have an archive yet degrade safely.
 
     Returns (merged, report). Pure — no I/O.
     """
@@ -78,9 +99,18 @@ def merge_queues(
             if eid:
                 local_by_id[eid] = e
 
+    archived_ids: set[str] = set()
+    for a in remote_archive or []:
+        if isinstance(a, dict):
+            aid = item_id_of(a)
+            if aid:
+                archived_ids.add(aid)
+
     merged: list[dict[str, Any]] = []
     protected: list[str] = []
     push_back: list[dict[str, str]] = []
+    archived_dropped: list[str] = []
+    queue_and_archive_conflict: list[str] = []
     seen: set[str] = set()
 
     for r in remote:
@@ -90,6 +120,11 @@ def merge_queues(
         rid = item_id_of(r)
         if rid:
             seen.add(rid)
+            if rid in archived_ids:
+                # pathological: Pro's live queue AND its archive both carry
+                # this id — the live queue wins (it's the more current SSOT
+                # signal); just flag it, never drop a still-queued entry.
+                queue_and_archive_conflict.append(str(rid))
         loc = local_by_id.get(rid) if rid else None
         if loc is not None and _is_published(loc) and not _is_published(r):
             out = dict(r)
@@ -112,14 +147,22 @@ def merge_queues(
         if not isinstance(e, dict):
             continue
         eid = item_id_of(e)
-        if eid and eid not in seen:
-            merged.append(e)
-            local_only.append(str(eid))
+        if not eid or eid in seen:
+            continue
+        if eid in archived_ids:
+            # archived on Pro, absent from Pro's live queue: Pro's decision,
+            # not a new local entry — drop instead of resurrecting.
+            archived_dropped.append(str(eid))
+            continue
+        merged.append(e)
+        local_only.append(str(eid))
 
     return merged, {
         "protected": protected,
         "local_only": local_only,
         "push_back": push_back,
+        "archived_dropped": archived_dropped,
+        "queue_and_archive_conflict": queue_and_archive_conflict,
     }
 
 
@@ -128,6 +171,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--remote", type=Path, required=True, help="freshly pulled Pro queue")
     ap.add_argument("--local", type=Path, required=True, help="current local queue")
     ap.add_argument("--out", type=Path, required=True, help="merged output path")
+    ap.add_argument(
+        "--remote-archive", type=Path, default=None,
+        help="freshly pulled Pro queue-archive.json — cross-checked so an "
+             "entry Pro archived is dropped instead of resurrected as local_only",
+    )
     args = ap.parse_args(argv)
 
     remote = json.loads(args.remote.read_text(encoding="utf-8"))
@@ -143,7 +191,16 @@ def main(argv: Optional[list[str]] = None) -> int:
         except Exception:  # noqa: BLE001 — corrupt local: remote wins wholesale
             local = []
 
-    merged, report = merge_queues(remote, local)
+    remote_archive: Optional[list] = None
+    if args.remote_archive is not None and args.remote_archive.exists():
+        try:
+            parsed_archive = json.loads(args.remote_archive.read_text(encoding="utf-8"))
+            if isinstance(parsed_archive, list):
+                remote_archive = parsed_archive
+        except Exception:  # noqa: BLE001 — corrupt archive: skip the cross-check, don't fail the pull
+            remote_archive = None
+
+    merged, report = merge_queues(remote, local, remote_archive)
     args.out.write_text(
         json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8"
     )
