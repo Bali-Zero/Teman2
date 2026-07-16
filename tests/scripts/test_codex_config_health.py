@@ -215,3 +215,49 @@ def test_optional_profile_missing_is_warning(tmp_path: Path) -> None:
     )
 
     assert statuses(checks)["profile:nuzantara-toolful:parse"] == "WARN"
+
+
+def test_missing_requirement_on_mandatory_profile_fails_visibly(tmp_path: Path) -> None:
+    """2026-07-16 red-team finding (Codex gpt-5.6-terra, MEDIUM): a typo'd or
+    deleted PROFILE_REQUIREMENTS key for a MANDATORY profile (missing_status=
+    "FAIL") must NOT silently default to (None, None) — that would skip the
+    model/reasoning checks entirely, letting a drifted gpt-5.5 profile read
+    green (scar-W82 class fail-open). GUILT: simulate the deleted/renamed key."""
+    module = load_module()
+    path = tmp_path / "nuzantara-core.config.toml"
+
+    (requirement, checks) = module.resolve_profile_requirement(
+        "nuzantara-core-TYPO", "FAIL", path
+    )
+    assert requirement == (None, None)
+    result = statuses(checks)
+    assert result["profile:nuzantara-core-TYPO:requirements_missing"] == "FAIL"
+
+
+def test_missing_requirement_on_optional_profile_is_not_a_failure(tmp_path: Path) -> None:
+    """INNOCENCE counterpart: an OPTIONAL profile (missing_status="WARN", e.g.
+    nuzantara-toolful — not armed yet) legitimately has no PROFILE_REQUIREMENTS
+    entry. That must NOT trip the new fail-visible gate — only mandatory
+    profiles are held to having a requirement."""
+    module = load_module()
+    path = tmp_path / "nuzantara-toolful.config.toml"
+
+    (requirement, checks) = module.resolve_profile_requirement(
+        "nuzantara-toolful", "WARN", path
+    )
+    assert requirement == (None, None)
+    assert checks == []
+
+
+def test_real_profiles_keep_their_requirements_after_the_fail_visible_fix(tmp_path: Path) -> None:
+    """INNOCENCE: the real, present PROFILE_REQUIREMENTS entries for
+    nuzantara-core/nuzantara-research must be returned unchanged (no spurious
+    requirements_missing check) after the fail-visible fix."""
+    module = load_module()
+    for label in ("nuzantara-core", "nuzantara-research"):
+        expected = module.PROFILE_REQUIREMENTS[label]
+        (requirement, checks) = module.resolve_profile_requirement(
+            label, "FAIL", tmp_path / f"{label}.config.toml"
+        )
+        assert requirement == expected
+        assert checks == []
