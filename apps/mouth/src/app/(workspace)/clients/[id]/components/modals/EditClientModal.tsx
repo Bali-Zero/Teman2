@@ -24,6 +24,9 @@ export function EditClientModal({
   const { options: teamMemberOptions } = useTeamMemberOptions();
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  // Tracks an explicit "remove photo" so the save can clear the avatar. Uploads
+  // persist server-side on their own; the save never re-sends the URL.
+  const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [formData, setFormData] = useState({
     full_name: client.full_name || "",
     email: client.email || "",
@@ -72,6 +75,7 @@ export function EditClientModal({
       setIsUploadingAvatar(true);
       const res = await api.crm.uploadClientAvatar(client.id, uploadFile);
       setFormData((prev) => ({ ...prev, avatar_url: res.avatar_url }));
+      setAvatarRemoved(false);
       toast.success("Avatar uploaded");
     } catch (error) {
       logger.error(
@@ -87,6 +91,7 @@ export function EditClientModal({
 
   const removeAvatar = () => {
     setFormData((prev) => ({ ...prev, avatar_url: "" }));
+    setAvatarRemoved(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -137,17 +142,18 @@ export function EditClientModal({
         }
       });
 
-      // avatar_url: an upload has already been persisted server-side by
-      // POST /api/crm/clients/{id}/avatar, so only forward an *explicit change* —
-      // a freshly uploaded storage URL, or "" when the photo was removed. Never
-      // re-send a legacy `data:` blob loaded from the DB: the backend rejects
-      // data: URIs on update, which used to block every edit of pre-#2208
-      // clients whose avatar_url still held inline base64.
-      if (
-        formData.avatar_url !== (client.avatar_url || "") &&
-        !formData.avatar_url.startsWith("data:")
-      ) {
-        updates.avatar_url = formData.avatar_url;
+      // avatar_url is managed out-of-band: an upload is already persisted to the
+      // DB by POST /api/crm/clients/{id}/avatar, so the save must never re-send
+      // the URL — it would be redundant, and it would clobber a concurrently
+      // changed avatar with the stale value this modal opened with. The only
+      // avatar signal this save still owns is an explicit removal.
+      //
+      // A legacy `data:` URI loaded from the DB is therefore never echoed back:
+      // the backend rejects data: URIs on update, which used to fail the whole
+      // PATCH and block every edit of pre-#2208 clients (even edits that never
+      // touched the photo).
+      if (avatarRemoved) {
+        updates.avatar_url = "";
       }
 
       await api.crm.updateClient(client.id, updates, user.email);

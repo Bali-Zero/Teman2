@@ -64,6 +64,13 @@ async function clickSave(): Promise<void> {
   await waitFor(() => expect(updateClient).toHaveBeenCalled());
 }
 
+/** Upload a photo through the file input and wait for the upload to settle. */
+async function uploadPhoto(): Promise<void> {
+  const file = new File(["img-bytes"], "photo.png", { type: "image/png" });
+  await userEvent.upload(screen.getByLabelText(/upload client photo/i), file);
+  await waitFor(() => expect(uploadClientAvatar).toHaveBeenCalled());
+}
+
 describe("EditClientModal — avatar_url update contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -123,7 +130,7 @@ describe("EditClientModal — avatar_url update contract", () => {
     expect(lastUpdatePayload()).toHaveProperty("avatar_url", "");
   });
 
-  it("forwards a freshly uploaded storage URL", async () => {
+  it("does not re-send avatar_url after an upload (the upload endpoint already persisted it)", async () => {
     uploadClientAvatar.mockResolvedValue({
       avatar_url: "https://cdn.example.com/client-avatar/12125/abcd1234.jpg",
     });
@@ -136,16 +143,36 @@ describe("EditClientModal — avatar_url update contract", () => {
       />,
     );
 
-    const file = new File(["img-bytes"], "photo.png", { type: "image/png" });
-    const input = screen.getByLabelText(/upload client photo/i);
-    await userEvent.upload(input, file);
-    await waitFor(() => expect(uploadClientAvatar).toHaveBeenCalled());
-
+    await uploadPhoto();
     await clickSave();
 
-    expect(lastUpdatePayload()).toHaveProperty(
-      "avatar_url",
-      "https://cdn.example.com/client-avatar/12125/abcd1234.jpg",
+    // POST /clients/{id}/avatar already wrote the URL to the DB. Re-sending it
+    // is redundant and would clobber a concurrently-changed avatar with the
+    // value this modal happened to open with.
+    expect(lastUpdatePayload()).not.toHaveProperty("avatar_url");
+  });
+
+  it("clears the avatar when an upload is removed before saving", async () => {
+    uploadClientAvatar.mockResolvedValue({
+      avatar_url: "https://cdn.example.com/client-avatar/12125/abcd1234.jpg",
+    });
+
+    // Starts with NO avatar: upload (persisted server-side) then remove, so the
+    // save must still clear it — a naive diff against the original "" would not.
+    render(
+      <EditClientModal
+        client={makeClient({ avatar_url: undefined })}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
     );
+
+    await uploadPhoto();
+    await userEvent.click(
+      screen.getByRole("button", { name: /remove avatar/i }),
+    );
+    await clickSave();
+
+    expect(lastUpdatePayload()).toHaveProperty("avatar_url", "");
   });
 });
