@@ -269,6 +269,35 @@ def _external_manual_entry(**overrides) -> dict:
     return entry
 
 
+# ── archive-awareness x external_manual interaction (team-lead diagnosis, 2026-07-17) ─
+
+
+def test_external_manual_entry_archived_on_pro_still_kept_locally():
+    """GUILT: external_manual entries (§A/§B) are ALWAYS state="published" by
+    construction (validate_external_payload requires it) — they must ride the
+    SAME published-survives-despite-archive path as any other local publish
+    transition (test_published_local_only_entry_survives_archive_on_pro
+    above), never get silently classified as archived_dropped just because
+    the id happens to also appear in Pro's freshly-pulled archive."""
+    entry = _external_manual_entry()
+    merged, report = merge.merge_queues(
+        [_remote_drafted("carousel_1")],
+        [_remote_drafted("carousel_1"), entry],
+        remote_archive=[{"item_id": entry["item_id"], "state": "drafted"}],
+    )
+    ids = [merge.item_id_of(e) for e in merged]
+    assert entry["item_id"] in ids
+    kept = next(e for e in merged if merge.item_id_of(e) == entry["item_id"])
+    assert kept["state"] == "published"
+    assert kept["instagram_post_url"] == entry["instagram_post_url"]
+    assert report["local_only"] == [entry["item_id"]]
+    assert report["archived_dropped"] == []
+    assert report["published_local_kept_despite_archive"] == [entry["item_id"]]
+    # AND the orthogonal push_back_external pass still offers it independently —
+    # surviving the archive check must not accidentally suppress the sync channel.
+    assert [c["item_id"] for c in report["push_back_external"]] == [entry["item_id"]]
+
+
 def test_external_push_candidates_picks_up_unsynced_external_manual_entry():
     local = [_remote_drafted(), _external_manual_entry()]
     candidates = merge.external_push_candidates(local)
