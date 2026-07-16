@@ -1,0 +1,1105 @@
+{
+  "01130": {
+    "judul_2020": "Pertanian Hortikultura Sayuran dan Buah-buahan",
+    "mapping_type": "SPLIT",
+    "source": "oss.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "01131",
+      "01132",
+      "01133"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "split-needs-context",
+    "successor": null,
+    "apply": false,
+    "reasoning": "SPLIT with multiple plausible successors and no single obvious pick from citing-entry context — left for human review, not auto-applied."
+  },
+  "10122": {
+    "judul_2020": "Industri Pemotongan dan Pengemasan Daging Unggas",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "-",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "10720": {
+    "judul_2020": "Industri Pembuatan Batubara Briket dan Produk Batubara Lainnya",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "-",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "31001": {
+    "judul_2020": "Industri Furnitur dari Kayu",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "-",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "42410": {
+    "judul_2020": "Konstruksi Bangunan Sipil",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "-",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "46590": {
+    "judul_2020": "Perdagangan Besar Mesin dan Peralatan Lainnya",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "-",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "47412": {
+    "judul_2020": "Perdagangan Eceran Peralatan Video Game Dan Sejenisnya",
+    "mapping_type": "DIRECT",
+    "source": "bkpm.go.id",
+    "agy_confidence_reported": "medium",
+    "successor_candidates_verified": [
+      "47402"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "medium",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy medium confidence or a proposed successor failed catalogue verification — left for human review, not auto-applied."
+  },
+  "49239": {
+    "judul_2020": "Angkutan Darat Bukan Untuk Umum Lainnya",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "-",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "62010": {
+    "judul_2020": "Aktivitas Pemrograman Komputer",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "-",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "63122": {
+    "judul_2020": "Portal Web dan/atau Platform Digital dengan Tujuan Komersial",
+    "mapping_type": "SPLIT",
+    "source": "litaparomitasiregar.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "47901",
+      "55400",
+      "56400",
+      "85610",
+      "86910"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "successor": null,
+    "apply": false,
+    "final_confidence": "unmapped",
+    "reasoning": "agy proposed 5 candidates across 4 heterogeneous citing entries, one of which (47901) is BOTH a citing entry and a proposed successor — a self-reference that doesn't make sense as a 'related code' recommendation. 63122 and 63120 share the identical judul_2020 text ('Portal Web dan/atau Platform Digital dengan Tujuan Komersial') but agy's two research batches gave inconsistent answers for what should be the same or a closely related concept. Too unreliable to auto-apply; flagged for human review."
+  },
+  "69200": {
+    "judul_2020": "Aktivitas Akuntansi, Pembukuan dan Pemeriksaan; Konsultasi Pajak",
+    "mapping_type": "SPLIT",
+    "source": "kbli.co.id",
+    "agy_confidence_reported": "medium",
+    "successor_candidates_verified": [
+      "69201"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "medium",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy medium confidence or a proposed successor failed catalogue verification — left for human review, not auto-applied."
+  },
+  "74901": {
+    "judul_2020": "Aktivitas Jasa Desain Spesialis",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "-",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "85421": {
+    "judul_2020": "Pendidikan Tinggi Swasta",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "-",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "90003": {
+    "judul_2020": "Aktivitas Kesenian Lainnya",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "-",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "01270": {
+    "judul_2020": "Pertanian Tanaman untuk Bahan Minuman",
+    "mapping_type": "SPLIT",
+    "source": "BPS / bkpm.go.id / sikkakab.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "01271",
+      "01272",
+      "01273",
+      "01279"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "successor": [
+      "01271",
+      "01272",
+      "01273"
+    ],
+    "apply": true,
+    "final_confidence": "high",
+    "reasoning": "agy returned SPLIT (01271 coffee, 01272 tea, 01273 cocoa, 01279 other beverage crops) without picking one. Sole citing entry is 46314 'Perdagangan Besar Kopi, Teh, dan Kakao' (wholesale coffee+tea+cocoa) — the entry trades all three commodities, so expanding the single phantom bullet into all 3 specific successor codes is more correct than picking just one. 01279 (other) excluded — not covered by this entry."
+  },
+  "10130": {
+    "judul_2020": "Industri Pengolahan dan Pengawetan Produk Daging dan Daging Unggas",
+    "mapping_type": "DIRECT",
+    "source": "BPS / litaparomitasiregar.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [
+      "10130"
+    ],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "all proposed successors are themselves absent from the 1559-code catalogue"
+  },
+  "10730": {
+    "judul_2020": "Industri Kakao, Cokelat dan Kembang Gula",
+    "mapping_type": "SPLIT",
+    "source": "OSS / BPS",
+    "agy_confidence_reported": "medium",
+    "successor_candidates_verified": [
+      "10731"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "medium",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy medium confidence or a proposed successor failed catalogue verification — left for human review, not auto-applied."
+  },
+  "35113": {
+    "judul_2020": "Distribusi Tenaga Listrik",
+    "mapping_type": "MERGE",
+    "source": "BPS / unpad.ac.id / bkpm.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "35131"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "35131",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "43210": {
+    "judul_2020": "Instalasi Listrik",
+    "mapping_type": "SPLIT",
+    "source": "BPS / OSS",
+    "agy_confidence_reported": "medium",
+    "successor_candidates_verified": [
+      "43400"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "successor": "43211",
+    "apply": true,
+    "final_confidence": "high",
+    "reasoning": "agy proposed 43400 'Jasa Intermediasi Konstruksi Khusus' (medium) — semantically wrong (construction intermediation, not electrical work). Self-verified against the live dataset: 43211 'Pemasangan Jaringan Listrik' (electrical installation) is a near-exact match for 43210 'Instalasi Listrik'. Overrides the agy guess."
+  },
+  "46610": {
+    "judul_2020": "Perdagangan Besar Bahan Bakar Padat, Cair dan Gas dan Produk YBDI",
+    "mapping_type": "DIRECT",
+    "source": "BPS / bkpm.go.id",
+    "agy_confidence_reported": "medium",
+    "successor_candidates_verified": [
+      "46710"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "medium",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy medium confidence or a proposed successor failed catalogue verification — left for human review, not auto-applied."
+  },
+  "47413": {
+    "judul_2020": "Perdagangan Eceran Piranti Lunak/Software",
+    "mapping_type": "DIRECT",
+    "source": "BPS / bkpm.go.id / litaparomitasiregar.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "47403"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "47403",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "49431": {
+    "judul_2020": "Angkutan Bermotor untuk Barang Umum",
+    "mapping_type": "DIRECT",
+    "source": "BPS / bkpm.go.id / unpad.ac.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "49231"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "49231",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "62011": {
+    "judul_2020": "Aktivitas Pengembangan Video Game",
+    "mapping_type": "DIRECT",
+    "source": "BPS / bkpm.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "62110"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "62110",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "64200": {
+    "judul_2020": "Aktivitas Perusahaan Holding",
+    "mapping_type": "SPLIT",
+    "source": "kbli.co.id / unpad.ac.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "64210",
+      "64220"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "successor": "64210",
+    "apply": true,
+    "final_confidence": "high",
+    "reasoning": "agy returned SPLIT (64210 holding-company activities, 64220 financing-conduit activities) without picking one. Sole citing entry is 70100 'Aktivitas Kantor Pusat' (head-office activities) — head office is a holding-company concept, not financing conduit. 64210 is the unambiguous pick, self-resolved."
+  },
+  "71200": {
+    "judul_2020": "Analisis dan Uji Teknis / Jasa Teknik",
+    "mapping_type": "SPLIT",
+    "source": "BPS / oss.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "71201",
+      "71202",
+      "71203",
+      "71204",
+      "71209"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "split-needs-context",
+    "successor": null,
+    "apply": false,
+    "reasoning": "SPLIT with multiple plausible successors and no single obvious pick from citing-entry context — left for human review, not auto-applied."
+  },
+  "74909": {
+    "judul_2020": "Aktivitas Profesional, Ilmiah dan Teknis Lainnya YTDL",
+    "mapping_type": "DIRECT",
+    "source": "BPS / pajakku.com",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "74999"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "74999",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "85491": {
+    "judul_2020": "Jasa Pendidikan Manajemen dan Perbankan",
+    "mapping_type": "DIRECT",
+    "source": "BPS / bkpm.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "85591"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "85591",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "95110": {
+    "judul_2020": "Reparasi Komputer dan Peralatan Sejenisnya",
+    "mapping_type": "DIRECT",
+    "source": "BPS / bkpm.go.id / unpad.ac.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "95101"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "95101",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "01310": {
+    "judul_2020": "Pembibitan Tanaman Perkebunan Semusim",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "10131": {
+    "judul_2020": "Industri Penggilingan Padi dan Penyosohan Beras",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "10909": {
+    "judul_2020": "Industri Produk Makanan Lainnya YTDL",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "38120": {
+    "judul_2020": "Pengumpulan Limbah Berbahaya",
+    "mapping_type": "SPLIT",
+    "source": "bkpm.go.id / bps.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "38121",
+      "38122"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "split-needs-context",
+    "successor": null,
+    "apply": false,
+    "reasoning": "SPLIT with multiple plausible successors and no single obvious pick from citing-entry context — left for human review, not auto-applied."
+  },
+  "45201": {
+    "judul_2020": "Reparasi Mobil",
+    "mapping_type": "DIRECT",
+    "source": "kbli.co.id / unpad.ac.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "95311"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "95311",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "46634": {
+    "judul_2020": "Perdagangan Besar Semen, Kapur, Pasir, dan Batu",
+    "mapping_type": "DIRECT",
+    "source": "sikkakab.go.id / unpad.ac.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "46734"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "46734",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "47529": {
+    "judul_2020": "Perdagangan Eceran Bahan dan Barang Konstruksi Lainnya",
+    "mapping_type": "SPLIT",
+    "source": "kbli.co.id / bkpm.go.id",
+    "agy_confidence_reported": "medium",
+    "successor_candidates_verified": [
+      "47523"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "medium",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy medium confidence or a proposed successor failed catalogue verification — left for human review, not auto-applied."
+  },
+  "51200": {
+    "judul_2020": "Angkutan Udara Kargo / Barang",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "62019": {
+    "judul_2020": "Aktivitas Pemrograman Komputer Lainnya",
+    "mapping_type": "DIRECT",
+    "source": "oss.go.id / kbli.co.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "62199"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "62199",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "66290": {
+    "judul_2020": "Aktivitas Pendukung Lainnya dari Asuransi dan Dana Pensiun",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "73110": {
+    "judul_2020": "Aktivitas Periklanan (Diduga typo dari 73100)",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "77110": {
+    "judul_2020": "Penyewaan dan Sewa Guna Usaha Tanpa Hak Opsi Mobil, Bus, Truk",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "85499": {
+    "judul_2020": "Pendidikan Lainnya Swasta",
+    "mapping_type": "SPLIT",
+    "source": "kbli.co.id / unpad.ac.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "85599",
+      "85530"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "successor": "85599",
+    "apply": true,
+    "final_confidence": "high",
+    "reasoning": "agy reported SPLIT (85599, 85530) at 'high' without picking one. 85599's judul 'Pendidikan Lainnya Swasta' is a VERBATIM match to 85499's own judul_2020 'Pendidikan Lainnya Swasta' — a straight renumbering. 85530 'Kegiatan Sekolah Mengemudi' (driving schools) is a narrow, unrelated subset — rejected."
+  },
+  "96093": {
+    "judul_2020": "Tidak Ditemukan / Bukan Kode KBLI",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "01401": {
+    "judul_2020": "Pembibitan Ternak Sapi",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "10192": {
+    "judul_2020": "Industri Pengolahan dan Pengawetan Daging",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "21001": {
+    "judul_2020": "Industri Bahan Baku Farmasi",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "38210": {
+    "judul_2020": "Pengelolaan dan Pembuangan Limbah Tidak Berbahaya",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "46336": {
+    "judul_2020": "Perdagangan Besar Minuman",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "47190": {
+    "judul_2020": "Perdagangan Eceran Berbagai Macam Barang",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "47719": {
+    "judul_2020": "Perdagangan Eceran Khusus Lainnya",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "52110": {
+    "judul_2020": "Pergudangan dan Penyimpanan",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "62020": {
+    "judul_2020": "Aktivitas Konsultasi Komputer",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "68130": {
+    "judul_2020": "Real Estate Atas Dasar Balas Jasa atau Kontrak",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "74100": {
+    "judul_2020": "Aktivitas Desain Khusus",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "77319": {
+    "judul_2020": "Penyewaan Mesin dan Peralatan Lainnya",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "85600": {
+    "judul_2020": "Jasa Penunjang Pendidikan",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "96120": {
+    "judul_2020": "Aktivitas Kebugaran / Jasa Perorangan",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "03121": {
+    "judul_2020": "Penangkapan Pisces/Ikan Bersirip Di Perairan Darat",
+    "mapping_type": "DIRECT",
+    "source": "bps.go.id, bkpm.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "03120"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "03120",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "10200": {
+    "judul_2020": "Industri Pengolahan dan Pengawetan Ikan dan Biota Air Lainnya (Bukan Udang)",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "21002": {
+    "judul_2020": "Industri Farmasi, Produk Obat Kimia, dan Obat Tradisional",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "39000": {
+    "judul_2020": "Aktivitas Remediasi dan Pengelolaan Limbah dan Sampah Lainnya",
+    "mapping_type": "SPLIT",
+    "source": "OSS RBA, tabel konversi BPS",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "39001",
+      "39002",
+      "39009"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "successor": "39009",
+    "apply": true,
+    "final_confidence": "high",
+    "reasoning": "agy returned SPLIT with 3 candidates (39001 carbon capture, 39002 carbon storage, 39009 remediation/waste-other) without picking one. Sole citing entry (43120, land preparation) has no carbon-capture context. 39009 'Aktivitas Remediasi dan Pengelolaan Limbah atau Sampah Lainnya' is a near-exact title match to 39000's own 'Aktivitas Remediasi dan Pengelolaan Limbah dan Sampah Lainnya' — same catch-all concept, self-resolved."
+  },
+  "46390": {
+    "judul_2020": "Perdagangan Besar Berbagai Macam Barang",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "47231": {
+    "judul_2020": "Perdagangan Eceran Minuman Beralkohol",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "47919": {
+    "judul_2020": "Perdagangan Eceran Melalui Media Untuk Berbagai Macam Barang Lainnya",
+    "mapping_type": "SPLIT",
+    "source": "kbli.co.id, oss.go.id",
+    "agy_confidence_reported": "medium",
+    "successor_candidates_verified": [
+      "47192"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "medium",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy medium confidence or a proposed successor failed catalogue verification — left for human review, not auto-applied."
+  },
+  "55110": {
+    "judul_2020": "Hotel Bintang",
+    "mapping_type": "SPLIT",
+    "source": "prolegal.id, tabel konversi",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "55101",
+      "55102",
+      "55103",
+      "55104",
+      "55105"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "split-needs-context",
+    "successor": null,
+    "apply": false,
+    "reasoning": "SPLIT with multiple plausible successors and no single obvious pick from citing-entry context — left for human review, not auto-applied."
+  },
+  "63111": {
+    "judul_2020": "Aktivitas Pengolahan Data",
+    "mapping_type": "DIRECT",
+    "source": "bkpm.go.id, bps.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "63101"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "63101",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "68200": {
+    "judul_2020": "Real estat atas dasar balas jasa (fee) atau kontrak",
+    "mapping_type": "SPLIT",
+    "source": "bkpm.go.id, smartlegal.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "68291",
+      "68292",
+      "68299"
+    ],
+    "successor_candidates_unverified_phantom": [
+      "68120"
+    ],
+    "final_confidence": "medium",
+    "successor": null,
+    "apply": false,
+    "reasoning": "1/4 proposed successor(s) not found in catalogue: ['68120']"
+  },
+  "74101": {
+    "judul_2020": "Jasa Desain Grafis",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "79120": {
+    "judul_2020": "Aktivitas Biro Perjalanan Wisata",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "86903": {
+    "judul_2020": "Aktivitas Pelayanan Penunjang Kesehatan",
+    "mapping_type": "DIRECT",
+    "source": "unpad.ac.id, oss.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "86993"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "86993",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "96130": {
+    "judul_2020": "Aktivitas Sauna, Pemandian Uap, Fasilitas Pijat dan Sejenisnya",
+    "mapping_type": "UNMAPPED",
+    "source": "N/A",
+    "agy_confidence_reported": "low",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "10110": {
+    "judul_2020": "Kegiatan Rumah Potong dan Pengepakan Daging Bukan Unggas",
+    "mapping_type": "SPLIT",
+    "source": "bps.go.id / bkpm.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "10111",
+      "10112",
+      "10119"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "split-needs-context",
+    "successor": null,
+    "apply": false,
+    "reasoning": "SPLIT with multiple plausible successors and no single obvious pick from citing-entry context — left for human review, not auto-applied."
+  },
+  "10390": {
+    "judul_2020": "Industri Pengolahan dan Pengawetan Buah-buahan dan Sayuran Lainnya",
+    "mapping_type": "UNMAPPED",
+    "source": "BPS Tabel Konversi (invalid 5-digit/4-digit group)",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "25930": {
+    "judul_2020": "Industri Peralatan Logam / Perkakas Tangan",
+    "mapping_type": "UNMAPPED",
+    "source": "BPS Tabel Konversi (invalid 5-digit/4-digit group)",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "42119": {
+    "judul_2020": "Konstruksi Bangunan Sipil Lainnya Yang Tidak Terklasifikasi (YTDL)",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "46471": {
+    "judul_2020": "Perdagangan Besar Peralatan dan Perlengkapan Rumah Tangga / Alat Tulis",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "47291": {
+    "judul_2020": "Perdagangan Eceran Hasil Perikanan / Makanan Lainnya di Toko",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "47999": {
+    "judul_2020": "Perdagangan Eceran Bukan di Toko, Kios, Kaki Lima dan Los Pasar Lainnya YTDL",
+    "mapping_type": "DIRECT",
+    "source": "unpad.ac.id / oss.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "47799"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "47799",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "56209": {
+    "judul_2020": "Aktivitas Penyediaan Jasa Boga",
+    "mapping_type": "UNMAPPED",
+    "source": "Artikel (Typo for 56210/56290)",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "63120": {
+    "judul_2020": "Portal Web dan/atau Platform Digital dengan Tujuan Komersial",
+    "mapping_type": "SPLIT",
+    "source": "bps.go.id / kbli.co.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "63900"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unresolved-contextual",
+    "successor": null,
+    "apply": false,
+    "reasoning": "REVERTED after gate review (team-lead, PR #2523). Sole citing entry is 85595 (bimbingan belajar / tutoring), bullet \"if you operate an online tutoring platform\" — a COMMERCIAL digital platform claim. The originally-applied 63900 \"Aktivitas Jasa Portal Pencarian Web dan Informasi Lainnya\" is a web SEARCH/information portal, not a commercial platform — misleading on a live licensing page. Other candidate 47901 \"Platform Digital Intermediasi Perdagangan Eceran\" rejected: goods-retail intermediation, not services. The same gold entry's next bullet (85610 \"Jasa Perantara Kursus dan Tutor\") already covers the platform-intermediary case for this business, so the 63120 phantom reference has no distinct correct 2025 successor identified yet. Leave UNRESOLVED-CONTEXTUAL pending NB-3/BPS crosswalk research — do not force a pick among candidates that are semantically wrong for the citing context."
+  },
+  "69100": {
+    "judul_2020": "Aktivitas Hukum",
+    "mapping_type": "SPLIT",
+    "source": "bps.go.id / oss.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "69101",
+      "69102",
+      "69103",
+      "69104"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "split-needs-context",
+    "successor": null,
+    "apply": false,
+    "reasoning": "SPLIT with multiple plausible successors and no single obvious pick from citing-entry context — left for human review, not auto-applied."
+  },
+  "74120": {
+    "judul_2020": "Aktivitas Desain Interior",
+    "mapping_type": "DIRECT",
+    "source": "bps.go.id / bkpm.go.id",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [
+      "74191"
+    ],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "high",
+    "successor": "74191",
+    "apply": true,
+    "reasoning": "agy high-confidence DIRECT/MERGE, single successor verified to exist in the 1559-code catalogue, title cross-checked."
+  },
+  "79900": {
+    "judul_2020": "Jasa Reservasi",
+    "mapping_type": "UNMAPPED",
+    "source": "BPS Tabel Konversi (invalid 5-digit)",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  },
+  "86909": {
+    "judul_2020": "Aktivitas Pelayanan Kesehatan Manusia Lainnya YTDL",
+    "mapping_type": "UNMAPPED",
+    "source": "-",
+    "agy_confidence_reported": "high",
+    "successor_candidates_verified": [],
+    "successor_candidates_unverified_phantom": [],
+    "final_confidence": "unmapped",
+    "successor": null,
+    "apply": false,
+    "reasoning": "agy found no sourced successor (UNMAPPED)."
+  }
+}
