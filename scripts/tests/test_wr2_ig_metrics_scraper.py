@@ -15,6 +15,7 @@ widened which KEY was searched, not which VALUE was trusted).
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -125,3 +126,125 @@ def test_is_stale_fresh_metrics_not_stale():
 def test_is_stale_old_metrics_are_stale():
     old_iso = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
     assert scraper.is_stale({"scraped_at": old_iso}, 7) is True
+
+
+# ── _display_id — schema-agnostic log label (hotfix, 2026-07-17) ───────────
+#
+# Live Pro prove-live crash: the success/skip/dry-run print lines in main()'s
+# fetch loop did `item.get('topic_slug') or item['id']` — a bare subscript
+# that KeyErrors on an old-schema entry carrying ONLY `item_id` (never `id`).
+# media_id_of already handles this exact dual-schema split correctly (checks
+# BOTH `id` and `item_id`); these print lines never got the same treatment.
+
+
+def test_display_id_old_schema_item_id_only_no_keyerror():
+    # GUILT (the exact live-crash shape): no "id" key, no "topic_slug" key at all.
+    assert scraper._display_id({"item_id": "bali-pma-rental-crackdown"}) == "bali-pma-rental-crackdown"
+
+
+def test_display_id_prefers_topic_slug_when_present():
+    # INNOCENCE: existing precedence (topic_slug first) is unchanged.
+    assert scraper._display_id({"topic_slug": "my-topic", "id": "x", "item_id": "y"}) == "my-topic"
+
+
+def test_display_id_falls_back_to_id_when_no_topic_slug():
+    assert scraper._display_id({"id": "carousel-1"}) == "carousel-1"
+
+
+def test_display_id_none_topic_slug_falls_through_to_item_id():
+    # a present-but-falsy topic_slug (None) must still fall through, not short-circuit.
+    assert scraper._display_id({"topic_slug": None, "item_id": "fallback-id"}) == "fallback-id"
+
+
+def test_display_id_no_identifying_field_at_all_returns_placeholder():
+    assert scraper._display_id({}) == "?"
+
+
+# ── main() end-to-end — dual-schema KeyError regression (hotfix, 2026-07-17) ─
+#
+# Drives main() itself (not just the unit-level _display_id above) so a
+# regression reintroduced at any of the three print call-sites shows up as a
+# real crash on an old-schema item, matching the live Pro failure mode: the
+# scraper died mid-loop with KeyError BEFORE ever reaching the atomic-write
+# step, so discovery's freshly-backfilled ig_media_id never got its metrics
+# attached.
+
+
+def test_main_completes_for_old_schema_item_id_only_entry(tmp_path, monkeypatch, capsys):
+    queue_path = tmp_path / "queue.json"
+    entry = {
+        "item_id": "bali-pma-rental-crackdown",  # OLD SCHEMA: no "id", no "topic_slug"
+        "state": "published",
+        "instagram_post_url": "https://www.instagram.com/p/ABC123/",
+        "ig_media_id": "17895695668004550",  # already backfilled -> media_id_of resolves it
+        "engagement_metrics": None,  # missing -> selected for refresh
+    }
+    queue_path.write_text(json.dumps([entry]))
+
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(sys, "argv", ["wr2_ig_metrics_scraper.py", "--queue", str(queue_path)])
+    monkeypatch.setattr(
+        scraper, "fetch_metrics",
+        lambda media_id, token: {
+            "likes": 10, "reach": 100, "saved": 2, "shares": 1,
+            "source": "ig_metrics_scraper", "scraped_at": "2026-07-17T09:00:00+00:00",
+        },
+    )
+
+    rc = scraper.main()  # must NOT raise KeyError — this is the regression guard
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "ok   bali-pma-rental-crackdown" in out  # falls back to item_id, never crashes
+    updated = json.loads(queue_path.read_text())
+    assert updated[0]["engagement_metrics"]["likes"] == 10  # the write it used to never reach
+
+
+def test_main_dry_run_also_completes_for_old_schema_entry(tmp_path, monkeypatch, capsys):
+    # the [dry] print site is the SAME bug class — cover it independently.
+    queue_path = tmp_path / "queue.json"
+    entry = {
+        "item_id": "bali-pma-rental-crackdown",
+        "state": "published",
+        "instagram_post_url": "https://www.instagram.com/p/ABC123/",
+        "ig_media_id": "17895695668004550",
+        "engagement_metrics": None,
+    }
+    queue_path.write_text(json.dumps([entry]))
+
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(sys, "argv", ["wr2_ig_metrics_scraper.py", "--queue", str(queue_path), "--dry-run"])
+    monkeypatch.setattr(
+        scraper, "fetch_metrics",
+        lambda media_id, token: {"likes": 5, "source": "ig_metrics_scraper",
+                                  "scraped_at": "2026-07-17T09:00:00+00:00"},
+    )
+
+    rc = scraper.main()
+
+    assert rc == 0
+    assert "[dry] bali-pma-rental-crackdown" in capsys.readouterr().out
+    # dry-run never writes
+    assert json.loads(queue_path.read_text())[0]["engagement_metrics"] is None
+
+
+def test_main_skip_path_also_completes_for_old_schema_entry(tmp_path, monkeypatch, capsys):
+    # the "skip ... no metrics returned" print site is the SAME bug class too.
+    queue_path = tmp_path / "queue.json"
+    entry = {
+        "item_id": "bali-pma-rental-crackdown",
+        "state": "published",
+        "instagram_post_url": "https://www.instagram.com/p/ABC123/",
+        "ig_media_id": "17895695668004550",
+        "engagement_metrics": None,
+    }
+    queue_path.write_text(json.dumps([entry]))
+
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "test-token")
+    monkeypatch.setattr(sys, "argv", ["wr2_ig_metrics_scraper.py", "--queue", str(queue_path)])
+    monkeypatch.setattr(scraper, "fetch_metrics", lambda media_id, token: None)
+
+    rc = scraper.main()
+
+    assert rc == 0
+    assert "skip bali-pma-rental-crackdown" in capsys.readouterr().out
