@@ -154,7 +154,11 @@ def test_visibility_verified_when_queue_has_entry(tmp_path, monkeypatch):
     assert rec._verify_visibility_or_backfill(_rendered_row("d-verified"), dry_run=False) == "verified"
 
 
-def test_visibility_backfills_missing_entry_with_local_slides(tmp_path, monkeypatch):
+def test_visibility_backfill_without_intended_count_is_incomplete_not_drafted(tmp_path, monkeypatch):
+    """Codex red-team HIGH #2: `_rendered_row` carries no `slides_json` (legacy/
+    unresolvable DB row) — intended is genuinely unknown. A lone PNG on disk must
+    NOT be trusted as "the whole carousel"; the entry is backfilled as
+    render_incomplete, never as a reviewable "drafted"."""
     import json
     monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
     draft_id = "abcd1234-9999-0000-0000-000000000000"
@@ -162,21 +166,41 @@ def test_visibility_backfills_missing_entry_with_local_slides(tmp_path, monkeypa
     slides.mkdir(parents=True)
     (slides / "01.png").write_bytes(b"png")
     out = rec._verify_visibility_or_backfill(_rendered_row(draft_id), dry_run=False)
-    assert out == "backfilled"
+    assert out == "backfilled_incomplete"
     queue = json.loads((tmp_path / "queue" / "human-review-queue.json").read_text())
     assert queue[0]["draft_id"] == draft_id
     assert queue[0]["slides_dir"].endswith("slides")
     assert queue[0]["drive_url"] == "https://drive/z"
+    assert queue[0]["state"] == rec.RENDER_INCOMPLETE_STATE
 
 
 def test_visibility_backfill_honest_without_local_slides(tmp_path, monkeypatch):
     import json
     monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
     out = rec._verify_visibility_or_backfill(_rendered_row("feed0000-1111"), dry_run=False)
-    assert out == "backfilled"
+    assert out == "backfilled_incomplete"
     queue = json.loads((tmp_path / "queue" / "human-review-queue.json").read_text())
     assert queue[0]["slides_dir"] is None
     assert "Drive" in queue[0]["critic_summary"]
+    assert queue[0]["state"] == rec.RENDER_INCOMPLETE_STATE
+
+
+def test_visibility_backfill_marks_drafted_when_disk_matches_intended(tmp_path, monkeypatch):
+    """Complement: when the DB row DOES carry slides_json and disk matches it
+    exactly, the backfill still produces a genuinely reviewable "drafted" entry
+    (not every backfill degrades to render_incomplete — only unverifiable ones)."""
+    import json
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+    draft_id = "1111aaaa-2222-0000-0000-000000000000"
+    slides = tmp_path / "carousel" / "2026-07-07-verified-topic-1111aaaa" / "slides"
+    slides.mkdir(parents=True)
+    (slides / "01.png").write_bytes(b"png")
+    row = dict(_rendered_row(draft_id), slides_json=json.dumps({"slides": [{"n": 1}]}))
+    out = rec._verify_visibility_or_backfill(row, dry_run=False)
+    assert out == "backfilled"
+    queue = json.loads((tmp_path / "queue" / "human-review-queue.json").read_text())
+    assert queue[0]["draft_id"] == draft_id
+    assert queue[0]["state"] != rec.RENDER_INCOMPLETE_STATE
 
 
 def test_visibility_dry_run_touches_nothing(tmp_path, monkeypatch):

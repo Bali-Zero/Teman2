@@ -3869,6 +3869,12 @@ async def test_render_carousel_default_branch_returns_tuple(monkeypatch, tmp_pat
         failures: list = []
 
     async def _fake_compose(slides, out_dir, topic, timeout_ms):
+        # A1 completeness gate (wr2_html_render_apply.derive_slide_count) re-derives
+        # slide count from disk — the fake must actually write what it claims to have
+        # rendered, or the gate correctly rejects it as an incomplete carousel.
+        slides_dir = out_dir / "slides"
+        slides_dir.mkdir(parents=True, exist_ok=True)
+        (slides_dir / "01.png").write_bytes(b"PNG")
         return _Res()
     monkeypatch.setattr(composer, "compose_carousel", _fake_compose)
     out = await html._render_carousel("d1", [{"headline": "X"}], tmp_path, False)

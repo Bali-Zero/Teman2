@@ -155,6 +155,71 @@ def _load_slides_json(slug_dir: Path) -> dict[str, Any]:
         raise PublishAborted(f"slides.json unreadable: {f} — {exc}") from exc
 
 
+def _find_queue_entry(*, slug: str, draft_id: str | None) -> dict[str, Any] | None:
+    """Read-only lookup in human-review-queue.json, matched by draft_id first
+    then by slug (same match order `_mark_queue_published` uses post-publish).
+    Returns None on any read/parse failure or no match."""
+    qp = _carousel_root().parent / "queue" / "human-review-queue.json"
+    if not qp.exists():
+        return None
+    try:
+        queue = json.loads(qp.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return None
+    if not isinstance(queue, list):
+        return None
+    for item in queue:
+        if isinstance(item, dict) and draft_id and item.get("draft_id") == draft_id:
+            return item
+    for item in queue:
+        if not isinstance(item, dict):
+            continue
+        cp = str(item.get("carousel_path") or "")
+        if item.get("topic_slug") == slug or cp.rstrip("/").endswith(slug):
+            return item
+    return None
+
+
+def _verify_publish_completeness(
+    *,
+    slug: str,
+    slug_dir: Path,
+    slides_data: dict[str, Any] | list[Any],
+    png_paths: list[Path],
+    draft_id: str,
+) -> None:
+    """Fail-closed pre-publish gate (Codex red-team CRITICAL #1, 2026-07-16):
+    this CLI is the ACTUAL production Instagram publisher (the WR2 Control
+    app shells out to it) and previously had zero completeness check —
+    `slides.json` existing/parsing was validated but never cross-checked
+    against how many PNGs were actually discovered, and the review-queue
+    entry's state was never consulted before publish. Two independent
+    refusals:
+
+    1. `slides.json` (this carousel's OWN render input, independent of what
+       ended up on disk) declares N slides but a different number of PNGs
+       were discovered -> refuse (the disk != intended half of the finding).
+    2. the matching review-queue entry, if any, is state=render_incomplete
+       -> refuse regardless of what the disk counts say — a human/automated
+       sweep explicitly marked this carousel as not verifiably complete.
+    """
+    slides = slides_data.get("slides", slides_data) if isinstance(slides_data, dict) else slides_data
+    if isinstance(slides, list) and slides:
+        expected = len(slides)
+        if len(png_paths) != expected:
+            raise PublishAborted(
+                f"completeness gate: slides.json declares {expected} slide(s) but "
+                f"{len(png_paths)} PNG(s) found in {slug_dir}/slides — refusing to "
+                f"publish an incomplete carousel"
+            )
+    entry = _find_queue_entry(slug=slug, draft_id=draft_id)
+    if entry is not None and entry.get("state") == "render_incomplete":
+        raise PublishAborted(
+            f"completeness gate: review-queue entry for slug={slug} is "
+            f"state=render_incomplete — refusing to publish"
+        )
+
+
 def _discover_slide_pngs(slug_dir: Path) -> list[Path]:
     """Return numbered slide PNGs sorted by their integer stem.
 
@@ -449,11 +514,18 @@ async def _run(args: argparse.Namespace) -> int:
     slug = args.slug
     slug_dir = _slug_dir(slug)
     # Validate slides.json exists / parses (raises PublishAborted otherwise).
-    _load_slides_json(slug_dir)
+    slides_data = _load_slides_json(slug_dir)
     png_paths = _discover_slide_pngs(slug_dir)
     logger.info("slug=%s slides=%d (%s)", slug, len(png_paths), [p.name for p in png_paths])
 
     draft_id = uuid.uuid5(_WR2_DRAFT_NAMESPACE, slug)
+    # CRITICAL #1 fail-closed gate: never publish a carousel whose disk count
+    # disagrees with its own slides.json, or whose queue entry says
+    # render_incomplete — see _verify_publish_completeness docstring.
+    _verify_publish_completeness(
+        slug=slug, slug_dir=slug_dir, slides_data=slides_data,
+        png_paths=png_paths, draft_id=str(draft_id),
+    )
     content_hash = _content_hash(png_paths)
     caption = _read_caption(args.caption_file)
 

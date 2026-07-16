@@ -412,7 +412,7 @@ async def _persist_session_create(
                 """
                 INSERT INTO visa_oracle_sessions
                     (session_id, quiz_answers, recommended_visas, ip_hash)
-                VALUES ($1, $2::jsonb, $3::jsonb, $4)
+                VALUES ($1, $2::text::jsonb, $3::text::jsonb, $4)
                 """,
                 session_id,
                 json.dumps(quiz_answers),
@@ -436,7 +436,7 @@ async def _persist_session_append_message(
             await conn.execute(
                 """
                 UPDATE visa_oracle_sessions
-                SET messages = messages || $2::jsonb
+                SET messages = messages || $2::text::jsonb
                 WHERE session_id = $1
                 """,
                 session_id,

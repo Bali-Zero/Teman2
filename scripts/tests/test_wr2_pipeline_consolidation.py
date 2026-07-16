@@ -158,7 +158,11 @@ class TestHtmlApplyLedger:
 
         slides_dir = tmp_path / "slides"
         slides_dir.mkdir()
-        (slides_dir / "slide_01.png").write_bytes(b"png")
+        # Codex red-team MEDIUM #7: real render output is numeric-stem only
+        # ("01.png"); a "slide_01.png" fixture doesn't match derive_slide_paths()
+        # (the shared filter now enforced end-to-end) and would spuriously read
+        # as "no PNGs after render".
+        (slides_dir / "01.png").write_bytes(b"png")
 
         conn = MagicMock()
         conn.execute = AsyncMock()

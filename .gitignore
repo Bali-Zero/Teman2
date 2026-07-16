@@ -282,6 +282,8 @@ lint_*.txt
 .cursorignore
 
 # Root-local artifacts and session output
+/output/
+/outputs/
 .CLAUDE.md.swp
 .next/
 .vercel/
@@ -529,12 +531,17 @@ openclaw
 !.claude/agents/wr2-design-architect-resources/brand-bali-zero.md
 !.claude/agents/wr2-design-architect-resources/brand-external-audit.md
 !.claude/agents/wr2-design-architect-resources/deep-research.md
+# T3.3 lane aggregators (PR #2548) — same explicit-allowlist discipline.
+!.claude/agents/README.md
+!.claude/agents/backend-verifier.md
+!.claude/agents/frontend-browser.md
+!.claude/agents/mcp-health.md
+!.claude/agents/spalla-review.md
 !.claude/commands/
 !.claude/scripts/
 !.claude/hooks/
 !.claude/rules/
 !.claude/skills/
-!.claude/agents/
 !.claude/agent-memory/
 !.claude/settings.json
 .serena/
