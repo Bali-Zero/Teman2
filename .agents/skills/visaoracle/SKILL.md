@@ -96,6 +96,10 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   Antara + CNN, as-of 2026-05-18; E28D Rp50.88T). Codex R2 spot-checks verified on disk: AppWizard
   onComplete is synchronous (packages/core/components/apps/AppWizard.tsx), api.ts hardcodes Fly
   fallback URL. Round 3 fired: Opus 4.8 xhigh fresh-context arbitration ZEN-vs-custom-evaluator.
+- 2026-07-17 (dawn): ROUND 3 verdict — custom Python evaluator (Opus 4.8 xhigh arbiter, confidence 0.85;
+  ZEN → authoring/visual only). RESEARCH PHASE CLOSED. Final draft composed:
+  docs/plans/2026-07-17-visa-oracle-v2/00-product-design.md — awaiting owner analysis (mandate firebreak:
+  worktree-only until analyzed). DeepSeek burn hunt still in flight.
 
 ## PENDING (W81 ledger, project-scoped)
 
