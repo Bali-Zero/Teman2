@@ -159,6 +159,23 @@ jobs:
             python scripts/lint_tcc_desktop_paths.py
           fi
 
+      # Claude-headless-limits lint runs FOR REAL on every PR (same reasoning
+      # as doc-executable-refs / tcc-desktop-paths above): pure repo-tree
+      # scan, no $HOME dependency, so CI can enforce it directly rather than
+      # only testing the tool's guilt+innocence corpus in isolation. Antidote
+      # for family #2 (Esiste ≠ Armato): the lint existed with 0 findings on
+      # the real repo but was wired into no workflow at all — this step arms
+      # it (SPEC-abcd.md Unita A, 2026-07-16).
+      - name: Claude-headless-limits lint (tool-armed -p/--print carries --max-budget-usd)
+        run: |
+          if [ -f scripts/lint/lint_claude_headless_limits.py ]; then
+            python3 scripts/lint/lint_claude_headless_limits.py
+          fi
+          if [ -f scripts/lint/test_lint_claude_headless_limits.py ]; then
+            python3 -m pip install --quiet pytest
+            python3 -m pytest scripts/lint/test_lint_claude_headless_limits.py -q
+          fi
+
       # The two ledger gates below run on EVERY PR (cheap: parse one markdown
       # file) — they are the reason this check is required at all.
       - name: PENDING-ARMS ledger parses (report smoke, exit 0 signaler)

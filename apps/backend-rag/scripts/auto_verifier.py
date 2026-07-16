@@ -122,7 +122,8 @@ def call_claude_verifier(
 
         try:
             result = subprocess.run(
-                ["claude", "--print", "--dangerously-skip-permissions"],
+                ["claude", "--print", "--dangerously-skip-permissions",
+                 "--max-budget-usd", "1"],
                 input=prompt, capture_output=True, text=True, timeout=60, env=env,
             )
         except subprocess.TimeoutExpired:

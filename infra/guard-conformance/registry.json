@@ -210,6 +210,11 @@
           "symbols": {},
           "tests": [],
           "also_covered_by": ["vaccine"]
+        },
+        "infra/claude-hooks/subagent_stop_verify.py": {
+          "scar": ["W80", "wave15-live-reap"],
+          "symbols": {},
+          "tests": ["infra/claude-hooks/test_subagent_stop_verify.py"]
         }
       },
       "exempt": {

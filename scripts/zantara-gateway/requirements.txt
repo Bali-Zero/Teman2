@@ -2,3 +2,4 @@
 aiohttp>=3.11,<4
 httpx>=0.27,<1
 mcp>=1.0,<2
+# optional SDK backend: claude-agent-sdk>=0.2,<1
