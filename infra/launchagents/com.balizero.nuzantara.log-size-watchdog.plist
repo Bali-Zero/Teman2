@@ -42,7 +42,7 @@
     <array>
       <string>/bin/bash</string>
       <string>-lc</string>
-      <string>if [[ -x /Users/nuzantara/Desktop/nuzantara-deploy/scripts/log_size_watchdog.sh ]]; then exec /Users/nuzantara/Desktop/nuzantara-deploy/scripts/log_size_watchdog.sh; fi; exec /Users/nuzantara/Desktop/nuzantara/scripts/log_size_watchdog.sh</string>
+      <string>if [[ -x /Users/nuzantara/nuzantara-deploy/scripts/log_size_watchdog.sh ]]; then exec /Users/nuzantara/nuzantara-deploy/scripts/log_size_watchdog.sh; fi; exec /Users/nuzantara/nuzantara/scripts/log_size_watchdog.sh</string>
     </array>
 
     <key>StartInterval</key>

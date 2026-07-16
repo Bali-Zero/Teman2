@@ -54,7 +54,7 @@ logger = logging.getLogger("mata_garuda.tools.intel_publisher")
 
 WAR_ROOM_ROOT = Path(os.environ.get(
     "WAR_ROOM_ROOT",
-    os.path.expanduser("~/Desktop/nuzantara/apps/war-room"),
+    os.path.expanduser("~/nuzantara/apps/war-room"),
 ))
 DEFAULT_CANVA = WAR_ROOM_ROOT / "output" / "canva" / "canva_pending.json"
 DEFAULT_SLIDES = WAR_ROOM_ROOT / "output" / "strategy" / "claude_slides.json"

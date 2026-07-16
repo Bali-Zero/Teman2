@@ -40,7 +40,7 @@ if [ "${MIGRATE_TO_DESKTOP_WRAPPER:-0}" != "1" ]; then
 fi
 # -----------------------------------------------------------------------------
 
-REPO="$HOME/Desktop/nuzantara"
+REPO="$HOME/nuzantara"
 REPO_WRAPPER="$REPO/apps/mata-garuda/scripts/matagaruda-cron-tcc-safe.sh"
 HOMEFORK="$HOME/scripts/matagaruda-cron-tcc-safe.sh"
 LA="$HOME/Library/LaunchAgents"

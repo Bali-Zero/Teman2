@@ -20,7 +20,7 @@ Kamu bisa tanya apa saja pakai Bahasa Indonesia, dan dia akan jawab dengan data 
 ### 2. Ketik perintah ini, lalu Enter:
 
 ```
-bash ~/Desktop/nuzantara/scripts/damar-node/install.sh
+bash ~/nuzantara/scripts/damar-node/install.sh
 ```
 
 Tunggu sampai selesai (5-10 menit). Kalau minta password, masukkan password Mac kamu.
@@ -42,7 +42,7 @@ Browser akan terbuka — pilih **damar@balizero.com** dan klik Izinkan.
 Buka Terminal, ketik ini lalu Enter:
 
 ```
-cd ~/Desktop/nuzantara && gemini
+cd ~/nuzantara && gemini
 ```
 
 Lalu tanya apa saja, contoh:

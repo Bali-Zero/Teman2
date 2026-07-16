@@ -865,7 +865,7 @@ console.log("\n" + "=".repeat(70));
 **Run the script:**
 
 ```bash
-cd /Users/nuzantara/Desktop/nuzantara/apps/mouth/scripts
+cd /Users/nuzantara/nuzantara/apps/mouth/scripts
 node generate_kbli_data.js
 ```
 
@@ -880,8 +880,8 @@ Search for: `const K = [`
 #### 3.2: Backup current data
 
 ```bash
-cp /Users/nuzantara/Desktop/nuzantara/apps/mouth/public/kbli-navigator/index.html \
-   /Users/nuzantara/Desktop/nuzantara/apps/mouth/public/kbli-navigator/index.html.backup
+cp /Users/nuzantara/nuzantara/apps/mouth/public/kbli-navigator/index.html \
+   /Users/nuzantara/nuzantara/apps/mouth/public/kbli-navigator/index.html.backup
 ```
 
 #### 3.3: Replace K array
@@ -1086,7 +1086,7 @@ Test these 20 critical queries:
 #### 1. Commit Changes
 
 ```bash
-cd /Users/nuzantara/Desktop/nuzantara
+cd /Users/nuzantara/nuzantara
 
 git add apps/mouth/public/kbli-navigator/index.html
 git add apps/mouth/scripts/kbli_english_keywords.json

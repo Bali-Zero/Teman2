@@ -7,7 +7,7 @@
 # (service nuzantara-postgres-readonly) itself, or from COST_LEDGER_DSN if the
 # operator sets it. READ-ONLY against Fly PG.
 #
-# RUNTIME HOME = the deploy worktree (~/Desktop/nuzantara-deploy).
+# RUNTIME HOME = the deploy worktree (~/nuzantara-deploy).
 # Kill-switch: COST_LEDGER_EXPORT_OFF=1
 
 set -uo pipefail
@@ -17,7 +17,7 @@ if [[ "${COST_LEDGER_EXPORT_OFF:-0}" == "1" ]]; then
     exit 0
 fi
 
-RUNTIME_ROOT="${COST_LEDGER_RUNTIME_ROOT:-$HOME/Desktop/nuzantara-deploy}"
+RUNTIME_ROOT="${COST_LEDGER_RUNTIME_ROOT:-$HOME/nuzantara-deploy}"
 EXPORTER="$RUNTIME_ROOT/scripts/cost_ledger_export.py"
 
 if [[ ! -f "$EXPORTER" ]]; then

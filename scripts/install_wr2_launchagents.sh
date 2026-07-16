@@ -1,7 +1,7 @@
 #!/bin/bash
 # install_wr2_launchagents.sh — copy + load War Room 2.0 LaunchAgents.
 #
-# Run ONCE from the worktree (or from ~/Desktop/nuzantara after merge):
+# Run ONCE from the worktree (or from ~/nuzantara after merge):
 #   ./scripts/install_wr2_launchagents.sh
 #
 # Supports two modes via the WR2_MODE env var:

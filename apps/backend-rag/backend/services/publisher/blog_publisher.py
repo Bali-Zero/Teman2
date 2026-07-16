@@ -16,7 +16,7 @@ Flow:
 
 Configuration:
     env ``BLOG_CONTENT_ROOT``        absolute dir (default:
-        ~/Desktop/nuzantara/apps/web/content/war-room)
+        ~/nuzantara/apps/web/content/war-room)
     env ``BLOG_SITE_URL``            base URL for rendered post (e.g.
         https://balizero.com)
     env ``BLOG_PUBLISH_SKIP_PUSH``   if "1", skip the push step (for local

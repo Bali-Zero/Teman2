@@ -10,7 +10,7 @@ Covers all phases implemented in Phase 0–4:
            DLQ phase distribution (D4.3)
 
 Run:
-    cd ~/Desktop/nuzantara
+    cd ~/nuzantara
     source apps/backend-rag/.venv/bin/activate
     python -m pytest scripts/tests/test_sentinel_v33.py -v
 """
@@ -261,7 +261,7 @@ class TestCommandValidation:
         from sentinel_lib.repairer import validate_restart_cmd
         # Write allowlist that explicitly does NOT include /usr/bin
         allowlist = tmp_agent_dir / "allowed_cmds.txt"
-        allowlist.write_text("python3 /Users/nuzantara/Desktop/nuzantara/scripts/\n")
+        allowlist.write_text("python3 /Users/nuzantara/nuzantara/scripts/\n")
         ok, reason = validate_restart_cmd("/usr/bin/python3 scripts/foo.py")
         assert not ok
         assert "allowed_cmds.txt" in reason
@@ -676,8 +676,11 @@ class TestDocGeneratorBlocklist:
         import scripts.generate_automations_reference as gen
         importlib.reload(gen)
 
-        # Should not raise
-        gen._check_output_safety(tmp_path / "docs" / "AUTOMATIONS_REFERENCE.md")
+        # Innocence companion to the two guilt tests above: an allowed output
+        # path must NOT raise (the function's documented contract is `-> None`
+        # on success — asserted explicitly so a future accidental `raise` here
+        # fails loudly instead of relying on pytest's uncaught-exception path).
+        assert gen._check_output_safety(tmp_path / "docs" / "AUTOMATIONS_REFERENCE.md") is None
 
     def test_format_schedule(self):
         import importlib

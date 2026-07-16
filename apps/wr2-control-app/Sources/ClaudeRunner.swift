@@ -67,7 +67,7 @@ final class ClaudeRunner {
     /// war-room relative paths resolve). Falls back to home if not present.
     static func workingDirectory() -> URL {
         let repo = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Desktop/nuzantara", isDirectory: true)
+            .appendingPathComponent("nuzantara", isDirectory: true)
         var isDir: ObjCBool = false
         if FileManager.default.fileExists(atPath: repo.path, isDirectory: &isDir), isDir.boolValue {
             return repo

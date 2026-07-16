@@ -21,7 +21,7 @@ Preconditions:
     - Migration 187 applied on target DB
 
 Run:
-    cd /Users/nuzantara/Desktop/nuzantara
+    cd /Users/nuzantara/nuzantara
     PYTHONPATH=. python scripts/probes/intel_lake_e2e_probe.py --wait 900
 
 Exit codes:

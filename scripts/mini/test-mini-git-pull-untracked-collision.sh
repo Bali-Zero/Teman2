@@ -23,7 +23,7 @@ echo "[test] workdir: $WORK"
 
 export HOME="$WORK"
 mkdir -p "$WORK/logs" "$WORK/.agent/decisions/state" "$WORK/Desktop"
-ln -sfn "$LOCAL" "$WORK/Desktop/nuzantara"
+ln -sfn "$LOCAL" "$WORK/nuzantara"
 export TELEGRAM_BOT_TOKEN=""
 
 mkdir -p "$REMOTE"

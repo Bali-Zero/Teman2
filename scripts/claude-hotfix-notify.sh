@@ -57,7 +57,7 @@ if [ "$IS_HOTFIX" -eq 0 ]; then
 fi
 
 # Log to repo-local audit file (searchable, version-controlled as artifact).
-REPO_ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || echo "$HOME/Desktop/nuzantara")"
+REPO_ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || echo "$HOME/nuzantara")"
 AUDIT_DIR="$REPO_ROOT/shared"
 mkdir -p "$AUDIT_DIR" 2>/dev/null
 AUDIT_FILE="$AUDIT_DIR/hotfix_audit.jsonl"

@@ -2,7 +2,7 @@
 (W81/#2, incident 2026-07-05->07).
 
 A sibling session left a tracked-deleted plist (unstaged) in the deploy clone
-~/Desktop/nuzantara-deploy. The OLD single DIRTY block treated every porcelain
+~/nuzantara-deploy. The OLD single DIRTY block treated every porcelain
 line the same: log first entry, alert once (6h cooldown), exit 1 -- forever,
 because the clone stays dirty until a human intervenes. Code propagation to
 the WR2 runtime froze for 2+ days while the alert rotted behind cooldown.

@@ -5,7 +5,7 @@
 set -uo pipefail
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-REPO_ROOT="${MERGE_TRAIN_REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${MERGE_TRAIN_REPO_ROOT:-$HOME/nuzantara}"
 LOG_DIR="$HOME/logs"
 mkdir -p "$LOG_DIR"
 

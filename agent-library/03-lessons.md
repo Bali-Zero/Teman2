@@ -190,7 +190,7 @@ single file).
 ### 18. plist worktree path trap
 
 **Sintesi**: sub-session che modifica plist live setta `PYTHONPATH`/`ORGANISM_RULES_PATH` al proprio worktree path. Quando worktree muore (auto-cleanup post-merge o manual remove), daemon error loop FileNotFoundError. P1 incident 2026-05-08, 4h24min.
-**Quando applica**: qualsiasi modifica a plist loaded in launchd. Tutte `EnvironmentVariables` con path filesystem → main checkout `~/Desktop/nuzantara/`, MAI worktree.
+**Quando applica**: qualsiasi modifica a plist loaded in launchd. Tutte `EnvironmentVariables` con path filesystem → main checkout `~/nuzantara/`, MAI worktree.
 **Fonte primaria**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_plist_worktree_path_trap.md`
 **Pattern correlato**: meta `Path-dependence trap`
 

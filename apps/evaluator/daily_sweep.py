@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Daily Indexing Sweep — Phase 1 (Articles) + Phase 2 (KBLI)
-Runs from: /Users/nuzantara/Desktop/nuzantara
+Runs from: /Users/nuzantara/nuzantara
 Activate venv first: source apps/backend-rag/.venv/bin/activate
 """
 import json
@@ -19,7 +19,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path("/Users/nuzantara/Desktop/nuzantara")
+PROJECT_ROOT = Path("/Users/nuzantara/nuzantara")
 EVALUATOR = PROJECT_ROOT / "apps" / "evaluator"
 VENV_PYTHON = PROJECT_ROOT / "apps" / "backend-rag" / ".venv" / "bin" / "python"
 

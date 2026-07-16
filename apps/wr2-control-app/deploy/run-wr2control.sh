@@ -2,7 +2,7 @@
 # run-wr2control.sh — launchd wrapper for the WR2 Control ambient app.
 # Genes: G2_heartbeat, G5_kill_switch, G9_fail_visible (audit §6/D2 vendoring, 2026-07-14).
 # Canon: apps/wr2-control-app/deploy/run-wr2control.sh (tracked in-repo; the plist
-# ProgramArguments point at THIS path, which lives under Desktop/nuzantara/ — no
+# ProgramArguments point at THIS path, which lives under nuzantara/ — no
 # HOME-fork declared-pair required, per infra/organ-conformance's own exemption
 # for repo-checkout-resident payloads).
 #

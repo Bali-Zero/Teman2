@@ -88,7 +88,7 @@ api.include_router(dashboard.router)  # [NEW] Interactive map dashboard for Stre
 
 ### 3. Streamlit Frontend Config Updated
 
-**File:** `/Users/nuzantara/Desktop/nuzantara/app_dashboard.py`
+**File:** `/Users/nuzantara/nuzantara/app_dashboard.py`
 
 Changed:
 
@@ -139,7 +139,7 @@ This points to the Mac Air backend server (Fly.io local equivalent).
 1. **Run Streamlit dashboard:**
 
    ```bash
-   cd ~/Desktop/nuzantara
+   cd ~/nuzantara
    streamlit run app_dashboard.py
    ```
 

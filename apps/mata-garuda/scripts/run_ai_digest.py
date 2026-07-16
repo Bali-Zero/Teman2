@@ -10,7 +10,7 @@ This is the operational script — it bypasses the MetaChain loop
 tools directly in Python.
 
 Usage:
-    cd ~/Desktop/nuzantara/apps/mata-garuda
+    cd ~/nuzantara/apps/mata-garuda
     source .venv/bin/activate
     python scripts/run_ai_digest.py
 """

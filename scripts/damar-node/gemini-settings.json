@@ -17,14 +17,16 @@
   },
   "mcpServers": {
     "nuzantara": {
-      "command": "/Users/macbook/Desktop/nuzantara/apps/nuzantara-mcp/.venv/bin/python",
-      "args": ["/Users/macbook/Desktop/nuzantara/apps/nuzantara-mcp/nuzantara_mcp/server_agent.py"],
+      "command": "/Users/macbook/nuzantara/apps/nuzantara-mcp/.venv/bin/python",
+      "args": [
+        "/Users/macbook/nuzantara/apps/nuzantara-mcp/nuzantara_mcp/server_agent.py"
+      ],
       "env": {
         "NUZANTARA_BACKEND_URL": "https://nuzantara-rag.fly.dev",
         "NUZANTARA_API_KEY": "REDACTED-ROTATED-KEY",
         "AGENT_ROLE": "visa_specialist",
         "AGENT_NAME": "Damar",
-        "PYTHONPATH": "/Users/macbook/Desktop/nuzantara/apps/nuzantara-mcp"
+        "PYTHONPATH": "/Users/macbook/nuzantara/apps/nuzantara-mcp"
       }
     }
   }

@@ -18,9 +18,9 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python</string>
+    <string>/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python</string>
     <string>-u</string>
-    <string>/Users/nuzantara/Desktop/nuzantara/scripts/wa_mirror_intake_sweeper.py</string>
+    <string>/Users/nuzantara/nuzantara/scripts/wa_mirror_intake_sweeper.py</string>
   </array>
 
   <key>EnvironmentVariables</key>

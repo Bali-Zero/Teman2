@@ -75,7 +75,7 @@ LINKEDIN_ACCESS_TOKEN=<oauth2>
 LINKEDIN_AUTHOR_URN=urn:li:person:<id>        # OR urn:li:organization:<id>
 
 # Publisher — Blog (opzionali, hanno default)
-BLOG_CONTENT_ROOT=/Users/nuzantara/Desktop/nuzantara/apps/web/content/war-room
+BLOG_CONTENT_ROOT=/Users/nuzantara/nuzantara/apps/web/content/war-room
 BLOG_SITE_URL=https://balizero.com
 BLOG_URL_PREFIX=/blog
 BLOG_PUBLISH_SKIP_PUSH=                       # set to "1" for local dry-runs

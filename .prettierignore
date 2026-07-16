@@ -108,3 +108,7 @@ docs/runbooks/README.md
 # canonical format (internal sha256 checksum); prettier's list-indent fights the
 # generator = format deadlock, same class as INDEX.md above (2026-07-13).
 apps/organism/organism/organs_registry.yaml
+
+# Machine-parsed ledgers (grep'd verbatim by scripts/pending_arms_report.py + immune-enforcement CI —
+# prettier's markdown escaping corrupts entries like `operator[...]` and `**CLOSED`)
+.claude/skills/modus/PENDING-ARMS.md

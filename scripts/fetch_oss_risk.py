@@ -14,7 +14,7 @@ Usage:
 import argparse, json, os, time, urllib.request, urllib.error
 from pathlib import Path
 
-OSS_GT = Path("/Users/balizero/Desktop/nuzantara/data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json")
+OSS_GT = Path("/Users/balizero/nuzantara/data/source_documents/KBLI_2025_OSS_GROUND_TRUTH.json")
 OUT = Path("/tmp/oss_risk_raw.jsonl")
 # Static app credential of the OSS RBA iOS app (gw.oss.go.id) — NOT a Bali Zero secret:
 # it is embedded in the public government app, identical for every user, and unlocks only

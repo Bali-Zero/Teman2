@@ -171,7 +171,7 @@ Result: 62013 ranks first (correct!)
 ### Step 1: Backup Current File
 
 ```bash
-cd /Users/nuzantara/Desktop/nuzantara/apps/mouth/public/kbli-navigator
+cd /Users/nuzantara/nuzantara/apps/mouth/public/kbli-navigator
 cp index.html index.html.backup_before_phase2_$(date +%Y%m%d_%H%M%S)
 ```
 
@@ -578,7 +578,7 @@ function filterByRisk(level) {
 
 ### Full Enhanced Search System
 
-**Location:** `/Users/nuzantara/Desktop/nuzantara/apps/mouth/public/kbli-navigator/index.html`
+**Location:** `/Users/nuzantara/nuzantara/apps/mouth/public/kbli-navigator/index.html`
 
 **Insert Position:** Around line 2795 (before original `searchKBLI()` function)
 
@@ -1078,7 +1078,7 @@ Before deployment, verify these still work:
 
 ```bash
 # 1. Verify file integrity
-cd /Users/nuzantara/Desktop/nuzantara/apps/mouth/public/kbli-navigator
+cd /Users/nuzantara/nuzantara/apps/mouth/public/kbli-navigator
 wc -l index.html
 # Expected: ~3500 lines (increased from ~3150)
 
@@ -1104,7 +1104,7 @@ open index.html
 
 ```bash
 # 1. Commit changes
-cd /Users/nuzantara/Desktop/nuzantara
+cd /Users/nuzantara/nuzantara
 git add apps/mouth/public/kbli-navigator/index.html
 git commit -m "feat(kbli): Phase 2 - Add fuzzy search, relevance scoring, and suggestions
 
@@ -1150,7 +1150,7 @@ If Phase 2 causes issues:
 
 ```bash
 # Option 1: Restore from backup
-cd /Users/nuzantara/Desktop/nuzantara/apps/mouth/public/kbli-navigator
+cd /Users/nuzantara/nuzantara/apps/mouth/public/kbli-navigator
 cp index.html.backup_before_phase2_YYYYMMDD_HHMMSS index.html
 git add index.html
 git commit -m "revert: Rollback Phase 2 (temporary)"

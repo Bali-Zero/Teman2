@@ -5,15 +5,15 @@
 # Lives OUTSIDE ~/Desktop (W84: launchd loses TCC grant on ~/Desktop).
 set -uo pipefail
 LOG="$HOME/logs/wr2-queue-pull.log"
-DEST_DIR="$HOME/Desktop/nuzantara/apps/war-room/output/queue"
-SRC_DIR="/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/queue"
+DEST_DIR="$HOME/nuzantara/apps/war-room/output/queue"
+SRC_DIR="/Users/nuzantara/nuzantara/apps/war-room/output/queue"
 # WR2 Insights: the analyst reasoning (real findings) lives only on Pro under the skill dir.
 AMEND_DEST="$HOME/.claude/skills/bali-zero-brand/_proposed-amendments"
 AMEND_SRC="/Users/nuzantara/.claude/skills/bali-zero-brand/_proposed-amendments"
 # Carousel render PNGs — synced from Pro (the renderer) from now on, so new caroselli
 # show their cover in the app. Pull-only, additive (never deletes M5-local carousels).
-CAROUSEL_DEST="$HOME/Desktop/nuzantara/apps/war-room/output/carousel"
-CAROUSEL_SRC="/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/carousel"
+CAROUSEL_DEST="$HOME/nuzantara/apps/war-room/output/carousel"
+CAROUSEL_SRC="/Users/nuzantara/nuzantara/apps/war-room/output/carousel"
 INTERVAL="${WR2_QUEUE_PULL_INTERVAL:-300}"
 mkdir -p "$DEST_DIR" "$AMEND_DEST" "$CAROUSEL_DEST"
 
@@ -40,7 +40,7 @@ ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 # reverted them within one poll cycle. The merge keeps Pro as SSOT but protects
 # local published* entries and emits a push-back list replayed into Pro via the
 # canonical wr2_queue_writer.py (exact ref-code, IG-URL validated writer-side).
-MERGE_PY="$HOME/Desktop/nuzantara/scripts/wr2_queue_pull_merge.py"
+MERGE_PY="$HOME/nuzantara/scripts/wr2_queue_pull_merge.py"
 
 while true; do
   for f in human-review-queue.json queue-archive.json; do
@@ -70,7 +70,7 @@ except Exception: rep={}
 for e in rep.get("push_back", []): print(e["ref_code"], e["ig_url"])' | \
             while read -r ref url; do
               if ssh -o ConnectTimeout=10 -o BatchMode=yes pro \
-                   "cd ~/Desktop/nuzantara && python3 scripts/wr2_queue_writer.py mark-published '$ref' '$url'" >>"$LOG" 2>&1; then
+                   "cd ~/nuzantara && python3 scripts/wr2_queue_writer.py mark-published '$ref' '$url'" >>"$LOG" 2>&1; then
                 echo "[$(ts)] pushed back $ref -> published on Pro" >> "$LOG"
               else
                 echo "[$(ts)] WARN push-back $ref failed (state not publishable on Pro yet?)" >> "$LOG"

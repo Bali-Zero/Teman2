@@ -1,7 +1,7 @@
 """Cron entrypoint for Connector L1 — nightly 04:00 WITA on Pro.
 
 Usage:
-    cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag
+    cd /Users/nuzantara/nuzantara/apps/backend-rag
     source .venv/bin/activate
     PYTHONPATH=. python -m backend.services.cognitive.connector_cli
 

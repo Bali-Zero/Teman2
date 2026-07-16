@@ -20,7 +20,7 @@
 
 set -uo pipefail
 
-WRAPPER="${WR2_WRAPPER:-$HOME/Desktop/nuzantara/scripts/wr2-cron-wrapper.sh}"
+WRAPPER="${WR2_WRAPPER:-$HOME/nuzantara/scripts/wr2-cron-wrapper.sh}"
 LOG_DIR="${WR2_LOG_DIR:-$HOME/.openclaw/workspace/logs/war-room-v2}"
 mkdir -p "$LOG_DIR"
 

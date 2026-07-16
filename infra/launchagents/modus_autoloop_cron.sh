@@ -10,7 +10,7 @@
 #   - single-machine guard, K-cap, deferred-on-dead-gate.
 set -uo pipefail
 
-REPO="$HOME/Desktop/nuzantara"
+REPO="$HOME/nuzantara"
 PY="/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3"
 [ -x "$PY" ] || PY="python3"
 LOGDIR="$HOME/.local/state/modus-autoloop"

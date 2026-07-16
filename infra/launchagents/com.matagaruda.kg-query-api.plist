@@ -13,7 +13,7 @@
 		<key>PATH</key>
 		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
 		<key>PYTHONPATH</key>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+		<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 	</dict>
 	<key>KeepAlive</key>
 	<true/>
@@ -32,6 +32,6 @@
 	<key>ThrottleInterval</key>
 	<integer>15</integer>
 	<key>WorkingDirectory</key>
-	<string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+	<string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
 </dict>
 </plist>

@@ -17,7 +17,7 @@ for the full design.
 | Run error log      | `~/.agent/nb-mitochondrial/logs/nb-monitor.error.log`                       |
 | LaunchAgent plist  | `~/Library/LaunchAgents/com.nuzantara.nb-mitochondrial-monitor.daily.plist` |
 | Repo plist source  | `infra/launchagents/com.nuzantara.nb-mitochondrial-monitor.daily.plist`     |
-| Weekly reports     | `~/Desktop/nuzantara/research/nb-monitor/report-YYYY-Www.md`                |
+| Weekly reports     | `~/nuzantara/research/nb-monitor/report-YYYY-Www.md`                        |
 | CLI dashboard      | `scripts/nb-monitor/show.py`                                                |
 
 ## Initial deploy
@@ -64,7 +64,7 @@ tail -f ~/.agent/nb-mitochondrial/logs/nb-monitor.error.log
 cd apps/mata-garuda && .venv/bin/python -m mata_garuda.scripts.nb_monitor.run --once --report
 ```
 
-Report appears at `~/Desktop/nuzantara/research/nb-monitor/report-YYYY-Www.md`.
+Report appears at `~/nuzantara/research/nb-monitor/report-YYYY-Www.md`.
 
 ## Troubleshooting
 

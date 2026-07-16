@@ -21,7 +21,7 @@ if [[ -f "$SECRETS_FILE" ]]; then
 fi
 
 # Qdrant Cloud credentials (from backend .env)
-QDRANT_ENV="$HOME/Desktop/nuzantara/apps/backend-rag/.env"
+QDRANT_ENV="$HOME/nuzantara/apps/backend-rag/.env"
 if [[ -f "$QDRANT_ENV" ]]; then
     QDRANT_URL=$(grep '^QDRANT_URL=' "$QDRANT_ENV" | cut -d= -f2-)
     QDRANT_API_KEY=$(grep '^QDRANT_API_KEY=' "$QDRANT_ENV" | cut -d= -f2-)

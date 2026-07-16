@@ -81,7 +81,7 @@ def _gateway_script() -> str:
     here = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tg_notify.py")
     if os.path.isfile(here):
         return here
-    root = os.environ.get("NUZANTARA_ROOT", os.path.expanduser("~/Desktop/nuzantara"))
+    root = os.environ.get("NUZANTARA_ROOT", os.path.expanduser("~/nuzantara"))
     return os.path.join(root, "scripts", "tg_notify.py")
 
 

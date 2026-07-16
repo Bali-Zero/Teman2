@@ -3,7 +3,7 @@
 Mata Garuda — Public Channel runner.
 
 Usage:
-    cd ~/Desktop/nuzantara/apps/mata-garuda
+    cd ~/nuzantara/apps/mata-garuda
     source .venv/bin/activate
     python scripts/run_public_channel.py
 

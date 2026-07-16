@@ -12,12 +12,12 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/nuzantara/Desktop/nuzantara/scripts/wa_corpus_daily_run.sh</string>
+    <string>/Users/nuzantara/nuzantara/scripts/wa_corpus_daily_run.sh</string>
   </array>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-    <key>WA_CORPUS_REPO_ROOT</key><string>/Users/nuzantara/Desktop/nuzantara</string>
+    <key>WA_CORPUS_REPO_ROOT</key><string>/Users/nuzantara/nuzantara</string>
     <key>WA_CORPUS_MEMBERS_CONFIG</key><string>/Users/nuzantara/.config/nuzantara/wa_corpus_members.json</string>
   </dict>
   <key>StartCalendarInterval</key>

@@ -8,7 +8,7 @@
 # Idempotent: safe to re-run.
 set -euo pipefail
 
-REPO_ROOT="/Users/nuzantara/Desktop/nuzantara"
+REPO_ROOT="/Users/nuzantara/nuzantara"
 CELL_DIR="$REPO_ROOT/apps/cell"
 SRC_PLIST="$CELL_DIR/com.cell.organism.plist"
 DST_PLIST="$HOME/Library/LaunchAgents/com.cell.organism.plist"

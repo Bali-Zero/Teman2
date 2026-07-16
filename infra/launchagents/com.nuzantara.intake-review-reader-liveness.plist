@@ -17,7 +17,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/nuzantara/Desktop/nuzantara/scripts/intake_review_reader_liveness.sh</string>
+    <string>/Users/nuzantara/nuzantara/scripts/intake_review_reader_liveness.sh</string>
   </array>
 
   <key>StartInterval</key>

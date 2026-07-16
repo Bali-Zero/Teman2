@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-REPO="$HOME/Desktop/nuzantara"
+REPO="$HOME/nuzantara"
 APP_DIR="$REPO/apps/mata-garuda"
 DB="$APP_DIR/data/knowledge.db"
 LOG_DIR="$HOME/logs"

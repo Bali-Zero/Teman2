@@ -18,7 +18,7 @@ Preconditions:
     - Migration 187 NOT required here (probe uses topic prefix barrier)
 
 Run:
-    cd /Users/nuzantara/Desktop/nuzantara
+    cd /Users/nuzantara/nuzantara
     PYTHONPATH=apps/backend-rag python scripts/probes/wr2_e2e_probe.py
 
 Exit codes:

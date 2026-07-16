@@ -13,7 +13,7 @@
 set -e
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
-REPO_ROOT="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${REPO_ROOT:-$HOME/nuzantara}"
 AUDIT_SCRIPT="$HOME/scripts/audit_launchd_crons.py"
 STATE_DIR="$HOME/.agent/decisions"
 STATE_FILE="$STATE_DIR/audit-launchd-last-summary.json"
@@ -143,7 +143,7 @@ $RECENT_LIST
 Snapshot: $ARCHIVE_FILE"
 
     GATEWAY="$(dirname "$0")/tg_notify.py"
-    [ -f "$GATEWAY" ] || GATEWAY="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    [ -f "$GATEWAY" ] || GATEWAY="$HOME/nuzantara/scripts/tg_notify.py"
     python3 "$GATEWAY" --tier digest --source audit-launchd-daily \
         --dedup-key "audit-launchd-daily:$(hostname -s):$TODAY" -- "$MSG" > /dev/null 2>&1 || true
 fi

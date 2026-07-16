@@ -135,7 +135,7 @@ trap 'rm -f "$PIDFILE"' EXIT
 #     ssh-localhost trampoline in non-ssh contexts (sshd holds FDA, children inherit).
 # (4) hygiene: stdin </dev/null; empty MCP config (each server is a sync-init
 #     hang risk in -p mode); OAuth token from env, Keychain can be LOCKED here.
-REPO="$HOME/Desktop/nuzantara"
+REPO="$HOME/nuzantara"
 MAX_WALL_S="${{{var}_MAX_WALL_S:-3300}}"
 # claude binary is NOT at the same path fleet-wide (Mini: /opt/homebrew symlink;
 # Pro: ~/.local/bin only — healer-pro first tick died exit=127 on a hardcoded

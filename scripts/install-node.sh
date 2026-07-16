@@ -9,7 +9,7 @@ set -euo pipefail
 : "${NAME:?ERROR: NAME is required (e.g. Damar, Krisna)}"
 : "${TOKEN:?ERROR: TOKEN is required (API key from admin)}"
 
-PROJECT_DIR="$HOME/Desktop/nuzantara"
+PROJECT_DIR="$HOME/nuzantara"
 GATEWAY_DIR="$HOME/.zantara-gateway"
 
 GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[1;33m'; NC='\033[0m'
