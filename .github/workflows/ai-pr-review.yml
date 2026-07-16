@@ -97,7 +97,7 @@ jobs:
         if: steps.guard.outputs.has_token == 'true' && steps.input.outputs.diff_bytes != '0'
         uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: "24"
 
       - name: Install Claude CLI
         if: steps.guard.outputs.has_token == 'true' && steps.input.outputs.diff_bytes != '0'
