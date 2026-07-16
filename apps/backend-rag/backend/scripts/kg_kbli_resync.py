@@ -13,6 +13,15 @@ WHAT IT SYNCS (1:1 canonical fields only — no derivations):
   - name / name_id / name_en  ← judul + English title maps (curated wins over
     generated, mirroring apps/mouth/src/lib/kbli-data.ts precedence)
   - description               ← uraian
+  - properties.uraian         ← uraian (2026-07-16: this used to be left
+    stale even after a resync — the router (`kbli_notebook.py`
+    `props.get("uraian", node["description"])`) PREFERS properties.uraian
+    over the description column, so a code whose properties.uraian carried
+    old subgroup-bleed text (e.g. 68112's 6812-nonresidential contamination)
+    kept serving the wrong text to `inspect_kbli` even though `description`
+    itself had already been corrected. Live audit found 930 kbli codes with
+    this exact drift. Now synced together with description, same source
+    field, same change-detection.)
   - properties.pma_status     ← pma_status
   - properties.{whatItMeans, whatYouNeed, baliContext, whatChanged,
     zantaraOpener}            ← intel_2026.* (only keys present; never nulled)
@@ -113,6 +122,8 @@ async def main() -> None:
             name = f"{en.upper()} ({judul.upper()})" if en else judul.upper()
 
             new_props = dict(props)
+            if uraian:
+                new_props["uraian"] = uraian
             if pma:
                 new_props["pma_status"] = pma
             for k in INTEL_KEYS:
