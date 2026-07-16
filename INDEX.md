@@ -151,6 +151,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 <!-- DOCSYNC:SKILLS_INDEX_START -->
 | Skill | Description (truncated) |
 | ----- | ----------------------- |
+| `.claude/skills/kbli-navigator/` | "KBLI Navigator corner — the live shared context for ALL KBLI corpus/product work (dataset, gold, KG, editorial, kbli pages on balizero.com). Load BEFORE tou... |
 | `.claude/skills/modus/` | USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content — coding or not. The master operating loop of the organism: TRIAGE ... |
 <!-- DOCSYNC:SKILLS_INDEX_END -->
 

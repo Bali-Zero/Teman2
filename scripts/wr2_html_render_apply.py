@@ -47,6 +47,7 @@ import sys
 import threading
 import time
 import uuid
+from enum import Enum
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -1040,6 +1041,131 @@ async def _ensure_live(conn: "asyncpg.Connection", dsn: str) -> "asyncpg.Connect
     return conn
 
 
+# ── take_label hard gate (evidence-carved, 2026-07-16) ──────────────────────────
+#
+# composer.py's _check_take_label_variety is WARN-only by design (it sees one
+# slide, never queue/publish state). THIS worker DOES know that state (via the
+# review queue, same source _append_review_queue already reads for its
+# REPOINTABLE_STATES contract), so the hard fail lives here: a genuinely new,
+# not-yet-published draft carrying the retired "OUR TAKE"/"OUR READ" anchor is
+# blocked before Playwright/Drive spend; a REPOINT re-render of an
+# already-published/archived legacy carousel is exempt (history is immutable —
+# warn only, via composer's per-slide check).
+
+
+def _take_label_hard_gate_violations(slides: list[dict]) -> list[str]:
+    """Pure function, no I/O — collects banned take_label hits across every
+    slide. Reuses composer's single banned-set checker so the WARN gate and
+    this HARD gate can never drift apart on what counts as a violation."""
+    from wr2_html_renderer.composer import _take_label_violation
+
+    hits: list[str] = []
+    for i, slide in enumerate(slides, 1):
+        hit = _take_label_violation(slide)
+        if hit:
+            hits.append(f"slide {i}: {hit!r}")
+    return hits
+
+
+def _queue_state_for_draft(draft_id: str, queue: list[dict]) -> str | None:
+    """Pure lookup: the existing queue entry's state for this draft_id, or
+    None if this draft_id has never been queued before (a brand-new draft,
+    never a repoint). NOTE (2026-07-16 red-team finding #1): this None also
+    fires for an entry that DOES exist but has no `state` key at all (legacy
+    pre-state-contract row) -- the two cases are NOT the same thing and a
+    caller that needs to tell them apart must use _queue_entry_for_draft,
+    not this function. Kept as-is for the callers that only ever wanted the
+    narrower "what's the state string" answer."""
+    for item in queue:
+        if isinstance(item, dict) and item.get("draft_id") == draft_id:
+            return item.get("state")
+    return None
+
+
+def _queue_entry_for_draft(draft_id: str, queue: list[dict]) -> dict | None:
+    """Pure lookup: the existing queue entry (the raw dict) for this
+    draft_id, or None if this draft_id has never been queued before. Unlike
+    _queue_state_for_draft, this keeps "never queued" (entry is None) and
+    "queued but no state field" (entry is a dict, entry.get('state') is
+    None) as two distinct, distinguishable outcomes -- collapsing them was
+    exactly the bug in finding #1 of the 2026-07-16 red-team."""
+    for item in queue:
+        if isinstance(item, dict) and item.get("draft_id") == draft_id:
+            return item
+    return None
+
+
+class PrepublishStatus(Enum):
+    """Tri-state verdict for the take_label hard gate (2026-07-16 red-team
+    finding #1 fix). The previous `_is_prepublish_draft` bool collapsed
+    THREE semantically distinct cases into a single True/False:
+
+    - a genuinely new draft (never queued, or queued in a _REPOINTABLE_STATE)
+      -- hard-gating this is correct and intended.
+    - a legacy entry with NO `state` field at all (predates the state
+      contract) -- this is history, same as published/archived, and must
+      never be hard-gated: a re-render must WARN only, never brick it via
+      `release_lease_permanent`.
+    - the queue file being unreadable/corrupt/malformed -- a transient I/O
+      failure, which is NOT evidence either way about the draft's real
+      status. Treating it as "safe to hard-gate" (the old default) meant an
+      I/O hiccup could trigger the SAME irreversible `render_failed` mutation
+      as a genuinely bad new draft. This case must alert + allow retry, and
+      must NEVER by itself cause a permanent state mutation.
+    """
+
+    PREPUBLISH = "prepublish"
+    IMMUTABLE = "immutable"
+    UNKNOWN = "unknown"
+
+
+def _prepublish_status(draft_id: str, *, queue_path: Path | None = None) -> PrepublishStatus:
+    """Pure tri-state classifier -- see PrepublishStatus for the contract.
+    Best-effort UNLOCKED peek -- this only decides WARN/HARD/UNKNOWN, not
+    the queue write itself (that stays behind _append_review_queue's fcntl
+    lock)."""
+    import json as _json
+
+    qp = queue_path if queue_path is not None else (_default_output_root() / "queue" / "human-review-queue.json")
+    if not qp.exists():
+        # No queue has ever been written -- a legitimate "nothing published
+        # yet" state, not ambiguity. Safe to treat as a brand-new draft.
+        return PrepublishStatus.PREPUBLISH
+    try:
+        raw = qp.read_text(encoding="utf-8")
+    except OSError:
+        return PrepublishStatus.UNKNOWN
+    try:
+        queue = _json.loads(raw)
+    except ValueError:
+        return PrepublishStatus.UNKNOWN
+    if not isinstance(queue, list):
+        return PrepublishStatus.UNKNOWN
+
+    entry = _queue_entry_for_draft(draft_id, queue)
+    if entry is None:
+        return PrepublishStatus.PREPUBLISH
+    state = entry.get("state")
+    if state is None:
+        # Legacy entry, no state field at all. Cannot prove this is new --
+        # treat as immutable history, same as published/archived: never
+        # hard-gate on an absence of information.
+        return PrepublishStatus.IMMUTABLE
+    if state in _REPOINTABLE_STATES:
+        return PrepublishStatus.PREPUBLISH
+    return PrepublishStatus.IMMUTABLE
+
+
+def _is_prepublish_draft(draft_id: str, *, queue_path: Path | None = None) -> bool:
+    """Back-compat bool view over _prepublish_status, for callers that only
+    need the PREPUBLISH / not-PREPUBLISH split. UNKNOWN collapses to False
+    here (never hard-gate on ambiguity) -- a caller that must distinguish
+    UNKNOWN (alert + retry, no mutation) from IMMUTABLE (silent warn-only)
+    MUST call _prepublish_status directly, as _apply_one's take_label gate
+    does."""
+    return _prepublish_status(draft_id, queue_path=queue_path) is PrepublishStatus.PREPUBLISH
+
+
 # ── apply one draft ──────────────────────────────────────────────────────────────
 async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str:
     """Full lifecycle for one draft. Uses a dedicated connection for the heartbeat so it
@@ -1073,6 +1199,31 @@ async def _apply_one(pool_conn_dsn: str, draft_id: uuid.UUID, owner: str) -> str
         # disk later. Threaded through to _publish_visibility so meta.json and
         # the queue entry persist real ground truth (Codex red-team HIGH #4).
         intended_slide_count = len(slides) if isinstance(slides, list) else 0
+
+        # take_label hard gate (2026-07-16, tri-state fix same day per
+        # red-team finding #1) — fail BEFORE the ~15min render + Drive spend,
+        # but ONLY for a genuinely new prepublish draft. See PrepublishStatus
+        # docstring: IMMUTABLE (published/archived/legacy-no-state) is
+        # WARN-only forever; UNKNOWN (queue unreadable/corrupt) alerts and
+        # lets the render proceed -- an I/O hiccup must never itself trigger
+        # the irreversible release_lease_permanent(status="render_failed").
+        take_label_hits = _take_label_hard_gate_violations(slides)
+        if take_label_hits:
+            reason = f"take_label banned: {'; '.join(take_label_hits)}"
+            status = _prepublish_status(str(draft_id))
+            if status is PrepublishStatus.PREPUBLISH:
+                await _pg.release_lease_permanent(main_conn, draft_id=draft_id, status="render_failed", reason=reason)
+                await _ops_alert(f"WR2 HTML: draft {draft_id} {reason} -> render_failed (evidence-carved retired-anchor gate)")
+                return "take_label_banned"
+            if status is PrepublishStatus.UNKNOWN:
+                await _ops_alert(
+                    f"WR2 HTML: draft {draft_id} {reason} -- queue state UNKNOWN "
+                    f"(queue unreadable/corrupt), skipping hard gate this run, NOT a "
+                    f"permanent mutation, retry next launchd tick"
+                )
+            # IMMUTABLE (or UNKNOWN, alerted above): warn-only, render
+            # proceeds -- matches composer.py's WARN-only rationale for
+            # legacy/published content whose history must not be bricked.
 
         hb_task = asyncio.create_task(_heartbeat_loop(hb_conn, str(draft_id), owner, stop, hb_interval))
 

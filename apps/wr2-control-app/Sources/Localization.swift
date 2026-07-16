@@ -120,6 +120,7 @@ enum L10n {
         // gallery
         "gallery.title":    [.it: "Caroselli",             .id: "Karosel"],
         "gallery.count":    [.it: "caroselli generati",    .id: "karosel dibuat"],
+        "gallery.incompleteHidden": [.it: "nascosti (slide incomplete)", .id: "disembunyikan (slide belum lengkap)"],
         "gallery.refresh":  [.it: "Aggiorna",              .id: "Segarkan"],
         "gallery.empty":    [.it: "Nessun carosello ancora", .id: "Belum ada karosel"],
         "gallery.empty.sub":[.it: "Creane uno dallo Studio", .id: "Buat satu dari Studio"],
@@ -154,6 +155,7 @@ enum L10n {
         "detail.notPublished": [.it: "Non ancora pubblicato",                           .id: "Belum diterbitkan"],
         "detail.awaiting":     [.it: "Pubblicato — in attesa di misurazione (~24h)",    .id: "Terbit — menunggu pengukuran (~24 jam)"],
         "detail.markPublished":[.it: "Segna come pubblicato",                           .id: "Tandai sudah terbit"],
+        "detail.notPublishEligible":[.it: "Non pubblicabile — stato non pronto",        .id: "Belum bisa diterbitkan — status belum siap"],
         "detail.openDesign":   [.it: "Apri in Zero Design",                             .id: "Buka di Zero Design"],
         "detail.revise":       [.it: "Migliora",                                        .id: "Perbaiki"],
         "detail.rerender":     [.it: "Ri-renderizza",                                   .id: "Render ulang"],
