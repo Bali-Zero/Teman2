@@ -81,8 +81,12 @@ def _sweep_stale_markers(marker: pathlib.Path) -> None:
                 if sibling.stat().st_mtime < cutoff:
                     sibling.unlink()
             except Exception:
+                # per-sibling stat/unlink race with another process: skip it,
+                # keep sweeping the rest.
                 continue
     except Exception:
+        # fail-open by design (see docstring): GC must never be able to
+        # change the hook's block/allow verdict, so any sweep error is inert.
         pass
 
 
