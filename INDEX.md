@@ -142,6 +142,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 <!-- DOCSYNC:WORKFLOWS_INDEX_START -->
 | File | Name | Description |
 | ---- | ---- | ----------- |
+| `infra/workflows/kbli-pilot-a1.js` | kbli-pilot-a1 | GARUDA-FILIERA per-code adjudication (D1 crosswalk proposal -> D5 blind refutation -> D2 self-confirming extraction) over evidence already pulled by dossier_pull.py |
 | `infra/workflows/modus-bench.js` | modus-bench | Self-refinement sweep for the modus master loop: internal scars/memory × external frontier watch → adversarially verified, operator-gated amendment proposals |
 | `infra/workflows/verify-template.js` | verify-template | Reusable generator≠grader workflow: gather N angles → adversarially verify each → synthesize survivors |
 <!-- DOCSYNC:WORKFLOWS_INDEX_END -->
