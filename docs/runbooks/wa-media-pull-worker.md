@@ -66,7 +66,7 @@ security add-generic-password -s balizero-whatsapp -a bridge-api-key -w '<BRIDGE
 
 ```bash
 mkdir -p ~/logs
-cp ~/Desktop/nuzantara/infra/launchagents/com.nuzantara.wa-media-pull.plist \
+cp ~/nuzantara/infra/launchagents/com.nuzantara.wa-media-pull.plist \
    ~/Library/LaunchAgents/
 chmod 0644 ~/Library/LaunchAgents/com.nuzantara.wa-media-pull.plist
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.wa-media-pull.plist
@@ -79,8 +79,8 @@ launchctl enable gui/$(id -u)/com.nuzantara.wa-media-pull
 
 ```bash
 # Run one tick manually (uses the same Keychain + env the cron uses):
-~/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -u \
-  ~/Desktop/nuzantara/scripts/wa_media_pull_worker.py
+~/nuzantara/apps/backend-rag/.venv/bin/python -u \
+  ~/nuzantara/scripts/wa_media_pull_worker.py
 
 # Tail the cron log:
 tail -f ~/logs/wa-media-pull.log
@@ -110,7 +110,7 @@ Abort lines (fix and re-run):
 
    ```bash
    ls -la ~/.nuzantara/intake-blobs/        # the downloaded file is here
-   ~/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -c "
+   ~/nuzantara/apps/backend-rag/.venv/bin/python -c "
    import asyncio, asyncpg
    async def m():
        c=await asyncpg.connect('postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev')

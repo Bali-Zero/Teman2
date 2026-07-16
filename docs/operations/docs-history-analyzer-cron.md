@@ -2,7 +2,7 @@
 
 **Host:** Pro (`nuzantara@Nuzantara`)
 **Schedule:** 1st of the month at 06:00 WITA (= last day of prev month 22:00 UTC)
-**Script:** `/Users/nuzantara/Desktop/nuzantara/scripts/docs_history_analyzer.py`
+**Script:** `/Users/nuzantara/nuzantara/scripts/docs_history_analyzer.py`
 **Output:** `docs/DOCS_TRENDS.md` (auto-generated, committed by git-guardian or ignored)
 **Log:** `~/logs/docs-history-analyzer.log`
 
@@ -14,6 +14,7 @@ Monthly companion to weekly docs-guardian. Mines git log over the last 6 months 
 - Quiet-but-alive docs (future orphan candidates)
 
 Orthogonal to `docs/DOCS_INVENTORY.md`:
+
 - **DOCS_INVENTORY.md**: state snapshot (which docs are LIVE/STALE/ARCHIVED right now)
 - **DOCS_TRENDS.md**: evolution (how the corpus is changing over time)
 
@@ -21,7 +22,7 @@ Orthogonal to `docs/DOCS_INVENTORY.md`:
 
 ```bash
 mkdir -p ~/logs
-( crontab -l 2>/dev/null; echo "0 6 1 * * /Users/nuzantara/Desktop/nuzantara/scripts/docs_history_analyzer.py --quiet >> $HOME/logs/docs-history-analyzer.log 2>&1" ) | crontab -
+( crontab -l 2>/dev/null; echo "0 6 1 * * /Users/nuzantara/nuzantara/scripts/docs_history_analyzer.py --quiet >> $HOME/logs/docs-history-analyzer.log 2>&1" ) | crontab -
 crontab -l | grep docs-history-analyzer
 ```
 
@@ -29,8 +30,8 @@ crontab -l | grep docs-history-analyzer
 
 ```bash
 # Run manually any time (idempotent):
-python /Users/nuzantara/Desktop/nuzantara/scripts/docs_history_analyzer.py --months 6
-cat ~/Desktop/nuzantara/docs/DOCS_TRENDS.md
+python /Users/nuzantara/nuzantara/scripts/docs_history_analyzer.py --months 6
+cat ~/nuzantara/docs/DOCS_TRENDS.md
 ```
 
 ## Uninstall

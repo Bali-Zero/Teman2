@@ -70,7 +70,7 @@ The app **consumes** the pipeline — it never rewrites it.
   It is **not** activated as the developer dir and **no `sudo`/`xcode-select` is run** — the build
   only borrows one dylib (`libSwiftUIMacros`) from it via a compiler flag, because the SwiftUI
   state macros (`@State`/`@StateObject`) cannot expand under Command-Line-Tools alone.
-- The WR2 output dir on disk: `~/Desktop/nuzantara/apps/war-room/output/`.
+- The WR2 output dir on disk: `~/nuzantara/apps/war-room/output/`.
 
 ## Build & run
 
@@ -119,7 +119,7 @@ Studio text field ─► PromptBuilder ─► ClaudeRunner (Process)
 | What | Path |
 |---|---|
 | Orchestrator agent | `~/.claude/agents/wr2-design-architect.md` |
-| Generated carousels | `~/Desktop/nuzantara/apps/war-room/output/carousel/<slug>/slides/NN.png` |
+| Generated carousels | `~/nuzantara/apps/war-room/output/carousel/<slug>/slides/NN.png` |
 | Per-carousel brief | `…/carousel/<slug>/brief.json` |
 | Review queue | `…/apps/war-room/output/queue/human-review-queue.json` |
 

@@ -17,20 +17,20 @@ CRM/Kita. It is the safe test lane for local Qwen vision/text classification.
 From Air-M5:
 
 ```sh
-ssh pro 'bash -lc "cd /Users/nuzantara/Desktop/nuzantara && INTAKE_QWEN_RUN_SECONDS=180 scripts/intake_qwen_autocatalog_worker.sh"'
+ssh pro 'bash -lc "cd /Users/nuzantara/nuzantara && INTAKE_QWEN_RUN_SECONDS=180 scripts/intake_qwen_autocatalog_worker.sh"'
 ```
 
 From the Pro:
 
 ```sh
-cd /Users/nuzantara/Desktop/nuzantara
+cd /Users/nuzantara/nuzantara
 INTAKE_QWEN_RUN_SECONDS=180 scripts/intake_qwen_autocatalog_worker.sh
 ```
 
 For a long-lived tmux lane on the Pro:
 
 ```sh
-tmux new -s wa-qwen-autocatalog 'cd /Users/nuzantara/Desktop/nuzantara && scripts/intake_qwen_autocatalog_worker.sh'
+tmux new -s wa-qwen-autocatalog 'cd /Users/nuzantara/nuzantara && scripts/intake_qwen_autocatalog_worker.sh'
 ```
 
 ## Verify Aggregate Progress

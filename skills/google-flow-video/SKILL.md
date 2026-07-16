@@ -1,7 +1,19 @@
 ---
 name: google-flow-video
 description: Generate AI video assets via Google Labs Flow + Veo 3.1 on Antonello's AI Ultra plan ($249.99/mo, 25,000 credits/month). Use when the user asks to create video shorts/reels/B-roll/explainers/testimonials for Bali Zero, ZANTARA, or any editorial deliverable. Skill is operational — not academic.
-trigger_keywords: ["flow", "veo", "video", "reel", "short", "ai video", "google flow", "veo 3.1", "google ai ultra", "labs.google/flow"]
+trigger_keywords:
+  [
+    "flow",
+    "veo",
+    "video",
+    "reel",
+    "short",
+    "ai video",
+    "google flow",
+    "veo 3.1",
+    "google ai ultra",
+    "labs.google/flow",
+  ]
 version: 2.0
 updated: 2026-05-13
 supersedes: SKILL.v1-pre-2026-05-13.bak (April 2026, contained false "Veo 3.1 Fast = Zero credits" claim, predated Veo 3.1 2025-10-15 release)
@@ -30,16 +42,17 @@ authority_sources:
 
 > ⚠️ Credit costs in Flow UI are **per-generation**, NOT per-second. 8s clip = 4s clip = 6s clip = same cost at same tier. The Vertex AI / Gemini API is a different billing model — do not conflate.
 
-| Tier | Credits / generation | Output res | Native audio | Best use |
-|---|---|---|---|---|
-| **Veo 3.1 Lite** | 5 | 720p (1080p upscale 0 cr) | may vary, weak | Storyboarding, B-roll exploration, animatics |
-| **Veo 3.1 Fast** | 10 | 1080p | yes (full) | Workhorse — daily iteration, dialog drafts |
-| **Veo 3.1 Quality** | 100 | 1080p (4K upscale +50 cr) | yes (best) | Hero/locked shots, client-facing |
-| Lite [Lower Priority] | **0** (Ultra freebie) | 720p | may vary | Off-peak bulk exploration |
-| Fast [Lower Priority] | **0** (Ultra freebie) | 1080p | yes | Off-peak bulk drafts |
-| 4K upscale | 50 (flat) | — | — | Hero shots only |
+| Tier                  | Credits / generation  | Output res                | Native audio   | Best use                                     |
+| --------------------- | --------------------- | ------------------------- | -------------- | -------------------------------------------- |
+| **Veo 3.1 Lite**      | 5                     | 720p (1080p upscale 0 cr) | may vary, weak | Storyboarding, B-roll exploration, animatics |
+| **Veo 3.1 Fast**      | 10                    | 1080p                     | yes (full)     | Workhorse — daily iteration, dialog drafts   |
+| **Veo 3.1 Quality**   | 100                   | 1080p (4K upscale +50 cr) | yes (best)     | Hero/locked shots, client-facing             |
+| Lite [Lower Priority] | **0** (Ultra freebie) | 720p                      | may vary       | Off-peak bulk exploration                    |
+| Fast [Lower Priority] | **0** (Ultra freebie) | 1080p                     | yes            | Off-peak bulk drafts                         |
+| 4K upscale            | 50 (flat)             | —                         | —              | Hero shots only                              |
 
 **Multiplier rules**:
+
 - 1× / 2× / 3× / 4× = number of parallel variants returned per generation (cost = base × N).
 - **Quality is always charged at 2× minimum** in Flow UI (200 cr/gen) — Google forces variant selection on Quality tier.
 - Aspect ratio: 16:9 + 9:16 both natively supported, **same cost**.
@@ -53,13 +66,14 @@ authority_sources:
 
 > Per-Brief estimate: 6-clip episode (1 hero + 4 supporting + 1 CTA closer) ≈ **650 credits/Brief** → **~36 Briefs/month theoretical**, **15–20 Briefs/month realistic** after retries.
 
-| Strategy | Quality (100 cr) | Fast (10 cr) | Lite (5 cr) | Total cr | Output minutes | Best for |
-|---|---|---|---|---|---|---|
-| **Hero-heavy** | 200 | 300 | 200 | **24,000** | ~58 min | Brand serial opener, premium client decks |
-| **Volume-heavy** | 50 | 1,500 | 500 | **22,500** | ~280 min | SEO library, B-roll, IG/TikTok daily |
-| **Balanced (recommended)** | 150 | 700 | 400 | **24,000** | ~210 min | Editorial pipeline Bali Zero default |
+| Strategy                   | Quality (100 cr) | Fast (10 cr) | Lite (5 cr) | Total cr   | Output minutes | Best for                                  |
+| -------------------------- | ---------------- | ------------ | ----------- | ---------- | -------------- | ----------------------------------------- |
+| **Hero-heavy**             | 200              | 300          | 200         | **24,000** | ~58 min        | Brand serial opener, premium client decks |
+| **Volume-heavy**           | 50               | 1,500        | 500         | **22,500** | ~280 min       | SEO library, B-roll, IG/TikTok daily      |
+| **Balanced (recommended)** | 150              | 700          | 400         | **24,000** | ~210 min       | Editorial pipeline Bali Zero default      |
 
 **Retry math** (subtract from yield):
+
 - Simple B-roll: ~90% first-pass good → 10% retry
 - Talking-head 8s monologue: ~70-75% → +20% credit penalty
 - Multi-character dialog: ~55-65% → +35% penalty
@@ -78,17 +92,18 @@ authority_sources:
 [Cinematography] + [Subject] + [Action] + [Context] + [Style & Ambiance]
 ```
 
-| Part | Examples |
-|---|---|
-| Cinematography | `medium close-up, 35mm, slow dolly-in`, `static locked-off`, `low-angle tracking`, `FPV drone dive` |
-| Subject | Full description: age range, ethnicity, wardrobe, hair, expression. Never abbreviate. `Veronika, mid-30s Indonesian woman in white kebaya, hair tied back, calm professional expression` |
-| Action | One verb, concrete. `walks toward camera`, `places stamp on document`, `looks directly into lens and says...` |
-| Context | Specific location + time of day + props. `Bali Zero office Sanur, late afternoon, wooden desk, KITAS document visible` |
-| Style & Ambiance | Lighting source + mood + audio cue. `warm key light from window left, soft tropical shadows, ambient air-con hum, distant scooter` |
+| Part             | Examples                                                                                                                                                                                 |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cinematography   | `medium close-up, 35mm, slow dolly-in`, `static locked-off`, `low-angle tracking`, `FPV drone dive`                                                                                      |
+| Subject          | Full description: age range, ethnicity, wardrobe, hair, expression. Never abbreviate. `Veronika, mid-30s Indonesian woman in white kebaya, hair tied back, calm professional expression` |
+| Action           | One verb, concrete. `walks toward camera`, `places stamp on document`, `looks directly into lens and says...`                                                                            |
+| Context          | Specific location + time of day + props. `Bali Zero office Sanur, late afternoon, wooden desk, KITAS document visible`                                                                   |
+| Style & Ambiance | Lighting source + mood + audio cue. `warm key light from window left, soft tropical shadows, ambient air-con hum, distant scooter`                                                       |
 
 **Length sweet spot**: 3–6 sentences, 100–150 words. Longer prompts dilute attention; shorter prompts let the model hallucinate.
 
 **Golden rules**:
+
 1. Camera intent FIRST when shot must feel directed.
 2. Concrete > abstract: "warm tungsten from window" beats "beautiful lighting".
 3. Source the light: every shot should name the key light direction + temperature.
@@ -97,6 +112,7 @@ authority_sources:
 6. Avoid exact counts ("three people" often → 2 or 4); use "a small group" or single subjects.
 
 **Don't use**:
+
 - ❌ "high quality", "beautiful", "epic", "cinematic" alone (filler, no information)
 - ❌ Negative-as-don't ("don't show a man" — model often shows a man anyway; use Negative Prompt field)
 - ❌ Multiple conflicting style anchors ("cyberpunk + film noir + Studio Ghibli")
@@ -146,6 +162,7 @@ Music: Subtle uplifting orchestral pad, slow swell, no melody.
 ```
 
 **Hard rules for lip-sync** (≥90% success):
+
 - **1 speaker per clip** — multi-speaker dialog fails ~50% even on Quality
 - **≤5 seconds of spoken audio** per 8s clip — silence pre/post helps registration
 - **Close-up or medium shot**, mouth clearly visible — wide shots desync
@@ -153,6 +170,7 @@ Music: Subtle uplifting orchestral pad, slow swell, no melody.
 - For multi-character conversations use **shot/reverse-shot** (separate clips per speaker)
 
 **Known audio bugs**:
+
 - 20–40ms drift on long clips (cut before/after hard consonants)
 - Voice timbre can sound robotic — generate 3–4 variants, pick best
 - **No native Indonesian-accent voice** — voice references partially work but accent reliability dropped in Veo 3.1 vs Veo 3 (Reddit creator reports)
@@ -168,6 +186,7 @@ The woman, Veronika, says, "Indonesian tax compliance is simpler when you have
 ```
 
 **Voice Ingredients** (experimental, Ultra-only — works with Ingredients generations, summoned via `@Voice`). Recommended voice names (creator-empirical):
+
 - Aoede (F, warm, professional) — Veronika spokesperson default
 - Alnilam (M, broadcast) — news anchor reads
 - Charon (M, documentary) — sober explainer narration
@@ -179,6 +198,7 @@ The woman, Veronika, says, "Indonesian tax compliance is simpler when you have
 ## 6. Ingredients — character/object/style consistency
 
 **Setup per character**:
+
 1. Generate 4 portrait references using Nano Banana Pro / Imagen 4 inside Flow:
    - Front-facing neutral (eye level)
    - 3/4 angle
@@ -188,6 +208,7 @@ The woman, Veronika, says, "Indonesian tax compliance is simpler when you have
 3. Save as Ingredient with **unique made-up name** (community trick: `Zantara-Veronika`, `Zantara-Surya`) — more reliable temporal mapping than "the woman"
 
 **Generation rules**:
+
 - **Max 3 Ingredients active per generation** (character + outfit + environment is the typical stack)
 - Reference each Ingredient **BY NAME** in the prompt: `Veronika from Ingredient 1, wearing the kebaya from Ingredient 2`
 - Drift accumulates after ~3 chained clips → re-upload fresh portrait every 3rd clip
@@ -199,11 +220,11 @@ The woman, Veronika, says, "Indonesian tax compliance is simpler when you have
 
 ## 7. Beyond 8 seconds — 3 methods
 
-| Method | How | Quality | Cost (Fast tier) | Best for |
-|---|---|---|---|---|
-| **Frames-to-Video chaining** | Generate clip → save last frame → use as start frame of next 8s clip | 🟢 Best (each segment fresh full-Veo with audio) | 10 cr/chain (Fast) or 100 cr/chain (Quality) | 30s–2min narrative, dialog scenes |
-| **Flow Extend** | Click "Extend" on existing clip → adds +7s from final frame | 🟡 Decays: 1–3 chains OK, 4–5 subtle drift, 6–10 noticeable, 11–20 visible | 10 cr/extend | Continuous unbroken motion, establishing pans |
-| **Jump-To / Scene Builder** | Place clips in timeline, use cinematic cuts | 🟢 Reliable on Quality, 🟡 unstable on Fast | Per-clip base cost | Multi-shot narratives, shot/reverse-shot |
+| Method                       | How                                                                  | Quality                                                                    | Cost (Fast tier)                             | Best for                                      |
+| ---------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------- |
+| **Frames-to-Video chaining** | Generate clip → save last frame → use as start frame of next 8s clip | 🟢 Best (each segment fresh full-Veo with audio)                           | 10 cr/chain (Fast) or 100 cr/chain (Quality) | 30s–2min narrative, dialog scenes             |
+| **Flow Extend**              | Click "Extend" on existing clip → adds +7s from final frame          | 🟡 Decays: 1–3 chains OK, 4–5 subtle drift, 6–10 noticeable, 11–20 visible | 10 cr/extend                                 | Continuous unbroken motion, establishing pans |
+| **Jump-To / Scene Builder**  | Place clips in timeline, use cinematic cuts                          | 🟢 Reliable on Quality, 🟡 unstable on Fast                                | Per-clip base cost                           | Multi-shot narratives, shot/reverse-shot      |
 
 **Max theoretical with Extend**: 8s base + 20 extends × 7s = **148s single shot** (then export, re-upload last frame, start new chain — loophole for 5min+).
 
@@ -218,6 +239,7 @@ The woman, Veronika, says, "Indonesian tax compliance is simpler when you have
 7. Test on Lite first (5 cr) before committing to Quality (100–200 cr).
 
 **Continuity rules**:
+
 - Copy-paste full Subject description verbatim across clips
 - Re-state environment + lighting + color palette in every prompt
 - Lock face anchor Ingredient
@@ -231,21 +253,21 @@ Flow has UI sliders for Pan/Tilt/Zoom; **text prompting yields higher precision*
 
 ### Empirically reliable cinematography (production-ready)
 
-| Move | Prompt syntax | Reliability |
-|---|---|---|
-| Slow dolly push-in | `slow dolly push-in over 6 seconds, locked subject` | 🟢 Hero-grade |
-| Locked-off static | `static locked-off camera, no movement` OR community hack `"from the perspective of a rock that does not move"` | 🟢 Safest for dialog |
-| Orbit | `slow 90-degree arc around subject` (works best with isolated subjects on plain background) | 🟢 |
-| Whip pan | `fast whip pan left to right, motion blur` | 🟡 |
-| Rack focus | `rack focus from foreground to background, shallow depth of field` | 🟡 |
-| Gimbal glide | `smooth gimbal glide forward, low angle` | 🟢 |
-| FPV drone dive | `FPV drone dive, fast descent, dynamic angle` | 🟢 |
-| Dolly zoom (Vertigo) | `dolly zoom on subject, background compresses` | 🟡 |
+| Move                 | Prompt syntax                                                                                                   | Reliability          |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------- |
+| Slow dolly push-in   | `slow dolly push-in over 6 seconds, locked subject`                                                             | 🟢 Hero-grade        |
+| Locked-off static    | `static locked-off camera, no movement` OR community hack `"from the perspective of a rock that does not move"` | 🟢 Safest for dialog |
+| Orbit                | `slow 90-degree arc around subject` (works best with isolated subjects on plain background)                     | 🟢                   |
+| Whip pan             | `fast whip pan left to right, motion blur`                                                                      | 🟡                   |
+| Rack focus           | `rack focus from foreground to background, shallow depth of field`                                              | 🟡                   |
+| Gimbal glide         | `smooth gimbal glide forward, low angle`                                                                        | 🟢                   |
+| FPV drone dive       | `FPV drone dive, fast descent, dynamic angle`                                                                   | 🟢                   |
+| Dolly zoom (Vertigo) | `dolly zoom on subject, background compresses`                                                                  | 🟡                   |
 
 ### Vocabulary table — 4 categories
 
-| Movement | Composition | Lens | Lighting |
-|---|---|---|---|
+| Movement                                                                                       | Composition                                                                                                   | Lens                                                                                                                                  | Lighting                                                                                                                  |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | dolly, tracking, crane, gimbal, POV, FPV drone, whip pan, push-in, pull-out, orbit, rack focus | wide / medium / close-up / extreme close-up, low-angle, high-angle, Dutch tilt, over-the-shoulder, locked-off | 35mm, 50mm, 85mm, macro, wide-angle, anamorphic (spell out: oval bokeh, horizontal flare, 2.39:1), shallow depth of field, deep focus | key light, fill light, rim light, golden hour, blue hour, tungsten warm, daylight cool, neon, chiaroscuro, soft diffusion |
 
 ---
@@ -270,18 +292,20 @@ no shaky camera, no subtitles, no on-screen text overlays
 
 **Native support both**, same cost. Generate vertical natively when composition matters — don't crop.
 
-| Format | When | Composition rule |
-|---|---|---|
-| 16:9 (1920×1080) | YouTube, web, broadcast, hero pieces | Subject occupies center 1/3 horizontally; landscape framing |
+| Format           | When                                             | Composition rule                                                                                     |
+| ---------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| 16:9 (1920×1080) | YouTube, web, broadcast, hero pieces             | Subject occupies center 1/3 horizontally; landscape framing                                          |
 | 9:16 (1080×1920) | Instagram Reels, TikTok, Shorts, WhatsApp Status | Subject dead center; vertical hero (full body or close-up); no critical content within 80px of edges |
 
 **Dual-format strategy** (subject dead-center technique):
+
 1. Frame subject **dead center** horizontally and vertically
 2. Use **vertical hero elements** (standing portraits, doorways, tree trunks)
 3. Keep critical content (text overlays, key gestures) **away from edges**
 4. Symmetrical composition works any crop
 
 **Workflow options**:
+
 - **Option A (cleaner)**: Generate 16:9 hero, then regenerate 9:16 separately (2× cost, but native composition each format)
 - **Option B (fast)**: ffmpeg center-crop:
   ```bash
@@ -297,6 +321,7 @@ no shaky camera, no subtitles, no on-screen text overlays
 ## 11. Throughput + queue strategy
 
 **Wall-clock generation time** (creator-empirical, off-peak):
+
 - Veo 3.1 Lite: ~1 min
 - Veo 3.1 Fast: ~1 min 13 s (vs ~2:41 on Veo 3 — measurable speed bump)
 - Veo 3.1 Quality (1×): ~2–3 min
@@ -320,12 +345,14 @@ no shaky camera, no subtitles, no on-screen text overlays
 ## 12. Commercial use + SynthID + UU PDP
 
 ### Allowed (Ultra commercial license)
+
 - ✅ Marketing assets for Bali Zero / Nuzantara editorial
 - ✅ Generic visuals (Bali landscapes, generic professional spokespersons, abstract concepts)
 - ✅ Client/staff likenesses **with written consent**
 - ✅ Client portals, ads, B2B decks, social posts
 
 ### Forbidden — hard restrictions
+
 - ❌ Real-person likeness without consent (auto-blocked + account flag)
 - ❌ Indonesian government officials named likeness (UU PDP + KUHP defamation risk)
 - ❌ Copyrighted IP / brand logos (Disney, Apple, etc. — memorization-check refusal)
@@ -334,6 +361,7 @@ no shaky camera, no subtitles, no on-screen text overlays
 - ❌ Removing SynthID watermark (TOS violation + YouTube/IG de-rank algorithm + EU AI Act + Indonesia UU PDP)
 
 ### SynthID — invisible watermark
+
 - **Every Veo 3.1 frame** carries DeepMind SynthID (forensic, undetectable to humans)
 - **Visible "veo" bottom-right** watermark: present on non-Ultra Flow; **Ultra exempt** in Flow UI
 - API/Vertex outputs: no visible watermark; SynthID invariant
@@ -343,9 +371,10 @@ no shaky camera, no subtitles, no on-screen text overlays
   - Indonesia UU PDP / UU ITE exposure on misleading content
 
 ### Required Bali Zero disclosure
+
 1. Disclaimer in caption/credits: **"AI video assets generated via Veo 3.1 (Google Labs Flow)"**
-2. Audit log per asset in `~/Desktop/nuzantara/research/marketing/flow-asset-log.csv` (date, prompt, tier, cost, consent status, publication URL)
-3. For client/staff likeness: signed written consent stored in `~/Desktop/nuzantara/research/marketing/consent/<name>-<date>.pdf`
+2. Audit log per asset in `~/nuzantara/research/marketing/flow-asset-log.csv` (date, prompt, tier, cost, consent status, publication URL)
+3. For client/staff likeness: signed written consent stored in `~/nuzantara/research/marketing/consent/<name>-<date>.pdf`
 
 > **Bali Zero verdict matrix**:
 > | Use case | Status |
@@ -360,6 +389,7 @@ no shaky camera, no subtitles, no on-screen text overlays
 ## 13. 10 prompt templates — ready copy-paste for Bali Zero
 
 ### T1 — FAQ Visa Anchor (Veronika kebaya, Quality 8s, C1 explainer)
+
 ```
 Medium close-up, 35mm lens, locked-off static camera. Veronika from Ingredient 1
 (mid-30s Indonesian woman, hair tied back, white silk kebaya, calm professional
@@ -369,9 +399,11 @@ enunciates each word. (no subtitles) Bali Zero office Sanur, late afternoon,
 warm tungsten key light from window left, soft tropical shadow on background
 teak wall. Ambient air-con hum, distant scooter passing.
 ```
+
 Tier: Quality 2× (200 cr). Aspect: 9:16. Voice: @Aoede.
 
 ### T2 — Regulatory News Flash (timestamp 4-segment SPT extension)
+
 ```
 [00:00-00:02] Wide establishing shot, Indonesian tax office Jakarta exterior,
    morning, busy with civil servants walking. Indonesian flag fluttering.
@@ -382,9 +414,11 @@ Tier: Quality 2× (200 cr). Aspect: 9:16. Voice: @Aoede.
 [00:06-00:08] Pull-out to wide, anchor smiles, "Plan accordingly." Logo lower-third.
 SFX: subtle paper rustle, soft news-room ambient.
 ```
+
 Tier: Quality 2× (200 cr). Aspect: 16:9.
 
 ### T3 — Property B-roll (drone pull-back Balinese villa, golden hour)
+
 ```
 Aerial drone pull-back, slow ascent. A traditional Balinese villa with thatched
 alang-alang roof, infinity pool reflecting golden hour sky, rice paddies
@@ -392,9 +426,11 @@ extending to volcanic mountain on horizon. Coconut palms gently swaying.
 Golden hour key light, warm amber tones, long shadows. Ambient: gentle breeze,
 distant gamelan music, water lapping pool edge. No people in frame.
 ```
+
 Tier: Fast 1× (10 cr). Aspect: 16:9. Use Lite [Lower Priority] (0 cr) overnight for bulk.
 
 ### T4 — Tax Deadline Countdown (Surya, locked-off, "Eighteen days...")
+
 ```
 Medium shot, 50mm, locked-off static. Surya from Ingredient 1 (early-40s
 Indonesian man, navy batik shirt, glasses, serious expression). Indoor Bali
@@ -403,9 +439,11 @@ foreground with a calendar visible. He looks directly at camera and says,
 "Eighteen days. After May thirty-first, the SPT extension closes." He clearly
 enunciates each word. (no subtitles) Ambient: air-con, soft typing in background.
 ```
+
 Tier: Quality 2× (200 cr). Aspect: 9:16. Voice: @Charon.
 
 ### T5 — Client Testimonial Frame (slow orbit, written consent required)
+
 ```
 Slow 90-degree orbit, smooth gimbal glide, medium shot. [Client name from
 Ingredient 1, with written consent on file] seated on rattan chair, Bali villa
@@ -414,9 +452,11 @@ sunlight, dappled through bamboo blinds. She says, "Bali Zero made my PT PMA
 setup feel effortless." She clearly enunciates each word. (no subtitles)
 Ambient: distant ocean, light wind through palms.
 ```
+
 Tier: Quality 2× (200 cr). **Requires signed consent PDF** before generation.
 
 ### T6 — KBLI Explainer (B-roll no dialog, macro lens, hand adjusts page)
+
 ```
 Macro shot, rack focus from foreground to background. A hand (Indonesian skin
 tone) carefully turns the page of a printed KBLI 2020 booklet on a wooden
@@ -424,9 +464,11 @@ desk. The page reveals "63122 — Portal web". A pencil rests beside the booklet
 Soft natural daylight from above. No dialog. SFX: paper rustle, faint pencil
 roll, ambient quiet office.
 ```
+
 Tier: Fast 1× (10 cr). Aspect: 16:9 or 9:16.
 
 ### T7 — Before/After Metaphor (Frames-to-Video chain)
+
 ```
 CLIP 1 (start frame upload): Empty Bali Zero office, dawn, dust motes in light
 beam from window, no furniture, bare floor. Slow dolly push-in over 6 seconds.
@@ -438,9 +480,11 @@ midday warm. Camera continues slow push-in. Ambient: soft typing begins.
 Continuity: identical room dimensions, identical window position, identical
 floor texture. Lighting evolves from cool dawn to warm midday.
 ```
+
 Tier: 2 × Fast (20 cr) or 1× Quality + 1× Fast for hero. Method: Frames-to-Video.
 
 ### T8 — Myth-Bust Hook (Reels 9:16, Veronika, "Nominee is not protection")
+
 ```
 Tight medium close-up, 50mm, locked-off. Veronika from Ingredient 1, neutral
 expression turning to slight concern, white kebaya, plain background. She
@@ -449,9 +493,11 @@ not protection." She clearly enunciates each word. (no subtitles) Pause
 0.5 seconds. Soft amber light, single key from camera-left. Ambient: silent
 office, no music. SFX: subtle paper turn at clip end.
 ```
+
 Tier: Quality 2× (200 cr). Aspect: 9:16. Voice: @Aoede.
 
 ### T9 — News Brief Intro (anchor + lower-third holographic amber data)
+
 ```
 Wide-to-medium tracking, slow dolly. News anchor (generic mid-30s Indonesian
 woman, navy blazer, neutral expression) seated at modern desk. Behind her,
@@ -461,9 +507,11 @@ text). Studio lighting cool daylight from above, warm rim from holographic
 display. She says, "Tonight, the new immigration framework." She clearly
 enunciates each word. (no subtitles) Music: subtle uplifting orchestral pad.
 ```
+
 Tier: Quality 2× (200 cr). Aspect: 16:9. **Add real lower-third graphic in post** (NLE) — do NOT trust Veo to render legible text.
 
 ### T10 — Elegant CTA Closer (logo card on stone surface, candle flame)
+
 ```
 Static locked-off, extreme close-up, 85mm. A weathered stone temple surface,
 warm candle flame flickering frame-right out of focus. In frame center, a
@@ -472,6 +520,7 @@ NOT in-scene text). Slow soft breeze causes candle flame to dance, casting
 amber light on stone texture. Audio: distant gamelan, soft wind, no dialog.
 Hold for 4 seconds, then very slow fade.
 ```
+
 Tier: Quality 1× (100 cr if not forced 2×). Aspect: 9:16. **Pair with WhatsApp + email CTA in post-production overlay** per Article 6.6.1 elegant-close pattern.
 
 ---
@@ -479,6 +528,7 @@ Tier: Quality 1× (100 cr if not forced 2×). Aspect: 9:16. **Pair with WhatsApp
 ## 14. Quick Reference Card — pseudo-code
 
 ### START NEW PROJECT
+
 ```
 1. Open labs.google/flow → "New Project"
 2. Settings → model selector → verify "Veo 3.1" (NOT Veo 2)
@@ -488,6 +538,7 @@ Tier: Quality 1× (100 cr if not forced 2×). Aspect: 9:16. **Pair with WhatsApp
 ```
 
 ### GENERATE CLIP
+
 ```
 1. Write prompt: [Cinematography] + [Subject verbatim] + [Action] + [Context] + [Style & Ambiance]
 2. Negative prompt: paste editorial-safe stack (§9)
@@ -500,6 +551,7 @@ Tier: Quality 1× (100 cr if not forced 2×). Aspect: 9:16. **Pair with WhatsApp
 ```
 
 ### EXTEND TO 30s+ PRO (Frames-to-Video chain)
+
 ```
 1. Generate clip 1 with full Subject + Context
 2. Save last frame as image asset
@@ -511,6 +563,7 @@ Tier: Quality 1× (100 cr if not forced 2×). Aspect: 9:16. **Pair with WhatsApp
 ```
 
 ### EXPORT
+
 ```
 1. Asset menu → Download
 2. Formats: MP4 (default), GIF (270p only)
@@ -547,11 +600,13 @@ Final 4K hero                         → Quality 2× + 4K upscale (200 + 50 cr)
 ## 15. Editorial pipeline — Bali Zero integration
 
 **Where Flow fits**:
+
 - WR2 (carousel pipeline) → static IG carousels
 - **Flow + Veo 3.1** → IG Reels, TikTok, YouTube Shorts, WhatsApp video CTAs
 - Companion editorial template: prompt T1–T10 above
 
 **Workflow**:
+
 1. **Brief** → wr2-brief-interpreter or manual (subject, archetype, voice register)
 2. **Storyboard** → 6-clip episode plan (1 hero + 4 supporting + 1 CTA closer)
 3. **Generate** → Flow, tier-mixed per Balanced strategy (§2)
@@ -560,14 +615,16 @@ Final 4K hero                         → Quality 2× + 4K upscale (200 + 50 cr)
 6. **Publish** → IG/TikTok/YouTube → metrics in 7 days via wr2-ig-metrics-analyst
 
 **Asset naming convention**:
+
 ```
 <YYYY-MM-DD>_<topic-slug>_<shot-N>_<tier>_<variant>.mp4
 2026-05-13_c1-visa-explainer_hero-01_quality_v3.mp4
 ```
 
 **Asset log location**:
+
 ```
-~/Desktop/nuzantara/research/marketing/flow-asset-log.csv
+~/nuzantara/research/marketing/flow-asset-log.csv
 ```
 
 CSV columns: `date, project, shot, tier, cost_credits, aspect, duration_s, prompt_hash, consent_status, publication_url, retry_count, notes`.
@@ -577,6 +634,7 @@ CSV columns: `date, project, shot, tier, cost_credits, aspect, duration_s, promp
 ## 16. References (authority chain)
 
 **Google-official primary sources**:
+
 - Veo 3.1 release announcement: https://blog.google/technology/ai/veo-updates-flow (2025-10-15)
 - Ultimate prompting guide for Veo 3.1: https://cloud.google.com/blog/products/ai-machine-learning/ultimate-prompting-guide-for-veo-3-1
 - DeepMind Veo prompt guide: https://deepmind.google/models/veo/prompt-guide
@@ -590,6 +648,7 @@ CSV columns: `date, project, shot, tier, cost_credits, aspect, duration_s, promp
 - Vertex AI Veo 3.1 generate spec: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-1-generate
 
 **Empirical / creator-community (label as anecdotal)**:
+
 - Curious Refuge review: https://curiousrefuge.com/blog/veo-31-quality-ai-video-generator-review
 - Sider field guide (cinematic control): https://sider.ai/blog/ai-tools/best-prompt-techniques-for-veo-3_1-video-output-a-field-guide-to-cinematic-control
 - Veo3Gen Shot Card workflow: https://www.veo3gen.app/blog/veo-31-in-google-flow-a-beginner-workflow-to-build-a-1530s-scene-from-shot-cards
@@ -599,8 +658,10 @@ CSV columns: `date, project, shot, tier, cost_credits, aspect, duration_s, promp
 - Reddit r/Bard accent regression: https://www.reddit.com/r/Bard/comments/1o7ftjk/veo_31_is_a_disappoinment/
 
 **Companion deep manual** (audit trail, ≥30 inline citations):
+
 - `research/marketing/2026-05-13-flow-veo-3.1-mastery-manual.md`
 
 **Backup v1** (archeology, do not edit):
+
 - `skills/google-flow-video/SKILL.v1-pre-2026-05-13.bak`
 - `.agents/skills/google-flow-video/SKILL.v1-pre-2026-05-13.bak`

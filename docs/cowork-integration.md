@@ -56,18 +56,18 @@ Merge into `mcpServers`:
 {
   "mcpServers": {
     "nuzantara-knowledge": {
-      "command": "/Users/balizero/Desktop/nuzantara/apps/nuzantara-mcp/.venv/bin/python",
+      "command": "/Users/balizero/nuzantara/apps/nuzantara-mcp/.venv/bin/python",
       "args": ["apps/nuzantara-mcp/nuzantara_mcp/server_knowledge.py"],
-      "cwd": "/Users/balizero/Desktop/nuzantara",
+      "cwd": "/Users/balizero/nuzantara",
       "env": {
         "PYTHONPATH": "apps/nuzantara-mcp",
         "NUZANTARA_API_KEY": "<PASTE_NUZANTARA_API_KEY>"
       }
     },
     "ga4-analytics": {
-      "command": "/Users/balizero/Desktop/nuzantara/.mcp-servers/ga4-analytics/.venv/bin/ga4-mcp-server",
+      "command": "/Users/balizero/nuzantara/.mcp-servers/ga4-analytics/.venv/bin/ga4-mcp-server",
       "env": {
-        "GOOGLE_APPLICATION_CREDENTIALS": "/Users/balizero/Desktop/nuzantara/.secrets/google-credentials.json",
+        "GOOGLE_APPLICATION_CREDENTIALS": "/Users/balizero/nuzantara/.secrets/google-credentials.json",
         "GA4_PROPERTY_ID": "505466833"
       }
     },
@@ -93,7 +93,7 @@ caveats):
 ```json
 "notebooklm-mcp": { "command": "/Users/balizero/.local/bin/notebooklm-mcp" },
 "ocr-tesseract": {
-  "command": "/Users/balizero/Desktop/nuzantara/.mcp-servers/ocr/.venv/bin/mcp-ocr",
+  "command": "/Users/balizero/nuzantara/.mcp-servers/ocr/.venv/bin/mcp-ocr",
   "env": { "TESSDATA_PREFIX": "/opt/homebrew/share/tessdata" }
 }
 ```
@@ -111,7 +111,7 @@ caveats):
 Verify the knowledge server boots before adding it to Cowork:
 
 ```bash
-cd ~/Desktop/nuzantara
+cd ~/nuzantara
 PYTHONPATH=apps/nuzantara-mcp NUZANTARA_API_KEY=dummy \
   timeout 3 apps/nuzantara-mcp/.venv/bin/python \
   apps/nuzantara-mcp/nuzantara_mcp/server_knowledge.py

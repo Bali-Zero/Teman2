@@ -11,16 +11,16 @@ Safety boundaries:
 Example (YOPO pilot):
 
 ```bash
-cd /Users/nuzantara/Desktop/nuzantara
+cd /Users/nuzantara/nuzantara
 cd apps/backend-rag && source .venv/bin/activate
 
-PYTHONPATH=/Users/nuzantara/Desktop/nuzantara \
+PYTHONPATH=/Users/nuzantara/nuzantara \
   python -m scripts.whatsapp_export_backfill.parse_exports \
   "/Users/nuzantara/Desktop/WhatsApp Chat - YOPO company/WhatsApp Chat - YOPO company" \
   -o /tmp/yopo-export.jsonl \
   --batch-id yopo-2026-05
 
-PYTHONPATH=/Users/nuzantara/Desktop/nuzantara \
+PYTHONPATH=/Users/nuzantara/nuzantara \
   python -m scripts.whatsapp_export_backfill.import_staging \
   /tmp/yopo-export.jsonl \
   --dry-run

@@ -12,12 +12,12 @@ contract_version: 1.0.0
 
 ## Role (one-line)
 
-Weekly cron Sunday 02:30 WITA via LaunchAgent. Reads last 7 days episodes + designer-override diffs (final-published vs critic-passed draft). Synthesizes ≤10 verbal lessons per agent, appends to skill cortex lessons.md. Also proposes Voyager skill drafts in _proposed/. Standalone — NOT in orchestrator hot-path.
+Weekly cron Sunday 02:30 WITA via LaunchAgent. Reads last 7 days episodes + designer-override diffs (final-published vs critic-passed draft). Synthesizes ≤10 verbal lessons per agent, appends to skill cortex lessons.md. Also proposes Voyager skill drafts in \_proposed/. Standalone — NOT in orchestrator hot-path.
 
 ## Primary I/O
 
-- **Inputs**: apps/war-room/output/episode/<recent>/* + human-review-queue.json diffs
-- **Outputs**: lessons appended to <agent>/lessons.md + drafts in _proposed/
+- **Inputs**: apps/war-room/output/episode/<recent>/\* + human-review-queue.json diffs
+- **Outputs**: lessons appended to <agent>/lessons.md + drafts in \_proposed/
 
 ## Symbiosis law emphasis
 
@@ -54,6 +54,6 @@ Skill cortex created at S7.3 step of WR3 genesis. No operational lessons yet.
 ## Resources
 
 - Agent definition: `~/.claude/agents/wr3-reflexion-synth.md`
-- I/O contract: `~/Desktop/nuzantara/docs/wr3/contracts/reflexion-synth.yaml`
+- I/O contract: `~/nuzantara/docs/wr3/contracts/reflexion-synth.yaml`
 - Brand cortex (shared): `~/.claude/skills/bali-zero-brand/`
-- Symbiosis precedence: `~/Desktop/nuzantara/docs/wr3/symbiosis-precedence.md`
+- Symbiosis precedence: `~/nuzantara/docs/wr3/symbiosis-precedence.md`

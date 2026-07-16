@@ -25,9 +25,9 @@ file**.
 
 A separate, short-lived launchd job that runs every 10 minutes:
 
-| File | Purpose |
-| --- | --- |
-| [`scripts/sentinel_meta_watchdog.sh`](../scripts/sentinel_meta_watchdog.sh) | The check + restart + alert logic |
+| File                                                                                                                                | Purpose                                             |
+| ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| [`scripts/sentinel_meta_watchdog.sh`](../scripts/sentinel_meta_watchdog.sh)                                                         | The check + restart + alert logic                   |
 | [`infra/launchagents/com.nuzantara.sentinel-meta-watchdog.plist`](../infra/launchagents/com.nuzantara.sentinel-meta-watchdog.plist) | launchd job definition (Pro-only, install manually) |
 
 Each tick:
@@ -51,7 +51,7 @@ The standard objection to any watchdog: "fine, but what watches the
 watchdog?" Three reasons it's safe here:
 
 1. **Non-persistent execution.** The script does `stat → compare → maybe
-   restart → exit`. Total wall time ~50ms-2s. It cannot hang
+restart → exit`. Total wall time ~50ms-2s. It cannot hang
    indefinitely the way sentinel can — there is no event loop, no
    network call (other than the optional Telegram POST with `-m 10`
    timeout), no file lock.
@@ -90,12 +90,12 @@ for verification.
 ```bash
 # Manual run, watching the log
 tail -f ~/logs/sentinel-meta-watchdog.log &
-bash ~/Desktop/nuzantara/scripts/sentinel_meta_watchdog.sh
+bash ~/nuzantara/scripts/sentinel_meta_watchdog.sh
 
 # Inject synthetic stale state (sentinel hung simulation)
 touch -r ~/.agent/decisions/sentinel_status.json /tmp/sentinel_mtime_backup
 touch -t "$(date -j -v-30M +%Y%m%d%H%M)" ~/.agent/decisions/sentinel_status.json
-bash ~/Desktop/nuzantara/scripts/sentinel_meta_watchdog.sh
+bash ~/nuzantara/scripts/sentinel_meta_watchdog.sh
 # → expect: alert sent, sentinel kickstarted, cooldown file created
 
 # Restore
@@ -117,11 +117,11 @@ the repo — uninstall only affects the running launchd job.
 
 ## Tunables
 
-| Variable | Default | Notes |
-| --- | --- | --- |
-| `STALE_THRESHOLD_SEC` | 900 (15 min) | 3× sentinel's 5-min cadence. Lower → more false-positive restarts; higher → slower hang detection. |
-| `COOLDOWN_SEC` | 3600 (1 h) | Time between alerts/restarts. Raise if sentinel takes >1h to fully recover (it shouldn't). |
-| `StartInterval` (plist) | 600 (10 min) | Watchdog tick rate. Must be ≤ `STALE_THRESHOLD_SEC` to avoid missing hangs. |
+| Variable                | Default      | Notes                                                                                              |
+| ----------------------- | ------------ | -------------------------------------------------------------------------------------------------- |
+| `STALE_THRESHOLD_SEC`   | 900 (15 min) | 3× sentinel's 5-min cadence. Lower → more false-positive restarts; higher → slower hang detection. |
+| `COOLDOWN_SEC`          | 3600 (1 h)   | Time between alerts/restarts. Raise if sentinel takes >1h to fully recover (it shouldn't).         |
+| `StartInterval` (plist) | 600 (10 min) | Watchdog tick rate. Must be ≤ `STALE_THRESHOLD_SEC` to avoid missing hangs.                        |
 
 ## Cicatrix-scars correlation
 

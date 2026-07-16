@@ -18,7 +18,7 @@ deployment dependency and must not be installed as part of the base backend imag
 Run on Pro or Mini after the normal backend environment is healthy:
 
 ```bash
-cd ~/Desktop/nuzantara/apps/backend-rag
+cd ~/nuzantara/apps/backend-rag
 source .venv/bin/activate
 python -m pip install --require-virtualenv --no-deps -r requirements-local-audio.txt
 ```
@@ -71,7 +71,7 @@ Static mode validates config, filesystem, import specs, local-only policy, check
 caps, and offline guard env. It does not instantiate Silero or Chatterbox models:
 
 ```bash
-cd ~/Desktop/nuzantara/apps/backend-rag
+cd ~/nuzantara/apps/backend-rag
 source .venv/bin/activate
 PYTHONPATH=. python scripts/local_audio_doctor.py --mode static --json
 ```
@@ -85,7 +85,7 @@ Deep mode is gated to Pro/Mini and exercises the local runtime:
   `VOICE_CONCIERGE_LIVEKIT_WORKER_HEALTH_URL`.
 
 ```bash
-cd ~/Desktop/nuzantara/apps/backend-rag
+cd ~/nuzantara/apps/backend-rag
 source .venv/bin/activate
 PYTHONPATH=. python scripts/local_audio_doctor.py --mode deep --json
 ```
@@ -93,7 +93,7 @@ PYTHONPATH=. python scripts/local_audio_doctor.py --mode deep --json
 From Air-M5, route real checks over SSH:
 
 ```bash
-ssh pro 'cd ~/Desktop/nuzantara/apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python scripts/local_audio_doctor.py --mode static --json'
+ssh pro 'cd ~/nuzantara/apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python scripts/local_audio_doctor.py --mode static --json'
 ```
 
 Deep checks on Air-M5 should fail closed. That is expected and protects the thin-client boundary.

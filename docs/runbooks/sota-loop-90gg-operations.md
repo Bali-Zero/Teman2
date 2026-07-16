@@ -40,24 +40,24 @@ The loop closes because `09_wr2_weights.json` is read by WR2 when producing next
 
 ## Where things live
 
-| Component | Location | Notes |
-|---|---|---|
-| Cron schedulers | `~/Library/LaunchAgents/com.balizero.sota.m13-*.plist` (Pro) | Install: `cp infra/launchagents/com.balizero.sota.m13-*.plist ~/Library/LaunchAgents/` |
-| Plist source-of-truth | `infra/launchagents/com.balizero.sota.m13-*.plist` (repo) | Git-tracked |
-| Cron Python modules | `apps/backend-rag/backend/services/sota_loop/` (both Pro + Fly) | Package: `backend.services.sota_loop.{m13_collect,m13_weekly,m13_monthly,m13_checkpoint}` |
-| Wrapper (glue) | `/Users/nuzantara/.openclaw/bin/wr2/wr2-cron-wrapper.sh` (also mirrored at `scripts/wr2-cron-wrapper.sh`) | Sources secrets, maps DATABASE_URL_LOCAL→DATABASE_URL, verifies pg-proxy, activates venv, execs `python -m <module>` |
-| Kill-switch router | `apps/backend-rag/backend/app/routers/research_control.py` (Fly) | 4 endpoints under `/api/research/control/*` — writes to `system_settings` |
-| DB tables | `nuzantara-postgres.flycast` (Fly.io) | Migration 128: `war_room_posts`, `post_metrics_history`, `m13_retrain_log` |
-| Grafana dashboard | `infra/grafana/social-sota-dashboard.json` | Import separately, see `grafana-sota-setup.md` |
-| Loop start marker | `research/sota-social-2026-v1/.loop_start_date` (Pro) | ISO date, triggers checkpoint at day 30/60/90 |
+| Component             | Location                                                                                                  | Notes                                                                                                                |
+| --------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Cron schedulers       | `~/Library/LaunchAgents/com.balizero.sota.m13-*.plist` (Pro)                                              | Install: `cp infra/launchagents/com.balizero.sota.m13-*.plist ~/Library/LaunchAgents/`                               |
+| Plist source-of-truth | `infra/launchagents/com.balizero.sota.m13-*.plist` (repo)                                                 | Git-tracked                                                                                                          |
+| Cron Python modules   | `apps/backend-rag/backend/services/sota_loop/` (both Pro + Fly)                                           | Package: `backend.services.sota_loop.{m13_collect,m13_weekly,m13_monthly,m13_checkpoint}`                            |
+| Wrapper (glue)        | `/Users/nuzantara/.openclaw/bin/wr2/wr2-cron-wrapper.sh` (also mirrored at `scripts/wr2-cron-wrapper.sh`) | Sources secrets, maps DATABASE_URL_LOCAL→DATABASE_URL, verifies pg-proxy, activates venv, execs `python -m <module>` |
+| Kill-switch router    | `apps/backend-rag/backend/app/routers/research_control.py` (Fly)                                          | 4 endpoints under `/api/research/control/*` — writes to `system_settings`                                            |
+| DB tables             | `nuzantara-postgres.flycast` (Fly.io)                                                                     | Migration 128: `war_room_posts`, `post_metrics_history`, `m13_retrain_log`                                           |
+| Grafana dashboard     | `infra/grafana/social-sota-dashboard.json`                                                                | Import separately, see `grafana-sota-setup.md`                                                                       |
+| Loop start marker     | `research/sota-social-2026-v1/.loop_start_date` (Pro)                                                     | ISO date, triggers checkpoint at day 30/60/90                                                                        |
 
 ## Activation ritual (how the loop was turned ON)
 
 ### Step 1 — Write loop start date
 
 ```bash
-echo "$(date +%Y-%m-%d)" > ~/Desktop/nuzantara/research/sota-social-2026-v1/.loop_start_date
-cat ~/Desktop/nuzantara/research/sota-social-2026-v1/.loop_start_date
+echo "$(date +%Y-%m-%d)" > ~/nuzantara/research/sota-social-2026-v1/.loop_start_date
+cat ~/nuzantara/research/sota-social-2026-v1/.loop_start_date
 ```
 
 Content: one line, ISO date, e.g. `2026-04-24`.
@@ -65,7 +65,7 @@ Content: one line, ISO date, e.g. `2026-04-24`.
 ### Step 2 — Install + load launchagents
 
 ```bash
-cp ~/Desktop/nuzantara/infra/launchagents/com.balizero.sota.m13-*.plist ~/Library/LaunchAgents/
+cp ~/nuzantara/infra/launchagents/com.balizero.sota.m13-*.plist ~/Library/LaunchAgents/
 for p in collect weekly monthly checkpoint; do
   launchctl unload ~/Library/LaunchAgents/com.balizero.sota.m13-${p}.plist 2>/dev/null
   launchctl load ~/Library/LaunchAgents/com.balizero.sota.m13-${p}.plist
@@ -132,11 +132,11 @@ tail -5 ~/.openclaw/workspace/logs/war-room-v2/sota-m13-checkpoint.error.log
 
 The bot `@Balizerobot` sends to chat `1125336968` (hardcoded in cron scripts, overridable via `TELEGRAM_OWNER_CHAT_ID` env):
 
-| When | Sender | Content |
-|---|---|---|
-| Sun 06:00+ WITA | `m13-weekly` | `[SOTA weekly] OK` or `[SOTA weekly] BREACHES` + per-channel delta summary |
-| Day 30/60/90, 09:00 WITA | `m13-checkpoint` | `[SOTA Checkpoint Day N]` + file path + "Reply GO/PIVOT/KILL per channel" |
-| Immediate (on deploy-failure-alert) | `fly-deploy.yml` | Deploy crash notification |
+| When                                | Sender           | Content                                                                    |
+| ----------------------------------- | ---------------- | -------------------------------------------------------------------------- |
+| Sun 06:00+ WITA                     | `m13-weekly`     | `[SOTA weekly] OK` or `[SOTA weekly] BREACHES` + per-channel delta summary |
+| Day 30/60/90, 09:00 WITA            | `m13-checkpoint` | `[SOTA Checkpoint Day N]` + file path + "Reply GO/PIVOT/KILL per channel"  |
+| Immediate (on deploy-failure-alert) | `fly-deploy.yml` | Deploy crash notification                                                  |
 
 ### Logs
 
@@ -152,15 +152,15 @@ done
 
 Common patterns:
 
-| Log line | Meaning | Action |
-|---|---|---|
-| `kill switch OFF — exiting` | `sota_m13_<X>_enabled != 'true'` | Flip with seed script if intentional OFF |
-| `collected <uuid> @ T_<N>H` | Insights fetch OK | Normal |
-| `IG creds missing, skipping post` | `IG_GRAPH_API_TOKEN` or `IG_BUSINESS_ACCOUNT_ID` unset in `~/.nuzantara-secrets.env` | Add keys |
-| `insights fetch failed for <uuid>: HTTP 401` | IG token expired | Refresh `IG_GRAPH_API_TOKEN` |
-| `cannot reach 127.0.0.1:15432` | pg-proxy down | `launchctl start com.balizero.wr2.pg-proxy` |
-| `auto-toggled publisher OFF for <channel>` | Weekly cron found pillar breach >20% | Check Telegram, review post history, decide pivot |
-| `retrain triggered` | Delta crossed threshold in weekly | Consiglio v1 runs, new weights overwrite `09_wr2_weights.json` |
+| Log line                                     | Meaning                                                                              | Action                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| `kill switch OFF — exiting`                  | `sota_m13_<X>_enabled != 'true'`                                                     | Flip with seed script if intentional OFF                       |
+| `collected <uuid> @ T_<N>H`                  | Insights fetch OK                                                                    | Normal                                                         |
+| `IG creds missing, skipping post`            | `IG_GRAPH_API_TOKEN` or `IG_BUSINESS_ACCOUNT_ID` unset in `~/.nuzantara-secrets.env` | Add keys                                                       |
+| `insights fetch failed for <uuid>: HTTP 401` | IG token expired                                                                     | Refresh `IG_GRAPH_API_TOKEN`                                   |
+| `cannot reach 127.0.0.1:15432`               | pg-proxy down                                                                        | `launchctl start com.balizero.wr2.pg-proxy`                    |
+| `auto-toggled publisher OFF for <channel>`   | Weekly cron found pillar breach >20%                                                 | Check Telegram, review post history, decide pivot              |
+| `retrain triggered`                          | Delta crossed threshold in weekly                                                    | Consiglio v1 runs, new weights overwrite `09_wr2_weights.json` |
 
 ### Grafana dashboard
 
@@ -240,6 +240,7 @@ At `09:00 WITA` on any day where `(today - .loop_start_date).days ∈ {30, 60, 9
 3. **Exit** — the cron does NOT take any action on channels. You must reply.
 
 Reply convention (not yet wired to automation — for future Sprint):
+
 ```
 /checkpoint day30 decision=GO channel=instagram
 /checkpoint day30 decision=PIVOT channel=linkedin
@@ -278,7 +279,7 @@ for p in collect weekly monthly checkpoint; do
   launchctl unload ~/Library/LaunchAgents/com.balizero.sota.m13-${p}.plist 2>/dev/null
   rm ~/Library/LaunchAgents/com.balizero.sota.m13-${p}.plist
 done
-rm ~/Desktop/nuzantara/research/sota-social-2026-v1/.loop_start_date
+rm ~/nuzantara/research/sota-social-2026-v1/.loop_start_date
 # Data in post_metrics_history stays — decide separately
 ```
 
@@ -295,6 +296,7 @@ psql "$DSN" -c "SELECT key, value FROM system_settings WHERE key LIKE 'sota_m13_
 ```
 
 Common mistakes:
+
 - Value `'True'` instead of `'true'` (Python bool vs string — script checks `value == "true"` exact match, case-sensitive)
 - Missing row — `fetchval` returns `None`, comparison fails → behaves as OFF (safe default)
 
@@ -313,7 +315,7 @@ launchctl list | grep pg-proxy
 Pro repo is stuck on an old commit. Pull main:
 
 ```bash
-cd ~/Desktop/nuzantara
+cd ~/nuzantara
 git fetch origin main
 git merge --ff-only origin/main   # or: git rebase origin/main on a feature branch
 ```
@@ -321,7 +323,7 @@ git merge --ff-only origin/main   # or: git rebase origin/main on a feature bran
 The `sota_loop/` package lives under `apps/backend-rag/backend/services/` since 2026-04-24. Verify present:
 
 ```bash
-ls ~/Desktop/nuzantara/apps/backend-rag/backend/services/sota_loop/
+ls ~/nuzantara/apps/backend-rag/backend/services/sota_loop/
 # Expected: __init__.py, m13_checkpoint.py, m13_collect.py, m13_monthly.py, m13_weekly.py
 ```
 
@@ -332,6 +334,7 @@ pg-proxy has a short idle timeout. For diagnostic scripts that hold a connection
 ### Telegram digest missing
 
 Check:
+
 1. `TELEGRAM_BOT_TOKEN` and `TELEGRAM_OWNER_CHAT_ID` are in `~/.nuzantara-secrets.env` (both with `export` prefix).
 2. Bot `@Balizerobot` has been started by Zero (must hit `/start` at least once).
 3. Weekly/checkpoint cron actually fired (check `launchctl list` + logs).
@@ -353,6 +356,7 @@ Deploy rolls automatically after secret change.
 Per post, ~4 metrics (likes, reach, saves, click_through) × 3 horizons (24h, 72h, 168h) = 12 rows in `post_metrics_history`.
 
 With WR2 posting ~5/week across all channels:
+
 - 5 posts × 12 rows = **60 rows/week**
 - 90-day loop = **~770 rows** total
 
@@ -371,19 +375,19 @@ Total monthly cost: **< $0.10**. Triggered by weekly when delta > 10% (so possib
 
 ## Related files
 
-- `research/sota-social-2026-v1/` — all Fase 0 artifacts + rolling Loop outputs (kpi_timeline.csv, weekly_report_*.md, checkpoint_day_*.md, 09_wr2_weights_YYYY-MM.json archives, retrain_log.jsonl)
+- `research/sota-social-2026-v1/` — all Fase 0 artifacts + rolling Loop outputs (kpi*timeline.csv, weekly_report*_.md, checkpoint*day*_.md, 09_wr2_weights_YYYY-MM.json archives, retrain_log.jsonl)
 - `apps/backend-rag/backend/services/measurer/m13_feedback_loop.py` — core logic class
 - `apps/backend-rag/backend/services/war_room/editorial_config.py` — reader for `09_wr2_weights.json` (how WR2 consumes the Loop output)
 - `apps/backend-rag/backend/db/migrations_v2/128_m13_feedback.sql` — DB schema
 
 ## Change log
 
-| Date | Who | What |
-|---|---|---|
+| Date       | Who                    | What                                                                                                                                |
+| ---------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-04-22 | Claude Opus 4.7 + Zero | PR #218 — Fase 0 artifacts + Fase 1 scaffold (M13FeedbackLoop, 4 cron scripts, EditorialConfig, Council v2, router, Grafana, smoke) |
-| 2026-04-23 | Claude Opus 4.7 | PR #223 hotfix Dockerfile placeholder (unrelated, was breaking deploy) |
-| 2026-04-24 | Claude Opus 4.7 | PR #225 — refactor scripts/m13_*.py → `backend.services.sota_loop` package + plist rewire to `wr2-cron-wrapper.sh` |
-| 2026-04-24 | Claude Opus 4.7 + Zero | Loop activated: `.loop_start_date=2026-04-24`, 4 launchagents loaded, 5 kill-switches flipped ON via SQL direct |
+| 2026-04-23 | Claude Opus 4.7        | PR #223 hotfix Dockerfile placeholder (unrelated, was breaking deploy)                                                              |
+| 2026-04-24 | Claude Opus 4.7        | PR #225 — refactor scripts/m13\_\*.py → `backend.services.sota_loop` package + plist rewire to `wr2-cron-wrapper.sh`                |
+| 2026-04-24 | Claude Opus 4.7 + Zero | Loop activated: `.loop_start_date=2026-04-24`, 4 launchagents loaded, 5 kill-switches flipped ON via SQL direct                     |
 
 ## Next sprint ideas
 

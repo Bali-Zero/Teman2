@@ -21,7 +21,7 @@
 ### 2. Введи цю команду та натисни Enter:
 
 ```
-bash ~/Desktop/nuzantara/scripts/ruslana-node/install.sh
+bash ~/nuzantara/scripts/ruslana-node/install.sh
 ```
 
 Зачекай 5-10 хвилин. Якщо запитає пароль — введи пароль свого Mac.
@@ -43,13 +43,13 @@ gemini auth login
 ### Gemini (рекомендовано):
 
 ```
-cd ~/Desktop/nuzantara && gemini
+cd ~/nuzantara && gemini
 ```
 
 ### Claude (альтернатива):
 
 ```
-cd ~/Desktop/nuzantara && claude
+cd ~/nuzantara && claude
 ```
 
 Потім питай що завгодно, наприклад:
