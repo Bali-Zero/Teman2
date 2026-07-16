@@ -18,17 +18,27 @@ licensing/investment decisions on this data — a wrong risk row is client-facin
 KBLI dispute). Honesty beats completeness: a declared gap ("licensing not yet published") is
 acceptable; a plausible-but-wrong assertion is not.
 
-## 1. LIVE STATE (last update 2026-07-16 ~10:45 UTC — keep current)
+## 1. LIVE STATE (last update 2026-07-16 ~15:45 UTC — keep current)
 
 - **Per-code cure HALTED by Zero** pending Filiera phase GO. Nothing of the halted work reached prod.
 - **Filiera KBLI methodology**: panel CONCLUDED (Codex red-team 15 findings/5 FATAL + Gemini
   costruttivo 12, incorporated). Doc: `research/operations/2026-07-16-kbli-filiera-methodology.md`
-  (PR #2534, auto-merge armed). 9 principles, layers L0(vault)→L6(editorial), gates G13–G17 extending
-  Garuda G1–G12, 4-phase rollout. **Phase GO = Zero (business decision, open).**
+  (PR #2534, MERGED). 9 principles, layers L0(vault)→L6(editorial), gates G13–G17 extending Garuda
+  G1–G12, 4-phase rollout. Execution program (WHO builds it and HOW — seats, orchestration, per-code
+  scientific protocol, batching): `research/operations/2026-07-16-kbli-garuda-filiera-workflow.md`
+  (PR #2538, MERGED) — Fable 5 = mente immobile/final gate, D0–D6 per-code protocol, batch A 119 /
+  B 478 / C 1263 / D ~175 codes. **Phase GO: GIVEN by Zero for Fase 1 pilot A1 (~15 codes, incl. 68112)** — no longer an open business decision; execute the pilot batch per the workflow doc.
 - **PR/branch map**:
   - MERGED & live: #2508 + #2527 (68112 detach: per_skala→[] + `per_skala_disputed_pp28_mice` +
     `_data_note` + gold whatYouNeed fix + regression tests) · #2523/#2524 (gold youllAlsoNeed remap
-    20/83 + renderer fix) · #2496/#2494 (CRM avatar, unrelated) · #2532 (ship-lifecycle doctrine).
+    20/83 + renderer fix) · #2496/#2494 (CRM avatar, unrelated) · #2532 (ship-lifecycle doctrine) ·
+    #2534 (Filiera methodology doc) · #2538 (Filiera execution/workflow doc) · #2550 (data-plane
+    guard: PreToolUse hook blocks interactive hand-edits of the canonical KBLI dataset +
+    `data/kbli-filiera/**`; registry `infra/claude-hooks/data-plane-registry.json` is the extension
+    point — any program registers its own data plane there without touching the hook; kill switch
+    `DATA_PLANE_GUARD_OFF=1`. NOTE: wired via `.claude/settings.json` PreToolUse, loaded at session
+    start — protects NEW sessions only; a worktree already open before the merge, or a foreign
+    checkout with no registry marker, is unprotected/foreign by design, not a bug).
   - PARKED: PR #2528 (KG license-fix script, auto-merge DISARMED — resume within Fase 1 after F12
     language fix) · branch `agent/air-m5/infra/space-51103` on origin at `fc12e65fd3` (51103/51203
     detach, NO PR — `_data_note` needs corroboration language before opening) · fly apply NEVER run.
@@ -37,6 +47,8 @@ acceptable; a plausible-but-wrong assertion is not.
 - **KG prod is still contaminated** (by design, cure parked): 68112 serves MICE+agriculture licenses;
   ~68% of catalog serves the agriculture kewajiban via the shared perizinan node; 930 codes serve
   drifted `properties.uraian`.
+- **BKPM discrepancy findings stay INTERNAL** (Zero revised 2026-07-16) — the 68112 surat klarifikasi
+  to BKPM stays drafted, in the drawer, not sent; do not escalate externally without a fresh Zero GO.
 
 ## 2. ESTABLISHED TRUTH (verified — do not re-litigate, do not re-derive)
 
