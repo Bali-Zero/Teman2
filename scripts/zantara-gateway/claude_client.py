@@ -471,12 +471,21 @@ async def _stream_via_subprocess(
 
         logger.info("Spawning Claude CLI: model=%s, token=%s", model, label)
 
+        # `limit` raises the StreamReader buffer above asyncio's 64KB default.
+        # `claude -p --output-format stream-json --verbose --include-partial-messages`
+        # emits the init/system NDJSON line carrying the full tool+MCP surface;
+        # on a rich-MCP host it exceeds 64KB (measured 84053 bytes on Pro,
+        # 2026-07-17), and `proc.stdout.readline()` below then dies with
+        # `LimitOverrunError: Separator is found, but chunk is longer than
+        # limit`, taking down the whole stream — including the SDK backend's
+        # subprocess-fallback safety net. 1 MiB clears it with headroom.
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=env,
             cwd=cwd or None,
+            limit=1024 * 1024,
         )
 
         # Read first line to check for immediate rate-limit error
