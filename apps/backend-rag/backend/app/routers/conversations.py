@@ -255,12 +255,15 @@ async def save_conversation(
                         row = await conn.fetchrow(
                             """
                             INSERT INTO conversations (user_id, session_id, messages, metadata, created_at)
-                            VALUES ($1, $2, $3, $4, $5)
+                            VALUES ($1, $2, $3::text::jsonb, $4::text::jsonb, $5)
                             RETURNING id
                             """,
                             user_email,
                             session_id,
-                            # Use to_jsonb for asyncpg JSONB compatibility (handles Decimal, datetime, UUID)
+                            # ::text::jsonb — the app pools register a jsonb
+                            # codec (encoder=json.dumps); a bare param inferred
+                            # as jsonb double-encodes to_jsonb()'s already-
+                            # serialized string into a jsonb string scalar.
                             to_jsonb(request.messages),
                             to_jsonb(request.metadata or {}),
                             datetime.now(tz=timezone.utc),

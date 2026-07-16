@@ -55,7 +55,7 @@ async def touch_session(
         await conn.execute(
             """
             INSERT INTO funnel_sessions (session_id, funnel, step_state, lead_profile, ip_hash)
-            VALUES ($1, $2, $3::jsonb, $4::jsonb, $5)
+            VALUES ($1, $2, $3::text::jsonb, $4::text::jsonb, $5)
             ON CONFLICT (session_id) DO UPDATE SET
                 funnel = EXCLUDED.funnel,
                 step_state = funnel_sessions.step_state || EXCLUDED.step_state,
@@ -64,6 +64,11 @@ async def touch_session(
             """,
             req.session_id,
             req.funnel.value,
+            # ::text::jsonb — the app pools register a jsonb codec whose encoder
+            # is json.dumps; a param inferred as jsonb would get the
+            # pre-serialized string dumped AGAIN and land as a jsonb string
+            # scalar (funnel_sessions had 6674/3508 polluted rows, live-probe
+            # 2026-07-16). Typing the param as text makes the server parse it.
             json.dumps(req.step_state),
             json.dumps(req.lead_profile),
             _ip_hash(request),

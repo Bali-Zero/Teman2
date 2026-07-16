@@ -570,10 +570,15 @@ async def _log_whatsapp_message_interaction(
                 )
                 VALUES (
                     $1, $2, 'message', 'whatsapp', $3, $4, $5, $6, $7,
-                    $8::jsonb, NOW(), $9, $9, 'whatsapp_message', $10,
+                    $8::text::jsonb, NOW(), $9, $9, 'whatsapp_message', $10,
                     COALESCE($11::timestamptz, NOW()), 'normal'
                 )
                 """,
+                # $8::text::jsonb — the app pools register a jsonb codec
+                # (encoder=json.dumps); a param inferred as jsonb would get
+                # the pre-serialized string dumped AGAIN and land as a jsonb
+                # string scalar (interactions.metadata had 138 polluted rows,
+                # live-probe 2026-07-16, distinct writer from crm_interactions.py).
                 client_id,
                 practice_id,
                 title,
