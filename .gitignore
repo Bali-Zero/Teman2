@@ -537,7 +537,19 @@ openclaw
 !.claude/agents/frontend-browser.md
 !.claude/agents/mcp-health.md
 !.claude/agents/spalla-review.md
+# 2026-07-17: slash commands hold PER-PERSON team corners (subhi/ari/... with
+# probation dates, RBAC perimeters) that live ONLY in ~/.claude/commands and must
+# NEVER reach this PUBLIC repo (UU PDP / SYMBIOSIS Law 2). !.claude/commands/ nudo
+# would track any corner dropped into the repo dir — same red-team finding #8 as
+# agents. Narrow to an explicit per-file allowlist: only vetted process/utility
+# commands. Update this list ONLY when deliberately vendoring a non-PII command.
 !.claude/commands/
+.claude/commands/*
+!.claude/commands/codex-second-opinion.md
+!.claude/commands/stadio-zero.md
+!.claude/commands/scar.md
+!.claude/commands/verify.md
+!.claude/commands/resume.md
 !.claude/scripts/
 !.claude/hooks/
 !.claude/rules/
