@@ -59,32 +59,187 @@ enum WarRoom {
     ///    silently loses its click target ("non riesco ad aprire i drafted").
     ///
     /// Resolution order — every step is an exact/anchored match, never bare
-    /// substring (scar #3, guard-over-match):
+    /// substring (scar #3, guard-over-match), and each step is a GENUINELY SEPARATE
+    /// pass over the full candidate set before falling to the next — never combined
+    /// into one predicate. A combined pass lets ARRAY ORDER decide between two steps
+    /// of different precedence whenever both would match different candidates
+    /// (Codex red-team finding #1, 2026-07-16: an item with topic_slug=="golden-visa"
+    /// must always resolve to the exact dir `golden-visa`, never to a same-topic dated
+    /// FSM dir like `2026-07-08-golden-visa-deadbeef` just because that happened to
+    /// come first in a modified-descending sort):
     ///  1. basename of `carousel_path` (authoritative — same join scanCarousels uses)
     ///  2. `topic_slug` exact (legacy schema)
     ///  3. anchored FSM pattern `^\d{4}-\d{2}-\d{2}-<topic_slug>-[0-9a-f]{6,}$`
+    ///
+    /// Steps extracted into `queueItemMatchesByPath`/`queueItemMatchesByExactTopicSlug`/
+    /// `queueItemMatchesByFSMRegex` so the A2 completeness gate below (which only has a
+    /// candidate SLUG, not a built Carousel array, while it's still deciding whether the
+    /// dir belongs in the gallery at all) can reuse the exact same resolution rule instead
+    /// of growing a second, driftable copy (scar #3: a guard and its untested twin are how
+    /// over/under-match pairs are born).
     static func matchCarousel(for item: ReviewItem, in carousels: [Carousel]) -> Carousel? {
-        if let p = item.carousel_path {
-            let trimmed = p.hasSuffix("/") ? String(p.dropLast()) : p
-            let slug = (trimmed as NSString).lastPathComponent
-            if slug.isEmpty == false,
-               let c = carousels.first(where: { $0.slug == slug }) { return c }
+        if let c = carousels.first(where: { queueItemMatchesByPath(item, candidateSlug: $0.slug) }) {
+            return c
         }
-        guard let ts = item.topic_slug, ts.isEmpty == false else { return nil }
-        if let c = carousels.first(where: { $0.slug == ts }) { return c }
+        guard item.topic_slug?.isEmpty == false else { return nil }
+        if let c = carousels.first(where: { queueItemMatchesByExactTopicSlug(item, candidateSlug: $0.slug) }) {
+            return c
+        }
+        return carousels.first(where: { queueItemMatchesByFSMRegex(item, candidateSlug: $0.slug) })
+    }
+
+    /// Step 1: does `item.carousel_path`'s basename equal `slug`?
+    static func queueItemMatchesByPath(_ item: ReviewItem, candidateSlug slug: String) -> Bool {
+        guard let p = item.carousel_path else { return false }
+        let trimmed = p.hasSuffix("/") ? String(p.dropLast()) : p
+        let pathSlug = (trimmed as NSString).lastPathComponent
+        return pathSlug.isEmpty == false && pathSlug == slug
+    }
+
+    /// Step 2: does `item.topic_slug` match `slug` EXACTLY (legacy schema)? Kept as its
+    /// own pass, never combined with step 3 — see `matchCarousel` doc above.
+    static func queueItemMatchesByExactTopicSlug(_ item: ReviewItem, candidateSlug slug: String) -> Bool {
+        guard let ts = item.topic_slug, ts.isEmpty == false else { return false }
+        return ts == slug
+    }
+
+    /// Step 3: does `item.topic_slug` match `slug` via the anchored FSM
+    /// `date-topic_slug-id8` pattern? Only tried after steps 1+2 both miss.
+    static func queueItemMatchesByFSMRegex(_ item: ReviewItem, candidateSlug slug: String) -> Bool {
+        guard let ts = item.topic_slug, ts.isEmpty == false else { return false }
         let escaped = NSRegularExpression.escapedPattern(for: ts)
         let pattern = "^\\d{4}-\\d{2}-\\d{2}-\(escaped)-[0-9a-f]{6,}$"
-        guard let re = try? NSRegularExpression(pattern: pattern) else { return nil }
-        return carousels.first(where: { c in
-            let r = NSRange(c.slug.startIndex..., in: c.slug)
-            return re.firstMatch(in: c.slug, range: r) != nil
-        })
+        guard let re = try? NSRegularExpression(pattern: pattern) else { return false }
+        let r = NSRange(slug.startIndex..., in: slug)
+        return re.firstMatch(in: slug, range: r) != nil
+    }
+
+    // MARK: - A2 complete-or-nothing gate (2026-07-16, Zero mandate: "the app must NEVER
+    // receive drafted carousels with a single/partial slide — complete or nothing")
+
+    /// Count of on-disk dirs the gate excluded on the MOST RECENT `scanCarousels` call
+    /// (reset at the top of each scan). Exclusion must be observable, not silent (scar
+    /// #2, esiste≠armato) — this is the cheapest surface that doesn't require threading a
+    /// new return type through every call site (AppState, galleryproof, and the test
+    /// harness all call `scanCarousels() -> [Carousel]` today). AppState republishes it so
+    /// GalleryView can show "N nascosti" next to the existing carousel count.
+    private(set) static var excludedIncompleteCount: Int = 0
+
+    private static func logGateExclusion(slug: String, reason: String) {
+        FileHandle.standardError.write("wr2-gate: excluded '\(slug)' — \(reason)\n".data(using: .utf8)!)
+        excludedIncompleteCount += 1
+    }
+
+    /// Resolve the DECLARED slide count for an on-disk carousel directory — the number the
+    /// gate compares against the REAL PNG count. Three sources, first hit wins:
+    ///  (a) `slides.json` in the dir — count of entries in the `slides` array (or the bare
+    ///      top-level array in older files). NEVER the top-level `slide_count` int field:
+    ///      that metadata can go stale after an in-place revise (scar #9 — ground fact
+    ///      2026-07-16: 13 live queue entries found off-by-one after post-draft edits that
+    ///      never re-derived it; trusting the array length itself is what the render
+    ///      pipeline's own A1 gate does, so the app agrees with the producer).
+    ///  (b) `manifest.json` `total_slides` — the external-import path
+    ///      (`wr2_carousel_import.py`, MIN_SLIDES=1) writes this shape with no slides.json.
+    ///  (c) the review queue's `slide_count`, joined via the SAME path/topic_slug
+    ///      resolution `matchCarousel` uses.
+    /// `nil` = undeclarable — no source exists, so the dir is not eligible for the gallery
+    /// at all (see scanCarousels): silently trusting raw disk PNGs is the disease, not the cure.
+    static func declaredSlideCount(in dir: URL, slug: String, queue: [ReviewItem]) -> Int? {
+        if let n = slideCountFromSlidesJSON(in: dir) { return n }
+        if let n = slideCountFromManifest(in: dir) { return n }
+        return queueDeclaredSlideCount(forSlug: slug, in: queue)
+    }
+
+    private static func slideCountFromSlidesJSON(in dir: URL) -> Int? {
+        let url = dir.appendingPathComponent("slides.json")
+        guard let data = try? Data(contentsOf: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) else { return nil }
+        if let arr = obj as? [[String: Any]] { return arr.count }
+        if let d = obj as? [String: Any], let arr = d["slides"] as? [[String: Any]] { return arr.count }
+        return nil
+    }
+
+    private static func slideCountFromManifest(in dir: URL) -> Int? {
+        let url = dir.appendingPathComponent("manifest.json")
+        guard let data = try? Data(contentsOf: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return obj["total_slides"] as? Int
+    }
+
+    /// Queue-based fallback (source c): resolve `slug`'s declared count from the review
+    /// queue, at the SAME path → exact-topic_slug → FSM-regex precedence `matchCarousel`
+    /// uses — each tier tried in full before falling to the next, and each tier
+    /// considers ONLY items that actually carry a `slide_count` (Codex red-team finding
+    /// #2, 2026-07-16: the previous version returned `nil` the instant the FIRST
+    /// path-matching item lacked a count, even when a later item at the SAME tier had
+    /// one — and combined exact+regex into one pass, letting queue array order silently
+    /// pick between two items that disagree). If MULTIPLE items at the SAME tier declare
+    /// DIFFERENT counts, that's genuine ambiguity — fail closed (nil, i.e. undeclarable)
+    /// rather than silently picking the first; the gate logs the specific reason via
+    /// `queueAmbiguityDescription` below (kept pure/side-effect-free here so this
+    /// function is safe to call from both `declaredSlideCount` and the diagnostic path
+    /// without double-incrementing `excludedIncompleteCount`).
+    private static func queueDeclaredSlideCount(forSlug slug: String, in queue: [ReviewItem]) -> Int? {
+        for matcher in [queueItemMatchesByPath, queueItemMatchesByExactTopicSlug, queueItemMatchesByFSMRegex] {
+            let counts = queue.filter { matcher($0, slug) }.compactMap(\.slide_count)
+            guard counts.isEmpty == false else { continue }   // no count-bearing hit at this tier — try next
+            let distinct = Set(counts)
+            return distinct.count == 1 ? distinct.first : nil   // >1 distinct value → ambiguous → nil, stop here
+        }
+        return nil
+    }
+
+    /// Diagnostic-only companion to `queueDeclaredSlideCount`: if a dir's declared count
+    /// came back nil specifically because of a same-tier queue disagreement (not a true
+    /// absence of any source), describe the conflicting values for the gate's exclusion
+    /// log. Pure — never mutates state — so calling it purely to build a log message
+    /// never double-counts `excludedIncompleteCount` (Codex red-team finding #2).
+    private static func queueAmbiguityDescription(forSlug slug: String, in queue: [ReviewItem]) -> String? {
+        for matcher in [queueItemMatchesByPath, queueItemMatchesByExactTopicSlug, queueItemMatchesByFSMRegex] {
+            let counts = queue.filter { matcher($0, slug) }.compactMap(\.slide_count)
+            guard counts.isEmpty == false else { continue }
+            let distinct = Set(counts)
+            return distinct.count > 1 ? "ambiguous queue slide_count at this precedence tier: \(distinct.sorted())" : nil
+        }
+        return nil
+    }
+
+    /// Resolve the ONE queue item that authoritatively describes a physical directory
+    /// `slug`, via the same path → exact-topic_slug → FSM-regex precedence
+    /// `matchCarousel` uses. Used to build the per-slug verdict/metrics/published maps
+    /// below so a physical dir never misses its own queue row just because a map was
+    /// indexed by the queue's raw fields instead of resolved against the actual
+    /// directory name (Codex red-team finding #4, 2026-07-16).
+    private static func resolveQueueItem(forSlug slug: String, in queue: [ReviewItem]) -> ReviewItem? {
+        if let item = queue.first(where: { queueItemMatchesByPath($0, candidateSlug: slug) }) { return item }
+        if let item = queue.first(where: { queueItemMatchesByExactTopicSlug($0, candidateSlug: slug) }) { return item }
+        return queue.first(where: { queueItemMatchesByFSMRegex($0, candidateSlug: slug) })
+    }
+
+    /// True if `item` resolves (via the canonical path/exact/regex precedence) to ANY
+    /// of the given physical directory slugs. Used by the second pass to avoid
+    /// spawning a duplicate "virtual" carousel for a queue row that already has a real
+    /// on-disk dir — even one the completeness gate excluded (Codex red-team finding
+    /// #4: previously the dedup set held only gate-SURVIVING slugs, checked via a raw
+    /// topic_slug/basename guess, so a physical dir named differently from the queue's
+    /// truncated topic_slug got excluded by the gate AND re-created here as a phantom
+    /// virtual entry with no local cover/slides).
+    private static func resolvesToPhysicalDir(_ item: ReviewItem, physicalSlugs: [String]) -> Bool {
+        physicalSlugs.contains(where: { queueItemMatchesByPath(item, candidateSlug: $0) })
+            || physicalSlugs.contains(where: { queueItemMatchesByExactTopicSlug(item, candidateSlug: $0) })
+            || physicalSlugs.contains(where: { queueItemMatchesByFSMRegex(item, candidateSlug: $0) })
     }
 
     // MARK: - Carousel gallery scan
 
     static func scanCarousels(carouselRoot root: URL? = nil,
                               queue: [ReviewItem] = []) -> [Carousel] {
+        // Reset BEFORE any I/O, on every exit path including an early return below — a
+        // stale nonzero count surviving a failed/empty scan would show "N nascosti" over
+        // a gallery that simply failed to read, its own silent-lie (Codex red-team
+        // finding #5, 2026-07-16).
+        excludedIncompleteCount = 0
+
         let fm = FileManager.default
         let croot = root ?? carouselRoot()
         guard let entries = try? fm.contentsOfDirectory(
@@ -92,36 +247,48 @@ enum WarRoom {
             includingPropertiesForKeys: [.contentModificationDateKey, .isDirectoryKey],
             options: [.skipsHiddenFiles]) else { return [] }
 
-        // build slug -> verdict/metrics/url/published maps from the queue (defensive across schemas)
+        // Every physical (non-archived) directory slug on disk, gathered BEFORE gating
+        // or queue-joining — two downstream steps need the FULL set, not just
+        // gate-survivors: (1) the per-slug queue join below must resolve against every
+        // real dir so one that ALSO gets excluded by the completeness gate still gets
+        // correct published/verdict/metrics data; (2) the second pass's dedup must
+        // never spawn a duplicate for a dir that exists physically but didn't survive
+        // the gate (Codex red-team finding #4, 2026-07-16).
+        var physicalSlugs: [String] = []
+        for dir in entries {
+            let isDir = (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
+            guard isDir else { continue }
+            let slug = dir.lastPathComponent
+            if slug.hasPrefix("_") { continue }
+            physicalSlugs.append(slug)
+        }
+
+        // Resolve each physical slug to ITS ONE queue item via the canonical
+        // precedence — never by indexing the queue on its own raw fields (Codex
+        // finding #4: that let a dir silently miss its own publication/verdict data
+        // whenever the FSM directory name diverges from the queue's truncated
+        // topic_slug). `publishedBySlug` uses the canonical `isQueueItemPublished`
+        // predicate, not bare field presence (Codex finding #3: an empty-string
+        // `instagram_post_url` used to count as "published" and bypass the gate).
         var verdictBySlug: [String: String] = [:]
+        var stateBySlug: [String: String] = [:]
         var metricsBySlug: [String: EngagementMetrics] = [:]
         var igUrlBySlug: [String: String] = [:]
         var pubAtBySlug: [String: String] = [:]
         var canvaBySlug: [String: String] = [:]
-        for item in queue {
-            let slug: String?
-            if let p = item.carousel_path {
-                let trimmed = p.hasSuffix("/") ? String(p.dropLast()) : p
-                slug = trimmed.components(separatedBy: "/").last
-            } else {
-                slug = item.topic_slug
-            }
-            guard let s = slug else { continue }
-            if let v = item.critic_overall_verdict ?? item.state {
-                verdictBySlug[s] = v
-            }
-            if let m = item.engagement_metrics {
-                metricsBySlug[s] = m
-            }
-            if let u = item.instagram_post_url {
-                igUrlBySlug[s] = u
-            }
-            if let a = item.instagram_published_at {
-                pubAtBySlug[s] = a
-            }
-            if let c = item.canvaLink {
-                canvaBySlug[s] = c
-            }
+        var publishedBySlug: [String: Bool] = [:]
+        for slug in physicalSlugs {
+            guard let item = resolveQueueItem(forSlug: slug, in: queue) else { continue }
+            if let v = item.critic_overall_verdict ?? item.state { verdictBySlug[slug] = v }
+            // Raw `state`, kept SEPARATE from verdictBySlug above (which is verdict-first
+            // and feeds the critic-verdict badge only) — see Carousel.state doc comment
+            // for why a stale verdict must never mask a fresh render_incomplete state.
+            if let s = item.state { stateBySlug[slug] = s }
+            if let m = item.engagement_metrics { metricsBySlug[slug] = m }
+            if let u = item.instagram_post_url { igUrlBySlug[slug] = u }
+            if let a = item.instagram_published_at { pubAtBySlug[slug] = a }
+            if let c = item.canvaLink { canvaBySlug[slug] = c }
+            publishedBySlug[slug] = isQueueItemPublished(item)
         }
 
         var carousels: [Carousel] = []
@@ -132,8 +299,41 @@ enum WarRoom {
             if slug.hasPrefix("_") { continue }   // skip _archived-*, etc.
 
             let slidesDir = dir.appendingPathComponent("slides", isDirectory: true)
+            // Distinguish a genuinely-empty/not-yet-rendered slides/ dir from one that
+            // exists but is momentarily unreadable (permission/I/O flap): the lenient
+            // `slidePNGs` collapses both to `[]` via `try?`, so an I/O error was
+            // previously silently dropped with no log/counter — indistinguishable from
+            // a real empty dir (Codex red-team finding #5, 2026-07-16).
+            let slidesDirReadable = (try? fm.contentsOfDirectory(
+                at: slidesDir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) != nil
             let pngs = slidePNGs(in: slidesDir)
-            guard pngs.isEmpty == false else { continue }   // only real carousels
+            guard pngs.isEmpty == false else {
+                if slidesDirReadable == false {
+                    logGateExclusion(slug: slug, reason: "slides/ unreadable (I/O error) — not a genuine empty carousel")
+                }
+                continue
+            }
+
+            // A2 complete-or-nothing gate (mandate 2026-07-16): a drafted/unpublished
+            // carousel is listed ONLY when the real PNG count matches its DECLARED
+            // count. Published/history entries are exempt — immutable, REPOINT-guarded,
+            // and already passed the render pipeline's own completeness gate before
+            // going live, so a later local drift here must never hide them
+            // retroactively.
+            let published = publishedBySlug[slug] ?? false
+            let declared = declaredSlideCount(in: dir, slug: slug, queue: queue)
+            if published == false {
+                guard let d = declared else {
+                    let reason = queueAmbiguityDescription(forSlug: slug, in: queue)
+                        ?? "undeclarable — no slides.json/manifest.json/queue slide_count"
+                    logGateExclusion(slug: slug, reason: reason)
+                    continue
+                }
+                guard pngs.count == d else {
+                    logGateExclusion(slug: slug, reason: "incomplete — disk=\(pngs.count) declared=\(d)")
+                    continue
+                }
+            }
 
             let mod = (try? dir.resourceValues(forKeys: [.contentModificationDateKey]))?
                 .contentModificationDate ?? Date.distantPast
@@ -148,13 +348,14 @@ enum WarRoom {
                 topic: brief?.topic,
                 domain: brief?.domain,
                 criticVerdict: verdictBySlug[slug],
-                slideCount: pngs.count,
+                slideCount: declared ?? pngs.count,   // displayed count = declared, never raw disk
                 imagegenFallback: detectImagegenFallback(in: dir),
                 coverURL: coverURL(slidesDir: slidesDir, slidePNGs: pngs),
                 metrics: metricsBySlug[slug],
                 instagramURL: igUrlBySlug[slug],
                 publishedAt: pubAtBySlug[slug],
-                canvaURL: canvaBySlug[slug]))
+                canvaURL: canvaBySlug[slug],
+                state: stateBySlug[slug]))
         }
 
         // Second pass — published carousels that live ONLY in the queue (no on-disk render).
@@ -162,13 +363,17 @@ enum WarRoom {
         // engagement metrics but no slides/ folder. The folder scan above can never surface them,
         // so the gallery would show 0 of them ("apro la app e non è aggiornata"). We add them here
         // as IG-only carousels: no local PNG (cover placeholder), metrics/URL/topic/date from queue.
-        let physicalSlugs = Set(carousels.map { $0.slug })
+        // Dedup checks EVERY physical dir (not just gate-survivors) via the canonical resolver
+        // (not a raw topic_slug/basename guess) — otherwise a physical dir the gate excluded, or
+        // one whose queue row's topic_slug is a truncated FSM form, gets a duplicate phantom
+        // entry here that shadows its real cover/slides (Codex red-team finding #4, 2026-07-16).
         for item in queue {
-            guard let igURL = item.instagram_post_url, igURL.isEmpty == false else { continue }
+            guard let igURL = item.instagram_post_url,
+                  igURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else { continue }
+            guard resolvesToPhysicalDir(item, physicalSlugs: physicalSlugs) == false else { continue }
             let slug = item.topic_slug
                 ?? item.carousel_path.map { ($0 as NSString).lastPathComponent }
                 ?? item.id
-            guard physicalSlugs.contains(slug) == false else { continue }
 
             let mod = item.instagram_published_at.flatMap(parsePublishedAt) ?? Date.distantPast
             carousels.append(Carousel(
@@ -187,7 +392,8 @@ enum WarRoom {
                 metrics: item.engagement_metrics,
                 instagramURL: igURL,
                 publishedAt: item.instagram_published_at,
-                canvaURL: item.canvaLink))
+                canvaURL: item.canvaLink,
+                state: item.state))
         }
 
         return carousels.sorted { $0.modified > $1.modified }
