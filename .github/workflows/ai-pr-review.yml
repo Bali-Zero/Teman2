@@ -83,7 +83,10 @@ jobs:
             echo "::notice title=AI review skipped::empty diff on the reviewed paths."
             exit 0
           fi
-          # Untrusted values go in via shell vars (env:), never ${{ }} in a script.
+          # Untrusted values go in via shell vars (env:), never GitHub-expression
+          # interpolation in a run: script. (A literal empty expression in this very
+          # comment startup-failed the whole workflow once — the compiler scans run:
+          # bodies for expressions before shell ever sees the '#'. Don't reintroduce it.)
           {
             printf 'PR title: %s\n' "$PR_TITLE"
             printf 'PR author: %s\n' "$PR_AUTHOR"
@@ -97,7 +100,7 @@ jobs:
         if: steps.guard.outputs.has_token == 'true' && steps.input.outputs.diff_bytes != '0'
         uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: "24"
 
       - name: Install Claude CLI
         if: steps.guard.outputs.has_token == 'true' && steps.input.outputs.diff_bytes != '0'
