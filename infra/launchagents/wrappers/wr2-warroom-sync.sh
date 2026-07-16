@@ -11,7 +11,7 @@
 # read the OUTCOME, not the exit code — we record file counts).
 set -uo pipefail
 
-SRC="pro:/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/"
+SRC="pro:/Users/nuzantara/nuzantara/apps/war-room/output/"
 DST="$HOME/.wr2-warroom-sync/output/"
 LOG="$HOME/Library/Logs/wr2-warroom-sync.log"
 STAMP="$(date '+%Y-%m-%d %H:%M:%S')"
@@ -19,7 +19,7 @@ STAMP="$(date '+%Y-%m-%d %H:%M:%S')"
 mkdir -p "$DST" "$(dirname "$LOG")"
 
 # 1) reachability probe — if the Pro is unreachable, log and exit 0 (no destructive op)
-if ! ssh -o ConnectTimeout=10 -o BatchMode=yes pro 'test -f /Users/nuzantara/Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json' 2>/dev/null; then
+if ! ssh -o ConnectTimeout=10 -o BatchMode=yes pro 'test -f /Users/nuzantara/nuzantara/apps/war-room/output/queue/human-review-queue.json' 2>/dev/null; then
   echo "$STAMP  SKIP — Pro unreachable or queue missing (no sync, local copy untouched)" >> "$LOG"
   exit 0
 fi
