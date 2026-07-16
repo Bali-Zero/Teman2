@@ -12,6 +12,7 @@ Reads from: ~/logs/cron/*.jsonl (cron-wrapper.sh structured output)
 
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -181,13 +182,20 @@ def send_alert(results: list[dict]) -> None:
         lines.append(f"{icon} {r['job']}: {r['message'][:80]}")
 
     msg = "\n".join(lines)
+    # Stable dedup-key scoped to the SET of alerting job names, not their message
+    # text (durations/timestamps in r["message"] vary run-to-run and would defeat
+    # the gateway's default source+text[:160] hash — same flap-refiring class as
+    # the drive_token_watchdog cohort-6 fix). Same set of jobs still critical =
+    # deduped; the set changing (new job breaks, one recovers) = a fresh alert.
+    job_set = ",".join(sorted(r["job"] for r in alerts))
+    dedup_key = f"job-health:{socket.gethostname().split('.')[0]}:{job_set}"
     gateway = PROJECT_ROOT / "scripts" / "tg_notify.py"
     if not gateway.is_file():
         gateway = Path(os.path.expanduser("~/Desktop/nuzantara/scripts/tg_notify.py"))
     try:
         proc = subprocess.run(
             [sys.executable, str(gateway), "--tier", "p0",
-             "--source", "job-health", "--", msg],
+             "--source", "job-health", "--dedup-key", dedup_key, "--", msg],
             capture_output=True, text=True, timeout=30,
         )
         if proc.returncode != 0:
