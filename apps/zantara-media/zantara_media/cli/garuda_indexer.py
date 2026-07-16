@@ -17,7 +17,7 @@ def load_env() -> None:
     """Load environment variables from apps/backend-rag/.env if not already set."""
     # Structure: apps/zantara-media/zantara_media/cli/garuda_indexer.py
     # parents[0] = cli/, parents[1] = zantara_media/, parents[2] = zantara-media/,
-    # parents[3] = apps/, parents[4] = Desktop/nuzantara/
+    # parents[3] = apps/, parents[4] = nuzantara/
     candidates = [
         Path(__file__).parents[2] / ".env",                           # apps/zantara-media/.env
         Path(__file__).parents[3] / "backend-rag" / ".env",           # apps/backend-rag/.env

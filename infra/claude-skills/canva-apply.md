@@ -25,7 +25,7 @@ Risoluzione del path del pending (in ordine di precedenza):
 
 1. Se l'invocante (l'attuatore headless) ti passa esplicitamente un "Pending file path: ..." nel prompt, USA QUELLO.
 2. Altrimenti, se l'env var WR2_OUTPUT_ROOT è valorizzata, leggi ${WR2_OUTPUT_ROOT}/canva_pending.json (strip trailing slash).
-3. Altrimenti fallback legacy: /Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva/canva_pending.json
+3. Altrimenti fallback legacy: /Users/nuzantara/nuzantara/apps/war-room/output/canva/canva_pending.json
    Se il file non esiste, stampa "✅ No pending Canva" e fermati. Se status è già "applied", stampa "✅ Already applied" e fermati.
 
 Esegui i seguenti step nell'ordine esatto. Non chiedere conferma tra uno step e l'altro. Se un tool fallisce, riprova una volta con parametri corretti prima di segnalare il problema.

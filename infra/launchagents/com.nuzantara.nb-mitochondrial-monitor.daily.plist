@@ -6,12 +6,12 @@
     <string>com.nuzantara.nb-mitochondrial-monitor.daily</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+        <string>/Users/nuzantara/nuzantara/apps/mata-garuda/.venv/bin/python</string>
         <string>-m</string>
         <string>mata_garuda.scripts.nb_monitor.run</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+    <string>/Users/nuzantara/nuzantara/apps/mata-garuda</string>
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>

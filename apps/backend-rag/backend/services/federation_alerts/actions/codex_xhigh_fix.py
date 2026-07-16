@@ -76,7 +76,7 @@ def _default_project_root() -> Path:
     if env_root:
         return Path(env_root).expanduser()
 
-    legacy_root = Path(os.path.expanduser("~/Desktop/nuzantara"))
+    legacy_root = Path(os.path.expanduser("~/nuzantara"))
     if legacy_root.exists():
         return legacy_root
 
@@ -99,7 +99,7 @@ async def codex_xhigh_fix_action(
         prompt           (str, REQUIRED)  — task description for Codex
         timeout_sec      (int, default 1800, max 3600)
         cwd              (str, default $NUZANTARA_REPO_ROOT, detected repo root,
-                           or $HOME/Desktop/nuzantara)
+                           or $HOME/nuzantara)
 
     The prompt is wrapped with hard rules + hard-rule reminder before being
     passed to Codex. The action does NOT mutate git state — Codex itself

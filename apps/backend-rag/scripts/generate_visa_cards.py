@@ -12,9 +12,9 @@ from weasyprint import CSS, HTML
 
 # Paths
 DESKTOP = Path("/Users/antonellosiano/Desktop")
-PUBLIC_FILES = Path("/Users/antonellosiano/Desktop/nuzantara/apps/mouth/public/files/visa")
+PUBLIC_FILES = Path("/Users/antonellosiano/nuzantara/apps/mouth/public/files/visa")
 LOGO_PATH = Path(
-    "/Users/antonellosiano/Desktop/nuzantara/apps/mouth/public/images/balizero-logo.png"
+    "/Users/antonellosiano/nuzantara/apps/mouth/public/images/balizero-logo.png"
 )
 API_BASE = "https://nuzantara-rag.fly.dev/api/knowledge/visa"
 

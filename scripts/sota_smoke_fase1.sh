@@ -28,9 +28,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND="${ROOT}/apps/backend-rag"
 VENV="${BACKEND}/.venv"
 # Fallback to the Pro repo venv if the worktree doesn't have its own
-# (worktree venvs are often symlinked to /Users/nuzantara/Desktop/nuzantara/.../.venv).
-if [[ ! -x "${VENV}/bin/python" ]] && [[ -x "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python" ]]; then
-  VENV="/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv"
+# (worktree venvs are often symlinked to /Users/nuzantara/nuzantara/.../.venv).
+if [[ ! -x "${VENV}/bin/python" ]] && [[ -x "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python" ]]; then
+  VENV="/Users/nuzantara/nuzantara/apps/backend-rag/.venv"
 fi
 PY="${VENV}/bin/python"
 

@@ -10,14 +10,14 @@
 # Schedule (manual install when ready):
 #   crontab -e
 #   0 7 * * * /bin/bash /Users/nuzantara/scripts/cron-runner.sh \
-#       /Users/nuzantara/Desktop/nuzantara/scripts/nlm_activation/truth_dashboard_digest.sh \
+#       /Users/nuzantara/nuzantara/scripts/nlm_activation/truth_dashboard_digest.sh \
 #       >> /tmp/cron-truth-digest.log 2>&1
 #
 # Safe to enable from Stage 1 onwards — it only reads, never writes.
 
 set -euo pipefail
 
-REPO_ROOT="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO_ROOT="${REPO_ROOT:-$HOME/nuzantara}"
 LOG_FILE="$HOME/.openclaw/logs/nlm_truth_digest.log"
 mkdir -p "$(dirname "$LOG_FILE")"
 

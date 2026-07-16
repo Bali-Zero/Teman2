@@ -22,7 +22,7 @@ log() {
 
 # Heartbeat helper (no-op fallback if not present).
 # shellcheck disable=SC1091
-if ! source "${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh" 2>/dev/null; then
+if ! source "${HOME}/nuzantara/scripts/lib/heartbeat.sh" 2>/dev/null; then
     organism_heartbeat() { :; }
 fi
 
@@ -55,7 +55,7 @@ if [[ "$DATABASE_URL" == *"flycast"* ]] || [[ "$DATABASE_URL" == *".internal"* ]
     fi
 fi
 
-REPO_ROOT="${HOME}/Desktop/nuzantara"
+REPO_ROOT="${HOME}/nuzantara"
 VENV="${REPO_ROOT}/apps/backend-rag/.venv/bin/python"
 
 if [ ! -x "$VENV" ]; then

@@ -81,7 +81,7 @@ def is_service_file(file_path: str) -> bool:
 
 def analyze(
     coverage_path: str,
-    repo_root: str = "/Users/nuzantara/Desktop/nuzantara",
+    repo_root: str = "/Users/nuzantara/nuzantara",
     top_n: int = 20,
     git_days: int = 30,
 ) -> dict:

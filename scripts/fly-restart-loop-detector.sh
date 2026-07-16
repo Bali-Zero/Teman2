@@ -57,7 +57,7 @@ tg_alert() {
     local text="$1"
     local gateway
     gateway="$(dirname "$0")/tg_notify.py"
-    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
     python3 "$gateway" --tier p0 --source fly-restart-loop \
         --dedup-key "fly-restart-loop" -- "$text" \
         >/dev/null 2>&1 || log "telegram: gateway send failed"

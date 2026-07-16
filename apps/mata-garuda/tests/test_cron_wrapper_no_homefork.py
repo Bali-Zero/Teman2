@@ -38,7 +38,7 @@ def test_wrapper_targets_pro_canonical_not_mini():
 def test_wrapper_is_path_aware_no_user_hardcode():
     s = WRAPPER.read_text()
     # REPO_ROOT must derive from the script location, not a hardcoded /Users/<user>
-    assert "/Users/nuzantara/Desktop/nuzantara" not in s, \
+    assert "/Users/nuzantara/nuzantara" not in s, \
         "wrapper hardcodes /Users/nuzantara — must derive REPO_ROOT from script location"
 
 
@@ -69,7 +69,7 @@ def test_gap_wrapper_in_repo_and_path_aware():
     # check EXECUTABLE lines only (comments may explain the old hardcode/bug)
     code = [l for l in s.splitlines() if l.strip() and not l.lstrip().startswith("#")]
     code_s = "\n".join(code)
-    assert "/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda" not in code_s, \
+    assert "/Users/nuzantara/nuzantara/apps/mata-garuda" not in code_s, \
         "gap wrapper hardcodes a user path — derive REPO from script location"
     # must NOT default REPO to a .worktrees path (the dead-worktree exit-1 bug)
     assert ".worktrees" not in code_s, "gap wrapper defaults REPO to a .worktrees path (dead-worktree risk)"

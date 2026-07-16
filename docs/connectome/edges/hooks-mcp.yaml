@@ -118,7 +118,7 @@ edges:
       probe:
         {
           type: cmd,
-          cmd: "$HOME/Desktop/nuzantara/.mcp-servers/ga4-analytics/.venv/bin/python3 -c 'print(1)'",
+          cmd: "$HOME/nuzantara/.mcp-servers/ga4-analytics/.venv/bin/python3 -c 'print(1)'",
         },
     }
   - {
@@ -129,7 +129,7 @@ edges:
       probe:
         {
           type: cmd,
-          cmd: "$HOME/Desktop/nuzantara/.mcp-servers/ocr/.venv/bin/python3 -c 'print(1)'",
+          cmd: "$HOME/nuzantara/.mcp-servers/ocr/.venv/bin/python3 -c 'print(1)'",
         },
     }
   - {
@@ -141,7 +141,7 @@ edges:
       probe:
         {
           type: cmd,
-          cmd: "$HOME/Desktop/nuzantara/apps/nuzantara-mcp/.venv/bin/python3 -c 'print(1)'",
+          cmd: "$HOME/nuzantara/apps/nuzantara-mcp/.venv/bin/python3 -c 'print(1)'",
         },
     }
   - {
@@ -152,7 +152,7 @@ edges:
       probe:
         {
           type: cmd,
-          cmd: "$HOME/Desktop/nuzantara/apps/nuzantara-mcp-advanced/.venv/bin/python3 -c 'print(1)'",
+          cmd: "$HOME/nuzantara/apps/nuzantara-mcp-advanced/.venv/bin/python3 -c 'print(1)'",
         },
     }
   - {
@@ -164,7 +164,7 @@ edges:
       probe:
         {
           type: cmd,
-          cmd: "$HOME/Desktop/nuzantara/apps/nuzantara-mcp-browser/.venv/bin/python3 -c 'print(1)'",
+          cmd: "$HOME/nuzantara/apps/nuzantara-mcp-browser/.venv/bin/python3 -c 'print(1)'",
         },
     }
   - {

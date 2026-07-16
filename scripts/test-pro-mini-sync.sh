@@ -20,14 +20,14 @@ case "$HOST" in
   Nuzantara)
     LOCAL_NODE="Pro"
     PEER_ALIAS="mini"
-    PEER_REPO='~/Desktop/nuzantara'
-    EXPECTED_PULL_SCRIPT="$HOME/Desktop/nuzantara/scripts/mini/mini-git-pull.sh"
+    PEER_REPO='~/nuzantara'
+    EXPECTED_PULL_SCRIPT="$HOME/nuzantara/scripts/mini/mini-git-pull.sh"
     ;;
   Mini-Pro2|mini-pro2)
     LOCAL_NODE="Mini"
     PEER_ALIAS="pro"
-    PEER_REPO='~/Desktop/nuzantara'
-    EXPECTED_PULL_SCRIPT="$HOME/Desktop/nuzantara/scripts/mini/mini-git-pull.sh"
+    PEER_REPO='~/nuzantara'
+    EXPECTED_PULL_SCRIPT="$HOME/nuzantara/scripts/mini/mini-git-pull.sh"
     ;;
   *)
     fail "unsupported host $(hostname)"
@@ -67,13 +67,13 @@ if [ "$LOCAL_NODE" = "Pro" ]; then
     || fail "Mini deployed pull script is missing or not executable"
   ok "Mini deployed pull script executable"
 
-  if ssh -o BatchMode=yes -o ConnectTimeout=5 mini 'cmp -s ~/Desktop/nuzantara/scripts/mini/mini-git-pull.sh ~/scripts/mini-git-pull.sh'; then
+  if ssh -o BatchMode=yes -o ConnectTimeout=5 mini 'cmp -s ~/nuzantara/scripts/mini/mini-git-pull.sh ~/scripts/mini-git-pull.sh'; then
     ok "Mini deployed pull script matches repo copy"
   else
     fail "Mini deployed pull script differs from repo copy"
   fi
 
-  ssh -o BatchMode=yes -o ConnectTimeout=5 mini 'cd ~/Desktop/nuzantara && git ls-remote pro refs/heads/main >/dev/null' \
+  ssh -o BatchMode=yes -o ConnectTimeout=5 mini 'cd ~/nuzantara && git ls-remote pro refs/heads/main >/dev/null' \
     || fail "Mini cannot read Pro remote"
   ok "Mini can read Pro remote"
 else

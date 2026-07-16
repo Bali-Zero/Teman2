@@ -50,7 +50,7 @@ RE_STRICT_MCP = re.compile(r"--strict-mcp-config")
 RE_STDIN_NULL = re.compile(r"<\s*/dev/null")
 RE_TCC_STRATEGY = re.compile(r"SSH_CONNECTION|TRAMPOLINED|ssh\s+.*localhost")
 RE_SINGLE_INSTANCE = re.compile(r"PIDFILE|pidfile|flock\b|mkdir\s+[\"']?\S*\.lock")
-RE_HOME_PAYLOAD = re.compile(r"^(?:~|\$HOME|/Users/[^/]+)/(?!Desktop/nuzantara/)")
+RE_HOME_PAYLOAD = re.compile(r"^(?:~|\$HOME|/Users/[^/]+)/(?!nuzantara/)")
 
 
 def _load_keepalive_module(repo_root: Path):

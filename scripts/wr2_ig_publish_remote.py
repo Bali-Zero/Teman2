@@ -68,7 +68,7 @@ def _carousel_root_from_env(env: Mapping[str, str], home: Path) -> Path:
         return Path(explicit_root)
     if war_room_root := env.get("WR2_WARROOM_ROOT"):
         return Path(war_room_root) / "carousel"
-    return home / "Desktop/nuzantara/apps/war-room/output/carousel"
+    return home / "nuzantara/apps/war-room/output/carousel"
 
 
 _CAROUSEL_ROOT = _carousel_root_from_env(os.environ, Path.home())

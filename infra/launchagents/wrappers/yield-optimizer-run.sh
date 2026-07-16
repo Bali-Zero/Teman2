@@ -15,7 +15,7 @@ unset ANTHROPIC_API_KEY
 
 [ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
 
-mkdir -p "$HOME/Desktop/nuzantara/research/commercial" "$HOME/logs"
+mkdir -p "$HOME/nuzantara/research/commercial" "$HOME/logs"
 LOG="$HOME/logs/yield-optimizer.log"
 DATE=$(TZ=Asia/Makassar date +%Y-%m-%d)
 WEEK=$(TZ=Asia/Makassar date +%Y-W%V)
@@ -26,7 +26,7 @@ PROMPT="Run yield-optimizer agent for week $WEEK ($DATE).
 Read ~/.claude/agents/yield-optimizer.md for full spec.
 - Pull CRM via Postgres (apply 6 opportunity rules R1-R6, cap 20)
 - Generate WhatsApp pitches via Ollama qwen3.5:9b LOCAL (NEVER cloud LLM for CRM PII)
-- Output to ~/Desktop/nuzantara/research/commercial/${WEEK}-yield-opportunities.md
+- Output to ~/nuzantara/research/commercial/${WEEK}-yield-opportunities.md
 - Telegram digest to TELEGRAM_OWNER_CHAT_ID
 - Emit eventbus learning.updated event
 NO autonomous outreach. Drafts ONLY for ops team.

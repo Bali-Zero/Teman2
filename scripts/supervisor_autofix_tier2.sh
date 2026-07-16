@@ -139,7 +139,7 @@ build_diagnosis_context() {
   out+="$(launchctl print "gui/$(id -u)/${SUPERVISOR_LABEL}" 2>/dev/null | grep -E 'state|pid|last exit code|EnvironmentVariables|PYTHONPATH|RULES_PATH' | head -30 | head -c 3000)\n"
   out+="\`\`\`\n\n"
   out+="## Recent commits to apps/organism/\n\n\`\`\`\n"
-  out+="$(cd "$HOME/Desktop/nuzantara" && git log --oneline -10 -- apps/organism/ 2>/dev/null)\n"
+  out+="$(cd "$HOME/nuzantara" && git log --oneline -10 -- apps/organism/ 2>/dev/null)\n"
   out+="\`\`\`\n\n"
   out+="## Plist current paths\n\n\`\`\`\n"
   out+="$(/usr/libexec/PlistBuddy -c 'Print :EnvironmentVariables' "$PLIST_PATH" 2>/dev/null | head -20)\n"
@@ -156,13 +156,13 @@ invoke_claude() {
   local prompt="You are a Bali Zero on-call SRE. Supervisor daemon \`com.nuzantara.organism.supervisor\` on Pro is in error loop or unresponsive. Below is diagnostic context. Identify root cause and apply MINIMAL fix.
 
 CONSTRAINTS:
-- Fix files in /Users/nuzantara/Desktop/nuzantara only (main checkout). Do NOT use worktree paths.
+- Fix files in /Users/nuzantara/nuzantara only (main checkout). Do NOT use worktree paths.
 - For plist edits: chmod u+w, plutil -replace/-remove, chmod 0444, then bootout + bootstrap.
-- Verify after fix: bash /Users/nuzantara/Desktop/nuzantara/scripts/supervisor_liveness_watchdog.sh — it must exit 0 with gap < 7200s.
+- Verify after fix: bash /Users/nuzantara/nuzantara/scripts/supervisor_liveness_watchdog.sh — it must exit 0 with gap < 7200s.
 - DO NOT modify Supervisor source code. Only configuration / plist / paths.
 - DO NOT rm anything.
 - Work autonomously, do not ask questions.
-- After fix, send Telegram via: bash /Users/nuzantara/Desktop/nuzantara/scripts/supervisor_liveness_watchdog.sh with FORCE_ALERT=0 to confirm pipeline. Skip if Telegram already validated.
+- After fix, send Telegram via: bash /Users/nuzantara/nuzantara/scripts/supervisor_liveness_watchdog.sh with FORCE_ALERT=0 to confirm pipeline. Skip if Telegram already validated.
 
 Output format:
 DIAGNOSIS: <one-line root cause>

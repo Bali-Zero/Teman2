@@ -26,7 +26,7 @@ set -euo pipefail
 # in autonomia. I path NON sono env-overridable, così un'eventuale env-injection non può
 # dirottare QUALE script/prompt/binario viene eseguito. Solo LOG_DIR/MODEL restano regolabili
 # (innocui: una dir di log o il nome modello non cambiano cosa-viene-eseguito).
-REPO_ROOT="$HOME/Desktop/nuzantara"
+REPO_ROOT="$HOME/nuzantara"
 PROMPTS_DIR="$REPO_ROOT/docs/army-prompts"
 CLAUDE_BIN="$HOME/.local/bin/claude"
 WATCHER="$REPO_ROOT/scripts/wa_army_watcher.sh"

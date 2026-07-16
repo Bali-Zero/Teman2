@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("DataExtractor")
 
 # Constants
-RESULTS_DIR = "/Users/nuzantara/Desktop/nuzantara/.gemini/tmp/results"
+RESULTS_DIR = "/Users/nuzantara/nuzantara/.gemini/tmp/results"
 PDF_DIR = os.path.join(RESULTS_DIR, "pdfs")
 OUTPUT_FILE = os.path.join(RESULTS_DIR, "batch_0_results.json")
 

@@ -43,12 +43,12 @@ heartbeat + recovery automatico via Supervisor.
 
 **Lavoro parallelizzabile su 4 sessioni Claude (worktree isolati)**:
 
-| Sessione | Scope                                                 | Output                 |
-| -------- | ----------------------------------------------------- | ---------------------- |
+| Sessione | Scope                                                 | Output                          |
+| -------- | ----------------------------------------------------- | ------------------------------- |
 | W1-A     | Mata-garuda 30 agents + 13 workers                    | 43 entries organs_registry.yaml |
 | W1-B     | WR2 14 unregistered LaunchAgents                      | 14 entries organs_registry.yaml |
-| W1-C     | Pro background crons (intel/translate/sentinel/+ ~10) | ~10 entries            |
-| W1-D     | Mini LaunchAgents (15 mata-garuda + others)           | ~20 entries            |
+| W1-C     | Pro background crons (intel/translate/sentinel/+ ~10) | ~10 entries                     |
+| W1-D     | Mini LaunchAgents (15 mata-garuda + others)           | ~20 entries                     |
 
 **Files**:
 
@@ -256,7 +256,7 @@ Supervisor passa da shadow a dispatch.
 
 **Worktree isolation**:
 
-- Ogni sessione su `~/Desktop/nuzantara/.worktrees/<name>` separato
+- Ogni sessione su `~/nuzantara/.worktrees/<name>` separato
 - Branch dedicato `feat/symbiosis-W<N>-<scope>`
 - Symlinked venv `apps/backend-rag/.venv` shared
 

@@ -113,7 +113,7 @@ transitions.
 From Pro only:
 
 ```bash
-cd ~/Desktop/nuzantara
+cd ~/nuzantara
 source apps/backend-rag/.venv/bin/activate
 DATABASE_URL="$DATABASE_URL_LOCAL" \
   python scripts/autonomous_lab_worker.py --execute-verification --iterations 1

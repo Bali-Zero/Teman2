@@ -24,7 +24,7 @@ from pathlib import Path
 
 from playwright.async_api import async_playwright
 
-QUEUE_PATH = Path.home() / "Desktop/nuzantara/apps/war-room/output/queue/human-review-queue.json"
+QUEUE_PATH = Path.home() / "nuzantara/apps/war-room/output/queue/human-review-queue.json"
 DB_PATH = Path.home() / ".claude/projects/-Users-nuzantara/memory/wr2-episodic.db"
 IG_CHROME_PROFILE = Path.home() / ".chrome-cdp-profile/balizero0-ig"
 

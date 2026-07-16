@@ -52,7 +52,7 @@ Add to your Claude Code MCP configuration:
       "env": {
         "NUZANTARA_BACKEND_URL": "https://nuzantara-rag.fly.dev",
         "FLY_APP": "nuzantara-rag",
-        "NUZANTARA_ROOT": "/Users/nuzantara/Desktop/nuzantara"
+        "NUZANTARA_ROOT": "/Users/nuzantara/nuzantara"
       }
     }
   }
@@ -65,7 +65,7 @@ Add to your Claude Code MCP configuration:
 | ----------------------- | ----------------- | ------------------------------------ |
 | `NUZANTARA_BACKEND_URL` | Backend URL       | `https://nuzantara-rag.fly.dev`      |
 | `FLY_APP`               | Fly.io app name   | `nuzantara-rag`                      |
-| `NUZANTARA_ROOT`        | Project root path | `/Users/nuzantara/Desktop/nuzantara` |
+| `NUZANTARA_ROOT`        | Project root path | `/Users/nuzantara/nuzantara` |
 
 ## Prompts
 

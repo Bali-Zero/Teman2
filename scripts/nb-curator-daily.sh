@@ -26,8 +26,8 @@ unset ANTHROPIC_API_KEY
 # ── Paths ─────────────────────────────────────────────────────────────────────
 LOCK_FILE="/tmp/nb-curator.lock"
 LOG="$HOME/logs/nb-curator.log"
-OUTPUT_DIR="$HOME/Desktop/nuzantara/research/nb-health"
-DEDUP_SCRIPT="$HOME/Desktop/nuzantara/apps/bali-intel-scraper/scripts/nb_dedup_exact_url.py"
+OUTPUT_DIR="$HOME/nuzantara/research/nb-health"
+DEDUP_SCRIPT="$HOME/nuzantara/apps/bali-intel-scraper/scripts/nb_dedup_exact_url.py"
 DATE_STR=$(TZ=Asia/Makassar date +%Y-%m-%d)
 MONTH_STR=$(TZ=Asia/Makassar date +%Y-%m)
 DOW=$(TZ=Asia/Makassar date +%u)   # 1=Mon..7=Sun
@@ -90,7 +90,7 @@ fi
 # calls), writes research/nb-health/nb-inventory-live.json. The Mode B brain
 # reads THAT FILE instead of making ~88 sequential `nlm query` calls per NB.
 # Exit code 3 = nlm error; non-zero on any failure → logged WARN, not silent skip.
-INV_GEN="$HOME/Desktop/nuzantara/scripts/nb_generate_inventory.py"
+INV_GEN="$HOME/nuzantara/scripts/nb_generate_inventory.py"
 if [ -f "$INV_GEN" ]; then
     INV_EXIT=0
     timeout 180 /usr/bin/python3 "$INV_GEN" --write >> "$LOG" 2>&1 || INV_EXIT=$?

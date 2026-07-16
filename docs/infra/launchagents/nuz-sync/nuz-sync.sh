@@ -23,7 +23,7 @@ HOST="$(scutil --get LocalHostName 2>/dev/null || hostname -s)"
 
 case "$HOST" in
     Nuzantara|nuzantara)
-        REPO="$HOME/Desktop/nuzantara"
+        REPO="$HOME/nuzantara"
         PEER_REMOTE="air"
         NODE_NAME="Pro"
         SECRETS_FILE="$HOME/.zshrc.secrets"

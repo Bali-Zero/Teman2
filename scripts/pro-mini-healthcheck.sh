@@ -22,19 +22,19 @@ case "$HOST" in
     NODE="Pro"
     PEER_ALIAS="mini"
     PEER_NODE="Mini"
-    PEER_REPO='~/Desktop/nuzantara'
+    PEER_REPO='~/nuzantara'
     ;;
   Mini-Pro2|mini-pro2)
     NODE="Mini"
     PEER_ALIAS="pro"
     PEER_NODE="Pro"
-    PEER_REPO='~/Desktop/nuzantara'
+    PEER_REPO='~/nuzantara'
     ;;
   *)
     NODE="Unknown"
     PEER_ALIAS=""
     PEER_NODE="Unknown"
-    PEER_REPO='~/Desktop/nuzantara'
+    PEER_REPO='~/nuzantara'
     ;;
 esac
 

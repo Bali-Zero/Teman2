@@ -74,7 +74,7 @@ while IFS= read -r f; do
     # Notification gateway (cohort-3): log housekeeping = informative → digest tier
     msg="📊 Log size alert: ~/${rel_path} = ${size_mb} MB (>1MB threshold). $(tail -1 "$f" 2>/dev/null | head -c 200)"
     gateway="$(dirname "$0")/tg_notify.py"
-    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
     python3 "$gateway" --tier digest --source log-size-watchdog \
         --dedup-key "log-size:${rel_path}" -- "$msg" >/dev/null 2>&1 || true
 

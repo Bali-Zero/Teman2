@@ -14,7 +14,7 @@
 
 **Pattern**: cron-driven AND event-driven coexist for 2 weeks. Original cron keeps running. Wrappers ALSO emit events. Downstream subscribers gain real-time wake-up. Once verified stable, original cron schedules can be relaxed (e.g., from daily to weekly safety net) or removed.
 
-**Why not patch all 5 today**: 4 of 5 require touching production Python scripts in `~/Desktop/nuzantara` repo (Nuzantara apps), which has its own CI + autonomous ops contract. Doing 5 simultaneously risks compound bugs. Migrating 1 pilot (regulatory-watcher, owned by `~/.claude` / `~/scripts`) validates the pattern without touching the main repo.
+**Why not patch all 5 today**: 4 of 5 require touching production Python scripts in `~/nuzantara` repo (Nuzantara apps), which has its own CI + autonomous ops contract. Doing 5 simultaneously risks compound bugs. Migrating 1 pilot (regulatory-watcher, owned by `~/.claude` / `~/scripts`) validates the pattern without touching the main repo.
 
 ## Verification (regulatory-watcher pilot)
 

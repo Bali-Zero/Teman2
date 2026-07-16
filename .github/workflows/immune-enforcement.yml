@@ -72,6 +72,11 @@ jobs:
               infra/doc-lint/*|\
               docs/wr2/*.md|\
               infra/home-fork/declared-pairs.json|\
+              scripts/tcc_migrate_desktop_paths.py|\
+              scripts/lint_tcc_desktop_paths.py|\
+              scripts/tests/test_tcc_migrate_desktop_paths.py|\
+              scripts/tests/test_lint_tcc_desktop_paths.py|\
+              infra/tcc-desktop-paths/allowlist.txt|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/immune-enforcement.yml)
                 RELEVANT=true
@@ -101,6 +106,8 @@ jobs:
             scripts/tests/test_jules_dispatch.py \
             scripts/tests/test_codex_autofix_selector.py \
             scripts/tests/test_lint_doc_executable_refs.py \
+            scripts/tests/test_tcc_migrate_desktop_paths.py \
+            scripts/tests/test_lint_tcc_desktop_paths.py \
             scripts/test_lint_test_reward_hacking.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
@@ -136,6 +143,20 @@ jobs:
         run: |
           if [ -f scripts/lint_doc_executable_refs.py ]; then
             python scripts/lint_doc_executable_refs.py
+          fi
+
+      # TCC-Desktop-paths lint runs FOR REAL on every PR (same reasoning as
+      # doc-executable-refs above): a pure `git ls-files` tree scan, no $HOME
+      # dependency, so CI can enforce it directly rather than only testing the
+      # tool. Antidote for the 2026-07-16 W84 repo-move: the repo itself was
+      # the regeneration source for the Desktop/nuzantara path (proven live —
+      # a sync hook re-copied a Desktop-hardcoded default into a HOME payload
+      # within 15 minutes of a manual fix). Scope is *.sh/*.py/*.plist only;
+      # declared exceptions live in infra/tcc-desktop-paths/allowlist.txt.
+      - name: TCC-Desktop-paths lint (no *.sh/*.py/*.plist hardcodes ~/Desktop/nuzantara)
+        run: |
+          if [ -f scripts/lint_tcc_desktop_paths.py ]; then
+            python scripts/lint_tcc_desktop_paths.py
           fi
 
       # The two ledger gates below run on EVERY PR (cheap: parse one markdown

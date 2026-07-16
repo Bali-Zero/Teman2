@@ -12,7 +12,7 @@ if [ "$(whoami)" != "nuzantara" ]; then
     exit 1
 fi
 
-REPO="/Users/nuzantara/Desktop/nuzantara"
+REPO="/Users/nuzantara/nuzantara"
 PLIST_SRC="$REPO/scripts/launchd/com.cell.metabolic-rollup.pro.plist"
 PLIST_DST="$HOME/Library/LaunchAgents/com.cell.metabolic-rollup.plist"
 LABEL="com.cell.metabolic-rollup"

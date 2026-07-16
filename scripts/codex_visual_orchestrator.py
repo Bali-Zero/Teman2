@@ -17,7 +17,7 @@ Total: ~15 images / dispatch.
 Uses Codex CLI built-in image generation (`$imagegen` tag) which calls
 `gpt-image-2` via OAuth Pro $200 quota — NO API key, NO per-call billing.
 
-Output: ~/Desktop/nuzantara/research/dispatch/YYYY-MM-DD/codex-visuals/
+Output: ~/nuzantara/research/dispatch/YYYY-MM-DD/codex-visuals/
         ├── hero-{1..5}.png
         ├── body-{1..6}.png
         ├── story-{1,2}.png

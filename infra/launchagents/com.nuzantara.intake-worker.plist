@@ -41,7 +41,7 @@
 		<key>INTAKE_QUARANTINE_ENABLED</key>
 		<string>true</string>
 		<key>INTAKE_REPO_ROOT</key>
-		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
+		<string>/Users/nuzantara/nuzantara-deploy</string>
 		<key>INTAKE_TEXT_LLM_CLASSIFY_ENABLED</key>
 		<string>true</string>
 		<key>INTAKE_TEXT_LLM_MODEL</key>
@@ -66,7 +66,7 @@
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/bash</string>
-		<string>/Users/nuzantara/Desktop/nuzantara-deploy/apps/backend-rag/backend/services/intake/intake-worker-run.sh</string>
+		<string>/Users/nuzantara/nuzantara-deploy/apps/backend-rag/backend/services/intake/intake-worker-run.sh</string>
 	</array>
 	<key>RunAtLoad</key>
 	<true/>
@@ -77,6 +77,6 @@
 	<key>ThrottleInterval</key>
 	<integer>30</integer>
 	<key>WorkingDirectory</key>
-	<string>/Users/nuzantara/Desktop/nuzantara-deploy/apps/backend-rag</string>
+	<string>/Users/nuzantara/nuzantara-deploy/apps/backend-rag</string>
 </dict>
 </plist>

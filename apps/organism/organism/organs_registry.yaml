@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: d0e4b81cf2af6692c25e730cfbfaa85582fcbe66ff49a3f3ebee37dd9c304c9b
+checksum: eac1f03fbdb5e657be230710f250cb37cb901baa358b97101045186cc10af008
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -394,7 +394,7 @@ organs:
   severity_on_silence: warning
   cicatrix_refs: []
   starved_after_periods: 2
-  output_artifact: ~/Desktop/nuzantara/apps/bali-intel-scraper/data/published_articles.json
+  output_artifact: ~/nuzantara/apps/bali-intel-scraper/data/published_articles.json
   bridge_source:
     type: state_file
     path: ~/.agent/decisions/state/intel_scraper.last.json

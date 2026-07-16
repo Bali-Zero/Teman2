@@ -23,7 +23,7 @@ Cartella di asset distribuibili per il setup dei dispositivi aziendali dei nuovi
 ### Prerequisiti
 
 - [ ] Dipendente ha firmato PKWTT (lunedì 19 maggio 2026, vedi `~/Desktop/PKWTT-Contratti-2026-05-19/`)
-- [ ] SIM Telkomsel allocata (vedi `~/Desktop/nuzantara/research/hr/sim-registry.md`)
+- [ ] SIM Telkomsel allocata (vedi `~/nuzantara/research/hr/sim-registry.md`)
 - [ ] Dipendente porta Mac personale (per setup profilo `balizero`)
 - [ ] Pro acceso, profile-monitor wrapper attivo, Tailscale online
 - [ ] Antonello connesso a Tailscale e in grado di invitare device tailnet
@@ -79,7 +79,7 @@ rm -rf temp-repo
 **Opzione 3 — USB / SCP** (offline):
 ```bash
 # Sul Pro:
-scp -r ~/Desktop/nuzantara/scripts/profile-monitor/mac-client/ balizero@mac-dipendente.local:~/Downloads/
+scp -r ~/nuzantara/scripts/profile-monitor/mac-client/ balizero@mac-dipendente.local:~/Downloads/
 ```
 
 ## Disinstallazione (offboarding)
@@ -140,7 +140,7 @@ Vedi `setup-mobile.md` per smartphone. Per Mac:
 
 Quando aggiorni `setup-balizero.sh` o `employee-handbook-v1-ID.pdf`:
 
-1. Modifica sorgente in `~/Desktop/nuzantara/research/hr/handbook/` (per Handbook) o direttamente qui (per scripts)
+1. Modifica sorgente in `~/nuzantara/research/hr/handbook/` (per Handbook) o direttamente qui (per scripts)
 2. Se Handbook: rigenera PDF con `python3 ~/.claude/skills/bali-zero-brand/surfaces/internal-print-a4/_render.py --html ... --pdf ...`
 3. Copia il PDF aggiornato in `handbook-asset/`
 4. Commit + push su `origin/main`

@@ -204,7 +204,7 @@ def pick(limit: int = 1) -> dict:
             argv = []
         home_token = next(
             (tok for tok in argv
-             if re.match(r"^(?:~|\$HOME|/Users/[^/]+)/(?!Desktop/nuzantara/)", tok)),
+             if re.match(r"^(?:~|\$HOME|/Users/[^/]+)/(?!nuzantara/)", tok)),
             None)
         pair = pairs_by_repo.get(wrapper_rel)
         if home_token and pair is None:

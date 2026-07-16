@@ -12,7 +12,7 @@ fi
 # shellcheck disable=SC1090
 source "$SECRETS"
 
-VENV="/Users/nuzantara/Desktop/nuzantara/scripts/wa-audit-bot/.venv"
+VENV="/Users/nuzantara/nuzantara/scripts/wa-audit-bot/.venv"
 if [[ ! -d "$VENV" ]]; then
     echo "[wa-audit-bot] Creo venv..." >&2
     python3 -m venv "$VENV"

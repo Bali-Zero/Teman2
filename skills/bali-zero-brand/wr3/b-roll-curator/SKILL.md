@@ -12,7 +12,7 @@ contract_version: 1.0.0
 
 ## Role (one-line)
 
-On-demand fallback. Invoked when Veo 3.1 fails specific shot AND 2 retries with strengthened prompt fail (ArcFace <0.55 OR safety reject persists). Searches local b-roll pool (~/Desktop/nuzantara/research/marketing/b-roll-pool/) for license-clean alternatives matching shot brief. Death by eligible-opportunity-count unused ≥10 times. License verification: 1.0 (zero unverified push).
+On-demand fallback. Invoked when Veo 3.1 fails specific shot AND 2 retries with strengthened prompt fail (ArcFace <0.55 OR safety reject persists). Searches local b-roll pool (~/nuzantara/research/marketing/b-roll-pool/) for license-clean alternatives matching shot brief. Death by eligible-opportunity-count unused ≥10 times. License verification: 1.0 (zero unverified push).
 
 ## Primary I/O
 
@@ -54,6 +54,6 @@ Skill cortex created at S7.3 step of WR3 genesis. No operational lessons yet.
 ## Resources
 
 - Agent definition: `~/.claude/agents/wr3-b-roll-curator.md`
-- I/O contract: `~/Desktop/nuzantara/docs/wr3/contracts/b-roll-curator.yaml`
+- I/O contract: `~/nuzantara/docs/wr3/contracts/b-roll-curator.yaml`
 - Brand cortex (shared): `~/.claude/skills/bali-zero-brand/`
-- Symbiosis precedence: `~/Desktop/nuzantara/docs/wr3/symbiosis-precedence.md`
+- Symbiosis precedence: `~/nuzantara/docs/wr3/symbiosis-precedence.md`

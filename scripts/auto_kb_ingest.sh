@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Configuration
-# Path-aware: works on Pro (~/Desktop/nuzantara) and on legacy Air
+# Path-aware: works on Pro (~/nuzantara) and on legacy Air
 # (~/Projects/nuzantara). Air was decommissioned 2026-05-05; this script
 # was originally hardcoded for Air.
-if [ -d "$HOME/Desktop/nuzantara" ]; then
-    PROJECT_DIR="$HOME/Desktop/nuzantara"
+if [ -d "$HOME/nuzantara" ]; then
+    PROJECT_DIR="$HOME/nuzantara"
 elif [ -d "$HOME/Projects/nuzantara" ]; then
     PROJECT_DIR="$HOME/Projects/nuzantara"
 else

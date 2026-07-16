@@ -11,7 +11,7 @@
 # Stale >90 days runs every Monday for all 5 NB.
 #
 # Output:
-#   - Markdown report at ~/Desktop/nuzantara/research/nb-health/YYYY-MM-nb-intel-curation.md
+#   - Markdown report at ~/nuzantara/research/nb-health/YYYY-MM-nb-intel-curation.md
 #   - Telegram digest to chat_id 1125336968 (from agent)
 # Failure handling:
 #   - Wrapper redirects stdout+stderr to ~/logs/nb-curator-mode-c.log
@@ -52,7 +52,7 @@ export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS="${CLAUDE_CODE_PRINT_BG_WAIT_CEILING
 
 # Invoke claude CLI to run the nb-curator agent in Mode C.
 # The agent reads the date itself and decides scope (full vs Press-only).
-PROMPT="Run nb-curator agent in Mode C (Dedupe/Summarize). Read today's date, decide scope per the schedule in your spec (day-of-month <=7 AND Monday = full pass; else Press + stale-all). Emit markdown report under ~/Desktop/nuzantara/research/nb-health/ and Telegram digest. Do NOT call any nlm rm or any mutating command — propose-only per Article 1. Do ALL the work inline in this turn — never spawn a background task or background agent for this; this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no report on disk (W89 class-audit, regulatory-watcher incident 2026-07-05)."
+PROMPT="Run nb-curator agent in Mode C (Dedupe/Summarize). Read today's date, decide scope per the schedule in your spec (day-of-month <=7 AND Monday = full pass; else Press + stale-all). Emit markdown report under ~/nuzantara/research/nb-health/ and Telegram digest. Do NOT call any nlm rm or any mutating command — propose-only per Article 1. Do ALL the work inline in this turn — never spawn a background task or background agent for this; this is a one-shot print-mode run and backgrounded work is terminated at exit, leaving no report on disk (W89 class-audit, regulatory-watcher incident 2026-07-05)."
 
 if ! command -v claude >/dev/null 2>&1; then
     log "FAIL: claude CLI not in PATH"
@@ -86,7 +86,7 @@ if [[ "$EXIT" -ne 0 ]]; then
     # resolution + dedup — no env-token gate, the alert must not vanish silently.
     msg="⚠️ nb-curator Mode C failed (exit=${EXIT}, ${DURATION}s). Log: ${LOG_FILE}"
     gateway="$(dirname "$0")/tg_notify.py"
-    [ -f "$gateway" ] || gateway="$HOME/Desktop/nuzantara/scripts/tg_notify.py"
+    [ -f "$gateway" ] || gateway="$HOME/nuzantara/scripts/tg_notify.py"
     python3 "$gateway" --tier p0 --source nb-curator-mode-c \
         --dedup-key "nb-curator-mode-c:$(hostname -s)" -- "$msg" >/dev/null 2>&1 || true
 fi

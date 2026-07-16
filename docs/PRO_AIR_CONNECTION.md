@@ -133,7 +133,7 @@ git remote: origin       git remote: pro ──────→ Pro
 
 ```bash
 # After any commit on main, Mini pulls from Pro
-ssh mini "cd ~/Desktop/nuzantara && git stash -q; git pull pro main --ff-only; git stash pop -q || true"
+ssh mini "cd ~/nuzantara && git stash -q; git pull pro main --ff-only; git stash pop -q || true"
 ```
 
 ### Mini commits → Pro syncs automatically

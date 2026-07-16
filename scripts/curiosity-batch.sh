@@ -15,7 +15,7 @@ set -euo pipefail
 # REPO to $HOME instead of the repo checkout. REPO_ROOT lets an operator
 # override for testing; the deploy-aware default assumes the canonical
 # checkout location.
-REPO="${REPO_ROOT:-$HOME/Desktop/nuzantara}"
+REPO="${REPO_ROOT:-$HOME/nuzantara}"
 
 # sshd (W84 trampoline) and bare launchd contexts carry a minimal PATH.
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
@@ -71,7 +71,7 @@ if [ -n "${ORGANISM_HEARTBEAT_LIB:-}" ]; then
 elif [ -r "$HOME/scripts/lib/heartbeat.sh" ]; then
     HEARTBEAT_LIB="$HOME/scripts/lib/heartbeat.sh"
 else
-    HEARTBEAT_LIB="$HOME/Desktop/nuzantara/scripts/lib/heartbeat.sh"
+    HEARTBEAT_LIB="$HOME/nuzantara/scripts/lib/heartbeat.sh"
 fi
 if [ -r "$HEARTBEAT_LIB" ]; then
     source "$HEARTBEAT_LIB"

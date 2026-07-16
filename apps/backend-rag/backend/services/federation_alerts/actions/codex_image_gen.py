@@ -6,7 +6,7 @@ per-call billing). HITL_ONLY because generated images may be public-facing
 
 Safety bounds:
     * Subprocess timeout: 10 minutes
-    * Output dir: $HOME/Desktop/nuzantara/research/dispatch/<date>/codex-images/
+    * Output dir: $HOME/nuzantara/research/dispatch/<date>/codex-images/
                   (resolved + symlink-checked)
     * Prompt size: 8 KB max
     * env: ANTHROPIC_API_KEY stripped (defense-in-depth)
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT_SEC = 600
 MAX_TIMEOUT_SEC = 1200
 MAX_PROMPT_BYTES = 8 * 1024
-DISPATCH_ROOT = Path(os.path.expanduser("~/Desktop/nuzantara/research/dispatch"))
+DISPATCH_ROOT = Path(os.path.expanduser("~/nuzantara/research/dispatch"))
 SAFE_NAME_CHARS = string.ascii_letters + string.digits + "-_"
 
 

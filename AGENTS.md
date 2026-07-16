@@ -19,7 +19,7 @@ echo "Machine: $(whoami)@$(hostname)" && \
 case "$(hostname)" in Nuzantara) OTHER=mini ;; Mini-Pro2) OTHER=pro ;; Air-M5) OTHER=pro ;; *) OTHER=pro ;; esac && \
 ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE" && \
 LOCAL_HEAD=$(git log --oneline -1 2>/dev/null) && \
-REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER 'cd ~/Desktop/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && \
+REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER 'cd ~/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && \
 if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; else echo "Git sync: OUT OF SYNC! Local=$LOCAL_HEAD Remote=$REMOTE_HEAD"; fi
 ```
 
@@ -95,10 +95,10 @@ This is a raw-data movement boundary, not a blanket ban on LLMs processing autho
 
 ### HARD RULE R5 — Deploy is Pro/CI-only; M5 has no `fly`
 
-M5 has **no `fly`/`flyctl`** and **no `~/Desktop/nuzantara-deploy`** worktree. Never `brew install flyctl` on M5.
+M5 has **no `fly`/`flyctl`** and **no `~/nuzantara-deploy`** worktree. Never `brew install flyctl` on M5.
 
 - Canonical: commit in a worktree → push → `gh pr create` → green CI + review → **merge to `main`** triggers `.github/workflows/fly-deploy.yml` (gate→migrations→deploy→health→rollback). Vercel frontend auto-deploys on the same `main` push. Machine-independent — M5 needs no `fly`.
-- Manual/out-of-band deploy: **delegate** → `ssh pro 'bash -lc "cd ~/Desktop/nuzantara-deploy && git pull --ff-only origin main && fly deploy --strategy rolling"'`.
+- Manual/out-of-band deploy: **delegate** → `ssh pro 'bash -lc "cd ~/nuzantara-deploy && git pull --ff-only origin main && fly deploy --strategy rolling"'`.
 - `main` is **protected**: PR + CI + review required. Never `git push origin main` directly (from M5 *or* Pro).
 
 ### HARD RULE R6 — Memory (MOS): always via `mem`, never the local file
@@ -141,14 +141,14 @@ Both machines work on `main` branch only. Sync is **automatic** via husky post-c
 
 **MANDATORY for any Codex session that mutates code in this repo.**
 
-This repo is shared with 5+ Claude sessions + occasional Gemini agy on the same Pro machine. All processes default to `cwd=/Users/nuzantara/Desktop/nuzantara` (main checkout). Concurrent file mutations have produced 32+ sibling-orphan stash in 24h. To prevent:
+This repo is shared with 5+ Claude sessions + occasional Gemini agy on the same Pro machine. All processes default to `cwd=/Users/nuzantara/nuzantara` (main checkout). Concurrent file mutations have produced 32+ sibling-orphan stash in 24h. To prevent:
 
 ### Before any mutation
 
 ```bash
 # Create dedicated worktree
 python scripts/agent_start.py --lane <wr2|infra|backend-rag|ops|...> --task-id <slug>
-# Output: WORKTREE_READY /Users/nuzantara/Desktop/nuzantara/.worktrees/<lane>-<task-id>
+# Output: WORKTREE_READY /Users/nuzantara/nuzantara/.worktrees/<lane>-<task-id>
 cd <output-path>
 # Now spawn codex exec HERE, not in main checkout
 ```

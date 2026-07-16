@@ -105,7 +105,7 @@ def _derive_repo_root() -> str:
     it would silently resolve there and disarm the brake. The signature guard
     rejects any derived root that lacks scripts/agent_start.py.
     """
-    home_default = f"{os.path.expanduser('~')}/Desktop/nuzantara"
+    home_default = f"{os.path.expanduser('~')}/nuzantara"
     # 1) honor explicit override
     _env = os.environ.get("NUZ_REPO_ROOT")
     if _env:

@@ -15,7 +15,7 @@ This test validates:
 5. Tool usage verification
 
 Usage:
-    cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag
+    cd /Users/nuzantara/nuzantara/apps/backend-rag
     source .venv/bin/activate
     PYTHONPATH=. python -m pytest tests/integration/test_end_to_end_jwt.py -v --tb=short
 
@@ -1026,7 +1026,7 @@ def print_manual_verification_guide() -> None:
 ║  ✅ JWT authentication works correctly                                       ║
 ║                                                                              ║
 ║  RUNNING THE TESTS:                                                          ║
-║  $ cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag                    ║
+║  $ cd /Users/nuzantara/nuzantara/apps/backend-rag                    ║
 ║  $ source .venv/bin/activate                                                 ║
 ║  $ PYTHONPATH=. python -m pytest tests/integration/test_end_to_end_jwt.py -v ║
 ║                                                                              ║

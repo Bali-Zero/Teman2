@@ -872,7 +872,7 @@ def _infer_files(job_id: str, error_text: str) -> list:
     # Also try common script locations
     for pattern in [f"~/scripts/{job_id.replace('_', '-')}.py",
                     f"~/scripts/{job_id.replace('_', '-')}.sh",
-                    f"~/Desktop/nuzantara/scripts/{job_id.replace('_', '-')}.py"]:
+                    f"~/nuzantara/scripts/{job_id.replace('_', '-')}.py"]:
         expanded = os.path.expanduser(pattern)
         if os.path.exists(expanded):
             paths.append(expanded)

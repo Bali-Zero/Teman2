@@ -11,7 +11,7 @@ Coverage matrix:
 - input validation rejects malformed lane / task-id
 
 Tests use a temporary git repo + temporary HOME via monkeypatch, so they never
-touch the real ~/Desktop/nuzantara checkout or ~/logs/.
+touch the real ~/nuzantara checkout or ~/logs/.
 """
 
 from __future__ import annotations
