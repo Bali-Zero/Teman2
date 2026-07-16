@@ -272,8 +272,13 @@ class OlympusGuardian:
             INSERT INTO olympus_actions (
                 rhythm, action_type, target, detail, outcome,
                 duration_ms, rule_applied, reflection, executed_at
-            ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9)
+            ) VALUES ($1, $2, $3, $4::text::jsonb, $5, $6, $7, $8, $9)
         """
+        # $4::text::jsonb — the app pools register a jsonb codec whose encoder
+        # is json.dumps; a param inferred as jsonb would get the pre-serialized
+        # string dumped AGAIN and land as a jsonb string scalar (58396 rows
+        # were, live-probe 2026-07-16). Typing the param as text makes the
+        # server parse it into an object.
         try:
             async with self._pool.acquire() as conn:
                 await conn.execute(

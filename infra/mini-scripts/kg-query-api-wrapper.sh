@@ -23,5 +23,5 @@ if [ $WAITED -ge $MAX_WAIT_SEC ]; then
   exit 1
 fi
 
-cd ~/Desktop/nuzantara/apps/mata-garuda
+cd ~/nuzantara/apps/mata-garuda
 exec ./.venv/bin/python -m mata_garuda.api.kg_query --bind "$TAILSCALE_IP" --port 8990

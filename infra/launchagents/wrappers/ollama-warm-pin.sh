@@ -5,7 +5,7 @@
 set -euo pipefail
 
 OLLAMA_URL="http://127.0.0.1:11434"
-TOPOLOGY="/Users/nuzantara/Desktop/nuzantara/MODEL_TOPOLOGY.json"
+TOPOLOGY="/Users/nuzantara/nuzantara/MODEL_TOPOLOGY.json"
 LOG="$HOME/logs/ollama-warm-pin.log"
 PYTHON_BIN="${PYTHON_BIN:-/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3}"
 

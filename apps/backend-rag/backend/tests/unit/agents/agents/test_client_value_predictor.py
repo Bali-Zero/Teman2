@@ -75,10 +75,18 @@ class TestClientValuePredictor:
 
     def test_init_no_db_pool(self):
         """Test initialization without db_pool"""
-        with patch("backend.agents.agents.client_value_predictor.app", create=True) as mock_app:
-            mock_app.state = MagicMock()
-            mock_app.state.db_pool = None
+        # __init__ does a *local* `from backend.app.main_cloud import app`, so patching
+        # the `app` attribute on this test module (or on client_value_predictor's module
+        # namespace) has no effect on that fresh import — it must go through sys.modules,
+        # same technique as test_init_from_app_state below, to be order-independent.
+        mock_app_module = MagicMock()
+        mock_app_module.state = MagicMock()
+        mock_app_module.state.db_pool = None
 
+        mock_main_cloud_module = MagicMock()
+        mock_main_cloud_module.app = mock_app_module
+
+        with patch.dict(sys.modules, {"backend.app.main_cloud": mock_main_cloud_module}):
             with pytest.raises(RuntimeError, match="Database pool not available"):
                 ClientValuePredictor(db_pool=None)
 

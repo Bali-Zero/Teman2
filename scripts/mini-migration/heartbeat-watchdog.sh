@@ -20,7 +20,7 @@
 
 set -u
 
-REPO="${REPO:-/Users/nuzantara/Desktop/nuzantara}"
+REPO="${REPO:-/Users/nuzantara/nuzantara}"
 YAML="${YAML:-$HOME/agent-config/job-ownership.yaml}"
 HB_DIR="$HOME/heartbeat"
 LOG_FILE="$HOME/logs/heartbeat-watchdog.log"

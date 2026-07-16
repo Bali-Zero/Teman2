@@ -299,7 +299,14 @@ async def update_visa_type(
 
         for field, value in visa.model_dump(exclude_unset=True).items():
             if value is not None:
-                updates.append(f"{field} = ${param_idx}")
+                # ::text::jsonb on JSONB fields — the app pools register a
+                # jsonb codec (encoder=json.dumps); a bare param inferred as
+                # jsonb from the column double-encodes to_jsonb()'s already-
+                # serialized string into a jsonb string scalar.
+                if field in jsonb_fields:
+                    updates.append(f"{field} = ${param_idx}::text::jsonb")
+                else:
+                    updates.append(f"{field} = ${param_idx}")
                 # Use to_jsonb for JSONB fields to handle Decimal/datetime
                 if field in jsonb_fields:
                     values.append(to_jsonb(value))
@@ -382,8 +389,10 @@ async def create_visa_type(
                 requirements, restrictions, allowed_activities, benefits, process_steps, tips,
                 foreign_eligible, metadata, created_at, last_updated
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-                $14, $15, $16, $17, $18, $19, $20, $21, NOW(), NOW()
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+                $13::text::jsonb, $14::text::jsonb, $15::text::jsonb,
+                $16::text::jsonb, $17::text::jsonb, $18::text::jsonb,
+                $19::text::jsonb, $20, $21::text::jsonb, NOW(), NOW()
             )
             RETURNING *
             """,
@@ -399,7 +408,10 @@ async def create_visa_type(
             visa.processing_timeline,
             visa.cost_visa,
             visa.cost_extension,
-            # Use to_jsonb for asyncpg JSONB compatibility
+            # ::text::jsonb on all 8 jsonb columns below — the app pools
+            # register a jsonb codec (encoder=json.dumps); a bare param
+            # inferred as jsonb double-encodes to_jsonb()'s already-serialized
+            # string into a jsonb string scalar.
             to_jsonb(visa.cost_details),
             to_jsonb(visa.requirements),
             to_jsonb(visa.restrictions),

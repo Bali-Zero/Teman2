@@ -171,7 +171,8 @@ async def create_interaction(
                     sentiment, team_member, direction,
                     duration_minutes, extracted_entities, action_items, interaction_date
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+                    $15::text::jsonb, $16::text::jsonb, $17
                 )
                 RETURNING *
                 """,
