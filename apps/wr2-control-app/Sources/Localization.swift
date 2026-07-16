@@ -155,6 +155,7 @@ enum L10n {
         "detail.notPublished": [.it: "Non ancora pubblicato",                           .id: "Belum diterbitkan"],
         "detail.awaiting":     [.it: "Pubblicato — in attesa di misurazione (~24h)",    .id: "Terbit — menunggu pengukuran (~24 jam)"],
         "detail.markPublished":[.it: "Segna come pubblicato",                           .id: "Tandai sudah terbit"],
+        "detail.notPublishEligible":[.it: "Non pubblicabile — stato non pronto",        .id: "Belum bisa diterbitkan — status belum siap"],
         "detail.openDesign":   [.it: "Apri in Zero Design",                             .id: "Buka di Zero Design"],
         "detail.revise":       [.it: "Migliora",                                        .id: "Perbaiki"],
         "detail.rerender":     [.it: "Ri-renderizza",                                   .id: "Render ulang"],

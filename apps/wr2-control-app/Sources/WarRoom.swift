@@ -271,6 +271,7 @@ enum WarRoom {
         // predicate, not bare field presence (Codex finding #3: an empty-string
         // `instagram_post_url` used to count as "published" and bypass the gate).
         var verdictBySlug: [String: String] = [:]
+        var stateBySlug: [String: String] = [:]
         var metricsBySlug: [String: EngagementMetrics] = [:]
         var igUrlBySlug: [String: String] = [:]
         var pubAtBySlug: [String: String] = [:]
@@ -279,6 +280,10 @@ enum WarRoom {
         for slug in physicalSlugs {
             guard let item = resolveQueueItem(forSlug: slug, in: queue) else { continue }
             if let v = item.critic_overall_verdict ?? item.state { verdictBySlug[slug] = v }
+            // Raw `state`, kept SEPARATE from verdictBySlug above (which is verdict-first
+            // and feeds the critic-verdict badge only) — see Carousel.state doc comment
+            // for why a stale verdict must never mask a fresh render_incomplete state.
+            if let s = item.state { stateBySlug[slug] = s }
             if let m = item.engagement_metrics { metricsBySlug[slug] = m }
             if let u = item.instagram_post_url { igUrlBySlug[slug] = u }
             if let a = item.instagram_published_at { pubAtBySlug[slug] = a }
@@ -349,7 +354,8 @@ enum WarRoom {
                 metrics: metricsBySlug[slug],
                 instagramURL: igUrlBySlug[slug],
                 publishedAt: pubAtBySlug[slug],
-                canvaURL: canvaBySlug[slug]))
+                canvaURL: canvaBySlug[slug],
+                state: stateBySlug[slug]))
         }
 
         // Second pass — published carousels that live ONLY in the queue (no on-disk render).
@@ -386,7 +392,8 @@ enum WarRoom {
                 metrics: item.engagement_metrics,
                 instagramURL: igURL,
                 publishedAt: item.instagram_published_at,
-                canvaURL: item.canvaLink))
+                canvaURL: item.canvaLink,
+                state: item.state))
         }
 
         return carousels.sorted { $0.modified > $1.modified }

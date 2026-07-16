@@ -537,6 +537,78 @@ func test_completeOrNothingGateHardening() {
          "finding #6: slides.json (a)=9 wins over manifest (b)=999 and queue (c)=8")
 }
 
+// MARK: - Publish-eligibility gate (2026-07-16 cross-finding w/ Python A3 reconciler)
+
+func test_publishEligibilityCrossFinding() {
+    T.suite("publish-eligibility — fresh state must not be masked by a stale verdict")
+
+    func fakeCarousel(state: String?, criticVerdict: String?, isPublished: Bool = false) -> Carousel {
+        Carousel(slug: "x", directory: URL(fileURLWithPath: "/tmp/x"),
+                 slidesDir: URL(fileURLWithPath: "/tmp/x/slides"), slidePNGs: [],
+                 modified: Date(), topic: nil, domain: nil, criticVerdict: criticVerdict,
+                 slideCount: 8, imagegenFallback: false, coverURL: nil, metrics: nil,
+                 instagramURL: isPublished ? "https://instagram.com/p/x/" : nil,
+                 publishedAt: nil, canvaURL: nil, state: state)
+    }
+
+    // COLPEVOLEZZA — the exact cross-finding bug: a stale GOOD verdict from an earlier
+    // successful critic run must NOT mask a FRESH render_incomplete state the Python A3
+    // daily-reconciler set later (a post-render disk-level drift the render-time gate
+    // couldn't see). If phase/eligibility were still computed verdict-first
+    // (critic_overall_verdict ?? state, the OLD precedence), this carousel would wrongly
+    // read as waitlist/publishable.
+    let maskedByStaleVerdict = fakeCarousel(state: "render_incomplete", criticVerdict: "pass")
+    T.eq(maskedByStaleVerdict.phase, .review,
+         "fresh render_incomplete state wins over a stale \"pass\" verdict -> review, not waitlist")
+    T.check(maskedByStaleVerdict.isPublishEligible == false,
+            "guilt: not publish-eligible despite the stale good verdict")
+
+    // INNOCENZA — a legacy-schema row with NO `state` field at all, only the verdict,
+    // must still fall back correctly (the fix must not regress rows that never carried
+    // a state field in the first place).
+    let legacyVerdictOnly = fakeCarousel(state: nil, criticVerdict: "pass")
+    T.eq(legacyVerdictOnly.phase, .waitlist, "no state field -> falls back to criticVerdict -> waitlist")
+    T.check(legacyVerdictOnly.isPublishEligible, "innocence: legacy verdict-only carousel stays eligible")
+
+    // INNOCENZA — the ordinary, current-day case: state="drafted", no verdict yet.
+    let ordinaryDraft = fakeCarousel(state: "drafted", criticVerdict: nil)
+    T.eq(ordinaryDraft.phase, .waitlist, "drafted -> waitlist")
+    T.check(ordinaryDraft.isPublishEligible, "innocence: an ordinary drafted carousel is eligible")
+
+    // COLPEVOLEZZA — an already-published carousel is never "eligible for a FRESH
+    // publish" (that's the separate, reversible undo-publish flow).
+    let alreadyPublished = fakeCarousel(state: "published", criticVerdict: "pass", isPublished: true)
+    T.check(alreadyPublished.isPublishEligible == false,
+            "guilt: already-published carousel is not eligible for a fresh publish")
+}
+
+func test_stateWiredThroughScanCarousels() {
+    T.suite("WarRoom.scanCarousels wires raw state through the queue join (not just verdict)")
+
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+    _ = makeCarousel(in: root, slug: "cross-finding-slug", slides: (1...8).map { "\($0).png" })
+
+    let json = """
+    [{"id":"cf","topic_slug":"cross-finding-slug","state":"render_incomplete","critic_overall_verdict":"pass","slide_count":8}]
+    """
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    defer { try? fm.removeItem(at: url) }
+    let queue = WarRoom.readQueue(queueFile: url)
+
+    let carousels = WarRoom.scanCarousels(carouselRoot: croot, queue: queue)
+    guard let c = carousels.first(where: { $0.slug == "cross-finding-slug" }) else {
+        T.check(false, "cross-finding-slug carousel should be listed (complete render, gate unaffected by publish state)")
+        return
+    }
+    T.eq(c.state, "render_incomplete", "raw state wired through from the queue join")
+    T.eq(c.criticVerdict, "pass", "criticVerdict stays verdict-first — unchanged field, different purpose (critic badge)")
+    T.eq(c.phase, .review, "phase uses raw state, not verdict -> review despite the \"pass\" verdict")
+    T.check(c.isPublishEligible == false, "publish gate correctly refuses despite the gallery listing it as complete")
+}
+
 // MARK: - carousel phase mapping (pipeline↔app coherence, 2026-06-25)
 
 func test_carouselPhaseMapping() {
@@ -729,6 +801,8 @@ let suites: [() -> Void] = [
     test_completeOrNothingGate,
     test_matchCarouselPrecedenceOrder,
     test_completeOrNothingGateHardening,
+    test_publishEligibilityCrossFinding,
+    test_stateWiredThroughScanCarousels,
     test_carouselPhaseMapping,
     test_instagramCaptionValidation,
     test_instagramCaptionProcessContract,

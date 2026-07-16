@@ -43,7 +43,7 @@ enum QueueWriter {
     }
 
     private static func mutate(queueFile: URL, slug: String,
-                              _ change: (inout [String: Any]) -> Void) throws {
+                              _ change: (inout [String: Any]) throws -> Void) throws {
         let data = try Data(contentsOf: queueFile)
         guard var arr = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
             throw NSError(domain: "QueueWriter", code: 1,
@@ -51,7 +51,7 @@ enum QueueWriter {
         }
         var touched = false
         for i in arr.indices where matches(arr[i], slug: slug) {
-            change(&arr[i]); touched = true
+            try change(&arr[i]); touched = true
         }
         guard touched else {
             throw NSError(domain: "QueueWriter", code: 2,
@@ -70,9 +70,34 @@ enum QueueWriter {
         }
     }
 
+    /// Publish-eligibility error domain code — thrown BEFORE any field is touched
+    /// (guard-first inside the `mutate` closure), so a refused publish never leaves a
+    /// partial mutation on disk: `mutate` only writes after its closure returns
+    /// without throwing.
+    static let ineligibleStateErrorCode = 3
+
+    /// Marks a queue entry published. FAIL-CLOSED on the entry's CURRENT state
+    /// (cross-finding with the Python A3 daily-reconciler, 2026-07-16): this writer
+    /// mutates the queue JSON directly and never goes through
+    /// `scripts/wr2_queue_writer.py`'s `mark_published`, so without this check an
+    /// entry the reconciler just flagged `render_incomplete` (declared/disk mismatch
+    /// it could not explain as stale metadata) — or any other not-ready state — could
+    /// still be published from this app even though every OTHER consumer already
+    /// refuses it by construction (that script's own `PUBLISHABLE_STATES` allow-list).
+    /// Uses `isQueuePublishEligible` (Models.swift) — the SAME `CarouselPhase`
+    /// classification the gallery band and `Carousel.isPublishEligible` use — so this
+    /// is not a second, independently-maintained rule (scar #3).
     static func markPublished(queueFile: URL, slug: String, igURL: String, publishedAt: String) throws {
         let mediaID = extractMediaID(from: igURL)
         try mutate(queueFile: queueFile, slug: slug) { item in
+            let state = item["state"] as? String
+            let verdict = item["critic_overall_verdict"] as? String
+            guard isQueuePublishEligible(state: state, criticVerdict: verdict) else {
+                throw NSError(domain: "QueueWriter", code: ineligibleStateErrorCode, userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "refusing to mark published — state \(state.map { "\"\($0)\"" } ?? "(none)") is not publish-eligible (the carousel needs to reach a finished/ready state first, e.g. a render_incomplete or in-review entry cannot be published)"
+                ])
+            }
             if item["state_before_publish"] == nil {
                 item["state_before_publish"] = item["state"] ?? "drafted"
             }

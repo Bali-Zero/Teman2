@@ -155,6 +155,19 @@ struct Carousel: Identifiable, Equatable {
     var instagramURL: String?         // Instagram post URL
     var publishedAt: String?          // ISO date of publication
     var canvaURL: String?             // Zero Design / Canva edit url (for waitlist work)
+    /// The queue item's RAW, current `state` field — deliberately kept SEPARATE from
+    /// `criticVerdict` (which is `critic_overall_verdict ?? state`, verdict-first).
+    /// Cross-finding with the Python A3 daily-reconciler (2026-07-16): that reconciler
+    /// can flip a queue entry's `state` to `render_incomplete` independently of any
+    /// earlier critic verdict, when a post-render disk-level drift makes a previously
+    /// "pass"-verdicted carousel no longer match its declared slide count. If phase/
+    /// publish-eligibility were computed from `criticVerdict` (verdict-first), a stale
+    /// `critic_overall_verdict: "pass"` would mask the fresh `render_incomplete` state
+    /// and both the gallery band and the publish button would keep showing "ready" for
+    /// a carousel that no longer is. `state` here is `nil` only for legacy-schema queue
+    /// rows that never carried a `state` field at all (`effectiveStatus` falls back to
+    /// `criticVerdict` in that case only).
+    var state: String?
 
     /// Mirrors `isQueueItemPublished(_:)` below, applied to this struct's already-
     /// flattened fields (a Carousel doesn't retain the raw ReviewItem it was joined
@@ -180,9 +193,30 @@ struct Carousel: Identifiable, Equatable {
         }
     }
 
-    /// Lifecycle phase, derived from publication + the queue state/verdict.
+    /// The effective lifecycle status for phase/publish-eligibility decisions: raw
+    /// `state` when present (the freshest signal — see the doc comment on `state`
+    /// above), falling back to `criticVerdict` only for legacy-schema rows that never
+    /// carried a `state` field. Deliberately NOT the same precedence as `criticVerdict`
+    /// itself, which stays verdict-first because it feeds a DIFFERENT feature (the
+    /// pass/soft_fail critic-verdict badge in the detail view) that must keep showing
+    /// the critic's judgement, not the lifecycle state.
+    private var effectiveStatus: String? { state ?? criticVerdict }
+
+    /// Lifecycle phase, derived from publication + the queue's effective status.
     /// Drives the gallery band colour: published=green, waitlist=blue, review=yellow, rejected=red.
-    var phase: CarouselPhase { CarouselPhase.of(state: criticVerdict, isPublished: isPublished) }
+    var phase: CarouselPhase { CarouselPhase.of(state: effectiveStatus, isPublished: isPublished) }
+
+    /// Safe to offer a FRESH publish action (Mark-published or a real Instagram
+    /// publish) right now. Reuses `CarouselPhase` — the SAME classification the
+    /// gallery band already uses — rather than a second, independently-maintained
+    /// state allow-list (scar #3: two guards judging the same fact drift apart). Only
+    /// `.waitlist` ("finished, awaiting publish" — e.g. `drafted`/`rendered`/`approved`)
+    /// is eligible; `.review` (in-flight, stalled, `render_incomplete`, or any
+    /// unrecognized future status — the existing fail-closed default) and `.rejected`
+    /// are not. Already-published entries use the separate, reversible undo-publish
+    /// flow, never this gate — `phase` already resolves to `.published` (never
+    /// `.waitlist`) whenever `isPublished` is true, so that case is covered for free.
+    var isPublishEligible: Bool { phase == .waitlist }
 }
 
 /// The visual lifecycle phase of a carousel, collapsing the full pipeline FSM
@@ -302,4 +336,17 @@ func isQueueItemPublished(_ item: ReviewItem) -> Bool {
     let state = (item.critic_overall_verdict ?? item.state ?? "")
         .trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     return state == "published"
+}
+
+/// Raw-dict variant of `Carousel.isPublishEligible`, for `QueueWriter` — which mutates
+/// the queue JSON as a plain `[String: Any]` graph and deliberately never decodes
+/// through `ReviewItem` (the writer's whole design is to leave unknown fields
+/// untouched, scar #9 schema-drift). NOT a second, independently-maintained rule: it
+/// calls the exact same `CarouselPhase.of` classification `Carousel.isPublishEligible`
+/// does, with the same `state ?? criticVerdict` precedence (state wins when present —
+/// see the doc comment on `Carousel.state`). Cross-finding, 2026-07-16: without this,
+/// `QueueWriter.markPublished` would let ANY entry be published regardless of state —
+/// including one the Python A3 daily-reconciler just flagged `render_incomplete`.
+func isQueuePublishEligible(state: String?, criticVerdict: String?) -> Bool {
+    CarouselPhase.of(state: state ?? criticVerdict, isPublished: false) == .waitlist
 }

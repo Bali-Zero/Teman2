@@ -37,8 +37,12 @@ echo "▸ running…"
 # -parse-as-library — swiftc's own suggested fix). This is the D2 innocence-test home.
 QW_BIN="$ROOT/build/queuewritertest"
 echo "▸ compiling QueueWriter tests…"
+# Models.swift joined in 2026-07-16: QueueWriter.markPublished now calls
+# isQueuePublishEligible/CarouselPhase (the fail-closed publish-state gate, cross-
+# finding with the Python A3 daily-reconciler) — a genuine new compile dependency, not
+# a workaround.
 swiftc -parse-as-library -sdk "$SDK" -target "$TARGET" \
-  -o "$QW_BIN" "$ROOT/Sources/QueueWriter.swift" "$ROOT/Tests/queuewritertest/main.swift"
+  -o "$QW_BIN" "$ROOT/Sources/Models.swift" "$ROOT/Sources/QueueWriter.swift" "$ROOT/Tests/queuewritertest/main.swift"
 echo "▸ running QueueWriter tests…"
 "$QW_BIN"
 
