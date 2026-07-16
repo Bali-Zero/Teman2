@@ -46,17 +46,23 @@
 --   psql postgresql://nuzantara@127.0.0.1:5432/nuzantara_dev \
 --     -f apps/backend-rag/backend/db/migrations_v2/243_jsonb_string_scalar_organism_wide_backfill.sql
 -- === FORWARD ===
+-- Column guards: each block also requires every touched column to exist
+-- (information_schema.columns) -- multi-column tables skip the WHOLE block
+-- if ANY column is missing (lineage-split CI schemas only; prod has all).
 
 DO $$
 BEGIN
-    IF to_regclass('public.olympus_actions') IS NOT NULL THEN
+    IF to_regclass('public.olympus_actions') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'olympus_actions' AND column_name = 'detail') THEN
         UPDATE olympus_actions
         SET detail = (detail #>> '{}')::jsonb
         WHERE jsonb_typeof(detail) = 'string'
           AND left(ltrim(detail #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.olympus_heartbeats') IS NOT NULL THEN
+    IF to_regclass('public.olympus_heartbeats') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'olympus_heartbeats' AND column_name = 'bloat_top3')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'olympus_heartbeats' AND column_name = 'top_tables_by_size') THEN
         UPDATE olympus_heartbeats
         SET bloat_top3 = CASE
                 WHEN jsonb_typeof(bloat_top3) = 'string'
@@ -74,14 +80,17 @@ BEGIN
            OR jsonb_typeof(top_tables_by_size) = 'string';
     END IF;
 
-    IF to_regclass('public.olympus_insights') IS NOT NULL THEN
+    IF to_regclass('public.olympus_insights') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'olympus_insights' AND column_name = 'evidence') THEN
         UPDATE olympus_insights
         SET evidence = (evidence #>> '{}')::jsonb
         WHERE jsonb_typeof(evidence) = 'string'
           AND left(ltrim(evidence #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.funnel_sessions') IS NOT NULL THEN
+    IF to_regclass('public.funnel_sessions') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'funnel_sessions' AND column_name = 'lead_profile')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'funnel_sessions' AND column_name = 'step_state') THEN
         UPDATE funnel_sessions
         SET lead_profile = CASE
                 WHEN jsonb_typeof(lead_profile) = 'string'
@@ -99,21 +108,27 @@ BEGIN
            OR jsonb_typeof(step_state) = 'string';
     END IF;
 
-    IF to_regclass('public.activity_log') IS NOT NULL THEN
+    IF to_regclass('public.activity_log') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'activity_log' AND column_name = 'changes') THEN
         UPDATE activity_log
         SET changes = (changes #>> '{}')::jsonb
         WHERE jsonb_typeof(changes) = 'string'
           AND left(ltrim(changes #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.team_timesheet') IS NOT NULL THEN
+    IF to_regclass('public.team_timesheet') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'team_timesheet' AND column_name = 'metadata') THEN
         UPDATE team_timesheet
         SET metadata = (metadata #>> '{}')::jsonb
         WHERE jsonb_typeof(metadata) = 'string'
           AND left(ltrim(metadata #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.crm_audit_log') IS NOT NULL THEN
+    IF to_regclass('public.crm_audit_log') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'crm_audit_log' AND column_name = 'old_state')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'crm_audit_log' AND column_name = 'new_state')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'crm_audit_log' AND column_name = 'changes')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'crm_audit_log' AND column_name = 'metadata') THEN
         UPDATE crm_audit_log
         SET old_state = CASE
                 WHEN jsonb_typeof(old_state) = 'string'
@@ -145,56 +160,64 @@ BEGIN
            OR jsonb_typeof(metadata) = 'string';
     END IF;
 
-    IF to_regclass('public.kg_nodes_staging') IS NOT NULL THEN
+    IF to_regclass('public.kg_nodes_staging') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'kg_nodes_staging' AND column_name = 'properties') THEN
         UPDATE kg_nodes_staging
         SET properties = (properties #>> '{}')::jsonb
         WHERE jsonb_typeof(properties) = 'string'
           AND left(ltrim(properties #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.kg_edges_staging') IS NOT NULL THEN
+    IF to_regclass('public.kg_edges_staging') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'kg_edges_staging' AND column_name = 'properties') THEN
         UPDATE kg_edges_staging
         SET properties = (properties #>> '{}')::jsonb
         WHERE jsonb_typeof(properties) = 'string'
           AND left(ltrim(properties #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.kg_nodes') IS NOT NULL THEN
+    IF to_regclass('public.kg_nodes') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'kg_nodes' AND column_name = 'properties') THEN
         UPDATE kg_nodes
         SET properties = (properties #>> '{}')::jsonb
         WHERE jsonb_typeof(properties) = 'string'
           AND left(ltrim(properties #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.kg_edges') IS NOT NULL THEN
+    IF to_regclass('public.kg_edges') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'kg_edges' AND column_name = 'properties') THEN
         UPDATE kg_edges
         SET properties = (properties #>> '{}')::jsonb
         WHERE jsonb_typeof(properties) = 'string'
           AND left(ltrim(properties #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.inbound_webhooks') IS NOT NULL THEN
+    IF to_regclass('public.inbound_webhooks') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'inbound_webhooks' AND column_name = 'payload') THEN
         UPDATE inbound_webhooks
         SET payload = (payload #>> '{}')::jsonb
         WHERE jsonb_typeof(payload) = 'string'
           AND left(ltrim(payload #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.conversation_threads') IS NOT NULL THEN
+    IF to_regclass('public.conversation_threads') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'conversation_threads' AND column_name = 'metadata') THEN
         UPDATE conversation_threads
         SET metadata = (metadata #>> '{}')::jsonb
         WHERE jsonb_typeof(metadata) = 'string'
           AND left(ltrim(metadata #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.events_outbox') IS NOT NULL THEN
+    IF to_regclass('public.events_outbox') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'events_outbox' AND column_name = 'payload') THEN
         UPDATE events_outbox
         SET payload = (payload #>> '{}')::jsonb
         WHERE jsonb_typeof(payload) = 'string'
           AND left(ltrim(payload #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.events_outbox_dlq') IS NOT NULL THEN
+    IF to_regclass('public.events_outbox_dlq') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'events_outbox_dlq' AND column_name = 'payload') THEN
         UPDATE events_outbox_dlq
         SET payload = (payload #>> '{}')::jsonb
         WHERE jsonb_typeof(payload) = 'string'
@@ -203,21 +226,26 @@ BEGIN
 
     -- PII column: pure in-place re-encode, never SELECTed/logged by this
     -- migration or its verification (jsonb_typeof()/COUNT() only).
-    IF to_regclass('public.documents') IS NOT NULL THEN
+    IF to_regclass('public.documents') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'documents' AND column_name = 'ocr_extracted_data') THEN
         UPDATE documents
         SET ocr_extracted_data = (ocr_extracted_data #>> '{}')::jsonb
         WHERE jsonb_typeof(ocr_extracted_data) = 'string'
           AND left(ltrim(ocr_extracted_data #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.practices') IS NOT NULL THEN
+    IF to_regclass('public.practices') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'practices' AND column_name = 'documents') THEN
         UPDATE practices
         SET documents = (documents #>> '{}')::jsonb
         WHERE jsonb_typeof(documents) = 'string'
           AND left(ltrim(documents #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.interactions') IS NOT NULL THEN
+    IF to_regclass('public.interactions') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'interactions' AND column_name = 'metadata')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'interactions' AND column_name = 'extracted_entities')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'interactions' AND column_name = 'action_items') THEN
         UPDATE interactions
         SET metadata = CASE
                 WHEN jsonb_typeof(metadata) = 'string'
@@ -242,14 +270,17 @@ BEGIN
            OR jsonb_typeof(action_items) = 'string';
     END IF;
 
-    IF to_regclass('public.failed_messages') IS NOT NULL THEN
+    IF to_regclass('public.failed_messages') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'failed_messages' AND column_name = 'metadata') THEN
         UPDATE failed_messages
         SET metadata = (metadata #>> '{}')::jsonb
         WHERE jsonb_typeof(metadata) = 'string'
           AND left(ltrim(metadata #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.naga_sessions') IS NOT NULL THEN
+    IF to_regclass('public.naga_sessions') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'naga_sessions' AND column_name = 'action_items')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'naga_sessions' AND column_name = 'sub_questions') THEN
         UPDATE naga_sessions
         SET action_items = CASE
                 WHEN jsonb_typeof(action_items) = 'string'
@@ -267,14 +298,23 @@ BEGIN
            OR jsonb_typeof(sub_questions) = 'string';
     END IF;
 
-    IF to_regclass('public.crm_workspace_ai_snapshots') IS NOT NULL THEN
+    IF to_regclass('public.crm_workspace_ai_snapshots') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'crm_workspace_ai_snapshots' AND column_name = 'facts') THEN
         UPDATE crm_workspace_ai_snapshots
         SET facts = (facts #>> '{}')::jsonb
         WHERE jsonb_typeof(facts) = 'string'
           AND left(ltrim(facts #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.visa_types') IS NOT NULL THEN
+    IF to_regclass('public.visa_types') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'visa_types' AND column_name = 'cost_details')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'visa_types' AND column_name = 'requirements')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'visa_types' AND column_name = 'restrictions')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'visa_types' AND column_name = 'allowed_activities')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'visa_types' AND column_name = 'benefits')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'visa_types' AND column_name = 'process_steps')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'visa_types' AND column_name = 'tips')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'visa_types' AND column_name = 'metadata') THEN
         UPDATE visa_types
         SET cost_details = CASE
                 WHEN jsonb_typeof(cost_details) = 'string'
@@ -334,7 +374,9 @@ BEGIN
            OR jsonb_typeof(metadata) = 'string';
     END IF;
 
-    IF to_regclass('public.conversations') IS NOT NULL THEN
+    IF to_regclass('public.conversations') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'conversations' AND column_name = 'messages')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'conversations' AND column_name = 'metadata') THEN
         UPDATE conversations
         SET messages = CASE
                 WHEN jsonb_typeof(messages) = 'string'
@@ -354,7 +396,9 @@ BEGIN
 
     -- PII column: pure in-place re-encode, never SELECTed/logged by this
     -- migration or its verification (jsonb_typeof()/COUNT() only).
-    IF to_regclass('public.clients') IS NOT NULL THEN
+    IF to_regclass('public.clients') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'clients' AND column_name = 'passport_ocr_data')
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'clients' AND column_name = 'custom_fields') THEN
         UPDATE clients
         SET passport_ocr_data = CASE
                 WHEN jsonb_typeof(passport_ocr_data) = 'string'
@@ -372,21 +416,24 @@ BEGIN
            OR jsonb_typeof(custom_fields) = 'string';
     END IF;
 
-    IF to_regclass('public.companies') IS NOT NULL THEN
+    IF to_regclass('public.companies') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'companies' AND column_name = 'custom_fields') THEN
         UPDATE companies
         SET custom_fields = (custom_fields #>> '{}')::jsonb
         WHERE jsonb_typeof(custom_fields) = 'string'
           AND left(ltrim(custom_fields #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.crm_settings') IS NOT NULL THEN
+    IF to_regclass('public.crm_settings') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'crm_settings' AND column_name = 'value') THEN
         UPDATE crm_settings
         SET value = (value #>> '{}')::jsonb
         WHERE jsonb_typeof(value) = 'string'
           AND left(ltrim(value #>> '{}'), 1) IN ('{', '[');
     END IF;
 
-    IF to_regclass('public.lead_intents') IS NOT NULL THEN
+    IF to_regclass('public.lead_intents') IS NOT NULL
+           AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'lead_intents' AND column_name = 'context') THEN
         UPDATE lead_intents
         SET context = (context #>> '{}')::jsonb
         WHERE jsonb_typeof(context) = 'string'
