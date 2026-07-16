@@ -33,6 +33,7 @@ from backend.app.core.exceptions import (
     ResourceNotFoundError,
     ValidationError,
 )
+from backend.app.utils.crm_utils import AvatarUrl
 from backend.app.utils.error_sanitizer import sanitize_error_message
 from backend.services.common.cache import cache_invalidating
 from backend.services.crm.cache_query import (
@@ -65,7 +66,7 @@ class ClientValidator(BaseModel):
     client_type: str = "individual"
     assigned_to: str | None = None
     created_by: str | None = None
-    avatar_url: str | None = None
+    avatar_url: AvatarUrl = None
     address: str | None = None
     notes: str | None = None
     tags: list[str] = Field(default_factory=list)

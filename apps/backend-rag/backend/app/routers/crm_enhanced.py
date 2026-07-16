@@ -20,7 +20,11 @@ from pydantic import BaseModel
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.utils.crm_utils import extract_json_from_llm_response, verify_client_access
+from backend.app.utils.crm_utils import (
+    AvatarUrl,
+    extract_json_from_llm_response,
+    verify_client_access,
+)
 from backend.app.utils.json_utils import to_jsonb
 from backend.core.cache import invalidate_cache
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
@@ -964,7 +968,7 @@ class DocumentUpdate(BaseModel):
 
 
 class ClientProfileUpdate(BaseModel):
-    avatar_url: str | None = None
+    avatar_url: AvatarUrl = None
     google_drive_folder_id: str | None = None
     date_of_birth: str | None = None
     passport_expiry: str | None = None

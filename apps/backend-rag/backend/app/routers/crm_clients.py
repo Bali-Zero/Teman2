@@ -35,6 +35,7 @@ from backend.app.deps.crm_service_write import verify_crm_write_key
 from backend.app.services.crm.audit_logger import audit_change, audit_logger
 from backend.app.services.crm.metrics import metrics_collector, track_client_creation
 from backend.app.utils.crm_utils import (
+    AvatarUrl,
     is_crm_admin,
     verify_client_access,
 )
@@ -209,7 +210,7 @@ class ClientCreate(BaseModel):
     status: str = "active"  # 'active', 'inactive', 'prospect', 'lead'
     client_type: str = "individual"  # 'individual' or 'company'
     assigned_to: str | None = None  # team member email
-    avatar_url: str | None = None
+    avatar_url: AvatarUrl = None
     address: str | None = None
     notes: str | None = None
     tags: list[str] = []
@@ -304,7 +305,7 @@ class ClientUpdate(BaseModel):
     client_type: str | None = None
     assigned_to: str | None = None
     tax_consultant: str | None = None  # one of TAX_CONSULTANT_VALUES or null
-    avatar_url: str | None = None
+    avatar_url: AvatarUrl = None
     address: str | None = None
     notes: str | None = None
     strategic_recap: str | None = None
@@ -320,23 +321,10 @@ class ClientUpdate(BaseModel):
     current_visa_type: str | None = None
     current_visa_sponsor: str | None = None
 
-    @field_validator("avatar_url")
-    @classmethod
-    def reject_data_uri_avatar(cls, v: str | None) -> str | None:
-        """Avatars must be storage URLs, never inline base64.
-
-        Base64 data: URIs stored in avatar_url bloated the clients list to
-        ~10MB (avg 20KB, max 518KB per row). New avatars go through
-        POST /api/crm/clients/{id}/avatar which uploads to Tigris and stores a
-        public URL. Reject data: URIs here so the bloat can never return via a
-        plain client update.
-        """
-        if v and v.startswith("data:"):
-            raise ValueError(
-                "avatar_url must be a storage URL; upload the image via "
-                "POST /api/crm/clients/{id}/avatar instead of an inline data: URI"
-            )
-        return v
+    # avatar_url is guarded by the shared `AvatarUrl` type (crm_utils) — the
+    # validator travels with the type, so every model that stores an avatar gets
+    # it. This model's inline copy was the ONLY guarded write-path while
+    # ClientCreate / ClientProfileUpdate / ClientValidator silently were not.
 
     @field_validator("status")
     @classmethod

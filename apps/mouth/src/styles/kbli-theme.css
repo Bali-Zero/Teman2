@@ -43,16 +43,16 @@
   /* PMA status colors */
   --kbli-pma-open: #5ec490;
   --kbli-pma-open-bg: rgba(94, 196, 144, 0.1);
-  --kbli-pma-restricted: #e8a849;
+  --kbli-pma-restricted: #d97706;
   --kbli-pma-restricted-bg: rgba(232, 168, 73, 0.1);
-  --kbli-pma-closed: #e8716c;
+  --kbli-pma-closed: #dc2626;
   --kbli-pma-closed-bg: rgba(232, 113, 108, 0.1);
 
   /* Risk level colors */
   --kbli-risk-low: #5ec490;
   --kbli-risk-medium-low: #6ba3e8;
-  --kbli-risk-medium-high: #e8a849;
-  --kbli-risk-high: #e8716c;
+  --kbli-risk-medium-high: #d97706;
+  --kbli-risk-high: #dc2626;
 
   /* Zantara AI accent */
   --kbli-zantara: #8b9cf7;
