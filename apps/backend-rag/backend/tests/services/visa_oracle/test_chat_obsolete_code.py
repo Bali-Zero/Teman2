@@ -14,6 +14,7 @@ as a `review_reasons` annotation on the (still-safe) ABSTAIN response.
 from __future__ import annotations
 
 import os
+import re
 
 # Must be set before any backend imports load config/settings.
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars_long")
@@ -136,7 +137,18 @@ async def test_multiple_obsolete_codes_both_named_in_answer_and_reasons(monkeypa
     """R2-C guilt (Codex re-review NEW-BUG, F6): a message mentioning TWO
     distinct retired codes (B211 and B211A) must not silently answer for
     only the first match — both must appear in the deterministic answer
-    AND both must get their own review_reasons entry."""
+    AND both must get their own review_reasons entry.
+
+    Round-3 nit (Codex): a bare `"B211" in answer` substring check is
+    itself a scar-family-#3 guard-over-match — INSIDE a test this time —
+    since it would also (trivially, uselessly) pass on "B211A" alone,
+    never actually proving B211 was named as its OWN entry. Assert
+    exact-boundary presence two independent ways instead: (1) each code
+    appears as its own enumerated "The visa code <CODE> ..." line, not
+    merely as a substring inside the other code's line; (2) a
+    word-boundary regex confirms `\bB211\b` can never match by landing
+    inside "B211A" (no boundary between the shared "211" and trailing
+    "A")."""
     from backend.app.routers import visa_oracle as mod
 
     monkeypatch.setattr(
@@ -153,8 +165,17 @@ async def test_multiple_obsolete_codes_both_named_in_answer_and_reasons(monkeypa
     resp = await mod.chat(req, body, db_pool=None)
 
     assert resp.confidence == mod.CONFIDENCE_ABSTAIN
-    assert "B211" in resp.answer
-    assert "B211A" in resp.answer
+
+    # Exact-boundary check #1: each code owns its own enumerated line.
+    code_lines = [line for line in resp.answer.splitlines() if line.startswith("The visa code ")]
+    mentioned_codes = {line.split("The visa code ", 1)[1].split(" ", 1)[0] for line in code_lines}
+    assert mentioned_codes == {"B211", "B211A"}
+    assert len(code_lines) == 2
+
+    # Exact-boundary check #2: word-boundary regex, independent method.
+    assert re.search(r"\bB211\b", resp.answer) is not None
+    assert re.search(r"\bB211A\b", resp.answer) is not None
+
     assert set(resp.review_reasons) == {
         "obsolete_code_mentioned:B211",
         "obsolete_code_mentioned:B211A",
