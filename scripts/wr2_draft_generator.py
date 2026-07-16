@@ -426,9 +426,16 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
    quoted phrase, or a concrete scene. Then introduce the law later if
    needed.
 
-7. Bali Zero "take" slides (typically slide 2 and the last slide): write as
-   first-person editorial voice ("Our read:", "What we are seeing:"),
-   NOT as a third-party legal summary.
+7. Bali Zero "take" slides (typically slide 2 and the last slide): open the
+   headline with a short UPPERCASE editorial-stance kicker (2-3 words —
+   e.g. "THE UPSHOT", "WHERE THIS LANDS", "THE BOTTOM LINE", "THE STAKES",
+   "THE SIGNAL", "BETWEEN THE LINES", "WHAT CHANGES NOW" — or coin a new
+   one in the same register if none fits this angle), then continue in
+   first-person editorial voice, NOT as a third-party legal summary. Pick
+   the kicker that fits THIS carousel; never default to the same one two
+   carousels running. NEVER use "OUR TAKE" / "OUR READ" / "OUR VIEW" —
+   those were single-example placeholders that became an invariant because
+   they were the only example ever shown, not a fixed slot to fill in.
 
 8. The "What This Means For You" type closer (the last slide): SHORT, DIRECT,
    action-oriented. Two sentences max. Ends with the Bali Zero CTA.
@@ -462,7 +469,7 @@ Structure:
       "slide_type": "take",
       "is_cover": false,
       "is_hero_image": false,
-      "headline": "Our read: ...",
+      "headline": "THE BOTTOM LINE: ...",
       "body": "First-person editorial take — reads as clean text-on-color, no photo needed."
     },
     {
