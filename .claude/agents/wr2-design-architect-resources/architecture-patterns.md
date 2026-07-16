@@ -154,7 +154,14 @@
 
 ## 6. Concrete next 7 steps
 
-1. Write `~/.claude/agents/wr2-design-architect.md` (orchestrator subagent).
+> **Historical bootstrap record (2026-05-08)** — these 7 steps describe how the system was
+> FIRST built, using the HOME paths that were the only copy that existed at the time. Steps
+> 1-7 below are done; do not re-run them. As of 2026-07-16, `wr2-design-architect.md` is
+> vendored into repo `.claude/agents/` (project-level precedence, CANON marker at the top of
+> that file) — step 1's target below is re-rooted to the live, editable copy; the HOME copy it
+> shadows must never be edited directly (2026-07-16 red-team finding #7).
+
+1. Write `.claude/agents/wr2-design-architect.md` (orchestrator subagent).
 2. Write `~/.claude/skills/bali-zero-brand/constitution.md` (hard rules).
 3. Write `~/.claude/skills/bali-zero-brand/SKILL.md` (entry point with progressive disclosure).
 4. Stub `~/.claude/skills/bali-zero-brand/tokens.json` (palette + type + spacing — derive from `packages/core/tokens/primitives.css` + WR2 reference PDFs).

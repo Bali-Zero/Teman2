@@ -40,6 +40,26 @@ def test_guilt_banned_label_case_and_whitespace_insensitive(label):
     assert C._take_label_violation({"take_label": label}) is not None
 
 
+@pytest.mark.parametrize(
+    "label",
+    [
+        "OUR TAKE:",  # trailing colon
+        "Our  Take",  # doubled internal whitespace
+        "OUR TAKE",  # NBSP standing in for a regular space
+        "OUR\nTAKE",  # embedded newline
+        "OUR TAKE —",  # trailing em-dash
+        "OUR TAKE-",  # trailing hyphen, no space
+        "key  fact",  # doubled internal whitespace, lowercase
+    ],
+)
+def test_guilt_banned_label_unicode_and_punctuation_bypass_variants(label):
+    """2026-07-16 red-team finding #2: a bare strip+uppercase missed these
+    bypass vectors — trailing colon/dash/em-dash, doubled or embedded
+    whitespace, NBSP standing in for a space. Each must still resolve to a
+    banned exact match after _normalize_take_label."""
+    assert C._take_label_violation({"take_label": label}) == label
+
+
 def test_guilt_check_logs_warning_never_raises(caplog):
     import logging
 
@@ -61,7 +81,7 @@ def test_guilt_check_logs_warning_never_raises(caplog):
         "THE UPSHOT",
         "WHERE THIS LANDS",
         "THE VERDICT",
-        "THE BOTTOM LINE",
+        "THE NET EFFECT",
         "WHAT WE'RE SEEING",
         "THE STAKES",
         "BETWEEN THE LINES",

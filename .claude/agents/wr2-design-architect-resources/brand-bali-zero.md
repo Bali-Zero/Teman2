@@ -95,7 +95,7 @@ Italian slug, English content. Source: `wr2_draft_generator.py:47-54, 140-148`
 4. **Citations: ONE law per slide maximum.** Legal briefs are forbidden.
 5. **Each slide answers ONE question or lands ONE punch.** If body contains "and" twice, stack — split or cut.
 6. **Forbidden body openings**: "Permenkumham [N]/[year]", "PP No. [N] Tahun [year]", "Article [N]", "Section [N]", any "[Law] requires/authorises/states that..."
-7. **"Take" slides (slide 2, slide 11)**: open with a short UPPERCASE editorial-stance kicker (≤3 words — THE UPSHOT / THE VERDICT / THE BOTTOM LINE / WHERE THIS LANDS / THE STAKES / THE SIGNAL / BETWEEN THE LINES / WHAT CHANGES NOW, or coin one in-register), then continue in first-person editorial voice, never third-party legal summary. Pick per carousel; never repeat the previous carousel's choice; NEVER "OUR TAKE"/"OUR READ"/"OUR VIEW" (retired single-example anchors — see evidence-carved.md "## take_label variants" for the full doctrine).
+7. **"Take" slides (slide 2, slide 11)**: open with a short UPPERCASE editorial-stance kicker (≤3 words — THE UPSHOT / THE VERDICT / THE NET EFFECT / WHERE THIS LANDS / THE STAKES / THE SIGNAL / BETWEEN THE LINES / WHAT CHANGES NOW, or coin one in-register), then continue in first-person editorial voice, never third-party legal summary. Pick per carousel; never repeat the previous carousel's choice; NEVER "OUR TAKE"/"OUR READ"/"OUR VIEW" (retired single-example anchors) or "THE BOTTOM LINE" (banned filler heading pattern, applies to this kicker too — 2026-07-16 red-team finding #3) — see evidence-carved.md "## take_label variants" for the full doctrine.
 8. **Slide 11 closer**: SHORT, DIRECT, action-oriented. Two sentences max. Ends with Bali Zero CTA.
 
 ### Forbidden phrases
@@ -207,7 +207,7 @@ Always `from=zantara@balizero.com` / display name `Zantara`. Never `notification
 `scripts/wr2_draft_generator.py:151-258`
 
 - **Slide 1**: Cover — always `is_cover: true`, `is_hero_image: true`
-- **Slide 2**: editorial-stance kicker (THE UPSHOT / THE VERDICT / THE BOTTOM LINE / etc. — never "OUR READ"/"OUR TAKE") + first-person take, `is_hero_image: false`
+- **Slide 2**: editorial-stance kicker (THE UPSHOT / THE VERDICT / THE NET EFFECT / etc. — never "OUR READ"/"OUR TAKE"/"THE BOTTOM LINE") + first-person take, `is_hero_image: false`
 - **Slides 3-10**: story body (8 slides) — typography-only layout, `is_hero_image: false`
 - **Slide 11**: CTA closer "What This Means For You" — two sentences max, `is_hero_image: true`
 - **Exactly 4 `is_hero_image: true` total**: slides 1, 11 + 2 mid-carousel narrative turning points
@@ -257,7 +257,7 @@ These are non-negotiable. Every produced design MUST satisfy all 15.
 8. **Crisis content gets cold teal / surveillance aesthetic.** Aspiration content gets warm amber / golden hour. Mood is auto-classified before prompting.
 9. **Tone register is always ONE of the 7 valid Italian slugs.** Slug for backend validation; content in English.
 10. **Body opens with a person, a stake, a date with consequence, or a question.** Never with a law number, article reference, or "Section N". Law cited at end if needed — ONE law per slide max.
-11. **Slide 2 and Slide 11 use first-person editorial voice**, opened by a short UPPERCASE editorial-stance kicker (THE UPSHOT / THE VERDICT / THE BOTTOM LINE / WHERE THIS LANDS / THE STAKES / THE SIGNAL / BETWEEN THE LINES / WHAT CHANGES NOW — pick per carousel, never repeat the previous one; NEVER "OUR TAKE"/"OUR READ"/"OUR VIEW"). Never third-party legal summary on these slides.
+11. **Slide 2 and Slide 11 use first-person editorial voice**, opened by a short UPPERCASE editorial-stance kicker (THE UPSHOT / THE VERDICT / THE NET EFFECT / WHERE THIS LANDS / THE STAKES / THE SIGNAL / BETWEEN THE LINES / WHAT CHANGES NOW — pick per carousel, never repeat the previous one; NEVER "OUR TAKE"/"OUR READ"/"OUR VIEW"/"THE BOTTOM LINE"). Never third-party legal summary on these slides.
 12. **Slide 11 CTA is two sentences max** and ends with "Bali Zero — Link in bio for a consultation."
 13. **Primary brand gold is `#f59e0b` (gold-500).** Dark base is `#121016` (warm graphite, 3% red-violet undertone). Red `#ff2d4c` signals urgency. Never use generic gray.
 14. **Fonts: Inter for display/UI, Cormorant Garamond for long-form editorial.** Brand tagline: Arial Black / Impact at weight 900, 0.06em letter-spacing.

@@ -105,6 +105,7 @@ Identify ONE specific hook angle. NOT generic ("are you thinking of moving to Ba
   "topic": "<as received or normalized>",
   "domain": "visa | tax | property | regulatory | health | brand",
   "audience_segment": "founder | investor | digital-nomad | retiree | mass-tourist",
+  "audience_notes": "<optional, null unless the real reader doesn't cleanly fit audience_segment — plain-words description of who actually reads this (e.g. 'everyday marketplace seller, not a founder'); see Accessibility discipline below>",
   "archetype_recommended": "regulatory-explainer | news-flash | quote-led | anti-cliche | story-driven | comparison | calendar-tracker | testimonial-data | cultural-insight",
   "key_facts": [
     "Fact 1 with source — e.g., 'KEP-71/PJ/2026 signed 30 April 2026 by Bimo Wijayanto, Dirjen Pajak'",
@@ -165,10 +166,10 @@ If NB-1/4/5 all return errors, abort with:
 
 The orchestrator will surface this to the user; do NOT proceed without grounding.
 
-## Accessibility discipline (2026-07-16)
+## Accessibility discipline (2026-07-16, trimmed post red-team same day)
 
-Zero's mandate: carouseli read as simple/accessible to the general public — the 1-August PMK 37/2025 carousel was flagged too hermetic partly because brief-interpreter forced the `founder` taxonomy slot onto an everyday marketplace-seller audience (Step 3's 5-slot list didn't have a matching entry, so it defaulted wrong).
+Zero's mandate: carouseli read as simple/accessible to the general public — the 1-August PMK 37/2025 carousel was flagged too hermetic partly because brief-interpreter forced the `founder` taxonomy slot onto an everyday marketplace-seller audience (Step 3's 5-slot list didn't have a matching entry, so it defaulted wrong). **Only the two rules below are active**; the amendment's rules 1 (gloss-before-code), 5 (qa-dialogue ban), 12 (length polarization), and 17 (categorical-subhead ban) are **NOT active until constitution reconciliation (Zero)** — see `skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md` "## Constitutional conflicts — PENDING ZERO" for why.
 
-- **Audience-register follows the REAL audience, not the taxonomy slot.** If the actual reader doesn't cleanly fit one of the 5 Step-3 slots (founder/investor/digital-nomad/retiree/mass-tourist), name the real audience in plain words in `audience_notes` and let downstream register-selection follow THAT — the taxonomy slot becomes metadata only, never an override.
-- **Gloss-before-code / stakes-before-mechanism**: flag in the brief which codes/acronyms need a same-slide plain-English gloss, and which facts are STAKES (what changes for the reader) vs MECHANISM (how/why) — storyboarder needs stakes ordered first.
-- Full 17-rule doctrine: `skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md`.
+- **Audience-register follows the REAL audience, not the taxonomy slot.** If the actual reader doesn't cleanly fit one of the 5 Step-3 slots (founder/investor/digital-nomad/retiree/mass-tourist), name the real audience in plain words in `audience_notes` (optional field, see Output format below) and let downstream register-selection follow THAT — the taxonomy slot becomes metadata only, never an override.
+- **Stakes-before-mechanism**: flag in the brief which facts are STAKES (what changes for the reader) vs MECHANISM (how/why) — storyboarder needs stakes ordered first. (Gloss-before-code, the other half of this rule in the original amendment, is NOT active — see note above.)
+- Full 17-rule doctrine (including the 4 rules NOT active above): `skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md`.

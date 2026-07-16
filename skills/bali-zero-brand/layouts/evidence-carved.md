@@ -188,7 +188,11 @@ carousel angle — not a fixed slot.
 
 - **THE UPSHOT** — analitico default
 - **THE VERDICT** — militante, decisive/closing beats
-- **THE BOTTOM LINE** — pedagogico, plain-spoken/audience-first
+- **THE NET EFFECT** — pedagogico, plain-spoken/audience-first (NOT "THE
+  BOTTOM LINE" — that phrase is banned as a filler heading pattern
+  storyboarder-wide, including for `take_label` specifically; see
+  `wr2-storyboarder.md` "Banned filler heading patterns" — 2026-07-16
+  red-team finding #3 caught it recommended here while banned there)
 - **WHERE THIS LANDS** — audience-first, "what changes for you" framing
 - **WHAT WE'RE SEEING** — investigative, trend/pattern pieces
 - **THE STAKES** — militante, deadline/urgency-driven

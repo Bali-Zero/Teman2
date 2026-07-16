@@ -428,14 +428,16 @@ STORYTELLING DIRECTIVES (overrides any default factual mode):
 
 7. Bali Zero "take" slides (typically slide 2 and the last slide): open the
    headline with a short UPPERCASE editorial-stance kicker (2-3 words —
-   e.g. "THE UPSHOT", "WHERE THIS LANDS", "THE BOTTOM LINE", "THE STAKES",
+   e.g. "THE UPSHOT", "WHERE THIS LANDS", "THE NET EFFECT", "THE STAKES",
    "THE SIGNAL", "BETWEEN THE LINES", "WHAT CHANGES NOW" — or coin a new
    one in the same register if none fits this angle), then continue in
    first-person editorial voice, NOT as a third-party legal summary. Pick
    the kicker that fits THIS carousel; never default to the same one two
    carousels running. NEVER use "OUR TAKE" / "OUR READ" / "OUR VIEW" —
    those were single-example placeholders that became an invariant because
-   they were the only example ever shown, not a fixed slot to fill in.
+   they were the only example ever shown, not a fixed slot to fill in. Also
+   NEVER "THE BOTTOM LINE" — that's a banned filler heading pattern
+   elsewhere in the doctrine (2026-07-16 red-team finding #3).
 
 8. The "What This Means For You" type closer (the last slide): SHORT, DIRECT,
    action-oriented. Two sentences max. Ends with the Bali Zero CTA.
@@ -469,7 +471,7 @@ Structure:
       "slide_type": "take",
       "is_cover": false,
       "is_hero_image": false,
-      "headline": "THE BOTTOM LINE: ...",
+      "headline": "THE NET EFFECT: ...",
       "body": "First-person editorial take — reads as clean text-on-color, no photo needed."
     },
     {
@@ -491,8 +493,25 @@ Structure:
       "headline": "What changes",
       "body": "A dense list or stacked facts — lives on text, NO image_prompt."
     },
-    // ... more slides; mix hero (with image_prompt/tonal_palette/image_mode)
-    //     and non-hero (text-only) as the story needs ...
+    {
+      "slide_number": 5,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": false,
+      "headline": "Who this hits first",
+      "body": "Text-only slide naming the affected group concretely — no image_prompt needed."
+    },
+    {
+      "slide_number": 6,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": true,
+      "headline": "The comparison",
+      "body": "A scene that makes the before/after concrete — worth a photo.",
+      "image_prompt": "editorial scene, 1-2 sentences",
+      "tonal_palette": "warm-amber",
+      "image_mode": "object-comparison"
+    },
     {
       "slide_number": 7,
       "slide_type": "cta",

@@ -14,9 +14,12 @@ from pathlib import Path
 
 import pytest
 from scripts.wr2_html_render_apply import (
+    PrepublishStatus,
     _HeroServer,
     _is_prepublish_draft,
     _normalize_heroes,
+    _prepublish_status,
+    _queue_entry_for_draft,
     _queue_state_for_draft,
     _take_label_hard_gate_violations,
 )
@@ -127,23 +130,82 @@ def test_is_prepublish_draft_true_for_repointable_states(tmp_path):
 def test_is_prepublish_draft_false_for_published_or_archived():
     """The core exemption: a REPOINT re-render of an already-public carousel
     must NOT be hard-gated even if it still carries the old label — that
-    history is immutable per _append_review_queue's own contract."""
+    history is immutable per _append_review_queue's own contract. Includes
+    `published_with_edits` (2026-07-16 red-team coverage gap: the sibling
+    terminal state wr2_queue_writer.py's PUBLISHED_STATES also treats as
+    published — untested before, and easy to silently drift from if
+    _is_prepublish_draft ever hardcoded a narrower state tuple)."""
     import json as _json
     import tempfile as _tempfile
     from pathlib import Path as _Path
 
-    for state in ("published", "archived"):
+    for state in ("published", "published_with_edits", "archived", "ignored", "withdrawn"):
         qp = _Path(_tempfile.mkdtemp()) / "queue.json"
         qp.write_text(_json.dumps([{"draft_id": "d1", "state": state}]), encoding="utf-8")
         assert _is_prepublish_draft("d1", queue_path=qp) is False, state
 
 
-def test_is_prepublish_draft_true_on_corrupt_queue_file(tmp_path):
-    """Unreadable/corrupt queue defaults to the stricter (hard-gate) branch —
-    never silently waves a bad draft through because the queue was broken."""
+def test_prepublish_status_immutable_for_legacy_entry_with_no_state_key():
+    """2026-07-16 red-team finding #1: an entry that EXISTS but has no
+    `state` key at all (predates the state contract) must be IMMUTABLE
+    (never hard-gated) -- NOT the same bucket as "never queued". The old
+    _queue_state_for_draft-based implementation conflated the two because
+    both return None from that lookup; _queue_entry_for_draft (used by
+    _prepublish_status) keeps them distinguishable."""
+    queue = [{"draft_id": "legacy-1"}]  # no "state" key at all
+    assert _queue_entry_for_draft("legacy-1", queue) == {"draft_id": "legacy-1"}
+    assert _queue_state_for_draft("legacy-1", queue) is None  # old lookup: ambiguous
+
+    import json as _json
+    import tempfile as _tempfile
+    from pathlib import Path as _Path
+
+    qp = _Path(_tempfile.mkdtemp()) / "queue.json"
+    qp.write_text(_json.dumps(queue), encoding="utf-8")
+    assert _prepublish_status("legacy-1", queue_path=qp) is PrepublishStatus.IMMUTABLE
+    assert _is_prepublish_draft("legacy-1", queue_path=qp) is False
+
+
+def test_prepublish_status_prepublish_for_brand_new_never_queued(tmp_path):
+    """The OTHER half of the same ambiguity: a draft_id that has NEVER been
+    queued (no entry at all, not even a stateless one) is a genuinely new
+    draft -- PREPUBLISH, distinct from the legacy-no-state case above even
+    though both used to collapse to the same None."""
+    qp = tmp_path / "human-review-queue.json"
+    qp.write_text('[{"draft_id": "other", "state": "published"}]', encoding="utf-8")
+    assert _prepublish_status("brand-new", queue_path=qp) is PrepublishStatus.PREPUBLISH
+
+
+def test_prepublish_status_unknown_on_corrupt_queue_file(tmp_path):
+    """2026-07-16 red-team finding #1 (the core bug): a corrupt/unreadable
+    queue is NEITHER evidence the draft is new NOR evidence it's published --
+    it's UNKNOWN, and must alert + retry, never trigger the irreversible
+    release_lease_permanent(status='render_failed')."""
     qp = tmp_path / "human-review-queue.json"
     qp.write_text("{not valid json", encoding="utf-8")
-    assert _is_prepublish_draft("d1", queue_path=qp) is True
+    assert _prepublish_status("d1", queue_path=qp) is PrepublishStatus.UNKNOWN
+
+
+def test_prepublish_status_unknown_when_queue_is_not_a_list(tmp_path):
+    """Malformed shape (valid JSON, but not the expected list) is the same
+    UNKNOWN bucket as unparseable JSON -- both are "can't trust this data",
+    not "safe to hard-gate"."""
+    qp = tmp_path / "human-review-queue.json"
+    qp.write_text('{"not": "a list"}', encoding="utf-8")
+    assert _prepublish_status("d1", queue_path=qp) is PrepublishStatus.UNKNOWN
+
+
+def test_is_prepublish_draft_false_on_corrupt_queue_file(tmp_path):
+    """INVERTED (2026-07-16 red-team finding #1 + test-coverage gap): the
+    bool wrapper used to assert True here, i.e. it certified the dangerous
+    old behavior (an I/O hiccup was treated as license to hard-gate/mutate)
+    as the EXPECTED outcome. The fix makes UNKNOWN collapse to False in the
+    bool view -- never hard-gate on ambiguity. A caller that needs to tell
+    UNKNOWN apart from IMMUTABLE (to alert differently) must call
+    _prepublish_status directly, per the two tests above."""
+    qp = tmp_path / "human-review-queue.json"
+    qp.write_text("{not valid json", encoding="utf-8")
+    assert _is_prepublish_draft("d1", queue_path=qp) is False
 
 
 # ── vision fail-closed (v4 condition E / GO#3 c1/c5) ─────────────────────────
@@ -398,6 +460,131 @@ async def test_apply_one_rate_limit_does_not_burn_attempt(monkeypatch):
     assert "_html_attempts" not in sqls
     assert "render_failed" not in sqls
     assert "drafts_imaged_checked" in sqls
+
+
+# ── take_label hard gate through _apply_one — integration (2026-07-16
+#    red-team finding #1 coverage gap): confirm the tri-state PrepublishStatus
+#    actually drives release_lease_permanent() correctly at the real call
+#    site, not just in isolation against the pure helpers above.
+
+
+async def _run_apply_one_with_banned_take_label(monkeypatch, tmp_path, *, queue_setup=None):
+    """Shared scaffold: a draft whose only slide carries a banned take_label
+    ("OUR TAKE"), driven through the real _apply_one. `queue_setup(draft_id,
+    tmp_path)` may write a queue file to control the PrepublishStatus branch;
+    if it doesn't, no queue file exists (PREPUBLISH — brand new). Downstream
+    of the gate, the render is stubbed to raise the SAME transient VisionTimeout
+    already proven safe by test_apply_one_rate_limit_does_not_burn_attempt, so
+    the test exercises only the take_label gate itself, not the full render
+    pipeline."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import scripts.wr2_html_render_apply as html
+    from wr2_html_renderer.claude_vision import VisionTimeout
+
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    conn.fetchval = AsyncMock(return_value=0)
+    conn.close = AsyncMock()
+    monkeypatch.setattr(html.asyncpg, "connect", AsyncMock(return_value=conn))
+    monkeypatch.setattr(
+        html._pg, "acquire_html_lease_and_fetch",
+        AsyncMock(return_value={"slides_json": {"slides": [
+            {"headline": "H", "layout_family": "evidence-carved", "take_label": "OUR TAKE"},
+        ]}}),
+    )
+    release_mock = AsyncMock()
+    monkeypatch.setattr(html._pg, "release_lease_permanent", release_mock)
+    alert_mock = AsyncMock()
+    monkeypatch.setattr(html, "_ops_alert", alert_mock)
+    monkeypatch.setattr(html, "_heartbeat_loop", AsyncMock())
+    monkeypatch.setattr(html, "_normalize_heroes", lambda slides, *a, **k: slides)
+    monkeypatch.setattr(html, "_render_carousel", AsyncMock(side_effect=VisionTimeout("stub")))
+    monkeypatch.setenv("WR2_VISION_REQUIRED", "1")
+
+    class _Srv:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(html, "_HeroServer", lambda *a, **k: _Srv())
+
+    monkeypatch.setattr(html, "_default_output_root", lambda: tmp_path)
+
+    import uuid as _uuid
+    did = _uuid.uuid4()
+    if queue_setup is not None:
+        queue_setup(str(did), tmp_path)
+
+    result = await html._apply_one("postgres://x", did, "owner-1")
+    return result, release_mock, alert_mock
+
+
+@pytest.mark.asyncio
+async def test_take_label_gate_prepublish_triggers_permanent_render_failed(monkeypatch, tmp_path):
+    """PREPUBLISH (no queue at all -> brand-new draft): the take_label gate
+    MUST call release_lease_permanent(status='render_failed') and return
+    early -- this is the one case where the hard gate is correct."""
+    result, release_mock, alert_mock = await _run_apply_one_with_banned_take_label(monkeypatch, tmp_path)
+
+    assert result == "take_label_banned"
+    release_mock.assert_awaited_once()
+    _, kwargs = release_mock.call_args
+    assert kwargs.get("status") == "render_failed"
+    assert "take_label banned" in kwargs.get("reason", "")
+    assert any("take_label banned" in str(c) for c in alert_mock.call_args_list)
+
+
+@pytest.mark.asyncio
+async def test_take_label_gate_immutable_never_triggers_permanent_mutation(monkeypatch, tmp_path):
+    """IMMUTABLE (queue entry already published): the take_label gate must
+    NEVER call release_lease_permanent for the take_label reason -- history
+    is immutable, warn-only, render proceeds (and then hits the stubbed
+    transient VisionTimeout, exactly like the already-proven rate-limit
+    path)."""
+    def _queue_setup(draft_id: str, tmp_path: Path) -> None:
+        import json as _json
+        qdir = tmp_path / "queue"
+        qdir.mkdir(parents=True, exist_ok=True)
+        (qdir / "human-review-queue.json").write_text(
+            _json.dumps([{"draft_id": draft_id, "state": "published"}]), encoding="utf-8",
+        )
+
+    result, release_mock, alert_mock = await _run_apply_one_with_banned_take_label(
+        monkeypatch, tmp_path, queue_setup=_queue_setup,
+    )
+
+    assert result != "take_label_banned"
+    for call in release_mock.call_args_list:
+        _, kwargs = call
+        assert "take_label banned" not in kwargs.get("reason", ""), (
+            "IMMUTABLE (published) history must never be permanently mutated by the take_label gate"
+        )
+
+
+@pytest.mark.asyncio
+async def test_take_label_gate_unknown_alerts_but_never_mutates(monkeypatch, tmp_path):
+    """UNKNOWN (queue file exists but is corrupt): the take_label gate must
+    alert (so a human/ops knows the queue is broken) but must NEVER call
+    release_lease_permanent -- an I/O hiccup is not evidence either way
+    about the draft, and a permanent mutation on ambiguity is exactly the
+    bug 2026-07-16 finding #1 fixed."""
+    def _queue_setup(draft_id: str, tmp_path: Path) -> None:
+        qdir = tmp_path / "queue"
+        qdir.mkdir(parents=True, exist_ok=True)
+        (qdir / "human-review-queue.json").write_text("{not valid json", encoding="utf-8")
+
+    result, release_mock, alert_mock = await _run_apply_one_with_banned_take_label(
+        monkeypatch, tmp_path, queue_setup=_queue_setup,
+    )
+
+    assert result != "take_label_banned"
+    for call in release_mock.call_args_list:
+        _, kwargs = call
+        assert "take_label banned" not in kwargs.get("reason", ""), (
+            "UNKNOWN (corrupt queue) must never trigger a permanent mutation"
+        )
+    assert any("UNKNOWN" in str(c) and "take_label banned" in str(c) for c in alert_mock.call_args_list), (
+        "UNKNOWN must still alert so a human notices the broken queue"
+    )
 
 
 # ── render-failure circuit breaker: the attempt counter must INCREMENT and

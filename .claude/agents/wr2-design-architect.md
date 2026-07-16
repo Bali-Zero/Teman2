@@ -213,6 +213,7 @@ Receive a topic from user (or from `wr2_supervisor.py` pending state). Spawn `wr
   "topic": "...",
   "domain": "visa | tax | property | regulatory | health | brand",
   "audience_segment": "founder | investor | digital-nomad | retiree | mass-tourist",
+  "audience_notes": "<optional, null unless the real reader doesn't cleanly fit audience_segment (accessibility discipline, wr2-brief-interpreter.md) — pass through verbatim to storyboarder/critic, do not drop it>",
   "key_facts": ["fact with verbatim citation + source NB or URL", ...],
   "key_numbers": ["concrete value — context", ...],
   "regulatory_citations_verbatim": ["PP 18/2021", "Permenkumham 22/2023", ...],

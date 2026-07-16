@@ -512,6 +512,23 @@ openclaw
 !.claude/
 .claude/*
 !.claude/agents/
+.claude/agents/*
+# 2026-07-16 red-team finding #8: !.claude/agents/ alone exposes the WHOLE
+# subtree to git add -A, not just the 10 vendored WR2 files. Narrow to an
+# explicit allowlist — same negate-then-reinclude pattern as .claude/ above,
+# one level deeper. Update this list only when deliberately vendoring more.
+!.claude/agents/wr2-brief-interpreter.md
+!.claude/agents/wr2-critic.md
+!.claude/agents/wr2-design-architect.md
+!.claude/agents/wr2-image-prompt-author.md
+!.claude/agents/wr2-layout-composer.md
+!.claude/agents/wr2-storyboarder.md
+!.claude/agents/wr2-design-architect-resources/
+.claude/agents/wr2-design-architect-resources/*
+!.claude/agents/wr2-design-architect-resources/architecture-patterns.md
+!.claude/agents/wr2-design-architect-resources/brand-bali-zero.md
+!.claude/agents/wr2-design-architect-resources/brand-external-audit.md
+!.claude/agents/wr2-design-architect-resources/deep-research.md
 !.claude/commands/
 !.claude/scripts/
 !.claude/hooks/
