@@ -7,9 +7,9 @@
       "reason": "cron/agent escalation append-log, rewritten continuously by Pro-side automation"
     },
     {
-      "path": "published_articles.json",
+      "path": "apps/bali-intel-scraper/data/published_articles.json",
       "machines": ["pro"],
-      "reason": "WR2/article-composer publish-state index, rewritten on every publish cycle"
+      "reason": "WR2/article-composer publish-state index, rewritten on every publish cycle. FULL repo-relative path — the consumer (worktree_isolation._main_tree_tracked_clean) matches the `git status --porcelain` path column by EXACT string, and porcelain always emits the deep path; a bare `published_articles.json` here matched NOTHING (W91: the exception silently did not cover the always-dirty file it existed to cover — corrected 2026-07-16)"
     },
     {
       "path": "docs/AUTOMATIONS_REFERENCE.md",
