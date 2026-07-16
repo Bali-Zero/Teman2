@@ -1,5 +1,6 @@
 """CI gate: every mutating route that BYPASSES HybridAuthMiddleware must be
-an explicitly, individually documented intentional exception.
+ACCOUNTED FOR — either an explicitly justified intentional-public exception,
+or a declared-and-owned known-ungated hole awaiting an operator decision.
 
 SCOPE — this is narrower than, and complementary to, ``test_route_authz_coverage.py``
 --------------------------------------------------------------------------------
@@ -29,18 +30,44 @@ have ANY auth dependency in the router either. See the ledger
 (``research/operations/2026-07-17-mutating-routes-authz-ledger.md``) for the
 full accounting and the PENDING-ARMS lines for those six.
 
-INTENTIONALLY_PUBLIC_MUTATIONS is the durable defense: a NEW mutating route
-that lands under an existing public prefix (or a new PUBLIC_ENDPOINTS entry
-that happens to cover an existing mutating route) fails this test the moment
-it is not also added here with a reviewed justification. Unlike
-``ROUTE_RISKS``, an entry here is not a "backlog to fix later" — it is a
-closed decision that this specific (method, path) is MEANT to require zero
-credential.
+TWO-TIER ACCOUNTING (and why this gate is GREEN today, not RED)
+--------------------------------------------------------------------------------
+The obvious shape — assert "every public mutation is justified", let the 6
+holes fail the build — is WRONG for THIS repo, for a load-bearing reason: the
+pre-push hook AND CI both block on ANY red test. A permanently-red gate can
+never merge, so this "durable defense" would never actually land on main and
+protect anything (W81 — *esiste != armato*: a gate that exists in a PR but
+never merges is theater). To ARM the defense it MUST be mergeable, i.e.
+green-when-clean.
+
+So this mirrors the repo's own sanctioned pattern for declared-but-unfixed
+authz debt (``route_risk_registry.py::ROUTE_RISKS``) with TWO registries:
+
+  * ``INTENTIONALLY_PUBLIC_MUTATIONS`` — reviewed and SAFE to be public
+    (webhooks whose identity is proven by signature, auth flows that must run
+    before a credential exists, anonymous funnel/lead-gen, or routes
+    independently re-gated in-router). A CLOSED decision that zero-credential
+    is CORRECT here.
+  * ``KNOWN_UNGATED_PUBLIC_MUTATIONS`` — reviewed and NOT safe: a real hole,
+    but DECLARED, OWNED (``operator[business]``), and pinned to a PENDING-ARMS
+    line in the ledger. NOT "fixed", NOT "justified-safe" — recorded debt
+    awaiting Zero's decision (add auth vs narrow the public prefix). The
+    6 -> 0 trajectory is "delete the entry once the route is really gated",
+    NEVER "relabel it safe to stay green".
+
+A public mutating route is ACCOUNTED FOR iff it is in exactly one of those two
+lists. A NEW nude route in NEITHER fails the build — that is the durable
+defense, fully intact. Anti-decay tests force ``KNOWN_UNGATED`` to shrink (an
+entry whose route was removed, un-published, OR has since gained a real auth
+``Depends`` is stale and fails) and forbid rubber-stamps (every known-ungated
+entry needs an owner + a PENDING-ARMS reference, and the two registries must
+be disjoint).
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+import re
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
 import pytest
@@ -55,11 +82,31 @@ MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
 
 @dataclass(frozen=True)
 class IntentionalPublicMutation:
-    """One deliberately-public mutating route + why zero credential is safe."""
+    """One deliberately-public mutating route + why zero credential is SAFE
+    (a closed decision, not a backlog item)."""
 
     method: str
     path: str
     justification: str
+
+
+@dataclass(frozen=True)
+class KnownUngatedMutation:
+    """A mutating route that bypasses hybrid_auth AND has no in-router auth —
+    a real hole, DECLARED as owned debt (not fixed, not justified-safe).
+
+    Mirrors ``route_risk_registry.py``'s ``gating_safe=False`` rows: recorded so
+    the build stays green and mergeable (arming the durable defense) while the
+    actual fix is an OPERATOR decision — add auth vs narrow the public prefix —
+    NOT a blind overnight code change. Delete the entry when the route is really
+    gated; never relabel it into INTENTIONALLY_PUBLIC_MUTATIONS to stay green.
+    """
+
+    method: str
+    path: str
+    owner: str
+    pending_arms: str  # short ref to the ledger's PENDING-ARMS line
+    note: str
 
 
 # Verified live 2026-07-17 against the real app (345 unique mutating
@@ -227,7 +274,7 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
     IntentionalPublicMutation(
         "POST", "/api/blog/newsletter/confirm",
         "Double opt-in confirmation — DOES check a real confirmation_token "
-        "column server-side (newsletter.py ~line 300-310), unlike its "
+        "column server-side (newsletter.py ~line 304-320), unlike its "
         "unsubscribe sibling below.",
     ),
     IntentionalPublicMutation(
@@ -315,29 +362,126 @@ INTENTIONALLY_PUBLIC_MUTATIONS: tuple[IntentionalPublicMutation, ...] = (
     ),
 )
 
-_ALLOWLIST_INDEX: dict[tuple[str, str], IntentionalPublicMutation] = {
+
+# ── Declared, owned holes: public + ZERO in-router auth (the real findings) ──
+# These are NOT justified-safe. Each is a genuine authz hole surfaced by the
+# 2026-07-17 sweep, recorded here (repo-native ROUTE_RISKS pattern) so the gate
+# can merge and arm while the FIX is Zero's decision, not a blind night edit.
+# 6 -> 0 trajectory: delete a row when its route is really gated (an anti-decay
+# test below FAILS if a row's route gains an auth Depends or stops being public,
+# forcing the delete). Full detail + severity: the ledger PENDING-ARMS lines.
+KNOWN_UNGATED_PUBLIC_MUTATIONS: tuple[KnownUngatedMutation, ...] = (
+    KnownUngatedMutation(
+        "POST", "/api/news", "operator[business]",
+        "ledger:PENDING-ARMS news.py",
+        "news.py:290 create_news — zero Depends beyond DB pool; INSERTs "
+        "news_items with status='approved' (auto-approved). Anyone can inject "
+        "content onto the public balizero.com news feed. HIGH.",
+    ),
+    KnownUngatedMutation(
+        "POST", "/api/news/bulk", "operator[business]",
+        "ledger:PENDING-ARMS news.py",
+        "news.py:351 create_news_bulk — bulk version of the above, N articles "
+        "per call, same zero-auth. HIGH.",
+    ),
+    KnownUngatedMutation(
+        "POST", "/api/news/{news_id}/image", "operator[business]",
+        "ledger:PENDING-ARMS news.py",
+        "news.py:414 update_news_image — anyone can overwrite the image_url of "
+        "ANY news item with an arbitrary URL (defacement/hotlink). HIGH.",
+    ),
+    KnownUngatedMutation(
+        "PATCH", "/api/news/{news_id}/status", "operator[business]",
+        "ledger:PENDING-ARMS news.py",
+        "news.py:442 update_news_status — anyone can flip ANY news item between "
+        "pending/approved/rejected/archived (unpublish live / approve pending). HIGH.",
+    ),
+    KnownUngatedMutation(
+        "POST", "/api/blog/newsletter/log", "operator[business]",
+        "ledger:PENDING-ARMS newsletter.py",
+        "newsletter.py:564 log_newsletter_send — docstring says '(admin "
+        "endpoint)' but zero Depends; anyone can insert fake newsletter_send_log "
+        "rows (pollutes internal delivery reporting). MEDIUM.",
+    ),
+    KnownUngatedMutation(
+        "PATCH", "/api/blog/newsletter/preferences", "operator[business]",
+        "ledger:PENDING-ARMS newsletter.py",
+        "newsletter.py:434 update_preferences — zero Depends; anyone who knows/"
+        "guesses a subscriber email or numeric id can change their "
+        "categories/frequency/language, no ownership proof. MEDIUM.",
+    ),
+)
+
+
+_JUSTIFIED_INDEX: dict[tuple[str, str], IntentionalPublicMutation] = {
     (e.method, e.path): e for e in INTENTIONALLY_PUBLIC_MUTATIONS
 }
+_KNOWN_UNGATED_INDEX: dict[tuple[str, str], KnownUngatedMutation] = {
+    (e.method, e.path): e for e in KNOWN_UNGATED_PUBLIC_MUTATIONS
+}
+# A public mutating route is "accounted for" if it is in EITHER registry.
+_ACCOUNTED: frozenset[tuple[str, str]] = frozenset(_JUSTIFIED_INDEX) | frozenset(_KNOWN_UNGATED_INDEX)
+
+# Structural heuristic for an auth-principal dependency name (subset of the
+# live inventory used by test_route_authz_coverage.py). Used ONLY by the
+# KNOWN_UNGATED anti-decay guard: if a declared hole has SINCE gained a matching
+# auth Depends, the entry is stale and must be deleted (the route got gated).
+_AUTH_DEP_RE = re.compile(
+    r"(?:^|_|\.)(?:verify|require|get_current|authenticate|admin)"
+    r"|_user(?:$|_)|_key(?:$|_)|_token(?:$|_)|_auth(?:$|_)|signature|security",
+    re.IGNORECASE,
+)
 
 
-def _unjustified(rows: Iterable[tuple[str, str, bool]]) -> list[str]:
+def _unaccounted(rows: Iterable[tuple[str, str, bool]]) -> list[str]:
     """Pure core, guilt+innocence-testable without booting the real app.
 
     ``rows`` are (method, path, is_public) triples. Returns "METHOD path"
-    strings for every PUBLIC row not present in INTENTIONALLY_PUBLIC_MUTATIONS.
-    A non-public row is NEVER flagged, regardless of allowlist membership —
-    hybrid_auth already demands a credential for it; this test only polices
-    the middleware-bypass surface.
+    strings for every PUBLIC row present in NEITHER registry. A non-public row
+    is NEVER flagged, regardless of registry membership — hybrid_auth already
+    demands a credential for it; this test only polices the middleware-bypass
+    surface.
     """
     return [
         f"{method} {path}"
         for method, path, is_public in rows
-        if is_public and (method, path) not in _ALLOWLIST_INDEX
+        if is_public and (method, path) not in _ACCOUNTED
     ]
 
 
-def _mutating_routes(app: FastAPI) -> Iterable[tuple[str, str]]:
-    """Every unique (method, path) pair for a mutating verb on the real app.
+def _dep_qualnames(dependant) -> list[str]:
+    """Runtime dependency-tree walk → list of the callable names (cheap, no AST)."""
+    out: list[str] = []
+
+    def walk(d) -> None:
+        call = getattr(d, "call", None)
+        if call is not None:
+            out.append(getattr(call, "__qualname__", getattr(call, "__name__", str(call))))
+        for sub in getattr(d, "dependencies", []):
+            walk(sub)
+
+    if dependant is not None:
+        walk(dependant)
+    return out
+
+
+def _route_has_auth_dep(route) -> bool:
+    """True if this route's SUB-dependency tree contains an auth-principal Depends.
+
+    Deliberately skips the endpoint function itself (``dependant.call``) — a
+    handler merely *named* e.g. ``verify_*`` is not an auth gate; only a
+    ``Depends(...)`` on an auth principal is. So we scan ``dependant.dependencies``.
+    """
+    dependant = getattr(route, "dependant", None)
+    for sub in getattr(dependant, "dependencies", []):
+        for name in _dep_qualnames(sub):
+            if _AUTH_DEP_RE.search(name.split(".")[-1]):
+                return True
+    return False
+
+
+def _iter_mutating(app: FastAPI) -> Iterator[tuple[str, str, object]]:
+    """Every unique (method, path, route) triple for a mutating verb on the app.
 
     Uses ``iter_leaf_routes`` (NOT raw ``app.routes``) — fastapi>=0.137 turned
     ``router.routes`` into a tree of opaque ``_IncludedRouter`` nodes; a flat
@@ -355,7 +499,7 @@ def _mutating_routes(app: FastAPI) -> Iterable[tuple[str, str]]:
             key = (m, path)
             if key not in seen:
                 seen.add(key)
-                yield key
+                yield m, path, route
 
 
 @pytest.fixture(scope="module")
@@ -369,51 +513,95 @@ class TestPureCoreGuiltAndInnocence:
     """Guard-over-match antidote (cicatrix family #3): no guard/gate ships
     without a colpevolezza (guilt) AND innocenza (innocence) test."""
 
-    def test_guilt_unjustified_public_mutation_is_flagged(self) -> None:
-        flagged = _unjustified([("POST", "/api/totally-fake/new-mutation", True)])
+    def test_guilt_unaccounted_public_mutation_is_flagged(self) -> None:
+        flagged = _unaccounted([("POST", "/api/totally-fake/new-mutation", True)])
         assert flagged == ["POST /api/totally-fake/new-mutation"]
 
-    def test_innocence_allowlisted_public_mutation_passes(self) -> None:
-        # Use a REAL allowlist entry so this also breaks if the allowlist is
-        # ever emptied by mistake, not just a synthetic fixture.
-        sample_method, sample_path = next(iter(_ALLOWLIST_INDEX))
-        flagged = _unjustified([(sample_method, sample_path, True)])
+    def test_innocence_justified_public_mutation_passes(self) -> None:
+        # Use a REAL justified entry so this also breaks if that list is ever
+        # emptied by mistake, not just a synthetic fixture.
+        sample_method, sample_path = next(iter(_JUSTIFIED_INDEX))
+        flagged = _unaccounted([(sample_method, sample_path, True)])
+        assert flagged == []
+
+    def test_innocence_known_ungated_public_mutation_passes(self) -> None:
+        """A DECLARED hole is 'accounted for' (recorded owned debt), so it does
+        NOT fail the build — that is what keeps the gate mergeable/armable."""
+        sample_method, sample_path = next(iter(_KNOWN_UNGATED_INDEX))
+        flagged = _unaccounted([(sample_method, sample_path, True)])
         assert flagged == []
 
     def test_innocence_non_public_route_is_never_flagged(self) -> None:
         """A route hybrid_auth already gates (is_public=False) needs no
-        justification here, regardless of allowlist membership — this is
-        the guard against a future refactor that starts flagging EVERY
-        mutating route (the over-match half of family #3)."""
-        flagged = _unjustified([("DELETE", "/api/totally-fake/protected", False)])
+        entry here, regardless of registry membership — this is the guard
+        against a future refactor that starts flagging EVERY mutating route
+        (the over-match half of family #3)."""
+        flagged = _unaccounted([("DELETE", "/api/totally-fake/protected", False)])
         assert flagged == []
 
 
-def test_every_public_mutating_route_is_explicitly_whitelisted(app: FastAPI) -> None:
+def test_every_public_mutating_route_is_accounted_for(app: FastAPI) -> None:
     """GUILT (real app): a mutating route that bypasses hybrid_auth (i.e. is
-    public per PUBLIC_ENDPOINTS) and is not in INTENTIONALLY_PUBLIC_MUTATIONS
-    fails the build. This is the durable defense — a NEW mutating route added
-    under an existing public prefix (or a widened PUBLIC_ENDPOINTS entry that
-    newly covers an existing mutation) fails here immediately."""
-    rows = [(method, path, find_entry(path) is not None) for method, path in _mutating_routes(app)]
-    unjustified = _unjustified(rows)
-    assert not unjustified, (
-        f"{len(unjustified)} mutating route(s) bypass HybridAuthMiddleware "
-        "(reachable with ZERO credential, per PUBLIC_ENDPOINTS) with NO "
-        "documented justification in INTENTIONALLY_PUBLIC_MUTATIONS. Either "
-        "the PUBLIC_ENDPOINTS prefix covering it is too broad (accidentally "
-        "sweeping in this method+path), or this really is meant to stay "
-        "open and needs a reviewed, named justification added to this "
-        "file:\n  " + "\n  ".join(sorted(unjustified))
+    public per PUBLIC_ENDPOINTS) and is in NEITHER registry fails the build.
+    This is the durable defense — a NEW mutating route added under an existing
+    public prefix (or a widened PUBLIC_ENDPOINTS entry that newly covers an
+    existing mutation) fails here immediately, forcing a reviewed decision:
+    justified-safe, declared-hole, or narrow the prefix."""
+    rows = [(m, path, find_entry(path) is not None) for m, path, _ in _iter_mutating(app)]
+    unaccounted = _unaccounted(rows)
+    assert not unaccounted, (
+        f"{len(unaccounted)} mutating route(s) bypass HybridAuthMiddleware "
+        "(reachable with ZERO credential, per PUBLIC_ENDPOINTS) and are in "
+        "NEITHER INTENTIONALLY_PUBLIC_MUTATIONS (reviewed-safe) NOR "
+        "KNOWN_UNGATED_PUBLIC_MUTATIONS (declared owned hole). Either the "
+        "PUBLIC_ENDPOINTS prefix covering it is too broad (accidentally "
+        "sweeping in this method+path), or it is a real hole — add it to the "
+        "right registry with a reviewed reason / owner + PENDING-ARMS line:\n  "
+        + "\n  ".join(sorted(unaccounted))
     )
 
 
-def test_no_stale_allowlist_entries(app: FastAPI) -> None:
-    """ANTI-DECAY: an allowlist row whose route no longer exists, or is no
-    longer public, is stale — delete it (mirrors route_risk_registry.py's
-    own `test_no_dead_registry_entries` anti-decay guard)."""
+def test_known_ungated_entries_are_still_live_public_and_ungated(app: FastAPI) -> None:
+    """ANTI-DECAY (the 6->0 ratchet): a KNOWN_UNGATED entry is stale — and must
+    be DELETED — the moment its route (a) no longer exists, (b) is no longer
+    public, or (c) has gained a real auth ``Depends`` (i.e. it got fixed). This
+    forbids the list from silently outliving the holes it records, so it can
+    only shrink toward zero as Zero adjudicates each one."""
+    live: dict[tuple[str, str], object] = {(m, path): route for m, path, route in _iter_mutating(app)}
+
+    stale: list[str] = []
+    for e in KNOWN_UNGATED_PUBLIC_MUTATIONS:
+        key = (e.method, e.path)
+        route = live.get(key)
+        if route is None:
+            stale.append(f"{e.method} {e.path} — route no longer exists (delete the entry)")
+            continue
+        if find_entry(e.path) is None:
+            stale.append(f"{e.method} {e.path} — no longer public (prefix narrowed → delete the entry)")
+            continue
+        if _route_has_auth_dep(route):
+            stale.append(
+                f"{e.method} {e.path} — now has an auth Depends (the hole was gated → delete the entry)"
+            )
+    assert not stale, (
+        "KNOWN_UNGATED_PUBLIC_MUTATIONS entries that no longer describe a live, "
+        "public, ungated route — the 6->0 ratchet says DELETE them:\n  " + "\n  ".join(stale)
+    )
+
+
+def test_registries_are_disjoint() -> None:
+    """A route cannot be BOTH 'reviewed-safe to be public' AND 'a declared hole'
+    — that contradiction would let a real hole hide behind a safe label."""
+    overlap = sorted(set(_JUSTIFIED_INDEX) & set(_KNOWN_UNGATED_INDEX))
+    assert not overlap, f"(method, path) in BOTH registries (resolve the contradiction): {overlap}"
+
+
+def test_no_stale_justified_entries(app: FastAPI) -> None:
+    """ANTI-DECAY: a justified-safe row whose route no longer exists, or is no
+    longer public, is stale — delete it (mirrors route_risk_registry.py's own
+    `test_no_dead_registry_entries`)."""
     live_public = {
-        (method, path) for method, path in _mutating_routes(app) if find_entry(path) is not None
+        (m, path) for m, path, _ in _iter_mutating(app) if find_entry(path) is not None
     }
     stale = [
         f"{e.method} {e.path}" for e in INTENTIONALLY_PUBLIC_MUTATIONS if (e.method, e.path) not in live_public
@@ -425,7 +613,7 @@ def test_no_stale_allowlist_entries(app: FastAPI) -> None:
     )
 
 
-def test_allowlist_entries_have_real_justification() -> None:
+def test_justified_entries_have_real_justification() -> None:
     """ANTI-DECAY: no rubber-stamp entries (mirrors public_endpoints.py's
     own `test_every_entry_has_reason`)."""
     weak = [
@@ -433,9 +621,25 @@ def test_allowlist_entries_have_real_justification() -> None:
         for e in INTENTIONALLY_PUBLIC_MUTATIONS
         if not e.justification or len(e.justification) < 15
     ]
-    assert not weak, f"Allowlist entries with missing/too-short justification: {weak}"
+    assert not weak, f"Justified entries with missing/too-short justification: {weak}"
 
 
-def test_allowlist_has_no_duplicate_entries() -> None:
-    keys = [(e.method, e.path) for e in INTENTIONALLY_PUBLIC_MUTATIONS]
-    assert len(keys) == len(set(keys)), "Duplicate (method, path) rows in INTENTIONALLY_PUBLIC_MUTATIONS"
+def test_known_ungated_entries_have_owner_and_pending_arms() -> None:
+    """ANTI-DECAY #4 (no rubber-stamp): a declared hole with no owner or no
+    PENDING-ARMS reference is theater — reject it (mirrors
+    route_risk_registry.py's owner-per-entry guard)."""
+    weak = [
+        f"{e.method} {e.path}"
+        for e in KNOWN_UNGATED_PUBLIC_MUTATIONS
+        if not (e.owner and e.owner.strip())
+        or not (e.pending_arms and e.pending_arms.strip())
+        or len(e.note) < 15
+    ]
+    assert not weak, f"KNOWN_UNGATED entries missing owner / PENDING-ARMS ref / real note: {weak}"
+
+
+def test_no_duplicate_entries() -> None:
+    j = [(e.method, e.path) for e in INTENTIONALLY_PUBLIC_MUTATIONS]
+    k = [(e.method, e.path) for e in KNOWN_UNGATED_PUBLIC_MUTATIONS]
+    assert len(j) == len(set(j)), "Duplicate (method, path) rows in INTENTIONALLY_PUBLIC_MUTATIONS"
+    assert len(k) == len(set(k)), "Duplicate (method, path) rows in KNOWN_UNGATED_PUBLIC_MUTATIONS"

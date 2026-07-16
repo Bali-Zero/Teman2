@@ -50,12 +50,29 @@ gap**: reachable by absolutely anyone, no token, no signature, no nothing.
 | Compliant if | Depends-auth, OR body-verifier, OR public, OR `ROUTE_RISKS` entry | Not public, OR public-and-in `INTENTIONALLY_PUBLIC_MUTATIONS` |
 | Treats "is public" as | Automatically compliant, full stop | The thing being scrutinized — public is exactly what needs a *specific*, reviewed reason |
 | Blind spot it has | A route can be "compliant" purely by sitting under a broad public-read prefix, with zero verification that THIS specific mutation was the intended target of that prefix | None on router-level granularity (that's `ROUTE_RISKS`'s job, not duplicated here) |
-| Result today | **GREEN** (0 uncovered — confirmed live, this turn) | **RED** (6 uncovered — confirmed live, this turn) |
+| Result today | **GREEN** (0 uncovered — confirmed live, this turn) | **GREEN** — 40 justified-safe + 6 declared-owned-holes, 0 *unaccounted* (confirmed live, this turn) |
 
 Both are true at once, and both are necessary: the existing test proved the 65-nude number from
 Case OS Fase-1 has gone to zero *by its own definition*. This sweep's test proves that definition
 has a structural blind spot — a prefix declared public for reading was never method-scoped, so it
 silently also covers writes nobody reviewed for that purpose. Neither test subsumes the other.
+
+**Why the new test is GREEN, not RED — and why that is the CORRECT shape (not a cover-up).** The
+naive form ("assert every public mutation is justified; let the 6 holes fail the build") would keep
+the test permanently RED. In THIS repo that is a trap, not a virtue: the pre-push hook AND CI both
+block on any red test, so a permanently-red gate can **never merge** — the "durable defense" would
+sit in an unmergeable PR forever, protecting nothing (cicatrix W81, *esiste != armato*: a gate that
+exists but never arms is theater). So the test mirrors the repo's own sanctioned pattern for
+declared-but-unfixed authz debt (`route_risk_registry.py::ROUTE_RISKS`) with **two** registries:
+`INTENTIONALLY_PUBLIC_MUTATIONS` (40 reviewed-safe) and `KNOWN_UNGATED_PUBLIC_MUTATIONS` (the 6 real
+holes, each `owner=operator[business]` + a PENDING-ARMS pointer). A public route is "accounted for"
+iff it is in one of the two lists; a **NEW** nude route in neither still fails the build (durable
+defense intact). The 6 are **not hidden and not relabelled safe** — they are recorded as owned debt,
+and three anti-decay tests keep them honest: (a) a declared hole that is later removed, un-published,
+or gains a real auth `Depends` is flagged STALE and must be deleted (the 6→0 ratchet — proven
+functional this turn: the 6 read `has_auth_dep=False` while genuinely-gated routes read `True`);
+(b) the two registries must be disjoint (no hole hiding behind a safe label); (c) every hole needs a
+non-empty owner + PENDING-ARMS ref (no rubber-stamp).
 
 ## §Findings — 6 mutating routes reachable with ZERO credential (HIGH PRIORITY, NOT fixed here)
 
@@ -244,12 +261,15 @@ classification — it is independently owned and dated 2026-07-12.
 ```bash
 cd apps/backend-rag && source .venv/bin/activate
 PYTHONPATH=. pytest backend/tests/security/test_mutating_routes_are_gated.py -q
+# -> 11 passed (GREEN): 40 justified + 6 declared-owned-holes = 46 accounted, 0 unaccounted.
 ```
 
-The 46/40/6 split and the 345 total are computed live by the test's `_mutating_routes()` +
+The 46/40/6 split and the 345 total are computed live by the test's `_iter_mutating()` +
 `find_entry()` against `include_routers()` — this document is a snapshot of that computation on
 2026-07-17, fastapi 0.139.0. Re-run the test to get today's number; do not treat this file as an
-authority once it drifts from a re-run.
+authority once it drifts from a re-run. The gate is GREEN because the 6 holes are DECLARED in
+`KNOWN_UNGATED_PUBLIC_MUTATIONS` (owned debt), not because they are fixed — closing each one means
+deleting its registry row after adding a real gate, which the anti-decay test enforces.
 
 ## Adversarial review
 
