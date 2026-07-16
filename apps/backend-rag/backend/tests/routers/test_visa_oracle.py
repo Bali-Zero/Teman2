@@ -241,6 +241,240 @@ class TestRecommendEndpoint:
 
 
 # ---------------------------------------------------------------------------
+# 3b. PR0 safety freeze — five-state /recommend contract (W1)
+# ---------------------------------------------------------------------------
+
+
+class TestRecommendStateHelpers:
+    """Unit tests for the pure PR0 five-state mapping helpers."""
+
+    def test_missing_facts_all_present(self) -> None:
+        from backend.app.routers.visa_oracle import _missing_recommend_facts
+
+        assert _missing_recommend_facts("German", "work", "long") == []
+
+    def test_missing_facts_detects_blank_nationality(self) -> None:
+        from backend.app.routers.visa_oracle import _missing_recommend_facts
+
+        assert _missing_recommend_facts("   ", "work", "long") == ["nationality"]
+
+    def test_missing_facts_detects_multiple_blank_fields(self) -> None:
+        from backend.app.routers.visa_oracle import _missing_recommend_facts
+
+        assert _missing_recommend_facts("", "", "long") == ["nationality", "purpose"]
+
+    def test_state_needs_input_when_missing_facts(self) -> None:
+        from backend.app.routers.visa_oracle import _determine_recommend_state
+
+        state, reasons = _determine_recommend_state(
+            visas=[{"visa_name": "X", "score": 4.0}],
+            missing_facts=["nationality"],
+        )
+        assert state == "NEEDS_INPUT"
+        assert reasons == []
+
+    def test_state_temporarily_unavailable_when_no_candidates(self) -> None:
+        from backend.app.routers.visa_oracle import _determine_recommend_state
+
+        state, reasons = _determine_recommend_state(visas=[], missing_facts=[])
+        assert state == "TEMPORARILY_UNAVAILABLE"
+        assert reasons == ["catalog_no_candidates"]
+
+    def test_state_needs_input_when_all_scores_zero(self) -> None:
+        from backend.app.routers.visa_oracle import _determine_recommend_state
+
+        state, reasons = _determine_recommend_state(
+            visas=[
+                {"visa_name": "A", "score": 0.0},
+                {"visa_name": "B", "score": 0.0},
+            ],
+            missing_facts=[],
+        )
+        assert state == "NEEDS_INPUT"
+        assert reasons == ["low_confidence_match"]
+
+    def test_state_supported_candidates_when_positive_score(self) -> None:
+        from backend.app.routers.visa_oracle import _determine_recommend_state
+
+        state, reasons = _determine_recommend_state(
+            visas=[{"visa_name": "A", "score": 2.0}],
+            missing_facts=[],
+        )
+        assert state == "SUPPORTED_CANDIDATES"
+        assert reasons == []
+
+
+class TestRecommendEndpointFiveState:
+    """Integration-style tests for the additive five-state /recommend contract."""
+
+    @patch("backend.app.routers.visa_oracle._persist_session_create")
+    @patch("backend.app.routers.visa_oracle.get_visa_oracle_service")
+    def test_state_supported_candidates(
+        self, mock_get_service, mock_persist, client: TestClient
+    ) -> None:
+        mock_service = MagicMock()
+        mock_service.recommend_visas.return_value = [
+            {
+                "visa_name": "Digital Nomad Visa E33G",
+                "category": "single_entry_visas",
+                "price": "5.800.000 IDR",
+                "duration": "60 days",
+                "validity": "1 year",
+                "notes": "",
+                "score": 4.0,
+            }
+        ]
+        mock_service.generate_session_id.return_value = "deadbeef" * 8
+        mock_service.hash_ip.return_value = "hashed_ip"
+        mock_get_service.return_value = mock_service
+
+        response = client.post(
+            "/api/v1/visa-oracle/recommend",
+            json={
+                "nationality": "German",
+                "purpose": "digital_nomad",
+                "duration": "short",
+                "family": "no",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["state"] == "SUPPORTED_CANDIDATES"
+        assert data["missing_facts"] == []
+        assert data["review_reasons"] == []
+        assert len(data["visas"]) == 1
+
+    @patch("backend.app.routers.visa_oracle._persist_session_create")
+    @patch("backend.app.routers.visa_oracle.get_visa_oracle_service")
+    def test_state_temporarily_unavailable_when_service_returns_no_candidates(
+        self, mock_get_service, mock_persist, client: TestClient
+    ) -> None:
+        mock_service = MagicMock()
+        mock_service.recommend_visas.return_value = []
+        mock_service.generate_session_id.return_value = "abc123"
+        mock_service.hash_ip.return_value = "hashed_ip"
+        mock_get_service.return_value = mock_service
+
+        response = client.post(
+            "/api/v1/visa-oracle/recommend",
+            json={
+                "nationality": "US",
+                "purpose": "family",
+                "duration": "long",
+                "family": "yes",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["state"] == "TEMPORARILY_UNAVAILABLE"
+        assert data["visas"] == []
+
+    @patch("backend.app.routers.visa_oracle._persist_session_create")
+    @patch("backend.app.routers.visa_oracle.get_visa_oracle_service")
+    def test_state_needs_input_when_all_candidates_score_zero(
+        self, mock_get_service, mock_persist, client: TestClient
+    ) -> None:
+        mock_service = MagicMock()
+        mock_service.recommend_visas.return_value = [
+            {
+                "visa_name": "Irrelevant Visa",
+                "category": "single_entry_visas",
+                "price": "",
+                "duration": "",
+                "validity": "",
+                "notes": "",
+                "score": 0.0,
+            },
+        ]
+        mock_service.generate_session_id.return_value = "abc123"
+        mock_service.hash_ip.return_value = "hashed_ip"
+        mock_get_service.return_value = mock_service
+
+        response = client.post(
+            "/api/v1/visa-oracle/recommend",
+            json={
+                "nationality": "US",
+                "purpose": "xyz_unknown_purpose",
+                "duration": "short",
+                "family": "no",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["state"] == "NEEDS_INPUT"
+        assert data["visas"] == []
+        assert data["review_reasons"] == ["low_confidence_match"]
+
+    @patch("backend.app.routers.visa_oracle._persist_session_create")
+    @patch("backend.app.routers.visa_oracle.get_visa_oracle_service")
+    def test_state_needs_input_when_required_fact_blank(
+        self, mock_get_service, mock_persist, client: TestClient
+    ) -> None:
+        mock_service = MagicMock()
+        mock_service.recommend_visas.return_value = [
+            {
+                "visa_name": "Tourism",
+                "category": "single_entry_visas",
+                "price": "",
+                "duration": "",
+                "validity": "",
+                "notes": "",
+                "score": 3.0,
+            },
+        ]
+        mock_service.generate_session_id.return_value = "abc123"
+        mock_service.hash_ip.return_value = "hashed_ip"
+        mock_get_service.return_value = mock_service
+
+        response = client.post(
+            "/api/v1/visa-oracle/recommend",
+            json={
+                "nationality": "   ",
+                "purpose": "visit",
+                "duration": "short",
+                "family": "no",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["state"] == "NEEDS_INPUT"
+        assert data["missing_facts"] == ["nationality"]
+        assert data["visas"] == []
+
+    @patch("backend.app.routers.visa_oracle._persist_session_create")
+    @patch("backend.app.routers.visa_oracle.get_visa_oracle_service")
+    def test_state_temporarily_unavailable_on_scoring_exception(
+        self, mock_get_service, mock_persist, client: TestClient
+    ) -> None:
+        mock_service = MagicMock()
+        mock_service.recommend_visas.side_effect = RuntimeError("pricing catalog unavailable")
+        mock_service.generate_session_id.return_value = "abc123"
+        mock_service.hash_ip.return_value = "hashed_ip"
+        mock_get_service.return_value = mock_service
+
+        response = client.post(
+            "/api/v1/visa-oracle/recommend",
+            json={
+                "nationality": "US",
+                "purpose": "work",
+                "duration": "long",
+                "family": "no",
+            },
+        )
+
+        # Degraded (200 + honest state), not a fatal 500 — the frontend must
+        # be able to render this without special-casing an HTTP error.
+        assert response.status_code == 200
+        data = response.json()
+        assert data["state"] == "TEMPORARILY_UNAVAILABLE"
+        assert data["visas"] == []
+
+
+# ---------------------------------------------------------------------------
 # 4. Visa types endpoints (mocked service)
 # ---------------------------------------------------------------------------
 

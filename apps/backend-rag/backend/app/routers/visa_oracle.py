@@ -10,7 +10,7 @@ No authentication required (public product).
 import asyncio
 import json
 import logging
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -27,6 +27,17 @@ router = APIRouter(prefix="/visa-oracle", tags=["visa-oracle"])
 # Pydantic models
 # ---------------------------------------------------------------------------
 
+# PR0 safety freeze (2026-07-17, round2 spec §9 row PR0 / §6.2): additive
+# five-state contract for /recommend. `visas` MUST be [] for every state
+# except SUPPORTED_CANDIDATES — see `_determine_recommend_state`.
+RecommendState = Literal[
+    "NEEDS_INPUT",
+    "SUPPORTED_CANDIDATES",
+    "HUMAN_REVIEW_REQUIRED",
+    "NO_SUPPORTED_PATH",
+    "TEMPORARILY_UNAVAILABLE",
+]
+
 
 class RecommendRequest(BaseModel):
     nationality: str
@@ -39,6 +50,10 @@ class RecommendResponse(BaseModel):
     success: bool
     visas: list[dict[str, Any]]
     session_id: str
+    # PR0 safety freeze — additive, back-compat (old fields unchanged above).
+    state: RecommendState
+    missing_facts: list[str] = []
+    review_reasons: list[str] = []
 
 
 class ChatRequest(BaseModel):
@@ -56,6 +71,10 @@ class ChatResponse(BaseModel):
     confidence: str
     sources: list[str]
     session_id: str
+    # PR0 safety freeze — additive, back-compat. Populated when a safety
+    # branch changed the outcome (e.g. an obsolete-code mention on weak
+    # evidence); empty otherwise.
+    review_reasons: list[str] = []
 
 
 class HandoffRequest(BaseModel):
@@ -107,6 +126,17 @@ def _detect_obsolete_code(text: str) -> tuple[str, str] | None:
         if re.search(rf"\b{re.escape(code)}\b", upper):
             return code, hint
     return None
+
+
+def _obsolete_review_reasons(obsolete_hit: tuple[str, str] | None) -> list[str]:
+    """PR0 W2: the review_reasons annotation carried on a (still-safe)
+    ABSTAIN response when the user's message mentioned a retired visa code.
+    Replaces the removed ABSTAIN→CAUTIOUS promotion — the code is still
+    named, but no candidate/answer is ever generated on the strength of it."""
+    if obsolete_hit is None:
+        return []
+    code, _hint = obsolete_hit
+    return [f"obsolete_code_mentioned:{code}"]
 
 
 # Telegram chat ID for Damar / team lead notifications
@@ -264,6 +294,55 @@ TIMEOUT_FALLBACK_BY_LANG: dict[str, str] = {
 def _parse_family(family_str: str) -> bool:
     """Parse family field: 'spouse', 'children', 'spouse_children' → True; 'solo' → False."""
     return family_str.lower() in {"spouse", "children", "spouse_children", "yes", "true", "1"}
+
+
+_REQUIRED_RECOMMEND_FIELDS = ("nationality", "purpose", "duration")
+
+
+def _missing_recommend_facts(nationality: str, purpose: str, duration: str) -> list[str]:
+    """Return the subset of required /recommend facts that are blank.
+
+    Pydantic already enforces the fields are present strings; this catches
+    "" / whitespace-only submissions that would otherwise fall through to
+    the scorer's permissive category defaults and silently produce a
+    low-signal (but non-empty) candidate list.
+    """
+    values = {"nationality": nationality, "purpose": purpose, "duration": duration}
+    return [name for name in _REQUIRED_RECOMMEND_FIELDS if not values[name].strip()]
+
+
+def _determine_recommend_state(
+    visas: list[dict[str, Any]],
+    missing_facts: list[str],
+) -> tuple[RecommendState, list[str]]:
+    """Map VisaOracleService's raw scored output to a safe five-state outcome.
+
+    PR0 safety freeze — a conservative read of the EXISTING scorer's signal,
+    no new matching logic:
+      - required facts missing               -> NEEDS_INPUT
+      - scorer returned zero rows             -> TEMPORARILY_UNAVAILABLE
+                                                  (the relevant catalog
+                                                  categories produced nothing
+                                                  — a data/service gap, not a
+                                                  user-input problem)
+      - every candidate scored 0 (no real
+        keyword/duration/family signal)       -> NEEDS_INPUT
+      - otherwise                             -> SUPPORTED_CANDIDATES
+
+    Returns (state, review_reasons). Callers MUST clear `visas` to [] unless
+    state == "SUPPORTED_CANDIDATES" — this function does not mutate `visas`.
+    """
+    if missing_facts:
+        return "NEEDS_INPUT", []
+
+    if not visas:
+        return "TEMPORARILY_UNAVAILABLE", ["catalog_no_candidates"]
+
+    best_score = max((visa.get("score") or 0) for visa in visas)
+    if best_score <= 0:
+        return "NEEDS_INPUT", ["low_confidence_match"]
+
+    return "SUPPORTED_CANDIDATES", []
 
 
 def _detect_language(text: str) -> str:
@@ -462,6 +541,51 @@ async def _persist_session_handoff(db_pool: Any, session_id: str) -> None:
         logger.warning("visa-oracle session persist (handoff) failed: %s", exc)
 
 
+async def _fetch_session_snapshot(db_pool: Any, session_id: str) -> dict[str, Any] | None:
+    """Return the server-persisted {quiz_answers, recommended_visas} for a
+    session — PR0 W3: the ONLY trusted source for handoff pricing and
+    recommendation. Both columns were written entirely server-side by
+    `/recommend` (`recommended_visas` is PricingService-derived via
+    `VisaOracleService.recommend_visas`), so this is the "server-side
+    PricingTool path from the persisted session's own data".
+
+    Returns None if the session was never persisted, or on any read failure
+    — the caller must then proceed WITHOUT a price rather than fall back to
+    the client-posted handoff body.
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT quiz_answers, recommended_visas
+                FROM visa_oracle_sessions
+                WHERE session_id = $1
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                session_id,
+            )
+    except Exception as exc:
+        logger.warning("visa-oracle handoff: session snapshot fetch failed: %s", exc)
+        return None
+
+    if row is None:
+        return None
+
+    def _decode(value: Any) -> Any:
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except (TypeError, ValueError):
+                return None
+        return value
+
+    return {
+        "quiz_answers": _decode(row["quiz_answers"]) or {},
+        "recommended_visas": _decode(row["recommended_visas"]) or [],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -476,23 +600,44 @@ async def recommend(
     """
     Score and rank visa types for the given quiz answers.
     No LLM — pure scoring logic from VisaOracleService.
+
+    PR0 safety freeze (2026-07-17): the response also carries `state` /
+    `missing_facts` / `review_reasons`. `visas` is [] for every state except
+    SUPPORTED_CANDIDATES — callers must not treat a non-empty legacy `visas`
+    list as implying a confident match without also checking `state`.
     """
     try:
         service = get_visa_oracle_service()
         family_bool = _parse_family(body.family)
-        visas = service.recommend_visas(
-            nationality=body.nationality,
-            purpose=body.purpose,
-            duration=body.duration,
-            family=family_bool,
-        )
+        missing_facts = _missing_recommend_facts(body.nationality, body.purpose, body.duration)
+
+        try:
+            visas = service.recommend_visas(
+                nationality=body.nationality,
+                purpose=body.purpose,
+                duration=body.duration,
+                family=family_bool,
+            )
+            state, review_reasons = _determine_recommend_state(visas, missing_facts)
+        except Exception as scoring_exc:
+            # Catalog/scoring failure is a degraded-but-recoverable outcome,
+            # not a fatal request error — the frontend must be able to
+            # render it (W4). Genuinely unexpected failures below (service
+            # init, session_id generation) still hit the outer 500 handler.
+            logger.error("visa-oracle /recommend scoring error: %s", scoring_exc, exc_info=True)
+            visas, state, review_reasons = [], "TEMPORARILY_UNAVAILABLE", ["scoring_error"]
+
+        if state != "SUPPORTED_CANDIDATES":
+            visas = []
+
         session_id = service.generate_session_id()
 
         logger.info(
-            "visa-oracle /recommend: purpose=%s duration=%s family=%s → %d visas",
+            "visa-oracle /recommend: purpose=%s duration=%s family=%s state=%s → %d visas",
             body.purpose,
             body.duration,
             family_bool,
+            state,
             len(visas),
         )
         # Persist session non-blocking
@@ -507,7 +652,14 @@ async def recommend(
             )
         )
 
-        return RecommendResponse(success=True, visas=visas, session_id=session_id)
+        return RecommendResponse(
+            success=True,
+            visas=visas,
+            session_id=session_id,
+            state=state,
+            missing_facts=missing_facts,
+            review_reasons=review_reasons,
+        )
 
     except Exception as exc:
         logger.error("visa-oracle /recommend error: %s", exc, exc_info=True)
@@ -680,6 +832,7 @@ async def chat(
                 confidence=CONFIDENCE_ABSTAIN,
                 sources=[],
                 session_id=body.session_id,
+                review_reasons=_obsolete_review_reasons(obsolete_hit),
             )
 
         # --- Use vector similarity scores directly (cross-encoder not available on Fly) ---
@@ -696,20 +849,14 @@ async def chat(
         else:
             confidence = CONFIDENCE_NORMAL
 
-        # If the user mentioned an obsolete code, DON'T ABSTAIN even with weak
-        # scores. We have enough pretraining context + SYSTEM_PROMPT rules to
-        # correctly flag the code as obsolete and redirect. Promote to CAUTIOUS
-        # so the hedging prefix is emitted too.
-        if obsolete_hit and confidence == CONFIDENCE_ABSTAIN:
-            confidence = CONFIDENCE_CAUTIOUS
-            logger.info(
-                "visa-oracle /chat: promoted ABSTAIN→CAUTIOUS due to obsolete "
-                "code %s (top_score=%.3f) session=%s",
-                obsolete_hit[0],
-                top_score,
-                body.session_id[:12],
-            )
-
+        # PR0 safety freeze (2026-07-17): a prior branch here promoted
+        # ABSTAIN→CAUTIOUS whenever the user mentioned an obsolete visa code,
+        # "on the strength of pretraining context + SYSTEM_PROMPT rules"
+        # alone — i.e. it let the LLM generate a free-form answer (including
+        # possible visa recommendations) with NO grounded KB evidence.
+        # Removed (round2 spec §6.6 step 2 / product-design.md §2 claim #2).
+        # Weak evidence now ALWAYS abstains, obsolete code or not — the code
+        # is still named, but only as a review_reasons annotation below.
         if confidence == CONFIDENCE_ABSTAIN:
             logger.info(
                 "visa-oracle /chat: ABSTAIN (top_score=%.3f) session=%s",
@@ -722,6 +869,7 @@ async def chat(
                 confidence=CONFIDENCE_ABSTAIN,
                 sources=[],
                 session_id=body.session_id,
+                review_reasons=_obsolete_review_reasons(obsolete_hit),
             )
 
         # --- Build context for LLM ---
@@ -817,20 +965,52 @@ async def handoff(
 ) -> HandoffResponse:
     """
     Build WhatsApp deep-link URL and send Telegram lead notification.
+
+    PR0 safety freeze (2026-07-17, W3): the recommended visa name and price
+    used in the WhatsApp message / Telegram summary come ONLY from the
+    session this backend itself persisted at /recommend time (already
+    PricingService-derived — see `VisaOracleService.recommend_visas`).
+    `HandoffRequest.recommended_visas` (client-posted) is still accepted on
+    the wire for back-compat but is never used for price/recommendation; a
+    divergence is logged (no PII — visa names/prices/session_id are not
+    personal data). If no server-side session snapshot is found, the
+    handoff proceeds WITHOUT a price rather than trusting the client.
     """
     from backend.services.integrations.telegram_bot_service import telegram_bot
 
     try:
         service = get_visa_oracle_service()
 
-        # Build WhatsApp URL
+        snapshot = await _fetch_session_snapshot(db_pool, body.session_id)
+        server_visas = snapshot["recommended_visas"] if snapshot else []
+        server_top = server_visas[0] if server_visas else {}
+        client_top = body.recommended_visas[0] if body.recommended_visas else {}
+
+        if client_top and (
+            client_top.get("visa_name") != server_top.get("visa_name")
+            or str(client_top.get("price")) != str(server_top.get("price"))
+        ):
+            logger.warning(
+                "visa-oracle /handoff: client-supplied recommendation diverges "
+                "from server-persisted session=%s — client={visa=%s price=%s} "
+                "server={visa=%s price=%s}",
+                body.session_id[:12],
+                client_top.get("visa_name"),
+                client_top.get("price"),
+                server_top.get("visa_name"),
+                server_top.get("price"),
+            )
+
+        # Build WhatsApp URL — quiz facts stay client-supplied (informational
+        # text only, not a price/candidate; same-session self-report as what
+        # produced the recommendation). Only visa_name/price are
+        # server-authoritative.
         nationality = body.quiz_answers.get("nationality", "Unknown")
         purpose = body.quiz_answers.get("purpose", "Unknown")
         duration = body.quiz_answers.get("duration", "Unknown")
 
-        top_visa = body.recommended_visas[0] if body.recommended_visas else {}
-        visa_name = top_visa.get("visa_name", "Indonesian Visa")
-        price = top_visa.get("price", "contact for pricing")
+        visa_name = server_top.get("visa_name", "Indonesian Visa")
+        price = server_top.get("price") or "contact for pricing"
 
         whatsapp_url = service.build_whatsapp_message(
             nationality=nationality,
@@ -845,7 +1025,7 @@ async def handoff(
         qa = body.quiz_answers or {}
         has_real_data = any(
             qa.get(k) and qa.get(k) != "Unknown" for k in ("nationality", "purpose", "duration")
-        ) or bool(body.recommended_visas)
+        ) or bool(server_visas)
         try:
             if not has_real_data:
                 logger.info(
@@ -857,7 +1037,7 @@ async def handoff(
                 summary = service.build_telegram_summary(
                     session_id=body.session_id,
                     quiz_answers=body.quiz_answers,
-                    recommended_visas=body.recommended_visas,
+                    recommended_visas=server_visas,
                     messages=body.messages,
                     language=language,
                 )
