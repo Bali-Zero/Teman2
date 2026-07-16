@@ -57,12 +57,20 @@ advance_origin() {
 run_puller() {
   PRO_GIT_PULL_REPO="$LOCAL" PRO_GIT_PULL_LOG="$SANDBOX/pull.log" \
   PRO_GIT_PULL_LOCK="$SANDBOX/pull.lock.d" PRO_GIT_PULL_BACKUP_ROOT="$SANDBOX/backup" \
+  PRO_GIT_PULL_ALLOWLIST="${TEST_ALLOWLIST:-}" \
   PRO_GIT_PULL_NO_ALERT=1 bash "$PULLER"
   echo $?
 }
 head_of()     { git -C "$LOCAL" rev-parse HEAD 2>/dev/null; }
 remote_head() { git -C "$LOCAL" rev-parse origin/main 2>/dev/null; }
 stash_count() { git -C "$LOCAL" stash list 2>/dev/null | wc -l | tr -d ' '; }
+# write a runtime-state allowlist fixture: $1=out path, $2.. = repo-relative pro paths
+write_allowlist() {
+  local out="$1"; shift; local sep="" p
+  { printf '{"entries":['
+    for p in "$@"; do printf '%s{"path":"%s","machines":["pro"]}' "$sep" "$p"; sep=","; done
+    printf ']}\n'; } > "$out"
+}
 
 echo "=== pro-git-pull adversarial suite ==="
 
@@ -184,6 +192,97 @@ git -C "$LOCAL" add ahead.md && git -C "$LOCAL" commit -qm unpushed || fatal "G 
 AHEAD=$(head_of); git -C "$LOCAL" fetch -q origin main
 RC=$(run_puller); eq_ne "$RC" "0" "G rc=0"
 eq_ne "$(head_of)" "$AHEAD" "G HEAD untouched (ahead preserved)"
+rm -rf "$SANDBOX"
+
+# ── I1: allowlisted tracked collision → LOCAL kept (Pro-authoritative, not reset) ──
+echo "[I1] allowlisted tracked collision → LOCAL kept, origin's older snapshot NOT restored"
+setup_case I1
+mkdir -p "$LOCAL/data"; printf '%s' '{"a":["base"]}' > "$LOCAL/data/published_articles.json"
+git -C "$LOCAL" add data/published_articles.json && git -C "$LOCAL" commit -qm 'add pub' \
+  && git -C "$LOCAL" push -q origin HEAD:main || fatal "I1 base pub"
+advance_origin "data/published_articles.json" '{"a":["base","origin-promoted"]}'   # origin = Pro's OLDER snapshot
+printf '%s' '{"a":["base","local-newer"]}' > "$LOCAL/data/published_articles.json"  # local superset (dirty)
+write_allowlist "$SANDBOX/allowlist.json" "data/published_articles.json"
+git -C "$LOCAL" fetch -q origin main
+TEST_ALLOWLIST="$SANDBOX/allowlist.json"; RC=$(run_puller); unset TEST_ALLOWLIST
+eq_ne "$RC" "0" "I1 rc=0 (synced)"
+eq_ne "$(head_of)" "$(remote_head)" "I1 HEAD advanced"
+[ "$(cat "$LOCAL/data/published_articles.json")" = '{"a":["base","local-newer"]}' ] \
+  && ok "I1 LOCAL runtime-state kept (dedup index NOT regressed to origin)" \
+  || bad "I1 allowlisted file was reset to origin (re-publish risk!)"
+BK=$(find "$SANDBOX/backup" -path '*data/published_articles.json' ! -path '*.keep-local*' 2>/dev/null | head -1)
+[ -n "$BK" ] && [ "$(cat "$BK")" = '{"a":["base","local-newer"]}' ] && ok "I1 local content recoverable in backup" || bad "I1 local content NOT backed up"
+rm -rf "$SANDBOX"
+
+# ── I2: allowlist present but colliding file NOT listed → origin wins (keep-local scoped) ──
+echo "[I2] non-allowlisted tracked collision (allowlist present) → origin wins"
+setup_case I2
+advance_origin "README.md" "ORIGIN README"
+printf '%s' "LOCAL EDIT" > "$LOCAL/README.md"
+write_allowlist "$SANDBOX/allowlist.json" "data/published_articles.json"   # README NOT listed
+git -C "$LOCAL" fetch -q origin main
+TEST_ALLOWLIST="$SANDBOX/allowlist.json"; RC=$(run_puller); unset TEST_ALLOWLIST
+eq_ne "$RC" "0" "I2 rc=0"
+eq_ne "$(head_of)" "$(remote_head)" "I2 HEAD advanced"
+[ "$(cat "$LOCAL/README.md")" = "ORIGIN README" ] && ok "I2 non-allowlisted file → ORIGIN wins (keep-local stays scoped)" || bad "I2 wrongly kept local for non-allowlisted file"
+BK=$(find "$SANDBOX/backup" -name 'README.md' 2>/dev/null | head -1)
+[ -n "$BK" ] && [ "$(cat "$BK")" = "LOCAL EDIT" ] && ok "I2 local recoverable in backup" || bad "I2 local not backed up"
+rm -rf "$SANDBOX"
+
+# ── I3: allowlisted file dirty but origin didn't touch it → preserved (no collision) ──
+echo "[I3] allowlisted file dirty, non-colliding → preserved, no keep-local dir created"
+setup_case I3
+mkdir -p "$LOCAL/data"; printf '%s' 'base' > "$LOCAL/data/published_articles.json"
+git -C "$LOCAL" add data/published_articles.json && git -C "$LOCAL" commit -qm 'add pub' \
+  && git -C "$LOCAL" push -q origin HEAD:main || fatal "I3 base pub"
+advance_origin "docs/unrelated.md" "x"                            # origin changes a DIFFERENT file
+printf '%s' 'LOCAL DIRTY' > "$LOCAL/data/published_articles.json" # dirty, not in incoming diff
+write_allowlist "$SANDBOX/allowlist.json" "data/published_articles.json"
+git -C "$LOCAL" fetch -q origin main
+TEST_ALLOWLIST="$SANDBOX/allowlist.json"; RC=$(run_puller); unset TEST_ALLOWLIST
+eq_ne "$RC" "0" "I3 rc=0"
+eq_ne "$(head_of)" "$(remote_head)" "I3 HEAD advanced (synced while dirty)"
+[ "$(cat "$LOCAL/data/published_articles.json")" = 'LOCAL DIRTY' ] && ok "I3 non-colliding runtime-state preserved" || bad "I3 clobbered non-colliding runtime-state"
+[ ! -d "$SANDBOX/backup/.keep-local" ] && ok "I3 no keep-local dir (nothing collided)" || bad "I3 spurious keep-local staging"
+rm -rf "$SANDBOX"
+
+# ── I4: allowlist EXISTS but is MALFORMED → fail-safe SKIP (never origin-win a Pro file) ──
+echo "[I4] malformed allowlist + tracked collision → SKIP tick (fail-safe), file NOT reset"
+setup_case I4
+mkdir -p "$LOCAL/data"; printf '%s' '{"a":["base"]}' > "$LOCAL/data/published_articles.json"
+git -C "$LOCAL" add data/published_articles.json && git -C "$LOCAL" commit -qm 'add pub' \
+  && git -C "$LOCAL" push -q origin HEAD:main || fatal "I4 base pub"
+advance_origin "data/published_articles.json" '{"a":["base","origin"]}'
+printf '%s' '{"a":["base","local"]}' > "$LOCAL/data/published_articles.json"   # local dirty (collision)
+printf '%s' 'NOT JSON {{{' > "$SANDBOX/allowlist.json"                          # corrupt allowlist
+LOCAL_BEFORE=$(head_of)
+git -C "$LOCAL" fetch -q origin main
+TEST_ALLOWLIST="$SANDBOX/allowlist.json"; RC=$(run_puller); unset TEST_ALLOWLIST
+eq_ne "$RC" "1" "I4 rc=1 (fail-safe skip on unreadable allowlist)"
+eq_ne "$(head_of)" "$LOCAL_BEFORE" "I4 HEAD NOT advanced (skipped)"
+[ "$(cat "$LOCAL/data/published_articles.json")" = '{"a":["base","local"]}' ] && ok "I4 local runtime-state NOT reset (config error stayed safe)" || bad "I4 reset the file on a config error (dangerous default!)"
+rm -rf "$SANDBOX"
+
+# ── I5: TWO allowlisted collisions in one pull → BOTH kept local (multi-file restore) ──
+echo "[I5] two allowlisted collisions → both kept local (multi-file KEEP_LOCAL_FILES path)"
+setup_case I5
+mkdir -p "$LOCAL/data"
+printf '%s' 'p-base' > "$LOCAL/data/published_articles.json"
+printf '%s' 'e-base' > "$LOCAL/escalations.jsonl"
+git -C "$LOCAL" add data/published_articles.json escalations.jsonl \
+  && git -C "$LOCAL" commit -qm 'add two' && git -C "$LOCAL" push -q origin HEAD:main || fatal "I5 base"
+tmp="$(mktemp -d)"; git clone -q "$ORIGIN" "$tmp/w"; git -C "$tmp/w" config user.email t@t; git -C "$tmp/w" config user.name t
+printf '%s' 'p-origin' > "$tmp/w/data/published_articles.json"; printf '%s' 'e-origin' > "$tmp/w/escalations.jsonl"
+git -C "$tmp/w" add -A && git -C "$tmp/w" commit -qm 'promote both' && git -C "$tmp/w" push -q origin HEAD:main || fatal "I5 promote"; rm -rf "$tmp"
+printf '%s' 'p-local' > "$LOCAL/data/published_articles.json"   # both diverge locally (dirty)
+printf '%s' 'e-local' > "$LOCAL/escalations.jsonl"
+write_allowlist "$SANDBOX/allowlist.json" "data/published_articles.json" "escalations.jsonl"
+git -C "$LOCAL" fetch -q origin main
+TEST_ALLOWLIST="$SANDBOX/allowlist.json"; RC=$(run_puller); unset TEST_ALLOWLIST
+eq_ne "$RC" "0" "I5 rc=0"
+eq_ne "$(head_of)" "$(remote_head)" "I5 HEAD advanced"
+[ "$(cat "$LOCAL/data/published_articles.json")" = 'p-local' ] && ok "I5 file#1 kept local" || bad "I5 file#1 reset to origin"
+[ "$(cat "$LOCAL/escalations.jsonl")" = 'e-local' ] && ok "I5 file#2 kept local" || bad "I5 file#2 reset (multi-file restore missed one!)"
 rm -rf "$SANDBOX"
 
 echo "=== $PASS passed, $FAIL failed ==="
