@@ -91,10 +91,27 @@ def _build_sdk_env() -> dict[str, str]:
 
     Strips ``ANTHROPIC_API_KEY`` unconditionally — same rule as
     ``claude_oauth_client._build_env`` (Golden Rule: never let the
-    SDK's underlying CLI silently pick up a pay-as-you-go key). OAuth flows
-    through ``CLAUDE_CODE_OAUTH_TOKEN``, left untouched.
+    SDK's underlying CLI silently pick up a pay-as-you-go key).
+
+    Seeds ``CLAUDE_CODE_OAUTH_TOKEN`` from the first non-empty entry of
+    ``_token_chain()`` (TOKEN_1→2→3→legacy). Without this, a deployment
+    that only sets the indexed ``CLAUDE_CODE_OAUTH_TOKEN_N`` vars (no
+    legacy ``CLAUDE_CODE_OAUTH_TOKEN``) left the SDK-spawned CLI with no
+    token at all — it fell through to keychain (or failed outright)
+    instead of using the configured chain. If the chain resolves to the
+    empty keychain sentinel (no token configured anywhere), the var is
+    left untouched (current behavior, nothing invented).
+
+    Rotation-on-exhaustion is deliberately NOT duplicated here: on
+    rate-limit the SDK path already falls back to
+    ``_stream_via_subprocess``, which walks the full chain itself
+    (rotation-by-fallback, by design).
     """
-    return {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+    _, token = _token_chain()[0]
+    if token:
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+    return env
 
 
 # Known SDK lifecycle message classes: these carry ``subtype`` too (e.g.

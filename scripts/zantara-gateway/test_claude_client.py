@@ -369,6 +369,55 @@ def test_sdk_env_strips_anthropic_api_key(monkeypatch):
     assert env.get("CLAUDE_CODE_OAUTH_TOKEN") == "oauth-token"
 
 
+def test_sdk_env_seeds_oauth_token_from_indexed_chain(monkeypatch):
+    """Only CLAUDE_CODE_OAUTH_TOKEN_1 set, no legacy var — the SDK-spawned
+    CLI must still get a token via CLAUDE_CODE_OAUTH_TOKEN (P2: previously
+    it fell through to keychain/failure instead of using the chain)."""
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "tok1")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-not-leak")
+
+    captured: list = []
+    fake_module = _make_fake_sdk_module(
+        [_FakeResultMessage("success", result="")], captured
+    )
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake_module)
+
+    asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_sdk("hi"))
+    )
+
+    assert len(captured) == 1
+    env = captured[0].env
+    assert env.get("CLAUDE_CODE_OAUTH_TOKEN") == "tok1"
+    assert "ANTHROPIC_API_KEY" not in env
+
+
+def test_sdk_env_no_chain_token_leaves_var_absent(monkeypatch):
+    """No indexed token and no legacy var set at all — the chain resolves to
+    the empty keychain sentinel, so CLAUDE_CODE_OAUTH_TOKEN must NOT be
+    invented (current no-token behavior preserved)."""
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
+
+    captured: list = []
+    fake_module = _make_fake_sdk_module(
+        [_FakeResultMessage("success", result="")], captured
+    )
+    monkeypatch.setitem(sys.modules, "claude_agent_sdk", fake_module)
+
+    asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_sdk("hi"))
+    )
+
+    assert len(captured) == 1
+    assert "CLAUDE_CODE_OAUTH_TOKEN" not in captured[0].env
+
+
 # ── subprocess cmd budget cap ──
 
 
