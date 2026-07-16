@@ -41,6 +41,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import socket
 import sys
 import threading
@@ -200,12 +201,24 @@ def _persist_local_artifacts(
         stale.unlink()
     for p in png_paths:
         shutil.copy2(p, slides_dir / p.name)
+    # A1: re-derive slide_count from the DURABLE artifact just written, never
+    # from the in-memory png_paths list — this is the ONE helper every writer
+    # of a persisted slide_count routes through (2026-07-16). A copy that
+    # silently dropped a file (or a stray leftover the stale-clear missed)
+    # must be visible here, not carried forward as a lie in meta.json/queue.
+    durable_count = derive_slide_count(slides_dir)
+    if durable_count != len(png_paths):
+        raise RuntimeError(
+            f"persist_local_artifacts completeness mismatch for draft {draft_id}: "
+            f"copied {len(png_paths)} PNGs but slides_dir now verifies {durable_count} "
+            f"— refusing to write a lying meta.json/queue entry"
+        )
     meta = {
         "draft_id": str(draft_id),
         "topic": topic,
         "slug": slug,
         "drive_url": drive_url,
-        "slide_count": len(png_paths),
+        "slide_count": durable_count,
         "weak_slides": weak_count,
         "fact_check_status": fact_check_status,
         "rendered_at": ts,
@@ -387,9 +400,14 @@ async def _publish_visibility(
             drive_url=drive_url, weak_count=weak_count,
             fact_check_status=fact_check_status, rendered_at=drafted_at,
         )
+        # A1: the queue entry's slide_count is RE-DERIVED from the durable
+        # slides_dir _persist_local_artifacts just verified (single helper,
+        # never the in-memory png_paths list) — the queue must never disagree
+        # with the artifact it points at.
+        durable_slide_count = derive_slide_count(car_dir / "slides")
         entry = _make_queue_entry(
             draft_id=draft_id, topic=topic, carousel_dir=car_dir,
-            drive_url=drive_url, slide_count=len(png_paths),
+            drive_url=drive_url, slide_count=durable_slide_count,
             weak_count=weak_count, fact_check_status=fact_check_status,
             drafted_at=drafted_at,
         )
@@ -665,6 +683,35 @@ def _dump_designer_history(draft_id: str, slide_index: int, history: list[dict[s
 # per-slide renders — assets, never slides. Excluded from the final slide glob.
 _STAGED_ASSET_PNGS = frozenset({"logo.png"})
 
+_SLIDE_STEM_RE = re.compile(r"^\d+$")
+
+
+def derive_slide_count(slides_dir: Path) -> int:
+    """Count REAL slide PNGs in `slides_dir` — the one true way to answer "how
+    many slides does this carousel actually have on disk" (A1 completeness
+    gate, 2026-07-16). Every writer of a persisted slide_count (queue entry,
+    meta.json, reconciler backfill) must route through this function instead
+    of trusting an in-memory count or a bare `*.png` glob — a stale/renamed/
+    partial file on disk is the whole disease this closes.
+
+    Filter mirrors the WR2 Control app's slidePNGs() (WarRoom.swift) so Python
+    and Swift agree on what "a slide" is: numeric-stem *.png only, excluding
+    staged chrome (logo.png) and any placeholder* name. Missing dir -> 0
+    (dirless is a mismatch to report, never a crash).
+    """
+    if not slides_dir.is_dir():
+        return 0
+    count = 0
+    for p in slides_dir.iterdir():
+        if p.suffix.lower() != ".png":
+            continue
+        name = p.name.lower()
+        if name in _STAGED_ASSET_PNGS or name.startswith("placeholder"):
+            continue
+        if _SLIDE_STEM_RE.match(p.stem):
+            count += 1
+    return count
+
 
 class WeakSlide(NamedTuple):
     """A slide that did NOT converge its designer loop but DID produce a usable
@@ -706,6 +753,21 @@ async def _render_carousel(
             raise RuntimeError(
                 f"carousel render gate failed: slides={result.slides_rendered} "
                 f"heroes={result.heroes_placed}/{result.heroes_expected} failures={result.failures}"
+            )
+        # A1 completeness gate (2026-07-16, explicit — belt on top of `.ok`):
+        # RenderResult.ok only requires `not failures and slides_rendered > 0`,
+        # NOT slides_rendered == total (see renderer.py RenderResult.ok) — a
+        # future refactor of that property (or a bug in the failures-tracking
+        # it depends on) could silently let a partial carousel through with
+        # zero recorded failures. Re-verify against the DURABLE artifact
+        # (actual PNGs on disk), never trust the in-memory tally alone.
+        total = len(slides)
+        disk_count = derive_slide_count(slides_dir)
+        if disk_count != total:
+            raise RuntimeError(
+                f"carousel completeness gate failed: rendered {disk_count}/{total} "
+                f"slides on disk (result.slides_rendered={result.slides_rendered}, "
+                f"failures={result.failures}) — refusing partial promotion"
             )
         return slides_dir, []
 
@@ -798,6 +860,16 @@ async def _render_carousel(
 
     if len(final_pngs) != total:
         raise RuntimeError(f"per-slide render produced {len(final_pngs)}/{total} slides")
+    # A1 completeness gate, disk-verified (belt on top of the in-memory tally
+    # above — see the matching comment in the non-vision branch of
+    # _render_carousel): re-derive from the DURABLE artifact, never trust only
+    # the list this loop built in memory.
+    disk_count = derive_slide_count(slides_dir)
+    if disk_count != total:
+        raise RuntimeError(
+            f"carousel completeness gate failed (vision path): {disk_count}/{total} "
+            f"slides verified on disk after per-slide render — refusing partial promotion"
+        )
     if len(weak_slides) > max_weak:
         idxs = ", ".join(str(w.index) for w in weak_slides)
         raise RuntimeError(
