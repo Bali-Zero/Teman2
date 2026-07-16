@@ -35,6 +35,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit|Bash|Monitor",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/infra/claude-hooks/data_plane_guard.py\""
+          }
+        ]
+      }
     ]
   }
 }

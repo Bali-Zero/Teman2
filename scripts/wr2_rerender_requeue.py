@@ -58,7 +58,14 @@ logger = logging.getLogger("wr2-rerender-requeue")
 # (Codex review 2026-07-13) — so the CLI checks the queue before requeuing: a
 # re-render of a PUBLISHED carousel would clobber the published preview's PNG
 # dir in place on a same-day re-render.
-_PREPUBLISH_STATES = ("drafted", "reviewed", "rejected", "drafted_needs_human_edit")
+#
+# "render_incomplete" is included (Codex red-team HIGH #5 class-audit,
+# 2026-07-16): this CLI is precisely the manual recovery tool an operator
+# reaches for on a carousel stuck in render_incomplete — refusing it here
+# would leave no escape hatch for the very state this PR introduces.
+_PREPUBLISH_STATES = (
+    "drafted", "reviewed", "rejected", "drafted_needs_human_edit", "render_incomplete",
+)
 
 
 def _default_queue_path() -> Path:

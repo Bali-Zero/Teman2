@@ -10,18 +10,24 @@ USAGE:
 
     # Method 1: Use to_jsonb helper
     await conn.execute(
-        "INSERT INTO t (data) VALUES ($1::jsonb)",
+        "INSERT INTO t (data) VALUES ($1::text::jsonb)",
         to_jsonb(my_dict)
     )
 
     # Method 2: Use json_serializer with json.dumps
     import json
     await conn.execute(
-        "INSERT INTO t (data) VALUES ($1::jsonb)",
+        "INSERT INTO t (data) VALUES ($1::text::jsonb)",
         json.dumps(my_dict, default=json_serializer)
     )
 
 See: CLAUDE.md "Asyncpg + JSONB Development Guidelines" for full documentation.
+
+NOTE: always bind JSONB values with the ``$N::text::jsonb`` DOUBLE cast, never the
+bare ``$N::jsonb``. The double cast prevents the jsonb string-scalar disease
+(#2525): a serialized JSON string bound as ``$N::jsonb`` can be stored as a jsonb
+*scalar string* instead of a jsonb object/array. ``$N::text::jsonb`` is the
+canonical write pattern across the backend (38 files).
 """
 
 import json
@@ -84,7 +90,7 @@ def to_jsonb(data: dict | list | None) -> str | None:
 
     Example:
         >>> await conn.execute(
-        ...     "INSERT INTO activity_log (changes) VALUES ($1::jsonb)",
+        ...     "INSERT INTO activity_log (changes) VALUES ($1::text::jsonb)",
         ...     to_jsonb({"status": "completed", "amount": Decimal("500")})
         ... )
     """
