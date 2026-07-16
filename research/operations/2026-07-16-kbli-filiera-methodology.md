@@ -9,6 +9,7 @@ sources:
   - "Permen Investasi dan Hilirisasi/BKPM No. 5/2025 (in force 2025-10-02, revokes BKPM 3/2021, 4/2021, 5/2021 — https://peraturan.bpk.go.id/Details/332573/permeninvesbkpm-no-5-tahun-2025)"
   - "memory: discovery_kbli_68112_code_collision_pp28_vs_bps_2026_07_16, discovery_kbli_noscope_codes_per_skala_not_from_oss_2026_07_16, discovery_kg_perizinan_name_dedup_disease_2026_07_16, lesson_kbli_remap_gate_context_beats_title_2026_07_16"
   - "adversarial panel 2026-07-16: Codex GPT-5.5 red-team (15 findings, 5 FATAL) + Gemini 3.1 Pro costruttivo (12 suggestions)"
+adversarial_review: "Codex GPT-5.5 (red-team, 15 findings) + Gemini 3.1 Pro (costruttivo, 12 suggestions) — 2026-07-16, generator≠grader"
 ---
 
 # Filiera KBLI — corpus methodology (assessment + rebuild plan)
