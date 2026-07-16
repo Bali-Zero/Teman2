@@ -85,7 +85,10 @@ export function HeroCarousel() {
   }, [paused]);
 
   return (
-    <section className="relative h-[100vh] overflow-hidden">
+    <section
+      className="relative h-[100vh] overflow-hidden"
+      style={{ overscrollBehaviorX: "contain" }}
+    >
       {SLIDES.map((slide, i) => (
         <article
           key={slide.funnel}

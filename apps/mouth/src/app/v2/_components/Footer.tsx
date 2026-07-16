@@ -61,7 +61,7 @@ export function Footer() {
 
   return (
     <footer
-      className="pt-12 md:pt-20 pb-8 px-5 md:px-10"
+      className="pt-12 md:pt-20 pb-[80px] sm:pb-8 px-5 md:px-10"
       style={{
         background: "var(--footer-bg)",
         borderTop: "1px solid var(--footer-border)",

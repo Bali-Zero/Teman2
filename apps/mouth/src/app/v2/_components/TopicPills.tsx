@@ -47,7 +47,7 @@ export function TopicPills() {
             <a
               key={t.label}
               href={t.href}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all min-h-[44px]"
               style={{
                 background: `var(--rp-card-bg, color-mix(in srgb, ${t.accent} 10%, transparent))`,
                 border: `1px solid var(--rp-card-border, color-mix(in srgb, ${t.accent} 28%, transparent))`,
