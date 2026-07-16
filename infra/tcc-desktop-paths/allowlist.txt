@@ -37,6 +37,32 @@
 # example data disconnected from the guard logic under test (verified against
 # each guard's actual matching code) — those were swept normally, not excluded.
 #
+# NOT-A-MATCH BUCKET (final-gate review 2026-07-16): a raw `grep Desktop/
+# nuzantara` over tracked *.sh/*.py/*.plist also surfaces 10 files that do
+# NOT match PATTERN's anchored regex (`nuzantara` must not be followed by a
+# word-char or hyphen) and therefore need NO allowlist entry — the lint
+# already ignores them by construction, not by exception:
+#   apps/backend-rag/scripts/{analyze_duplicates,deduplicate_report,
+#     register_drive_documents,scan_drive_fast}.py — reference a SIBLING
+#     scratch file `~/Desktop/nuzantara_drive_scan_report[_deduped].txt`
+#     (underscore breaks the lookahead) — an ad-hoc report artifact these
+#     one-shot drive-migration utilities write, unrelated to where the repo
+#     itself lives.
+#   apps/backend-rag/scripts/bulk_populate_clients.py — references
+#     `~/Desktop/nuzantara-9ae2756d7fcc.json`, a service-account credential
+#     file (hyphen+hash breaks the lookahead) — a differently-named file,
+#     not the repo.
+#   scripts/test_{call_llm_deepseek,deepseek_executor,entailment_check,
+#     evidence_lint,redact_pii}.py — reference
+#     `~/Desktop/nuzantara-wt-evoskill-phase1`, a DIFFERENT worktree
+#     directory name (hyphen breaks the lookahead), not the main repo path.
+# Widening PATTERN to catch these would risk exactly the guard-over-match
+# failure mode this repo has a whole scar family for (#3): "nuzantara-*" is
+# deliberately NOT swept as a class (cf. nuzantara-deploy handling), because
+# treating every nuzantara-prefixed name as the repo would silently rewrite
+# unrelated files. Left as no-op by design, documented here so a future
+# reviewer doesn't have to re-derive the regex reasoning from scratch.
+#
 # infra/home-fork/declared-pairs.json is class 1 despite not living under
 # research/docs/superpowers/audits: its ONLY hit is a free-text "_note" field
 # narrating a 2026-07-14 fix ("...fixed to REPO_ROOT-aware ($HOME/Desktop/
@@ -60,6 +86,29 @@
 #      itself (this documentation talks ABOUT the pattern) and to
 #      .github/workflows/immune-enforcement.yml's step name/comments for the
 #      lint step this PR adds.
+#
+# SIZE NOTE (added 2026-07-16, final-gate review): this file has ~298 declared
+# entries, which reads as a large exception surface for a guard meant to be
+# strict. It is NOT — the standing lint's own extension filter
+# (LINT_EXTENSIONS = {.sh, .py, .plist}) discards a line before ever checking
+# whether it's allowlisted, so only entries with those THREE extensions are
+# load-bearing for scripts/lint_tcc_desktop_paths.py's ongoing CI gate. As of
+# this writing that's 10 lines: the 2 guard-test-corpus files (class 2), the
+# 1 historical audit script + 2 dated research renderers + 1 frozen research
+# note (class 1), and the 4 self-referential tool source/test files (class 3).
+# The remaining ~288 entries (.md/.json/.txt/.yml/.tsv) exist ONLY as
+# provenance for scripts/tcc_migrate_desktop_paths.py's one-time --git-scope
+# --extensions .md sweep (commit 2 of the migration PR) — they document why
+# each historical doc was deliberately left un-swept, but the standing lint
+# never reads them because it never reads .md files at all. Kept per-file
+# (not directory-glob'd to research/**, docs/audits/**, etc.) deliberately:
+# scar #3 discipline ("no guard ships without its exceptions being explicit")
+# argues for explicit enumeration over implicit directory exemption, and the
+# guard's REAL exception surface is already narrow (10 lines) once you
+# account for the extension filter — collapsing 288 lines that don't affect
+# the guard's behavior into a directory glob would trade a currently-tiny,
+# fully-auditable surface for a coarser one, to solve a bloat problem that
+# turns out not to exist for the thing actually being guarded.
 #
 # Format: one repo-relative path per line. Blank lines and #-comments ignored.
 

@@ -56,20 +56,46 @@ from typing import Any
 
 
 def _canonical_repo_root() -> Path:
-    """Repo root, worktree-hardened: running from .worktrees/<lane>/ must lint
-    against the MAIN checkout (an agent worktree is ephemeral — treating it as
-    the source of truth would replay W81). Mirrors scripts/lint_home_fork.py."""
-    root = Path(__file__).resolve().parent.parent
-    parts = root.parts
-    if ".worktrees" in parts:
-        idx = parts.index(".worktrees")
-        return Path(*parts[:idx])
-    return root
+    """Repo root: the tree THIS FILE physically lives in right now.
+
+    DELIBERATELY NOT worktree-hardened like scripts/lint_home_fork.py (a
+    defect shipped 2026-07-16, found by the coordinator's final-gate review
+    before merge): lint_home_fork.py compares TWO independent trees (repo vs
+    live HOME) — there an ephemeral agent worktree isn't the meaningful side
+    to trust, so jumping OUT of .worktrees/ to the main checkout is correct.
+    This tool does a SINGLE self-contained tree scan — there is no second
+    tree to prefer. Jumping out of .worktrees/ here meant every no-args
+    invocation from a dev worktree silently scanned the MAIN checkout
+    instead of the tree you were trying to verify: the lint never saw your
+    fix, and a canonical "add regression / remove regression" probe against
+    main (itself un-swept pre-merge) returned violations no matter what you
+    did in the worktree — a guard that can't distinguish clean from dirty
+    proves nothing. Fix: resolve to wherever this file itself is checked out
+    (worktree root when invoked from a worktree copy, main checkout root
+    otherwise, CI checkout root in CI) — deterministic, and always the tree
+    the invocation is actually running against.
+    """
+    return Path(__file__).resolve().parent.parent
 
 
 REPO_ROOT = _canonical_repo_root()
-DEFAULT_ALLOWLIST = REPO_ROOT / "infra" / "tcc-desktop-paths" / "allowlist.txt"
 LINT_EXTENSIONS = {".sh", ".py", ".plist"}
+
+
+def _default_allowlist(repo_root: Path) -> Path:
+    """infra/tcc-desktop-paths/allowlist.txt relative to repo_root — computed
+    from whatever --repo-root resolves to (default or overridden), never a
+    fixed path baked in at argparse-definition time. A static default bound
+    to this module's own REPO_ROOT would silently stop applying the moment
+    --repo-root is pointed anywhere else (the same class of bug as the
+    REPO_ROOT fix above, just one layer further down) — this makes the
+    positive case (declared allowlist entries suppress their violations) and
+    the negative case (a malformed allowlist fails loudly) both fully
+    testable against synthetic fixtures, not just the real checkout."""
+    return repo_root / "infra" / "tcc-desktop-paths" / "allowlist.txt"
+
+
+DEFAULT_ALLOWLIST = _default_allowlist(REPO_ROOT)
 
 
 def _load_migrate_module():
@@ -126,7 +152,11 @@ def scan(repo_root: Path, allowlist_path: Path | None) -> dict[str, Any]:
     if allowlist_path is not None and allowlist_path.exists():
         try:
             exclude = mod._load_exclude(allowlist_path, repo_root)
-        except OSError as e:
+        except (OSError, UnicodeDecodeError) as e:
+            # UnicodeDecodeError is NOT an OSError subclass — a defect found
+            # 2026-07-16 alongside the DEFECT-1 review: a genuinely malformed
+            # (invalid-UTF-8) allowlist file crashed main() with an uncaught
+            # traceback instead of the documented fail-visible exit 4.
             allowlist_error = f"allowlist unreadable ({type(e).__name__}): {allowlist_path}"
         # absent allowlist is NOT an error — a repo with zero declared
         # exceptions is a valid (if unusual) state.
@@ -179,10 +209,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--check", action="store_true", help="alias for default behavior (kept for CLI symmetry with the migrator)")
     ap.add_argument("--json", action="store_true", help="machine-readable output")
     ap.add_argument("--repo-root", type=Path, default=REPO_ROOT, help=argparse.SUPPRESS)
-    ap.add_argument("--allowlist", type=Path, default=DEFAULT_ALLOWLIST)
+    ap.add_argument("--allowlist", type=Path, default=None,
+                     help="declared-exception file (default: <repo-root>/infra/tcc-desktop-paths/allowlist.txt, "
+                          "computed from the resolved --repo-root — not a fixed path)")
     args = ap.parse_args(argv)
+    allowlist_arg = args.allowlist if args.allowlist is not None else _default_allowlist(args.repo_root)
 
-    result = scan(args.repo_root, args.allowlist)
+    result = scan(args.repo_root, allowlist_arg)
     violations = result["violations"]
     walked = result["walked"]
     tracked_total = result["tracked_total"]
@@ -200,7 +233,7 @@ def main(argv: list[str] | None = None) -> int:
         }, indent=2))
     else:
         print(f"[tcc-desktop-paths] scanned {walked} tracked *.sh/*.py/*.plist file(s) "
-              f"(allowlist: {args.allowlist if args.allowlist.exists() else 'none'})")
+              f"(allowlist: {allowlist_arg if allowlist_arg.exists() else 'none'})")
         for p, d, _k in violations:
             print(f"  - {p}: {d}")
         if not violations and not git_failed and not allowlist_error:
@@ -211,7 +244,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"hardcodes ~/Desktop/nuzantara. Either fix the path (Desktop/nuzantara -> "
                 f"nuzantara, the repo's post-migration location) or, if this is a deliberate "
                 f"exception (guard-test corpus, historical record), declare it in "
-                f"{DEFAULT_ALLOWLIST.relative_to(REPO_ROOT) if DEFAULT_ALLOWLIST.is_relative_to(REPO_ROOT) else DEFAULT_ALLOWLIST}."
+                f"{allowlist_arg.relative_to(args.repo_root) if allowlist_arg.is_relative_to(args.repo_root) else allowlist_arg}."
             )
         if git_failed:
             print("\n[error] git ls-files failed — scan could not see the tree at all.")
