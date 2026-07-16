@@ -350,6 +350,14 @@ def test_sdk_options_omit_effort_for_long_query(monkeypatch):
 
 
 def test_sdk_env_strips_anthropic_api_key(monkeypatch):
+    # Hermeticity: clear any real indexed tokens from the runner's env, else
+    # `_token_chain()[0]` (which `_build_sdk_env` seeds from) returns a live
+    # CLAUDE_CODE_OAUTH_TOKEN_1 instead of the legacy var this test sets —
+    # the assertion below then reads the real token, not "oauth-token". Same
+    # delenv guard the sibling `..._seeds_oauth_token_from_indexed_chain` uses.
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-not-leak")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-token")
 
@@ -419,6 +427,64 @@ def test_sdk_env_no_chain_token_leaves_var_absent(monkeypatch):
 
 
 # ── subprocess cmd budget cap ──
+
+
+# ── subprocess readline limit: a >64KB NDJSON line must not crash the stream ──
+# Real (tiny) subprocesses — no `claude` binary needed; a python emitter prints
+# crafted stream-json lines. Guilt: an assistant line larger than asyncio's
+# 64KB StreamReader default (the init/verbose line measured 84053 bytes on Pro,
+# 2026-07-17) must stream, not raise LimitOverrunError. Innocence: normal small
+# lines still stream unchanged.
+
+
+def _run_subprocess_with_emitter(monkeypatch, emitter_code: str):
+    """Point `_stream_via_subprocess` at a python one-liner emitter instead of
+    the real `claude` CLI, single no-token attempt, and collect its SSE lines."""
+    monkeypatch.setattr(claude_client, "_token_chain", lambda: [("keychain", "")])
+    monkeypatch.setattr(
+        claude_client,
+        "_build_subprocess_cmd",
+        lambda query, model, mcp_config, system_prompt: [sys.executable, "-c", emitter_code],
+    )
+    return asyncio.get_event_loop().run_until_complete(
+        _collect(claude_client._stream_via_subprocess("hi"))
+    )
+
+
+def test_subprocess_streams_line_over_64kb_default_limit(monkeypatch):
+    """GUILT: a single assistant NDJSON line larger than asyncio's 64KB default
+    StreamReader limit must be read without LimitOverrunError. A small first
+    line precedes it (so the rate-limit check readline succeeds), then the huge
+    line, then a terminal result."""
+    big_text = "A" * 100_000  # > 65536, mirrors the 84KB init line seen on Pro
+    emitter = (
+        "import json\n"
+        "print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'hi'}]}}))\n"
+        "print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':%r}]}}))\n"
+        "print(json.dumps({'type':'result','subtype':'success','result':''}))\n"
+    ) % big_text
+
+    lines = _run_subprocess_with_emitter(monkeypatch, emitter)
+
+    joined = "".join(lines)
+    assert '"type":"token","data":"hi"' in joined
+    assert big_text in joined  # the >64KB line was read and streamed, not dropped
+    assert lines[-1] == "data: [DONE]\n\n"
+
+
+def test_subprocess_streams_small_lines_unchanged(monkeypatch):
+    """INNOCENCE: normal small lines still stream to completion (the raised
+    limit did not alter the ordinary path)."""
+    emitter = (
+        "import json\n"
+        "print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':'PONG'}]}}))\n"
+        "print(json.dumps({'type':'result','subtype':'success','result':''}))\n"
+    )
+
+    lines = _run_subprocess_with_emitter(monkeypatch, emitter)
+
+    assert lines[0] == 'data: {"type":"token","data":"PONG"}\n\n'
+    assert lines[-1] == "data: [DONE]\n\n"
 
 
 def test_subprocess_cmd_has_max_budget_not_max_turns(monkeypatch):
