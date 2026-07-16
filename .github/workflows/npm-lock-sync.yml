@@ -57,9 +57,20 @@ jobs:
       # `npm ci` is the contract: it refuses to install when package.json and
       # package-lock.json disagree. --dry-run keeps it read-only — we want the
       # verdict, not the node_modules tree.
+      #
+      # --ignore-scripts is LOAD-BEARING, not tidiness. Without it the root
+      # `prepare` script runs `husky`, which is not on PATH under --dry-run, and
+      # the job dies `code 127 / command sh -c husky` — a red gate that says
+      # NOTHING about lock sync. That false-positive is this gate's own version
+      # of the guard-over-match family (cicatrix #3): firing on the wrong
+      # entity. Caught by this very job on its first run (PR #2505). It also
+      # means CI never executes package lifecycle scripts just to read a lock
+      # verdict. The EUSAGE reconciliation we care about happens before any
+      # script would run, so the guard keeps its teeth — see the guilt/innocence
+      # pair asserted below.
       - name: npm ci --dry-run (fails on lock/manifest desync)
         id: locksync
-        run: npm ci --dry-run --no-audit --no-fund
+        run: npm ci --dry-run --ignore-scripts --no-audit --no-fund
 
       - name: Explain the failure
         if: failure() && steps.locksync.conclusion == 'failure'
