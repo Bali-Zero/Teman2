@@ -58,7 +58,6 @@
     "apps/evaluator/nlm_deep_research/scripts/run_nb3_pipeline.sh",
     "apps/evaluator/nlm_deep_research/scripts/run_nb4_pipeline.sh",
     "apps/evaluator/nlm_deep_research/scripts/run_nb5_pipeline.sh",
-    "apps/evaluator/nlm_deep_research/scripts/run_nb5_t4_monitor.sh",
     "apps/evaluator/nlm_deep_research/scripts/run_nb6_pipeline.sh",
     "apps/evaluator/nlm_deep_research/scripts/run_nb7_pipeline.sh",
     "apps/evaluator/nlm_deep_research/scripts/run_nb8_pipeline.sh",
