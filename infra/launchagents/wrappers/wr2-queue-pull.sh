@@ -79,8 +79,16 @@ while true; do
     if python3 -c "import json,sys; json.load(open('$tmp'))" 2>/dev/null; then
       archive_tmp="$tmp"
       if ! cmp -s "$tmp" "$DEST_DIR/$archive_f" 2>/dev/null; then
-        cp "$tmp" "$DEST_DIR/$archive_f"
-        echo "[$(ts)] updated $archive_f" >> "$LOG"
+        # atomic swap (Codex red-team, 2026-07-17): a plain `cp` truncated by
+        # a concurrent read or interrupted mid-write would still log
+        # "updated" here and lose the good temp at end of tick — cp into a
+        # sibling tmp then rename so the mirror is never observed partial.
+        if cp "$tmp" "$DEST_DIR/$archive_f.tmp.$$" && mv "$DEST_DIR/$archive_f.tmp.$$" "$DEST_DIR/$archive_f"; then
+          echo "[$(ts)] updated $archive_f" >> "$LOG"
+        else
+          echo "[$(ts)] WARN failed to atomically update $archive_f mirror, kept old" >> "$LOG"
+          rm -f "$DEST_DIR/$archive_f.tmp.$$"
+        fi
       fi
     else
       echo "[$(ts)] WARN $archive_f pulled but invalid JSON, kept old" >> "$LOG"
@@ -104,12 +112,28 @@ while true; do
         # array expanded as "${arr[@]}" under `set -u` throws "unbound
         # variable" (verified live), which would crash this loop every tick
         # the archive pull fails/is skipped.
+        #
+        # rm -f "$tmp.merged" FIRST (Codex red-team, 2026-07-17): the daemon
+        # keeps the same PID (and thus the same $tmp path) across every tick
+        # of this loop — a merge that failed mid-write on a PRIOR tick can
+        # leave a stale non-empty .merged file that a LATER failed merge
+        # (one that crashes before writing --out at all) would otherwise
+        # re-install via the `[ -s "$tmp.merged" ]` check below, believing
+        # it to be this tick's fresh output.
+        rm -f "$tmp.merged"
         if [ -n "$archive_tmp" ]; then
           report=$(python3 "$MERGE_PY" --remote "$tmp" --local "$DEST_DIR/$f" --out "$tmp.merged" --remote-archive "$archive_tmp" 2>>"$LOG")
         else
           report=$(python3 "$MERGE_PY" --remote "$tmp" --local "$DEST_DIR/$f" --out "$tmp.merged" 2>>"$LOG")
         fi
-        if [ -s "$tmp.merged" ]; then
+        merge_rc=$?
+        # gate on BOTH exit code 0 AND re-parseable JSON (Codex red-team,
+        # 2026-07-17): ENOSPC mid-write can leave a partial-but-non-empty
+        # JSON file that `[ -s ... ]` alone would accept — the next tick
+        # would then treat the corrupt local queue as [] and wipe every
+        # local-only entry.
+        if [ "$merge_rc" -eq 0 ] && [ -s "$tmp.merged" ] \
+             && python3 -c "import json,sys; json.load(open('$tmp.merged'))" 2>/dev/null; then
           if ! cmp -s "$tmp.merged" "$DEST_DIR/$f" 2>/dev/null; then
             mv "$tmp.merged" "$DEST_DIR/$f"
             echo "[$(ts)] merged $f ($report)" >> "$LOG"
@@ -133,8 +157,9 @@ for e in rep.get("push_back", []): print(e["ref_code"], e["ig_url"])' | \
             fi
           done
         else
-          # merge failed → keep old local file, log, fall back to nothing
-          echo "[$(ts)] WARN merge of $f produced no output, kept old" >> "$LOG"
+          # merge failed (rc) or produced empty/invalid output → keep old
+          # local file, log, wipe both tmps.
+          echo "[$(ts)] WARN merge of $f failed or produced invalid output (rc=$merge_rc), kept old" >> "$LOG"
           rm -f "$tmp" "$tmp.merged"
         fi
       elif ! cmp -s "$tmp" "$DEST_DIR/$f" 2>/dev/null; then

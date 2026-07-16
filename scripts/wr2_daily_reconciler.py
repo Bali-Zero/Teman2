@@ -398,6 +398,23 @@ def _resolve_expected_count(
     return None, "none"
 
 
+def _needle_on_segment_boundary(name: str, needle: str) -> bool:
+    """True iff `needle` sits on hyphen-segment boundaries inside `name`
+    (Codex red-team HIGH #2, 2026-07-17): a bare `*{needle}*` glob
+    over-matches ACROSS topics — needle `visa-myth` matches dir
+    `2026-07-17-evisa-mythology-b` (the substring is "e"+"visa-myth"+"ology",
+    with no hyphen boundary on either side), and newest-first would then
+    PREFER that foreign dir over the genuine match. Anchor on the FULL
+    needle as one unit (not its internal hyphens) — exact name, or bounded
+    by a hyphen on the side(s) that aren't the string's own start/end."""
+    return (
+        name == needle
+        or name.endswith("-" + needle)
+        or ("-" + needle + "-") in name
+        or name.startswith(needle + "-")
+    )
+
+
 def _resolve_slides_dir(entry: dict[str, Any], carousel_root: Path) -> Path | None:
     """Resolve an entry's slides directory across schema/path drift
     (2026-07-17 fix — live case: `indonesia-visafree-myth-reality`, 8 real
@@ -414,11 +431,13 @@ def _resolve_slides_dir(entry: dict[str, Any], carousel_root: Path) -> Path | No
       1. entry["slides_dir"], expanduser()'d, if it is a real directory.
       2. entry["carousel_path"], expanduser()'d — either already IS the
          slides dir, or is the carousel dir one level up (try + "slides").
-      3. Suffix-match under `carousel_root` by the entry's own dir basename
-         (from carousel_path) or topic_slug — mirrors the app's own
-         `*-{draft_id[:8]}`-style matching convention (see
+      3. Segment-anchored suffix-match under `carousel_root` by the entry's
+         own dir basename (from carousel_path) or topic_slug — mirrors the
+         app's own `*-{draft_id[:8]}`-style matching convention (see
          `_verify_visibility_or_backfill`) for entries whose recorded path
          has since drifted (re-persisted/renamed carousel dir).
+         `_needle_on_segment_boundary` rejects a bare substring hit that
+         crosses topic boundaries (see its docstring).
     """
     sd = entry.get("slides_dir")
     if sd:
@@ -440,12 +459,20 @@ def _resolve_slides_dir(entry: dict[str, Any], carousel_root: Path) -> Path | No
                            entry.get("topic_slug")) if n]
     if needles and carousel_root.is_dir():
         for needle in needles:
-            # newest-first: carousel dirs are date-prefixed (2026-07-08-...,
-            # 2026-07-14-...), so lexicographic descending == newest-first.
-            # A topic re-rendered into a second dir must resolve to that
-            # newer render, never the stale one from a prior attempt.
-            # Deliberately sort-by-name (deterministic), not by mtime.
-            for m in sorted(carousel_root.glob(f"*{needle}*"), reverse=True):
+            # glob is a cheap prefilter (substring); _needle_on_segment_
+            # boundary is the real gate — rejects cross-topic over-matches
+            # like needle "visa-myth" hitting dir "...-evisa-mythology-...".
+            accepted = [
+                m for m in carousel_root.glob(f"*{needle}*")
+                if _needle_on_segment_boundary(m.name, needle)
+            ]
+            # newest-first AMONG ACCEPTED matches: carousel dirs are
+            # date-prefixed (2026-07-08-..., 2026-07-14-...), so
+            # lexicographic descending == newest-first. A topic re-rendered
+            # into a second dir must resolve to that newer render, never
+            # the stale one from a prior attempt. Deliberately sort-by-name
+            # (deterministic), not by mtime.
+            for m in sorted(accepted, reverse=True):
                 candidate = m / "slides"
                 if candidate.is_dir():
                     return candidate
@@ -886,9 +913,20 @@ def repair_false_incomplete(
     """One-shot repair (2026-07-17): the pre-fix dirless bug (missing/stale
     `slides_dir` misread as "no dir" for old-schema `carousel_path`-only
     entries — see `_resolve_slides_dir`) marked genuinely-complete carousels
-    render_incomplete. This scans every CURRENT `render_incomplete` entry and,
-    using the FIXED resolution, restores it to `drafted` when the resolved
-    slides dir actually has >=1 real slide PNG on disk.
+    render_incomplete. This scans every CURRENT `render_incomplete` entry
+    and, using the FIXED resolution, restores it to `drafted` when the
+    resolved slides dir has >=1 real slide PNG on disk AND disk matches
+    independently-resolved ground truth (`_resolve_expected_count` — the
+    same source `apply_completeness_backfill` trusts).
+
+    HIGH #3 (Codex red-team, 2026-07-17): `disk >= 1` alone is NOT enough —
+    a GENUINELY incomplete carousel (disk=8, but an independent source says
+    9) sitting in render_incomplete would otherwise be restored to drafted
+    with slide_count=8, becoming publish-eligible and defeating the
+    complete-or-nothing gate. Restore ONLY when `expected is not None and
+    disk == expected`; when expected is None (no independent ground truth
+    at all), refuse to guess — same doctrine as apply_completeness_
+    backfill's unknown_intent.
 
     Report-only by default; `--apply` mutates under the queue's fcntl lock +
     tmp+rename protocol (same as `apply_completeness_backfill`) so a
@@ -937,9 +975,16 @@ def repair_false_incomplete(
                 disk = viz.derive_slide_count(slides_dir)
                 if disk < 1:
                     continue  # resolved a dir, but it's empty — not a false positive
+                expected, expected_source = _resolve_expected_count(slides_dir.parent, entry)
+                if expected is None or disk != expected:
+                    # HIGH #3: no independent ground truth, or disk disagrees
+                    # with it — refuse to guess. Restoring here would make a
+                    # genuinely-incomplete carousel publish-eligible.
+                    continue
                 report = {
                     "entry_id": entry_id, "resolved_slides_dir": str(slides_dir),
-                    "disk": disk, "action": "restore_to_drafted",
+                    "disk": disk, "expected": expected, "expected_source": expected_source,
+                    "action": "restore_to_drafted",
                 }
                 if not dry_run:
                     entry["state"] = "drafted"

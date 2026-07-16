@@ -25,6 +25,15 @@ Merge semantics (monotone state lattice — remote wins EXCEPT):
     reported under `archived_dropped`. Live case: a golden-visa entry
     archived on Pro kept reappearing on M5 every tick because the old code
     treated "gone from remote queue" as always meaning "new local entry".
+    CRITICAL COUNTER-EXCEPTION (Codex red-team, 2026-07-17): a LOCAL entry
+    that is itself published* is ALWAYS kept even when archived on Pro —
+    kept in the merged output AND reported as local_only, plus flagged
+    under `published_local_kept_despite_archive`. Rationale: push_back only
+    fires from the REMOTE loop above, and once Pro archives the id it is no
+    longer in the remote queue at all — if this loop dropped it too, a
+    local publish transition that hadn't push-backed yet (race: M5
+    publishes, Pro archives before the next tick's push-back lands) would
+    lose its published state + instagram_post_url PERMANENTLY.
     Pathological case (present in BOTH remote queue and remote archive):
     the live queue wins — kept as a normal remote entry (not local_only, not
     dropped), with a warning in `queue_and_archive_conflict`.
@@ -36,7 +45,8 @@ CLI (used by infra/launchagents/wrappers/wr2-queue-pull.sh):
 prints a JSON report to stdout:
     {"protected": [ids], "local_only": [ids],
      "push_back": [{"id":..., "ref_code": "WR2-XXXXXX", "ig_url": ...}],
-     "archived_dropped": [ids], "queue_and_archive_conflict": [ids]}
+     "archived_dropped": [ids], "queue_and_archive_conflict": [ids],
+     "published_local_kept_despite_archive": [ids]}
 """
 
 from __future__ import annotations
@@ -143,6 +153,7 @@ def merge_queues(
             merged.append(r)
 
     local_only: list[str] = []
+    published_local_kept_despite_archive: list[str] = []
     for e in local:
         if not isinstance(e, dict):
             continue
@@ -150,8 +161,20 @@ def merge_queues(
         if not eid or eid in seen:
             continue
         if eid in archived_ids:
-            # archived on Pro, absent from Pro's live queue: Pro's decision,
-            # not a new local entry — drop instead of resurrecting.
+            if _is_published(e):
+                # CRITICAL (Codex red-team, 2026-07-17): a local publish
+                # transition survives an archive on Pro — dropping it here
+                # (as a plain archived_dropped) would permanently lose the
+                # published state + instagram_post_url with no recovery
+                # path, since push_back only fires from the remote loop
+                # above and this id is no longer in the remote queue at all.
+                merged.append(e)
+                local_only.append(str(eid))
+                published_local_kept_despite_archive.append(str(eid))
+                continue
+            # archived on Pro, absent from Pro's live queue, NOT published
+            # locally: Pro's decision, not a new local entry — drop instead
+            # of resurrecting.
             archived_dropped.append(str(eid))
             continue
         merged.append(e)
@@ -163,6 +186,7 @@ def merge_queues(
         "push_back": push_back,
         "archived_dropped": archived_dropped,
         "queue_and_archive_conflict": queue_and_archive_conflict,
+        "published_local_kept_despite_archive": published_local_kept_despite_archive,
     }
 
 

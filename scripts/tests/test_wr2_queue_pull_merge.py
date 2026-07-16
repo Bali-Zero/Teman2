@@ -148,6 +148,30 @@ def test_archived_local_only_entry_is_dropped_not_resurrected():
     assert [e["id"] for e in merged] == ["carousel_1"]
     assert report["local_only"] == []
     assert report["archived_dropped"] == ["golden_visa_1"]
+    assert report["published_local_kept_despite_archive"] == []
+
+
+def test_published_local_only_entry_survives_archive_on_pro():
+    """CRITICAL GUILT (Codex red-team, 2026-07-17): a local entry that is
+    ITSELF published* must survive even when its id is in the remote
+    archive and absent from the remote queue — push_back only fires from
+    the remote loop (for entries still present in the remote queue), so an
+    id Pro has already archived can never push_back; dropping it here would
+    permanently lose the published state + instagram_post_url with no
+    recovery path (live race: M5 publishes A, Pro archives A before the
+    next tick's push_back lands)."""
+    archived_and_published = _local_published("golden_visa_1")
+    merged, report = merge.merge_queues(
+        [_remote_drafted("carousel_1")],
+        [_remote_drafted("carousel_1"), archived_and_published],
+        remote_archive=[_remote_drafted("golden_visa_1")],
+    )
+    assert [e["id"] for e in merged] == ["carousel_1", "golden_visa_1"]
+    assert merged[1]["state"] == "published"
+    assert merged[1]["instagram_post_url"] == "https://www.instagram.com/p/AbC123/"
+    assert report["local_only"] == ["golden_visa_1"]
+    assert report["archived_dropped"] == []
+    assert report["published_local_kept_despite_archive"] == ["golden_visa_1"]
 
 
 def test_genuinely_local_entry_not_in_archive_still_protected():
