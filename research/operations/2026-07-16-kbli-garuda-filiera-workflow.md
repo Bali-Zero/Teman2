@@ -7,7 +7,7 @@ sources:
   - "companion: research/operations/2026-07-16-kbli-filiera-methodology.md (P1-P9, L0-L6, G13-G17)"
   - "mandate: Zero 2026-07-16 — 'ideare il workflow di agenti e LLM, scegliere l'orchestratore-mente-immobile, programma di ricostruzione dei singoli KBLI in maniera scientifica'"
   - "live enumeration 2026-07-16 on KBLI_2025_FINAL_CLEAN.json (119 / 478 / 1,263 / ~175 risk classes)"
-  - "adversarial panel 2026-07-16: Codex GPT-5.5 red-team (12 findings, 4 FATAL) + Gemini 3.1 Pro costruttivo (10 suggestions)"
+  - "adversarial panel 2026-07-16: Codex GPT-5.6-sol red-team (12 findings, 4 FATAL; CLI default gpt-5.6-sol, effort medium) + Gemini 3.1 Pro costruttivo (10 suggestions)"
 ---
 
 # GARUDA-FILIERA — the per-code KBLI reconstruction program (agents, seats, orchestrator)
@@ -51,7 +51,7 @@ sources:
 | Extractor | **Sonnet 5** (`model:"sonnet"`) | Workflow `agent()` | structured extraction from lampiran IMAGE renders; crosswalk mapping proposals with uraian-level rationale |
 | Vision locator | **qwen2.5vl:7b** (Ollama, Mini) | local batch | page/row triage on 300-dpi renders — LOCATOR ONLY, never the reader |
 | Width / regulatory search | **Gemini via `agy`** | CLI background | normativa search; long-context volume reads; BPS-table ingestion checks |
-| Red-team | **Codex GPT-5.5** | `codex exec --sandbox read-only < /dev/null` | attack mapping proposals + batch reports; sandbox checks on compiler outputs |
+| Red-team | **Codex GPT-5.6-sol** | `codex exec -m gpt-5.6-sol -c model_reasoning_effort="xhigh" --sandbox read-only < /dev/null` | attack mapping proposals + batch reports; sandbox checks on compiler outputs. `gpt-5.6-luna` available for mechanical Codex-side lanes |
 | Refuter (3rd family) | **GLM 5.2 → DeepSeek v4-pro → (swap rule §6)** | probe-then-cascade | blind re-extraction + falsification of non-deterministic facts |
 | Ground truth | **NotebookLM** (bipolar) | MCP | regulatory-claim verification ONLY with W90 freshness check |
 | Operator | **Zero** | Legge 5 | batch GO, publish decisions, consents |
@@ -179,7 +179,7 @@ order within a class (division/group) to maximize prompt-cache reuse (Gemini).
 
 ## Adversarial review (generator≠grader panel record)
 
-- **Codex GPT-5.5 red-team, 12 findings (4 FATAL, 8 MAJOR)** — all incorporated: F1 SPOF →
+- **Codex GPT-5.6-sol red-team (CLI default, effort medium), 12 findings (4 FATAL, 8 MAJOR)** — all incorporated: F1 SPOF →
   accepted-by-design with durable-state mitigation (§1); F2 resume → op_id idempotency + hash
   chain (§3); F3 races → leases + pinned manifests + fencing (§3); F4 crosswalk overreach → no
   deterministic 1-to-1 acceptance, uraian-equivalence check (§3 D1); F5 correlated verification →
