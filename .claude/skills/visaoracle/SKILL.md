@@ -71,3 +71,22 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 
 - 2026-07-17: corner created. Round 1 research lanes in flight (Gemini/Codex/GLM/web). Worktree
   `mouth-visa-oracle` active. No PR — worktree-only until operator-analyzed final draft.
+- 2026-07-17 (late night): ROUND 1 COMPLETE — 4 lanes delivered (Gemini survey / GLM design / Codex
+  sol-ultra architecture+red-team / Sonnet web-verified) + repo scout map. Corpus persisted in
+  research/visa/2026-07-17-visa-oracle-v2-round1-\*.md. Codex verdict: v1 NO-GO as legal engine (9
+  P0s, 5 spot-verified on disk by orchestrator — see round1-verification-note). Panel canon: GOV.UK
+  skeleton + behavioral interview (TurboTax) + living-tree design language + deterministic
+  rules-as-data engine + visible-honesty moat. Chat demoted to escape-hatch explainer. Round 2 lanes
+  fired: Gemini regulatory-delta (catalog staleness vs Kepmen M.IP-08/2025 index reclassification
+  133→110 + Permen Imipas 10/2026), Codex engine-concretization, GLM interview design, Sonnet
+  reuse-first OSS survey.
+
+## PENDING (W81 ledger, project-scoped)
+
+- SEAT-DEEPSEEK: DeepSeek V4 balance -0.04 USD (probed live 2026-07-17) — panel runs 3-external-seat and house web lane, DECLARED degraded. Arming step: operator
+  top-up (Zero). Proof-of-armed: 1-token live probe HTTP 200 with is_available:true.
+- R2-BROWSER-LANE deferred: 403-blocked gov wizards (IRCC / Australia / US Visa Wizard) +
+  evisa.imigrasi.go.id SPA + Awwwards pixel-study need claude-in-chrome browser automation — run in
+  an attended session.
+- WORKTREE-REBASE: branch is behind origin/main (2+ commits at last check) — rebase before the final
+  draft PR.
