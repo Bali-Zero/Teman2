@@ -357,3 +357,9 @@ class TestCodexFixedDlqRemoval:
             "aider_fixed, not left to increment autopilot_attempts toward a "
             "false TERMINAL"
         )
+
+        state = json.loads((d.AGENT_DIR / "state" / "dlq_autopilot.last.json").read_text())
+        assert "fixed=1" in state["detail"], (
+            "the run summary's `fixed` counter must count codex_fixed too, "
+            "not just retried_ok/aider_fixed (same 1-of-N tuple gap)"
+        )

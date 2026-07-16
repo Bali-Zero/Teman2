@@ -601,7 +601,8 @@ def _record_suppressed(job: str) -> None:
 def process_entry(entry: dict, registry: dict) -> str:
     """
     Process one DLQ entry. Returns action taken:
-    'skipped_terminal', 'skipped_preflight', 'retried_ok', 'aider_fixed', 'escalated', 'terminal', 'archived'
+    'skipped_terminal', 'skipped_preflight', 'skipped_noise', 'retried_ok',
+    'aider_fixed', 'codex_fixed', 'escalated', 'terminal', 'archived'
     """
     job = entry["job"]
     error = entry.get("error_summary", "")
@@ -886,7 +887,7 @@ def run_autopilot() -> None:
         save_dlq(updated_queue)
 
         duration = time.time() - start
-        fixed = sum(1 for a in results.values() if a in ("retried_ok", "aider_fixed"))
+        fixed = sum(1 for a in results.values() if a in ("retried_ok", "aider_fixed", "codex_fixed"))
         escalated = sum(1 for a in results.values() if a == "escalated")
         skipped = sum(1 for a in results.values() if a == "skipped_preflight")
         noise_skipped = sum(1 for a in results.values() if a == "skipped_noise")
