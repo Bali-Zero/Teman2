@@ -12,6 +12,7 @@ import asyncio
 import hashlib
 import json
 import pickle
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Generic, TypeVar
@@ -280,7 +281,7 @@ class CacheManager(Generic[T]):
     async def get_or_set(
         self,
         key: str,
-        factory: callable,
+        factory: Callable[..., Any],
         ttl: int | None = None,
         strategy: CacheStrategy | None = None,
     ) -> Any:
@@ -393,7 +394,7 @@ async def close_cache() -> None:
 def cached(
     ttl: int | None = None,
     strategy: CacheStrategy | None = None,
-    key_builder: callable | None = None,
+    key_builder: Callable[..., Any] | None = None,
     skip_args: list[int] | None = None,
 ):
     """Decorator for caching function results."""

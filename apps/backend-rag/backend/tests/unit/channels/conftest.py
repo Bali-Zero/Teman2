@@ -23,13 +23,13 @@ def simple_response() -> ChannelResponse:
 
 @pytest.fixture
 def response_with_sources() -> ChannelResponse:
-    """ChannelResponse with sources attached."""
+    """ChannelResponse with sources attached (all client-safe: public url + non-internal title)."""
     return ChannelResponse(
         text="Here is the answer.",
         sources=[
             {"title": "Visa Guide", "url": "https://example.com/visa", "collection": "visa_oracle"},
             {"title": "Tax Info", "url": "https://example.com/tax", "collection": "tax_genius"},
-            {"title": "Local Doc", "collection": "legal_unified"},
+            {"title": "Local Doc", "url": "https://example.com/local-doc", "collection": "legal_unified"},
         ],
         metadata={},
     )

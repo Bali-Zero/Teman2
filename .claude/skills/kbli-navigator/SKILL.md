@@ -26,7 +26,7 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-17 — keep current)
+## 1. LIVE STATE (last update 2026-07-18 — keep current)
 
 **Where the 1,559 actually stand (grounded on the Filiera methodology census):**
 
@@ -59,6 +59,7 @@ false-friends **49213, 51103, 51203, 20111, 50115, 60312, 64310**:
   other 5 are not in gold. → after this lands + Vercel rebuild, the 8-code pilot is fully honest on
   every consuming surface.
 - **KG dedup partial cure** #2528 landed (scoped); root fix is Fase 2 (below).
+- **TRACK-P product/UI layer PROVEN-LIVE** (2026-07-18, PR #2632 + badge-fix PR #2643, both merged, `apps/mouth` only — data-plane untouched): every `/kbli/<code>` page now RENDERS the honesty contract. A **provenance badge** (verified 1,336 / crosswalk-pending 215 / not-classifiable 8) derived in `apps/mouth/src/lib/kbli-provenance.ts` from structured markers ONLY (`_l2_source` EXACT-match `OSS_RBA_resiko_2025`, `_l2_status`, `per_skala_disputed_*` keys — never prose; disputed wins precedence over a stale OSS marker on 49213/20111; unknown marker → `unverified_source`, no invented vintage). A **"Sources & Verification"** per-layer panel (source + KBLI vintage + verdict; PMA disclosed as Perpres 10/49 vintage-2020 audit-pending). A **"Regulatory Divergence"** section on the 8 cured codes (verbatim `_data_note` + detached rows as audit trail + citation chips conditional on markers). FAQ (visible + FAQPage JSON-LD), Article JSON-LD, both key-facts grids and every RiskBadge carry the crosswalk-pending qualifier; not-classifiable codes no longer claim "special/sectoral regime". Wording rule F12 enforced (404 = "not retrievable via OSS API", never "not published"; detach copy speaks only about OUR verification, never asserts regulatory absence). Codex GPT-5.6 adversarial gate, 7 rounds (2 BLOCKER + 6 MAJOR cured) → SHIP. Also fixed the `TransitionBadge` (Direct Match/Renumbered/Aggregated/New-in-2025) from hardcoded light-mode Tailwind to `--kbli-*` dark-theme tokens (PR #2643). **BOUNDARY (recorded so nobody re-investigates):** `kbli-explorer` (the AI-chat inspect surface) canNOT show this provenance client-side — it consumes `/api/v1/kbli-notebook/inspect/<code>` returning `KBLIDetail`, which carries NO markers (`risk_profile`/`licensing_status` only). Aligning it is a BACKEND payload change (expose the verification state in `inspect_kbli`), NOT an apps/mouth task. Cured codes already degrade correctly there via the #2596/#2597 backend cure. **Follow-ups still open (owner/lane-gated, not apps/mouth):** F12-conformant rewrite of the verbatim `_data_note` texts (data-plane, filiera compilers); PMA verdict re-label on PMABadge/hero across all 1,559 pages (FATAL-2 axis, Zero decision — Legge 5).
 
 **What is NOT done (the actual remaining program):** ~213 no-scope codes un-adjudicated · the
 `pma_status` cross-vintage audit across the catalog · the KG 68% disease at the root · the 63
@@ -73,7 +74,7 @@ proven-live 4,959/4,959 at `nuzantara-backups/kbli-vault/` · OSS coverage 6,236
 vs census). **Open quarantines (proposed in PR #2622, NOT resolved):** BPS Vol.1 missing
 (Turnstile → browser lane) · Perpres-annex compiler not built · absence ≥72h window needs one
 probe after 2026-07-19T18:10Z · stray mirror copy in `nuzantara-warroom-images/kbli-vault/`
-(pre-fix run) to delete · PP28 300-dpi renders pending. **EXTRACTION GATE: D0-D6 cannot start until the PP28 300-dpi renders exist + the P1-v2 addendum lands (instrument status snapshots, OSS endpoint inventory — see #2622 conductor comment) + the P0 membership artifact is emitted.**
+(pre-fix run) to delete. **EXTRACTION GATE — collapsed to ONE precondition (updated 2026-07-18):** the gate is now just **P0 membership** (#2640 LANDING; the Detect Secrets git-SHA false-positive on `canonical_revision` was fixed via a durable auto-triage rule for `data/kbli-filiera/membership/`, proven end-to-end; auto-merge armed SQUASH). Two prior "gates" dissolved: (a) **renders are NOT a bulk pre-build** — the PP28 300-dpi renders are produced **on-demand per-code at D2** from the sha256-pinned PP28 PDFs (`pdftoppm -r 300`, deterministic, offline); (b) the **OSS endpoint inventory is DONE** (6,236/6,236 pairs, in the manifest). **P1-v2 addendum HELD until AFTER Pilota A1** — Zero ruling 2026-07-18 (_"aspetti dopo il Pilota A1 così misuriamo prima su vault-core pulito"_): Perpres 10/49 + Bali/Kepmenaker + per-instrument status snapshots come as a SECOND vault wave; `pma_status`/`l4_bali`/TKA facets **abstain fail-safe** (A1/A5/A6) this pass and are lifted later — never published wrong. **⇒ Pilota A1 starts on the OSS+PP28+BPS core the moment P0 is on main.** Genuinely-deferred (NOT gates): BPS Vol.1 (Turnstile → browser lane), absence-window one probe after 2026-07-19T18:10Z, stray warroom mirror copy to delete.
 
 **Governance flags:**
 
