@@ -370,7 +370,7 @@ None. This is content research in a dedicated worktree, no engine code, no catal
 `apps/backend-rag/backend/kb/` edits — nothing here requires operator action. The orchestrator gates
 before push per the task mandate.
 
-## 9. Adversarial review
+## Adversarial review
 
 R1 gate: `codex exec -m gpt-5.6-terra -c model_reasoning_effort=high --sandbox read-only` (generator≠grader
 — reviewer is a different model family than the Sonnet lane that authored this document), attacking the 3
