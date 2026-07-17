@@ -19,8 +19,17 @@
 --
 -- Mirrors migration 222/163 exact shape: DROP CONSTRAINT IF EXISTS -> ADD
 -- CONSTRAINT ... CHECK (status = ANY (ARRAY[...]::text)) NOT VALID -> separate
--- VALIDATE CONSTRAINT. Two-step NOT VALID + VALIDATE avoids ACCESS EXCLUSIVE
--- during the table scan (Squawk-safe, no long lock on a live table).
+-- VALIDATE CONSTRAINT. NOTE (2026-07-17 red-team finding #5, corrected): this
+-- two-step shape is inherited convention from 222/163, not a genuine
+-- lock-avoidance mechanism here -- backend/db/migration_base.py wraps a
+-- migration's forward SQL in a SINGLE transaction, so both ALTER TABLE
+-- statements commit together and the constraint-validation lock is held
+-- until that one transaction commits regardless of the NOT VALID split (the
+-- usual NOT VALID benefit -- letting VALIDATE run in ITS OWN later
+-- transaction with a lighter lock -- requires the two statements to be
+-- separate transactions, which this runner does not do). Kept as-is because
+-- lock duration is trivial on this table's current row count, not because
+-- it avoids ACCESS EXCLUSIVE.
 
 ALTER TABLE war_room_drafts
     DROP CONSTRAINT IF EXISTS war_room_drafts_status_check;

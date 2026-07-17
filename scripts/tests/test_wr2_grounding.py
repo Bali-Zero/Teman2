@@ -186,6 +186,53 @@ def test_marker_not_set_when_enrichment_already_has_real_facts():
     assert out["enrichment"]["the_facts"].startswith("Some real facts already present.")
 
 
+def test_marker_set_when_article_summary_is_whitespace_only():
+    """GUILT (red-team finding #1a): article_summary is present but pure
+    whitespace ("   ") — truthy in Python, so the OLD `if not base_facts:`
+    check missed it and left the marker unset even though the injected
+    the_facts ends up citations-only. The fix checks the shape of the
+    ACTUAL injected result, not base_facts truthiness."""
+    g.ENABLED = True
+
+    async def fake_rag(_):
+        return "Regulation PP 31/2013 applies."
+
+    g._query_rag = fake_rag
+    out = asyncio.run(
+        g.ground_enrichment({"enrichment": {}, "article_summary": "   "}, "t")
+    )
+    assert out["enrichment"]["_grounding_injected_only"] is True
+    assert out["enrichment"]["the_facts"].startswith("Riferimenti normativi")
+
+
+def test_early_return_leaves_marker_unset_but_structural_detector_still_catches_it():
+    """GUILT companion for red-team finding #1b: when enrichment.the_facts
+    ALREADY contains a citation, ground_enrichment short-circuits at the
+    `_find_law_citations(existing_facts)` check and returns the brief
+    UNCHANGED — the marker is never touched, even when that pre-existing
+    the_facts is itself nothing but the citation-rails shape (e.g. seeded by
+    an earlier run of this same function, or by any other producer). This is
+    NOT a bug in ground_enrichment (declining to re-inject is correct) — it
+    is exactly why wr2_draft_generator._has_usable_source must not rely on
+    the marker alone: `is_citations_only_the_facts` is the structural,
+    marker-independent fallback that still flags it downstream."""
+    g.ENABLED = True
+    pre_seeded_facts = (
+        "Riferimenti normativi (verbatim, citare senza parafrasare): PP 31/2013"
+    )
+    brief = {
+        "enrichment": {"the_facts": pre_seeded_facts},
+        "article_summary": "",
+    }
+
+    out = asyncio.run(g.ground_enrichment(brief, "t"))
+
+    assert out is brief  # unchanged object — early return, injection never reached
+    assert "_grounding_injected_only" not in out["enrichment"]
+    # ...but the structural SSOT still sees through it:
+    assert g.is_citations_only_the_facts(out["enrichment"]["the_facts"]) is True
+
+
 def test_marker_absent_when_no_citations_found():
     """No citations found at all -> early degrade-return, brief unchanged, no
     the_facts mutation, no marker (nothing was injected)."""
@@ -214,6 +261,8 @@ if __name__ == "__main__":
                test_marker_set_when_injecting_into_truly_empty_brief,
                test_marker_not_set_when_article_summary_present,
                test_marker_not_set_when_enrichment_already_has_real_facts,
+               test_marker_set_when_article_summary_is_whitespace_only,
+               test_early_return_leaves_marker_unset_but_structural_detector_still_catches_it,
                test_marker_absent_when_no_citations_found]:
         fn(); print("PASS", fn.__name__)
     print("ALL PASS")

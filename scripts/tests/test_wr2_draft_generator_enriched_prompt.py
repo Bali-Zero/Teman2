@@ -551,6 +551,59 @@ def test_has_usable_source_true_when_enrichment_has_real_facts_no_summary() -> N
     ) is True
 
 
+def test_has_usable_source_false_when_article_summary_is_whitespace_only() -> None:
+    """Red-team finding #1a companion: a whitespace-only summary must be
+    treated the same as an empty one — it is truthy in Python but carries no
+    real content, so it must NOT short-circuit `_has_usable_source` to True."""
+    assert _has_usable_source("   ", {"_grounding_injected_only": True}) is False
+
+
+def test_has_usable_source_false_when_facts_structurally_citations_only_without_marker_key() -> None:
+    """Red-team finding #1b companion: the structural detector
+    (wg.is_citations_only_the_facts) must catch a citations-only the_facts
+    even when the `_grounding_injected_only` marker key was never set at all
+    (the early-return gap in wr2_grounding.ground_enrichment) — detection
+    must not depend on the marker alone."""
+    enrichment = {
+        "the_facts": (
+            "Riferimenti normativi (verbatim, citare senza parafrasare): PP 31/2013"
+        ),
+    }
+    assert _has_usable_source("", enrichment) is False
+
+
+def test_has_usable_source_true_when_facts_citations_only_but_other_fields_real() -> None:
+    """Red-team finding #2: the_facts is citations-only (marker set), but the
+    enrichment object ALSO carries real content in another structured field.
+    The old implementation returned False the moment it saw the
+    citations-only signal, discarding real content elsewhere. The fix strips
+    ONLY the_facts from consideration and still checks the rest
+    (thirty_second_brief / bali_zero_take / in_practice / next_steps / faq)."""
+    enrichment = {
+        "the_facts": (
+            "Riferimenti normativi (verbatim, citare senza parafrasare): PP 31/2013"
+        ),
+        "_grounding_injected_only": True,
+        "thirty_second_brief": {
+            "what": "Three foreigners were deported for working illegally."
+        },
+    }
+    assert _has_usable_source("", enrichment) is True
+
+
+def test_has_usable_source_false_when_only_citations_only_facts_and_nothing_else() -> None:
+    """INNOCENCE for finding #2's fix: stripping the_facts must not create a
+    false-positive when there really is nothing else — the marker-only case
+    (no other structured fields) must still park."""
+    enrichment = {
+        "the_facts": (
+            "Riferimenti normativi (verbatim, citare senza parafrasare): PP 31/2013"
+        ),
+        "_grounding_injected_only": True,
+    }
+    assert _has_usable_source("", enrichment) is False
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # B2 — _process_one integration: park path vs. conservative no-park path
 # ─────────────────────────────────────────────────────────────────────────
@@ -603,9 +656,9 @@ async def test_process_one_parks_news_shaped_draft_with_no_usable_source(
     compose_mock = AsyncMock()
     monkeypatch.setattr(dg, "claude_compose_slides", compose_mock)
 
-    ok = await dg._process_one(conn, row)
+    outcome = await dg._process_one(conn, row)
 
-    assert ok is False
+    assert outcome == "parked"
     compose_mock.assert_not_called()
     conn.execute.assert_awaited_once()
     args, _kwargs = conn.execute.call_args
@@ -647,11 +700,59 @@ async def test_process_one_composes_when_news_shaped_but_summary_present(
     monkeypatch.setattr(dg.wom, "resolve_carousel_id", AsyncMock(return_value="cid-test"))
     monkeypatch.setattr(dg.wom, "record_step", AsyncMock())
 
-    ok = await dg._process_one(conn, row)
+    outcome = await dg._process_one(conn, row)
 
-    assert ok is True
+    assert outcome == "success"
     compose_mock.assert_awaited_once()
     # Persisted as a normal draft, not parked.
+    persist_calls = [c for c in conn.execute.call_args_list if "status" in c.args[0]]
+    assert any("'drafts'" in c.args[0] for c in persist_calls)
+    assert not any("parked" in c.args[0] for c in persist_calls)
+
+
+@pytest.mark.asyncio
+async def test_process_one_composes_when_facts_citations_only_but_enrichment_rich(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Integration no-park for red-team finding #2: article_summary is
+    EMPTY and the_facts IS citations-only (marker set) — but the enrichment
+    object carries real content in another structured field
+    (thirty_second_brief). The old _has_usable_source parked on the
+    citations-only signal alone, discarding that real content. The fix must
+    compose instead."""
+    draft_id = uuid.uuid4()
+    row = {
+        "id": draft_id,
+        "topic": "Bali Deports Three Foreigners Caught Working on Tourist Visas",
+        "brief_json": {
+            "article_summary": "",
+            "enrichment": {
+                "the_facts": "Riferimenti normativi: PP 31/2013",
+                "_grounding_injected_only": True,
+                "thirty_second_brief": {
+                    "what": "Three foreigners were deported for working illegally on tourist visas."
+                },
+            },
+            "staging_type": "news",
+            "liveness_tier": None,
+            "source_url": "https://example.com",
+        },
+    }
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    conn.fetch = AsyncMock(return_value=[])
+
+    compose_mock = AsyncMock(return_value=_FAKE_SLIDES_RESPONSE)
+    monkeypatch.setattr(dg, "claude_compose_slides", compose_mock)
+    monkeypatch.setattr(dg, "generate_cover_image", AsyncMock(return_value=(None, "skip-in-test")))
+    monkeypatch.setattr(dg, "_send_telegram", MagicMock())
+    monkeypatch.setattr(dg.wom, "resolve_carousel_id", AsyncMock(return_value="cid-test"))
+    monkeypatch.setattr(dg.wom, "record_step", AsyncMock())
+
+    outcome = await dg._process_one(conn, row)
+
+    assert outcome == "success"
+    compose_mock.assert_awaited_once()
     persist_calls = [c for c in conn.execute.call_args_list if "status" in c.args[0]]
     assert any("'drafts'" in c.args[0] for c in persist_calls)
     assert not any("parked" in c.args[0] for c in persist_calls)

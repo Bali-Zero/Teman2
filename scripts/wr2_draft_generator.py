@@ -32,7 +32,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
@@ -42,6 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import asyncpg  # noqa: E402
 
+import wr2_grounding as wg  # noqa: E402  (pure, side-effect-free: is_citations_only_the_facts SSOT)
 import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
 import wr2_topic_type as tt  # noqa: E402  (pure, side-effect-free)
 from backend.llm.claude_oauth_client import (  # noqa: E402
@@ -772,17 +773,37 @@ def _has_usable_source(summary: str, enrichment: dict[str, Any] | None) -> bool:
     """True when there is something concrete for Claude to compose from.
 
     A non-empty article_summary always counts. Absent that, a real enrichment
-    object counts too — UNLESS its only content came from the grounding
-    injection (`_grounding_injected_only`, set by wr2_grounding.ground_enrichment
-    exactly when it had no prose facts to inject INTO, i.e. citations-only).
+    object counts too — UNLESS its the_facts carries zero real event content.
+    Two independent signals catch that (2026-07-17 red-team finding #1: the
+    marker alone is not enough):
+      - the `_grounding_injected_only` marker (set by wr2_grounding.
+        ground_enrichment at injection time); OR
+      - the_facts is STRUCTURALLY the citation-rails shape
+        (wg.is_citations_only_the_facts) — this also catches a citations-only
+        the_facts the grounding call short-circuited PAST (it already
+        contained a citation, so ground_enrichment returned early and never
+        touched the marker) or one seeded some other way entirely.
+    Either signal strips ONLY the_facts from consideration — the other
+    structured fields (thirty_second_brief / bali_zero_take / in_practice /
+    next_steps / faq) still count as real, composable content on their own
+    (2026-07-17 red-team finding #2: don't terminally park a brief that has
+    real content elsewhere just because the_facts is citations-only).
     """
     if summary and summary.strip():
         return True
     if not enrichment:
         return False
-    if enrichment.get("_grounding_injected_only"):
-        return False
-    return bool(_build_enriched_brief(enrichment, None))
+
+    the_facts = str(enrichment.get("the_facts") or "")
+    facts_are_citations_only = bool(
+        enrichment.get("_grounding_injected_only") or wg.is_citations_only_the_facts(the_facts)
+    )
+    if not facts_are_citations_only:
+        return bool(_build_enriched_brief(enrichment, None))
+
+    facts_free = dict(enrichment)
+    facts_free.pop("the_facts", None)
+    return bool(_build_enriched_brief(facts_free, None))
 
 
 _JSON_BLOCK_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
@@ -1340,7 +1361,10 @@ async def _mark_parked(
 # ─────────────────────────────────────────────────────────────────────────
 
 
-async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
+_ProcessOutcome = Literal["success", "parked", "failed"]
+
+
+async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _ProcessOutcome:
     draft_id: uuid.UUID = row["id"]
     topic: str = row["topic"]
     brief_raw = row["brief_json"]
@@ -1373,7 +1397,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         )
         logger.warning("Draft %s parked: %s", draft_id, reason)
         await _mark_parked(conn, draft_id, reason)
-        return False
+        return "parked"
 
     # ── P-4 anti-sameness (constitution Art 10.6) ──────────────────────────
     # Soft steer (ALWAYS ON): derive the prospective domain from the topic,
@@ -1411,12 +1435,12 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
             logger.error("Claude OAuth failed: %s", e)
             await _mark_rejected(conn, draft_id, f"claude_failed: {e}")
             _send_telegram(f"WR2 draft_generator Claude failed\ndraft {draft_id}\n{str(e)[:200]}")
-            return False
+            return "failed"
         except (json.JSONDecodeError, ValueError) as e:
             _wom_error = e
             logger.error("Claude output parse failed: %s", e)
             await _mark_rejected(conn, draft_id, f"parse_error: {e}")
-            return False
+            return "failed"
         finally:
             _wom_cid = await wom.resolve_carousel_id(
                 conn, topic=topic, session_id=f"draft_generator:{draft_id}"
@@ -1440,7 +1464,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         except ValueError as e:
             logger.error("Normalisation failed: %s", e)
             await _mark_rejected(conn, draft_id, f"normalise_error: {e}")
-            return False
+            return "failed"
 
         # A4 closer guard (tier-independent, flag-independent): if the closing
         # statement-bomb body is too long it wraps into a text-brick. WARN + a
@@ -1552,7 +1576,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         f"Draft: {draft_id}\n"
         "Canva Renderer ogni 5 min",
     )
-    return True
+    return "success"
 
 
 async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
@@ -1569,6 +1593,8 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
     try:
         async with pool.acquire() as conn:
             successes = 0
+            parked = 0
+            failures = 0
             attempted = 0
             for loop_n in range(max_loops):
                 if draft_id:
@@ -1598,10 +1624,15 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
                 for row in rows:
                     attempted += 1
                     try:
-                        ok = await _process_one(conn, row)
-                        if ok:
+                        outcome = await _process_one(conn, row)
+                        if outcome == "success":
                             successes += 1
+                        elif outcome == "parked":
+                            parked += 1
+                        else:
+                            failures += 1
                     except Exception as e:
+                        failures += 1
                         logger.exception("Unhandled error on draft %s: %s", row["id"], e)
                         try:
                             await _mark_rejected(conn, row["id"], f"unhandled: {e}")
@@ -1610,8 +1641,21 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
                 if draft_id:
                     break
 
-            logger.info("Done: %d/%d drafts promoted to 'drafts'", successes, attempted)
-            return 0 if successes > 0 else 2
+            logger.info(
+                "Done: %d/%d drafts promoted to 'drafts' (%d parked, %d failed)",
+                successes, attempted, parked, failures,
+            )
+            # 2026-07-17 red-team finding #4: a batch where every draft was
+            # correctly parked (0 successes, 0 failures) previously fell into
+            # the `else 2` branch and got reported as a full-batch failure by
+            # scripts/launchagent-state-bridge.py:594 (nonzero => failed),
+            # firing a false P-incident. `parked` is a deliberate terminal
+            # outcome (B2 backstop), not an error — exit 0 whenever there were
+            # no REAL failures (only successes and/or parks). Exit 2 is
+            # reserved for genuine all-failed batches (>=1 real failure and no
+            # successes to offset it) — same leniency the old code gave a
+            # batch with a mix of successes and failures.
+            return 0 if (failures == 0 or successes > 0) else 2
     finally:
         await pool.close()
 
