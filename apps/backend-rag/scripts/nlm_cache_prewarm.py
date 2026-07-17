@@ -25,6 +25,7 @@ import json
 import logging
 import os
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -276,14 +277,37 @@ async def prewarm(
                         "notebook_id": notebook_id,
                         "source": "prewarm",
                         "citations": citations,
+                        # P7 (SPEC v2 D3): NotebookLMCacheService.set() now enforces
+                        # provenance metadata on every write. Prewarm entries are
+                        # live, unreviewed NLM answers (not pre-vetted curated
+                        # content), so they get a low source_priority — a
+                        # harvester-written curated entry always outranks them.
+                        "source_ref": f"nlm-bridge:{notebook_id}",
+                        "source_date": datetime.now(tz=timezone.utc).date().isoformat(),
+                        "confidence_class": "unvetted_nlm_live",
+                        "source_priority": 10,
                     }
 
-                    success = await cache.set(
-                        question=question,
-                        answer=answer,
-                        metadata=metadata,
-                        notebook_id=notebook_id,
-                    )
+                    try:
+                        success = await cache.set(
+                            question=question,
+                            answer=answer,
+                            metadata=metadata,
+                            notebook_id=notebook_id,
+                        )
+                    except ValueError as e:
+                        # Defensive: should not happen given the metadata above,
+                        # but a provenance-contract violation must never crash
+                        # the whole prewarm loop for the remaining questions.
+                        logger.warning(
+                            "[%s] Q%d/%d: %r  -> CACHE WRITE REJECTED (%s)",
+                            domain,
+                            idx,
+                            len(questions),
+                            question,
+                            e,
+                        )
+                        success = False
 
                     if success:
                         logger.info(

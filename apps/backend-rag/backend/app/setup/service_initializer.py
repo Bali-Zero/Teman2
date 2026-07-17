@@ -920,6 +920,10 @@ async def initialize_intelligent_router(
             # personality_service removed - replaced by Zantara Identity Layer
             collaborator_service=collaborator_service,
             db_pool=db_pool,
+            # P7 (SPEC v2 D3): FAQ cache set at Step 2.5 (initialize_faq_cache_service)
+            # must reach IntelligentRouter's orchestrator too, not just the fallback
+            # orchestrator built in initialize_channel_router.
+            faq_cache=getattr(app.state, "faq_cache", None),
         )
         app.state.intelligent_router = intelligent_router
         service_registry.register("router", ServiceStatus.HEALTHY, critical=True)

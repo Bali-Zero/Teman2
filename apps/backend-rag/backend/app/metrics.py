@@ -113,6 +113,13 @@ faq_cache_api_cost_saved_usd = safe_register_counter(
     "Estimated API cost savings from FAQ cache (USD)",
 )
 
+# Curated QA grounding-injection metrics (SPEC v2 D3-L2, F1b)
+curated_qa_injections_total = safe_register_counter(
+    "zantara_curated_qa_injections_total",
+    "Total D3-L2 grounding injections (curated_qa hit >= score threshold, "
+    "prepended as high-priority evidence to the ReAct context)",
+)
+
 # AI Metrics
 ai_requests = safe_register_counter("zantara_ai_requests_total", "Total AI requests", ["model"])
 ai_latency = safe_register_histogram("zantara_ai_latency_seconds", "AI response latency", ["model"])
