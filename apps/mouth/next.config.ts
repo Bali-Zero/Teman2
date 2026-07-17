@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
     root: path.join(__dirname, "../.."),
   },
   reactStrictMode: true,
+  // CI e2e runs hit the dev server via 127.0.0.1 while Next considers its
+  // origin "localhost"; without this, Next 16 blocks cross-origin dev
+  // resources and React never hydrates (visa-oracle-v2.spec.ts red, CI-only).
+  allowedDevOrigins: ["127.0.0.1"],
   typescript: {
     ignoreBuildErrors: false,
   },
