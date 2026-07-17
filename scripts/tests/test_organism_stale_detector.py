@@ -16,6 +16,7 @@ Contract (guilt + innocence, per cicatrix-superscar #2 antidote):
 
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -24,6 +25,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from organism_stale_detector import (  # noqa: E402
     StaleFinding,
     scan_sidecars,
+    sync_cross_host_sidecars,
 )
 
 
@@ -203,3 +205,172 @@ def test_ollama_pro_program_path_collision_suppressed(tmp_path):
     findings = scan_sidecars_status(d, now=time.time())
     flagged = {f.organ_id for f in findings if f.kind == "unhealthy"}
     assert "infra.ollama_pro" not in flagged, f"ollama false-positive not suppressed: {flagged}"
+
+
+# --- cross-host sidecar sync (2026-07-17, PENDING-ARMS "infra.eventbus_redis_mini
+# heartbeat frozen 7.9d"): infra.eventbus_redis_mini is probed and written by a
+# cron resident on Pro, never on Mini — Mini's local sidecar could freeze forever
+# with nothing local able to refresh it. sync_cross_host_sidecars() closes that
+# gap with a read-only ssh pull. All ssh calls are mocked: never touch a real
+# network in this suite. ---
+
+
+class _FakeCompletedProcess:
+    def __init__(self, returncode=0, stdout=""):
+        self.returncode = returncode
+        self.stdout = stdout
+
+
+def test_cross_host_sync_guilt_refreshes_stale_local_mirror(tmp_path, monkeypatch):
+    """GUILT: a blind-host mirror older than the refresh interval is replaced by
+    the fresher remote receipt — the actual cure for the frozen-heartbeat bug."""
+    d = str(tmp_path)
+    old_ts = time.time() - 999_999
+    p = _write(
+        d, "infra.eventbus_redis_mini",
+        {"organ_id": "infra.eventbus_redis_mini", "ts": old_ts, "status": "ok"},
+    )
+    os.utime(p, (old_ts, old_ts))
+
+    fresh_ts = time.time()
+    remote_payload = json.dumps(
+        {"organ_id": "infra.eventbus_redis_mini", "ts": fresh_ts, "status": "ok"}
+    )
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return _FakeCompletedProcess(returncode=0, stdout=remote_payload)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    sync_cross_host_sidecars(d, host="mini-pro2", now=fresh_ts)
+
+    assert len(calls) == 1
+    with open(p, encoding="utf-8") as fh:
+        written = json.load(fh)
+    assert written["ts"] == fresh_ts
+
+    # the whole point: scan_sidecars must now see it as fresh, not stale.
+    findings = scan_sidecars(d, stale_days=7, now=fresh_ts)
+    assert findings == [], f"still flagged stale after sync: {findings}"
+
+
+def test_cross_host_sync_guilt_creates_missing_local_mirror(tmp_path, monkeypatch):
+    """GUILT: no local sidecar at all is also worth fetching, not just a stale one."""
+    d = str(tmp_path)
+    fresh_ts = time.time()
+    remote_payload = json.dumps(
+        {"organ_id": "infra.eventbus_redis_mini", "ts": fresh_ts, "status": "ok"}
+    )
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: _FakeCompletedProcess(returncode=0, stdout=remote_payload),
+    )
+
+    sync_cross_host_sidecars(d, host="mini-pro2", now=fresh_ts)
+
+    local_path = os.path.join(d, "infra.eventbus_redis_mini.json")
+    assert os.path.exists(local_path)
+    with open(local_path, encoding="utf-8") as fh:
+        assert json.load(fh)["ts"] == fresh_ts
+
+
+def test_cross_host_sync_innocence_fresh_mirror_skips_ssh(tmp_path, monkeypatch):
+    """INNOCENCE: a mirror refreshed within the last cycle must not trigger an ssh
+    round-trip on every single invocation (the SessionStart-hook-adjacent path)."""
+    d = str(tmp_path)
+    now = time.time()
+    _write(
+        d, "infra.eventbus_redis_mini",
+        {"organ_id": "infra.eventbus_redis_mini", "ts": now, "status": "ok"},
+    )
+    calls = []
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: calls.append(cmd) or _FakeCompletedProcess(),
+    )
+
+    sync_cross_host_sidecars(d, host="mini-pro2", now=now, min_interval_sec=240.0)
+
+    assert calls == [], "ssh invoked despite an already-fresh local mirror"
+
+
+def test_cross_host_sync_innocence_non_blind_host_is_noop(tmp_path, monkeypatch):
+    """INNOCENCE: running on Pro (the host that already writes this organ's
+    receipt locally) must never shell out — this is a Mini-only blind spot."""
+    d = str(tmp_path)
+    calls = []
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: calls.append(cmd) or _FakeCompletedProcess(),
+    )
+
+    sync_cross_host_sidecars(d, host="nuzantara")
+
+    assert calls == []
+
+
+def test_cross_host_sync_graceful_on_ssh_failure(tmp_path, monkeypatch):
+    """A failed ssh pull (unreachable host, no key, etc.) must never clobber the
+    existing local file — scan_sidecars still reports it honestly as stale."""
+    d = str(tmp_path)
+    old_ts = time.time() - 999_999
+    p = _write(
+        d, "infra.eventbus_redis_mini",
+        {"organ_id": "infra.eventbus_redis_mini", "ts": old_ts, "status": "ok"},
+    )
+    os.utime(p, (old_ts, old_ts))
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: _FakeCompletedProcess(returncode=255, stdout=""),
+    )
+
+    sync_cross_host_sidecars(d, host="mini-pro2", now=time.time())
+
+    with open(p, encoding="utf-8") as fh:
+        assert json.load(fh)["ts"] == old_ts
+
+
+def test_cross_host_sync_graceful_on_bad_json(tmp_path, monkeypatch):
+    """A remote receipt that fails to parse must never clobber the existing
+    local file either — same graceful-degradation contract as an ssh failure."""
+    d = str(tmp_path)
+    old_ts = time.time() - 999_999
+    p = _write(
+        d, "infra.eventbus_redis_mini",
+        {"organ_id": "infra.eventbus_redis_mini", "ts": old_ts, "status": "ok"},
+    )
+    os.utime(p, (old_ts, old_ts))
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda cmd, **kw: _FakeCompletedProcess(returncode=0, stdout="not-json{{{"),
+    )
+
+    sync_cross_host_sidecars(d, host="mini-pro2", now=time.time())
+
+    with open(p, encoding="utf-8") as fh:
+        assert json.load(fh)["ts"] == old_ts
+
+
+def test_cross_host_sync_graceful_on_timeout(tmp_path, monkeypatch):
+    """An ssh call that times out must be caught, not propagate — the caller
+    (organism_stale_detector's main(), potentially SessionStart-adjacent) must
+    never crash or hang because Pro is unreachable."""
+    d = str(tmp_path)
+    old_ts = time.time() - 999_999
+    p = _write(
+        d, "infra.eventbus_redis_mini",
+        {"organ_id": "infra.eventbus_redis_mini", "ts": old_ts, "status": "ok"},
+    )
+    os.utime(p, (old_ts, old_ts))
+
+    def fake_run(cmd, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=cmd, timeout=3)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    sync_cross_host_sidecars(d, host="mini-pro2", now=time.time())
+
+    with open(p, encoding="utf-8") as fh:
+        assert json.load(fh)["ts"] == old_ts
