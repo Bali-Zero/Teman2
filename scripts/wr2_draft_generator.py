@@ -32,7 +32,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
@@ -42,6 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import asyncpg  # noqa: E402
 
+import wr2_grounding as wg  # noqa: E402  (pure, side-effect-free: is_citations_only_the_facts SSOT)
 import wr2_orchestrator_metrics as wom  # noqa: E402  (B11: per-step observability, fail-open)
 import wr2_topic_type as tt  # noqa: E402  (pure, side-effect-free)
 from backend.llm.claude_oauth_client import (  # noqa: E402
@@ -193,6 +194,24 @@ _CLOSER_STEER = (
     "CLOSER — the LAST slide is the closing statement-bomb: it MUST be a single-line "
     f"bold statement, at most {CLOSER_MAX_WORDS} words. No paragraph, no multi-sentence "
     "sign-off — one punch."
+)
+
+# ── B1: facts-first prompt composition (draft 1229c367, 2026-07-16) ───────────
+# `_build_enriched_brief` used to be the SOLE body whenever enrichment was
+# truthy — but enrichment is often a grounding INJECTION (wr2_grounding.py:
+# ground_enrichment), and its `the_facts` can be as little as a citations block
+# plus a 600-char slice of the article, cut mid-sentence. Used alone it starves
+# Claude of the concrete event (who/what/when) and invites invention — the
+# published carousel read like a generic legal brief, not this deportation
+# story. The fix composes BOTH when both exist: the full article_summary leads
+# (the real event), the enriched brief follows as supporting citations/take/
+# practice — never a replacement for the article.
+_FACTS_FIRST_STEER = (
+    "SOURCE-GROUNDING — a concrete news article is attached below (see 'Source "
+    "article'). The carousel MUST tell THIS event: who, what, when, where — not "
+    "generic evergreen advice about the topic area. The supporting brief below it "
+    "is background (citations, editorial take, practice notes), never a "
+    "replacement for the article's facts."
 )
 
 
@@ -641,27 +660,49 @@ def _build_draft_prompt(
     WR2_USE_FULL_ENRICHED_PROMPT=false to opt out and force the legacy path
     for back-compat / rollback.
 
-    Falls back to summary[:3500] when:
+    B1 (2026-07-17, facts-first): when BOTH `summary` and the enriched brief
+    are usable, the body leads with the source article (`summary[:3500]`) and
+    appends the enriched brief as supporting material — the enriched brief
+    alone is a citations/take/practice LAYER, not a substitute for the actual
+    event. See draft 1229c367 (module docstring above `_FACTS_FIRST_STEER`).
+
+    Falls back to summary[:3500] alone when:
       - WR2_USE_FULL_ENRICHED_PROMPT == "false" (legacy opt-out), OR
       - enrichment dict is empty / missing all expected fields.
+    Falls back to the enriched brief alone when `summary` is empty.
     """
     use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "true").lower() == "true"
 
-    body = ""
+    enriched_body = ""
     if use_full_enriched and enrichment:
-        body = _build_enriched_brief(enrichment, live_reasons)
+        enriched_body = _build_enriched_brief(enrichment, live_reasons)
 
-    if not body:
+    facts_first = bool(summary and summary.strip()) and bool(enriched_body)
+
+    if facts_first:
+        body = (
+            "### Source article (the real event — ground who/what/when in this)\n"
+            f"{summary[:3500]}\n\n"
+            "### Supporting brief (citations, editorial take, practice notes — "
+            "background only, never a substitute for the article above)\n"
+            f"{enriched_body}"
+        )
+    elif enriched_body:
+        body = enriched_body
+    else:
         # Legacy path: truncated summary. Always available as fallback.
         body = summary[:3500]
 
     # A1 framing + A2 length + A3 tone steer (all empty for unknown/manual tier).
-    # A4 closer steer is tier-INDEPENDENT — the closing statement must be single-line
-    # regardless of timeliness — so it's always on.
+    # B1 facts-first steer only fires when the composed body actually leads with
+    # the article (see `facts_first` above). A4 closer steer is tier-INDEPENDENT
+    # — the closing statement must be single-line regardless of timeliness — so
+    # it's always on.
     steer_lines = [
         _LIVENESS_FRAMING.get(liveness_tier, ""),
         _length_guidance(liveness_tier),
         _tone_guidance(liveness_tier),
+        _FACTS_FIRST_STEER if facts_first else "",
         _CLOSER_STEER,
     ]
     steer_block = "".join(f"\n\n{line}" for line in steer_lines if line)
@@ -689,6 +730,80 @@ Content:
 
 Produce the full {closing_range} slide JSON NOW. English content. No text outside the JSON object.
 """
+
+
+# ── B2: refuse-to-guess backstop (park, never draft) ───────────────────────────
+# Facts-first (B1 above) fixes the case where the article_summary IS present but
+# gets shadowed by the enriched brief. It has nothing to fix when there is truly
+# NO usable source anywhere — an empty article_summary and an enrichment whose
+# only "facts" are the grounding injection's citation block (wr2_grounding.py:
+# ground_enrichment sets `_grounding_injected_only` exactly in that case). Rather
+# than let Claude invent the story from a bare headline, park the draft for a
+# human to re-source. Conservative by design: both checks below are
+# false-negative-biased (when unsure, compose — don't park) because parking is a
+# dead end (no downstream re-tries a parked draft) while composing-anyway just
+# risks the pre-existing quality bar.
+_NEWS_EVENT_TITLE_RE = re.compile(
+    r"\b(deport(?:s|ed|ation)?|arrest(?:s|ed)?|raid(?:s|ed)?|seiz(?:es|ed|ure)|"
+    r"sentenc(?:ed|es)|detain(?:s|ed)?|expell?ed|charged|crackdown|banned|"
+    r"shuts?\s+down|dies|died|killed)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_news_shaped(brief: dict[str, Any], liveness_tier: str, topic: str) -> bool:
+    """Conservative "is this a news event" check for the park backstop.
+
+    Signals (any one is enough): `staging_type` from the intel pipeline names
+    "news" (wr2_topic_selector.py: `top_item.get("type")`, Literal["visa","news"]
+    upstream — apps/backend-rag/backend/services/intel/intel_staging_service.py);
+    liveness_tier already resolved to breaking/developing; or the topic headline
+    matches a hard-news event verb. False-negative-biased on purpose: an
+    evergreen/manual topic that slips through composes normally either way.
+    """
+    staging_type = str(brief.get("staging_type") or "").strip().lower()
+    if "news" in staging_type:
+        return True
+    if liveness_tier in {"breaking", "developing"}:
+        return True
+    return bool(_NEWS_EVENT_TITLE_RE.search(topic or ""))
+
+
+def _has_usable_source(summary: str, enrichment: dict[str, Any] | None) -> bool:
+    """True when there is something concrete for Claude to compose from.
+
+    A non-empty article_summary always counts. Absent that, a real enrichment
+    object counts too — UNLESS its the_facts carries zero real event content.
+    Two independent signals catch that (2026-07-17 red-team finding #1: the
+    marker alone is not enough):
+      - the `_grounding_injected_only` marker (set by wr2_grounding.
+        ground_enrichment at injection time); OR
+      - the_facts is STRUCTURALLY the citation-rails shape
+        (wg.is_citations_only_the_facts) — this also catches a citations-only
+        the_facts the grounding call short-circuited PAST (it already
+        contained a citation, so ground_enrichment returned early and never
+        touched the marker) or one seeded some other way entirely.
+    Either signal strips ONLY the_facts from consideration — the other
+    structured fields (thirty_second_brief / bali_zero_take / in_practice /
+    next_steps / faq) still count as real, composable content on their own
+    (2026-07-17 red-team finding #2: don't terminally park a brief that has
+    real content elsewhere just because the_facts is citations-only).
+    """
+    if summary and summary.strip():
+        return True
+    if not enrichment:
+        return False
+
+    the_facts = str(enrichment.get("the_facts") or "")
+    facts_are_citations_only = bool(
+        enrichment.get("_grounding_injected_only") or wg.is_citations_only_the_facts(the_facts)
+    )
+    if not facts_are_citations_only:
+        return bool(_build_enriched_brief(enrichment, None))
+
+    facts_free = dict(enrichment)
+    facts_free.pop("the_facts", None)
+    return bool(_build_enriched_brief(facts_free, None))
 
 
 _JSON_BLOCK_RE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
@@ -1219,12 +1334,37 @@ async def _mark_rejected(
     )
 
 
+async def _mark_parked(
+    conn: asyncpg.Connection,
+    draft_id: uuid.UUID,
+    reason: str,
+) -> None:
+    """B2 park backstop: durable, terminal, human-attended — never picked up
+    again automatically (mirrors _mark_rejected; 'parked' is registered as a
+    terminal status in wr2_supervisor_watchdog.TERMINAL_STATUSES so it doesn't
+    read as state-machine drift, cicatrix #9)."""
+    await conn.execute(
+        """
+        UPDATE war_room_drafts
+           SET status           = 'parked',
+               rejection_reason = $2,
+               updated_at       = NOW()
+         WHERE id = $1
+        """,
+        draft_id,
+        reason[:1000],
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # Main loop
 # ─────────────────────────────────────────────────────────────────────────
 
 
-async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
+_ProcessOutcome = Literal["success", "parked", "failed"]
+
+
+async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _ProcessOutcome:
     draft_id: uuid.UUID = row["id"]
     topic: str = row["topic"]
     brief_raw = row["brief_json"]
@@ -1244,6 +1384,20 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         bool(enrichment), brief.get("live_news_score"),
         liveness_tier or "(none)",
     )
+
+    # ── B2 refuse-to-guess backstop (park, never draft) ────────────────────
+    # Checked BEFORE any Claude call: a news-shaped draft with no usable source
+    # anywhere (empty article_summary AND enrichment that's citations-only) has
+    # nothing for B1's facts-first fix to lead with — composing would mean
+    # inventing the story (the 2026-07-16 failure, draft 1229c367). Park it.
+    if _is_news_shaped(brief, liveness_tier, topic) and not _has_usable_source(summary, enrichment):
+        reason = (
+            "news-shaped draft has no usable source content: empty article_summary "
+            "and enrichment is citations-only (grounding-injected, no real facts)"
+        )
+        logger.warning("Draft %s parked: %s", draft_id, reason)
+        await _mark_parked(conn, draft_id, reason)
+        return "parked"
 
     # ── P-4 anti-sameness (constitution Art 10.6) ──────────────────────────
     # Soft steer (ALWAYS ON): derive the prospective domain from the topic,
@@ -1281,12 +1435,12 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
             logger.error("Claude OAuth failed: %s", e)
             await _mark_rejected(conn, draft_id, f"claude_failed: {e}")
             _send_telegram(f"WR2 draft_generator Claude failed\ndraft {draft_id}\n{str(e)[:200]}")
-            return False
+            return "failed"
         except (json.JSONDecodeError, ValueError) as e:
             _wom_error = e
             logger.error("Claude output parse failed: %s", e)
             await _mark_rejected(conn, draft_id, f"parse_error: {e}")
-            return False
+            return "failed"
         finally:
             _wom_cid = await wom.resolve_carousel_id(
                 conn, topic=topic, session_id=f"draft_generator:{draft_id}"
@@ -1310,7 +1464,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         except ValueError as e:
             logger.error("Normalisation failed: %s", e)
             await _mark_rejected(conn, draft_id, f"normalise_error: {e}")
-            return False
+            return "failed"
 
         # A4 closer guard (tier-independent, flag-independent): if the closing
         # statement-bomb body is too long it wraps into a text-brick. WARN + a
@@ -1422,7 +1576,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         f"Draft: {draft_id}\n"
         "Canva Renderer ogni 5 min",
     )
-    return True
+    return "success"
 
 
 async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
@@ -1439,6 +1593,8 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
     try:
         async with pool.acquire() as conn:
             successes = 0
+            parked = 0
+            failures = 0
             attempted = 0
             for loop_n in range(max_loops):
                 if draft_id:
@@ -1468,10 +1624,15 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
                 for row in rows:
                     attempted += 1
                     try:
-                        ok = await _process_one(conn, row)
-                        if ok:
+                        outcome = await _process_one(conn, row)
+                        if outcome == "success":
                             successes += 1
+                        elif outcome == "parked":
+                            parked += 1
+                        else:
+                            failures += 1
                     except Exception as e:
+                        failures += 1
                         logger.exception("Unhandled error on draft %s: %s", row["id"], e)
                         try:
                             await _mark_rejected(conn, row["id"], f"unhandled: {e}")
@@ -1480,8 +1641,21 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
                 if draft_id:
                     break
 
-            logger.info("Done: %d/%d drafts promoted to 'drafts'", successes, attempted)
-            return 0 if successes > 0 else 2
+            logger.info(
+                "Done: %d/%d drafts promoted to 'drafts' (%d parked, %d failed)",
+                successes, attempted, parked, failures,
+            )
+            # 2026-07-17 red-team finding #4: a batch where every draft was
+            # correctly parked (0 successes, 0 failures) previously fell into
+            # the `else 2` branch and got reported as a full-batch failure by
+            # scripts/launchagent-state-bridge.py:594 (nonzero => failed),
+            # firing a false P-incident. `parked` is a deliberate terminal
+            # outcome (B2 backstop), not an error — exit 0 whenever there were
+            # no REAL failures (only successes and/or parks). Exit 2 is
+            # reserved for genuine all-failed batches (>=1 real failure and no
+            # successes to offset it) — same leniency the old code gave a
+            # batch with a mix of successes and failures.
+            return 0 if (failures == 0 or successes > 0) else 2
     finally:
         await pool.close()
 
