@@ -64,6 +64,17 @@ false-friends **49213, 51103, 51203, 20111, 50115, 60312, 64310**:
 `pma_status` cross-vintage audit across the catalog · the KG 68% disease at the root · the 63
 phantom gold-remap rows · Batches A(remainder)/B/C/D of the Filiera sweep. See §5.
 
+**Batch-0 vault bootstrap DONE (2026-07-18, LANE-B0 task #8, PR #2622 merged `17f360df4`):**
+raw-evidence vault live on Mini `~/nuzantara-vault/` (bps 1 + oss 4,933 + pp28 21 blobs) ·
+manifest committed `data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json` (4,955
+entries, all sha256+provenance, deterministic; file sha256 `e7d25a37…`) · Tigris mirror
+proven-live 4,959/4,959 at `nuzantara-backups/kbli-vault/` · OSS coverage 6,236/6,236
+(code,endpoint) pairs — 1,303 absences at 3 probes each, no-scope set EXACTLY 221 (zero drift
+vs census). **Open quarantines (proposed in PR #2622, NOT resolved):** BPS Vol.1 missing
+(Turnstile → browser lane) · Perpres-annex compiler not built · absence ≥72h window needs one
+probe after 2026-07-19T18:10Z · stray mirror copy in `nuzantara-warroom-images/kbli-vault/`
+(pre-fix run) to delete · PP28 300-dpi renders pending.
+
 **Governance flags:**
 
 - **Filiera methodology**: panel CONCLUDED. Doc `research/operations/2026-07-16-kbli-filiera-methodology.md`
