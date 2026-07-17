@@ -77,3 +77,8 @@
 
 **Learning:** Hardcoded IDs in reusable components can lead to duplicate IDs in the DOM, breaking accessibility associations. Using the `useId` hook ensures unique, stable IDs for linking triggers to menus via `aria-controls` and `aria-labelledby`. Additionally, providing dynamic, descriptive `alt` text for avatars (e.g., "Avatar for [Name]") instead of generic placeholders like "User avatar" provides better context for screen reader users when multiple users are present in an interface.
 **Action:** Use `useId` for all ARIA-linked elements within components. Always pass user-specific context to avatar `alt` text to ensure unique and helpful descriptions.
+
+## 2026-07-15 - [Accessibility and Interaction Feedback for Toast]
+
+**Learning:** Toast close buttons are often missed by assistive technologies if they lack semantic attributes and type specifications. Explicitly adding `type="button"`, `aria-label="Close"`, `title="Close"`, and applying consistent styling using `.focus-ring rounded p-1` ensures that toasts are highly accessible, keyboard-navigable, and match the system design guidelines.
+**Action:** Always apply `type="button"`, explicit accessibility labels (`aria-label`, `title`), and `.focus-ring` classes to ephemeral action elements like toast close triggers.

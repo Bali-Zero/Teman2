@@ -19,7 +19,13 @@ export function Toast({ message, type, onClose }: ToastProps) {
       }`}
     >
       <span className="text-sm text-white">{message}</span>
-      <button onClick={onClose} className="hover:opacity-70">
+      <button
+        type="button"
+        onClick={onClose}
+        className="hover:opacity-70 focus-ring rounded p-1"
+        aria-label="Close"
+        title="Close"
+      >
         <X className="w-4 h-4" />
       </button>
     </div>
