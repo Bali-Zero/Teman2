@@ -15,6 +15,13 @@ AMEND_SRC="/Users/nuzantara/.claude/skills/bali-zero-brand/_proposed-amendments"
 CAROUSEL_DEST="$HOME/nuzantara/apps/war-room/output/carousel"
 CAROUSEL_SRC="/Users/nuzantara/nuzantara/apps/war-room/output/carousel"
 INTERVAL="${WR2_QUEUE_PULL_INTERVAL:-300}"
+# Multi-path Pro ssh fallback (scar family #8, network flap — 2026-07-17):
+# Tailscale (`pro`) and mDNS (`pro-lan`) alternate dying independently — a
+# burst on one leaves the other reachable, and which one is dead flips
+# without warning. Space-separated (bash 3.2, NO arrays) list of ssh
+# aliases tried in order every tick; override for testing/ops via
+# WR2_PRO_SSH_HOSTS.
+PRO_HOSTS="${WR2_PRO_SSH_HOSTS:-pro pro-lan}"
 mkdir -p "$DEST_DIR" "$AMEND_DEST" "$CAROUSEL_DEST"
 
 # Re-render reconcile (verb leg 3): steady-state --ignore-existing skips a carousel
@@ -47,6 +54,16 @@ iter_n=0
 
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
+# Returns the first reachable alias from $PRO_HOSTS on stdout (exit 0), or
+# exit 1 if none answer. Short probe (ConnectTimeout=5) — the actual work
+# calls below keep ConnectTimeout=10.
+pick_pro_host() {
+  for h in $PRO_HOSTS; do
+    ssh -o ConnectTimeout=5 -o BatchMode=yes "$h" true 2>/dev/null && { echo "$h"; return 0; }
+  done
+  return 1
+}
+
 # LOW #8 (Codex red-team, 2026-07-16): a non-numeric/negative override made
 # the `[ "$CHECKSUM_EVERY_N" -gt 0 ]` test below throw "integer expression
 # expected" on EVERY iteration (nonzero `[` exit, so the periodic checksum
@@ -65,7 +82,24 @@ esac
 # canonical wr2_queue_writer.py (exact ref-code, IG-URL validated writer-side).
 MERGE_PY="$HOME/nuzantara/scripts/wr2_queue_pull_merge.py"
 
+last_pro_host=""
+
 while true; do
+  # Pick a reachable Pro host THIS tick (scar #8) before any remote call.
+  # Empty result: log ONE line and skip the whole tick (no per-call WARN
+  # spam from every ssh/rsync below failing individually).
+  PRO_HOST=$(pick_pro_host)
+  if [ -z "$PRO_HOST" ]; then
+    echo "[$(ts)] WARN no reachable Pro host this tick (tried: $PRO_HOSTS)" >> "$LOG"
+    [ "$ONCE" = "1" ] && break
+    sleep "$INTERVAL"
+    continue
+  fi
+  if [ "$PRO_HOST" != "$last_pro_host" ]; then
+    echo "[$(ts)] Pro host: $PRO_HOST (was: ${last_pro_host:-none})" >> "$LOG"
+    last_pro_host="$PRO_HOST"
+  fi
+
   # queue-archive.json pulled FIRST (2026-07-17, archive-blind resurrect fix):
   # the human-review-queue.json merge below needs THIS SAME iteration's fresh
   # archive to tell "archived on Pro" apart from "genuinely new local entry" —
@@ -75,7 +109,7 @@ while true; do
   archive_tmp=""
   archive_f="queue-archive.json"
   tmp="$DEST_DIR/.$archive_f.pull.tmp.$$"
-  if ssh -o ConnectTimeout=10 -o BatchMode=yes pro "cat '$SRC_DIR/$archive_f'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+  if ssh -o ConnectTimeout=10 -o BatchMode=yes "$PRO_HOST" "cat '$SRC_DIR/$archive_f'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
     if python3 -c "import json,sys; json.load(open('$tmp'))" 2>/dev/null; then
       archive_tmp="$tmp"
       if ! cmp -s "$tmp" "$DEST_DIR/$archive_f" 2>/dev/null; then
@@ -103,7 +137,7 @@ while true; do
   # PID-suffixed tmp: a WR2_PULL_CHECKSUM one-shot may run while the daemon
   # loop is live — a shared deterministic tmp path would interleave writes.
   tmp="$DEST_DIR/.$f.pull.tmp.$$"
-  if ssh -o ConnectTimeout=10 -o BatchMode=yes pro "cat '$SRC_DIR/$f'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+  if ssh -o ConnectTimeout=10 -o BatchMode=yes "$PRO_HOST" "cat '$SRC_DIR/$f'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
     # valida JSON prima di sostituire (mai clobberare con spazzatura)
     if python3 -c "import json,sys; json.load(open('$tmp'))" 2>/dev/null; then
       if [ -f "$MERGE_PY" ] && [ -f "$DEST_DIR/$f" ]; then
@@ -149,7 +183,7 @@ try: rep=json.load(sys.stdin)
 except Exception: rep={}
 for e in rep.get("push_back", []): print(e["ref_code"], e["ig_url"])' | \
           while read -r ref url; do
-            if ssh -o ConnectTimeout=10 -o BatchMode=yes pro \
+            if ssh -o ConnectTimeout=10 -o BatchMode=yes "$PRO_HOST" \
                  "cd ~/nuzantara && python3 scripts/wr2_queue_writer.py mark-published '$ref' '$url'" >>"$LOG" 2>&1; then
               echo "[$(ts)] pushed back $ref -> published on Pro" >> "$LOG"
             else
@@ -176,7 +210,7 @@ for e in rep.get("push_back_external", []):
               echo "[$(ts)] WARN push-back-external: entry with no item_id, skipping" >> "$LOG"
               continue
             fi
-            if printf '%s' "$payload_json" | ssh -o ConnectTimeout=10 -o BatchMode=yes pro \
+            if printf '%s' "$payload_json" | ssh -o ConnectTimeout=10 -o BatchMode=yes "$PRO_HOST" \
                  "cd ~/nuzantara && python3 scripts/wr2_queue_writer.py add-external \"\$(cat)\"" >>"$LOG" 2>&1; then
               # Pro confirmed the entry exists (added now OR already_present from a
               # prior retry — both are terminal success) — mark the LOCAL copy so
@@ -214,12 +248,12 @@ for e in rep.get("push_back_external", []):
 
   # Pull the latest REAL ig-insights amendment (the Insights view reads it). Exclude the
   # "insufficient-data" stubs. Take the newest by filename date.
-  latest=$(ssh -o ConnectTimeout=10 -o BatchMode=yes pro \
+  latest=$(ssh -o ConnectTimeout=10 -o BatchMode=yes "$PRO_HOST" \
     "ls -1 '$AMEND_SRC'/*-ig-insights.md 2>/dev/null | grep -v insufficient-data | sort | tail -1" 2>/dev/null)
   if [ -n "$latest" ]; then
     bn=$(basename "$latest")
     tmp="$AMEND_DEST/.$bn.pull.tmp.$$"
-    if ssh -o ConnectTimeout=10 -o BatchMode=yes pro "cat '$latest'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+    if ssh -o ConnectTimeout=10 -o BatchMode=yes "$PRO_HOST" "cat '$latest'" > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
       if ! cmp -s "$tmp" "$AMEND_DEST/$bn" 2>/dev/null; then
         mv "$tmp" "$AMEND_DEST/$bn"
         echo "[$(ts)] updated insights $bn" >> "$LOG"
@@ -257,7 +291,7 @@ for e in rep.get("push_back_external", []):
   fi
   if rsync -a "$carousel_mode" --ignore-errors \
        -e "ssh -o ConnectTimeout=10 -o BatchMode=yes" \
-       "pro:$CAROUSEL_SRC/" "$CAROUSEL_DEST/" >/dev/null 2>>"$LOG"; then
+       "$PRO_HOST:$CAROUSEL_SRC/" "$CAROUSEL_DEST/" >/dev/null 2>>"$LOG"; then
     : # silent on success (rsync is chatty enough on error)
   else
     rsync_rc=$?
