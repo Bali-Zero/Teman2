@@ -15,6 +15,7 @@ sources:
   - data/source_documents/KBLI_2025_FINAL_CLEAN.json (queried live, 1559 records)
   - memory fact_kbli2025_pp28_oss_conversion_2026_06_24.md (PP 28/2025 deadline mechanics)
   - .claude/skills/bot/SKILL.md (corner, LIVE STATE + established truths)
+adversarial_review: codex
 ---
 
 # Zantara prompt v4 — design doc
@@ -434,7 +435,7 @@ by writing the test and the fix in the same commit.
 - Flipping prod's `ZANTARA_PROMPT_VERSION` to `v4` — operator/session step after this PR merges
   and the corner's LIVE STATE is updated, not part of this PR.
 
-## 8. Panel (adversarial red-team, Codex `gpt-5.6-sol` xhigh, read-only)
+## Adversarial review — Panel (adversarial red-team, Codex `gpt-5.6-sol` xhigh, read-only)
 
 Ran against the design as drafted in §1-§7. 10 findings, 8 BLOCKING, 2 NON-BLOCKING. All
 re-verified against source before accepting/rejecting. Verdict per item:
