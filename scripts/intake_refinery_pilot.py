@@ -26,6 +26,7 @@ import httpx
 
 OLLAMA = "http://127.0.0.1:11434/api/generate"
 MODEL = "qwen3.5:9b"
+SECOND_MODEL = "aisingapore/Qwen-SEA-LION-v4-32B-IT:q4_k_m"
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 DEEPSEEK_MODEL = "deepseek-v4-pro"
 
@@ -137,12 +138,12 @@ def _safe_json(s: str) -> dict:
     return {"client_id": None, "verdict": "PARSE_ERROR", "confidence": 0.0, "matched_on": "none"}
 
 
-async def _ollama_adjudicate(client: httpx.AsyncClient, bundle: dict) -> dict:
+async def _ollama_adjudicate(client: httpx.AsyncClient, bundle: dict, model: str = MODEL) -> dict:
     r = await client.post(OLLAMA, json={
-        "model": MODEL, "prompt": _build_prompt(bundle), "stream": False,
-        "think": False, "format": "json", "keep_alive": "5m",
+        "model": model, "prompt": _build_prompt(bundle), "stream": False,
+        "think": False, "format": "json", "keep_alive": "10m",
         "options": {"temperature": 0.0, "num_predict": 200},
-    }, timeout=120)
+    }, timeout=300)
     r.raise_for_status()
     return _safe_json(r.json().get("response", "{}"))
 
@@ -205,22 +206,25 @@ def _to_int(v: Any) -> int | None:
         return None
 
 
-def _gate(bundle: dict, oll: dict, ds: dict) -> tuple[str, int | None, str]:
-    """Return (tier, client_id, reason). tier in AUTO_COMMIT / HUMAN_CONFIRM / NONE."""
+def _gate(bundle: dict, verdicts: list[dict]) -> tuple[str, int | None, str]:
+    """Gate on deterministic strong-id + agreement among the ALIVE panel models.
+    tier in AUTO_COMMIT / HUMAN_CONFIRM / NONE."""
     if bundle["det_client"] is not None:
         return "AUTO_COMMIT", bundle["det_client"], f"deterministic strong-id ({bundle['det_on']})"
-    o_id, d_id = _to_int(oll.get("client_id")), _to_int(ds.get("client_id"))
-    o_ok = oll.get("verdict") == "MATCH" and o_id is not None
-    d_ok = ds.get("verdict") == "MATCH" and d_id is not None
-    if o_ok and d_ok and o_id == d_id:
-        strong = oll.get("matched_on") in ("passport", "kitas") or ds.get("matched_on") in ("passport", "kitas")
-        return ("AUTO_COMMIT" if strong else "HUMAN_CONFIRM", o_id,
-                "panel agree + strong-id" if strong else "panel agree, name-only")
-    if o_ok and d_ok and o_id != d_id:
-        return "HUMAN_CONFIRM", None, "panel split on client"
-    if o_ok or d_ok:
-        return "HUMAN_CONFIRM", (o_id if o_ok else d_id), "single-model match"
-    return "NONE", None, "no model match"
+    picks = [(_to_int(v.get("client_id")), v.get("matched_on"))
+             for v in verdicts if v.get("verdict") == "MATCH" and _to_int(v.get("client_id"))]
+    if not picks:
+        return "NONE", None, "no model match"
+    ids = [p[0] for p in picks]
+    top = max(set(ids), key=ids.count)
+    agree = ids.count(top)
+    strong = any(mo in ("passport", "kitas") for pid, mo in picks if pid == top)
+    if agree >= 2 and len(set(ids)) == 1:  # unanimous among the alive models
+        return ("AUTO_COMMIT" if strong else "HUMAN_CONFIRM", top,
+                "panel unanimous + strong-id" if strong else "panel unanimous, name-only")
+    if agree >= 2:
+        return "HUMAN_CONFIRM", top, "panel majority (some dissent)"
+    return "HUMAN_CONFIRM", top, "single-model match"
 
 
 async def run(mode: str, limit: int) -> None:
@@ -248,7 +252,8 @@ async def run(mode: str, limit: int) -> None:
                 bundle = await _evidence_bundle(conn, proposal_id)
                 if bundle is None:
                     continue
-                oll = await _ollama_adjudicate(http, bundle)
+                oll = await _ollama_adjudicate(http, bundle, MODEL)
+                sea = await _ollama_adjudicate(http, bundle, SECOND_MODEL)
                 ds = {"verdict": "SKIP"}
                 if ds_key:
                     try:
@@ -256,7 +261,7 @@ async def run(mode: str, limit: int) -> None:
                     except (httpx.HTTPError, KeyError) as exc:
                         nonlocal_ds_err.append(str(exc)[:80])
                         ds = {"verdict": "ERR"}
-                tier, cid, reason = _gate(bundle, oll, ds)
+                tier, cid, reason = _gate(bundle, [oll, sea, ds])
                 tiers[tier] += 1
                 if truth is not None:
                     gt_total += 1
@@ -267,7 +272,7 @@ async def run(mode: str, limit: int) -> None:
                 print(json.dumps({
                     "proposal": proposal_id, "truth": truth, "tier": tier, "picked": cid,
                     "reason": reason, "n_cand": bundle["n_candidates"], "det": bundle["det_on"],
-                    "oll": oll.get("verdict"), "ds": ds.get("verdict"),
+                    "qwen": oll.get("verdict"), "sealion": sea.get("verdict"), "ds": ds.get("verdict"),
                     "auto_ok": (cid == truth) if (truth is not None and tier == "AUTO_COMMIT") else None,
                 }, ensure_ascii=False))
         n = sum(tiers.values())
