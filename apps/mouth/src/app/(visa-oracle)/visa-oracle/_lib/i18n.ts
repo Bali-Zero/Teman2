@@ -222,6 +222,7 @@ const en = {
   "outcome.print_cta": "Print / save as PDF",
   "outcome.copy_cta": "Copy summary",
   "outcome.copy_confirmed": "Copied to clipboard",
+  "outcome.copy_failed": "Couldn't copy — try selecting the text manually",
   "outcome.assumptions_receipt_title": "Assumptions & caveats, dated",
   "outcome.assumptions_receipt_empty":
     "No assumptions were needed — every answer was given directly.",
@@ -498,6 +499,7 @@ const id: Record<Keys, string> = {
   "outcome.print_cta": "Cetak / simpan sebagai PDF",
   "outcome.copy_cta": "Salin ringkasan",
   "outcome.copy_confirmed": "Disalin ke papan klip",
+  "outcome.copy_failed": "Gagal menyalin — coba pilih teksnya secara manual",
   "outcome.assumptions_receipt_title": "Asumsi & catatan, bertanggal",
   "outcome.assumptions_receipt_empty":
     "Tidak ada asumsi yang diperlukan — semua jawaban diberikan langsung.",

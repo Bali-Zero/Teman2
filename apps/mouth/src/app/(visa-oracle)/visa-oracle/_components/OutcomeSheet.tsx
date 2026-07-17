@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CalendarClock,
   Check,
+  CircleAlert,
   Copy,
   ListChecks,
   MessageCircle,
@@ -118,6 +119,13 @@ function OracleQrCode({ value, label }: { value: string; label: string }) {
         viewBox={`0 0 ${size} ${size}`}
         role="img"
         aria-label={label}
+        // P1 (Codex GPT-5.6-terra xhigh adversarial review 2026-07-18):
+        // exposes the exact string encoded into the QR bitmap so e2e can
+        // assert it is byte-identical to the visible WhatsApp link's href
+        // — the invariant is now also structural (OutcomeSheet computes
+        // `whatsappUrl` ONCE and passes it to both), this attribute is the
+        // regression guard against that ever drifting back apart.
+        data-qr-value={value}
         shapeRendering="crispEdges"
       >
         <rect width={size} height={size} fill="#ffffff" />
@@ -164,16 +172,36 @@ export function OutcomeSheet({
   };
 
   const summaryText = buildWhatsAppSummary(language, facts);
-  const [copied, setCopied] = useState(false);
+  // P1 (Codex GPT-5.6-terra xhigh adversarial review 2026-07-18): computed
+  // ONCE and reused for both the visible WhatsApp link's href and the QR's
+  // encoded value — previously each built its own copy of this template
+  // literal, a duplication the QR's `data-qr-value` regression test below
+  // now guards against ever drifting back apart.
+  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(summaryText)}`;
+
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
+    "idle",
+  );
   const handleCopySummary = async () => {
+    // Local flag, not `copyState` — the state setters below are async/
+    // batched, so the enclosing closure would still see this render's
+    // stale value if read directly.
+    let failed = false;
     try {
       await navigator.clipboard.writeText(summaryText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopyState("copied");
     } catch {
-      // Clipboard permission denied or API unavailable (older browsers) —
-      // the summary/WhatsApp link stay visible either way; fail quiet
-      // rather than throw at the user.
+      // Clipboard permission denied, insecure context, or API unavailable
+      // (older browsers) — real failure modes, not hypothetical (Codex
+      // GPT-5.6-terra xhigh adversarial review 2026-07-18, minor finding):
+      // surfaced visibly + announced, same as the success path, instead of
+      // silently doing nothing while the button looks like it worked.
+      failed = true;
+      setCopyState("failed");
+    } finally {
+      // A failure needs enough time to actually be read and acted on
+      // (manually select the text) — a fleeting success toast doesn't.
+      setTimeout(() => setCopyState("idle"), failed ? 6000 : 2000);
     }
   };
 
@@ -251,8 +279,13 @@ export function OutcomeSheet({
             {translate(language, "outcome.alternatives_intro")}
           </p>
           {/* Finding #15: alternatives are live re-entry points into the
-              interview (SELECT_CATEGORY), never a bare dead-end list. */}
-          <ul className="oracle-checklist-doc oracle-checklist-doc--actionable">
+              interview (SELECT_CATEGORY), never a bare dead-end list.
+              oracle-no-print (P1, Codex GPT-5.6-terra xhigh adversarial
+              review 2026-07-18): these are category-changing navigation
+              controls, not print content — the print stylesheet already
+              hides every other interactive control on this page, this
+              list was the one left uncovered. */}
+          <ul className="oracle-checklist-doc oracle-checklist-doc--actionable oracle-no-print">
             {(result.alternativeCategories ?? []).map((key) => (
               <li key={key}>
                 <button
@@ -453,9 +486,7 @@ export function OutcomeSheet({
           >
             <a
               className="oracle-whatsapp-cta"
-              href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                summaryText,
-              )}`}
+              href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -466,9 +497,7 @@ export function OutcomeSheet({
                 pre-loaded wa.me URL as the link beside it — the link
                 itself is the text alternative (never aria-hidden). */}
             <OracleQrCode
-              value={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                summaryText,
-              )}`}
+              value={whatsappUrl}
               label={translate(language, "outcome.qr_aria" as I18nKey)}
             />
           </section>
@@ -485,25 +514,31 @@ export function OutcomeSheet({
             <button
               type="button"
               className="oracle-copy-cta"
-              data-copied={copied ? "true" : "false"}
+              data-copy-state={copyState}
               onClick={handleCopySummary}
             >
-              {copied ? (
+              {copyState === "copied" ? (
                 <Check aria-hidden="true" size={18} />
+              ) : copyState === "failed" ? (
+                <CircleAlert aria-hidden="true" size={18} />
               ) : (
                 <Copy aria-hidden="true" size={18} />
               )}
               {translate(
                 language,
-                copied
+                copyState === "copied"
                   ? ("outcome.copy_confirmed" as I18nKey)
-                  : ("outcome.copy_cta" as I18nKey),
+                  : copyState === "failed"
+                    ? ("outcome.copy_failed" as I18nKey)
+                    : ("outcome.copy_cta" as I18nKey),
               )}
             </button>
             <span role="status" aria-live="polite" className="oracle-sr-only">
-              {copied
+              {copyState === "copied"
                 ? translate(language, "outcome.copy_confirmed" as I18nKey)
-                : ""}
+                : copyState === "failed"
+                  ? translate(language, "outcome.copy_failed" as I18nKey)
+                  : ""}
             </span>
           </section>
 

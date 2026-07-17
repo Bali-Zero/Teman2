@@ -362,18 +362,53 @@ export function getTreeSteps(
     current.kind === "question" ? current.questionId : current.kind;
   const currentIdx = order.findIndex((s) => s.id === currentId);
 
-  const trunk: TreeStep[] = order.map((step, idx) => ({
-    id: step.id,
-    labelI18nKey: step.labelI18nKey,
-    status:
-      currentIdx === -1
-        ? "pending"
-        : idx < currentIdx
-          ? "done"
-          : idx === currentIdx
-            ? "current"
-            : "pending",
-  }));
+  const trunk: TreeStep[] = order.map((step, idx) => {
+    if (currentIdx === -1) {
+      return {
+        id: step.id,
+        labelI18nKey: step.labelI18nKey,
+        status: "pending",
+      };
+    }
+    if (idx === currentIdx) {
+      return {
+        id: step.id,
+        labelI18nKey: step.labelI18nKey,
+        status: "current",
+      };
+    }
+    if (idx > currentIdx) {
+      return {
+        id: step.id,
+        labelI18nKey: step.labelI18nKey,
+        status: "pending",
+      };
+    }
+    // idx < currentIdx — structurally "passed" in `order`, but ordinal
+    // position alone is a LIE for a real question step (P0, Codex
+    // GPT-5.6-terra xhigh adversarial review 2026-07-18): the onshore
+    // urgent/expired/unsure permit_expiry lane (computeNextNode above,
+    // "permit_expiry" case) jumps straight to "review_gate", skipping
+    // "category" entirely — yet "category" still sits earlier in `order`
+    // than "review_gate", so the old `idx < currentIdx → "done"` rule
+    // marked it "done" even though it was never asked, exposing a
+    // tap-to-edit button whose EDIT dispatch was a silent no-op
+    // (`truncateToNode` finds no matching history entry). Ground truth
+    // for any REAL question step is the fact itself — `pruneFacts`
+    // already guarantees `facts` only ever holds keys for questions
+    // actually answered on the current path, so a question step is
+    // "done" only if its fact is present. Non-question trunk items
+    // (framing/review_gate/confirmation) have no fact key and are never
+    // skippable the way category is — every path passes through them in
+    // order — so ordinal position stays correct for those.
+    const isQuestionStep = Object.prototype.hasOwnProperty.call(
+      QUESTIONS,
+      step.id,
+    );
+    const status: TreeStepStatus =
+      isQuestionStep && facts[step.id] === undefined ? "pending" : "done";
+    return { id: step.id, labelI18nKey: step.labelI18nKey, status };
+  });
 
   const category = facts.category as CategoryKey | undefined;
   const atOrPastCategory =

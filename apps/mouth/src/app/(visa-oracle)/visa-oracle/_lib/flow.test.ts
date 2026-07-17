@@ -492,3 +492,80 @@ describe("flow.ts — isEditableTreeStep (tree tap-to-edit, interaction #6)", ()
     });
   });
 });
+
+describe("flow.ts — trunk 'done' status is history-derived, not ordinal (P0 fix, Codex GPT-5.6-terra xhigh adversarial review 2026-07-18)", () => {
+  it("onshore + permit_expiry=unsure skips 'category' via computeNextNode straight to review_gate — the category trunk step is never 'done' and never editable, even though it sits earlier in ordinal order than review_gate", () => {
+    let state = initialFlowState("en");
+    state = step(state, { type: "ADVANCE" });
+    state = step(state, {
+      type: "ANSWER",
+      questionId: "in_indonesia",
+      value: "yes",
+    });
+    state = step(state, {
+      type: "ANSWER",
+      questionId: "permit_expiry",
+      value: "unsure",
+    });
+    expect(state.history[state.history.length - 1]).toEqual({
+      kind: "question",
+      questionId: "review_gate",
+    });
+    expect(state.facts.category).toBeUndefined();
+
+    const current = state.history[state.history.length - 1];
+    const { trunk } = getTreeSteps(current, state.facts);
+    const categoryStep = trunk.find((s) => s.id === "category")!;
+    expect(categoryStep.status).not.toBe("done");
+    expect(isEditableTreeStep(categoryStep)).toBe(false);
+  });
+
+  it("onshore + urgent permit_expiry (1-2 days remaining) also skips 'category' straight to review_gate — same guarantee", () => {
+    const today = new Date(Date.UTC(2026, 6, 17));
+    let state = initialFlowState("en");
+    state = step(state, { type: "ADVANCE" });
+    state = step(state, {
+      type: "ANSWER",
+      questionId: "in_indonesia",
+      value: "yes",
+      today,
+    });
+    state = step(state, {
+      type: "ANSWER",
+      questionId: "permit_expiry",
+      value: "2026-07-18", // 1 day remaining from `today` → "urgent" lane
+      today,
+    });
+    expect(state.history[state.history.length - 1]).toEqual({
+      kind: "question",
+      questionId: "review_gate",
+    });
+    expect(state.facts.category).toBeUndefined();
+
+    const current = state.history[state.history.length - 1];
+    const { trunk } = getTreeSteps(current, state.facts);
+    const categoryStep = trunk.find((s) => s.id === "category")!;
+    expect(categoryStep.status).not.toBe("done");
+    expect(isEditableTreeStep(categoryStep)).toBe(false);
+  });
+
+  it("regression guard: a genuinely-answered category step is still 'done' and editable (the fix must not over-correct into never-editable)", () => {
+    let state = initialFlowState("en");
+    state = step(state, { type: "ADVANCE" });
+    state = step(state, {
+      type: "ANSWER",
+      questionId: "in_indonesia",
+      value: "no",
+    });
+    state = step(state, {
+      type: "ANSWER",
+      questionId: "category",
+      value: "tourism",
+    });
+    const current = state.history[state.history.length - 1];
+    const { trunk } = getTreeSteps(current, state.facts);
+    const categoryStep = trunk.find((s) => s.id === "category")!;
+    expect(categoryStep.status).toBe("done");
+    expect(isEditableTreeStep(categoryStep)).toBe(true);
+  });
+});

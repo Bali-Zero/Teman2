@@ -238,7 +238,7 @@ test.describe("Visa Oracle v2 — page Page", () => {
     ).toHaveCount(0);
   });
 
-  test("tree tap-to-edit: current/pending/framing/confirmation/verdict trunk steps never render as buttons", async ({
+  test("tree tap-to-edit: current/pending/framing/confirmation/verdict trunk steps never render as buttons, and a skipped question stays non-editable through confirmation and verdict (P0 fix, Codex GPT-5.6-terra xhigh adversarial review 2026-07-18)", async ({
     page,
   }) => {
     await page.goto("/visa-oracle");
@@ -248,6 +248,59 @@ test.describe("Visa Oracle v2 — page Page", () => {
     // yet — no completed-step edit buttons should exist at all.
     await expect(
       page.getByRole("button", { name: /^edit answer:/i }),
+    ).toHaveCount(0);
+
+    // Onshore + permit_expiry=unsure routes straight to review_gate,
+    // skipping "category" entirely (flow.ts computeNextNode). Before the
+    // P0 fix, the tree's ordinal-position status logic still marked
+    // "category" as "done" (it sits earlier in trunk order than
+    // review_gate) and exposed a live "Edit answer: Category" button whose
+    // EDIT dispatch was a silent no-op — confirmed here across every
+    // screen the trunk still renders on: the review_gate question itself,
+    // the confirmation screen, and the verdict screen.
+    await page.getByRole("button", { name: /yes, i.m here/i }).click();
+    await expect(
+      page.getByRole("heading", {
+        name: /when does your current stay permit expire/i,
+      }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: /not sure/i }).click();
+    await expect(
+      page.getByRole("heading", { name: /honest questions/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /edit answer: category/i }),
+    ).toHaveCount(0);
+    // Framing/confirmation/verdict must never be editable either, even
+    // once genuinely "passed" — EDIT only knows how to truncate to a
+    // `{ kind: "question" }` node.
+    await expect(
+      page.getByRole("button", { name: /edit answer: start/i }),
+    ).toHaveCount(0);
+
+    await page
+      .getByRole("checkbox", { name: /none of these apply to me/i })
+      .check();
+    await page.getByRole("button", { name: /see my options/i }).click();
+    await expect(
+      page.getByRole("heading", { name: /here.s what you told us/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /edit answer: category/i }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /edit answer: confirmation/i }),
+    ).toHaveCount(0);
+
+    await page.getByRole("button", { name: /see my options/i }).click();
+    await expect(
+      page.getByRole("heading", { name: /needs a human/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /edit answer: category/i }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: /edit answer: verdict/i }),
     ).toHaveCount(0);
   });
 
@@ -309,5 +362,66 @@ test.describe("Visa Oracle v2 — page Page", () => {
     });
     await expect(whatsappLink).toBeVisible();
     await expect(whatsappLink).toHaveAttribute("href", /^https:\/\/wa\.me\//);
+
+    // P1 (Codex GPT-5.6-terra xhigh adversarial review 2026-07-18): the
+    // string encoded into the QR bitmap must be byte-identical to the
+    // visible link's href — never a link that goes stale relative to what
+    // actually scans.
+    const qrValue = await qr.getAttribute("data-qr-value");
+    const href = await whatsappLink.getAttribute("href");
+    expect(qrValue).toBe(href);
+
+    // P1 (same review): the QR must render at a genuinely scannable
+    // density — the old fixed 64px box put a ~65-97-module QR at well
+    // under 1px/module. >=160px CSS is the concrete fix.
+    const box = await qr.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThanOrEqual(160);
+    expect(box!.height).toBeGreaterThanOrEqual(160);
+  });
+
+  test("copy summary shows a visible, announced failure state when the clipboard write rejects (P1 minor, Codex GPT-5.6-terra xhigh adversarial review 2026-07-18)", async ({
+    page,
+  }) => {
+    // Force navigator.clipboard.writeText to reject before any app code
+    // runs, simulating a real failure mode (insecure context / denied
+    // permission) rather than the happy path already covered elsewhere.
+    // Overriding the method directly (rather than redefining the whole
+    // `navigator.clipboard` property) is the reliable pattern — the
+    // Clipboard instance already exists, this just shadows its prototype
+    // method with an own-property that always rejects.
+    await page.addInitScript(() => {
+      window.navigator.clipboard.writeText = () =>
+        Promise.reject(new Error("denied"));
+    });
+
+    await page.goto("/visa-oracle");
+    await page.getByRole("button", { name: /^start$/i }).click();
+    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
+    await page.getByRole("button", { name: /tourism & short visit/i }).click();
+    await page.getByRole("button", { name: /up to 30 days/i }).click();
+    await page
+      .getByRole("checkbox", { name: /none of these apply to me/i })
+      .check();
+    await page.getByRole("button", { name: /see my options/i }).click();
+    await page.getByRole("button", { name: /see my options/i }).click();
+    await expect(
+      page.getByRole("heading", { name: /strongest fit/i }),
+    ).toBeVisible();
+
+    // A stable, name-independent handle — the button's accessible name
+    // itself changes with `copyState` ("Copy summary" → "Couldn't copy…"),
+    // so a role+name locator would stop matching the instant the state we
+    // want to observe actually lands.
+    const copyButton = page.locator(".oracle-copy-cta");
+    await expect(copyButton).toHaveAccessibleName(/copy summary/i);
+    await copyButton.click();
+
+    // Visible failure state — never a silently-swallowed catch — plus the
+    // same text announced via the aria-live status region for screen
+    // readers.
+    await expect(copyButton).toHaveAttribute("data-copy-state", "failed");
+    await expect(copyButton).toContainText(/couldn.t copy/i);
+    await expect(page.getByRole("status")).toHaveText(/couldn.t copy/i);
   });
 });

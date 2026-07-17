@@ -925,9 +925,16 @@ button.oracle-tree__step--editable:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
-  padding: var(--space-1);
+  /* P1 (Codex GPT-5.6-terra xhigh adversarial review 2026-07-18): the
+     previous fixed 64px box put the ~65-97-module wa.me-URL QR at
+     ~0.7-1px/module — well under any reliably-scannable density. `clamp`
+     guarantees >=160px on every viewport (the concrete fix) while still
+     capping growth on wide screens and never exceeding a sane share of a
+     narrow mobile width; the section's flexWrap lets it drop to its own
+     row rather than fight the WhatsApp button for space. */
+  width: clamp(160px, 40vw, 208px);
+  height: clamp(160px, 40vw, 208px);
+  padding: var(--space-2);
   border-radius: var(--radius-md);
   border: 1px solid var(--oracle-border-strong);
   /* QR codes need fixed black-on-white contrast to stay scannable —
@@ -974,9 +981,18 @@ button.oracle-tree__step--editable:hover {
   border-color: var(--oracle-canopy);
   color: var(--oracle-canopy);
 }
-.oracle-copy-cta[data-copied="true"] {
+.oracle-copy-cta[data-copy-state="copied"] {
   color: var(--oracle-state-eligible);
   border-color: var(--oracle-state-eligible);
+}
+/* P1 minor (Codex GPT-5.6-terra xhigh adversarial review 2026-07-18): the
+   clipboard write can genuinely reject (insecure context, denied
+   permission) — a visible failure state, not just a silently-swallowed
+   catch, color+icon+text never color-alone (never-color-alone spec
+   hard-constraint 4). */
+.oracle-copy-cta[data-copy-state="failed"] {
+  color: var(--oracle-state-likely-not);
+  border-color: var(--oracle-state-likely-not);
 }
 
 /* Print-only content — hidden on screen, revealed only inside @media print
