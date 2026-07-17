@@ -330,6 +330,10 @@ def flush_seo_batch() -> bool:
     return _flush_batch("seo", "bot/seo-metadata", "fix(seo): GEO/AEO metadata {date} ({n} files)")
 
 
+def flush_layout_batch() -> bool:
+    return _flush_batch("layout", "bot/homepage-layout", "chore(homepage): hero rotation {date}")
+
+
 def _image_exists_on_github(gh_path: str) -> bool:
     try:
         check = subprocess.run(
@@ -708,7 +712,10 @@ LATEST_KEYS = ["latest_1", "latest_2", "latest_3", "latest_4", "latest_5"]
 def rotate_hero(new_slug: str) -> bool:
     """Rotate homepage-layout.json: push new_slug to hero_main, cascade others down.
     Old hero_5 moves to latest_1, shifting latest_* down (latest_5 dropped).
-    Commits and pushes to GitHub.
+
+    Stages the write for the end-of-tick batch flush (`flush_layout_batch`) instead
+    of PUT-ing straight to main — direct PUTs are rejected by branch protection
+    (see the "GitHub batch-branch/PR commit mechanism" note above `_stage_commit`).
     """
     import base64 as _b64
 
@@ -725,7 +732,6 @@ def rotate_hero(new_slug: str) -> bool:
             return False
         data = json.loads(result.stdout)
         layout = json.loads(_b64.b64decode(data["content"]).decode("utf-8"))
-        sha = data["sha"]
     except Exception as e:
         log(f"  ⚠ Hero: read error: {e}")
         return False
@@ -758,26 +764,14 @@ def rotate_hero(new_slug: str) -> bool:
         if i < len(new_latests):
             layout[key] = new_latests[i]
 
-    # Write back to GitHub
+    # Stage the write for the end-of-tick layout batch flush (see flush_layout_batch)
     new_content = json.dumps(layout, indent=2, ensure_ascii=False) + "\n"
-    encoded = _b64.b64encode(new_content.encode("utf-8")).decode("utf-8")
-    payload = {
-        "message": f"feat(homepage): rotate hero → {new_slug[:50]}",
-        "content": encoded,
-        "sha": sha,
-    }
-    try:
-        result = subprocess.run(
-            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{HOMEPAGE_LAYOUT_PATH}",
-             "--method", "PUT", "--input", "-"],
-            input=json.dumps(payload), capture_output=True, text=True, timeout=30,
-        )
-        ok = result.returncode == 0
-        log(f"  {'✅' if ok else '❌'} Hero rotation pushed (hero_main={new_slug[:40]})")
-        return ok
-    except Exception as e:
-        log(f"  ⚠ Hero rotation push error: {e}")
-        return False
+    _stage_commit(
+        "layout", HOMEPAGE_LAYOUT_PATH, new_content.encode("utf-8"),
+        f"feat(homepage): rotate hero → {new_slug[:50]}",
+    )
+    log(f"  ✅ Hero rotation staged (hero_main={new_slug[:40]})")
+    return True
 
 
 # ─── GIT OPERATIONS ───────────────────────────────────────────────────────────
@@ -928,15 +922,17 @@ def main():
             if "translate" not in failed_steps and item.get("source") == "intel":
                 translated_slugs.append(slug)
 
-    # Flush this tick's staged GitHub writes (images + SEO) — ONE bot branch +
-    # auto-merged PR per kind, replacing the direct-to-main PUTs branch
-    # protection has been rejecting since ~2026-05-22.
+    # Flush this tick's staged GitHub writes (images + SEO + homepage layout) —
+    # ONE bot branch + auto-merged PR per kind, replacing the direct-to-main
+    # PUTs branch protection has been rejecting since ~2026-05-22.
     img_flush_ok = flush_image_batch()
     seo_flush_ok = flush_seo_batch()
-    if not img_flush_ok or not seo_flush_ok:
+    layout_flush_ok = flush_layout_batch()
+    if not img_flush_ok or not seo_flush_ok or not layout_flush_ok:
         send_telegram_alert(
             "⚠️ *Post-publish poller*\n"
-            f"GitHub batch flush failed (image={img_flush_ok}, seo={seo_flush_ok}) — see log"
+            f"GitHub batch flush failed (image={img_flush_ok}, seo={seo_flush_ok}, "
+            f"layout={layout_flush_ok}) — see log"
         )
 
     # Commit translations

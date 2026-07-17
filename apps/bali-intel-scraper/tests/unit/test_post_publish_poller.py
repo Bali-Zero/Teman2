@@ -235,3 +235,100 @@ class TestStageCommit:
         import base64
 
         assert base64.b64decode(item["content_b64"]) == b"raw-bytes"
+
+
+class TestFlushLayoutBatch:
+    def test_uses_distinct_branch_prefix_and_title(self):
+        ppp._stage_commit(
+            "layout", ppp.HOMEPAGE_LAYOUT_PATH, b'{"hero_main": "foo"}',
+            "feat(homepage): rotate hero → foo",
+        )
+        calls = []
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=_happy_path_fake_run(calls)):
+            ok = ppp.flush_layout_batch()
+
+        assert ok is True
+        assert ppp._PENDING_COMMITS == []  # drained
+
+        create_ref_calls = [
+            c for c in calls
+            if c["cmd"][:2] == ["gh", "api"] and c["cmd"][2].endswith("/git/refs") and "POST" in c["cmd"]
+        ]
+        import json as _json
+
+        ref_payload = _json.loads(create_ref_calls[0]["kwargs"]["input"])
+        assert ref_payload["ref"].startswith("refs/heads/bot/homepage-layout-")
+
+        pr_create_calls = [c for c in calls if c["cmd"][:3] == ["gh", "pr", "create"]]
+        title = pr_create_calls[0]["cmd"][pr_create_calls[0]["cmd"].index("--title") + 1]
+        assert title.startswith("chore(homepage): hero rotation ")
+
+
+# ── rotate_hero (homepage-layout.json write path) ──────────────────────────
+#
+# Regression coverage: rotate_hero() used to PUT apps/mouth/src/content/
+# homepage-layout.json straight to main via the Contents API — rejected by
+# branch protection (live prod log: "❌ Hero rotation pushed"). It must now
+# stage the write for flush_layout_batch (kind="layout") instead, same as the
+# image/SEO paths above.
+
+
+def _layout_read_result(layout: dict, sha: str = "layoutsha123") -> "subprocess.CompletedProcess[str]":
+    import base64 as _b64
+    import json as _json
+
+    content_b64 = _b64.b64encode(_json.dumps(layout).encode("utf-8")).decode("utf-8")
+    return _res(stdout=_json.dumps({"content": content_b64, "sha": sha}))
+
+
+class TestRotateHero:
+    def _fake_read(self, layout, calls):
+        read_cmd = ["gh", "api", f"repos/{ppp.GITHUB_OWNER}/{ppp.GITHUB_REPO}/contents/{ppp.HOMEPAGE_LAYOUT_PATH}"]
+
+        def fake_run(cmd, **kwargs):
+            calls.append({"cmd": list(cmd), "kwargs": kwargs})
+            if list(cmd) == read_cmd:
+                return _layout_read_result(layout)
+            return _res(returncode=0)
+
+        return fake_run
+
+    def test_stages_layout_write_instead_of_direct_put(self):
+        """rotate_hero must NOT PUT directly to main — it stages into
+        _PENDING_COMMITS (kind='layout') for flush_layout_batch to commit via a
+        bot branch + auto-merged PR."""
+        layout = {
+            "hero_main": "old-hero", "hero_2": "h2", "hero_3": "h3", "hero_4": "h4", "hero_5": "h5",
+            "latest_1": "l1", "latest_2": "l2", "latest_3": "l3", "latest_4": "l4", "latest_5": "l5",
+        }
+        calls = []
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=self._fake_read(layout, calls)):
+            ok = ppp.rotate_hero("new-hero")
+
+        assert ok is True
+
+        # No direct PUT to the Contents API happened
+        put_calls = [c for c in calls if "PUT" in c["cmd"]]
+        assert put_calls == []
+
+        # Staged exactly one "layout" commit with the rotated content
+        layout_commits = [c for c in ppp._PENDING_COMMITS if c["kind"] == "layout"]
+        assert len(layout_commits) == 1
+        assert layout_commits[0]["gh_path"] == ppp.HOMEPAGE_LAYOUT_PATH
+
+        import base64 as _b64
+        import json as _json
+
+        staged_layout = _json.loads(_b64.b64decode(layout_commits[0]["content_b64"]).decode("utf-8"))
+        assert staged_layout["hero_main"] == "new-hero"
+        assert staged_layout["hero_2"] == "old-hero"
+        assert staged_layout["latest_1"] == "h5"  # evicted old hero_5, cascaded to latest_1
+
+    def test_already_hero_main_is_noop_no_stage(self):
+        layout = {"hero_main": "same-slug"}
+        calls = []
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=self._fake_read(layout, calls)):
+            ok = ppp.rotate_hero("same-slug")
+
+        assert ok is True
+        assert ppp._PENDING_COMMITS == []
