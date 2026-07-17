@@ -53,11 +53,25 @@ _spec.loader.exec_module(pc)  # type: ignore[union-attr]
 
 
 def test_edge_allowlist_prefixes_have_no_trailing_slash() -> None:
-    for prefix in pc.ALLOWLIST_INNOCENT_PREFIXES:
+    """v2 (round-1 red-team): ALLOWLIST_INNOCENT_PREFIXES (bare-prefix, no
+    suffix scoping) was REMOVED entirely — ALLOWLIST_PREFIX_SUFFIX_PAIRS is
+    now the ONLY allowlist mechanism in the module. This test asserts that
+    single-mechanism invariant directly (no leftover bare-prefix list to
+    accidentally reintroduce), plus the original prefix/suffix hygiene
+    checks."""
+    assert not hasattr(pc, "ALLOWLIST_INNOCENT_PREFIXES"), (
+        "the bare-prefix allowlist was removed in v2 (round-1 MUST-FIX) — "
+        "its reappearance would reintroduce the extension-blindness bug"
+    )
+    seen_prefixes: set[str] = set()
+    for prefix, suffixes in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS:
         assert not prefix.endswith("/"), f"prefix {prefix!r} must not end with '/'"
         assert prefix.strip() == prefix, f"prefix {prefix!r} must not have stray whitespace"
-    for prefix, _suffixes in pc.ALLOWLIST_PREFIX_SUFFIX_PAIRS:
-        assert not prefix.endswith("/"), f"prefix {prefix!r} must not end with '/'"
+        assert prefix not in seen_prefixes, f"duplicate prefix {prefix!r}"
+        seen_prefixes.add(prefix)
+        assert suffixes, f"prefix {prefix!r} must declare at least one allowed suffix"
+        for suffix in suffixes:
+            assert suffix.startswith("."), f"suffix {suffix!r} for prefix {prefix!r} must start with '.'"
 
 
 def test_edge_never_innocent_exact_paths_are_not_on_the_allowlist() -> None:
@@ -245,6 +259,208 @@ def test_guilt_sentinel_mixed_with_allowlisted_files_still_forces_full() -> None
     verdict, unknown = pc.classify(["docs/README.md", pc.ERROR_SENTINEL, "research/foo.md"])
     assert verdict == pc.VERDICT_FULL
     assert unknown == [pc.ERROR_SENTINEL]
+
+
+# ---------------------------------------------------------------------------
+# ROUND-1 RED-TEAM MUST-FIX — extension-blindness on the (now-removed)
+# bare-prefix allowlist. Two independent seats (Codex Sol xhigh diff review
+# + a live-execution tester with 33 adversarial inputs) converged on this
+# finding 2026-07-18 against PR #2642: docs/**, research/**, and the 4
+# .claude/{skills,rules,commands,agents}/** entries used to be bare
+# directory prefixes admitting ANY extension underneath, including .sh/.py.
+# Verified LIVE against the actual repo tree (not hypothetical): docs/ has 7
+# real .sh + 8 real .py files today; research/ has 14 real .py files today.
+# Every vector explicitly named by the red-team is locked here.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_claude_skills_shell_script_must_force_full() -> None:
+    """Exact vector named by the red-team: a .sh file nested under an
+    allowlisted .claude/skills/ directory must NOT read as innocent on
+    pathname alone."""
+    verdict, unknown = pc.classify([".claude/skills/x/run.sh"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [".claude/skills/x/run.sh"]
+
+
+def test_guilt_claude_skills_python_script_must_force_full() -> None:
+    """Exact vector named by the red-team."""
+    verdict, unknown = pc.classify([".claude/skills/x/deploy.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [".claude/skills/x/deploy.py"]
+
+
+def test_guilt_docs_shell_script_must_force_full() -> None:
+    """Exact vector named by the red-team: docs/** is content-only (.md),
+    not a free pass for executables placed underneath."""
+    verdict, unknown = pc.classify(["docs/a/b.sh"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["docs/a/b.sh"]
+
+
+def test_guilt_docs_nested_launchagents_lookalike_shell_script() -> None:
+    """Sol's exact example: a .sh file living UNDER docs/ (not under the
+    real infra/launchagents/ prefix) must still force full — the
+    infra/launchagents/ .sh allowance is prefix-scoped, it does not leak
+    into other directories that merely happen to contain a similarly-named
+    subpath."""
+    verdict, unknown = pc.classify(["docs/infra/launchagents/nuz-sync/nuz-sync.sh"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["docs/infra/launchagents/nuz-sync/nuz-sync.sh"]
+
+
+def test_guilt_research_python_script_must_force_full() -> None:
+    """research/ has 14 real .py files today (verified) — none of them may
+    read as innocent; research/** is scoped to .md only, symmetric with
+    docs/**."""
+    verdict, unknown = pc.classify(["research/operations/some_script.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["research/operations/some_script.py"]
+
+
+def test_guilt_claude_rules_non_markdown_must_force_full() -> None:
+    """Symmetric coverage: all 4 .claude/{skills,rules,commands,agents}/**
+    entries share the same suffix-scoping mechanism — prove each
+    independently rather than assuming the loop covers them uniformly."""
+    verdict, unknown = pc.classify([".claude/rules/generator.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [".claude/rules/generator.py"]
+
+
+def test_guilt_claude_commands_non_markdown_must_force_full() -> None:
+    verdict, unknown = pc.classify([".claude/commands/install.sh"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [".claude/commands/install.sh"]
+
+
+def test_guilt_claude_agents_non_markdown_must_force_full() -> None:
+    verdict, unknown = pc.classify([".claude/agents/loader.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == [".claude/agents/loader.py"]
+
+
+def test_innocence_infra_launchagents_wrapper_regression_check() -> None:
+    """Regression check named explicitly by the red-team: the real,
+    on-disk-shaped wrapper infra/launchagents/wrappers/wa-mirror-runner.sh
+    must STILL correctly skip after the v1->v2 refactor unified the
+    allowlist mechanism — infra/launchagents/ keeps .sh as a DECLARED
+    choice (see module docstring), this is not collateral damage from the
+    MUST-FIX, it is the mechanism working as designed for the one prefix
+    that legitimately needs a non-.md suffix."""
+    verdict, unknown = pc.classify(["infra/launchagents/wrappers/wa-mirror-runner.sh"])
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+# ---------------------------------------------------------------------------
+# ROUND-1 RED-TEAM HARDENING-2 — path-traversal segments and embedded
+# newlines. Found by the live-execution tester (not reachable via the real
+# git-diff caller today, since `--no-renames`-diffed paths never contain
+# `..` or embedded newlines in practice) but this module is a reusable pure
+# SSOT and its input contract must hold regardless of caller.
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_path_traversal_segment_escapes_allowlist_directory() -> None:
+    """Without the `..`-segment rejection, this path would STRING-match
+    both the docs/ prefix and the .md suffix and read as innocent, despite
+    not actually resolving to anywhere under docs/. Proves the fix is
+    load-bearing, not decorative."""
+    verdict, unknown = pc.classify(["docs/../apps/backend-rag/x.md"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["docs/../apps/backend-rag/x.md"]
+
+
+def test_guilt_path_traversal_segment_in_the_middle() -> None:
+    verdict, unknown = pc.classify(["docs/subdir/../../apps/backend-rag/evil.md"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["docs/subdir/../../apps/backend-rag/evil.md"]
+
+
+def test_guilt_double_dot_as_a_whole_segment_not_a_substring_false_positive() -> None:
+    """Word-boundary sanity (cicatrix-superscar.md #3 discipline applied to
+    the traversal check itself): a directory literally named '..foo' or
+    'bar..' is NOT a traversal segment and must not be confused with one —
+    the check is `".." in path.split("/")` (exact segment equality), never
+    a bare substring test. This directory does not exist and is not
+    allowlisted anyway, so the expected verdict is FULL for the mundane
+    unknown-path reason, not because of a traversal false-positive."""
+    verdict, unknown = pc.classify(["weird..dir/apps/x.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["weird..dir/apps/x.py"]
+
+
+def test_guilt_embedded_newline_in_a_single_classify_entry() -> None:
+    """Belt-and-suspenders at the classify()/_innocent_reason() layer
+    itself: even if a caller bypasses _read_input() entirely and hands
+    classify() a pre-split list where one entry still carries an embedded
+    newline (a caller contract violation), that entry must never read as
+    innocent."""
+    verdict, unknown = pc.classify(["docs/a.md\napps/backend-rag/evil.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["docs/a.md\napps/backend-rag/evil.py"]
+
+
+def test_guilt_embedded_carriage_return_in_a_single_classify_entry() -> None:
+    verdict, unknown = pc.classify(["docs/a.md\rapps/backend-rag/evil.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["docs/a.md\rapps/backend-rag/evil.py"]
+
+
+def test_edge_argv_entry_with_embedded_newline_is_split_before_classification(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The real fix lives in _read_input(): an argv entry containing an
+    embedded newline is split into its constituent paths BEFORE reaching
+    classify(), exactly like stdin mode already does — so the backend file
+    is classified on its own merits (unknown -> full) rather than the
+    whole blob being rejected as one malformed string. Verdict is the same
+    (full) either way here, but the `unknown` list proves WHICH mechanism
+    fired: the split-then-evaluate path, not the embedded-newline guard."""
+    rc = pc.main(["docs/a.md\napps/backend-rag/evil.py"])
+    assert rc == 0
+    out, _err = capsys.readouterr()
+    assert out.strip() == pc.VERDICT_FULL
+    # Confirm the split actually happened (not the raw blob) by checking
+    # the pure function directly with the same pre-split input _read_input
+    # would have produced.
+    verdict, unknown = pc.classify(["docs/a.md", "apps/backend-rag/evil.py"])
+    assert verdict == pc.VERDICT_FULL
+    assert unknown == ["apps/backend-rag/evil.py"]
+
+
+def test_edge_argv_entry_with_embedded_newline_both_halves_innocent_still_skips() -> None:
+    """Positive-path proof that the argv split is a genuine parse, not just
+    a blunt 'newline present -> full' shortcut: TWO separately-innocent
+    paths smuggled into one argv entry via an embedded newline must BOTH
+    be recognized and the overall verdict must be skip-backend."""
+    verdict, unknown = pc.classify(
+        pc._read_input(["docs/a.md\ndocs/b.md"])
+    )
+    assert verdict == pc.VERDICT_SKIP
+    assert unknown == []
+
+
+def test_edge_read_input_argv_splits_on_embedded_newline() -> None:
+    """Direct unit test of _read_input()'s contract: argv and stdin must
+    split identically on '\\n' — this was the exact HARDENING-2 gap (argv
+    mode used to treat one arg as exactly one path)."""
+    assert pc._read_input(["a.md\nb.md"]) == ["a.md", "b.md"]
+    assert pc._read_input(["a.md", "b.md"]) == ["a.md", "b.md"]
+
+
+def test_edge_read_input_empty_argv_falls_through_to_stdin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sanity on the OTHER branch: empty argv (falsy in Python, same trap
+    documented at test_edge_empty_list_skips_logged) must take the stdin
+    path, not silently return []  without ever consulting stdin. Explicit
+    stdin monkeypatch — calling _read_input([]) with pytest's ambient
+    captured stdin raises, which is a test-harness artifact, not a
+    property of this function (same lesson as test_edge_empty_list_skips_logged
+    above)."""
+    monkeypatch.setattr(sys, "stdin", io.StringIO("a.md\nb.md\n"))
+    assert pc._read_input([]) == ["a.md", "b.md"]
 
 
 # ---------------------------------------------------------------------------

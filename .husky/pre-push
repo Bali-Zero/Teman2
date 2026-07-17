@@ -57,6 +57,18 @@ echo "✅ Skipping full test suite (covered by pre-commit hooks)"
 # `--no-renames`, so a rename is always reported as delete+add (BOTH the
 # old and new path visible in the union, never just one).
 #
+# REMOTE SAFETY (round-1 red-team HARDENING-1, 2026-07-18, Codex Sol xhigh
+# on PR #2642): every diff range below is computed against `origin/main` —
+# but git's documented pre-push hook contract passes the ACTUAL remote
+# being pushed to as `$1` (and its URL as `$2`), which this block used to
+# ignore entirely. A push to any remote OTHER than `origin` would still
+# diff against THIS checkout's `origin/main`, which has no guaranteed
+# relationship to that other remote's history — worst case an empty or
+# nonsensical diff range, i.e. a false "skip-backend" verdict on a push
+# this gate never actually inspected correctly. Fixed: the very first
+# check in the computation below is `$1 = origin`; anything else fails
+# closed to FULL, loudly, before any diff is even attempted.
+#
 # Kill switches:
 #   PREPUSH_FULL=1        always run the full suite unconditionally,
 #                          bypassing this entire block.
@@ -76,7 +88,14 @@ else
     DIFF_ERROR=0
     UNION_FILE="$(mktemp 2>/dev/null || true)"
 
-    if [ -z "$UNION_FILE" ]; then
+    # HARDENING-1 (round-1 red-team, Sol) — see "REMOTE SAFETY" above. Must
+    # be the FIRST check: every branch below trusts `origin/main` as the
+    # diff baseline, so a non-origin remote invalidates all of them before
+    # mktemp/fetch/diff are even worth attempting.
+    if [ "$1" != "origin" ]; then
+        echo "⚠️  path-aware gate: pushing to remote '$1' (this gate only trusts 'origin' as the diff baseline) — fail-closed to FULL suite."
+        DIFF_ERROR=1
+    elif [ -z "$UNION_FILE" ]; then
         echo "⚠️  path-aware gate: mktemp failed — fail-closed to FULL suite."
         DIFF_ERROR=1
     elif ! git fetch origin main --quiet >/dev/null 2>&1; then
