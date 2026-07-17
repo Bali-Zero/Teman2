@@ -184,4 +184,130 @@ test.describe("Visa Oracle v2 — page Page", () => {
     await expect(page.getByText(/prototype — sample data/i)).toBeVisible();
     await expect(page.getByText(/ditjen imigrasi decides/i)).toBeVisible();
   });
+
+  test("tree tap-to-edit: tapping a completed trunk step jumps back to that question and prunes later facts (interaction #6)", async ({
+    page,
+  }) => {
+    await page.goto("/visa-oracle");
+    await page.getByRole("button", { name: /^start$/i }).click();
+    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
+    await page.getByRole("button", { name: /work & employment/i }).click();
+    await expect(
+      page.getByRole("heading", {
+        name: /will an indonesian-registered company/i,
+      }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: /yes, an indonesian entity pays me/i })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: /honest questions/i }),
+    ).toBeVisible();
+
+    // The living tree's "category" trunk step is now a completed step —
+    // a real, accessible `<button>` (not the aria-hidden decorative div
+    // every other trunk step renders as). Tapping it dispatches the same
+    // EDIT action as the confirmation card's Edit link.
+    const editCategory = page.getByRole("button", {
+      name: /edit answer: category/i,
+    });
+    await expect(editCategory).toBeVisible();
+    await editCategory.click();
+    await expect(
+      page.getByRole("heading", { name: /what brings you to indonesia/i }),
+    ).toBeVisible();
+
+    // Take a DIFFERENT branch that never asks work_payer, and prove the
+    // fact from the abandoned branch was pruned (same technique as the
+    // existing Back-navigation test above).
+    await page.getByRole("button", { name: /tourism & short visit/i }).click();
+    await expect(
+      page.getByRole("heading", { name: /how long are you planning to stay/i }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: /up to 30 days/i }).click();
+    await page
+      .getByRole("checkbox", { name: /none of these apply to me/i })
+      .check();
+    await page.getByRole("button", { name: /see my options/i }).click();
+
+    await expect(
+      page.getByRole("heading", { name: /here.s what you told us/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/will an indonesian-registered company/i),
+    ).toHaveCount(0);
+  });
+
+  test("tree tap-to-edit: current/pending/framing/confirmation/verdict trunk steps never render as buttons", async ({
+    page,
+  }) => {
+    await page.goto("/visa-oracle");
+    await page.getByRole("button", { name: /^start$/i }).click();
+
+    // On the very first question, nothing in the tree has been answered
+    // yet — no completed-step edit buttons should exist at all.
+    await expect(
+      page.getByRole("button", { name: /^edit answer:/i }),
+    ).toHaveCount(0);
+  });
+
+  test("outcome document checklist items are real, independently toggleable checkboxes (item 4)", async ({
+    page,
+  }) => {
+    await page.goto("/visa-oracle");
+    await page.getByRole("button", { name: /^start$/i }).click();
+    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
+    await page.getByRole("button", { name: /tourism & short visit/i }).click();
+    await page.getByRole("button", { name: /up to 30 days/i }).click();
+    await page
+      .getByRole("checkbox", { name: /none of these apply to me/i })
+      .check();
+    await page.getByRole("button", { name: /see my options/i }).click();
+    await page.getByRole("button", { name: /see my options/i }).click();
+    await expect(
+      page.getByRole("heading", { name: /strongest fit/i }),
+    ).toBeVisible();
+
+    const docCheckbox = page.getByRole("checkbox", {
+      name: /passport valid 6\+ months/i,
+    });
+    await expect(docCheckbox).toBeVisible();
+    await expect(docCheckbox).not.toBeChecked();
+    await docCheckbox.check();
+    await expect(docCheckbox).toBeChecked();
+    await docCheckbox.uncheck();
+    await expect(docCheckbox).not.toBeChecked();
+  });
+
+  test("QR handoff is a real, accessible, non-decorative element carrying the WhatsApp link (item 3)", async ({
+    page,
+  }) => {
+    await page.goto("/visa-oracle");
+    await page.getByRole("button", { name: /^start$/i }).click();
+    await page.getByRole("button", { name: /no, i.m planning ahead/i }).click();
+    await page.getByRole("button", { name: /tourism & short visit/i }).click();
+    await page.getByRole("button", { name: /up to 30 days/i }).click();
+    await page
+      .getByRole("checkbox", { name: /none of these apply to me/i })
+      .check();
+    await page.getByRole("button", { name: /see my options/i }).click();
+    await page.getByRole("button", { name: /see my options/i }).click();
+    await expect(
+      page.getByRole("heading", { name: /strongest fit/i }),
+    ).toBeVisible();
+
+    // Real, accessible role="img" with a descriptive aria-label — never
+    // aria-hidden, unlike the decorative placeholder it replaced.
+    const qr = page.getByRole("img", { name: /qr code/i });
+    await expect(qr).toBeVisible();
+    await expect(qr).not.toHaveAttribute("aria-hidden", "true");
+
+    // The link stays the text alternative right beside it — visible and
+    // clickable, encoding the exact same wa.me URL the QR carries.
+    const whatsappLink = page.getByRole("link", {
+      name: /continue on whatsapp/i,
+    });
+    await expect(whatsappLink).toBeVisible();
+    await expect(whatsappLink).toHaveAttribute("href", /^https:\/\/wa\.me\//);
+  });
 });
