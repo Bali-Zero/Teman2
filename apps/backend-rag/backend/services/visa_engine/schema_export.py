@@ -42,6 +42,20 @@ correction, not a relaxation: it still rejects the exact case the block
 exists to catch (a non-null ``product_version_ids`` on a GLOBAL rule), it
 just also accepts the shape Pydantic actually produces for the valid case.
 
+Round 5 correction (Codex round-4 verify blocker — the PRODUCTS-branch
+mirror of the round-4 GLOBAL bug above): spec's literal
+``"else": {"required": ["product_version_ids"]}`` only requires the KEY's
+PRESENCE, not a non-null array VALUE — ``{"product_version_ids": null}``
+trivially satisfies "required" (the key IS there, the value is just null),
+so a ``model_construct``-bypassed PRODUCTS-scope rule with a null
+``product_version_ids`` passed this export with ZERO jsonschema errors while
+``Rule._check_scope_products`` (``models.py``) correctly rejects the same
+instance ("PRODUCTS-scope rule requires a non-empty product_version_ids").
+Fixed to also constrain the property's shape when present: a non-empty
+array of UUID strings — matching the Pydantic validator exactly, closing
+the gap on both scope branches (GLOBAL forbids non-null, PRODUCTS now
+forbids anything OTHER than a non-empty array).
+
 One deliberate, documented exception: ``RulePack``'s own header/environment
 consistency check ("protected.environment must equal payload.environment")
 has **no ``allOf`` in spec §2 at all** — confirmed by reading the spec's
@@ -158,9 +172,32 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
             # model_dump's output exactly (present-and-null allowed,
             # non-null forbidden; ABSENT is also still fine, since
             # "properties" is a no-op when the key is missing).
+            #
+            # Round 5 (Codex round-4 verify blocker, mirror of the round-4
+            # GLOBAL bug on the OTHER branch): `"else": {"required":
+            # [...]}` alone only requires the KEY's presence, not a non-null
+            # array VALUE — `{"product_version_ids": null}` satisfies
+            # "required" trivially (the key IS present, its value is just
+            # null), so a PRODUCTS-scope rule with a null
+            # `product_version_ids` passed this export/snapshot with 0
+            # errors while `Rule._check_scope_products`
+            # (``models.py``) correctly rejects it ("PRODUCTS-scope rule
+            # requires a non-empty product_version_ids"). Fixed to also
+            # constrain the property's TYPE/shape when present, matching
+            # the Pydantic validator exactly: a non-empty array of UUID
+            # strings, never null.
             "if": {"properties": {"scope": {"const": "GLOBAL"}}},
             "then": {"properties": {"product_version_ids": {"type": "null"}}},
-            "else": {"required": ["product_version_ids"]},
+            "else": {
+                "required": ["product_version_ids"],
+                "properties": {
+                    "product_version_ids": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": _UUID_INLINE,
+                    }
+                },
+            },
         },
         {
             "if": {"properties": {"stage": {"const": "HARD_FILTER"}}},

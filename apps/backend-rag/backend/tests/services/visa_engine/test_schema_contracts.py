@@ -512,6 +512,73 @@ class TestExportedSchemaAllOfFidelity:
         errors = list(validator.iter_errors(instance))
         assert errors != []
 
+    def test_products_scope_with_null_product_version_ids_fails_exported_schema(
+        self,
+    ) -> None:
+        # R5 (Codex round-4 verify blocker, pre-existing — mirror of the
+        # round-4 GLOBAL bug on the OTHER branch of the same allOf): spec's
+        # literal "else": {"required": [...]} only requires the KEY's
+        # presence, not a non-null array VALUE — {"product_version_ids":
+        # null} used to satisfy "required" trivially and pass this export
+        # with 0 errors, while Rule._check_scope_products (models.py)
+        # correctly rejects the exact same instance. This is Codex's own
+        # probe instance verbatim: scope=PRODUCTS, product_version_ids=null,
+        # HARD_FILTER/EXCLUDE shape.
+        bogus_rule = M.Rule.model_construct(
+            rule_id="rule.products.null.guilt",
+            stage="HARD_FILTER",
+            scope="PRODUCTS",
+            product_version_ids=None,
+            priority=10,
+            valid_period=M.TimeRange(**_OPEN_PERIOD),
+            when={"op": "known", "fact": "person.birth_date"},
+            effect=M.EffectExclude(type="EXCLUDE", reason_code="X"),
+            on_unknown="NO_EFFECT",
+            required_facts=["person.birth_date"],
+            source_refs=[uuid.uuid4()],
+            explanation_key="explain.products.null",
+            safety_critical=True,
+        )
+        # Pydantic itself (normal, non-bypass construction) already rejects
+        # this — proves the probe is a genuine defect, not an artifact of
+        # model_construct bypassing something harmless.
+        with pytest.raises(ValidationError, match="non-empty product_version_ids"):
+            M.Rule(**dict(bogus_rule.__dict__.items()))
+
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "rule.schema.json")
+        instance = bogus_rule.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors != []
+
+    def test_products_scope_with_one_element_array_is_innocent_both_ways(
+        self,
+    ) -> None:
+        # Innocence half of the R5 guilt/innocence pair: the SAME shape as
+        # the guilt test above, except product_version_ids carries a
+        # 1-element array — must pass BOTH Pydantic (normal construction,
+        # no bypass needed) AND the exported jsonschema.
+        good_rule = M.Rule(
+            rule_id="rule.products.array.innocent",
+            stage="HARD_FILTER",
+            scope="PRODUCTS",
+            product_version_ids=[uuid.uuid4()],
+            priority=10,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "known", "fact": "person.birth_date"},
+            effect={"type": "EXCLUDE", "reason_code": "X"},
+            on_unknown="NO_EFFECT",
+            required_facts=["person.birth_date"],
+            source_refs=[uuid.uuid4()],
+            explanation_key="explain.products.array",
+            safety_critical=True,
+        )
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "rule.schema.json")
+        instance = good_rule.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
     @pytest.mark.parametrize("stage", ["ELIGIBILITY", "HUMAN_REVIEW", "RANKING"])
     def test_remaining_stage_effect_conditionals_fail_exported_schema(
         self, minimal_valid_pack: M.RulePack, stage: str
@@ -1135,6 +1202,35 @@ class TestContractSnapshotGoldenValidInstances:
         errors = list(validator.iter_errors(instance))
         assert errors == [], [str(e) for e in errors]
 
+    def test_products_scope_rule_with_one_element_array_validates_against_snapshot(
+        self,
+    ) -> None:
+        # R5 innocence half, paired with
+        # TestContractSnapshotGoldenInvalidInstances::
+        # test_products_scope_with_null_product_version_ids_fails_snapshot —
+        # identical shape, non-null 1-element array instead of null. Must
+        # pass BOTH Pydantic (normal construction) and the committed
+        # snapshot.
+        good_rule = M.Rule(
+            rule_id="rule.products.array.snapshot.innocent",
+            stage="HARD_FILTER",
+            scope="PRODUCTS",
+            product_version_ids=[uuid.uuid4()],
+            priority=10,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "known", "fact": "person.birth_date"},
+            effect={"type": "EXCLUDE", "reason_code": "X"},
+            on_unknown="NO_EFFECT",
+            required_facts=["person.birth_date"],
+            source_refs=[uuid.uuid4()],
+            explanation_key="explain.products.array.snapshot",
+            safety_critical=True,
+        )
+        validator = _jsonschema_validator_for_snapshot("rule.schema.json")
+        instance = good_rule.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
 
 class TestContractSnapshotGoldenInvalidInstances:
     """R3-E requirement 3: golden INVALID instances — one per ``allOf``
@@ -1154,6 +1250,32 @@ class TestContractSnapshotGoldenInvalidInstances:
         bogus_rule = valid_rule.model_construct(
             **{**valid_rule.__dict__, "scope": "GLOBAL", "product_version_ids": [uuid.uuid4()]}
         )
+        validator = _jsonschema_validator_for_snapshot("rule.schema.json")
+        instance = bogus_rule.model_dump(mode="json", by_alias=True)
+        assert list(validator.iter_errors(instance)) != []
+
+    def test_products_scope_with_null_product_version_ids_fails_snapshot(self) -> None:
+        # R5 (Codex round-4 verify blocker) — Codex's own probe instance
+        # verbatim, mirrored against the COMMITTED snapshot: scope=PRODUCTS,
+        # product_version_ids=null, HARD_FILTER/EXCLUDE shape.
+        bogus_rule = M.Rule.model_construct(
+            rule_id="rule.products.null.guilt.snapshot",
+            stage="HARD_FILTER",
+            scope="PRODUCTS",
+            product_version_ids=None,
+            priority=10,
+            valid_period=M.TimeRange(**_OPEN_PERIOD),
+            when={"op": "known", "fact": "person.birth_date"},
+            effect=M.EffectExclude(type="EXCLUDE", reason_code="X"),
+            on_unknown="NO_EFFECT",
+            required_facts=["person.birth_date"],
+            source_refs=[uuid.uuid4()],
+            explanation_key="explain.products.null.snapshot",
+            safety_critical=True,
+        )
+        with pytest.raises(ValidationError, match="non-empty product_version_ids"):
+            M.Rule(**dict(bogus_rule.__dict__.items()))
+
         validator = _jsonschema_validator_for_snapshot("rule.schema.json")
         instance = bogus_rule.model_dump(mode="json", by_alias=True)
         assert list(validator.iter_errors(instance)) != []

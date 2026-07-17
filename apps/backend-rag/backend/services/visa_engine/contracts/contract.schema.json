@@ -2734,6 +2734,16 @@
       "allOf": [
         {
           "else": {
+            "properties": {
+              "product_version_ids": {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              }
+            },
             "required": ["product_version_ids"]
           },
           "if": {
