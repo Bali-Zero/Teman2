@@ -5,6 +5,7 @@ mandate: "P2 precondition-1 (spec-push-pipeline-optimization-v2.md, panel-review
 gear: 2 (modus STANDARD — audit read-only, zero modifiche a workflow o branch protection)
 method: gh api enumeration (branch protection + rulesets + code-scanning default-setup) + grep/read sistematico di tutti i 19 workflow file sorgente + verifica esterna (WebSearch/WebFetch su docs.github.com e community discussions) del comportamento REALE di GitHub Merge Queue per check senza trigger merge_group — nessuna assunzione non verificata
 sources: gh api repos/Balizero1987/Teman2/branches/main/protection · gh api repos/Balizero1987/Teman2/rulesets · gh api repos/Balizero1987/Teman2/code-scanning/default-setup · 19 file .github/workflows/*.yml (letti per intero o a sezioni mirate) · scripts/check_adversarial_review.py · scripts/docs_sync.py · docs.github.com "Managing a merge queue" + "Webhook events: merge_group" · github.com/orgs/community/discussions/39933
+adversarial_review: codex
 ---
 
 # Merge-queue readiness manifest — 25-context audit vs `merge_group` semantics
@@ -171,7 +172,7 @@ Obiettivo: non "il check è partito" ma "il grafo di step eseguiti sotto `merge_
 1. **Pre-requisito (bloccante, va fatto PRIMA del canary, non durante):** aggiungere `merge_group:` a `on:` nei 24/25 context NEEDS-TRIGGER — ma in un ordine a 3 lotti, non tutto insieme:
    - Lotto 1 (21 "puliti", §3): aggiunta meccanica, rischio verificato basso.
    - Lotto 2 (organ-conformance): fix del guard PRIMA di aggiungere il trigger (`EVENT_NAME` deve gestire `merge_group` esplicitamente, non solo `push`; rimuovere lo `|| true` cieco o sostituirlo con un controllo esplicito su `git diff` exit-code ≠ ambiguous-ref).
-   - Lotto 3 (p3-sandbox-gates, adversarial-review-gate): sostituire `github.base_ref` con `github.event.merge_group.base_ref || github.base_ref` (pattern già dimostrato funzionante in `hot-zone-pr-gate.yml:75,85-86,244` — riusarlo, non reinventarlo) PRIMA di aggiungere il trigger.
+   - Lotto 3 (p3-sandbox-gates, adversarial-review-gate): questi usano `github.base_ref` (ref-name), che è vuoto sotto `merge_group`. Due opzioni: **(a)** allinearli allo **SHA-fallback** `github.event.merge_group.base_sha || github.event.pull_request.base.sha` già dimostrato in `hot-zone-pr-gate.yml:75,85-86,244` (approccio preferito — è la forma realmente collaudata nel repo, coerente con §10 punto 2), oppure **(b)** il fallback ref-name `github.event.merge_group.base_ref || github.base_ref`. **NB (adversarial review, §11):** `hot-zone-pr-gate.yml` usa lo **SHA-fallback**, NON il pattern ref-name — la prima stesura di questa riga lo attribuiva erroneamente a `base_ref`; corretto dopo il red-team. In entrambi i casi il fix va fatto PRIMA di aggiungere il trigger.
    - Questo ordine non è opzionale: aggiungere il trigger prima del fix trasformerebbe organ-conformance e p3/adversarial-review nei loro difetti latenti attivi, esattamente lo scenario che il canary dovrebbe scoprire DOPO invece che PRIMA.
 
 2. **2 PR canary cumulative** (per-com specifica del punto 2 della spec):
@@ -221,3 +222,48 @@ Non eseguibile da questo audit (mandato = solo analisi): la sequenza consigliata
 5. Solo allora: flip di branch protection verso ruleset + merge queue (oggi: rulesets = 0, quindi questo è anche un cambio di meccanismo di enforcement, non solo un toggle).
 
 Nessuno di questi 5 passi è stato eseguito in questo audit. Zero file `.github/workflows/*` o impostazioni di branch protection sono stati modificati.
+
+---
+
+## Adversarial review
+
+Section §11. Added post-hoc (2026-07-18) to satisfy the R1 gate: the original audit
+(2026-07-17) shipped without an independent adversarial pass. A real cross-family
+red-team was then run — **generator≠grader**: this audit was authored by Claude/Fable,
+so the grader is **Codex GPT-5.6 (read-only sandbox)**, pointed at the live repo to
+re-ground every load-bearing claim against the actual workflow files. Its verdicts,
+each independently re-verified on disk before adoption (W65 — even the refuter
+hallucinates):
+
+- **VERIFIED — NEEDS-TRIGGER, not silent-green.** Only `hot-zone-pr-gate.yml:34` carries
+  a `merge_group:` trigger; a required check without it is *never reported* → queue
+  timeout/eject, not a false green. (GitHub "Managing a merge queue".)
+- **VERIFIED — `p3-sandbox-gates.yml` + `adversarial-review-gate.yml` fail-closed under
+  `merge_group`.** Both read `github.base_ref` unguarded (`p3` lines 72-73;
+  `adversarial-review-gate.yml:37,46`), empty under `merge_group`; and
+  `check_adversarial_review.py` returns exit **2** on the resulting bad revision
+  (`main()` ~line 443, re-verified live: `--diff origin/` → `fatal: bad revision` → exit 2).
+- **VERIFIED — `organ-conformance.yml` latent SILENT-GREEN** (no `merge_group`, PR-only
+  BASE/HEAD, `|| true`-swallowed diff → `hit=false` skips all gate steps).
+- **REFUTED, and fixed in this revision — the §7 Lotto-3 claim.** The draft said the fix
+  pattern was `github.event.merge_group.base_ref || github.base_ref`, "already proven in
+  `hot-zone-pr-gate.yml:75,85-86,244`". Independently re-verified: hot-zone uses the
+  **SHA-fallback** `github.event.merge_group.base_sha || github.event.pull_request.base.sha`,
+  NOT a ref-name fallback. It demonstrates the *principle* of a `merge_group.*` fallback,
+  not the ref-name form. Line 174 corrected accordingly (and now matches §10 point 2,
+  which already said "SHA-fallback").
+- **PARTIALLY REFUTED — the §3 "NEEDS-TRIGGER pulito = nessun riferimento PR-only" wording
+  is overstated.** Several "pulito" files do reference `github.event.pull_request.base.sha`
+  (`p1s2:69`, `verify-the-verifiers:53`, `p7:45`, `p8:41`, `p9:48`, `p6:59`, `guard:59`,
+  `hook:69`) — mostly guarded by an `event_name != pull_request` branch, so the per-file
+  verdicts likely hold, but the blanket "nessun riferimento" is false. Treat as a wording
+  correction / follow-up check, not a gate-decision error.
+- **PARTIALLY VERIFIED — concurrency-collision §** analysis holds under the assumption that
+  GitHub's merge-group refs (`gh-readonly-queue/{base}/pr-…`) are unique; not provable from
+  repo files alone.
+
+Net: the load-bearing structural conclusions (NEEDS-TRIGGER, the two REF-BREAKAGE gates,
+organ-conformance silent-green, the fix ordering) survive the red-team. One concrete error
+(§7 Lotto-3 hot-zone pattern) was found and corrected; one overstatement flagged for a
+follow-up pass. Live `gh api` branch-protection enumeration could not be re-run by the
+grader (peer unreachable), so the "25 required contexts" count remains as-audited on 07-17.
