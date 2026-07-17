@@ -507,56 +507,106 @@ async def _match_sender_phone(
     ]
 
 
-def _clean_folder_segment(value: Any) -> str | None:
-    """Normalise the first path segment of ``source_path`` into a name to match.
+def _clean_one_segment(seg: str) -> str | None:
+    """Strip human folder decorations from ONE path segment → a matchable name.
 
-    Real Dropbox folders carry human decorations — ``###PERPANJANGAN KITAS
-    JOHN DOE###``, ``@arsip Cetak (2027)`` — so strip non-name punctuation and
-    parenthetical suffixes, collapse whitespace, reject <3 chars.
+    Real Dropbox/Drive folders carry decorations — ``###PERPANJANGAN KITAS
+    JOHN DOE###``, ``@arsip Cetak (2027)`` — so drop non-name punctuation and
+    parenthetical suffixes, collapse whitespace, reject <3 chars or alpha-less.
     """
-    if value is None:
-        return None
-    seg = str(value).split("/", 1)[0]
     seg = re.sub(r"\([^)]*\)", " ", seg)        # drop parenthetical suffixes
     seg = re.sub(r"[#@_*\[\]{}!]+", " ", seg)   # drop decoration characters
     seg = re.sub(r"\s+", " ", seg).strip()
-    if len(seg) < 3:
+    if len(seg) < 3 or not re.search(r"[A-Za-z]", seg):
         return None
     return seg
+
+
+def _clean_folder_segment(value: Any) -> str | None:
+    """Normalise the FIRST path segment of ``source_path`` into a name to match.
+
+    Kept for the Dropbox layout (client folder at the root) and as the single-
+    segment helper; Drive's deeper hierarchy is handled by :func:`_folder_segments`.
+    """
+    if value is None:
+        return None
+    return _clean_one_segment(str(value).split("/", 1)[0])
+
+
+def _folder_segments(value: Any) -> list[str]:
+    """ALL matchable name-segments of ``source_path`` (folders + filename stem).
+
+    m227 originally inspected only ``source_path.split('/')[0]`` — correct for the
+    Dropbox layout where the root IS the client folder, but WRONG for Drive, whose
+    roots are staff/category folders (``PEMEGANG KITAS``, ``EXTEND VISA``) and whose
+    client folder lives DEEPER. That single-segment blind spot is why ~24k Drive
+    docs land 0-candidate despite the folder signal existing. Scanning every segment
+    fixes both layouts: the client folder is matched at whatever depth it sits, and
+    non-client segments (categories, ``scan``/``kitas``) simply fall below
+    FUZZY_APPLY_THRESHOLD. The leaf's file extension is stripped; dedup is
+    case-insensitive and order-preserving (shallow→deep).
+    """
+    if value is None:
+        return []
+    parts = str(value).split("/")
+    if parts:  # strip the file extension on the leaf segment only
+        parts[-1] = re.sub(r"\.[A-Za-z0-9]{1,5}$", "", parts[-1])
+    out: list[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        cleaned = _clean_one_segment(part)
+        if cleaned and cleaned.lower() not in seen:
+            seen.add(cleaned.lower())
+            out.append(cleaned)
+    return out
 
 
 async def _match_folder_name(
     conn: asyncpg.Connection, source_path: str | None
 ) -> list[dict[str, Any]]:
-    """Folder-name match (m227): first ``source_path`` segment vs CRM names.
+    """Folder-name match (m227): EVERY ``source_path`` segment vs CRM names.
 
-    Fuzzy (pg_trgm) against ``clients.full_name`` AND ``companies.company_name``;
-    only a similarity >= FUZZY_APPLY_THRESHOLD counts as a transport hint (a weak
-    folder sim is noise — unlike the OCR-name fuzzy, which has its own review
-    band). One clear winner → a single CONF_FOLDER_MATCH candidate; top-2 inside
-    the ambiguity margin → both returned so the decision matrix degrades to
-    AMBIGUOUS rather than guessing.
+    Fuzzy (pg_trgm) against ``clients.full_name`` AND ``companies.company_name`` for
+    each folder segment (m227 fix 2026-07-18: was root-segment-only, blind to Drive's
+    deep hierarchy). Only a similarity >= FUZZY_APPLY_THRESHOLD counts as a transport
+    hint (a weak folder sim is noise). Candidates are deduped by (table, id) keeping
+    the best-scoring segment; one clear winner → a single CONF_FOLDER_MATCH candidate;
+    top-2 (distinct clients) inside the ambiguity margin → both returned so the
+    decision matrix degrades to AMBIGUOUS rather than guessing. NEVER auto-attaches
+    (folder = transport hint, human confirms — 2026-05-17 identity-hallucination scar).
     """
-    name = _clean_folder_segment(source_path)
-    if not name:
+    segments = _folder_segments(source_path)
+    if not segments:
         return []
-    merged = await _match_fuzzy_name(conn, "clients", "full_name", name)
-    merged += await _match_fuzzy_name(conn, "companies", "company_name", name)
-    usable = [c for c in merged if c["score"] >= FUZZY_APPLY_THRESHOLD]
-    usable.sort(key=lambda c: c["score"], reverse=True)
-    if not usable:
+
+    best: dict[tuple[str, Any], dict[str, Any]] = {}
+    for name in segments:
+        merged = await _match_fuzzy_name(conn, "clients", "full_name", name)
+        merged += await _match_fuzzy_name(conn, "companies", "company_name", name)
+        for c in merged:
+            if c["score"] < FUZZY_APPLY_THRESHOLD:
+                continue
+            key = (c["table"], c["id"])
+            if key not in best or c["score"] > best[key]["score"]:
+                cc = dict(c)
+                cc["matched_value"] = name
+                best[key] = cc
+    if not best:
         return []
+
+    ranked = sorted(best.values(), key=lambda c: c["score"], reverse=True)
 
     def _as_hint(c: dict[str, Any]) -> dict[str, Any]:
         return {
             "table": c["table"], "id": c["id"], "name": c["name"],
             "method": "folder_name", "score": CONF_FOLDER_MATCH,
-            "matched_value": name, "basis": "folder", "folder_sim": c["score"],
+            "matched_value": c["matched_value"], "basis": "folder",
+            "folder_sim": c["score"],
         }
 
-    if len(usable) >= 2 and usable[0]["score"] - usable[1]["score"] < AMBIGUITY_MARGIN:
-        return [_as_hint(usable[0]), _as_hint(usable[1])]
-    return [_as_hint(usable[0])]
+    if len(ranked) >= 2 and ranked[0]["score"] - ranked[1]["score"] < AMBIGUITY_MARGIN:
+        return [_as_hint(ranked[0]), _as_hint(ranked[1])]
+    return [_as_hint(ranked[0])]
 
 
 async def _match_fuzzy_name(
