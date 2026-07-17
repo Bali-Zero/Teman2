@@ -726,7 +726,7 @@ async def mark_step_done(
         await conn.execute(
             """
             UPDATE post_publish_queue
-            SET completed_steps = COALESCE(completed_steps, '{}'::jsonb) || jsonb_build_object($2, true)
+            SET completed_steps = COALESCE(completed_steps, '{}'::jsonb) || jsonb_build_object($2::text, true)
             WHERE slug = $1
             """,
             slug,
