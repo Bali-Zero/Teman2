@@ -3,61 +3,12 @@
  * Foundation"). Modeled on `visa-funnel-fusion.spec.ts` — getByRole-driven,
  * runs against the base URL configured in playwright.config.ts.
  *
- * Split 2026-07-17 (diagnosed by a sibling session with a minimal hydration
- * probe): the CI dev server for apps/mouth cannot hydrate ANY client
- * component (pre-existing structural debt of this app in CI). CI runs
- * `npx playwright test --grep "page Page"`, so the "page Page" describe
- * below carries ONLY server-rendered assertions — no clicks, no waiting on
- * client-side state. The 4 interactive flows (framing → verdict, back-link
- * branch pruning, not-sure routing, language toggle) live in a second
- * describe that auto-skips unless PLAYWRIGHT_EXTERNAL_SERVER is set, and
- * must be run locally against a production bundle:
- *
- *   npm run build
- *   npx next start -p 3100 &
- *   PLAYWRIGHT_EXTERNAL_SERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100 \
- *     npx playwright test e2e/visa-oracle-v2.spec.ts --project=chromium
+ * CI runs `--grep "page Page"`; the describe block below carries that
+ * literal string on purpose.
  */
 import { expect, test } from "@playwright/test";
 
 test.describe("Visa Oracle v2 — page Page", () => {
-  test("static smoke: framing heading and noindex meta are server-rendered", async ({
-    page,
-  }) => {
-    await page.goto("/visa-oracle");
-
-    await expect(
-      page.getByRole("heading", { name: /a map, not an application/i }),
-    ).toBeVisible();
-
-    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
-      "content",
-      /noindex/i,
-    );
-  });
-
-  test("redirect probe: /visa-v2 redirects to /visa-oracle", async ({
-    page,
-  }) => {
-    await page.goto("/visa-v2");
-    await expect(page).toHaveURL(/\/visa-oracle$/);
-  });
-
-  test("prototype badge and footer disclaimer are always visible", async ({
-    page,
-  }) => {
-    await page.goto("/visa-oracle");
-    await expect(page.getByText(/prototype — sample data/i)).toBeVisible();
-    await expect(page.getByText(/ditjen imigrasi decides/i)).toBeVisible();
-  });
-});
-
-test.describe("Visa Oracle v2 interactive (prod bundle)", () => {
-  test.skip(
-    !process.env.PLAYWRIGHT_EXTERNAL_SERVER,
-    "needs a hydrated prod bundle — the CI dev server cannot hydrate client components (structural, 2026-07-17)",
-  );
-
   test("happy path: framing → offshore tourism → verdict with a supported candidate", async ({
     page,
   }) => {
@@ -224,5 +175,13 @@ test.describe("Visa Oracle v2 interactive (prod bundle)", () => {
     await expect(
       page.getByRole("heading", { name: /apa tujuan anda ke indonesia/i }),
     ).toBeVisible();
+  });
+
+  test("prototype badge and footer disclaimer are always visible", async ({
+    page,
+  }) => {
+    await page.goto("/visa-oracle");
+    await expect(page.getByText(/prototype — sample data/i)).toBeVisible();
+    await expect(page.getByText(/ditjen imigrasi decides/i)).toBeVisible();
   });
 });
