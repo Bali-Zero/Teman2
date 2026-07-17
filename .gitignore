@@ -89,6 +89,9 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+# `MANIFEST` above matches data/kbli-filiera/manifest/ case-insensitively on
+# macOS — the vault manifest is the committed integrity layer (workflow doc §6)
+!data/kbli-filiera/manifest/
 
 # Testing & Coverage
 .pytest_cache/
