@@ -95,9 +95,12 @@ class CurePlan:
     """Outcome of evaluating one spec entry against the loaded canonical.
 
     status:
-      "apply"          — record will be mutated (see `preview` for the diff facts)
-      "already-cured"  — per_skala == [] AND disputed_key present: idempotent no-op
-      "ambiguous-skip" — per_skala == [] but NO disputed_key: refuse to guess, skip
+      "apply"          — record will be mutated: detach (per_skala -> []) and/or the
+                         honest-gap intel_2026.whatYouNeed rewrite (see the flags)
+      "already-cured"  — detach already done (per_skala == []) AND whatYouNeed already
+                         matches the spec (or spec supplies none): idempotent no-op
+      "ambiguous-skip" — per_skala == [] but NO disputed_key: an unrecognised prior
+                         state — refuse to touch the record at all, skip
       "missing"        — code not found in canonical at all
     """
 
@@ -110,6 +113,8 @@ class CurePlan:
         folds_legacy: bool = False,
         disputed_key: str = "",
         data_note: str = "",
+        needs_detach: bool = False,
+        needs_whatyouneed: bool = False,
     ) -> None:
         self.code = code
         self.status = status
@@ -117,23 +122,34 @@ class CurePlan:
         self.folds_legacy = folds_legacy
         self.disputed_key = disputed_key
         self.data_note = data_note
+        self.needs_detach = needs_detach
+        self.needs_whatyouneed = needs_whatyouneed
 
     def describe(self) -> str:
         note_preview = (self.data_note[:80] + "…") if len(self.data_note) > 80 else self.data_note
         if self.status == "missing":
             return f"{self.code}: NOT FOUND IN CANONICAL — cannot cure"
         if self.status == "already-cured":
-            return f"{self.code}: ALREADY CURED (skip) — per_skala==[] and {self.disputed_key!r} present"
+            return f"{self.code}: ALREADY CURED (skip) — detach done and whatYouNeed matches"
         if self.status == "ambiguous-skip":
             return (
                 f"{self.code}: AMBIGUOUS (skip, no clobber) — per_skala==[] but no "
                 f"{self.disputed_key!r} key; could be a different prior cure"
             )
-        return (
-            f"{self.code}: per_skala {self.current_row_count} row(s) -> 0 | "
-            f"fold per_skala_legacy: {self.folds_legacy} | disputed_key: {self.disputed_key} | "
-            f"_data_note: {note_preview!r}"
-        )
+        actions: list[str] = []
+        if self.needs_detach:
+            actions.append(
+                f"per_skala {self.current_row_count} row(s) -> 0 "
+                f"(fold per_skala_legacy: {self.folds_legacy}, disputed_key: {self.disputed_key})"
+            )
+        if self.needs_whatyouneed:
+            actions.append("intel_2026.whatYouNeed -> honest-gap")
+        return f"{self.code}: {' | '.join(actions)} | _data_note: {note_preview!r}"
+
+
+def _current_whatyouneed(record: dict[str, Any]) -> Any:
+    intel = record.get("intel_2026")
+    return intel.get("whatYouNeed") if isinstance(intel, dict) else None
 
 
 def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) -> CurePlan:
@@ -142,10 +158,17 @@ def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) 
     has_disputed = disputed_key in record
     is_empty = current_per_skala == []
 
-    if is_empty and has_disputed:
-        return CurePlan(code, "already-cured", disputed_key=disputed_key)
+    # per_skala already empty with no disputed marker: an unrecognised prior state.
+    # Refuse to touch the record at all (do not even rewrite whatYouNeed) — no clobber.
     if is_empty and not has_disputed:
         return CurePlan(code, "ambiguous-skip", disputed_key=disputed_key)
+
+    needs_detach = not is_empty
+    target_wyn = entry.get("whatYouNeed")
+    needs_whatyouneed = bool(target_wyn) and _current_whatyouneed(record) != target_wyn
+
+    if not needs_detach and not needs_whatyouneed:
+        return CurePlan(code, "already-cured", disputed_key=disputed_key)
 
     row_count = len(current_per_skala) if isinstance(current_per_skala, list) else 0
     return CurePlan(
@@ -155,33 +178,57 @@ def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) 
         folds_legacy="per_skala_legacy" in record,
         disputed_key=disputed_key,
         data_note=entry["data_note"],
+        needs_detach=needs_detach,
+        needs_whatyouneed=needs_whatyouneed,
     )
 
 
 def apply_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) -> dict[str, Any]:
-    """Return a NEW record dict with the cure applied, preserving the original
-    field order and inserting the disputed key immediately after `per_skala`
-    (matching the 68112 template) and `_data_note` at the very end (also
-    matching the 68112 template)."""
-    current_per_skala = record.get("per_skala")
-    disputed_value: Any
-    if "per_skala_legacy" in record:
-        disputed_value = {
-            "per_skala": current_per_skala,
-            "per_skala_legacy": record["per_skala_legacy"],
-        }
-    else:
-        disputed_value = current_per_skala
+    """Return a NEW record dict with the cure applied. Three idempotent parts:
 
-    new_record: dict[str, Any] = {}
-    for key, value in record.items():
-        if key == "per_skala_legacy":
-            continue  # folded into disputed_value above; dropped from top level
-        if key == "per_skala":
-            new_record["per_skala"] = []
-            new_record[disputed_key] = copy.deepcopy(disputed_value)
-            continue
-        new_record[key] = value
+    1. DETACH — only when per_skala is non-empty: move the current per_skala (folding
+       per_skala_legacy if present) into the disputed key inserted immediately after
+       per_skala, and set per_skala -> []. If per_skala is ALREADY [], this is skipped
+       so a re-run never clobbers the previously-preserved disputed block with [].
+    2. WHATYOUNEED — when the spec supplies `whatYouNeed`, (re)write
+       intel_2026.whatYouNeed to the honest-gap text (existing sub-key, order preserved).
+    3. _data_note is (re)set at the end (same string -> idempotent).
+    """
+    current_per_skala = record.get("per_skala")
+
+    if current_per_skala == []:
+        # already detached — preserve the existing disputed block, only touch (2)+(3)
+        new_record: dict[str, Any] = dict(record)
+    else:
+        disputed_value: Any
+        if "per_skala_legacy" in record:
+            disputed_value = {
+                "per_skala": current_per_skala,
+                "per_skala_legacy": record["per_skala_legacy"],
+            }
+        else:
+            disputed_value = current_per_skala
+        new_record = {}
+        for key, value in record.items():
+            if key == "per_skala_legacy":
+                continue  # folded into disputed_value above; dropped from top level
+            if key == "per_skala":
+                new_record["per_skala"] = []
+                new_record[disputed_key] = copy.deepcopy(disputed_value)
+                continue
+            new_record[key] = value
+
+    target_wyn = entry.get("whatYouNeed")
+    if target_wyn:
+        intel = new_record.get("intel_2026")
+        if not isinstance(intel, dict):
+            raise CureError(
+                f"{entry['code']}: cannot set whatYouNeed — intel_2026 is missing or not a dict"
+            )
+        intel = dict(intel)
+        intel["whatYouNeed"] = target_wyn
+        new_record["intel_2026"] = intel
+
     new_record["_data_note"] = entry["data_note"]
     return new_record
 
