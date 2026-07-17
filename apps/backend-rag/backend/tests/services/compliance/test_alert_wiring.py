@@ -23,6 +23,7 @@ import pytest
 from backend.services.compliance.alert_dispatcher import AlertDispatcher
 from backend.services.compliance.alert_wiring import (
     HttpEmailServiceAdapter,
+    InAppChannelUnavailableError,
     LoggingInAppAdapter,
     PricingToolAdapter,
     TelegramAliasAdapter,
@@ -204,17 +205,25 @@ async def test_wa_adapter_maps_to_underscore_send_message() -> None:
 
 
 # ---------------------------------------------------------------------------
-# LoggingInAppAdapter
+# LoggingInAppAdapter — logs for observability, then raises BY DESIGN so
+# AlertDispatcher never records a phantom delivery in notification_log
+# (the compliance delivery audit trail must never say "sent" for a channel
+# that has no real backing — superscar family #2, green != working).
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_inapp_adapter_never_raises(caplog) -> None:
+async def test_inapp_adapter_logs_and_raises(caplog) -> None:
     import logging
 
     adapter = LoggingInAppAdapter()
     with caplog.at_level(logging.INFO, logger="backend.services.compliance.alert_wiring"):
-        await adapter.emit(user_id="00000000-0000-0000-0000-0000000000aa", payload={"type": "x"})
+        with pytest.raises(InAppChannelUnavailableError, match="phantom delivery"):
+            await adapter.emit(
+                user_id="00000000-0000-0000-0000-0000000000aa", payload={"type": "x"}
+            )
+    # The log line must have been emitted BEFORE the raise — observability
+    # is preserved even though the channel reports failure.
     assert "compliance alert" in caplog.text.lower()
 
 
@@ -234,3 +243,82 @@ def test_build_alerts_engine_wires_real_adapters() -> None:
     assert isinstance(dispatcher, AlertDispatcher)
     assert isinstance(dispatcher._telegram, TelegramAliasAdapter)  # noqa: SLF001
     assert isinstance(engine._pricing, PricingToolAdapter)  # noqa: SLF001
+
+
+# ---------------------------------------------------------------------------
+# Integration: real AlertDispatcher + real wiring adapters (mocked transports)
+# against the real DB. Proves the audit-trail contract end-to-end:
+#   - telegram_owner delivery IS recorded in notification_log
+#   - inapp_team is NEVER recorded (LoggingInAppAdapter raises -> dispatcher
+#     logs a channel failure and skips _log_sent for that channel)
+#   - the dispatch as a whole still succeeds (any_success True — no
+#     "no channel succeeded" warning)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_dispatch_with_wiring_adapters_never_logs_phantom_inapp_delivery(
+    db_tx,
+    sample_client,
+    monkeypatch,
+    caplog,
+) -> None:
+    import logging
+    import uuid
+    from datetime import date, timedelta
+
+    from backend.services.compliance.alert_repository import AlertRow
+
+    monkeypatch.setenv("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+
+    fake_bot = AsyncMock()
+    fake_bot.send_message = AsyncMock(return_value={"ok": True})
+
+    dispatcher = AlertDispatcher.with_connection(
+        db_tx,
+        email_service=AsyncMock(),
+        telegram_service=TelegramAliasAdapter(bot=fake_bot),
+        inapp_service=LoggingInAppAdapter(),
+        wa_service=AsyncMock(),
+    )
+    # critical -> team channels [telegram_owner, inapp_team]
+    alert = AlertRow(
+        alert_id=f"alert_wiring_e2e_{uuid.uuid4().hex[:6]}",
+        client_id=sample_client["id"],
+        category="visa_expiry",
+        severity="critical",
+        status="pending",
+        deadline=date.today() + timedelta(days=2),
+        days_until=2,
+        compliance_item_ref="doc_wiring_e2e",
+        dedup_key=f"visa:{sample_client['id']}:doc_wiring_e2e",
+        message_it="msg IT",
+        message_en="msg EN",
+        message_id="msg ID",
+        suggested_action="renew",
+        estimated_cost_idr=None,
+        evidence_refs=[],
+        nb2_ref=None,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        await dispatcher.dispatch(alert)
+
+    # Telegram really went out, alias resolved to the real chat id.
+    fake_bot.send_message.assert_awaited_once()
+    assert fake_bot.send_message.await_args.kwargs["chat_id"] == "1125336968"
+
+    # Audit trail: telegram_owner recorded, inapp_team NEVER recorded.
+    rows = await db_tx.fetch(
+        "SELECT channel FROM notification_log WHERE ref LIKE $1",
+        f"compliance_alert:{alert.alert_id}:%",
+    )
+    channels_logged = {r["channel"] for r in rows}
+    assert "telegram_owner" in channels_logged
+    assert "inapp_team" not in channels_logged
+
+    # The inapp failure is honest and loud, but the dispatch overall
+    # succeeded (telegram delivered) — no "no channel succeeded".
+    assert "channel inapp_team failed" in caplog.text
+    assert "no channel succeeded" not in caplog.text

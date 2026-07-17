@@ -39,11 +39,14 @@ the "real service" side of the boundary.
 ``PortalNotificationService`` is client-facing only (tied to document/
 practice/profile change events, backed by the ``portal_messages`` table —
 a different shape entirely). ``LoggingInAppAdapter`` is an honest stand-in:
-it logs (so the alert is at least observable) rather than pretending to
-deliver to a team notification UI that does not exist yet. The alert data
-itself is never lost regardless of what this channel does — AlertsEngine
-persists every alert to ``compliance_alerts`` (m114) *before* dispatch is
-even attempted.
+it logs the alert (so it is at least observable) and then RAISES
+``InAppChannelUnavailableError`` so ``AlertDispatcher`` records a channel
+FAILURE — never a delivery that did not happen. ``notification_log`` is the
+delivery audit trail of a compliance organ; a "sent" row with no real
+delivery would be a false truth in an audit table (superscar family #2:
+green ≠ working). The alert data itself is never lost regardless of what
+this channel does — AlertsEngine persists every alert to
+``compliance_alerts`` (m114) *before* dispatch is even attempted.
 """
 
 from __future__ import annotations
@@ -199,13 +202,36 @@ class WhatsAppServiceAdapter:
         return await self._wa.send_message(phone=to, text=body)
 
 
+class InAppChannelUnavailableError(RuntimeError):
+    """Raised by ``LoggingInAppAdapter.emit()`` after logging — BY DESIGN.
+
+    No real team in-app notification center exists anywhere in this codebase
+    yet, so the ``inapp_team`` channel must NOT be recorded as delivered in
+    ``notification_log`` — that table is the delivery audit trail of the
+    compliance organ, and its whole purpose is proving deadlines were
+    actually notified. A "sent" row backed by nothing but a log line would
+    be a false truth in an audit table (superscar family #2: green ≠
+    working) that accumulates silently once the kill switch is flipped on.
+
+    ``AlertDispatcher.dispatch()`` catches per-channel exceptions (warning +
+    continue) and skips ``_log_sent`` for the failed channel — exactly the
+    honest outcome: observable log line, no phantom audit row, all other
+    channels unaffected. The resulting warning noise ("channel inapp_team
+    failed", at most once per alert per 24h dedup window) is accepted until
+    a real channel exists.
+    """
+
+
 class LoggingInAppAdapter:
     """Stand-in for a real team in-app/notification-center channel, which
     does not exist yet anywhere in this codebase (``PortalNotificationService``
     is client-facing only — a different shape, tied to ``portal_messages``).
 
-    Never raises; logs the alert with full structured context so it is at
-    least observable. The alert itself is never lost regardless — AlertsEngine
+    Logs the alert with full structured context (observability preserved),
+    then ALWAYS raises ``InAppChannelUnavailableError`` so the dispatcher
+    records a channel failure instead of a phantom delivery in
+    ``notification_log`` (see the exception's docstring for the full
+    rationale). The alert itself is never lost regardless — AlertsEngine
     persists it to ``compliance_alerts`` before dispatch is attempted, so the
     team can always see it via the CRM/DB directly. Building a real team
     notification center is future work, tracked separately from this PR.
@@ -213,6 +239,11 @@ class LoggingInAppAdapter:
 
     async def emit(self, *, user_id: str, payload: dict[str, Any]) -> None:
         logger.info("compliance alert (in-app, team) user=%s payload=%s", user_id, payload)
+        raise InAppChannelUnavailableError(
+            "no real team in-app notification channel exists; refusing to report "
+            "a phantom delivery (alert logged above and already persisted in "
+            "compliance_alerts)"
+        )
 
 
 def build_alerts_engine(
@@ -241,6 +272,7 @@ def build_alerts_engine(
 
 __all__ = [
     "HttpEmailServiceAdapter",
+    "InAppChannelUnavailableError",
     "LoggingInAppAdapter",
     "PricingToolAdapter",
     "TelegramAliasAdapter",
