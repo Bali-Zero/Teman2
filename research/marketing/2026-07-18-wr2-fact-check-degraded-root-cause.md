@@ -109,10 +109,17 @@ truth and say which kind of truth it measured."** Concretely, in priority order:
    cheap): closes the slide-inclusive rubber-stamp hole (:662, :676). Expect `degraded` to go
    *up*, correctly.
 4. **Symmetric word/number normalization** for the ~137 representation-mismatch claims —
-   normalize four→4 on claim AND on the slide-excluded source, yielding real `verified`/
-   `contradicted`. **A live sibling is already prototyping exactly this** in
-   `.worktrees/wr2-factcheck-wordnumbers` (branch `agent/air-m5/wr2/factcheck-wordnumbers`,
-   `wr2_fact_checker.py:360`) — coordinate, do not duplicate (sibling-race #5).
+   normalize four→4 on claim AND on the source, yielding real `verified`/`contradicted`.
+   **A live sibling is already shipping exactly this** in `.worktrees/wr2-factcheck-wordnumbers`
+   (branch `agent/air-m5/wr2/factcheck-wordnumbers`, commit `3516d31039`, ~21 min before this
+   capture). **⚠️ Honesty prerequisite — verified live in their current commit:** their
+   `_normalize_number_words` is applied to the `source_text` handed to
+   `_verify_number_or_date_claim`, and they did NOT change the `_verify_claim` call at :662 —
+   so it still normalizes the **slide-inclusive** source. A word-number that also appears in
+   the draft's own slides therefore self-verifies. As committed, the fix "kills false
+   degraded" partly by matching against the draft itself. It is honest ONLY if step 3 lands
+   first (verify against slides-excluded `external_text`). Their PR needs this exact check at
+   its adversarial gate (blood-bought rule #7). Coordinate, do not duplicate (sibling-race #5).
 
 **Anti-recommendations (banked scar):** do NOT (a) arm LLM Pass 2 unchanged, (b) reroute
 mis-typed claims to token-overlap against slides, or (c) inject more citations into the
