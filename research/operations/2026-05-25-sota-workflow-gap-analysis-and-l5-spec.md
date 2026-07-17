@@ -7,7 +7,7 @@ sources:
   - feat/agent-worktree-broker-2026-05-24:scripts/agent_start.py (710 LOC)
   - feat/redis-lease-registry-2026-05-24:scripts/agent_lease.py (568 LOC)
   - feat/redis-lease-registry-2026-05-24:.husky/pre-commit
-  - feat/merge-queue-rulesets-2026-05-24:scripts/setup_merge_queue_rulesets.sh
+  - feat/merge-queue-rulesets-2026-05-24:scripts/setup_merge_queue_rulesets.sh (RETIRED 2026-07-17, script deleted)
   - feat/merge-queue-rulesets-2026-05-24:.github/CODEOWNERS
   - feat/repomap-cron-branch-cleanup-2026-05-24:* (L4 — non letto in dettaglio)
   - .claude/rules/cicatrix-scars.md (52 active + 7 archive)
@@ -40,7 +40,7 @@ empirical_state_2026_05_25_0800_wita:
 | ------ | --------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
 | **L1** | Worktree broker                         | `scripts/agent_start.py` (710 LOC)                                                                            | Crea `.worktrees/<lane>-<task-id>/` per ogni session agent. Lane allowlist, TTL, WIP-safe cleanup, symlink venv/.env. Branch pattern `agent/<host>/<lane>/<task-id>`.                    | `AGENT_BROKER_ENABLED=false`                             |
 | **L2** | Redis lease registry                    | `scripts/agent_lease.py` (568 LOC) + `.husky/pre-commit`                                                      | SET NX EX atomic per hot-zone path. Audit JSONL `~/.agent/leases.jsonl`. Graceful degradation Redis-down. Heartbeat extension + token-owned release.                                     | `AGENT_LEASE_ENFORCEMENT=false`                          |
-| **L3** | GitHub merge queue + risk-path rulesets | `scripts/setup_merge_queue_rulesets.sh` + `.github/CODEOWNERS` + `.github/workflows/auto-merge-whitelist.yml` | Auto-merge whitelist (`docs/auto-sync-*`, `dependabot/*`, `chore/fmt-*`). CODEOWNERS Tier 1 paths: `/.github/workflows/`, `fly.toml`, `migrations_v2/`, `auth/`, `billing/`, `pricing/`. | `gh api -X DELETE` rollback                              |
+| **L3** | GitHub merge queue + risk-path rulesets — **RETIRED 2026-07-17**, `setup_merge_queue_rulesets.sh` deleted (0 rulesets live, 0 consumers) | ~~`scripts/setup_merge_queue_rulesets.sh`~~ + `.github/CODEOWNERS` + `.github/workflows/auto-merge-whitelist.yml` (latter two untouched, still live) | Auto-merge whitelist (`docs/auto-sync-*`, `dependabot/*`, `chore/fmt-*`). CODEOWNERS Tier 1 paths: `/.github/workflows/`, `fly.toml`, `migrations_v2/`, `auth/`, `billing/`, `pricing/`. | `gh api -X DELETE` rollback                              |
 | **L4** | Aider repomap cron + branch cleanup     | `scripts/build_repomap.sh` + cron 15min plist + SessionStart hook + `scripts/branch_graveyard_cleanup.sh`     | Tree-sitter repomap injected at SessionStart (5k token). Branch graveyard cleanup merged stale branches >30gg.                                                                           | `REPOMAP_ENABLED=false` + `BRANCH_CLEANUP_ENABLED=false` |
 
 ## 2. Gap Analysis — cosa NON coprono L1-L4

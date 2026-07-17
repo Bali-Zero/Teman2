@@ -36,7 +36,7 @@ panel:
 implementation_status:
   - L1 worktree broker — PR #852 MERGED 2026-05-25 (scripts/agent_start.py on main)
   - L2 Redis lease registry — PR #853 MERGED 2026-05-25 (docs/runbooks/redis-lease-registry.md on main)
-  - L3 GitHub merge queue + rulesets — PR #851 MERGED 2026-05-25 (scripts/setup_merge_queue_rulesets.sh on main)
+  - L3 GitHub merge queue + rulesets — PR #851 MERGED 2026-05-25 (scripts/setup_merge_queue_rulesets.sh on main) — RETIRED 2026-07-17, script deleted (0 rulesets live, 0 consumers; merge_train.py coordinator untouched)
   - L4 Repomap cron + branch cleanup — PR #854 MERGED 2026-05-25 (scripts/build_repomap.sh on main)
 update:
   - 2026-05-28 postscript appended — companion deep-research 2026-05-28-sota-multi-agent-repo-arch-update.md
@@ -136,6 +136,10 @@ Hot-zones da proteggere:
 Codex AVVERTE (citing arXiv 2605.07135 — agentic workflow injection): se un agente ha write access a `.github/workflows` puo' **silenziare il sistema che lo dovrebbe giudicare**. Path-restriction e' difesa contro questo.
 
 **Implementato in PR #851** (`.github/CODEOWNERS` + `.github/workflows/auto-merge-whitelist.yml` + `scripts/setup_merge_queue_rulesets.sh`):
+
+> **RETIRED 2026-07-17**: `scripts/setup_merge_queue_rulesets.sh` has been deleted — dead automation
+> (0 GitHub Rulesets live on this repo, 0 consumers; Rulesets are unavailable on user-owned repos).
+> `.github/CODEOWNERS` and `auto-merge-whitelist.yml` remain live (untouched by this retirement).
 
 - Auto-merge AMMESSO: `docs/auto-sync-*` + `dependabot/(pip|npm_and_yarn)/*` + `chore/fmt-*`
 - Auto-merge VIETATO: bugfix, pricing/visa, migrations, auth/billing, MCP secrets, deploy
@@ -268,7 +272,7 @@ Tutti e 3 incident sarebbero stati **prevenuti** dai PR shipati:
 **Decisione richiesta**:
 
 1. ✅ Approvazione 4 PR draft (review + merge in qualsiasi ordine; L1+L2 indipendenti, L3 standalone, L4 standalone)?
-2. ✅ Run manuale `bash scripts/setup_merge_queue_rulesets.sh --apply` (L3)?
+2. ✅ Run manuale `bash scripts/setup_merge_queue_rulesets.sh --apply` (L3)? — **RETIRED 2026-07-17**: script deleted (dead automation, 0 rulesets live).
 3. ✅ Run manuale `bash infra/launchagents/install_repomap_cron.sh` (L4)?
 4. ⏳ Branch cleanup ora? Lista da PR #854: `orchestrate/surface-router-activation-2026-05-17`, `orchestrate/organism-rag-leverage-2026-05-17`, `orchestrate/ops-autonomy-reliability-2026-05-17` (tutti merged, safe-deletable). Cmd: `bash scripts/branch_graveyard_cleanup.sh --apply`.
 
@@ -299,7 +303,7 @@ Convergenza 4/4 sui top-3 + Codex unique contribution su PR risk score + arXiv 2
 | L1 worktree broker          | #852 | 2026-05-25 01:59 | `scripts/agent_start.py`                                         |
 | L4 repomap + branch cleanup | #854 | 2026-05-25 01:58 | `scripts/build_repomap.sh` (cron 15min)                          |
 | L2 Redis lease registry     | #853 | 2026-05-25 02:20 | `docs/runbooks/redis-lease-registry.md` + pre-commit lease-check |
-| L3 merge queue + rulesets   | #851 | 2026-05-25 02:02 | `scripts/setup_merge_queue_rulesets.sh` + CODEOWNERS             |
+| L3 merge queue + rulesets   | #851 | 2026-05-25 02:02 | `scripts/setup_merge_queue_rulesets.sh` + CODEOWNERS — **RETIRED 2026-07-17** (script deleted, 0 rulesets live; CODEOWNERS untouched) |
 
 Tutte e 4 sono ora citate come SSOT nel `CLAUDE.md` di progetto (§Agent Worktree Discipline, §7 Hooks, §7bis Repomap).
 
