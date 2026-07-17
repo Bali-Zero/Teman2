@@ -32,6 +32,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 
 from backend.services.visa_engine.enums import (
     COMMERCIAL_FACT_PATHS,
@@ -304,7 +305,11 @@ class FactRegistry:
             if spec.path in by_path:
                 raise FactValidationError(f"duplicate fact spec for path {spec.path!r}")
             by_path[spec.path] = spec
-        self._specs: Mapping[FactPath, FactSpec] = by_path
+        #: ``MappingProxyType``, not a plain ``dict`` (Codex finding 9): a
+        #: ``dict``-typed attribute is only immutable at the type-checker
+        #: level — ``registry._specs.clear()`` would silently empty a live
+        #: registry at runtime. The proxy makes that call raise instead.
+        self._specs: Mapping[FactPath, FactSpec] = MappingProxyType(by_path)
 
     def spec(self, path: FactPath | str) -> FactSpec:
         """Return the ``FactSpec`` for ``path``, or raise ``FactValidationError``."""

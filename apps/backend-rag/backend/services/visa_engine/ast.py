@@ -99,7 +99,12 @@ class AllCondition(_ConditionBase):
     time — every child is evaluated so the trace stays complete.
     """
 
-    op: Literal["all"] = "all"
+    # No default (Codex finding 2/FX-1): `op` is the discriminator for the
+    # `Condition` union AND, for a signed RulePack payload, a silently
+    # defaulted field is a field a canonical-payload consumer can omit
+    # entirely while still round-tripping — that omission must be a
+    # validation error, not an implicit "all".
+    op: Literal["all"]
     args: tuple[Condition, ...] = Field(..., min_length=1, max_length=64)
 
 
@@ -108,14 +113,14 @@ class AnyCondition(_ConditionBase):
     UNKNOWN; else FALSE (spec §4.1).
     """
 
-    op: Literal["any"] = "any"
+    op: Literal["any"]
     args: tuple[Condition, ...] = Field(..., min_length=1, max_length=64)
 
 
 class NotCondition(_ConditionBase):
     """Negation: TRUE<->FALSE swap; UNKNOWN remains UNKNOWN (spec §4.1)."""
 
-    op: Literal["not"] = "not"
+    op: Literal["not"]
     arg: Condition
 
 
@@ -143,47 +148,57 @@ class _ScalarLeafCondition(_ConditionBase):
     fact: FactPath
     value: Scalar
 
-    @field_validator("value")
+    @field_validator("value", mode="before")
     @classmethod
-    def _validate_value(cls, v: Scalar) -> Scalar:
+    def _validate_value(cls, v: object) -> Scalar:
+        # mode="before" is load-bearing (Codex finding 4): Scalar = bool |
+        # int | str is a *lax* union, and Pydantic's own union coercion runs
+        # before an "after" validator ever sees the value — a raw float like
+        # 2.0 would already have been silently coerced into the int member
+        # (Python's int(2.0) == 2.0) by the time an "after" validator ran,
+        # so `isinstance(value, float)` below would never fire. "before"
+        # intercepts the *original* wire value first.
         return _check_scalar(v)
 
 
 class EqCondition(_ScalarLeafCondition):
-    op: Literal["eq"] = "eq"
+    op: Literal["eq"]
 
 
 class NeqCondition(_ScalarLeafCondition):
-    op: Literal["neq"] = "neq"
+    op: Literal["neq"]
 
 
 class LtCondition(_ScalarLeafCondition):
-    op: Literal["lt"] = "lt"
+    op: Literal["lt"]
 
 
 class LteCondition(_ScalarLeafCondition):
-    op: Literal["lte"] = "lte"
+    op: Literal["lte"]
 
 
 class GtCondition(_ScalarLeafCondition):
-    op: Literal["gt"] = "gt"
+    op: Literal["gt"]
 
 
 class GteCondition(_ScalarLeafCondition):
-    op: Literal["gte"] = "gte"
+    op: Literal["gte"]
 
 
 class BetweenCondition(_ConditionBase):
     """Inclusive ``[lower, upper]`` range (spec §4.1)."""
 
-    op: Literal["between"] = "between"
+    op: Literal["between"]
     fact: FactPath
     lower: Scalar
     upper: Scalar
 
-    @field_validator("lower", "upper")
+    @field_validator("lower", "upper", mode="before")
     @classmethod
-    def _validate_bound(cls, v: Scalar) -> Scalar:
+    def _validate_bound(cls, v: object) -> Scalar:
+        # See `_ScalarLeafCondition._validate_value` — same before-mode
+        # rationale: a float bound (e.g. `upper=10.0`) must be rejected as a
+        # float, not silently truncated into the int member.
         return _check_scalar(v)
 
 
@@ -196,30 +211,35 @@ class _ScalarSetCondition(_ConditionBase):
     fact: FactPath
     values: tuple[Scalar, ...] = Field(..., min_length=1, max_length=256)
 
-    @field_validator("values")
+    @field_validator("values", mode="before")
     @classmethod
-    def _validate_values(cls, v: tuple[Scalar, ...]) -> tuple[Scalar, ...]:
+    def _validate_values(cls, v: object) -> tuple[Scalar, ...]:
+        # mode="before" for the same reason as the two validators above: each
+        # raw element must be scalar-checked (float rejected, bool-vs-int
+        # disambiguated) before Pydantic's own tuple/union coercion touches it.
+        if not isinstance(v, (list, tuple)):
+            raise TypeError(f"expected a list/tuple of scalars, got {type(v)!r}")
         return _check_unique(tuple(_check_scalar(item) for item in v))
 
 
 class InCondition(_ScalarSetCondition):
-    op: Literal["in"] = "in"
+    op: Literal["in"]
 
 
 class NotInCondition(_ScalarSetCondition):
-    op: Literal["not_in"] = "not_in"
+    op: Literal["not_in"]
 
 
 class IntersectsCondition(_ScalarSetCondition):
     """True iff the fact's set-value and ``values`` share at least one element."""
 
-    op: Literal["intersects"] = "intersects"
+    op: Literal["intersects"]
 
 
 class ContainsAllCondition(_ScalarSetCondition):
     """True iff the fact's set-value is a superset of ``values``."""
 
-    op: Literal["contains_all"] = "contains_all"
+    op: Literal["contains_all"]
 
 
 Condition = Annotated[
@@ -271,11 +291,38 @@ def _children(node: object) -> tuple[object, ...]:
     return ()
 
 
+#: Hard iteration cap for tree traversal, independent of and much larger
+#: than ``MAX_CONDITION_NODES`` (256). A `model_construct`-built condition
+#: can bypass every frozen-model write guard (Codex findings 6+8) and smuggle
+#: in a self-referential/cyclic structure; walking such a tree with naive
+#: Python recursion would raise ``RecursionError`` (an unrelated,
+#: uninformative crash) rather than the intended, reportable
+#: ``ConditionStructureError``. Both traversal primitives below are
+#: iterative (no Python call-stack recursion) with this explicit budget for
+#: exactly that reason — a true cycle exhausts the budget deterministically
+#: instead of exhausting the interpreter's C stack.
+_MAX_WALK_ITERATIONS = 100_000
+
+
 def _walk(condition: object) -> Iterator[object]:
-    """Pre-order traversal of every node in the tree, combinator or leaf."""
-    yield condition
-    for child in _children(condition):
-        yield from _walk(child)
+    """Pre-order traversal of every node in the tree, combinator or leaf.
+
+    Iterative (explicit stack), not recursive — see ``_MAX_WALK_ITERATIONS``.
+    """
+    stack: list[object] = [condition]
+    visited = 0
+    while stack:
+        node = stack.pop()
+        visited += 1
+        if visited > _MAX_WALK_ITERATIONS:
+            raise ConditionStructureError(
+                f"condition tree traversal exceeded {_MAX_WALK_ITERATIONS} nodes "
+                "without terminating — likely a cyclic or pathological structure "
+                "built outside normal validation"
+            )
+        yield node
+        # Reversed so `stack.pop()` still yields children left-to-right.
+        stack.extend(reversed(_children(node)))
 
 
 def iter_nodes(condition: object) -> Iterator[object]:
@@ -287,11 +334,27 @@ def iter_nodes(condition: object) -> Iterator[object]:
 
 
 def compute_depth(condition: object) -> int:
-    """Depth of the tree rooted at ``condition``; a bare leaf has depth 1."""
-    children = _children(condition)
-    if not children:
-        return 1
-    return 1 + max(compute_depth(child) for child in children)
+    """Depth of the tree rooted at ``condition``; a bare leaf has depth 1.
+
+    Iterative (explicit stack of ``(node, depth)`` pairs), not recursive —
+    see ``_walk``'s ``_MAX_WALK_ITERATIONS`` docstring for why.
+    """
+    stack: list[tuple[object, int]] = [(condition, 1)]
+    max_depth_seen = 0
+    visited = 0
+    while stack:
+        node, depth = stack.pop()
+        visited += 1
+        if visited > _MAX_WALK_ITERATIONS:
+            raise ConditionStructureError(
+                f"condition tree traversal exceeded {_MAX_WALK_ITERATIONS} nodes "
+                "without terminating — likely a cyclic or pathological structure "
+                "built outside normal validation"
+            )
+        max_depth_seen = max(max_depth_seen, depth)
+        for child in _children(node):
+            stack.append((child, depth + 1))
+    return max_depth_seen
 
 
 def count_nodes(condition: object) -> int:

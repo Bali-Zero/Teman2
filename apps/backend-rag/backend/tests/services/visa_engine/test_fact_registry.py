@@ -117,6 +117,19 @@ class TestValueKind:
         assert spec.kind is FactValueKind.INTEGER
 
 
+class TestRegistryImmutability:
+    def test_specs_mapping_cannot_be_cleared(self) -> None:
+        # Codex finding 9, exact counterexample: `registry._specs.clear()`
+        # must be impossible, not merely type-annotated as read-only.
+        with pytest.raises(AttributeError):
+            DEFAULT_FACT_REGISTRY._specs.clear()  # type: ignore[attr-defined]
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 38
+
+    def test_specs_mapping_cannot_be_item_assigned(self) -> None:
+        with pytest.raises(TypeError):
+            DEFAULT_FACT_REGISTRY._specs[FactPath.PERSON_BIRTH_DATE] = None  # type: ignore[index]
+
+
 class TestRegistryConstruction:
     def test_duplicate_spec_path_rejected(self) -> None:
         spec_a = FactSpec(

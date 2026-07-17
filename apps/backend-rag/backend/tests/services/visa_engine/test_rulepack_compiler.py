@@ -5,12 +5,22 @@ innocence test (a minimal valid pack compiles with zero errors) — per the
 PR1 task brief. Every guilt fixture is built by taking the shared
 ``minimal_valid_pack`` fixture (already innocent) and mutating exactly the
 one thing under test, so a failing assertion localizes to a single cause.
+
+PR1 hardening round (Codex findings 5/6/7/8/9) additions at the bottom of
+this file: the rewritten fact-literal-kind semantics (finding 5), the
+bypass-proof re-validation/cycle-safety/uniqueness/UTC/NFC checks
+(findings 6+8+9), and the SUPPORT-purpose vacuous-truth + GLOBAL-rule gaps
+(finding 7) — every one exercised via ``model_construct``/``object.
+__setattr__`` where the defect can only be reached by bypassing normal
+Pydantic construction, matching the "bypass-proof by design" rationale
+documented in ``compiler.py``.
 """
 
 from __future__ import annotations
 
 import uuid
 
+from backend.services.visa_engine import ast as A
 from backend.services.visa_engine import compiler as C
 from backend.services.visa_engine import models as M
 from backend.tests.services.visa_engine.conftest import (
@@ -413,3 +423,431 @@ class TestRequiredFactNotInRegistry:
         )
         report = C.compile_rule_pack(make_rule_pack(payload), fact_registry=narrow_registry)
         assert any(e.code == "REQUIRED_FACT_NOT_IN_REGISTRY" for e in report.errors)
+
+
+# ---------------------------------------------------------------------------
+# Codex finding 5 — corrected fact-literal-kind semantics
+# ---------------------------------------------------------------------------
+
+
+class TestFactLiteralKindCorrectedSemantics:
+    def test_in_valid_scalar_membership_is_innocent(self, source_record: M.SourceRecord) -> None:
+        # Exact orchestrator example: `marital_status in [SINGLE, MARRIED]`
+        # is a SCALAR membership test over a STRING-kind fact — valid.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.in.scalar.valid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "in",
+                "fact": "person.marital_status",
+                "values": ["SINGLE", "MARRIED"],
+            },
+            required_facts=("person.marital_status",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+
+    def test_in_against_set_valued_fact_now_guilty(self, source_record: M.SourceRecord) -> None:
+        # Reversed semantics (finding 5): `in`/`not_in` against a
+        # STRING_SET-kind fact (intent.purposes) is now the WRONG operator
+        # (use `intersects`/`contains_all` instead) — the old PR1 code had
+        # this backwards.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.in.set.invalid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "in", "fact": "intent.purposes", "values": ["TOURISM"]},
+            required_facts=("intent.purposes",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_KIND_MISMATCH" for e in report.errors)
+
+    def test_intersects_valid_against_set_fact_is_innocent(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        # minimal_valid_pack's own rule uses `intersects` against
+        # `intent.purposes` — this is the innocence half of the reversed
+        # semantics above.
+        report = C.compile_rule_pack(minimal_valid_pack)
+        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+
+    def test_string_literal_against_integer_fact_guilty(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Exact orchestrator example: `age == "30"` — a STRING literal
+        # against an INTEGER-kind fact.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.literal.kind.mismatch",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "immigration.overstay_days", "value": "30"},
+            required_facts=("immigration.overstay_days",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_KIND_MISMATCH" for e in report.errors)
+
+    def test_allowed_value_violation_guilty(self, source_record: M.SourceRecord) -> None:
+        # Exact orchestrator example: `marital_status == "NOT_A_STATUS"`.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.allowed.values.violation",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.marital_status", "value": "NOT_A_STATUS"},
+            required_facts=("person.marital_status",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_NOT_ALLOWED" for e in report.errors)
+
+    def test_allowed_value_valid_is_innocent(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.allowed.values.valid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.marital_status", "value": "MARRIED"},
+            required_facts=("person.marital_status",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+
+    def test_between_bounds_kind_mismatch_guilty(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.between.kind.mismatch",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "immigration.overstay_days",
+                "lower": "0",
+                "upper": 10,
+            },
+            required_facts=("immigration.overstay_days",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_KIND_MISMATCH" for e in report.errors)
+
+    def test_between_bounds_inverted_guilty(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.between.inverted",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "immigration.overstay_days",
+                "lower": 90,
+                "upper": 10,
+            },
+            required_facts=("immigration.overstay_days",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "BETWEEN_BOUNDS_INVERTED" for e in report.errors)
+
+    def test_between_valid_is_innocent(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.between.valid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "immigration.overstay_days",
+                "lower": 0,
+                "upper": 30,
+            },
+            required_facts=("immigration.overstay_days",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code.startswith(("FACT_LITERAL", "BETWEEN")) for e in report.errors)
+
+
+# ---------------------------------------------------------------------------
+# Codex findings 6+8 — structural safety net / bypass-proofing
+# ---------------------------------------------------------------------------
+
+
+class TestStructuralRevalidationAndCycleSafety:
+    def test_model_construct_bad_environment_type_never_crashes(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        tampered_protected = minimal_valid_pack.protected.model_copy(
+            update={"environment": "STAGING"}
+        )
+        tampered_pack = M.RulePack.model_construct(
+            canonicalization=minimal_valid_pack.canonicalization,
+            protected=tampered_protected,
+            payload=minimal_valid_pack.payload,
+            payload_sha256=minimal_valid_pack.payload_sha256,
+            signature=minimal_valid_pack.signature,
+        )
+        report = C.compile_rule_pack(tampered_pack)  # must not raise
+        assert any(e.code == "ENVIRONMENT_MISMATCH" for e in report.errors)
+
+    def test_cyclic_condition_tree_reported_not_crashed(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Codex's exact counterexample class: a self-referential AST node
+        # built via `object.__setattr__` (bypassing the frozen-model write
+        # guard) must be reported as a `CompilationError`, never raise
+        # `RecursionError` out of `compile_rule_pack`.
+        leaf = A.parse_condition({"op": "known", "fact": "person.birth_date"})
+        cyclic = A.NotCondition(op="not", arg=leaf)
+        object.__setattr__(cyclic, "arg", cyclic)
+
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.cyclic",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when=cyclic,
+            required_facts=(),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        pack = make_rule_pack(payload)
+
+        report = C.compile_rule_pack(pack)  # must not raise RecursionError
+        assert not report.ok
+        assert any(
+            e.code
+            in (
+                "PACK_FAILS_STRUCTURAL_REVALIDATION",
+                "AST_LIMIT_EXCEEDED",
+                "MALFORMED_CONDITION_TREE",
+            )
+            for e in report.errors
+        )
+
+    def test_degenerate_all_args_empty_via_bypass_never_crashes(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # `AllCondition(args=())` bypasses `Field(..., min_length=1)` only
+        # via `model_construct`.
+        degenerate = A.AllCondition.model_construct(op="all", args=())
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.degenerate.all",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when=degenerate,
+            required_facts=(),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))  # must not raise
+        assert not report.ok
+
+
+class TestBypassProofRedundantChecks:
+    def test_duplicate_rule_id_bypass_reported(self, minimal_valid_pack: M.RulePack) -> None:
+        rule = minimal_valid_pack.payload.rules[0]
+        payload = minimal_valid_pack.payload.model_construct(
+            **{**minimal_valid_pack.payload.__dict__, "rules": (rule, rule)}
+        )
+        pack = minimal_valid_pack.model_construct(
+            **{**minimal_valid_pack.__dict__, "payload": payload}
+        )
+        report = C.compile_rule_pack(pack)
+        assert any(e.code == "DUPLICATE_RULE_ID" for e in report.errors)
+
+    def test_non_utc_datetime_bypass_reported(self, minimal_valid_pack: M.RulePack) -> None:
+        import datetime as dt
+
+        naive_payload = minimal_valid_pack.payload.model_construct(
+            **{**minimal_valid_pack.payload.__dict__, "created_at": dt.datetime(2026, 7, 17)}
+        )
+        pack = minimal_valid_pack.model_construct(
+            **{**minimal_valid_pack.__dict__, "payload": naive_payload}
+        )
+        report = C.compile_rule_pack(pack)
+        assert any(e.code == "NON_UTC_DATETIME" for e in report.errors)
+
+    def test_non_nfc_string_bypass_reported(self, minimal_valid_pack: M.RulePack) -> None:
+        import unicodedata
+
+        # "é" as NFD (e + combining acute accent) vs NFC (single codepoint)
+        # — visually identical, byte-distinct.
+        nfd_name = unicodedata.normalize("NFD", "café")
+        assert nfd_name != unicodedata.normalize("NFC", nfd_name)
+
+        naive_payload = minimal_valid_pack.payload.model_construct(
+            **{**minimal_valid_pack.payload.__dict__, "created_by": nfd_name}
+        )
+        pack = minimal_valid_pack.model_construct(
+            **{**minimal_valid_pack.__dict__, "payload": naive_payload}
+        )
+        report = C.compile_rule_pack(pack)
+        assert any(e.code == "NON_NFC_STRING" for e in report.errors)
+
+    def test_pack_size_limit_rules_exceeded_reported(
+        self, minimal_valid_pack: M.RulePack, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(C, "_MAX_RULES", 0)
+        report = C.compile_rule_pack(minimal_valid_pack)
+        assert any(e.code == "TOO_MANY_RULES" for e in report.errors)
+
+    def test_pack_size_limit_products_exceeded_reported(
+        self, minimal_valid_pack: M.RulePack, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(C, "_MAX_PRODUCTS", 0)
+        report = C.compile_rule_pack(minimal_valid_pack)
+        assert any(e.code == "TOO_MANY_PRODUCTS" for e in report.errors)
+
+
+# ---------------------------------------------------------------------------
+# Codex finding 7 — SUPPORT-purpose vacuous-truth + GLOBAL-rule gaps
+# ---------------------------------------------------------------------------
+
+
+class TestSupportPurposeCoverageFixed:
+    def test_empty_covered_purposes_bypass_reported(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        empty_effect = M.EffectSupport.model_construct(
+            type="SUPPORT", reason_code="X", covered_purposes=()
+        )
+        rule = make_support_rule(
+            rule_id="rule.empty.covered.purposes",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+        )
+        rule = rule.model_construct(**{**rule.__dict__, "effect": empty_effect})
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "SUPPORT_RULE_EMPTY_COVERED_PURPOSES" for e in report.errors)
+
+    def test_global_support_rule_claiming_unsupported_purpose_reported(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Codex's exact counterexample: a GLOBAL-scope SUPPORT rule (no
+        # product_version_ids) used to be skipped entirely by `continue`.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id,
+            source_refs=[source_record.source_record_id],
+            covered_purposes=["TOURISM"],
+        )
+        global_rule = M.Rule(
+            rule_id="rule.global.support.invalid",
+            stage="ELIGIBILITY",
+            scope="GLOBAL",
+            product_version_ids=None,
+            priority=100,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "intersects", "fact": "intent.purposes", "values": ["EMPLOYMENT"]},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "X",
+                "covered_purposes": ["EMPLOYMENT"],
+            },
+            on_unknown="NEEDS_INPUT",
+            required_facts=["intent.purposes"],
+            source_refs=[source_record.source_record_id],
+            explanation_key="explain.global",
+            safety_critical=False,
+        )
+        payload = make_rule_pack_payload(
+            rules=[global_rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "SUPPORT_RULE_PURPOSE_NOT_ON_ANY_PRODUCT" for e in report.errors)
+
+    def test_global_support_rule_claiming_covered_purpose_is_innocent(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id,
+            source_refs=[source_record.source_record_id],
+            covered_purposes=["TOURISM"],
+        )
+        global_rule = M.Rule(
+            rule_id="rule.global.support.valid",
+            stage="ELIGIBILITY",
+            scope="GLOBAL",
+            product_version_ids=None,
+            priority=100,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
+            effect={
+                "type": "SUPPORT",
+                "reason_code": "X",
+                "covered_purposes": ["TOURISM"],
+            },
+            on_unknown="NEEDS_INPUT",
+            required_facts=["intent.purposes"],
+            source_refs=[source_record.source_record_id],
+            explanation_key="explain.global.valid",
+            safety_critical=False,
+        )
+        payload = make_rule_pack_payload(
+            rules=[global_rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code.startswith("SUPPORT_RULE") for e in report.errors)

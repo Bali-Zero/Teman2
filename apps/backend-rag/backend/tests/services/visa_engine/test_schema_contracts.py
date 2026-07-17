@@ -7,6 +7,17 @@ stage<->effect) with guilt+innocence pairs; the RulePackPayload sequence<->
 previous_payload_sha256 conditional; UtcDateTime non-UTC rejection; the
 exported JSON Schema's key invariants (5 DecisionState values, 16
 ConditionOperator values, 5 UnknownReason values) per the PR1 task brief.
+
+PR1 hardening round (Codex findings 1/2/4/10) additions: the FX-1
+scope-expansion models (``ApplicantFacts``/``Decision``/``PriceQuote``/
+``Candidate``) with their round-trip + ``allOf``-conditional coverage; every
+now-required (no-silent-default) field from finding 2, one guilt test each;
+strict-int rejection (finding 4) on the models-layer integer fields; and —
+replacing the old enum-length/string-search "invariant" tests Codex
+criticized in finding 10 — real ``jsonschema.Draft202012Validator`` +
+``FormatChecker`` validation of golden instances against the *exported*
+schema documents (generator != grader: this uses a JSON Schema engine that
+has never seen Pydantic's internals, not the models that produced the data).
 """
 
 from __future__ import annotations
@@ -16,14 +27,47 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 from pydantic import ValidationError
+from referencing import Registry, Resource
 
 from backend.services.visa_engine import models as M
 from backend.services.visa_engine import schema_export as SE
 from backend.services.visa_engine.enums import ConditionOperator, DecisionState, UnknownReason
-from backend.tests.services.visa_engine.conftest import GOLD_EFFECTIVE_AT
+from backend.tests.services.visa_engine.conftest import (
+    _HIT_POLICY,
+    GOLD_EFFECTIVE_AT,
+    make_applicant_facts,
+    make_candidate,
+    make_fingerprint,
+    make_price_quote,
+    make_product,
+    make_rule_pack_ref,
+    make_support_rule,
+    make_supported_candidates_decision,
+)
 
 _OPEN_PERIOD = {"from": GOLD_EFFECTIVE_AT, "to": None}
+
+
+def _jsonschema_validator_for(schemas: dict, entrypoint_filename: str) -> Draft202012Validator:
+    """Build a real ``jsonschema`` validator for one exported entrypoint,
+    resolving its ``$ref`` into ``contract.schema.json`` via a two-resource
+    ``referencing.Registry`` — the same two-file shape ``schema_export.py``
+    writes to disk. Independent of Pydantic: this is the generator != grader
+    check Codex's finding 10 asked for.
+    """
+    contract = schemas["contract.schema.json"]
+    entrypoint = schemas[entrypoint_filename]
+    registry = Registry().with_resources(
+        [
+            (contract["$id"], Resource.from_contents(contract)),
+            (entrypoint["$id"], Resource.from_contents(entrypoint)),
+        ]
+    )
+    return Draft202012Validator(
+        entrypoint, registry=registry, format_checker=Draft202012Validator.FORMAT_CHECKER
+    )
 
 
 class TestRoundTrip:
@@ -203,6 +247,9 @@ class TestSequenceChainConditional:
                 sequence=1,
                 version="1.0.0",
                 environment="TEST",
+                jurisdiction="ID",
+                decision_domain="IMMIGRATION_VISA",
+                engine_contract_version="1.0.0",
                 engine_min_version="1.0.0",
                 engine_max_version="1.0.0",
                 valid_period=_OPEN_PERIOD,
@@ -210,7 +257,7 @@ class TestSequenceChainConditional:
                 created_by="pipeline.compiler",
                 previous_payload_sha256="e" * 64,  # illegal for sequence 1
                 rollback_of_payload_sha256=None,
-                hit_policy={},
+                hit_policy=_HIT_POLICY,
                 source_records=[source_record],
                 products=[product],
                 rules=[rule],
@@ -239,6 +286,9 @@ class TestSequenceChainConditional:
                 sequence=2,
                 version="1.0.0",
                 environment="TEST",
+                jurisdiction="ID",
+                decision_domain="IMMIGRATION_VISA",
+                engine_contract_version="1.0.0",
                 engine_min_version="1.0.0",
                 engine_max_version="1.0.0",
                 valid_period=_OPEN_PERIOD,
@@ -246,7 +296,7 @@ class TestSequenceChainConditional:
                 created_by="pipeline.compiler",
                 previous_payload_sha256=None,  # illegal for sequence > 1
                 rollback_of_payload_sha256=None,
-                hit_policy={},
+                hit_policy=_HIT_POLICY,
                 source_records=[source_record],
                 products=[product],
                 rules=[rule],
@@ -280,6 +330,7 @@ class TestHeaderEnvironmentConditional:
         protected["environment"] = "STAGING"
         with pytest.raises(ValidationError, match="must equal"):
             M.RulePack(
+                canonicalization=minimal_valid_pack.canonicalization,
                 protected=protected,
                 payload=minimal_valid_pack.payload,
                 payload_sha256=minimal_valid_pack.payload_sha256,
@@ -315,3 +366,488 @@ class TestSchemaExportInvariants:
             schemas["rule-pack.schema.json"]["$schema"]
             == "https://json-schema.org/draft/2020-12/schema"
         )
+
+    def test_all_seven_spec_entrypoints_exported(self) -> None:
+        # Codex finding 1: the original PR1 draft exported only 4 of the 7
+        # spec §2 "Equivalent entrypoints" — this asserts all seven, plus
+        # the shared `contract.schema.json` they `$ref` into.
+        schemas = SE.build_schemas()
+        for filename in (
+            "contract.schema.json",
+            "rule-pack.schema.json",
+            "rule.schema.json",
+            "visa-product-version.schema.json",
+            "applicant-facts.schema.json",
+            "decision.schema.json",
+            "price-quote.schema.json",
+            "source-record.schema.json",
+        ):
+            assert filename in schemas, f"{filename} missing from exported schema set"
+
+    def test_decision_state_present_in_contract(self) -> None:
+        schemas = SE.build_schemas()
+        rendered = str(schemas["contract.schema.json"])
+        for state in DecisionState:
+            assert state.value in rendered
+
+    def test_unknown_reason_present_in_contract(self) -> None:
+        schemas = SE.build_schemas()
+        rendered = str(schemas["contract.schema.json"])
+        for reason in UnknownReason:
+            assert reason.value in rendered
+
+
+class TestJsonSchemaGoldenInstanceValidation:
+    """Generator != grader (Codex finding 10): validate real model instances
+    against the *exported* schema documents using ``jsonschema``, a JSON
+    Schema engine wholly independent of Pydantic — this catches an exported
+    schema that Pydantic itself would happily round-trip against but that
+    diverges from what an external consumer (a non-Python service, a CI
+    contract-check) would actually accept.
+    """
+
+    def test_rule_pack_instance_validates_against_exported_schema(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "rule-pack.schema.json")
+        instance = minimal_valid_pack.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_source_record_instance_validates_against_exported_schema(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "source-record.schema.json")
+        instance = source_record.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_applicant_facts_instance_validates_against_exported_schema(self) -> None:
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "applicant-facts.schema.json")
+        instance = make_applicant_facts().model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_decision_instance_validates_against_exported_schema(self) -> None:
+        product_id = uuid.uuid4()
+        decision = make_supported_candidates_decision(product_version_id=product_id)
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "decision.schema.json")
+        instance = decision.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_price_quote_instance_validates_against_exported_schema(self) -> None:
+        quote = make_price_quote(product_version_id=uuid.uuid4())
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "price-quote.schema.json")
+        instance = quote.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_visa_product_version_instance_validates_against_exported_schema(self) -> None:
+        product = make_product(product_version_id=uuid.uuid4(), source_refs=[uuid.uuid4()])
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "visa-product-version.schema.json")
+        instance = product.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_broken_instance_is_actually_caught(self, source_record: M.SourceRecord) -> None:
+        # Innocence-of-the-grader-itself check: a deliberately-invalid
+        # instance (bad content_sha256 pattern) must be REJECTED — proves
+        # the validator above is not vacuously passing everything.
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "source-record.schema.json")
+        instance = source_record.model_dump(mode="json", by_alias=True)
+        instance["content_sha256"] = "not-a-valid-sha256"
+        errors = list(validator.iter_errors(instance))
+        assert errors != []
+
+
+class TestApplicantFactsContract:
+    def test_round_trips(self) -> None:
+        facts = make_applicant_facts()
+        dumped = facts.model_dump(mode="json", by_alias=True)
+        rebuilt = M.ApplicantFacts.model_validate(dumped)
+        assert rebuilt == facts
+
+    def test_rejects_extra_top_level_field(self) -> None:
+        dumped = make_applicant_facts().model_dump(mode="json", by_alias=True)
+        dumped["unexpected"] = True
+        with pytest.raises(ValidationError):
+            M.ApplicantFacts.model_validate(dumped)
+
+    def test_facts_object_missing_one_of_35_keys_rejected(self) -> None:
+        dumped = make_applicant_facts().model_dump(mode="json", by_alias=True)
+        del dumped["facts"]["person.birth_date"]
+        with pytest.raises(ValidationError):
+            M.ApplicantFacts.model_validate(dumped)
+
+    def test_facts_object_rejects_unrecognized_key(self) -> None:
+        dumped = make_applicant_facts().model_dump(mode="json", by_alias=True)
+        dumped["facts"]["not.a.real.path"] = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
+        with pytest.raises(ValidationError):
+            M.ApplicantFacts.model_validate(dumped)
+
+    def test_known_marital_status_parses(self) -> None:
+        dumped = make_applicant_facts().model_dump(mode="json", by_alias=True)
+        dumped["facts"]["person.marital_status"] = {"status": "KNOWN", "value": "MARRIED"}
+        rebuilt = M.ApplicantFacts.model_validate(dumped)
+        assert rebuilt.facts.person_marital_status.value == "MARRIED"  # type: ignore[union-attr]
+
+    def test_known_marital_status_rejects_value_outside_enum(self) -> None:
+        dumped = make_applicant_facts().model_dump(mode="json", by_alias=True)
+        dumped["facts"]["person.marital_status"] = {"status": "KNOWN", "value": "NOT_A_STATUS"}
+        with pytest.raises(ValidationError):
+            M.ApplicantFacts.model_validate(dumped)
+
+
+class TestPriceQuoteStatusConditional:
+    def test_available_requires_non_null_amount(self) -> None:
+        with pytest.raises(ValidationError, match="AVAILABLE requires non-null"):
+            M.PriceQuote(
+                quote_id=uuid.uuid4(),
+                product_version_id=uuid.uuid4(),
+                product_code="C1",
+                status="AVAILABLE",
+                currency="IDR",
+                amount=None,
+                pricing_key={"category": "visa", "item_key": "c1"},
+                catalog_version=None,
+                catalog_sha256=None,
+                row_sha256=None,
+                quoted_at=GOLD_EFFECTIVE_AT,
+                valid_until=None,
+                reason_code="X",
+            )
+
+    def test_unavailable_requires_null_amount(self) -> None:
+        with pytest.raises(ValidationError, match="requires amount=null"):
+            M.PriceQuote(
+                quote_id=uuid.uuid4(),
+                product_version_id=uuid.uuid4(),
+                product_code="C1",
+                status="UNAVAILABLE",
+                currency="IDR",
+                amount=100,
+                pricing_key={"category": "visa", "item_key": "c1"},
+                catalog_version=None,
+                catalog_sha256=None,
+                row_sha256=None,
+                quoted_at=GOLD_EFFECTIVE_AT,
+                valid_until=None,
+                reason_code="X",
+            )
+
+    def test_available_with_all_fields_is_innocent(self) -> None:
+        quote = make_price_quote(product_version_id=uuid.uuid4(), status="AVAILABLE")
+        assert quote.status == "AVAILABLE"
+
+    def test_contact_required_with_null_amount_is_innocent(self) -> None:
+        quote = make_price_quote(product_version_id=uuid.uuid4(), status="CONTACT_REQUIRED")
+        assert quote.status == "CONTACT_REQUIRED"
+
+
+class TestDecisionStateConditionals:
+    def _base_kwargs(self) -> dict:
+        return {
+            "schema_version": "1.0.0",
+            "effective_at": GOLD_EFFECTIVE_AT,
+            "observed_at": GOLD_EFFECTIVE_AT,
+            "evaluated_at": GOLD_EFFECTIVE_AT,
+            "facts_fingerprint": make_fingerprint(),
+            "trace_sha256": "e" * 64,
+        }
+
+    def test_supported_candidates_requires_at_least_one_candidate(self) -> None:
+        with pytest.raises(ValidationError, match="at least one candidate"):
+            M.Decision(
+                decision_id=uuid.uuid4(),
+                public_id="a" * 16,
+                state="SUPPORTED_CANDIDATES",
+                rule_pack=make_rule_pack_ref(),
+                candidates=[],
+                missing_facts=[],
+                review_reasons=[],
+                no_path_reasons=[],
+                outage=None,
+                quotes=[],
+                notices=[],
+                decision_integrity=None,
+                **self._base_kwargs(),
+            )
+
+    def test_supported_candidates_forbids_null_identity(self) -> None:
+        with pytest.raises(ValidationError, match="requires non-null"):
+            M.Decision(
+                decision_id=None,
+                public_id=None,
+                state="SUPPORTED_CANDIDATES",
+                rule_pack=make_rule_pack_ref(),
+                candidates=[make_candidate(product_version_id=uuid.uuid4())],
+                missing_facts=[],
+                review_reasons=[],
+                no_path_reasons=[],
+                outage=None,
+                quotes=[],
+                notices=[],
+                decision_integrity=None,
+                **self._base_kwargs(),
+            )
+
+    def test_supported_candidates_valid_is_innocent(self) -> None:
+        decision = make_supported_candidates_decision(product_version_id=uuid.uuid4())
+        assert decision.state.value == "SUPPORTED_CANDIDATES"
+
+    def test_needs_input_requires_at_least_one_missing_fact(self) -> None:
+        with pytest.raises(ValidationError, match="at least one missing fact"):
+            M.Decision(
+                decision_id=uuid.uuid4(),
+                public_id="a" * 16,
+                state="NEEDS_INPUT",
+                rule_pack=make_rule_pack_ref(),
+                candidates=[],
+                missing_facts=[],
+                review_reasons=[],
+                no_path_reasons=[],
+                outage=None,
+                quotes=[],
+                notices=[],
+                decision_integrity=None,
+                **self._base_kwargs(),
+            )
+
+    def test_needs_input_valid_is_innocent(self) -> None:
+        decision = M.Decision(
+            decision_id=uuid.uuid4(),
+            public_id="a" * 16,
+            state="NEEDS_INPUT",
+            rule_pack=make_rule_pack_ref(),
+            candidates=[],
+            missing_facts=["person.birth_date"],
+            review_reasons=[],
+            no_path_reasons=[],
+            outage=None,
+            quotes=[],
+            notices=[],
+            decision_integrity=None,
+            **self._base_kwargs(),
+        )
+        assert decision.state.value == "NEEDS_INPUT"
+
+    def test_human_review_required_requires_at_least_one_review_reason(self) -> None:
+        with pytest.raises(ValidationError, match="at least one review reason"):
+            M.Decision(
+                decision_id=uuid.uuid4(),
+                public_id="a" * 16,
+                state="HUMAN_REVIEW_REQUIRED",
+                rule_pack=make_rule_pack_ref(),
+                candidates=[],
+                missing_facts=[],
+                review_reasons=[],
+                no_path_reasons=[],
+                outage=None,
+                quotes=[],
+                notices=[],
+                decision_integrity=None,
+                **self._base_kwargs(),
+            )
+
+    def test_no_supported_path_requires_at_least_one_no_path_reason(self) -> None:
+        with pytest.raises(ValidationError, match="at least one no_path reason"):
+            M.Decision(
+                decision_id=uuid.uuid4(),
+                public_id="a" * 16,
+                state="NO_SUPPORTED_PATH",
+                rule_pack=make_rule_pack_ref(),
+                candidates=[],
+                missing_facts=[],
+                review_reasons=[],
+                no_path_reasons=[],
+                outage=None,
+                quotes=[],
+                notices=[],
+                decision_integrity=None,
+                **self._base_kwargs(),
+            )
+
+    def test_temporarily_unavailable_requires_non_null_outage(self) -> None:
+        with pytest.raises(ValidationError, match="requires a non-null outage"):
+            M.Decision(
+                decision_id=None,
+                public_id=None,
+                state="TEMPORARILY_UNAVAILABLE",
+                rule_pack=None,
+                candidates=[],
+                missing_facts=[],
+                review_reasons=[],
+                no_path_reasons=[],
+                outage=None,
+                quotes=[],
+                notices=[],
+                decision_integrity=None,
+                **self._base_kwargs(),
+            )
+
+    def test_temporarily_unavailable_with_outage_is_innocent(self) -> None:
+        decision = M.Decision(
+            decision_id=None,
+            public_id=None,
+            state="TEMPORARILY_UNAVAILABLE",
+            rule_pack=None,
+            candidates=[],
+            missing_facts=[],
+            review_reasons=[],
+            no_path_reasons=[],
+            outage={"code": "RULE_PACK_UNAVAILABLE", "retryable": True},
+            quotes=[],
+            notices=[],
+            decision_integrity=None,
+            **self._base_kwargs(),
+        )
+        assert decision.state.value == "TEMPORARILY_UNAVAILABLE"
+
+    def test_non_supported_candidates_state_forbids_nonempty_candidates(self) -> None:
+        with pytest.raises(ValidationError, match="forbids non-empty candidates"):
+            M.Decision(
+                decision_id=uuid.uuid4(),
+                public_id="a" * 16,
+                state="NEEDS_INPUT",
+                rule_pack=make_rule_pack_ref(),
+                candidates=[make_candidate(product_version_id=uuid.uuid4())],
+                missing_facts=["person.birth_date"],
+                review_reasons=[],
+                no_path_reasons=[],
+                outage=None,
+                quotes=[],
+                notices=[],
+                decision_integrity=None,
+                **self._base_kwargs(),
+            )
+
+
+class TestCandidateDecisionAlias:
+    def test_candidate_decision_is_candidate(self) -> None:
+        # Spec §1's module-layout snippet names this class `CandidateDecision`;
+        # spec §2's JSON Schema $def is `Candidate` — see models.py's
+        # module docstring for the resolution.
+        assert M.CandidateDecision is M.Candidate
+
+
+class TestNoSilentDefaults:
+    """One guilt test per Codex finding-2 counterexample: a field that used
+    to have a Python default (letting the key be silently omitted) is now
+    required — omitting it must raise, never fall back to the old default.
+    """
+
+    def test_time_range_missing_to_key_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            M.TimeRange.model_validate({"from": GOLD_EFFECTIVE_AT})
+
+    def test_rule_missing_required_facts_key_rejected(self) -> None:
+        dumped = make_support_rule(
+            rule_id="rule.no.required.facts",
+            product_version_ids=[uuid.uuid4()],
+            source_refs=[uuid.uuid4()],
+        ).model_dump(mode="json", by_alias=True)
+        del dumped["required_facts"]
+        with pytest.raises(ValidationError):
+            M.Rule.model_validate(dumped)
+
+    def test_hit_policy_declaration_zero_args_rejected(self) -> None:
+        # Codex's exact counterexample: `HitPolicyDeclaration()` used to be
+        # wrongly accepted.
+        with pytest.raises(ValidationError):
+            M.HitPolicyDeclaration()
+
+    def test_protected_header_missing_domain_alg_schema_version_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            M.ProtectedHeader.model_validate(
+                {
+                    "kid": "key-1",
+                    "signed_at": GOLD_EFFECTIVE_AT,
+                    "environment": "TEST",
+                }
+            )
+
+    def test_rule_pack_missing_canonicalization_rejected(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        dumped = minimal_valid_pack.model_dump(mode="json", by_alias=True)
+        del dumped["canonicalization"]
+        with pytest.raises(ValidationError):
+            M.RulePack.model_validate(dumped)
+
+    def test_source_record_missing_jurisdiction_rejected(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        dumped = source_record.model_dump(mode="json", by_alias=True)
+        del dumped["jurisdiction"]
+        with pytest.raises(ValidationError):
+            M.SourceRecord.model_validate(dumped)
+
+    def test_source_record_missing_document_number_key_rejected(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        dumped = source_record.model_dump(mode="json", by_alias=True)
+        del dumped["document_number"]
+        with pytest.raises(ValidationError):
+            M.SourceRecord.model_validate(dumped)
+
+    def test_source_record_missing_locators_key_rejected(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        dumped = source_record.model_dump(mode="json", by_alias=True)
+        del dumped["locators"]
+        with pytest.raises(ValidationError):
+            M.SourceRecord.model_validate(dumped)
+
+    def test_source_record_missing_supersedes_key_rejected(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        dumped = source_record.model_dump(mode="json", by_alias=True)
+        del dumped["supersedes_source_record_id"]
+        with pytest.raises(ValidationError):
+            M.SourceRecord.model_validate(dumped)
+
+
+class TestStrictIntFields:
+    """Codex finding 4, extended per the orchestrator's "do the same for
+    integer fields in models" instruction: a float with no fractional part
+    (e.g. ``1.0``) must never silently coerce into an ``int`` field.
+    """
+
+    def test_source_record_version_rejects_float(self, source_record: M.SourceRecord) -> None:
+        dumped = source_record.model_dump(mode="json", by_alias=True)
+        dumped["version"] = 1.0
+        with pytest.raises(ValidationError):
+            M.SourceRecord.model_validate(dumped)
+
+    def test_rule_pack_payload_sequence_rejects_float(self, minimal_valid_pack: M.RulePack) -> None:
+        dumped = minimal_valid_pack.payload.model_dump(mode="json", by_alias=True)
+        dumped["sequence"] = 1.0
+        with pytest.raises(ValidationError):
+            M.RulePackPayload.model_validate(dumped)
+
+    def test_rule_priority_rejects_float(self, minimal_valid_pack: M.RulePack) -> None:
+        dumped = minimal_valid_pack.payload.rules[0].model_dump(mode="json", by_alias=True)
+        dumped["priority"] = 100.0
+        with pytest.raises(ValidationError):
+            M.Rule.model_validate(dumped)
+
+    def test_effect_add_score_points_rejects_float(self) -> None:
+        with pytest.raises(ValidationError):
+            M.EffectAddScore(type="ADD_SCORE", reason_code="X", points=1.0)  # type: ignore[arg-type]
+
+
+class TestStageEffectTypeImmutable:
+    def test_stage_effect_type_cannot_be_cleared(self) -> None:
+        # Codex finding 9: `models.py`'s module-level mapping must be a
+        # true `MappingProxyType`, not a plain `dict` a caller could mutate.
+        with pytest.raises(AttributeError):
+            M.STAGE_EFFECT_TYPE.clear()  # type: ignore[attr-defined]
+        assert len(M.STAGE_EFFECT_TYPE) == 4

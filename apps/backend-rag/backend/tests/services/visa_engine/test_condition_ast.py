@@ -137,6 +137,55 @@ class TestScalarValidation:
         with pytest.raises(ValidationError, match="float"):
             A.parse_condition({"op": "eq", "fact": "immigration.overstay_days", "value": 1.5})
 
+    def test_two_point_zero_never_silently_becomes_int_two(self) -> None:
+        # Codex finding 4, exact counterexample: `Scalar` from `2.0` must
+        # fail outright, never be silently coerced into the int member by
+        # Pydantic's lax union coercion before the scalar validator runs.
+        with pytest.raises(ValidationError, match="float"):
+            A.parse_condition({"op": "eq", "fact": "immigration.overstay_days", "value": 2.0})
+
+    def test_one_point_zero_never_silently_becomes_true(self) -> None:
+        # Codex finding 4, second exact counterexample: `1.0` must never
+        # become `True` — Pydantic's lax `bool` validation accepts `1.0` as
+        # truthy, which the "before"-mode `_check_scalar` validator must
+        # intercept before that coercion ever runs.
+        with pytest.raises(ValidationError, match="float"):
+            A.parse_condition(
+                {"op": "eq", "fact": "immigration.currently_in_indonesia", "value": 1.0}
+            )
+
+    def test_between_rejects_float_lower_bound(self) -> None:
+        with pytest.raises(ValidationError, match="float"):
+            A.parse_condition(
+                {
+                    "op": "between",
+                    "fact": "immigration.overstay_days",
+                    "lower": 0.5,
+                    "upper": 10,
+                }
+            )
+
+    def test_between_rejects_float_upper_bound(self) -> None:
+        with pytest.raises(ValidationError, match="float"):
+            A.parse_condition(
+                {
+                    "op": "between",
+                    "fact": "immigration.overstay_days",
+                    "lower": 0,
+                    "upper": 10.5,
+                }
+            )
+
+    def test_in_values_list_rejects_a_float_member(self) -> None:
+        with pytest.raises(ValidationError, match="float"):
+            A.parse_condition(
+                {
+                    "op": "in",
+                    "fact": "immigration.overstay_days",
+                    "values": [1, 2.0, 3],
+                }
+            )
+
     def test_integer_within_js_safe_range_accepted(self) -> None:
         condition = A.parse_condition(
             {"op": "eq", "fact": "immigration.overstay_days", "value": 9_007_199_254_740_991}

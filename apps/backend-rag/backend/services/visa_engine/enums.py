@@ -67,6 +67,31 @@ class RuleStage(str, Enum):
     RANKING = "RANKING"
 
 
+class EngineMode(str, Enum):
+    """Per-surface rollout mode (spec §1 ``enums.py``). PR1 declares this
+    closed vocabulary only — ``VisaEngineModeResolver.resolve()`` (spec §1)
+    is the PR2+ evaluator-config concern that actually reads it; nothing in
+    PR1 wires a Pydantic field to this enum yet.
+    """
+
+    OFF = "OFF"
+    SHADOW = "SHADOW"
+    ENFORCE = "ENFORCE"
+
+
+class EngineSurface(str, Enum):
+    """Every call-site the engine can be gated per (spec §1 ``enums.py``).
+    Same PR1-declares-only note as ``EngineMode`` above.
+    """
+
+    CLOCK = "CLOCK"
+    MATCH = "MATCH"
+    RECOMMEND = "RECOMMEND"
+    CATALOG = "CATALOG"
+    CHAT_CONTEXT = "CHAT_CONTEXT"
+    HANDOFF = "HANDOFF"
+
+
 class HitPolicy(str, Enum):
     """Per-stage aggregation policy (spec §2 ``RulePackPayload.hit_policy``).
 

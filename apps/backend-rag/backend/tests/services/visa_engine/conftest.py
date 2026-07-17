@@ -19,6 +19,16 @@ GOLD_EFFECTIVE_AT = datetime(2026, 7, 17, 0, 0, 0, tzinfo=timezone.utc)
 
 _OPEN_PERIOD = {"from": GOLD_EFFECTIVE_AT, "to": None}
 
+#: Every ``HitPolicyDeclaration`` field is a JSON Schema ``const`` with no
+#: Python default as of the PR1 hardening round (Codex finding 2) — every
+#: builder that used to rely on ``hit_policy={}`` now spells this out.
+_HIT_POLICY = {
+    "hard_filter": "COLLECT_ALL",
+    "eligibility": "COVER_ALL_DECLARED_PURPOSES",
+    "human_review": "COLLECT_ALL",
+    "ranking": "SUM_TRUE_INTEGER_WEIGHTS",
+}
+
 
 def make_source_record(
     *,
@@ -31,6 +41,7 @@ def make_source_record(
         version=1,
         authority_type="PRIMARY_LAW",
         status="VERIFIED",
+        jurisdiction="ID",
         title="Kepmen M.IP-08.GR.01.01/2025",
         publisher="Kemenimipas",
         canonical_url="https://jdih.imipas.go.id/example",
@@ -120,6 +131,9 @@ def make_rule_pack_payload(
         sequence=sequence,
         version="1.0.0",
         environment=environment,
+        jurisdiction="ID",
+        decision_domain="IMMIGRATION_VISA",
+        engine_contract_version="1.0.0",
         engine_min_version="1.0.0",
         engine_max_version="1.0.0",
         valid_period=_OPEN_PERIOD,
@@ -127,7 +141,7 @@ def make_rule_pack_payload(
         created_by="pipeline.compiler",
         previous_payload_sha256=None if sequence == 1 else "d" * 64,
         rollback_of_payload_sha256=None,
-        hit_policy={},
+        hit_policy=_HIT_POLICY,
         source_records=list(source_records),
         products=list(products),
         rules=list(rules),
@@ -136,14 +150,163 @@ def make_rule_pack_payload(
 
 def make_rule_pack(payload: M.RulePackPayload, *, environment: str = "TEST") -> M.RulePack:
     return M.RulePack(
+        canonicalization="RFC8785",
         protected={
+            "domain": "balizero.visa-rulepack.v1",
+            "alg": "Ed25519",
             "kid": "key-2026-07",
             "signed_at": GOLD_EFFECTIVE_AT,
+            "schema_version": "1.0.0",
             "environment": environment,
         },
         payload=payload,
         payload_sha256="b" * 64,
         signature="c" * 86,
+    )
+
+
+def make_applicant_facts(*, assessment_id: uuid.UUID | None = None) -> M.ApplicantFacts:
+    """Every one of the 35 fact paths as an ``UnknownFact`` (the simplest
+    valid ``facts`` payload — proves the "all keys required, additionalProperties:
+    false" shape without needing 35 different ``Known*`` builders).
+    """
+    unknown = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
+    facts = {
+        "person.birth_date": unknown,
+        "person.nationalities": unknown,
+        "person.marital_status": unknown,
+        "immigration.currently_in_indonesia": unknown,
+        "immigration.current_status_code": unknown,
+        "immigration.current_status_expiry": unknown,
+        "immigration.last_entry_date": unknown,
+        "immigration.overstay_days": unknown,
+        "immigration.violation_history": unknown,
+        "intent.purposes": unknown,
+        "intent.stay_days": unknown,
+        "intent.desired_entry_date": unknown,
+        "intent.entry_pattern": unknown,
+        "intent.requested_product_code": unknown,
+        "work.employer_country_code": unknown,
+        "work.employer_is_indonesian_entity": unknown,
+        "work.serves_indonesian_clients": unknown,
+        "work.indonesia_source_compensation": unknown,
+        "work.indonesian_work_sponsor_confirmed": unknown,
+        "investment.pt_pma_committed": unknown,
+        "investment.investment_capital_idr": unknown,
+        "investment.paid_up_capital_idr": unknown,
+        "investment.proposed_role": unknown,
+        "family.relation_to_sponsor": unknown,
+        "family.sponsor_nationalities": unknown,
+        "family.sponsor_status_code": unknown,
+        "family.marriage_registered": unknown,
+        "family.sponsor_confirmed": unknown,
+        "study.level": unknown,
+        "study.admission_confirmed": unknown,
+        "study.sponsor_confirmed": unknown,
+        "process.application_channel": unknown,
+        "process.wants_onshore_conversion": unknown,
+        "commercial.service_fee_budget_idr": unknown,
+        "commercial.wants_quote": unknown,
+    }
+    return M.ApplicantFacts(
+        schema_version="1.0.0",
+        assessment_id=assessment_id or uuid.uuid4(),
+        collected_at=GOLD_EFFECTIVE_AT,
+        facts=facts,
+    )
+
+
+def make_fingerprint(*, digest: str = "f" * 64) -> M.Fingerprint:
+    return M.Fingerprint(algorithm="HMAC-SHA256", key_id="fingerprint.key.1", digest=digest)
+
+
+def make_rule_pack_ref(*, rule_pack_id: uuid.UUID | None = None) -> M.RulePackRef:
+    return M.RulePackRef(
+        rule_pack_id=rule_pack_id or uuid.uuid4(),
+        sequence=1,
+        version="1.0.0",
+        payload_sha256="a" * 64,
+    )
+
+
+def make_reason(*, code: str = "SOME_REASON") -> M.Reason:
+    return M.Reason(code=code, rule_ids=["rule.some"], source_refs=[uuid.uuid4()])
+
+
+def make_price_quote(
+    *,
+    product_version_id: uuid.UUID,
+    status: str = "AVAILABLE",
+) -> M.PriceQuote:
+    if status == "AVAILABLE":
+        return M.PriceQuote(
+            quote_id=uuid.uuid4(),
+            product_version_id=product_version_id,
+            product_code="C1",
+            status=status,
+            currency="IDR",
+            amount=1_500_000,
+            pricing_key={"category": "visa", "item_key": "c1_tourism"},
+            catalog_version="2026.07",
+            catalog_sha256="a" * 64,
+            row_sha256="b" * 64,
+            quoted_at=GOLD_EFFECTIVE_AT,
+            valid_until=None,
+            reason_code="PRICE_FOUND",
+        )
+    return M.PriceQuote(
+        quote_id=uuid.uuid4(),
+        product_version_id=product_version_id,
+        product_code="C1",
+        status=status,
+        currency="IDR",
+        amount=None,
+        pricing_key={"category": "visa", "item_key": "c1_tourism"},
+        catalog_version=None,
+        catalog_sha256=None,
+        row_sha256=None,
+        quoted_at=GOLD_EFFECTIVE_AT,
+        valid_until=None,
+        reason_code="PRICE_UNAVAILABLE",
+    )
+
+
+def make_candidate(*, product_version_id: uuid.UUID) -> M.Candidate:
+    return M.Candidate(
+        rank=1,
+        product_version_id=product_version_id,
+        product_code="C1",
+        score=10,
+        covered_purposes=["TOURISM"],
+        support_rule_ids=["rule.c1.tourism.support"],
+        source_refs=[uuid.uuid4()],
+        reason_codes=["PURPOSE_SUPPORTED"],
+    )
+
+
+def make_supported_candidates_decision(*, product_version_id: uuid.UUID) -> M.Decision:
+    """A ``state=SUPPORTED_CANDIDATES`` Decision — every field the state's
+    ``allOf`` conditional requires, populated.
+    """
+    return M.Decision(
+        schema_version="1.0.0",
+        decision_id=uuid.uuid4(),
+        public_id="a" * 16,
+        state="SUPPORTED_CANDIDATES",
+        effective_at=GOLD_EFFECTIVE_AT,
+        observed_at=GOLD_EFFECTIVE_AT,
+        evaluated_at=GOLD_EFFECTIVE_AT,
+        rule_pack=make_rule_pack_ref(),
+        facts_fingerprint=make_fingerprint(),
+        candidates=[make_candidate(product_version_id=product_version_id)],
+        missing_facts=[],
+        review_reasons=[],
+        no_path_reasons=[],
+        outage=None,
+        quotes=[make_price_quote(product_version_id=product_version_id)],
+        notices=[],
+        trace_sha256="e" * 64,
+        decision_integrity=make_fingerprint(digest="d" * 64),
     )
 
 
