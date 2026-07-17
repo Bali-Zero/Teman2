@@ -106,6 +106,42 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 - 2026-07-17: R1 cross-family reviews done (codex×7, gemini×4; 2 REFUTED handled with recorded
   dispositions). Calling-visa corrected 8→7 (live-verified). Bridging ≥3-day interview-lane correction
   recorded.
+- 2026-07-17 (TRACK A — engine): PR0 recommend-core hardening LIVE in prod (#2585, prove-live done).
+  PR1 foundations built + adversarially gated to zero findings (235 tests); push queued behind M5
+  fleet quiet-window. Next: PR2 (signing).
+- 2026-07-17 (TRACK B — content): catalog bonifica report done — PR #2602 open, automerge armed,
+  rebased push pending quiet-window. Interview categories unblock at #2602 merge.
+- 2026-07-17 (TRACK C — experience): free — design doc
+  `docs/plans/2026-07-17-visa-oracle-v2/00-product-design.md` §7-8 is the spec; engine contract
+  snapshots land with PR1.
+
+## TRACKS — parallel work groups (multi-session coordination)
+
+The v2 program runs as separate tracks, one per surface, coordinated ONLY through this skill. Any
+session on any machine: load /visaoracle → read LIVE STATE → claim a free track → work exclusively
+inside that track's path scope. Scopes are disjoint by construction, so parallel tracks cannot
+merge-conflict.
+
+| Track               | Path scope (exclusive)                                | Home machine | Dependencies                                                                                                                                                                          |
+| ------------------- | ----------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A — Engine**      | `apps/backend-rag/backend/services/visa_engine/**`    | M5           | Serial chain: PR1 → PR2 (signing) → PR3 (evaluator) → PR4-6. Never parallelize within the chain.                                                                                      |
+| **B — Content**     | `research/visa/**` (later curated kb via its own PRs) | Mini         | Bridging Visa branch, D7A/D7B + diaspora gap research: free NOW. The 7 interview categories: only AFTER PR #2602 (catalog bonifica) merges.                                           |
+| **C — Experience**  | `apps/mouth/**` visa-oracle surfaces                  | Pro          | Prototypes/design-system with mock data: free NOW. Wiring to the real engine contract: only AFTER PR1 merges (schemas in `apps/backend-rag/backend/services/visa_engine/contracts/`). |
+| **D — Ditjen demo** | (defined later)                                       | —            | Blocked until green gold-harness.                                                                                                                                                     |
+
+**Claim protocol**
+
+1. A track with an open `TRACK <X> claimed by …` line in LIVE STATE is TAKEN — pick another or coordinate.
+2. Claiming = adding `TRACK <X> claimed by <machine>/<date>` to LIVE STATE in your track's FIRST PR; release it in the PR that closes the track.
+3. Every PR from a track updates its own LIVE STATE lines (standing rule: whoever changes state updates this file).
+
+**Quality invariants (identical for every track — parallelism never relaxes them)**
+
+- Own worktree via `scripts/agent_start.py`; the main checkout stays read-only.
+- generator≠grader before every push: cross-family adversarial review (Codex or Gemini seat) of the track's diff; the author never grades its own work.
+- Final on-disk gate = a Fable session per track; never delegated to the implementer.
+- Pre-push runs on the track's own machine (3 machines = 3 independent push queues). On M5: quiet-window rule — first loadavg value < 8 and zero real pytest processes before pushing.
+- All established truths in this skill bind every track — including the single all-inclusive client price ruling (never a PNBP-vs-fee split).
 
 ## PENDING (W81 ledger, project-scoped)
 
