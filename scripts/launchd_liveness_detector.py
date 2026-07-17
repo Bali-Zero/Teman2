@@ -232,6 +232,43 @@ def _program_path(plist: Path) -> str | None:
     return args[0] if args else None
 
 
+_LOG_LINE_TS_RE = re.compile(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
+
+
+def _parse_line_timestamp(line: str) -> float | None:
+    m = _LOG_LINE_TS_RE.match(line)
+    if not m:
+        return None
+    try:
+        return time.mktime(time.strptime(m.group(1), "%Y-%m-%d %H:%M:%S"))
+    except ValueError:
+        return None
+
+
+def _nearest_line_timestamp(tail: list[str], idx: int) -> float | None:
+    """Nearest parseable per-line timestamp around tail[idx] (search outward,
+    checking the line at idx itself first, then alternating forward/backward).
+    A crash marker from a Python-logged worker is almost always immediately
+    followed by a timestamped INFO line from the same incarnation (the retry
+    or the next request), so this reliably anchors the marker's real age even
+    when the FILE's mtime says nothing (it was bumped by later, unrelated
+    appends — see the sparse-log freshness gap below)."""
+    n = len(tail)
+    for offset in range(n):
+        fwd = idx + offset
+        if fwd < n:
+            ts = _parse_line_timestamp(tail[fwd])
+            if ts is not None:
+                return ts
+        if offset:
+            back = idx - offset
+            if back >= 0:
+                ts = _parse_line_timestamp(tail[back])
+                if ts is not None:
+                    return ts
+    return None
+
+
 def _log_has_failure_marker(paths: list[Path], now: float | None = None) -> str | None:
     """Return the matched line if any log tail proves the WORKER failed to launch.
 
@@ -243,7 +280,17 @@ def _log_has_failure_marker(paths: list[Path], now: float | None = None) -> str 
 
     Freshness gate (TAC-2 A2): a log whose mtime is older than MARKER_FRESH_SEC is
     archaeology, not evidence — its marker is ignored so a cured job stops being
-    reported dead once its failure stops re-occurring."""
+    reported dead once its failure stops re-occurring.
+
+    Sparse-log gap (healer tick 2026-07-17, kg-query-api DEAD-GREEN false positive):
+    the file-mtime gate above only proves the FILE was touched recently, not that the
+    MARKER LINE itself is recent — a low-frequency logger (a handful of lines across
+    months) keeps a cured incident's traceback inside the last-25-lines window
+    indefinitely, and every later healthy append re-freshens the file's mtime without
+    ever pushing the old marker out of the window. Once a marker line is found, its
+    OWN nearby timestamp (not the file's) decides freshness; only when no timestamp
+    can be found nearby do we fall back to the file-mtime verdict already applied
+    above (matches the original, single-write-log behavior this gate was built for)."""
     now = time.time() if now is None else now
     for p in paths:
         if not p.exists():
@@ -254,12 +301,19 @@ def _log_has_failure_marker(paths: list[Path], now: float | None = None) -> str 
             tail = p.read_text(errors="replace").splitlines()[-25:]
         except OSError:
             continue
-        for line in reversed(tail):
+        for idx in range(len(tail) - 1, -1, -1):
+            line = tail[idx]
             if _LAUNCHER_FAILURE_RE.search(line):
-                return line.strip()[:160]
-            low = line.lower()
-            if any(mk in low for mk in LAUNCH_FAILURE_MARKERS):
-                return line.strip()[:160]
+                matched = line
+            else:
+                low = line.lower()
+                matched = line if any(mk in low for mk in LAUNCH_FAILURE_MARKERS) else None
+            if matched is None:
+                continue
+            line_ts = _nearest_line_timestamp(tail, idx)
+            if line_ts is not None and (now - line_ts) > MARKER_FRESH_SEC:
+                continue  # a nearby per-line timestamp proves this marker is archaeology
+            return matched.strip()[:160]
     return None
 
 
