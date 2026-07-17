@@ -103,7 +103,7 @@ Refresh dello stato dell'arte multi-agent / AI-dev repo architecture per un setu
 
 ## Checklist for action
 
-- [ ] ~~**L3 — eliminare la failure mode squash-corruption**: in `scripts/setup_merge_queue_rulesets.sh` impostare `max_group_size=1` OPPURE merge-method ≠ squash per i merge group. (Costo: 1 riga di config; elimina la classe #193645 a probabilità zero.)~~ **RETIRED 2026-07-17**: `scripts/setup_merge_queue_rulesets.sh` è stato cancellato (dead automation, 0 rulesets live) — questo checklist item non è più azionabile.
+- [ ] **L3 — eliminare la failure mode squash-corruption**: in `scripts/setup_merge_queue_rulesets.sh` impostare `max_group_size=1` OPPURE merge-method ≠ squash per i merge group. (Costo: 1 riga di config; elimina la classe #193645 a probabilità zero.)
 - [ ] **L3 — adeguare al cambio HTTP 422**: in `.github/workflows/auto-merge-whitelist.yml` abilitare l'auto-merge DOPO che i check sono verdi (poll/webhook), non all'apertura PR — altrimenti il workflow fallirà silenziosamente con 422.
 - [ ] **Nuovo guard — post-merge HEAD-integrity check** (DeepSeek top-2 #2): job CI/webhook che diffa il risultato di merge vs somma dei diff PR e alerta su revert silenziosi. Highest-value next step.
 - [ ] **PR-size guard** (DeepSeek top-2 #1): CI check soft-flag su PR > ~400 righe (allineato a DORA +154% PR-size). Effort ~minimo.
