@@ -609,7 +609,11 @@ class _SyncSpanAsyncCM:
 def _maybe_council_span(*, topic: str, proponents: list[str]) -> Any:
     """Return an async context manager wrapping a Langfuse span (or a no-op)."""
     try:
-        from backend.core.observability import init_observability, is_enabled
+        from backend.core.observability import (
+            init_observability,
+            is_enabled,
+            start_traced_span,
+        )
     except Exception:
         return _NullAsyncCM()
 
@@ -627,7 +631,11 @@ def _maybe_council_span(*, topic: str, proponents: list[str]) -> Any:
         # PII-safe: hash + length only. War-room topics rarely contain
         # client PII but the pattern is uniform with agentic_rag.
         topic_hash = hashlib.sha256(topic.encode("utf-8")).hexdigest()[:16]
-        sync_cm = lf.start_as_current_span(
+        # start_traced_span is itself v3/v4-tolerant + fail-open (see
+        # backend/core/observability.py) — the outer try/except here is
+        # defense-in-depth kept for any future non-span-API failure.
+        sync_cm = start_traced_span(
+            lf,
             name="tone_council.run",
             input={"topic_hash": topic_hash, "topic_length": len(topic)},
             metadata={"proponents": proponents},
