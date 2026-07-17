@@ -181,6 +181,29 @@ async def run_compliance_forecast(request: Request) -> dict[str, Any]:
     engine = PredictiveComplianceEngine(db_pool, all_prices, scan_window_days=scan_days)
     result = await engine.scan()
 
+    # Persist + dispatch alerts for the forecasts just computed — gated by
+    # the SAME kill switch checked above (is_engine_enabled() already
+    # returned True to reach this point); no new/second switch is
+    # introduced. Defensive by design: a failure here must never break the
+    # forecast HTTP response, which already succeeded — this is a
+    # deliberately broad `except Exception` around best-effort side-channel
+    # work bolted onto an already-computed result (AlertsEngine itself only
+    # swallows per-forecast DB errors internally; this also covers wiring/
+    # construction failures, e.g. a misconfigured Telegram chat env var).
+    alerts_generated = 0
+    alerts_error: str | None = None
+    try:
+        from backend.services.compliance.alert_wiring import build_alerts_engine
+
+        alerts_engine = build_alerts_engine(db_pool, pricing_service=pricing_service)
+        generated_alerts = await alerts_engine.generate_alerts(result.forecasts)
+        alerts_generated = len(generated_alerts)
+    except Exception as exc:
+        logger.exception(
+            "AlertsEngine wiring failed; forecasts computed but alerts not generated/dispatched"
+        )
+        alerts_error = str(exc)
+
     # Serialize to JSON-safe dict
     forecasts_out = [
         {
@@ -207,7 +230,7 @@ async def run_compliance_forecast(request: Request) -> dict[str, Any]:
         for f in result.forecasts
     ]
 
-    return {
+    response: dict[str, Any] = {
         "service": "compliance_forecast",
         "status": "ok",
         "scan_window_days": result.scan_window_days,
@@ -231,7 +254,16 @@ async def run_compliance_forecast(request: Request) -> dict[str, Any]:
             ],
         },
         "forecasts": forecasts_out,
+        # Count of AlertRow objects returned by generate_alerts() — i.e. every
+        # forecast that resulted in a new alert, a severity promotion, or an
+        # existing-active-alert dedup match. Not strictly "messages
+        # dispatched" (dedup-skip rows are counted but not re-dispatched);
+        # see AlertsEngine.generate_alerts docstring for the exact contract.
+        "alerts_generated": alerts_generated,
     }
+    if alerts_error is not None:
+        response["alerts_error"] = alerts_error
+    return response
 
 
 @router.post("/email-health")
