@@ -2,6 +2,7 @@
 date: 2026-07-18
 domain: marketing
 client_case: none (WR2 editorial pipeline internal)
+adversarial_review: codex
 sources:
   - https://pike.psu.edu/publications/ecmlpkdd19.pdf (Evergreen news early detection, ECML-PKDD 2019 / Washington Post)
   - https://www.google.com/intl/en_us/search/howsearchworks/how-news-works/ (Google News ranking signals)
@@ -112,10 +113,64 @@ RevDet first; revisit only if forced-choice alone proves insufficient after 2-4 
 measured tiers). Bayesian post-hoc calibration (needs labeled history we don't have yet —
 the new tier stream will CREATE that history).
 
+## Adversarial review
+
+**Reviewer seat: `codex` (GPT-5.6-sol, high effort) — generator≠grader, refuter on fresh
+context. Verdict: the recommendation as originally FRAMED falls (CADE); the shipped FIX
+survives on all tested cases including a clean holdout. Both halves recorded honestly below.**
+
+The refuter raised 5 objections (3 FATAL). Handled, not waved away:
+
+1. **FATAL — "diagnosis unproven" (the causal claim, not the fix).** The 0/30 distribution is
+   the *natural* outcome of discrete 30-point criteria under a 40 threshold; it does NOT by
+   itself prove "central-tendency bias" as the mechanism — simple weight/threshold
+   miscalibration is an equally sufficient explanation, and no controlled A/B was run.
+   **Conceded.** The body's "additive rubrics structurally amplify central-tendency bias" is
+   the *literature's* framing; our *local* causal attribution is unconfirmed. The recommendation
+   is downgraded from "structurally-correct redesign" to **"empirically better than a
+   proven-broken baseline on every tested case; root cause unconfirmed."** What is NOT in
+   dispute is the measured baseline failure (0 items crossed the developing threshold across 10
+   real runs) — that is data, not theory.
+2. **FATAL — "bias is displaced, not eliminated; the new safe default could become
+   `developing`."** Legitimate a priori. **Empirically tested, not assumed:** two clean-holdout
+   evergreen-shaped stories (a KITAS-guide anchor AND a non-anchor property explainer) both
+   classified `evergreen`/0 through the real enricher on Pro — no wholesale collapse to
+   `developing` observed. Residual risk at scale (class-prior drift over a full run) is real and
+   only tonight's 03:00 WITA distribution + ongoing per-tier precision will settle it.
+3. **FATAL — "test contaminated by the anchors; ≥8/11 measures adherence to examples, not
+   generalization."** **Correct and load-bearing — this critique changed the prove-live.**
+   Both initial prove-live cases WERE anchors (the KITAS guide is a literal anchor; the
+   visa-free-cut story is the same event as the 87.91% anchor). So a **clean holdout** was run —
+   two stories that are neither anchors nor anchor-events: `DJP Coretax July 2026` (dated
+   tax-system change) → **developing/60**, and `Indonesia property ownership structures 2026`
+   (undated explainer) → **evergreen/0**. 4/4 correct across guilt/innocence × anchor/holdout is
+   generalization evidence, not example-adherence. It is still only 4 cases; blind per-tier
+   precision at run-scale remains future work (see below).
+4. **SERIO — "downstream granularity destroyed" (90/60/0 collapses the selector's continuous
+   bonus).** True, and **accepted by design:** the pre-fix score was never a measurement (it was
+   0 or 30 in practice); replacing a broken continuous scale with an honest 3-value one loses no
+   real information. If per-tier ranking ever needs finer resolution, that is where the deferred
+   corroboration/velocity signals (opzione C) re-enter.
+5. **SERIO — "success criterion proves recall, not liveness; no blind per-tier precision, no
+   corroboration signals; the cited G-Eval work is about summarization, not news-lifecycle."**
+   Conceded. "First non-empty live pool" is a *recall* signal (necessary, not sufficient). Blind
+   per-tier PRECISION on a run-scale holdout — and whether opzione C is warranted — is the
+   explicit follow-up, not a claim made here.
+
+**Net disposition:** ship the fix (proven-broken baseline → discriminating on a clean holdout,
+4/4), record the theoretical framing as *unconfirmed*, and carry the two surviving limitations
+(no scaled per-tier precision; corroboration signals deferred) into the follow-up chain rather
+than papering over the refuter's CADE.
+
 ## Follow-up chain
 
-1. Sprint B (next): implement forced-choice enricher prompt + anchors + guilt/innocence
-   replay tests. Depends on #2631 (merged) for the transport.
-2. After 2-4 weeks of live tiers: measure precision on the live pool (how many "developing"
-   picks were actually timely?) via the WR2 IG metrics loop; decide whether corroboration
-   signals (opzione C) are worth the pipeline cost.
+1. Sprint B (DONE, PR #2635 merged + proven live): forced-choice enricher prompt + anchors +
+   guilt/innocence replay tests + clean-holdout prove-live on Pro. Depended on #2631 (merged)
+   for the transport.
+2. **Durable receptor (open):** tonight's 03:00 WITA intel run is the first at-scale
+   distribution — check that non-evergreen tiers appear AND the topic-selector logs "using live
+   pool (N items)" with N≥1. Ledgered in PENDING-ARMS (this can't be forced this turn).
+3. After 2-4 weeks of live tiers: measure blind per-tier PRECISION on the live pool (how many
+   "developing" picks were actually timely?) via the WR2 IG metrics loop — this is what
+   settles the refuter's SERIO #5. Only then decide whether corroboration/velocity signals
+   (opzione C) are worth the pipeline cost.
