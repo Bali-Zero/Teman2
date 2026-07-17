@@ -60,6 +60,26 @@ PIPELINE_STEPS = [
 ]
 
 
+def _derive_tier_from_score(score) -> str:
+    """Bucket a live_news_score into the enricher's tier scheme.
+
+    WR2 liveness rewire — red-team round FIX3, 2026-07-18. Mirrors
+    claude_cli_enricher._normalize_live_news_fields's own buckets
+    (>=80 breaking, >=40 developing, else evergreen). Defensive against
+    non-numeric input even though the enricher normalizes score to a clean
+    int 0-100 in the common path.
+    """
+    try:
+        s = int(round(float(score)))
+    except (TypeError, ValueError):
+        return "evergreen"
+    if s >= 80:
+        return "breaking"
+    if s >= 40:
+        return "developing"
+    return "evergreen"
+
+
 def build_staging_payload(art: dict) -> dict:
     """Build the /api/intel/scraper/submit payload dict from a pipeline article.
 
@@ -115,12 +135,17 @@ def build_staging_payload(art: dict) -> dict:
     payload["featured"] = art.get("featured", False)
     # WR2 liveness rewire (SPRINT B1): carry the enricher's live-news scoring
     # fields through to staging so downstream consumers (wr2_topic_selector,
-    # News Room UI) see something other than always-0. Post-normalization
-    # fields from claude_cli_enricher._normalize_live_news_fields are trusted
-    # (tier == bucket(score) invariant already holds there).
+    # News Room UI) see something other than always-0. claude_cli_enricher's
+    # _normalize_live_news_fields keeps tier == bucket(score) when it runs,
+    # but don't assume every art["enrichment"] came through that exact path
+    # (red-team FIX3, 2026-07-18): if liveness_tier is missing/falsy while a
+    # score IS present, derive the tier from the score instead of silently
+    # defaulting to "evergreen" (a score=85 item with no tier previously
+    # persisted as 85/"evergreen" — excluded from the live pool).
     if enr.get("live_news_score") is not None:
         payload["live_news_score"] = enr["live_news_score"]
-        payload["liveness_tier"] = enr.get("liveness_tier") or "evergreen"
+        _tier = enr.get("liveness_tier")
+        payload["liveness_tier"] = _tier if _tier else _derive_tier_from_score(enr["live_news_score"])
         payload["live_news_reasons"] = (enr.get("live_news_reasons") or [])[:3]
     return payload
 

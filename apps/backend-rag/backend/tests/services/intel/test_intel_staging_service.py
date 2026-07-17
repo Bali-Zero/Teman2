@@ -118,12 +118,17 @@ def test_list_pending_items_includes_archived_published_and_searches(tmp_path: P
 
 
 def test_list_pending_items_projects_tier_and_live_news_fields(tmp_path: Path) -> None:
-    """GUILT (WR2 liveness rewire, break #3): tier/published_at/relevance_score/
-    category/live_news_score/liveness_tier must be projected in BOTH the
-    staging-root branch AND the archived/approved branch — previously only
+    """GUILT (WR2 liveness rewire, break #3; red-team FIX1 2026-07-18):
+    tier/published_at/relevance_score/category/live_news_score/liveness_tier/
+    live_news_reasons must be projected in BOTH the staging-root branch AND
+    the archived/approved branch — previously only
     id/type/title/status/detected_at/source/detection_type/content/cover_image
     were served, so live_news_score never reached the WR2 topic selector even
-    when it WAS persisted in the staging JSON."""
+    when it WAS persisted in the staging JSON. live_news_reasons is
+    load-bearing too: wr2_topic_selector.py reads it straight off the
+    pending item (`top_item.get("live_news_reasons")`), not from a separate
+    preview call — its earlier omission was a silent drop, not a deliberate
+    payload-weight trim."""
     service = _service(tmp_path)
     now = datetime.now(timezone.utc).isoformat()
     service.save_staging_item(
@@ -140,6 +145,7 @@ def test_list_pending_items_projects_tier_and_live_news_fields(tmp_path: Path) -
             "category": "immigration",
             "live_news_score": 85,
             "liveness_tier": "breaking",
+            "live_news_reasons": ["official announcement", "effective today"],
         },
     )
 
@@ -158,6 +164,7 @@ def test_list_pending_items_projects_tier_and_live_news_fields(tmp_path: Path) -
                 "category": "tax",
                 "live_news_score": 60,
                 "liveness_tier": "developing",
+                "live_news_reasons": ["price hike confirmed"],
             },
         ),
     )
@@ -172,6 +179,7 @@ def test_list_pending_items_projects_tier_and_live_news_fields(tmp_path: Path) -
     assert live["category"] == "immigration"
     assert live["live_news_score"] == 85
     assert live["liveness_tier"] == "breaking"
+    assert live["live_news_reasons"] == ["official announcement", "effective today"]
 
     archived = items_by_id["news-live"]
     assert archived["tier"] == "T2"
@@ -180,14 +188,16 @@ def test_list_pending_items_projects_tier_and_live_news_fields(tmp_path: Path) -
     assert archived["category"] == "tax"
     assert archived["live_news_score"] == 60
     assert archived["liveness_tier"] == "developing"
+    assert archived["live_news_reasons"] == ["price hike confirmed"]
 
 
 def test_list_pending_items_defaults_legacy_items_without_live_news_fields(
     tmp_path: Path,
 ) -> None:
     """INNOCENCE: legacy staging JSON written before the liveness rewire has
-    no live_news_score/liveness_tier key at all — projection must default to
-    0/"evergreen" uniformly, never KeyError or bare None for those two."""
+    no live_news_score/liveness_tier/live_news_reasons key at all —
+    projection must default to 0/"evergreen"/[] uniformly, never KeyError or
+    bare None."""
     service = _service(tmp_path)
     now = datetime.now(timezone.utc).isoformat()
     service.save_staging_item(
@@ -206,10 +216,62 @@ def test_list_pending_items_defaults_legacy_items_without_live_news_fields(
     legacy = next(item for item in result["items"] if item["id"] == "news-legacy")
     assert legacy["live_news_score"] == 0
     assert legacy["liveness_tier"] == "evergreen"
+    assert legacy["live_news_reasons"] == []
     assert legacy["tier"] is None
     assert legacy["published_at"] is None
     assert legacy["relevance_score"] is None
     assert legacy["category"] is None
+
+
+def test_list_pending_items_normalizes_garbage_and_null_live_news_fields(
+    tmp_path: Path,
+) -> None:
+    """GUILT (red-team FIX2, 2026-07-18): a raw staging file with a
+    non-numeric score, an unknown tier string, and a non-list reasons value
+    — OR with EXPLICIT JSON null for all three (bypasses `dict.get(key,
+    default)` because the key IS present; the default only applies when the
+    key is missing) — must project cleanly to 0/"evergreen"/[] rather than
+    raising or leaking garbage into wr2_topic_selector's
+    `int(i.get("live_news_score") or 0)` hard filter (unguarded by
+    try/except there)."""
+    service = _service(tmp_path)
+    now = datetime.now(timezone.utc).isoformat()
+
+    service.save_staging_item(
+        "news",
+        "news-garbage",
+        {
+            "title": "Garbage fields",
+            "source_url": "https://example.com/garbage",
+            "detected_at": now,
+            "content": "content",
+            "live_news_score": "abc",
+            "liveness_tier": "hot",
+            "live_news_reasons": "not-a-list",
+        },
+    )
+    service.save_staging_item(
+        "news",
+        "news-null",
+        {
+            "title": "Explicit nulls",
+            "source_url": "https://example.com/null",
+            "detected_at": now,
+            "content": "content",
+            "live_news_score": None,
+            "liveness_tier": None,
+            "live_news_reasons": None,
+        },
+    )
+
+    result = service.list_pending_items()  # must not raise
+
+    items_by_id = {item["id"]: item for item in result["items"]}
+    for item_id in ("news-garbage", "news-null"):
+        item = items_by_id[item_id]
+        assert item["live_news_score"] == 0
+        assert item["liveness_tier"] == "evergreen"
+        assert item["live_news_reasons"] == []
 
 
 def test_archive_item_moves_file_to_archive_bucket(tmp_path: Path) -> None:

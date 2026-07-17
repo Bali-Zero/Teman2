@@ -370,6 +370,107 @@ async def test_submit_scraper_liveness_tier_invalid_value_rejected(client_no_aut
     assert response.status_code == 422
 
 
+# ---------------------------------------------------------------------------
+# Tests: submit_from_scraper — tier derivation from score (red-team FIX3,
+# 2026-07-18). A submission with live_news_score but NO liveness_tier must
+# NOT silently default to "evergreen" (which would exclude an 85/100
+# breaking-news item from wr2_topic_selector's live pool) — derive the tier
+# from the enricher's own bucket scheme instead. An explicitly-provided,
+# validated tier is always trusted as-is (not overridden by the score).
+# ---------------------------------------------------------------------------
+
+
+async def _submit_and_get_staging_data(payload: dict) -> dict:
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-2026-tier-derive"
+    mock_staging_svc.check_duplicate.return_value = None
+    mock_staging_svc.save_staging_item.return_value = (
+        "/tmp/intel_pending/news/news-2026-tier-derive.json"
+    )
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    return mock_staging_svc.save_staging_item.call_args[0][2]
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_derives_breaking_tier_from_high_score_when_tier_absent(
+    client_no_auth,
+) -> None:
+    """GUILT: score=85, tier absent → staging_data liveness_tier "breaking"
+    (was "evergreen" pre-fix — an 85/100 breaking item excluded from the
+    live pool)."""
+    payload = {**SCRAPER_PAYLOAD, "live_news_score": 85}
+
+    staging_data = await _submit_and_get_staging_data(payload)
+
+    assert staging_data["live_news_score"] == 85
+    assert staging_data["liveness_tier"] == "breaking"
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_derives_developing_tier_from_mid_score_when_tier_absent(
+    client_no_auth,
+) -> None:
+    """score=55, tier absent → staging_data liveness_tier "developing"."""
+    payload = {**SCRAPER_PAYLOAD, "live_news_score": 55}
+
+    staging_data = await _submit_and_get_staging_data(payload)
+
+    assert staging_data["live_news_score"] == 55
+    assert staging_data["liveness_tier"] == "developing"
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_derives_evergreen_tier_from_low_score_when_tier_absent(
+    client_no_auth,
+) -> None:
+    """score=10, tier absent → staging_data liveness_tier "evergreen"."""
+    payload = {**SCRAPER_PAYLOAD, "live_news_score": 10}
+
+    staging_data = await _submit_and_get_staging_data(payload)
+
+    assert staging_data["live_news_score"] == 10
+    assert staging_data["liveness_tier"] == "evergreen"
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_trusts_explicit_tier_over_score_derivation(
+    client_no_auth,
+) -> None:
+    """INNOCENCE: an explicitly-provided, validated liveness_tier is trusted
+    as-is — NOT overridden by the score-derivation fallback, even when the
+    two would disagree (score=10 would bucket to "evergreen" but the caller
+    explicitly said "breaking")."""
+    payload = {**SCRAPER_PAYLOAD, "live_news_score": 10, "liveness_tier": "breaking"}
+
+    staging_data = await _submit_and_get_staging_data(payload)
+
+    assert staging_data["live_news_score"] == 10
+    assert staging_data["liveness_tier"] == "breaking"
+
+
 @pytest.mark.asyncio
 async def test_submit_scraper_missing_api_key(client_no_auth):
     """Missing API key → 401."""

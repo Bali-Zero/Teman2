@@ -22,6 +22,58 @@ from backend.app.metrics import (
 
 logger = logging.getLogger(__name__)
 
+# WR2 liveness rewire — red-team round (FIX1+FIX2, 2026-07-18).
+_VALID_LIVENESS_TIERS = {"breaking", "developing", "evergreen"}
+
+
+def _normalize_live_news_projection(data: dict[str, Any]) -> dict[str, Any]:
+    """Coerce the 3 live-news fields for safe projection into pending items.
+
+    Staging JSON is not guaranteed clean — hand-edited files, pre-validation
+    legacy entries, or a future writer could carry garbage (non-numeric
+    score, an unknown tier string) or an EXPLICIT JSON null (which bypasses
+    `dict.get(key, default)` because the key IS present — the default only
+    applies when the key is missing). wr2_topic_selector.py's live-pool hard
+    filter does `int(i.get("live_news_score") or 0)` unguarded by try/except
+    — a non-numeric score reaching it raises ValueError and crashes the
+    batch job. Normalize once, here, so every consumer downstream
+    (topic selector, draft generator, News Room UI) gets a clean shape
+    unconditionally, regardless of how dirty the source JSON is.
+
+    Also carries live_news_reasons, previously omitted from the projection
+    entirely — wr2_topic_selector.py reads it straight off the pending item
+    (`top_item.get("live_news_reasons")`), not from a separate full-JSON
+    preview call, so its absence here was a silent drop, not a deliberate
+    payload-weight trim.
+    """
+    raw_score = data.get("live_news_score")
+    try:
+        score = int(round(float(raw_score)))
+    except (TypeError, ValueError):
+        score = 0
+    score = max(0, min(100, score))
+
+    raw_tier = data.get("liveness_tier")
+    tier = raw_tier.lower() if isinstance(raw_tier, str) else ""
+    if tier not in _VALID_LIVENESS_TIERS:
+        tier = "evergreen"
+
+    raw_reasons = data.get("live_news_reasons")
+    reasons: list[str] = []
+    if isinstance(raw_reasons, list):
+        for r in raw_reasons:
+            if isinstance(r, str):
+                cleaned = r.strip()[:200]
+                if cleaned:
+                    reasons.append(cleaned)
+    reasons = reasons[:3]
+
+    return {
+        "live_news_score": score,
+        "liveness_tier": tier,
+        "live_news_reasons": reasons,
+    }
+
 
 class IntelStagingService:
     """
@@ -283,13 +335,15 @@ class IntelStagingService:
                                 # #9 break #3): these were already persisted
                                 # in staging JSON but never served — legacy
                                 # items (no key) uniformly default to
-                                # 0/"evergreen".
+                                # 0/"evergreen"/[]. live_news_* trio goes
+                                # through the normalizer (red-team FIX1+FIX2)
+                                # so garbage/null source data can't crash or
+                                # leak downstream.
                                 "tier": data.get("tier"),
                                 "published_at": data.get("published_at"),
                                 "relevance_score": data.get("relevance_score"),
                                 "category": data.get("category"),
-                                "live_news_score": data.get("live_news_score", 0),
-                                "liveness_tier": data.get("liveness_tier", "evergreen"),
+                                **_normalize_live_news_projection(data),
                             },
                         )
                 except Exception as e:
@@ -328,8 +382,7 @@ class IntelStagingService:
                                     "published_at": data.get("published_at"),
                                     "relevance_score": data.get("relevance_score"),
                                     "category": data.get("category"),
-                                    "live_news_score": data.get("live_news_score", 0),
-                                    "liveness_tier": data.get("liveness_tier", "evergreen"),
+                                    **_normalize_live_news_projection(data),
                                 },
                             )
                     except Exception as e:

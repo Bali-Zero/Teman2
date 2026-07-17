@@ -119,6 +119,62 @@ def test_payload_preserves_existing_fields_unchanged() -> None:
     assert "cover_image_base64" not in payload
 
 
+# ---------------------------------------------------------------------------
+# Tier derivation from score (red-team FIX3, 2026-07-18). A score present
+# without an explicit tier must NOT silently default to "evergreen" — derive
+# from the enricher's own bucket scheme (>=80 breaking, >=40 developing,
+# else evergreen). An explicit tier is always trusted as-is.
+# ---------------------------------------------------------------------------
+
+
+def test_payload_derives_breaking_tier_from_high_score_when_tier_absent() -> None:
+    """GUILT: score=85, tier absent → payload liveness_tier "breaking" (was
+    "evergreen" pre-fix — an 85/100 breaking item excluded from the live
+    pool)."""
+    art = _base_art(live_news_score=85)
+    art["enrichment"].pop("liveness_tier", None)
+
+    payload = build_staging_payload(art)
+
+    assert payload["live_news_score"] == 85
+    assert payload["liveness_tier"] == "breaking"
+
+
+def test_payload_derives_developing_tier_from_mid_score_when_tier_absent() -> None:
+    """score=55, tier absent → payload liveness_tier "developing"."""
+    art = _base_art(live_news_score=55)
+    art["enrichment"].pop("liveness_tier", None)
+
+    payload = build_staging_payload(art)
+
+    assert payload["live_news_score"] == 55
+    assert payload["liveness_tier"] == "developing"
+
+
+def test_payload_derives_evergreen_tier_from_low_score_when_tier_absent() -> None:
+    """score=10, tier absent → payload liveness_tier "evergreen"."""
+    art = _base_art(live_news_score=10)
+    art["enrichment"].pop("liveness_tier", None)
+
+    payload = build_staging_payload(art)
+
+    assert payload["live_news_score"] == 10
+    assert payload["liveness_tier"] == "evergreen"
+
+
+def test_payload_trusts_explicit_tier_over_score_derivation() -> None:
+    """INNOCENCE: an explicit liveness_tier is trusted as-is — NOT
+    overridden by the score-derivation fallback, even when the two would
+    disagree (score=10 would bucket to "evergreen" but the enrichment
+    explicitly says "breaking")."""
+    art = _base_art(live_news_score=10, liveness_tier="breaking")
+
+    payload = build_staging_payload(art)
+
+    assert payload["live_news_score"] == 10
+    assert payload["liveness_tier"] == "breaking"
+
+
 def test_payload_falls_back_to_title_when_no_enrichment() -> None:
     """No enrichment dict at all (art["enrichment"] missing) must not
     crash — falls back to art["title"] / empty sections, matching the
