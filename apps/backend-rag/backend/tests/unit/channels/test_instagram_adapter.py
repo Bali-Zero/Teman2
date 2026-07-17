@@ -140,13 +140,16 @@ class TestInstagramFormatter:
         assert result == "❌ Errore: something broke"
 
     def test_format_source_without_url(self) -> None:
+        """Sources without a public url look internal and are dropped entirely."""
         response = ChannelResponse(
             text="Answer",
             sources=[{"title": "No URL Doc"}],
             metadata={},
         )
         result = InstagramMessageFormatter.format_response(response)
-        assert "1. No URL Doc" in result
+        assert result == "Answer"
+        assert "No URL Doc" not in result
+        assert "Fonti" not in result
 
 
 # ============================================================================
