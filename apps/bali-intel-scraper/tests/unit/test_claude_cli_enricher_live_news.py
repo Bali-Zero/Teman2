@@ -1,11 +1,20 @@
 """
-Tests for the live_news_score normalization in claude_cli_enricher.
+Tests for the liveness-tier normalization in claude_cli_enricher.
 
-Locks down the post-Claude defensive normalization: clamping the score,
-deriving the tier deterministically from the score, and sanitizing the
-reasons list. This is the boundary downstream WR2 selector relies on:
-after enrichment, `tier == bucket(score)` always holds and reasons is
-always a list of clean strings (or empty).
+Growth-loop sprint B2 (2026-07-18): the additive 0-100 rubric was replaced
+with a forced-choice tier (breaking/developing/evergreen) — the additive
+rubric structurally amplified central-tendency bias (124/135 real items
+scored exactly 0, the rest capped at 30, nothing above; live pool stayed
+permanently empty). Research capture:
+research/operations/2026-07-18-wr2-liveness-scoring-redesign.md.
+
+Trust direction is now INVERTED from the pre-B2 module: the model's
+`liveness_tier` is the validated signal; `live_news_score` is a DERIVED
+compatibility value for the selector's `>=40` filter and #2631's
+persistence contract — not a measurement. Downstream code still relies on
+the invariant `tier == bucket(score)` (90->breaking, 60->developing,
+0->evergreen under the existing 80/40 buckets), so score derivation must
+keep hitting those exact buckets.
 """
 from __future__ import annotations
 
@@ -18,90 +27,91 @@ from pathlib import Path
 SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-from claude_cli_enricher import _normalize_live_news_fields  # type: ignore  # noqa: E402
+from claude_cli_enricher import (  # type: ignore  # noqa: E402
+    ENRICHMENT_PROMPT_TEMPLATE,
+    _normalize_live_news_fields,
+)
 
 
-def test_score_below_40_is_evergreen() -> None:
-    out = _normalize_live_news_fields({"live_news_score": 30, "liveness_tier": "ignored"})
-    assert out["live_news_score"] == 30
+# ---------------------------------------------------------------------------
+# Guilt: tier drives the derived score deterministically.
+# ---------------------------------------------------------------------------
+
+def test_tier_breaking_derives_score_90() -> None:
+    out = _normalize_live_news_fields({"liveness_tier": "breaking"})
+    assert out["liveness_tier"] == "breaking"
+    assert out["live_news_score"] == 90
+
+
+def test_tier_developing_derives_score_60() -> None:
+    out = _normalize_live_news_fields({"liveness_tier": "developing"})
+    assert out["liveness_tier"] == "developing"
+    assert out["live_news_score"] == 60
+
+
+def test_tier_evergreen_derives_score_0() -> None:
+    out = _normalize_live_news_fields({"liveness_tier": "evergreen"})
     assert out["liveness_tier"] == "evergreen"
-
-
-def test_score_40_is_developing() -> None:
-    """40 is the breaking-down threshold; must round into developing not evergreen."""
-    out = _normalize_live_news_fields({"live_news_score": 40})
-    assert out["liveness_tier"] == "developing"
-
-
-def test_score_79_is_developing() -> None:
-    out = _normalize_live_news_fields({"live_news_score": 79})
-    assert out["liveness_tier"] == "developing"
-
-
-def test_score_80_is_breaking() -> None:
-    out = _normalize_live_news_fields({"live_news_score": 80})
-    assert out["liveness_tier"] == "breaking"
-
-
-def test_score_100_is_breaking() -> None:
-    out = _normalize_live_news_fields({"live_news_score": 100})
-    assert out["liveness_tier"] == "breaking"
-
-
-def test_score_clamped_above_100() -> None:
-    """Claude occasionally returns 250 when prompted to sum signals."""
-    out = _normalize_live_news_fields({"live_news_score": 250})
-    assert out["live_news_score"] == 100
-    assert out["liveness_tier"] == "breaking"
-
-
-def test_score_clamped_below_0() -> None:
-    out = _normalize_live_news_fields({"live_news_score": -10})
     assert out["live_news_score"] == 0
-    assert out["liveness_tier"] == "evergreen"
-
-
-def test_score_string_coerced() -> None:
-    """Some model outputs return numbers as strings."""
-    out = _normalize_live_news_fields({"live_news_score": "55"})
-    assert out["live_news_score"] == 55
-    assert out["liveness_tier"] == "developing"
-
-
-def test_score_garbage_falls_back_to_zero() -> None:
-    out = _normalize_live_news_fields({"live_news_score": "high"})
-    assert out["live_news_score"] == 0
-    assert out["liveness_tier"] == "evergreen"
     assert out["live_news_reasons"] == []
 
 
-def test_score_float_rounded() -> None:
-    """Bayesian-leaning models sometimes return 78.4."""
-    out = _normalize_live_news_fields({"live_news_score": 78.6})
-    assert out["live_news_score"] == 79
-
-
-def test_missing_score_defaults_to_zero() -> None:
+def test_tier_missing_defaults_to_evergreen() -> None:
     out = _normalize_live_news_fields({})
-    assert out["live_news_score"] == 0
     assert out["liveness_tier"] == "evergreen"
+    assert out["live_news_score"] == 0
     assert out["live_news_reasons"] == []
 
 
-def test_tier_recomputed_even_when_model_disagrees() -> None:
-    """Don't trust Claude's tier — recompute from score deterministically.
+def test_tier_garbage_falls_back_to_evergreen() -> None:
+    out = _normalize_live_news_fields({"liveness_tier": "hot"})
+    assert out["liveness_tier"] == "evergreen"
+    assert out["live_news_score"] == 0
+    assert out["live_news_reasons"] == []
 
-    The downstream WR2 selector reads tier and assumes it's bucket(score).
-    If Claude returned score=85 but tier='evergreen' (we've seen this), the
-    selector would silently route a breaking story to the routine queue.
+
+def test_stray_model_score_is_overridden_tier_wins() -> None:
+    """The model MUST NOT output live_news_score anymore, but if it does
+    (prompt drift / stray field), the validated tier wins — never the
+    number. This is the trust-direction inversion this sprint exists for.
     """
-    out = _normalize_live_news_fields({"live_news_score": 85, "liveness_tier": "evergreen"})
+    out = _normalize_live_news_fields({"liveness_tier": "evergreen", "live_news_score": 85})
+    assert out["liveness_tier"] == "evergreen"
+    assert out["live_news_score"] == 0
+
+
+def test_stray_model_score_overridden_for_breaking_too() -> None:
+    """Symmetric case: a stray low score must not downgrade a validated
+    breaking tier either."""
+    out = _normalize_live_news_fields({"liveness_tier": "breaking", "live_news_score": 5})
     assert out["liveness_tier"] == "breaking"
+    assert out["live_news_score"] == 90
+
+
+# ---------------------------------------------------------------------------
+# Innocence: reasons pass through intact for non-evergreen tiers, sanitation
+# rules from the pre-B2 module are unchanged.
+# ---------------------------------------------------------------------------
+
+def test_developing_reasons_preserved() -> None:
+    out = _normalize_live_news_fields({
+        "liveness_tier": "developing",
+        "live_news_reasons": ["dated arrests at Ngurah Rai", "policy implication cited"],
+    })
+    assert out["live_news_reasons"] == ["dated arrests at Ngurah Rai", "policy implication cited"]
+
+
+def test_evergreen_reasons_emptied_even_if_model_invented_some() -> None:
+    out = _normalize_live_news_fields({
+        "liveness_tier": "evergreen",
+        "live_news_reasons": ["some hallucinated signal"],
+    })
+    assert out["live_news_reasons"] == []
 
 
 def test_reasons_capped_at_three() -> None:
     out = _normalize_live_news_fields({
-        "live_news_score": 80,
+        "liveness_tier": "breaking",
         "live_news_reasons": ["one", "two", "three", "four", "five"],
     })
     assert len(out["live_news_reasons"]) == 3
@@ -110,13 +120,13 @@ def test_reasons_capped_at_three() -> None:
 
 def test_reasons_truncated_at_200_chars() -> None:
     long = "x" * 500
-    out = _normalize_live_news_fields({"live_news_score": 80, "live_news_reasons": [long]})
+    out = _normalize_live_news_fields({"liveness_tier": "breaking", "live_news_reasons": [long]})
     assert len(out["live_news_reasons"][0]) == 200
 
 
 def test_reasons_filter_non_strings() -> None:
     out = _normalize_live_news_fields({
-        "live_news_score": 50,
+        "liveness_tier": "developing",
         "live_news_reasons": ["valid", None, 42, {"nested": "garbage"}, "also valid"],
     })
     assert out["live_news_reasons"] == ["valid"]
@@ -128,7 +138,7 @@ def test_reasons_filter_non_strings() -> None:
 
 def test_reasons_filter_empty_strings() -> None:
     out = _normalize_live_news_fields({
-        "live_news_score": 50,
+        "liveness_tier": "developing",
         "live_news_reasons": ["", "  ", "real reason"],
     })
     # First 3 raw slots: "", "  ", "real reason". After strip-filter only
@@ -136,31 +146,58 @@ def test_reasons_filter_empty_strings() -> None:
     assert out["live_news_reasons"] == ["real reason"]
 
 
-def test_reasons_zeroed_when_score_is_zero() -> None:
-    """If we couldn't find any signals, reasons must be empty even if model invented some."""
-    out = _normalize_live_news_fields({
-        "live_news_score": 0,
-        "live_news_reasons": ["some hallucinated signal"],
-    })
-    assert out["live_news_reasons"] == []
-
-
 def test_reasons_non_list_falls_back_to_empty() -> None:
-    out = _normalize_live_news_fields({"live_news_score": 50, "live_news_reasons": "not a list"})
+    out = _normalize_live_news_fields({"liveness_tier": "developing", "live_news_reasons": "not a list"})
     assert out["live_news_reasons"] == []
 
 
 def test_normalization_preserves_other_fields() -> None:
-    """Mutates only live_news_* keys; everything else passes through untouched."""
+    """Mutates only live_news_*/liveness_tier keys; everything else passes
+    through untouched."""
     enriched = {
         "headline": "Big News",
         "the_facts": "facts",
-        "live_news_score": 50,
+        "liveness_tier": "developing",
         "metadata": {"tags": ["foo"]},
     }
     out = _normalize_live_news_fields(enriched)
     assert out["headline"] == "Big News"
     assert out["the_facts"] == "facts"
     assert out["metadata"] == {"tags": ["foo"]}
-    assert out["live_news_score"] == 50
     assert out["liveness_tier"] == "developing"
+    assert out["live_news_score"] == 60
+
+
+def test_invariant_tier_equals_bucket_of_derived_score() -> None:
+    """Downstream WR2 selector code relies on tier == bucket(score) always
+    holding after enrichment, under the existing 80/40 buckets."""
+    for tier, expected_score in (("breaking", 90), ("developing", 60), ("evergreen", 0)):
+        out = _normalize_live_news_fields({"liveness_tier": tier})
+        score = out["live_news_score"]
+        if score >= 80:
+            bucket = "breaking"
+        elif score >= 40:
+            bucket = "developing"
+        else:
+            bucket = "evergreen"
+        assert out["liveness_tier"] == bucket == tier
+        assert score == expected_score
+
+
+# ---------------------------------------------------------------------------
+# Prompt-content assertions: forced-choice section present, calibrated
+# anchors present, old additive section gone.
+# ---------------------------------------------------------------------------
+
+def test_prompt_has_forced_choice_section() -> None:
+    assert "LIVENESS TIER (forced choice)" in ENRICHMENT_PROMPT_TEMPLATE
+
+
+def test_prompt_has_the_three_real_developing_anchors() -> None:
+    assert "15 WNA China dan Vietnam Ditangkap Usai Buka Lowongan Kerja" in ENRICHMENT_PROMPT_TEMPLATE
+    assert "Immigration Cuts Visa-Free Entry by 87.91%" in ENRICHMENT_PROMPT_TEMPLATE
+    assert "Empat Marketplace Besar Jadi Pemungut Pajak Mulai Agustus" in ENRICHMENT_PROMPT_TEMPLATE
+
+
+def test_prompt_no_longer_has_additive_scoring_section() -> None:
+    assert "LIVE NEWS SCORING" not in ENRICHMENT_PROMPT_TEMPLATE
