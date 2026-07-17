@@ -44,7 +44,7 @@
 
 **External append-only rollout artifacts:**
 
-- Produce outside the protected checkout: `production-rollout-task-2.md`, `post-staging-release-gate-input.md`, `post-staging-release-gate-brief.md`, canonical `input-manifest.json`, `freeze-receipt.json`, `00-review-packet.bin`, three invocation receipts, three raw reviewer companions, three normalized reviewer files, `post-staging-release-gate-disposition.md`, and raw/redacted deployment artifacts; import them later through a protected evidence PR
+- Produce outside the protected checkout: `production-rollout-task-2.md`, `post-staging-release-gate-input.md`, `post-staging-release-gate-brief.md`, and raw/redacted deployment artifacts. In a fresh external-Git-repository attempt directory, produce exactly `00-review-packet.bin`, `input-manifest.json`, `freeze-receipt.json`; `01-fable-5-architecture.md`, `.raw.json`, `.stderr.bin`, and `.invocation.json`; `02-gemini-3.1-pro-high.md`, `.raw.txt`, `.stderr.bin`, and `.invocation.json`; `03-glm-5.2-adversarial.md`, `.raw.json`, `.stderr.bin`, and `.invocation.json`; plus `99-disposition.md`. Import the committed external evidence later through a protected evidence PR.
 
 - [ ] Reconfirm immediately before merge that the PR head's implementation-input projection equals every final reviewed packet's recorded projection, generated attestation files match their content-addressed manifest, all required CI remains green, no out-of-scope production change is bundled, and the active-goal authorization covers the unchanged scope. Before clicking merge, append the admission row for the merge-triggered production migration/deploy, including active-goal reference, target app/environment, reviewed SHA/projection, expected digest provenance, additive migration range, inert state, and protected rollback workflow. Merge only through GitHub protected main. Record the merge commit and prove its implementation projection equals the reviewed projection; expected result: no direct main push, no divergent manual tree, and any mismatch stops before deployment.
 - [ ] Let the Phase 2-hardened `.github/workflows/fly-deploy.yml`, selected by the protected merge's `apps/backend-rag/**` change, execute its one authoritative primary chain: pre-deploy gate; old-image `apply-all` compatibility pass; rolling API/RAG deployment whose `fly.toml` release command runs the fresh-image `apply-all` plus schema audit before promotion; post-deploy SQL-v2 migrations; Python migrations; explicit final schema audit; and HTTP/behavioral health. Treat the complete chain, not one partial migration job, as authoritative for migrations `246`–`250`. Its centralized `always()` failure handler must stop promotion when possible and restore the previously recorded **schema-compatible image** if any migration, audit, deploy, or health stage fails, then rerun schema audit/health and escalate on any mismatch. The additive 246–250 schema is never automatically downgraded or described as rolled back; a DDL reversal would require a separately reviewed destructive plan. Export the immutable registry digest only after every stage is green. Record workflow/job IDs, merged SHA, digest, provenance/attestation, migration-bundle hash, image-rollback branch result, and post-failure schema audit. Verify the resulting primary production compatibility state is inert: Release A remains `legacy-global-bridge`, global `consumed_at` is authoritative, only the legacy durable subscriber is admitted, legacy owners remain `active`, guards remain unarmed, no new workload provider secret/grant is loaded, no lifecycle path is deleted, API/RAG health is green, and worker claim/effect count is zero. Verify and record that `nuzantara-worker` was not newly deployed by this workflow; do not fabricate companion readiness, `off` modes, or worker heartbeat evidence at this boundary. Any violation uses the centralized protected image rollback before a live staging operation or production ownership/capability mutation.
@@ -60,35 +60,73 @@
 - [ ] During the staging `workflow_queue` target-active window, dispatch the protected staging-only fault action implemented in Phase 2 to wedge/cancel the worker event loop while leaving its readiness probe thread alive. Require `nuzantara-worker-staging` top-level `/ready` to return 503, its database heartbeat to become stale, and the synthetic oldest-job/backlog alert to fire within the declared SLO while `nuzantara-rag-staging` API/RAG health stays green. Then restart only the worker from the same immutable digest, prove heartbeat/readiness recovery and conservation of the synthetic job, and continue the workload protocol. The fault hook must reject production and non-synthetic use; a missing alert, false 200, primary-health regression, digest drift, or unrecovered job blocks the gate and invokes the recorded staging rollback. This is the live G11/G13 falsification, not another in-process simulation.
 - [ ] Run heavy staging probes from Pro/CI, not Air-M5: `ssh pro 'cd ~/Desktop/nuzantara && PYTHONPATH=apps/backend-rag:. apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/integration/worker_plane apps/backend-rag/backend/tests/services/events infra/eventbus/tests -q'`; expected result: exit 0. If the authoritative checkout differs, use its recorded CI/worktree path; never copy a database or client/OSINT data.
 - [ ] Run G8 against live staging using only public/synthetic fixtures: the generated backend contract, Mouth route/types, and MCP consumers must remain compatible. Run G10 with prohibited synthetic raw-PII fixtures and prove pre-publish rejection plus sanitized log/quarantine/DLQ captures. Run the canonical G9 comparator against both staging primary and inert production primary samples; worker G13/G14 absolute limits remain a separate report. Require the G6 Pro runtime handoff and live G11/G13 fault evidence above. Any failure blocks the post-staging panel.
-- [ ] Freeze `production-rollout-task-2.md` and `post-staging-release-gate-input.md` as append-only artifacts. They must contain protected merge and main-push workflow proof, exact merged SHA/digest, inert primary production migration/deploy/read-only observation plus production-companion non-deployment evidence, exact-digest two-app staging deploy/migration/G16 results, every authorization row, capability workflow run/effective-state hash and immediate re-audit, live-control command IDs, staging secret/grant/guard audit, readiness/heartbeat/resource/G8/G9/G10 results, live worker-wedge G11/G13 evidence, G6 Pro runtime before/after/rollback manifest and smoke proof, all four staging forward/reverse/re-cutover generation/barrier rows and observation windows, the tested `.github/workflows/worker-plane-production.yml` plus `.github/workflows/worker-plane-live-control.yml` rollback contracts, verifier hashes, aggregate run/effect/receipt/quarantine counts, synthetic-data proof, rollback command hashes, and redacted ambiguity results. Import those exact append-only bytes plus `post-staging-release-gate-brief.md` into a dedicated external Git object store, commit them as `H0`, and freeze only `git show "$H0:<path>"` bytes: the brief is `role=instructions`, the two evidence files are `role=covered`, and packet/manifest/receipts/raw/normalized/disposition outputs are excluded. Use the master-plan canonical JSON and length framing, round-trip/hash/blob/EOF validation, then install under `<external-review-store>/sha256/<packet_sha256>/` read-only. Copy the reviewed GLM route-config Git-object bytes from the exact protected-merged implementation SHA into that frozen directory and verify their recorded hash; never read user config. Record Git-object/store identity and `packet_sha256` only in the external freeze receipt; reviewers repeat only `input_manifest_sha256`.
+- [ ] Freeze `production-rollout-task-2.md` and `post-staging-release-gate-input.md` as append-only artifacts. They must contain protected merge and main-push workflow proof, exact merged SHA/digest, inert primary production migration/deploy/read-only observation plus production-companion non-deployment evidence, exact-digest two-app staging deploy/migration/G16 results, every authorization row, capability workflow run/effective-state hash and immediate re-audit, live-control command IDs, staging secret/grant/guard audit, readiness/heartbeat/resource/G8/G9/G10 results, live worker-wedge G11/G13 evidence, G6 Pro runtime before/after/rollback manifest and smoke proof, all four staging forward/reverse/re-cutover generation/barrier rows and observation windows, the tested `.github/workflows/worker-plane-production.yml` plus `.github/workflows/worker-plane-live-control.yml` rollback contracts, verifier hashes, aggregate run/effect/receipt/quarantine counts, synthetic-data proof, rollback command hashes, and redacted ambiguity results. Import those exact append-only bytes plus `post-staging-release-gate-brief.md` into a dedicated external Git repository. Also import the exact protected-merged Git-object bytes for `scripts/freeze_worker_plane_review.py`, `scripts/launch_worker_plane_review_panel.py`, `scripts/check_worker_plane_review.py`, and `scripts/review_routes/glm-5.2-v1.json`; commit them at external `H0` and execute byte-identical tool versions from the protected implementation checkout. The tool/config paths remain excluded attestations, while the brief is `role=instructions` and the two evidence files are `role=covered`. Mutable user/project configuration is never route proof or the GLM route source; any supported client behavior that contradicts the pinned argv/receipt/route contract fails closed. The runnable block below pins external `UPSTREAM`, `H0`, and `BASE`, reads only external Git objects, and writes to an absolute content-addressed store outside both repositories:
+
+  ```bash
+  PRIMARY_REPO="$(git rev-parse --show-toplevel)"
+  PYTHON="$PRIMARY_REPO/apps/backend-rag/.venv/bin/python"
+  ARTIFACT_REPO="${WORKER_PLANE_TASK2_ARTIFACT_REPO:?set an absolute external Git repository}"
+  REVIEW_STORE="${WORKER_PLANE_REVIEW_STORE:-${HOME}/.local/share/nuzantara/worker-plane-review-store}"
+  case "$ARTIFACT_REPO" in /*) ;; *) echo "artifact repository must be absolute" >&2; exit 2 ;; esac
+  case "$REVIEW_STORE" in /*) ;; *) echo "review store must be absolute" >&2; exit 2 ;; esac
+  case "$REVIEW_STORE" in "$PRIMARY_REPO"|"$PRIMARY_REPO"/*|"$ARTIFACT_REPO"|"$ARTIFACT_REPO"/*) echo "review store must be outside both repositories" >&2; exit 2 ;; esac
+  test -z "$(git -C "$ARTIFACT_REPO" status --porcelain --untracked-files=no)"
+  H0="$(git -C "$ARTIFACT_REPO" rev-parse 'HEAD^{commit}')"
+  UPSTREAM="$(git -C "$ARTIFACT_REPO" rev-parse "${WORKER_PLANE_TASK2_UPSTREAM_REF:-HEAD}^{commit}")"
+  BASE="$(git -C "$ARTIFACT_REPO" merge-base "$UPSTREAM" "$H0")"
+  FREEZE_JSON="$("$PYTHON" "$PRIMARY_REPO/scripts/freeze_worker_plane_review.py" freeze \
+    --repo "$ARTIFACT_REPO" --upstream "$UPSTREAM" --base "$BASE" --source "$H0" \
+    --covered production-rollout-task-2.md \
+    --covered post-staging-release-gate-input.md \
+    --instructions post-staging-release-gate-brief.md \
+    --output-store "$REVIEW_STORE")"
+  PACKET_SHA256="$(printf '%s\n' "$FREEZE_JSON" | "$PYTHON" -c 'import json, sys; print(json.load(sys.stdin)["packet_sha256"])')"
+  ```
+
+  Record Git-object/store identity and `packet_sha256` only in the external freeze receipt; reviewers repeat only `input_manifest_sha256`.
 
 ### Post-staging independent release gate (blocks Task 3)
 
 - [ ] Run the three real reviewer routes independently over the same immutable input through the checked canonical launcher. It reads the content-addressed packet once, supplies those identical bytes over stdin, launches from an empty `0700` cwd, and preserves stdout byte-for-byte without exposing seats to one another. Fable and GLM use the absolute hashed Claude executable in safe-mode/plan with empty tools, slash commands disabled, and strict empty MCP config; Gemini uses the absolute hashed `agy` executable in plan+sandbox with stdin headless mode and no `-p`/prompt argument. No seat receives shell, Read/Glob/Grep/Bash/MCP, a mutable checkout, or prompt bytes in argv. The packet instructs every seat to emit exactly `# Verdict`, `# Blocking findings`, `# Important findings`, `# What survives review`, `# Required amendments`, and `# Falsification test`, with verdict `GO`, `GO-WITH-CHANGES`, or `NO-GO` plus confidence and the common `input_manifest_sha256`:
 
   ```bash
-  REVIEW_DIR="<external-append-only-task-2-artifact>/post-staging-release-gate"
-  apps/backend-rag/.venv/bin/python scripts/launch_worker_plane_review_panel.py \
-    --frozen-review "<external-review-store>/sha256/<packet_sha256>" \
-    --output-dir "$REVIEW_DIR"
+  ATTEMPT_ID="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+  REVIEW_ATTEMPT_REL="reviews/post-staging-release-gate/attempts/$ATTEMPT_ID"
+  REVIEW_ATTEMPT_DIR="$ARTIFACT_REPO/$REVIEW_ATTEMPT_REL"
+  "$PYTHON" "$PRIMARY_REPO/scripts/launch_worker_plane_review_panel.py" \
+    --frozen-review "$REVIEW_STORE/sha256/$PACKET_SHA256" \
+    --output-dir "$REVIEW_ATTEMPT_DIR"
   ```
 
-- [ ] For every seat require a launcher-generated UUID and immutable receipt containing requested route, absolute executable/hash/version, exact argv/hash, route-config hash, empty-cwd proof, timestamps, common `input_manifest_sha256`, external `packet_sha256`, exit status, and raw stdout/stderr hashes. `provider_session_id` and `reported_model` are nullable and validated only when emitted; a requested route is not a provider declaration. Create normalized Markdown files with machine-generated YAML containing `requested_route`, `launcher_invocation_uuid`, nullable provider fields, `input_manifest_sha256`, external `packet_sha256`, and `raw_response_sha256`, followed by the unedited raw body. Never expose an OAuth/keychain token, and require the reviewer body to repeat the manifest SHA only.
-- [ ] Build `post-staging-release-gate-disposition.md`, cover every stable Blocking/Important finding ID exactly once, and leave none unresolved. Validate packet, raw companion SHA-256s, exact headings/routes/proof, and disposition deterministically:
+- [ ] For every seat require a launcher-generated UUID and immutable receipt containing requested route, absolute executable/hash/version, exact argv/hash, route-config hash, empty-cwd proof, timestamps, common `input_manifest_sha256`, external `packet_sha256`, exit status, and raw stdout/stderr hashes. `provider_session_id` and `reported_model` are nullable and validated only when emitted; a requested route is not a provider declaration. The launcher already creates normalized Markdown with machine-generated metadata followed by the unedited body; never normalize manually. Never expose an OAuth/keychain token, and require the reviewer body to repeat the manifest SHA only.
+- [ ] Build `$REVIEW_ATTEMPT_DIR/99-disposition.md`, cover every stable Blocking/Important finding ID exactly once, and leave none unresolved. Commit the fresh attempt in the external artifact repository as `H1`; then compare projections and run the checker against only the exact committed canonical paths. This ordering is mandatory because the checker binds every supplied and derived raw/stderr/invocation companion to regular Git blobs at `H1` and repeats that binding after semantic validation:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/check_worker_plane_review.py \
-    --packet "$REVIEW_DIR/00-review-packet.bin" \
-    --input-manifest "$REVIEW_DIR/input-manifest.json" \
-    --freeze-receipt "$REVIEW_DIR/freeze-receipt.json" \
-    --disposition "$REVIEW_DIR/post-staging-release-gate-disposition.md" \
+  "${EDITOR:-vi}" "$REVIEW_ATTEMPT_DIR/99-disposition.md"
+  git -C "$ARTIFACT_REPO" add -- "$REVIEW_ATTEMPT_REL"
+  git -C "$ARTIFACT_REPO" commit -m "docs(review): record post-staging release gate"
+  H1="$(git -C "$ARTIFACT_REPO" rev-parse 'HEAD^{commit}')"
+  "$PYTHON" "$PRIMARY_REPO/scripts/freeze_worker_plane_review.py" compare-projection \
+    --repo "$ARTIFACT_REPO" --left "$H0" --right "$H1" \
+    --covered production-rollout-task-2.md \
+    --covered post-staging-release-gate-input.md \
+    --instructions post-staging-release-gate-brief.md
+  "$PYTHON" "$PRIMARY_REPO/scripts/check_worker_plane_review.py" \
+    --repo "$ARTIFACT_REPO" --h0 "$H0" --h1 "$H1" \
+    --covered production-rollout-task-2.md \
+    --covered post-staging-release-gate-input.md \
+    --instructions post-staging-release-gate-brief.md \
+    --packet "$REVIEW_ATTEMPT_DIR/00-review-packet.bin" \
+    --input-manifest "$REVIEW_ATTEMPT_DIR/input-manifest.json" \
+    --freeze-receipt "$REVIEW_ATTEMPT_DIR/freeze-receipt.json" \
+    --disposition "$REVIEW_ATTEMPT_DIR/99-disposition.md" \
     --files \
-    "$REVIEW_DIR/post-staging-fable-5.md" \
-    "$REVIEW_DIR/post-staging-gemini-3.1-pro-high.md" \
-    "$REVIEW_DIR/post-staging-glm-5.2.md"
+    "$REVIEW_ATTEMPT_DIR/01-fable-5-architecture.md" \
+    "$REVIEW_ATTEMPT_DIR/02-gemini-3.1-pro-high.md" \
+    "$REVIEW_ATTEMPT_DIR/03-glm-5.2-adversarial.md"
   ```
 
-- [ ] Task 3 is admitted only when all three verdicts are `GO` or `GO-WITH-CHANGES`, the validator exits 0, independent spec and release-quality reviews are green, and zero Blocking/Important finding remains unresolved. A code/config/migration fix must use a focused protected PR; its protected merge auto-deploys a new production digest inert through the same workflow, after which staging must deploy that exact new digest and repeat every affected migration/drill/observation. Regenerate the projection/packet and rerun all three reviewers only when an instruction or covered evidence role/path/byte changes. After adding outputs as external-store commit `H1`, rebuild the same projection from its Git objects and require `projection(H1) == projection(H0)`. Raw/normalized/disposition/receipt-only changes with that equality require integrity revalidation, not another model run.
+- [ ] Task 3 is admitted only when all three verdicts are `GO` or `GO-WITH-CHANGES`, the validator exits 0, independent spec and release-quality reviews are green, and zero Blocking/Important finding remains unresolved. A code/config/migration fix must use a focused protected PR; its protected merge auto-deploys a new production digest inert through the same workflow, after which staging must deploy that exact new digest and repeat every affected migration/drill/observation. Regenerate the projection/packet and rerun all three reviewers only when an instruction or covered evidence role/path/byte changes. Raw/normalized/disposition/receipt-only changes with equal `projection(H1) == projection(H0)` require a new external artifact commit followed by the same projection and checker commands, not another model run.
 - [ ] Do not edit or commit into the already-merged protected checkout. Preserve Task 2 evidence and unedited raw reviews externally until a new protected evidence/deletion PR imports and hash-verifies them.
 
 ## Task 3: Ship and activate receipt Release B, then bootstrap the private production companion and perform four coordinated cutovers
@@ -133,31 +171,67 @@ The Phase 4 Tasks 1–4 compatibility checkpoint admitted Phase 5, Release A ins
 
 ## Final independent panel and handoff
 
-- [ ] Assemble external `production-rollout-panel-input.md` with Release-A bridge, Release-B receipt-activation, deletion, and evidence PR/CI links; every merged SHA/digest; both receipt release gates; staging/production migrations; the production receipt mode and activation boundaries; all forward/reverse/re-cutover barriers and observations; monitoring windows; deletion proof; rollback execution or explicit “not triggered” evidence; active-goal admission rows; and the final G2–G17 matrix. Add `production-rollout-panel-brief.md` with the exact verdict contract. Import those exact append-only bytes into a dedicated external Git object store and commit them as `H0`; freeze the brief as `role=instructions` and the panel input as `role=covered`, excluding every generated manifest/packet/receipt/raw/normalized/disposition attestation. Build and round-trip the canonical manifest plus length-framed packet, then install it read-only under its external packet SHA-256. `input_manifest_sha256` is the sole review identity; Git/store/packet hashes remain external integrity metadata.
+- [ ] Assemble external `production-rollout-panel-input.md` with Release-A bridge, Release-B receipt-activation, deletion, and evidence PR/CI links; every merged SHA/digest; both receipt release gates; staging/production migrations; the production receipt mode and activation boundaries; all forward/reverse/re-cutover barriers and observations; monitoring windows; deletion proof; rollback execution or explicit “not triggered” evidence; active-goal admission rows; and the final G2–G17 matrix. Add `production-rollout-panel-brief.md` with the exact verdict contract. Import those append-only bytes plus exact protected-implementation Git-object copies of the freezer, launcher, checker, and `scripts/review_routes/glm-5.2-v1.json` into a dedicated external Git repository and commit them as `H0`; execute byte-identical tool versions from the protected implementation checkout. Freeze the brief as `role=instructions` and the panel input as `role=covered`, excluding the tool/config paths and every generated manifest/packet/receipt/raw/stderr/normalized/disposition attestation. Build and round-trip the canonical manifest plus length-framed packet, then install it in an absolute read-only external store under its packet SHA-256:
+
+  ```bash
+  PRIMARY_REPO="$(git rev-parse --show-toplevel)"
+  PYTHON="$PRIMARY_REPO/apps/backend-rag/.venv/bin/python"
+  ARTIFACT_REPO="${WORKER_PLANE_FINAL_ARTIFACT_REPO:?set an absolute external Git repository}"
+  REVIEW_STORE="${WORKER_PLANE_REVIEW_STORE:-${HOME}/.local/share/nuzantara/worker-plane-review-store}"
+  case "$ARTIFACT_REPO" in /*) ;; *) echo "artifact repository must be absolute" >&2; exit 2 ;; esac
+  case "$REVIEW_STORE" in /*) ;; *) echo "review store must be absolute" >&2; exit 2 ;; esac
+  case "$REVIEW_STORE" in "$PRIMARY_REPO"|"$PRIMARY_REPO"/*|"$ARTIFACT_REPO"|"$ARTIFACT_REPO"/*) echo "review store must be outside both repositories" >&2; exit 2 ;; esac
+  test -z "$(git -C "$ARTIFACT_REPO" status --porcelain --untracked-files=no)"
+  H0="$(git -C "$ARTIFACT_REPO" rev-parse 'HEAD^{commit}')"
+  UPSTREAM="$(git -C "$ARTIFACT_REPO" rev-parse "${WORKER_PLANE_FINAL_UPSTREAM_REF:-HEAD}^{commit}")"
+  BASE="$(git -C "$ARTIFACT_REPO" merge-base "$UPSTREAM" "$H0")"
+  FREEZE_JSON="$("$PYTHON" "$PRIMARY_REPO/scripts/freeze_worker_plane_review.py" freeze \
+    --repo "$ARTIFACT_REPO" --upstream "$UPSTREAM" --base "$BASE" --source "$H0" \
+    --covered production-rollout-panel-input.md \
+    --instructions production-rollout-panel-brief.md \
+    --output-store "$REVIEW_STORE")"
+  PACKET_SHA256="$(printf '%s\n' "$FREEZE_JSON" | "$PYTHON" -c 'import json, sys; print(json.load(sys.stdin)["packet_sha256"])')"
+  ```
+
+  `input_manifest_sha256` is the sole review identity; Git/store/packet hashes remain external integrity metadata.
+
 - [ ] Run the three real reviewer routes independently over that one byte-identical packet through the checked canonical single-buffer launcher. It reads once and passes identical stdin bytes from an empty sandbox cwd; Fable/GLM run safe-mode/plan with empty tools, slash commands disabled, and strict empty MCP config, while Gemini runs plan+sandbox in stdin headless mode with no `-p`/prompt argument, all through absolute hashed executables/config. Preserve raw stdout without editing, do not let seats read one another, and grant no shell, mutable worktree, Read/Glob/Grep/Bash/MCP, or prompt argv. The packet instructs each seat to emit exactly `# Verdict`, `# Blocking findings`, `# Important findings`, `# What survives review`, `# Required amendments`, and `# Falsification test`, with verdict `GO`, `GO-WITH-CHANGES`, or `NO-GO` plus confidence and the common `input_manifest_sha256`:
 
   ```bash
-  REVIEW_DIR="<external-append-only-final-rollout-artifact>"
-  apps/backend-rag/.venv/bin/python scripts/launch_worker_plane_review_panel.py \
-    --frozen-review "<external-review-store>/sha256/<packet_sha256>" \
-    --output-dir "$REVIEW_DIR"
+  ATTEMPT_ID="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+  REVIEW_ATTEMPT_REL="reviews/final-rollout/attempts/$ATTEMPT_ID"
+  REVIEW_ATTEMPT_DIR="$ARTIFACT_REPO/$REVIEW_ATTEMPT_REL"
+  "$PYTHON" "$PRIMARY_REPO/scripts/launch_worker_plane_review_panel.py" \
+    --frozen-review "$REVIEW_STORE/sha256/$PACKET_SHA256" \
+    --output-dir "$REVIEW_ATTEMPT_DIR"
   ```
 
-- [ ] Require each immutable invocation receipt to contain launcher UUID, requested route, absolute executable/hash/version, exact argv/hash, route-config hash, empty-cwd proof, timestamps, common `input_manifest_sha256`, external `packet_sha256`, exit status, and raw stdout/stderr hashes. `provider_session_id` and `reported_model` remain nullable and are validated only when emitted; requested route is not provider declaration. Normalize each unedited body into `production-rollout-fable-5.md`, `production-rollout-gemini-3.1-pro-high.md`, and `production-rollout-glm-5.2.md` with machine-generated YAML carrying those fields; the reviewer repeats only `input_manifest_sha256`, and no token is exposed.
-- [ ] Build `production-rollout-panel-disposition.md`, cover each stable Blocking/Important finding ID exactly once, and leave none unresolved. Validate the immutable packet hash, raw-companion SHA-256s, exact headings/routes/model proof, and disposition:
+- [ ] Require each immutable invocation receipt to contain launcher UUID, requested route, absolute executable/hash/version, exact argv/hash, route-config hash, empty-cwd proof, timestamps, common `input_manifest_sha256`, external `packet_sha256`, exit status, and raw stdout/stderr hashes. `provider_session_id` and `reported_model` remain nullable and are validated only when emitted; requested route is not provider declaration. The launcher already creates `01-fable-5-architecture.md`, `02-gemini-3.1-pro-high.md`, and `03-glm-5.2-adversarial.md`; never normalize manually. The exact fresh-attempt set is the three validator inputs; each normalized review with its canonical raw, `.stderr.bin`, and `.invocation.json` companions; and completed `99-disposition.md`.
+- [ ] Build `$REVIEW_ATTEMPT_DIR/99-disposition.md`, cover each stable Blocking/Important finding ID exactly once, and leave none unresolved. Commit that exact attempt in the external artifact repository as `H1`, revalidate projection equality, then validate the immutable packet hash, raw/stderr companion SHA-256s, exact headings/routes/model proof, and disposition. The checker binds all supplied and derived companions to `H1` Git blobs before and after semantic validation:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/check_worker_plane_review.py \
-    --packet "$REVIEW_DIR/00-review-packet.bin" \
-    --input-manifest "$REVIEW_DIR/input-manifest.json" \
-    --freeze-receipt "$REVIEW_DIR/freeze-receipt.json" \
-    --disposition "$REVIEW_DIR/production-rollout-panel-disposition.md" \
+  "${EDITOR:-vi}" "$REVIEW_ATTEMPT_DIR/99-disposition.md"
+  git -C "$ARTIFACT_REPO" add -- "$REVIEW_ATTEMPT_REL"
+  git -C "$ARTIFACT_REPO" commit -m "docs(review): record final worker plane rollout panel"
+  H1="$(git -C "$ARTIFACT_REPO" rev-parse 'HEAD^{commit}')"
+  "$PYTHON" "$PRIMARY_REPO/scripts/freeze_worker_plane_review.py" compare-projection \
+    --repo "$ARTIFACT_REPO" --left "$H0" --right "$H1" \
+    --covered production-rollout-panel-input.md \
+    --instructions production-rollout-panel-brief.md
+  "$PYTHON" "$PRIMARY_REPO/scripts/check_worker_plane_review.py" \
+    --repo "$ARTIFACT_REPO" --h0 "$H0" --h1 "$H1" \
+    --covered production-rollout-panel-input.md \
+    --instructions production-rollout-panel-brief.md \
+    --packet "$REVIEW_ATTEMPT_DIR/00-review-packet.bin" \
+    --input-manifest "$REVIEW_ATTEMPT_DIR/input-manifest.json" \
+    --freeze-receipt "$REVIEW_ATTEMPT_DIR/freeze-receipt.json" \
+    --disposition "$REVIEW_ATTEMPT_DIR/99-disposition.md" \
     --files \
-    "$REVIEW_DIR/production-rollout-fable-5.md" \
-    "$REVIEW_DIR/production-rollout-gemini-3.1-pro-high.md" \
-    "$REVIEW_DIR/production-rollout-glm-5.2.md"
+    "$REVIEW_ATTEMPT_DIR/01-fable-5-architecture.md" \
+    "$REVIEW_ATTEMPT_DIR/02-gemini-3.1-pro-high.md" \
+    "$REVIEW_ATTEMPT_DIR/03-glm-5.2-adversarial.md"
   ```
 
-- [ ] Any panel blocker, unresolved Important finding, or failed falsification reopens the owning task. Make a focused protected PR, rerun CI and every affected staging/production-safe proof, and regenerate/rerun the panel when an instruction or covered evidence role/path/byte changes. After adding outputs as external-store commit `H1`, rebuild the same projection from its Git objects and require `projection(H1) == projection(H0)`. If only raw/normalized/disposition/receipt attestations change and that projection is equal, preserve the model verdicts but rerun all packet/raw/receipt/disposition integrity checks. Never preserve a verdict across a covered projection change or paper over an operational gap with documentation-only approval.
+- [ ] Any panel blocker, unresolved Important finding, or failed falsification reopens the owning task. Make a focused protected PR, rerun CI and every affected staging/production-safe proof, and regenerate/rerun the panel when an instruction or covered evidence role/path/byte changes. If only raw/stderr/normalized/disposition/receipt attestations change and the next external artifact commit preserves `projection(H1) == projection(H0)`, preserve the model verdicts but rerun the same projection and checker commands. Never preserve a verdict across a covered projection change or paper over an operational gap with documentation-only approval.
 - [ ] Import the byte-identical external packet, raw companions, launcher proof, normalized reviews, disposition, and remaining Task 2–4 artifact manifests through a new PR from current `origin/main`. CI must recompute every external/input/raw hash, run `check_worker_plane_review.py`, and prove this attestation-only PR changes no `apps/backend-rag/**`, `.github/workflows/fly-deploy.yml`, deployable code, migration, or config input. Merge only through protected main and record that the Fly workflow path filter correctly did not select the docs-only push, plus the independently verified evidence-PR merged SHA. If the PR changes a deploy path or the workflow unexpectedly runs, record its run/digest and re-read health/heartbeat/ownership; any deployable-projection or behavioral-state change invalidates the final panel and reopens the owning task. If multiple evidence PRs were used, every one must be CI-green, protected-merged, and named by merged SHA in the final handoff.
 - [ ] Mark rollout complete only after all three final verdicts are `GO` or `GO-WITH-CHANGES`, the validator proves zero unresolved Blocking/Important finding, all four workload-specific rollback windows and the deletion-release observation window are closed, Phase 4 is finally closed, every protected evidence PR is merged/recorded with verified deploy-path selection, and the evidence bundle names a responsible operator plus retained rollback/runbook location.

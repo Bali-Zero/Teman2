@@ -770,19 +770,22 @@ This task proves release mechanics before merge; it is not a live deployment. Th
 - Create: `.github/workflows/worker-plane-phase1.yml`
 - Create: `docs/architecture/worker-plane-phase1-exit.md`
 - Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/00-review-brief.md`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/00-review-packet.bin`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/input-manifest.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/freeze-receipt.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/01-fable-5-architecture.md`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/01-fable-5-architecture.raw.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/01-fable-5-architecture.invocation.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/02-gemini-3.1-pro-high.md`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/02-gemini-3.1-pro-high.raw.txt`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/02-gemini-3.1-pro-high.invocation.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/03-glm-5.2-adversarial.md`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/03-glm-5.2-adversarial.raw.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/03-glm-5.2-adversarial.invocation.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/99-disposition.md`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/00-review-packet.bin`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/input-manifest.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/freeze-receipt.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/01-fable-5-architecture.md`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/01-fable-5-architecture.raw.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/01-fable-5-architecture.stderr.bin`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/01-fable-5-architecture.invocation.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/02-gemini-3.1-pro-high.md`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/02-gemini-3.1-pro-high.raw.txt`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/02-gemini-3.1-pro-high.stderr.bin`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/02-gemini-3.1-pro-high.invocation.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/03-glm-5.2-adversarial.md`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/03-glm-5.2-adversarial.raw.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/03-glm-5.2-adversarial.stderr.bin`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/03-glm-5.2-adversarial.invocation.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/<attempt-id>/99-disposition.md`
 - Modify as findings require: only Phase 1 implementation/test/docs files listed above
 
 The review directory follows the master plan convention and uses its canonical Git-object projection, length-framed packet, content-addressed store, single-buffer stdin launcher, empty cwd, and no-tool routes without variation. Each normalized file records `input_manifest_sha256`, external `packet_sha256`, required `launcher_invocation_uuid`, nullable provider fields, executable/config/argv/raw hashes, and the unedited exact six-heading body.
@@ -811,42 +814,62 @@ The review directory follows the master plan convention and uses its canonical G
 - [ ] Commit Phase 1 implementation/evidence, require clean tracked status, and freeze the immutable review projection from committed Git objects:
 
   ```bash
-  BASE_COMMIT="$(git merge-base origin/main HEAD)"
-  H0="$(git rev-parse HEAD)"
+  REPO_ROOT="$(git rev-parse --show-toplevel)"
+  PYTHON="$REPO_ROOT/apps/backend-rag/.venv/bin/python"
+  REVIEW_STORE="${WORKER_PLANE_REVIEW_STORE:-${HOME}/.local/share/nuzantara/worker-plane-review-store}"
+  case "$REVIEW_STORE" in /*) ;; *) echo "WORKER_PLANE_REVIEW_STORE must be absolute" >&2; exit 2 ;; esac
+  case "$REVIEW_STORE" in "$REPO_ROOT"|"$REPO_ROOT"/*) echo "review store must be outside the repository" >&2; exit 2 ;; esac
+  UPSTREAM="$(git rev-parse 'origin/main^{commit}')"
+  H0="$(git rev-parse 'HEAD^{commit}')"
+  BASE="$(git merge-base "$UPSTREAM" "$H0")"
   test -z "$(git status --porcelain --untracked-files=no)"
-  apps/backend-rag/.venv/bin/python scripts/freeze_worker_plane_review.py freeze \
-    --repo . --base "$BASE_COMMIT" --source "$H0" \
+  FREEZE_JSON="$("$PYTHON" scripts/freeze_worker_plane_review.py freeze \
+    --repo "$REPO_ROOT" --upstream "$UPSTREAM" --base "$BASE" --source "$H0" \
     --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/00-review-brief.md \
-    --covered-set phase-1 --output-store "<external-review-store>"
+    --covered-set phase-1 --output-store "$REVIEW_STORE")"
+  PACKET_SHA256="$(printf '%s\n' "$FREEZE_JSON" | "$PYTHON" -c 'import json, sys; print(json.load(sys.stdin)["packet_sha256"])')"
   ```
 
   Include base/head, patch hash, verifier hash, route mutation proof, exact four-table migration schema, disposable expected-instance/build-floor evidence, proof that all guards finish false and no live action occurred, G2/live-G16 output, audited disarm/rollback procedure, and a no-client-data declaration.
 
-- [ ] Dispatch all three seats through the checked canonical launcher; it reads the frozen packet once, feeds identical stdin bytes from an empty sandbox cwd, gives Fable/GLM the exact safe-mode/plan route with `--tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`, gives Gemini the exact stdin-headless plan+sandbox route with no `-p` or prompt argument, uses only absolute hashed binaries/config, and preserves raw output/receipts before any seat can see another:
+- [ ] Dispatch all three seats through the checked canonical launcher; it reads the frozen packet once, feeds identical stdin bytes from an empty sandbox cwd, gives Fable/GLM the exact safe-mode/plan route with `--tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`, gives Gemini the exact stdin-headless plan+sandbox route with no `-p` or prompt argument, uses only absolute hashed binaries/config, and atomically writes normalized reviews, raw stdout, stderr, and receipts before any seat can see another:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/launch_worker_plane_review_panel.py \
-    --frozen-review "<external-review-store>/sha256/<packet_sha256>" \
-    --output-dir docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1
+  ATTEMPT_ID="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+  REVIEW_ATTEMPT_DIR="docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/attempts/$ATTEMPT_ID"
+  "$PYTHON" scripts/launch_worker_plane_review_panel.py \
+    --frozen-review "$REVIEW_STORE/sha256/$PACKET_SHA256" \
+    --output-dir "$REVIEW_ATTEMPT_DIR"
   ```
 
-- [ ] Validate distinct required launcher UUIDs, one common manifest/packet identity, exact route proof, exit 0, and raw hashes. Provider session/model fields remain nullable and are checked only when emitted; requested route is not a provider declaration. Normalize unedited bodies under the six headings.
+- [ ] Validate distinct required launcher UUIDs, one common manifest/packet identity, exact route proof, exit 0, and raw stdout/stderr hashes. Provider session/model fields remain nullable and are checked only when emitted; requested route is not a provider declaration. The launcher already generated the normalized Markdown under the six-heading contract; no manual normalization is allowed.
 
 - [ ] Build `99-disposition.md`: cover exactly every stable finding ID once; classify it Blocking, Important, or Advisory; record accepted/rejected with evidence, fixing commit, and rereview state. Rejection requires concrete repository evidence; Blocking/Important cannot remain unresolved.
 - [ ] Fix every accepted Blocking and Important finding with a new RED test, minimal GREEN fix, atomic commit, and full verifier rerun. Any covered input byte/role/path change invalidates all seats and reruns Fable, Gemini, and GLM. Attestation/disposition-only changes require integrity revalidation plus `projection(H1) == projection(H0)`, not a recursive rerun.
 - [ ] Repeat until all three reviewers return `GO` or `GO-WITH-CHANGES` with no unresolved blocking condition and `99-disposition.md` has zero unresolved Blocking/Important rows.
-- [ ] Validate review integrity:
+- [ ] Complete the disposition, commit the fresh attempt's exact canonical files as `H1`, prove the covered/instructions projection is unchanged, then validate review integrity. The checker runs only after `H1` exists and rejects any supplied path that is not committed there byte-for-byte:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/check_worker_plane_review.py \
-    --packet docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/00-review-packet.bin \
-    --input-manifest docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/input-manifest.json \
-    --freeze-receipt docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/freeze-receipt.json \
-    --disposition docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/99-disposition.md \
+  "${EDITOR:-vi}" "$REVIEW_ATTEMPT_DIR/99-disposition.md"
+  git add -- "$REVIEW_ATTEMPT_DIR"
+  git commit -m "docs(worker-plane): record phase one exit review" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
+  H1="$(git rev-parse 'HEAD^{commit}')"
+  "$PYTHON" scripts/freeze_worker_plane_review.py compare-projection \
+    --repo "$REPO_ROOT" --left "$H0" --right "$H1" \
+    --covered-set phase-1 \
+    --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/00-review-brief.md
+  "$PYTHON" scripts/check_worker_plane_review.py \
+    --repo "$REPO_ROOT" --h0 "$H0" --h1 "$H1" \
+    --covered-set phase-1 \
+    --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/00-review-brief.md \
+    --packet "$REVIEW_ATTEMPT_DIR/00-review-packet.bin" \
+    --input-manifest "$REVIEW_ATTEMPT_DIR/input-manifest.json" \
+    --freeze-receipt "$REVIEW_ATTEMPT_DIR/freeze-receipt.json" \
+    --disposition "$REVIEW_ATTEMPT_DIR/99-disposition.md" \
     --files \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/01-fable-5-architecture.md \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/02-gemini-3.1-pro-high.md \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1/03-glm-5.2-adversarial.md
+    "$REVIEW_ATTEMPT_DIR/01-fable-5-architecture.md" \
+    "$REVIEW_ATTEMPT_DIR/02-gemini-3.1-pro-high.md" \
+    "$REVIEW_ATTEMPT_DIR/03-glm-5.2-adversarial.md"
   cd apps/backend-rag
   source .venv/bin/activate
   PYTHONPATH=. python scripts/verify_worker_plane_phase1.py --output /tmp/worker-plane-phase1-reviewed.json
@@ -855,11 +878,11 @@ The review directory follows the master plan convention and uses its canonical G
 
   Expected: review validator and Phase 1 verifier exit 0; no unresolved Blocking/Important finding remains.
 
-- [ ] Commit final gate/review evidence:
+- [ ] Verify the already committed final gate/review evidence; do not create a later artifact commit after the checker:
 
   ```bash
-  git add .github/workflows/worker-plane-phase1.yml docs/architecture/worker-plane-phase1-exit.md docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-1
-  git commit -m "docs(worker-plane): record phase one exit review" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
+  git show --stat --oneline "$H1"
+  test -z "$(git status --porcelain --untracked-files=no)"
   ```
 
 ## Phase 1 Exit Gate

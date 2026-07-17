@@ -182,39 +182,61 @@ PYTHONPATH=. python scripts/compare_worker_plane_baseline.py --baseline backend/
 - [ ] Create `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/00-review-brief.md`, commit the Tasks 1–4 implementation/evidence, require clean tracked status, and freeze the canonical Git-object review-input projection with the checked shared freezer. Cover only Tasks 1–4 packages, commit SHAs, test/migration/live-disposable-G16 output, all four complete G9 candidate/comparison artifacts, lazy-registry/import proof, and the exact sorted TableOwnership manifest for `notification_schedule_runs`, `worker_effect_ledger`, `worker_effect_attempts`, and `worker_cutover_run_audit`. Include every notification/WA grant-fenced automatic, static resolution, and audit operation-mode/interface pair; both migration-source hashes; the full ClaimContext/claimed-at/lease/attempt transaction-fence ratchet; static resolution while off/drained plus normal-worker denial; source-ratchet proof that legacy singular fields and generic/caller-selected workload writers fail; and proof that common helpers are pure/read-only. Include the exact notification secret-symbol set, explicit `SendGridProvider` construction, `_create_provider`/`EMAIL_PROVIDER`/SMTP bypass test, and G10 log-capture proof that raw `to`/`subject`/recipient/provider-response data is absent. Also include the catalog snapshot, no-PII sanitized ownership/effect samples, disposable-PostgreSQL and simulated forward/reverse-transition proof, post-merge staging readiness contracts, and an explicit G2–G17 matrix. Task 5 deletion evidence and live staging evidence are intentionally absent: deletion belongs to the later release, and production-rollout Task 2 owns every live staging mutation/evidence capture after protected merge. The brief is the sole `role=instructions` entry; base/head/clean-status proof and transport hashes remain in external receipts, and generated packet/review/receipt/disposition artifacts are excluded attestations.
 
   ```bash
-  BASE_COMMIT="$(git merge-base origin/main HEAD)"
-  H0="$(git rev-parse HEAD)"
+  REPO_ROOT="$(git rev-parse --show-toplevel)"
+  PYTHON="$REPO_ROOT/apps/backend-rag/.venv/bin/python"
+  REVIEW_STORE="${WORKER_PLANE_REVIEW_STORE:-${HOME}/.local/share/nuzantara/worker-plane-review-store}"
+  case "$REVIEW_STORE" in /*) ;; *) echo "WORKER_PLANE_REVIEW_STORE must be absolute" >&2; exit 2 ;; esac
+  case "$REVIEW_STORE" in "$REPO_ROOT"|"$REPO_ROOT"/*) echo "review store must be outside the repository" >&2; exit 2 ;; esac
+  COMPAT_UPSTREAM="$(git rev-parse 'origin/main^{commit}')"
+  COMPAT_H0="$(git rev-parse 'HEAD^{commit}')"
+  COMPAT_BASE="$(git merge-base "$COMPAT_UPSTREAM" "$COMPAT_H0")"
   test -z "$(git status --porcelain --untracked-files=no)"
-  apps/backend-rag/.venv/bin/python scripts/freeze_worker_plane_review.py freeze \
-    --repo . --base "$BASE_COMMIT" --source "$H0" \
+  COMPAT_FREEZE_JSON="$("$PYTHON" scripts/freeze_worker_plane_review.py freeze \
+    --repo "$REPO_ROOT" --upstream "$COMPAT_UPSTREAM" --base "$COMPAT_BASE" --source "$COMPAT_H0" \
     --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/00-review-brief.md \
-    --covered-set phase-4-compatibility --output-store "<external-review-store>"
+    --covered-set phase-4-compatibility --output-store "$REVIEW_STORE")"
+  COMPAT_PACKET_SHA256="$(printf '%s\n' "$COMPAT_FREEZE_JSON" | "$PYTHON" -c 'import json, sys; print(json.load(sys.stdin)["packet_sha256"])')"
   ```
 
 - [ ] Dispatch Fable as architecture/reversibility judge, Gemini as constructive distributed-systems/operations reviewer, and GLM as adversarial reviewer through the one checked canonical launcher:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/launch_worker_plane_review_panel.py \
-    --frozen-review "<external-review-store>/sha256/<packet_sha256>" \
-    --output-dir docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4
+  COMPAT_ATTEMPT_ID="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+  COMPAT_ATTEMPT_DIR="docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/attempts/$COMPAT_ATTEMPT_ID"
+  "$PYTHON" scripts/launch_worker_plane_review_panel.py \
+    --frozen-review "$REVIEW_STORE/sha256/$COMPAT_PACKET_SHA256" \
+    --output-dir "$COMPAT_ATTEMPT_DIR"
   ```
 
-  The launcher reads the immutable content-addressed packet once into one byte buffer and sends identical bytes over stdin to all three subprocesses from a newly created empty `0700` cwd, without a prompt argument or checkout tools. It uses the master plan's exact absolute Claude executable and no-tool safe-mode argv for Fable/GLM, the committed hash-validated GLM route config and keychain `ANTHROPIC_AUTH_TOKEN` isolation, and absolute `/Users/balizero/.local/bin/agy` with exact plan/sandbox argv for Gemini. It preserves raw bytes and immutable invocation receipts before any cross-seat visibility.
+  The launcher reads the immutable content-addressed packet once into one byte buffer and sends identical bytes over stdin to all three subprocesses from a newly created empty `0700` cwd, without a prompt argument or checkout tools. It uses the master plan's exact absolute Claude executable and no-tool safe-mode argv for Fable/GLM, the committed hash-validated GLM route config and keychain `ANTHROPIC_AUTH_TOKEN` isolation, and absolute `/Users/balizero/.local/bin/agy` with exact plan/sandbox argv for Gemini. It atomically preserves raw stdout, stderr, immutable invocation receipts, and normalized Markdown before any cross-seat visibility; no manual normalization follows launch.
+
+  The fresh compatibility attempt contains exactly the three validator inputs (`00-review-packet.bin`, `input-manifest.json`, `freeze-receipt.json`); `01-fable-5-architecture.md`, `.raw.json`, `.stderr.bin`, and `.invocation.json`; `02-gemini-3.1-pro-high.md`, `.raw.txt`, `.stderr.bin`, and `.invocation.json`; `03-glm-5.2-adversarial.md`, `.raw.json`, `.stderr.bin`, and `.invocation.json`; plus the completed `99-disposition.md`.
 
 - [ ] Each normalized review must contain exactly `# Verdict` (including confidence), `# Blocking findings`, `# Important findings`, `# What survives review`, `# Required amendments`, and `# Falsification test`, with verdict `GO`, `GO-WITH-CHANGES`, or `NO-GO`, and repeat only `input_manifest_sha256`. Each immutable invocation receipt records a unique `launcher_invocation_uuid`, requested route, absolute executable/config/argv hashes, cwd proof, common `input_manifest_sha256`, external `packet_sha256`, exit/raw hashes, and nullable `provider_session_id`/`reported_model` checked only when emitted; requested route is not provider declaration.
 - [ ] Treat any blocking finding, failed falsification, missing artifact, or disagreement about G2/G3/G4/G11/G15/G16 as a failure. Create a focused fix commit per issue and repeat the affected RED/GREEN tests plus both independent per-task reviews. Any covered implementation, test, instruction, or non-generated evidence byte/role/path change produces a new projection and reruns all three panel reviewers. Changes only to generated packet/raw/normalized review, invocation receipt, or disposition artifacts with equal `projection(H1) == projection(H0)` require deterministic integrity revalidation, never a recursive model rerun.
-- [ ] Build `99-disposition.md` covering every stable finding ID exactly once with severity, accepted/rejected decision, evidence, fixing commit, and rereview status; no Blocking/Important item may remain unresolved. Validate the external transport hash from receipts, distinct requested routes, nullable provider declarations, exact headings, raw companion SHA-256 values, finding dispositions, and zero unresolved Blocking/Important findings:
+- [ ] Build `$COMPAT_ATTEMPT_DIR/99-disposition.md` covering every stable finding ID exactly once with severity, accepted/rejected decision, evidence, fixing commit, and rereview status; no Blocking/Important item may remain unresolved. Commit that exact fresh attempt as `COMPAT_H1`, revalidate projection equality, and only then validate the external transport hash from receipts, distinct requested routes, nullable provider declarations, exact headings, raw stdout/stderr companion SHA-256 values, finding dispositions, and zero unresolved Blocking/Important findings. The checker rejects any supplied mutable file that differs from its regular Git blob at `COMPAT_H1`:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/check_worker_plane_review.py \
-    --packet docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/00-review-packet.bin \
-    --input-manifest docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/input-manifest.json \
-    --freeze-receipt docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/freeze-receipt.json \
-    --disposition docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/99-disposition.md \
+  "${EDITOR:-vi}" "$COMPAT_ATTEMPT_DIR/99-disposition.md"
+  git add -- "$COMPAT_ATTEMPT_DIR"
+  git commit -m "docs(worker-plane): record phase four compatibility review" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
+  COMPAT_H1="$(git rev-parse 'HEAD^{commit}')"
+  "$PYTHON" scripts/freeze_worker_plane_review.py compare-projection \
+    --repo "$REPO_ROOT" --left "$COMPAT_H0" --right "$COMPAT_H1" \
+    --covered-set phase-4-compatibility \
+    --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/00-review-brief.md
+  "$PYTHON" scripts/check_worker_plane_review.py \
+    --repo "$REPO_ROOT" --h0 "$COMPAT_H0" --h1 "$COMPAT_H1" \
+    --covered-set phase-4-compatibility \
+    --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/00-review-brief.md \
+    --packet "$COMPAT_ATTEMPT_DIR/00-review-packet.bin" \
+    --input-manifest "$COMPAT_ATTEMPT_DIR/input-manifest.json" \
+    --freeze-receipt "$COMPAT_ATTEMPT_DIR/freeze-receipt.json" \
+    --disposition "$COMPAT_ATTEMPT_DIR/99-disposition.md" \
     --files \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/01-fable-5-architecture.md \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/02-gemini-3.1-pro-high.md \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/03-glm-5.2-adversarial.md
+    "$COMPAT_ATTEMPT_DIR/01-fable-5-architecture.md" \
+    "$COMPAT_ATTEMPT_DIR/02-gemini-3.1-pro-high.md" \
+    "$COMPAT_ATTEMPT_DIR/03-glm-5.2-adversarial.md"
   ```
 
 - [ ] Mark the Phase 4 Tasks 1–4 **compatibility checkpoint** eligible for the protected merge only when all three verdicts are `GO` or `GO-WITH-CHANGES`, the integrity validator reports no unresolved Blocking/Important finding, every Task 1–4 complete G9 comparison is green, G16 reports the exact schedule plus notification/WA grant-fenced automatic/static-resolution/attempt/audit bindings and migration sources, static resolution is protected and worker-denied, automatic mutations prove the full in-transaction claim/lease/attempt fence, the notification worker proves explicit SendGrid injection and sanitized G10 logs, and the source ratchet reports zero singular or caller-selected workload writers. The combined suite must pass: `cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/worker_plane backend/tests/workers backend/tests/integration/worker_plane backend/tests/unit/services/test_wa_outbox_worker.py backend/tests/db/test_migration_249_notification_schedule_runs.py backend/tests/architecture/test_catalogs.py scripts/tests/test_check_table_ownership.py -q && test -n "${TEST_DATABASE_URL:-}" && PYTHONPATH=. .venv/bin/python scripts/check_table_ownership.py --migration-dir backend/db/migrations_v2 --schema-file backend/tests/fixtures/schema_tables.txt --database-url "$TEST_DATABASE_URL" --catalog backend/architecture/catalogs/data/table_ownership.json` (expected: exit 0). This checkpoint is the Phase 5 implementation prerequisite, but it does not approve live staging mutation or lifespan deletion and does not finally close Phase 4.
@@ -225,37 +247,57 @@ PYTHONPATH=. python scripts/compare_worker_plane_baseline.py --baseline backend/
 - [ ] After every production rollback window closes, create `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/00-review-brief.md`, commit the Task 5 deletion implementation/evidence, require clean tracked status, and freeze a separate canonical Git-object projection. Cover Task 5 only: compatibility merged SHA/digest, per-workload production observation and reverse/re-cutover proofs, window-close evidence, deletion PR diff, four-cell old/new primary-worker compatibility matrix, protected primary/worker exact-digest update and rollback contracts, API/RAG boot inventory, request-serving tests, G9 comparison, retained ownership/effect/reverse tooling, and the relevant G2/G3/G4/G9/G11/G15/G16 evidence. The deletion brief is the sole `role=instructions` entry; generated packet/review/receipt/disposition artifacts are excluded attestations.
 
   ```bash
-  BASE_COMMIT="$(git merge-base origin/main HEAD)"
-  H0="$(git rev-parse HEAD)"
+  REPO_ROOT="$(git rev-parse --show-toplevel)"
+  PYTHON="$REPO_ROOT/apps/backend-rag/.venv/bin/python"
+  REVIEW_STORE="${WORKER_PLANE_REVIEW_STORE:-${HOME}/.local/share/nuzantara/worker-plane-review-store}"
+  case "$REVIEW_STORE" in /*) ;; *) echo "WORKER_PLANE_REVIEW_STORE must be absolute" >&2; exit 2 ;; esac
+  case "$REVIEW_STORE" in "$REPO_ROOT"|"$REPO_ROOT"/*) echo "review store must be outside the repository" >&2; exit 2 ;; esac
+  DELETION_UPSTREAM="$(git rev-parse 'origin/main^{commit}')"
+  DELETION_H0="$(git rev-parse 'HEAD^{commit}')"
+  DELETION_BASE="$(git merge-base "$DELETION_UPSTREAM" "$DELETION_H0")"
   test -z "$(git status --porcelain --untracked-files=no)"
-  apps/backend-rag/.venv/bin/python scripts/freeze_worker_plane_review.py freeze \
-    --repo . --base "$BASE_COMMIT" --source "$H0" \
+  DELETION_FREEZE_JSON="$("$PYTHON" scripts/freeze_worker_plane_review.py freeze \
+    --repo "$REPO_ROOT" --upstream "$DELETION_UPSTREAM" --base "$DELETION_BASE" --source "$DELETION_H0" \
     --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/00-review-brief.md \
-    --covered-set phase-4-deletion --output-store "<external-review-store>"
+    --covered-set phase-4-deletion --output-store "$REVIEW_STORE")"
+  DELETION_PACKET_SHA256="$(printf '%s\n' "$DELETION_FREEZE_JSON" | "$PYTHON" -c 'import json, sys; print(json.load(sys.stdin)["packet_sha256"])')"
   ```
 
 - [ ] Dispatch the deletion panel through the same checked canonical single-buffer launcher and its exact safe stdin routes:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/launch_worker_plane_review_panel.py \
-    --frozen-review "<external-review-store>/sha256/<packet_sha256>" \
-    --output-dir docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion
+  DELETION_ATTEMPT_ID="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+  DELETION_ATTEMPT_DIR="docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/attempts/$DELETION_ATTEMPT_ID"
+  "$PYTHON" scripts/launch_worker_plane_review_panel.py \
+    --frozen-review "$REVIEW_STORE/sha256/$DELETION_PACKET_SHA256" \
+    --output-dir "$DELETION_ATTEMPT_DIR"
   ```
 
-- [ ] Save the unedited normalized outputs as `deletion/01-fable-5-architecture.md`, `deletion/02-gemini-3.1-pro-high.md`, and `deletion/03-glm-5.2-adversarial.md`. Require the same exact six headings/verdict enum as the compatibility panel, and repeat only the deletion projection's `input_manifest_sha256`. Invocation receipts carry the unique launcher UUID, requested route, absolute executable/config/argv/cwd proof, common manifest identity, external transport hash, exit/raw hashes, and nullable provider fields; the launcher preserves raw bytes before cross-seat visibility.
+- [ ] The launcher already saves the unedited normalized outputs as `$DELETION_ATTEMPT_DIR/01-fable-5-architecture.md`, `$DELETION_ATTEMPT_DIR/02-gemini-3.1-pro-high.md`, and `$DELETION_ATTEMPT_DIR/03-glm-5.2-adversarial.md`; do not normalize manually. Require the same exact six headings/verdict enum as the compatibility panel, and repeat only the deletion projection's `input_manifest_sha256`. Invocation receipts carry the unique launcher UUID, requested route, absolute executable/config/argv/cwd proof, common manifest identity, external transport hash, exit/raw stdout/stderr hashes, and nullable provider fields; the launcher preserves bytes before cross-seat visibility. The exact attempt set is the same 16 canonical names enumerated for compatibility, including all three `.stderr.bin` companions and `99-disposition.md`.
 - [ ] Any blocker, failed falsification, premature-window finding, missing reverse proof, or request-serving regression blocks deletion. Fix in a focused commit on the deletion PR and rerun Task 5 RED/GREEN/REFACTOR plus both task reviews. Any covered input byte/role/path change produces a new deletion projection and reruns all three deletion reviewers; generated attestation/disposition-only changes with equal projection require deterministic integrity revalidation, never a recursive model rerun.
-- [ ] Build `deletion/99-disposition.md`, cover every stable finding ID exactly once, and require zero unresolved Blocking/Important findings. Run the deterministic integrity validator; it verifies the manifest identity, external packet/raw SHA-256 values from receipts, and distinct requested routes before deletion is eligible:
+- [ ] Build `$DELETION_ATTEMPT_DIR/99-disposition.md`, cover every stable finding ID exactly once, and require zero unresolved Blocking/Important findings. Commit the exact fresh attempt as `DELETION_H1`, revalidate projection equality, and then run the deterministic integrity validator; it verifies the manifest identity, external packet/raw/stdout SHA-256 values from receipts, and distinct requested routes before deletion is eligible:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/check_worker_plane_review.py \
-    --packet docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/00-review-packet.bin \
-    --input-manifest docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/input-manifest.json \
-    --freeze-receipt docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/freeze-receipt.json \
-    --disposition docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/99-disposition.md \
+  "${EDITOR:-vi}" "$DELETION_ATTEMPT_DIR/99-disposition.md"
+  git add -- "$DELETION_ATTEMPT_DIR"
+  git commit -m "docs(worker-plane): record phase four deletion review" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
+  DELETION_H1="$(git rev-parse 'HEAD^{commit}')"
+  "$PYTHON" scripts/freeze_worker_plane_review.py compare-projection \
+    --repo "$REPO_ROOT" --left "$DELETION_H0" --right "$DELETION_H1" \
+    --covered-set phase-4-deletion \
+    --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/00-review-brief.md
+  "$PYTHON" scripts/check_worker_plane_review.py \
+    --repo "$REPO_ROOT" --h0 "$DELETION_H0" --h1 "$DELETION_H1" \
+    --covered-set phase-4-deletion \
+    --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/00-review-brief.md \
+    --packet "$DELETION_ATTEMPT_DIR/00-review-packet.bin" \
+    --input-manifest "$DELETION_ATTEMPT_DIR/input-manifest.json" \
+    --freeze-receipt "$DELETION_ATTEMPT_DIR/freeze-receipt.json" \
+    --disposition "$DELETION_ATTEMPT_DIR/99-disposition.md" \
     --files \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/01-fable-5-architecture.md \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/02-gemini-3.1-pro-high.md \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-4/deletion/03-glm-5.2-adversarial.md
+    "$DELETION_ATTEMPT_DIR/01-fable-5-architecture.md" \
+    "$DELETION_ATTEMPT_DIR/02-gemini-3.1-pro-high.md" \
+    "$DELETION_ATTEMPT_DIR/03-glm-5.2-adversarial.md"
   ```
 
 - [ ] Mark Phase 4 finally complete only after the separate deletion PR is protected-merged; the primary and existing worker have both converged on the exact deletion digest through the protected workflows; the deletion review integrity validator passes; all three deletion verdicts have no unresolved Blocking/Important finding; and API/RAG production boot evidence proves none of the four migrated workload loops starts while request serving, claim continuity, G9, and retained recovery controls remain healthy.

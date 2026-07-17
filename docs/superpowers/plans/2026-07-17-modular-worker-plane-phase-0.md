@@ -561,11 +561,11 @@ The verifier runs named checks and emits machine-readable JSON with `gate`, `sta
 - [ ] Write `test_capture_schema_tables.py` first. Cover `--assert-empty`, sorted qualified non-system tables, newline termination, no row reads, expected latest migration 246, and refusal when the target is not the disposable test database. Implement the capture CLI by importing the same `introspect_schema_tables` engine used by `check_table_ownership.py`.
 - [ ] After migrations 039, 041, and 246 exist, create a brand-new disposable PostgreSQL database and prove it is empty. From `apps/backend-rag`, run `PYTHONPATH=.:../crm-cell python scripts/ci_bootstrap_schema.py` before the canonical `PYTHONPATH=. python -m backend.db.migrate apply-all`; the bootstrap is mandatory because SQLModel/legacy tables are not all created by v2 migrations. Assert the migration ledger's latest entry is exactly 246, then refresh `schema_tables.txt` from live `pg_catalog`, populate `table_ownership.json`, run the deterministic source-write census, and rewrite migration 246's `events_outbox` block to the same complete sorted policy before freezing any Phase 0 review input. The shared checker must prove live DB + fixture + catalog + migration-block + source-interface parity and reject every unaccounted trigger/direct writer. Do not reuse a Task 2 fixture or claim parity from migration text.
 - [ ] Re-run `scripts/tests/test_worker_plane_review_packet.py` against the committed pre-panel bootstrap before modifying it. Add a RED guilt fixture for every Phase 0-discovered gap before changing implementation. Coverage remains: committed-Git-object reads only; clean tracked status; exact `ensure_ascii=False` canonical JSON and raw-UTF-8 `(role,path)` ordering; duplicate/unknown-role/non-normalized-path rejection; non-circular fields; deterministic length framing; embedded delimiter/newline/NUL bytes; truncated, extra, reordered, wrong-hash, wrong-size, wrong-blob, and trailing-byte rejection; content-addressed read-only placement; a general packet with one or more covered entries plus exactly one instructions entry; the initial implementation-plan preset's exact nine covered paths plus its sole instructions brief; and `projection(H1) == projection(H0)` when H1 adds only excluded attestations. A covered byte/role/path change must change the projection.
-- [ ] Implement `scripts/freeze_worker_plane_review.py` exactly to the master-plan canonical contract. It accepts repository, source commit, base commit, one or more repeated `--covered`, exactly one `--instructions`, and output store; only the named initial implementation-plan preset enforces its exact nine covered paths. It reads bytes only through Git objects; emits canonical manifest, length-framed packet, and external freeze receipt; round-trips to EOF; validates every blob/hash/length; installs exact files `packet.bin`, `input-manifest.json`, `freeze-receipt.json`, and `glm-5.2-v1.json` by packet SHA-256 under a read-only content-addressed directory; copies and hash-validates the committed canonical route-config bytes into that directory; and provides `compare-projection --left <commit> --right <commit>` that ignores excluded attestation outputs but fails on any covered input delta.
+- [ ] Implement `scripts/freeze_worker_plane_review.py` exactly to the master-plan canonical contract. It accepts repository, source commit, upstream commit, base commit, one or more repeated `--covered`, exactly one `--instructions`, and an absolute external output store; only the named initial implementation-plan preset enforces its exact nine covered paths. It reads bytes only through Git objects; emits canonical manifest, length-framed packet, and external freeze receipt; round-trips to EOF; validates every blob/hash/length; installs exact files `packet.bin`, `input-manifest.json`, `freeze-receipt.json`, and `glm-5.2-v1.json` by packet SHA-256 under a read-only content-addressed directory; copies and hash-validates the committed canonical route-config bytes into that directory; and provides `compare-projection --repo <repository> --left <commit> --right <commit> --covered ... --instructions <path>` that ignores excluded attestation outputs but fails on any covered input delta.
 - [ ] Re-run `scripts/tests/test_launch_worker_plane_review_panel.py` against the committed pre-panel bootstrap, then add RED guilt fixtures before any Phase 0-driven change. Fake stdin-consuming clients must continue to prove one packet-file read and one in-memory buffer feed three times byte-identically, including trailing newlines and NUL; verified read-only materialization of `00-review-packet.bin`, `input-manifest.json`, and `freeze-receipt.json` in the output directory; empty `0700` cwd; no prompt bytes in argv; absolute binaries only; exact Fable/GLM `--safe-mode --permission-mode plan --tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`; exact Gemini `--mode plan --sandbox` with **no** `-p`/prompt argument and minimum version 1.1.2; no provider `--session-id`; no `zsh -ic`/shim/shell/worktree access; required unique receipt-only `launcher_invocation_uuid`; nullable `provider_session_id`/`reported_model`; sanitized GLM keychain injection; immutable executable/config/argv/stdout/stderr hashes; and independent output visibility.
 - [ ] Implement the launcher with `subprocess.run(..., input=packet_bytes, shell=False, cwd=<empty-dir>, capture_output=True)` and the exact absolute routes/config defined in the master plan. Read and hash the content-addressed packet once before any spawn, pass the same bytes to all seats, preserve stdout/stderr byte-for-byte, and never persist a token or full environment. Before launch, atomically materialize byte-identical, post-copy-hash-verified, read-only `00-review-packet.bin`, `input-manifest.json`, and `freeze-receipt.json` in `--output-dir`; these are validator inputs, never reviewer inputs. A missing binary/config hash, changed packet inode/hash, failed materialization, nonzero exit, or output write failure fails the panel.
 - [ ] Re-run `scripts/tests/test_check_worker_plane_review.py` against the committed pre-panel bootstrap, then add a RED guilt fixture before any validator change. Preserve the valid packet/review/disposition fixture and guilt fixtures for a missing heading, renamed heading, extra level-one heading, wrong order, invalid verdict, placeholder content, absent launcher proof, manifest or packet SHA mismatch, missing/duplicate/extra disposition finding IDs, unresolved Blocking/Important findings, raw-response SHA mismatch, a reviewer that repeats packet rather than manifest SHA, and attestation-only H1 whose projection differs from H0.
-- [ ] Implement `scripts/check_worker_plane_review.py` as a deterministic read-only validator requiring `--packet`, `--input-manifest`, `--freeze-receipt`, `--disposition`, and exactly three `--files`. It validates packet round-trip/EOF, canonical `input_manifest_sha256`, external `packet_sha256`, `projection(H1) == projection(H0)`, exact heading order `# Verdict`, `# Blocking findings`, `# Important findings`, `# What survives review`, `# Required amendments`, `# Falsification test`; verdict enum `GO|GO-WITH-CHANGES|NO-GO` plus confidence; non-placeholder body; distinct requested routes; required launcher UUID; nullable provider session/model; exact executable/config/argv hashes; empty-cwd/tool-denial proof; and each raw companion SHA-256. Every non-`None` Blocking or Important item must have a stable unique `[FINDING-ID]`. The disposition covers exactly those IDs once and leaves no Blocking/Important item unresolved. Run GREEN with the same test command.
+- [ ] Implement `scripts/check_worker_plane_review.py` as a deterministic read-only validator requiring `--repo`, `--h0`, `--h1`, the same `--covered`/`--covered-set` plus `--instructions`, `--packet`, `--input-manifest`, `--freeze-receipt`, `--disposition`, and exactly three `--files`. It accepts only regular files inside `--repo` whose mutable bytes equal their Git blobs at `H1`; validates packet round-trip/EOF, canonical `input_manifest_sha256`, external `packet_sha256`, `projection(H1) == projection(H0)`, exact heading order `# Verdict`, `# Blocking findings`, `# Important findings`, `# What survives review`, `# Required amendments`, `# Falsification test`; verdict enum `GO|GO-WITH-CHANGES|NO-GO` plus confidence; non-placeholder body; distinct requested routes; required launcher UUID; nullable provider session/model; exact executable/config/argv hashes; empty-cwd/tool-denial proof; and each raw stdout and stderr companion SHA-256. Every non-`None` Blocking or Important item must have a stable unique `[FINDING-ID]`. The disposition covers exactly those IDs once and leaves no Blocking/Important item unresolved. Run GREEN with the same test command.
 - [ ] Add CI steps for the focused architecture, Redis, event, migration, and health suites. Give the canonical G9 capture its own Pro/self-hosted-CI job using the checked protocol, required service URLs, and `--require-complete-g9`; do not let a generic runner replace it with offline output. Upload the snapshot, protocol, and JSON evidence hashes even on failure, but never upload credentials.
 - [ ] Write `worker-plane-phase0-exit.md` with commands, actual evidence hashes, known non-blocking environmental unavailability, and an explicit statement that workload placement has not changed. Do not paste test output or claim a gate passed before running it.
 - [ ] Record the G6 operational handoff in the exit document without executing it premerge: after the final protected merge, the rollout must run `ssh pro 'cd ~/Desktop/nuzantara && python scripts/deploy_eventbus_runtime.py --apply --merged-sha <exact-merged-sha>'`, retain its before/after manifest and smoke evidence, and use the script's automatic backup rollback on failure. Until that handoff passes, report repository G6 green but runtime G6 pending; never imply that editing `infra/eventbus/` changed `~/scripts/eventbus/`.
@@ -611,19 +611,22 @@ The verifier runs named checks and emits machine-readable JSON with `gate`, `sta
 
 - Create: `scripts/review_sets/phase-0.json`
 - Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/00-review-brief.md`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/00-review-packet.bin`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/input-manifest.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/freeze-receipt.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/01-fable-5-architecture.md`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/01-fable-5-architecture.raw.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/01-fable-5-architecture.invocation.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/02-gemini-3.1-pro-high.md`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/02-gemini-3.1-pro-high.raw.txt`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/02-gemini-3.1-pro-high.invocation.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/03-glm-5.2-adversarial.md`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/03-glm-5.2-adversarial.raw.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/03-glm-5.2-adversarial.invocation.json`
-- Create: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/99-disposition.md`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/00-review-packet.bin`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/input-manifest.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/freeze-receipt.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/01-fable-5-architecture.md`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/01-fable-5-architecture.raw.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/01-fable-5-architecture.stderr.bin`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/01-fable-5-architecture.invocation.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/02-gemini-3.1-pro-high.md`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/02-gemini-3.1-pro-high.raw.txt`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/02-gemini-3.1-pro-high.stderr.bin`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/02-gemini-3.1-pro-high.invocation.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/03-glm-5.2-adversarial.md`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/03-glm-5.2-adversarial.raw.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/03-glm-5.2-adversarial.stderr.bin`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/03-glm-5.2-adversarial.invocation.json`
+- Create per attempt: `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/<attempt-id>/99-disposition.md`
 - Modify as findings require: only Phase 0 implementation/test/docs files listed above
 
 The review directory exactly follows the master plan's `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-N/` convention. Freeze the Phase 0 diff/evidence plus its instruction brief as a canonical review-input projection with `scripts/freeze_worker_plane_review.py`; base/head/status remain external receipt metadata. The packet contains migration ordering, exact G6/G7/G9/process-local-liveness/G16/G17 commands, explicit full-G11 deferral, rollback constraints, and no client data. Raw/normalized reviews, receipts, packet objects, and disposition are excluded attestations. Each reviewer receives the same in-memory packet bytes over stdin, has no tools or worktree access, and cannot see the other outputs before all seats return.
@@ -635,40 +638,60 @@ Each route receives a required `launcher_invocation_uuid`; `provider_session_id`
 - [ ] Commit the Phase 0 implementation/evidence first, require clean tracked status, then freeze from Git objects with the canonical tooling:
 
   ```bash
-  BASE_COMMIT="$(git merge-base origin/main HEAD)"
-  H0="$(git rev-parse HEAD)"
+  REPO_ROOT="$(git rev-parse --show-toplevel)"
+  PYTHON="$REPO_ROOT/apps/backend-rag/.venv/bin/python"
+  REVIEW_STORE="${WORKER_PLANE_REVIEW_STORE:-${HOME}/.local/share/nuzantara/worker-plane-review-store}"
+  case "$REVIEW_STORE" in /*) ;; *) echo "WORKER_PLANE_REVIEW_STORE must be absolute" >&2; exit 2 ;; esac
+  case "$REVIEW_STORE" in "$REPO_ROOT"|"$REPO_ROOT"/*) echo "review store must be outside the repository" >&2; exit 2 ;; esac
+  UPSTREAM="$(git rev-parse 'origin/main^{commit}')"
+  H0="$(git rev-parse 'HEAD^{commit}')"
+  BASE="$(git merge-base "$UPSTREAM" "$H0")"
   test -z "$(git status --porcelain --untracked-files=no)"
-  apps/backend-rag/.venv/bin/python scripts/freeze_worker_plane_review.py freeze \
-    --repo . --base "$BASE_COMMIT" --source "$H0" \
+  FREEZE_JSON="$("$PYTHON" scripts/freeze_worker_plane_review.py freeze \
+    --repo "$REPO_ROOT" --upstream "$UPSTREAM" --base "$BASE" --source "$H0" \
     --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/00-review-brief.md \
-    --covered-set phase-0 --output-store "<external-review-store>"
+    --covered-set phase-0 --output-store "$REVIEW_STORE")"
+  PACKET_SHA256="$(printf '%s\n' "$FREEZE_JSON" | "$PYTHON" -c 'import json, sys; print(json.load(sys.stdin)["packet_sha256"])')"
   ```
 
-- [ ] Dispatch all three routes through the checked single-buffer launcher. It uses the exact absolute binaries/argv/config in the master plan, reads the content-addressed packet once, sends identical bytes via stdin, runs from empty sandbox cwd, supplies no tools, and preserves three raw companions plus receipts before normalization:
+- [ ] Dispatch all three routes through the checked single-buffer launcher. It uses the exact absolute binaries/argv/config in the master plan, reads the content-addressed packet once, sends identical bytes via stdin, runs from empty sandbox cwd, supplies no tools, and atomically creates normalized reviews, raw stdout, stderr, and receipts in a fresh UUID attempt directory:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/launch_worker_plane_review_panel.py \
-    --frozen-review "<external-review-store>/sha256/<packet_sha256>" \
-    --output-dir docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0
+  ATTEMPT_ID="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+  REVIEW_ATTEMPT_DIR="docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/attempts/$ATTEMPT_ID"
+  "$PYTHON" scripts/launch_worker_plane_review_panel.py \
+    --frozen-review "$REVIEW_STORE/sha256/$PACKET_SHA256" \
+    --output-dir "$REVIEW_ATTEMPT_DIR"
   ```
 
-- [ ] Validate that all three receipts have different launcher UUIDs, the same manifest/packet hashes, exact binary/config/argv hashes, empty-cwd and no-tool proof, exit 0, and correct raw hashes. Validate optional provider model/session fields only when present; extract bodies without editing and prepend only machine-generated YAML.
-- [ ] Classify every panel finding in `99-disposition.md` as `Blocking`, `Important`, or `Advisory`, with `accepted/rejected`, evidence, owning commit, and rereview status. A rejection requires concrete repository evidence, not preference.
+- [ ] Validate that all three receipts have different launcher UUIDs, the same manifest/packet hashes, exact binary/config/argv hashes, empty-cwd and no-tool proof, exit 0, and correct raw stdout/stderr hashes. Validate optional provider model/session fields only when present. The launcher already generated the normalized Markdown; never extract or normalize bodies manually.
+- [ ] Classify every panel finding in `$REVIEW_ATTEMPT_DIR/99-disposition.md` as `Blocking`, `Important`, or `Advisory`, with `accepted/rejected`, evidence, owning commit, and rereview status. A rejection requires concrete repository evidence, not preference.
 - [ ] Fix every accepted Blocking and Important finding with new RED/GREEN tests and one atomic conventional commit per finding. Every review-fix commit includes the required `Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>` trailer and does not combine unrelated cleanup.
 - [ ] If a review fix changes runtime behavior, route/catalog inputs, probe code, or the protocol file, recapture the canonical baseline on the same Pro/CI protocol with `--require-complete-g9` before rebuilding evidence. An offline artifact can never replace this recapture.
 - [ ] After any covered implementation, test, instruction, or non-generated evidence byte/role/path change, regenerate the projection/packet and rerun **Fable, Gemini, and GLM**, even if one reviewer found the issue. Changes only to raw/normalized reviews, invocation receipts, packets, or disposition require hash/integrity revalidation and `projection(H1) == projection(H0)`, not recursive model reruns. Repeat until there is no unresolved Blocking or Important finding and all three verdicts are `GO` or `GO-WITH-CHANGES`.
-- [ ] Validate review integrity and final gates:
+- [ ] Complete the disposition, commit exactly the canonical artifacts in this attempt as `H1`, revalidate projection equality, then validate review integrity and final gates. The checker runs only after that commit and rejects any supplied path that is not an equal mutable/Git-blob pair at `H1`:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/check_worker_plane_review.py \
-    --packet docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/00-review-packet.bin \
-    --input-manifest docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/input-manifest.json \
-    --freeze-receipt docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/freeze-receipt.json \
-    --disposition docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/99-disposition.md \
+  "${EDITOR:-vi}" "$REVIEW_ATTEMPT_DIR/99-disposition.md"
+  git add -- "$REVIEW_ATTEMPT_DIR"
+  git commit -m "docs(worker-plane): record phase zero independent review" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
+  H1="$(git rev-parse 'HEAD^{commit}')"
+  "$PYTHON" scripts/freeze_worker_plane_review.py compare-projection \
+    --repo "$REPO_ROOT" --left "$H0" --right "$H1" \
+    --covered-set phase-0 \
+    --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/00-review-brief.md
+  "$PYTHON" scripts/check_worker_plane_review.py \
+    --repo "$REPO_ROOT" --h0 "$H0" --h1 "$H1" \
+    --covered-set phase-0 \
+    --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/00-review-brief.md \
+    --packet "$REVIEW_ATTEMPT_DIR/00-review-packet.bin" \
+    --input-manifest "$REVIEW_ATTEMPT_DIR/input-manifest.json" \
+    --freeze-receipt "$REVIEW_ATTEMPT_DIR/freeze-receipt.json" \
+    --disposition "$REVIEW_ATTEMPT_DIR/99-disposition.md" \
     --files \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/01-fable-5-architecture.md \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/02-gemini-3.1-pro-high.md \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0/03-glm-5.2-adversarial.md
+    "$REVIEW_ATTEMPT_DIR/01-fable-5-architecture.md" \
+    "$REVIEW_ATTEMPT_DIR/02-gemini-3.1-pro-high.md" \
+    "$REVIEW_ATTEMPT_DIR/03-glm-5.2-adversarial.md"
   cd apps/backend-rag
   source .venv/bin/activate
   PYTHONPATH=. python scripts/verify_worker_plane_phase0.py --output /tmp/worker-plane-phase0-final.json
@@ -677,11 +700,11 @@ Each route receives a required `launcher_invocation_uuid`; `provider_session_id`
 
   Expected: the exact worker-plane review-contract validation exits 0; final Phase 0 verifier is all-pass; invocation metadata is reproducible and hash-bound; no unresolved Blocking or Important row remains in `99-disposition.md`.
 
-- [ ] Commit the immutable review record after rereview passes:
+- [ ] Verify the immutable review record after rereview passes; do not create a later evidence commit because the checker already bound the exact attempt artifacts to `H1`:
 
   ```bash
-  git add docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-0 docs/architecture/worker-plane-phase0-exit.md
-  git commit -m "docs(worker-plane): record phase zero independent review" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
+  git show --stat --oneline "$H1"
+  test -z "$(git status --porcelain --untracked-files=no)"
   ```
 
 ## Phase 0 Exit Gate

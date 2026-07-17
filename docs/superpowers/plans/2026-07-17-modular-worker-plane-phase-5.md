@@ -151,37 +151,59 @@
 - [ ] Create `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/00-review-brief.md`, commit Phase 5 implementation/evidence, require clean tracked status, and use `scripts/freeze_worker_plane_review.py` to build the canonical Git-object projection and length-framed `00-review-packet.bin`, `input-manifest.json`, and `freeze-receipt.json`. The brief is the sole `role=instructions` entry. Cover every task package, migration/G16/source-ratchet proof, receipt/replay/quarantine evidence, catalogs, redacted samples, CI/G8/G9/G10 evidence, staging-readiness contracts, and G3–G11/G16/G17 matrix; include no pre-merge live mutation evidence. Base/head/status stay external. Raw/normalized reviews, packet/receipts, and disposition are excluded attestations.
 
   ```bash
-  BASE_COMMIT="$(git merge-base origin/main HEAD)"
-  H0="$(git rev-parse HEAD)"
+  REPO_ROOT="$(git rev-parse --show-toplevel)"
+  PYTHON="$REPO_ROOT/apps/backend-rag/.venv/bin/python"
+  REVIEW_STORE="${WORKER_PLANE_REVIEW_STORE:-${HOME}/.local/share/nuzantara/worker-plane-review-store}"
+  case "$REVIEW_STORE" in /*) ;; *) echo "WORKER_PLANE_REVIEW_STORE must be absolute" >&2; exit 2 ;; esac
+  case "$REVIEW_STORE" in "$REPO_ROOT"|"$REPO_ROOT"/*) echo "review store must be outside the repository" >&2; exit 2 ;; esac
+  UPSTREAM="$(git rev-parse 'origin/main^{commit}')"
+  H0="$(git rev-parse 'HEAD^{commit}')"
+  BASE="$(git merge-base "$UPSTREAM" "$H0")"
   test -z "$(git status --porcelain --untracked-files=no)"
-  apps/backend-rag/.venv/bin/python scripts/freeze_worker_plane_review.py freeze \
-    --repo . --base "$BASE_COMMIT" --source "$H0" \
+  FREEZE_JSON="$("$PYTHON" scripts/freeze_worker_plane_review.py freeze \
+    --repo "$REPO_ROOT" --upstream "$UPSTREAM" --base "$BASE" --source "$H0" \
     --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/00-review-brief.md \
-    --covered-set phase-5 --output-store "<external-review-store>"
+    --covered-set phase-5 --output-store "$REVIEW_STORE")"
+  PACKET_SHA256="$(printf '%s\n' "$FREEZE_JSON" | "$PYTHON" -c 'import json, sys; print(json.load(sys.stdin)["packet_sha256"])')"
   ```
 
-- [ ] Dispatch all three seats through the checked canonical single-buffer launcher. It reads the content-addressed packet once, feeds identical stdin bytes, uses an empty sandbox cwd, gives Fable/GLM safe-mode plan with `--tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`, gives Gemini stdin-headless plan+sandbox with no `-p` or prompt argument, resolves only absolute hashed binaries/config, and preserves raw output/receipts before cross-seat visibility:
+- [ ] Dispatch all three seats through the checked canonical single-buffer launcher. It reads the content-addressed packet once, feeds identical stdin bytes, uses an empty sandbox cwd, gives Fable/GLM safe-mode plan with `--tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`, gives Gemini stdin-headless plan+sandbox with no `-p` or prompt argument, resolves only absolute hashed binaries/config, and atomically preserves normalized Markdown, raw stdout, stderr, and receipts before cross-seat visibility:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/launch_worker_plane_review_panel.py \
-    --frozen-review "<external-review-store>/sha256/<packet_sha256>" \
-    --output-dir docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5
+  ATTEMPT_ID="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+  REVIEW_ATTEMPT_DIR="docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/attempts/$ATTEMPT_ID"
+  "$PYTHON" scripts/launch_worker_plane_review_panel.py \
+    --frozen-review "$REVIEW_STORE/sha256/$PACKET_SHA256" \
+    --output-dir "$REVIEW_ATTEMPT_DIR"
   ```
+
+  The exact fresh-attempt set is `00-review-packet.bin`, `input-manifest.json`, `freeze-receipt.json`; the Fable normalized `.md`, `.raw.json`, `.stderr.bin`, and `.invocation.json`; the Gemini normalized `.md`, `.raw.txt`, `.stderr.bin`, and `.invocation.json`; the GLM normalized `.md`, `.raw.json`, `.stderr.bin`, and `.invocation.json`; and completed `99-disposition.md`. The launcher creates the three normalized reviews; no manual normalization step follows.
 
 - [ ] Each normalized review uses the exact six headings/verdict, repeats only `input_manifest_sha256`, and records required launcher UUID plus external packet/raw/executable/config/argv hashes. Requested route is not provider declaration; `provider_session_id`/`reported_model` are nullable and checked only when emitted.
 - [ ] Any blocker, failed falsification, fanout/adapter/PII/G9 defect, or bus-merging recommendation is failure. Make a RED/GREEN fix commit. A covered input byte/role/path change invalidates all seats and reruns all three; attestation/disposition-only changes require integrity revalidation plus `projection(H1) == projection(H0)`, not recursive rerun.
-- [ ] Build `99-disposition.md` covering every stable finding ID exactly once with severity, accepted/rejected decision, evidence, fixing commit, and rereview status; Blocking/Important items cannot remain unresolved. Validate external packet hash, distinct requested routes, nullable provider declarations, invocation proof, exact headings, raw companion SHA-256 values, dispositions, and unresolved-finding count:
+- [ ] Build `$REVIEW_ATTEMPT_DIR/99-disposition.md` covering every stable finding ID exactly once with severity, accepted/rejected decision, evidence, fixing commit, and rereview status; Blocking/Important items cannot remain unresolved. Commit the exact fresh attempt as `H1`, revalidate the covered/instructions projection, and only then validate external packet hash, distinct requested routes, nullable provider declarations, invocation proof, exact headings, raw stdout/stderr companion SHA-256 values, dispositions, and unresolved-finding count. The checker rejects files not committed byte-for-byte at `H1`:
 
   ```bash
-  apps/backend-rag/.venv/bin/python scripts/check_worker_plane_review.py \
-    --packet docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/00-review-packet.bin \
-    --input-manifest docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/input-manifest.json \
-    --freeze-receipt docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/freeze-receipt.json \
-    --disposition docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/99-disposition.md \
+  "${EDITOR:-vi}" "$REVIEW_ATTEMPT_DIR/99-disposition.md"
+  git add -- "$REVIEW_ATTEMPT_DIR"
+  git commit -m "docs(worker-plane): record phase five independent review" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
+  H1="$(git rev-parse 'HEAD^{commit}')"
+  "$PYTHON" scripts/freeze_worker_plane_review.py compare-projection \
+    --repo "$REPO_ROOT" --left "$H0" --right "$H1" \
+    --covered-set phase-5 \
+    --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/00-review-brief.md
+  "$PYTHON" scripts/check_worker_plane_review.py \
+    --repo "$REPO_ROOT" --h0 "$H0" --h1 "$H1" \
+    --covered-set phase-5 \
+    --instructions docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/00-review-brief.md \
+    --packet "$REVIEW_ATTEMPT_DIR/00-review-packet.bin" \
+    --input-manifest "$REVIEW_ATTEMPT_DIR/input-manifest.json" \
+    --freeze-receipt "$REVIEW_ATTEMPT_DIR/freeze-receipt.json" \
+    --disposition "$REVIEW_ATTEMPT_DIR/99-disposition.md" \
     --files \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/01-fable-5-architecture.md \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/02-gemini-3.1-pro-high.md \
-    docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-5/03-glm-5.2-adversarial.md
+    "$REVIEW_ATTEMPT_DIR/01-fable-5-architecture.md" \
+    "$REVIEW_ATTEMPT_DIR/02-gemini-3.1-pro-high.md" \
+    "$REVIEW_ATTEMPT_DIR/03-glm-5.2-adversarial.md"
   ```
 
 - [ ] Complete Phase 5 only with three `GO` or `GO-WITH-CHANGES` verdicts, a green integrity validator, no unresolved Blocking/Important finding, a green Phase 0 G9 comparison, exact G16/source-ratchet proof for the receipt binding and wrapper set above, and exit 0 from `PYTHONPATH=apps/backend-rag:. apps/backend-rag/.venv/bin/python -m pytest apps/backend-rag/backend/tests/services/events apps/backend-rag/backend/tests/architecture/test_pii_publish_boundary.py apps/backend-rag/backend/tests/db/test_migration_246_event_quarantine.py apps/backend-rag/backend/tests/db/test_migration_250_event_subscription_receipts.py infra/eventbus/tests apps/nuzantara-mcp/tests/test_backend_contract_compatibility.py apps/backend-rag/scripts/tests/test_check_table_ownership.py scripts/tests/test_check_event_contract_ratchet.py scripts/tests/test_check_consumer_contracts.py -q`, followed by `cd apps/backend-rag && test -n "${TEST_DATABASE_URL:-}" && PYTHONPATH=. .venv/bin/python scripts/check_table_ownership.py --migration-dir backend/db/migrations_v2 --schema-file backend/tests/fixtures/schema_tables.txt --database-url "$TEST_DATABASE_URL" --catalog backend/architecture/catalogs/data/table_ownership.json`, `PYTHONPATH=apps/backend-rag:. apps/backend-rag/.venv/bin/python scripts/worker_plane/check_consumer_contracts.py`, and `cd apps/mouth && npm run generate:api && git diff --exit-code -- src/lib/api/schema.d.ts && npm test -- --run src/app/api/docs/openapi.yaml/route.test.ts`. This is code/CI/disposable-database readiness only; live staging work remains production-rollout Task 2 after protected merge.
