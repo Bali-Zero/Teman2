@@ -254,6 +254,14 @@ async def ground_enrichment(brief_json: dict[str, Any], topic: str) -> dict[str,
     base_facts = existing_facts or str(brief_json.get("article_summary") or "")[:600]
     enrichment["the_facts"] = _inject_rails_into_facts(base_facts, nb_brief)
     enrichment.setdefault("grounding_source", grounding_source)
+    if not base_facts:
+        # Nothing existed to ground the citations IN — the injected the_facts
+        # is PURELY the citation block (_inject_rails_into_facts with an empty
+        # prose_facts arg). Mark it explicitly so a downstream consumer (the
+        # draft generator's park backstop, 2026-07-17) can tell "we truly have
+        # no event facts" apart from "we have a real brief that also picked up
+        # citations" without re-deriving base_facts itself.
+        enrichment["_grounding_injected_only"] = True
 
     out = dict(brief_json)
     out["enrichment"] = enrichment

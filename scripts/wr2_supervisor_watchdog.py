@@ -165,6 +165,11 @@ TERMINAL_STATUSES = (
     "image_failed",
     "missed",
     "rejected",
+    # B2 park backstop (wr2_draft_generator.py, 2026-07-17): a news-shaped
+    # draft with no usable source content is parked, never drafted. Terminal
+    # and human-attended, same shape as 'rejected' — registering it here keeps
+    # it from reading as unrecognised state-machine drift (cicatrix #9).
+    "parked",
 )
 
 STATE_PATH = Path.home() / ".agent" / "decisions" / "state" / "wr2_supervisor_watchdog.state"

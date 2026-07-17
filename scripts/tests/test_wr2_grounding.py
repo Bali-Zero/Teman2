@@ -122,11 +122,98 @@ def test_oracle_failure_leaves_brief_unchanged():
     assert out["enrichment"] == {}
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# _grounding_injected_only marker (2026-07-17 — draft 1229c367 park backstop)
+# ─────────────────────────────────────────────────────────────────────────
+
+def test_marker_set_when_injecting_into_truly_empty_brief():
+    """GUILT: no existing enrichment facts AND no article_summary to fall back
+    on -> base_facts is empty -> the injected the_facts is PURELY the citation
+    block -> marker MUST be set so the drafter's park backstop can tell."""
+    g.ENABLED = True
+
+    async def fake_rag(_):
+        return "Regulation PP 31/2013 applies."
+
+    g._query_rag = fake_rag
+    out = asyncio.run(
+        g.ground_enrichment({"enrichment": {}, "article_summary": ""}, "t")
+    )
+    assert out["enrichment"]["_grounding_injected_only"] is True
+    # And the_facts really is citations-only — no prose line before it.
+    assert out["enrichment"]["the_facts"].startswith("Riferimenti normativi")
+
+
+def test_marker_not_set_when_article_summary_present():
+    """INNOCENCE: article_summary has real content -> base_facts falls back to
+    it (even truncated) -> the injection is NOT citations-only -> no marker."""
+    g.ENABLED = True
+
+    async def fake_rag(_):
+        return "Regulation PP 31/2013 applies."
+
+    g._query_rag = fake_rag
+    out = asyncio.run(
+        g.ground_enrichment(
+            {"enrichment": {}, "article_summary": "Three foreigners were deported."},
+            "t",
+        )
+    )
+    assert "_grounding_injected_only" not in out["enrichment"]
+    assert out["enrichment"]["the_facts"].startswith("Three foreigners were deported.")
+
+
+def test_marker_not_set_when_enrichment_already_has_real_facts():
+    """INNOCENCE: enrichment already carries real prose facts (no citation in
+    them yet) -> base_facts uses that existing prose -> no marker, even though
+    citations get appended on top."""
+    g.ENABLED = True
+
+    async def fake_rag(_):
+        return "Regulation PP 31/2013 applies."
+
+    g._query_rag = fake_rag
+    out = asyncio.run(
+        g.ground_enrichment(
+            {
+                "enrichment": {"the_facts": "Some real facts already present."},
+                "article_summary": "",
+            },
+            "t",
+        )
+    )
+    assert "_grounding_injected_only" not in out["enrichment"]
+    assert out["enrichment"]["the_facts"].startswith("Some real facts already present.")
+
+
+def test_marker_absent_when_no_citations_found():
+    """No citations found at all -> early degrade-return, brief unchanged, no
+    the_facts mutation, no marker (nothing was injected)."""
+    g.ENABLED = True
+
+    async def empty(_):
+        return "prose without any law number"
+
+    async def oracle_empty(_):
+        return ""
+
+    g._query_rag = empty
+    g._query_oracle = oracle_empty
+    out = asyncio.run(
+        g.ground_enrichment({"enrichment": {}, "article_summary": ""}, "t")
+    )
+    assert out["enrichment"] == {}
+
+
 if __name__ == "__main__":
     for fn in [test_law_extraction_matches_factchecker, test_inject_roundtrips,
                test_disabled_passthrough, test_enabled_injects, test_no_citation_degrades,
                test_oracle_fallback_used_when_chat_stream_has_no_citations,
                test_oracle_query_extracts_snippets_from_response_shape,
-               test_oracle_failure_leaves_brief_unchanged]:
+               test_oracle_failure_leaves_brief_unchanged,
+               test_marker_set_when_injecting_into_truly_empty_brief,
+               test_marker_not_set_when_article_summary_present,
+               test_marker_not_set_when_enrichment_already_has_real_facts,
+               test_marker_absent_when_no_citations_found]:
         fn(); print("PASS", fn.__name__)
     print("ALL PASS")
