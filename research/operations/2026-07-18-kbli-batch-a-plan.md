@@ -167,7 +167,19 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
 
 ## 8. Amendments (append-only)
 
-- (none yet)
+- **A-1 (2026-07-18, Zero) — A1-first sequencing; addendum vault wave deferred.** The P1
+  evidence classes NOT in the Batch-0 core vault (Perpres 10/49-2021 annexes, Bali Gubernur
+  overlay + Kepmenaker 228/2019 rows, per-instrument in-force/dicabut status snapshots) become a
+  **second vault wave (P1-v2) that is HELD until AFTER Pilota A1 runs** — the pilot measures on
+  the clean OSS + PP28 + BPS core first (Zero: *"aspetti dopo il Pilota A1 così misuriamo prima
+  su vault-core pulito"*). This does NOT weaken any acceptance criterion: facts depending on the
+  deferred classes (`pma_status`, `l4_bali`, TKA) come out `abstained(pending-evidence)` per
+  A1/A5, honest-gap per A6 — never certified from the core alone, never published wrong. The
+  PP28 300-dpi renders required by A3 are produced **on-demand per-code at D2** from the
+  sha256-pinned PP28 lampiran PDFs (`pdftoppm -r 300`, deterministic), so they are not a
+  bulk-prebuild precondition. Net effect: the extraction gate collapses to P0 (membership) only;
+  the addendum wave and the abstention-lifting re-run are scoped from the Pilota A1 measured
+  report alongside Batch B cadence.
 
 ## Adversarial review
 

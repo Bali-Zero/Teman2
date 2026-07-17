@@ -38,20 +38,36 @@ take-label variety + vendored agent defs (#2544) · archive-aware M5 merge + rec
 migration 245 `parked` on prod)** · capture ledger (#2581, #2609) ·
 multi-path Pro ssh fallback in the M5 queue-pull wrapper (#2625 — scar #8: Tailscale/mDNS
 alternate dying, 1102 timeouts logged; fallback probe + honest --once exit, proven live
-2026-07-18).
+2026-07-18) · **liveness rewire end-to-end (#2631, growth-loop B1) — carried the enricher's
+live_news_score/liveness_tier/live_news_reasons through the 3-break contract chain
+(scraper→ScraperSubmission→staging JSON→/pending projection), scar family #9; Codex red-team
+round added projection normalization + score→tier derivation; PROVE-LIVE 2026-07-18: prod probe
+submitted score=85 with NO tier, /pending returned 85/"breaking"(derived)/["probe reason"], then
+rejected. Fly deployed, Pro ~/nuzantara blob-aligned, WR2_PREFER_LIVE_NEWS=true already armed**.
 
 **In queue awaiting Zero (Legge 5):** deportation carousel remake (`drafted`, 2026-07-17, tells
 the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari reply.
 
 **Open wounds / next targets:**
 
-- **Liveness scorer returns 0.0 for ALL items** (classifier lane paused, #2501) → live pool
-  always empty → every topic composes as `evergreen`. The tier steers (length/tone) are dead
-  weight until this is rewired. HIGH-value fix.
+- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof NOT yet landed (checked 2026-07-18 05:29 WITA): every topic-selector run 07-07→07-18 logs "live pool empty"; today's top-ranked items — incl. breaking-shaped "Bali Deports Three Foreigners" — all carry `live=0/0.0`. Whether this is expected timing (fresh enricher scores land next scraper cycle post-deploy) or a residual break (enricher not emitting non-zero, or fresh items not carrying fields) is NOT yet distinguished — staging is file-based (not Postgres-queryable) so it needs a dedicated probe. Watch the REAL app log `~/logs/wr2_topic_selector.log` — NOT `.launchd.out.log`, which is empty because the daemon logs via Python logging, not stdout (watching the wrong file = blind receptor, scar #2). Related open item (ledgered): enrichment silent-drop — build_staging_payload sends brief/faq/slug/tags/seo/featured but ScraperSubmission has no such fields → `enrichment: {}` on drafts.
 - **13 unknown_intent** queue entries (complete-or-nothing backfill refused to guess) — need
   adjudication = re-render from slides.json. · **3 render_incomplete** same family.
-- **fact_check_status "degraded" pipeline-wide** — the checker runs in degraded mode on every
-  recent deck; ground-truth leg needs investigation.
+- **fact_check_status "degraded" pipeline-wide** — ROOT-CAUSED 2026-07-18 (growth-loop B4,
+  `research/marketing/2026-07-18-wr2-fact-check-degraded-root-cause.md`, Codex-CADE-sharpened):
+  NOT a bug — correct fail-closed. The checker verifies each draft against `brief_json`, the
+  same corpus the composer wrote from, so it can only measure fidelity-to-author, never
+  independent truth (`research_json` never populated in prod). 52/79 degraded drafts are
+  grounding-starved; the naive "inject citations into brief" is a closed citation-echo. Real
+  fix (GO-gated): verify at check-time against a source the composer never saw + verdict-
+  provenance labels + slides-excluded verification (:662/:676). The word-number sub-slice (105/438 unverifiable
+  claims are numbers-as-words) was attempted (branch `factcheck-wordnumbers`) and **REJECTED by
+  2 red-team rounds** (growth-loop B3, 2026-07-18): token-normalization of decomposed number-words
+  structurally false-verifies (2M=200M, 101=100, pronominal "one", sign-loss — all empirically
+  confirmed on the real functions) and self-verifies against the slide-inclusive source (B4's exact
+  warning, proven). Branch cleaned, not shipped. Those 105 claims need the LLM-escalation path
+  (`WR2_FACT_CHECKER_LLM=true`, off in prod — 90/90 telemetry `llm_enabled:false`) or a narrow
+  cardinal-only-vs-external matcher, NOT normalization. Ledgered (PENDING-ARMS 2026-07-18).
 - **Gate log noise**: app re-emits ~29 exclusions every ~10s cycle → `wr2control.err` grows
   ~30MB/day. Needs delta-logging or rotation.
 - **4 accessibility amendments** in conflict with the constitution await Zero's reconciliation
