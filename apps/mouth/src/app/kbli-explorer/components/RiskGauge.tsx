@@ -3,7 +3,13 @@
 import React from "react";
 import { motion } from "framer-motion";
 
-type RiskLevel = "low" | "medium-low" | "medium" | "medium-high" | "high";
+type RiskLevel =
+  | "low"
+  | "medium-low"
+  | "medium"
+  | "medium-high"
+  | "high"
+  | "not-classified";
 
 const NEEDLE_ANGLES: Record<RiskLevel, number> = {
   low: 25,
@@ -11,6 +17,8 @@ const NEEDLE_ANGLES: Record<RiskLevel, number> = {
   medium: 90,
   "medium-high": 125,
   high: 155,
+  // Needle is hidden for "not-classified"; angle unused but keeps the map total.
+  "not-classified": 90,
 };
 
 const RISK_LABELS: Record<RiskLevel, string> = {
@@ -19,6 +27,7 @@ const RISK_LABELS: Record<RiskLevel, string> = {
   medium: "Medium Risk",
   "medium-high": "Medium-High",
   high: "High Risk",
+  "not-classified": "Not Classified",
 };
 
 const RISK_COLORS: Record<RiskLevel, string> = {
@@ -27,6 +36,7 @@ const RISK_COLORS: Record<RiskLevel, string> = {
   medium: "#fbbf24",
   "medium-high": "#f97316",
   high: "#ef4444",
+  "not-classified": "#9ca3af",
 };
 
 const WIDTH = 160;
@@ -57,6 +67,7 @@ export default function RiskGauge({ level }: { level: RiskLevel }) {
   const angle = NEEDLE_ANGLES[level];
   const color = RISK_COLORS[level];
   const label = RISK_LABELS[level];
+  const isUnclassified = level === "not-classified";
 
   // Needle endpoint (from center, pointing outward)
   const needleLength = RADIUS - 12;
@@ -93,24 +104,27 @@ export default function RiskGauge({ level }: { level: RiskLevel }) {
           strokeLinecap="round"
         />
 
-        {/* Needle */}
-        <motion.line
-          x1={CX}
-          y1={CY}
-          x2={nx}
-          y2={ny}
-          stroke={color}
-          strokeWidth={2}
-          strokeLinecap="round"
-          initial={{ x2: CX, y2: CY - needleLength }}
-          animate={{ x2: nx, y2: ny }}
-          transition={{
-            type: "spring",
-            stiffness: 80,
-            damping: 12,
-            delay: 0.3,
-          }}
-        />
+        {/* Needle — hidden for "not-classified": any position would imply a
+            risk reading the data doesn't support (Zero 2026-07-17). */}
+        {!isUnclassified && (
+          <motion.line
+            x1={CX}
+            y1={CY}
+            x2={nx}
+            y2={ny}
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            initial={{ x2: CX, y2: CY - needleLength }}
+            animate={{ x2: nx, y2: ny }}
+            transition={{
+              type: "spring",
+              stiffness: 80,
+              damping: 12,
+              delay: 0.3,
+            }}
+          />
+        )}
 
         {/* Center dot */}
         <circle cx={CX} cy={CY} r={4} fill={color} />
