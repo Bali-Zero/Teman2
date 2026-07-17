@@ -129,6 +129,16 @@ class CompilationReport:
     """The full result of ``compile_rule_pack`` — never partial, always
     complete: every check below runs regardless of whether an earlier one
     found a defect.
+
+    Sentinel values (round 4, Codex round-3 verify residual): when the pack
+    fails structural revalidation SO severely that even ``rule_pack_id``/
+    ``sequence`` themselves cannot be safely read (e.g. ``payload`` itself
+    replaced with ``{}`` via ``model_copy``/``model_construct`` — not just a
+    field inside it), ``rule_pack_id`` is ``"UNKNOWN"`` and ``sequence`` is
+    ``-1``. A real ``RulePackPayload.sequence`` is always >= 1
+    (``Field(ge=1, ...)``, ``models.py``), so ``-1`` is unambiguous: no
+    genuine pack can ever produce it, and a caller checking ``report.ok``
+    first (as every caller should) never needs to special-case it.
     """
 
     rule_pack_id: str
@@ -168,9 +178,17 @@ def compile_rule_pack(
         # lookup with an uncaught `KeyError` under round 2's non-short-circuit
         # design). Stop here: the report carries the one structural error and
         # nothing else — no semantic check ever runs against an unproven pack.
+        #
+        # Round 4 (Codex round-3 verify HIGH residual): the header fields
+        # below must be harvested DEFENSIVELY, not dereferenced directly —
+        # `pack.payload` itself, not just a field inside it, can be corrupted
+        # (e.g. `pack.model_copy(update={"payload": {}})`), and a direct
+        # `pack.payload.rule_pack_id` access would crash on THAT, one
+        # exception away from the very report meant to say "no exception".
+        rule_pack_id, sequence = _safe_report_header(pack)
         return CompilationReport(
-            rule_pack_id=str(pack.payload.rule_pack_id),
-            sequence=pack.payload.sequence,
+            rule_pack_id=rule_pack_id,
+            sequence=sequence,
             errors=tuple(errors),
         )
     # Revalidation succeeded: operate on the freshly-revalidated pack for
@@ -205,6 +223,29 @@ def compile_rule_pack(
 # ---------------------------------------------------------------------------
 # Structural safety net (Codex findings 6+8)
 # ---------------------------------------------------------------------------
+
+
+def _safe_report_header(pack: RulePack) -> tuple[str, int]:
+    """Best-effort extraction of the two ``CompilationReport`` header fields
+    for a pack that has ALREADY failed structural revalidation (round 4,
+    Codex round-3 verify HIGH residual). ``pack.payload`` itself — not just
+    a field inside it — may be corrupted (``model_copy``/``model_construct``
+    can replace it wholesale, e.g. with ``{}``), so this walks the chain via
+    ``getattr(..., default=None)`` at every step rather than direct
+    attribute access: a ``dict`` (or ``None``) in place of the expected
+    ``RulePackPayload`` raises ``AttributeError`` on ``.rule_pack_id``, and
+    ``getattr``'s default silently absorbs exactly that — never anything
+    broader, since ``getattr`` only catches the lookup failure itself.
+
+    Returns the sentinel pair ``("UNKNOWN", -1)`` (documented on
+    ``CompilationReport``) for whichever field could not be read.
+    """
+    payload = getattr(pack, "payload", None)
+    raw_id = getattr(payload, "rule_pack_id", None)
+    raw_sequence = getattr(payload, "sequence", None)
+    rule_pack_id = str(raw_id) if raw_id is not None else "UNKNOWN"
+    sequence = raw_sequence if isinstance(raw_sequence, int) else -1
+    return rule_pack_id, sequence
 
 
 def _revalidate_structurally(pack: RulePack, errors: list[CompilationError]) -> RulePack | None:
@@ -883,16 +924,26 @@ def _is_nfc(text: str) -> bool:
 
 
 #: Matches the ISO-8601 *shape* Pydantic's `model_dump(mode="json")` renders
-#: for any ``UtcDateTime`` field (e.g. ``"2026-07-17T00:00:00Z"``) — verified
-#: empirically: a tz-aware UTC ``datetime`` serializes with a literal ``Z``
-#: suffix, not ``+00:00``. Anchored at the start only, so a string that
-#: merely *contains* a date-shaped substring elsewhere is not misflagged; in
-#: practice only genuine datetime fields start with this exact shape.
-_DATETIME_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+#: for any ``UtcDateTime`` field — a UTC datetime as literal ``Z``
+#: (``"2026-07-17T00:00:00Z"``), a non-UTC-offset one as ``±HH:MM``
+#: (``"2026-07-17T00:00:00+08:00"``, only reachable via a
+#: ``model_construct`` bypass — see ``_check_utc_and_nfc``'s docstring), and
+#: optional fractional seconds before either suffix (verified empirically:
+#: ``datetime(..., microsecond=456789).isoformat()``-equivalent renders
+#: ``".456789Z"``). Anchored at BOTH ends (round 4, Codex round-3 verify
+#: residual): a PREFIX-only anchor (the round-3 version of this pattern) let
+#: `document_number="2026-07-17T00:00:00/REG-A"` — an ordinary, valid,
+#: non-datetime identifier that merely *starts with* a date-shaped substring
+#: — false-positive as NON_UTC_DATETIME, since ``re.match`` only pins the
+#: start, not the end. Requiring the WHOLE string to match the datetime
+#: shape (via ``fullmatch``) fixes this without narrowing true-positive
+#: detection: no real datetime field's serialized value ever has trailing
+#: characters after its offset suffix.
+_DATETIME_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$")
 
 
 def _looks_like_datetime(value: str) -> bool:
-    return bool(_DATETIME_SHAPE.match(value))
+    return bool(_DATETIME_SHAPE.fullmatch(value))
 
 
 def _iter_json_strings(node: object, path: str) -> Iterable[tuple[str, str]]:

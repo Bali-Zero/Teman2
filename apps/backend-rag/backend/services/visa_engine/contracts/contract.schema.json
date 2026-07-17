@@ -2744,8 +2744,10 @@
             }
           },
           "then": {
-            "not": {
-              "required": ["product_version_ids"]
+            "properties": {
+              "product_version_ids": {
+                "type": "null"
+              }
             }
           }
         },

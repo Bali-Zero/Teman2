@@ -512,6 +512,26 @@ class TestExportedSchemaAllOfFidelity:
         errors = list(validator.iter_errors(instance))
         assert errors != []
 
+    @pytest.mark.parametrize("stage", ["ELIGIBILITY", "HUMAN_REVIEW", "RANKING"])
+    def test_remaining_stage_effect_conditionals_fail_exported_schema(
+        self, minimal_valid_pack: M.RulePack, stage: str
+    ) -> None:
+        # R4-D (nit, Codex round-3 verify): the other 3 of Rule's 4
+        # stage/effect allOf[1..4] branches (HARD_FILTER already covered
+        # above) — ELIGIBILITY requires SUPPORT, HUMAN_REVIEW requires
+        # REQUIRE_REVIEW, RANKING requires ADD_SCORE. Each gets a
+        # deliberately mismatched EXCLUDE effect.
+        valid_rule = minimal_valid_pack.payload.rules[0]
+        bogus_effect = M.EffectExclude.model_construct(type="EXCLUDE", reason_code="X")
+        bogus_rule = valid_rule.model_construct(
+            **{**valid_rule.__dict__, "stage": stage, "effect": bogus_effect}
+        )
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "rule.schema.json")
+        instance = bogus_rule.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors != []
+
     def test_sequence_one_with_non_null_previous_hash_fails_exported_schema(
         self, minimal_valid_pack: M.RulePack
     ) -> None:
@@ -1076,6 +1096,45 @@ class TestContractSnapshotGoldenValidInstances:
         errors = list(validator.iter_errors(instance))
         assert errors == [], [str(e) for e in errors]
 
+    def test_rule_instance_validates_against_snapshot(self, minimal_valid_pack: M.RulePack) -> None:
+        # R4-B mandate: model_dump -> jsonschema-validate becomes a permanent
+        # test for one instance of EVERY model with a committed entrypoint —
+        # this one (rule.schema.json standalone, not just embedded inside a
+        # rule-pack instance) was the missing 7th.
+        rule = minimal_valid_pack.payload.rules[0]
+        validator = _jsonschema_validator_for_snapshot("rule.schema.json")
+        instance = rule.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_global_scope_rule_instance_validates_against_snapshot(self) -> None:
+        # R4-B regression test (Codex round-3 verify HIGH finding, exact
+        # scenario): a GLOBAL-scope rule's OWN canonical serialization
+        # (product_version_ids present-and-null) used to fail its own
+        # exported contract, because spec's literal allOf forbade the
+        # property's mere PRESENCE. Normally-constructed (no bypass) — this
+        # is the shape Pydantic actually produces for every valid GLOBAL
+        # rule, not a hand-crafted edge case.
+        global_rule = M.Rule(
+            rule_id="rule.global.snapshot.valid",
+            stage="HARD_FILTER",
+            scope="GLOBAL",
+            product_version_ids=None,
+            priority=10,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "known", "fact": "person.birth_date"},
+            effect={"type": "EXCLUDE", "reason_code": "X"},
+            on_unknown="NO_EFFECT",
+            required_facts=["person.birth_date"],
+            source_refs=[uuid.uuid4()],
+            explanation_key="explain.global.snapshot",
+            safety_critical=True,
+        )
+        validator = _jsonschema_validator_for_snapshot("rule.schema.json")
+        instance = global_rule.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
 
 class TestContractSnapshotGoldenInvalidInstances:
     """R3-E requirement 3: golden INVALID instances — one per ``allOf``
@@ -1108,6 +1167,22 @@ class TestContractSnapshotGoldenInvalidInstances:
         )
         bogus_rule = valid_rule.model_construct(
             **{**valid_rule.__dict__, "stage": "HARD_FILTER", "effect": bogus_effect}
+        )
+        validator = _jsonschema_validator_for_snapshot("rule.schema.json")
+        instance = bogus_rule.model_dump(mode="json", by_alias=True)
+        assert list(validator.iter_errors(instance)) != []
+
+    @pytest.mark.parametrize("stage", ["ELIGIBILITY", "HUMAN_REVIEW", "RANKING"])
+    def test_remaining_stage_effect_conditionals_fail_snapshot(
+        self, minimal_valid_pack: M.RulePack, stage: str
+    ) -> None:
+        # R4-D (nit): mirrors TestExportedSchemaAllOfFidelity's equivalent —
+        # the 3 stage/effect allOf branches HARD_FILTER's guilt test didn't
+        # cover, now against the COMMITTED snapshot.
+        valid_rule = minimal_valid_pack.payload.rules[0]
+        bogus_effect = M.EffectExclude.model_construct(type="EXCLUDE", reason_code="X")
+        bogus_rule = valid_rule.model_construct(
+            **{**valid_rule.__dict__, "stage": stage, "effect": bogus_effect}
         )
         validator = _jsonschema_validator_for_snapshot("rule.schema.json")
         instance = bogus_rule.model_dump(mode="json", by_alias=True)

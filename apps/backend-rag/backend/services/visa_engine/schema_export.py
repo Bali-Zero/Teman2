@@ -27,6 +27,21 @@ FAILS jsonschema validation against this export, matching what Pydantic
 already enforces at construction time via ``models.py``'s own
 ``model_validator``s.
 
+Round 4 correction (Codex round-3 verify HIGH residual): the ``Rule``
+scope<->product_version_ids block's GLOBAL branch is NOT transcribed
+verbatim from spec §2 — spec's literal text forbids the property's
+PRESENCE (``"not": {"required": [...]}}``), but ``Rule.product_version_ids``
+always serializes the *key* (with value ``null``) via
+``model_dump(mode="json")`` (Pydantic dumps every declared field regardless
+of whether it equals its default), so a model-valid GLOBAL rule's own
+canonical serialization failed spec's literal ``allOf`` — the export
+rejected its own valid instance. Fixed to require the property, if present,
+to be ``null`` (present-and-null allowed, non-null forbidden — see the
+inline comment at the injection site for the full reasoning). This is a
+correction, not a relaxation: it still rejects the exact case the block
+exists to catch (a non-null ``product_version_ids`` on a GLOBAL rule), it
+just also accepts the shape Pydantic actually produces for the valid case.
+
 One deliberate, documented exception: ``RulePack``'s own header/environment
 consistency check ("protected.environment must equal payload.environment")
 has **no ``allOf`` in spec §2 at all** — confirmed by reading the spec's
@@ -119,16 +134,32 @@ _SHA256_HEX_INLINE: dict[str, Any] = {"type": "string", "pattern": r"^[0-9a-f]{6
 #: Spec §2's four single-object ``allOf`` conditionals, transcribed verbatim
 #: (research/visa/2026-07-17-visa-oracle-v2-round2-codex-engine-
 #: concretization.md §2 — Rule ~L1332, RulePackPayload ~L1790, PriceQuote
-#: ~L1911, Decision ~L2136), keyed by the ``$defs`` name each attaches to.
-#: This is the complete list — `grep -n '"allOf"'` over the whole spec
-#: document returns exactly these four matches, no more. ``RulePack`` is
+#: ~L1911, Decision ~L2136) with ONE deliberate, documented correction (round
+#: 4: ``Rule``'s GLOBAL-scope branch — see the inline comment at that entry),
+#: keyed by the ``$defs`` name each attaches to. The four-``$defs`` inventory
+#: is complete — `grep -n '"allOf"'` over the whole spec document returns
+#: exactly these four matches, no more. ``RulePack`` is
 #: deliberately absent: see module docstring's "one deliberate, documented
 #: exception" paragraph.
 _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
     "Rule": [
         {
+            # Round 4 (Codex round-3 verify HIGH residual): spec §2's own
+            # literal text is `"then": {"not": {"required":
+            # ["product_version_ids"]}}` — forbidding the property's
+            # PRESENCE. But `Rule.product_version_ids: tuple[...] | None =
+            # Field(default=None, ...)` always serializes the KEY (with
+            # value `null`) via `model_dump(mode="json")`, since Pydantic
+            # dumps every declared field regardless of whether it equals its
+            # default — a GLOBAL rule's own canonical serialization then
+            # fails "not required" (the key IS present, just null), i.e. a
+            # model-valid instance fails its own exported contract. Fixed to
+            # require the property, IF PRESENT, to be null — matching
+            # model_dump's output exactly (present-and-null allowed,
+            # non-null forbidden; ABSENT is also still fine, since
+            # "properties" is a no-op when the key is missing).
             "if": {"properties": {"scope": {"const": "GLOBAL"}}},
-            "then": {"not": {"required": ["product_version_ids"]}},
+            "then": {"properties": {"product_version_ids": {"type": "null"}}},
             "else": {"required": ["product_version_ids"]},
         },
         {

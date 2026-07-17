@@ -1062,6 +1062,23 @@ class TestFailStopRevalidation:
         assert not report.ok
         assert any(e.code == "PACK_FAILS_STRUCTURAL_REVALIDATION" for e in report.errors)
 
+    def test_payload_corrupted_to_empty_dict_never_crashes_reports_defensive_header(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        # Round 4 (Codex round-3 verify HIGH residual): compile_rule_pack's
+        # fail-stop branch used to dereference `pack.payload.rule_pack_id`
+        # directly — crashing with AttributeError when `payload` itself
+        # (not just a field inside it) is corrupted, e.g. replaced wholesale
+        # with `{}` via model_copy. A structurally-dead pack must ALWAYS
+        # yield a clean report, never a second exception on the way to
+        # reporting the first one.
+        corrupted_pack = minimal_valid_pack.model_copy(update={"payload": {}})
+        report = C.compile_rule_pack(corrupted_pack)  # must not raise AttributeError
+        assert not report.ok
+        assert report.rule_pack_id == "UNKNOWN"
+        assert report.sequence == -1
+        assert any(e.code == "PACK_FAILS_STRUCTURAL_REVALIDATION" for e in report.errors)
+
 
 # ---------------------------------------------------------------------------
 # Round 3 (Codex round-2 re-review finding 6 residue) — the NFC/UTC check
@@ -1179,3 +1196,63 @@ class TestNfcUtcGenericWalker:
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
         assert any(e.code == "NON_NFC_STRING" for e in report.errors)
+
+
+# ---------------------------------------------------------------------------
+# Round 4 (Codex round-3 verify residual) — the UTC-detection half of the
+# walker matched a datetime-shaped PREFIX, not the WHOLE string, producing a
+# false positive on any ordinary field that merely happens to start with a
+# date-shaped substring.
+# ---------------------------------------------------------------------------
+
+
+class TestUtcDetectionAnchoredFullMatch:
+    def test_datetime_prefix_with_trailing_garbage_is_innocent(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Codex's exact counterexample: document_number is an ordinary
+        # identifier that happens to START with a date-shaped substring but
+        # is NOT itself a datetime — the round-3 prefix-only regex
+        # false-positived this as NON_UTC_DATETIME.
+        tampered_source = source_record.model_copy(
+            update={"document_number": "2026-07-17T00:00:00/REG-A"}
+        )
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[tampered_source.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.utc.prefix.false.positive",
+            product_version_ids=[product_id],
+            source_refs=[tampered_source.source_record_id],
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[tampered_source]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code == "NON_UTC_DATETIME" for e in report.errors)
+
+    def test_true_non_utc_offset_datetime_still_reported(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Innocence-of-the-fix-itself check: a GENUINE non-UTC datetime
+        # string (a real +08:00 offset, no trailing garbage) must still be
+        # caught — proves the fullmatch anchor didn't over-correct into
+        # blindness.
+        tampered_source = source_record.model_copy(
+            update={"document_number": "2026-07-17T00:00:00+08:00"}
+        )
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[tampered_source.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.utc.true.non.utc",
+            product_version_ids=[product_id],
+            source_refs=[tampered_source.source_record_id],
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[tampered_source]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "NON_UTC_DATETIME" for e in report.errors)
