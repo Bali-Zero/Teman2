@@ -1,0 +1,907 @@
+/*
+ * Visa Oracle v2 — scoped design-system layer.
+ *
+ * Everything here lives under `.oracle-root` so it can never leak onto the
+ * rest of the site, and never reads the global `data-theme` — theming is
+ * local via `[data-oracle-theme]` on the same root (spec hard-constraint:
+ * "do not touch the global data-theme").
+ *
+ * Token discipline: colors/motion here either (a) define a NEW `--oracle-*`
+ * tier scoped to this route (tree/verdict/constellation identity), or (b)
+ * consume the shared @balizero/core primitives/semantic tokens directly
+ * (var(--accent-funnel), var(--motion-*), text/surface tokens). Nothing in
+ * this file hardcodes a duration/easing that already has a token.
+ */
+
+.oracle-root {
+  --oracle-radius-card: var(--radius-lg);
+  --oracle-radius-chip: var(--radius-full);
+  --oracle-max-width: 46rem;
+  --oracle-gutter: clamp(1.25rem, 4vw, 3rem);
+
+  /* Constellation atmosphere — mood only, opacity capped at 0.15 so it can
+     never compete with the tree as the real data structure (spec). */
+  --oracle-star-opacity: 0.15;
+
+  /* Finding #11 (adversarial review 2026-07-17): dark, theme-invariant
+   * text for on top of the brand-fixed WhatsApp green (`--accent-whatsapp`,
+   * #25d366) — the previous `color: #ffffff` on `.oracle-whatsapp-cta`
+   * computed to ~1.98:1, badly failing WCAG AA (needs 4.5:1 for normal
+   * text). #0d3a1f on #25d366 computes to ~6.45:1. One value for both
+   * themes since the WhatsApp accent color itself doesn't change by theme.
+   */
+  --oracle-whatsapp-fg: #0d3a1f;
+
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  background: var(--oracle-bg);
+  color: var(--oracle-ink);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* ─── Theme: light (DEFAULT — design doc §3, gov-demo default) ────────── */
+.oracle-root,
+.oracle-root[data-oracle-theme="light"] {
+  --oracle-bg: #f7f5ef;
+  --oracle-bg-elevated: #ffffff;
+  --oracle-ink: #16231c;
+  /* Finding #11: `rgba(22,35,28,0.62)`/`0.38` over the light bg computed
+   * to well under WCAG AA's 4.5:1 for normal text (the reviewer measured
+   * the faint tier at ~4.06:1 on a tinted surface, which we independently
+   * reproduced). Solid hex tuned for AA headroom on both `--oracle-bg`
+   * and `--oracle-bg-elevated`: ink-muted ~7.1:1, ink-faint ~5.7:1. */
+  --oracle-ink-muted: #4a5c54;
+  --oracle-ink-faint: #5b6a60;
+  --oracle-canopy: #1f4d3d;
+  --oracle-branch: #6b7a5e;
+  --oracle-leaf-pending: #cdc6ac;
+  --oracle-leaf-active: #1f4d3d;
+  --oracle-leaf-pruned: rgba(139, 82, 53, 0.28);
+  --oracle-border: rgba(22, 35, 28, 0.12);
+  --oracle-border-strong: rgba(22, 35, 28, 0.22);
+  --oracle-star: rgba(31, 77, 61, 0.5);
+  --oracle-accent-gold: #a8791f;
+  --oracle-focus-ring: #1f4d3d;
+
+  --oracle-state-eligible: #1c7a4d;
+  --oracle-state-likely: #2a6f97;
+  /* Finding #11: #9a6a0c on `--oracle-state-conditional-bg` measured
+   * ~4.06:1 — just under AA's 4.5:1 for normal text. Darkened to #7a5209
+   * (~5.94:1 against the same tinted background) without touching the
+   * background tint itself. */
+  --oracle-state-conditional: #7a5209;
+  --oracle-state-likely-not: #a83a44;
+  --oracle-state-eligible-bg: rgba(28, 122, 77, 0.1);
+  --oracle-state-likely-bg: rgba(42, 111, 151, 0.1);
+  --oracle-state-conditional-bg: rgba(154, 106, 12, 0.12);
+  --oracle-state-likely-not-bg: rgba(168, 58, 68, 0.1);
+}
+
+/* ─── Theme: dark (premium/oracle read) ────────────────────────────────── */
+.oracle-root[data-oracle-theme="dark"] {
+  --oracle-bg: #0a100d;
+  --oracle-bg-elevated: #131c17;
+  --oracle-ink: rgba(240, 242, 236, 0.94);
+  /* Finding #11: same fix as the light theme above — solid hex tuned for
+   * AA headroom against `--oracle-bg-elevated` (#131c17): ink-muted
+   * ~8.1:1, ink-faint ~5.68:1 (the reviewer's flagged pairing measured
+   * ~3.05:1 before this). */
+  --oracle-ink-muted: #a9b3ad;
+  --oracle-ink-faint: #8b968f;
+  --oracle-canopy: #7fc4a0;
+  --oracle-branch: #587d63;
+  --oracle-leaf-pending: rgba(240, 242, 236, 0.16);
+  --oracle-leaf-active: #8fe0b8;
+  --oracle-leaf-pruned: rgba(240, 242, 236, 0.08);
+  --oracle-border: rgba(240, 242, 236, 0.1);
+  --oracle-border-strong: rgba(240, 242, 236, 0.18);
+  --oracle-star: rgba(255, 255, 255, 0.9);
+  --oracle-accent-gold: #e0bb6c;
+  --oracle-focus-ring: #8fe0b8;
+
+  --oracle-state-eligible: #4ade80;
+  --oracle-state-likely: #7dd3fc;
+  --oracle-state-conditional: #f5c451;
+  --oracle-state-likely-not: #f78ca2;
+  --oracle-state-eligible-bg: rgba(74, 222, 128, 0.14);
+  --oracle-state-likely-bg: rgba(125, 211, 252, 0.14);
+  --oracle-state-conditional-bg: rgba(245, 196, 81, 0.16);
+  --oracle-state-likely-not-bg: rgba(247, 140, 162, 0.14);
+}
+
+.oracle-root * {
+  box-sizing: border-box;
+}
+
+/* ─── Typography — editorial scale for headlines, tabular-nums counter ── */
+.oracle-headline {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  color: var(--oracle-ink);
+}
+.oracle-subhead {
+  font-size: clamp(1rem, 1.6vw, 1.125rem);
+  color: var(--oracle-ink-muted);
+  line-height: 1.5;
+  max-width: 38ch;
+}
+.oracle-eyebrow {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--oracle-ink-faint);
+  font-weight: 600;
+}
+.oracle-tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ─── Constellation atmosphere — static, mood only, never the structure ── */
+.oracle-constellation {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+        ellipse 60% 40% at 15% 8%,
+        color-mix(in srgb, var(--oracle-canopy) 16%, transparent),
+        transparent 70%
+      )
+      no-repeat,
+    radial-gradient(
+        ellipse 50% 35% at 90% 85%,
+        color-mix(in srgb, var(--oracle-accent-gold) 12%, transparent),
+        transparent 70%
+      )
+      no-repeat;
+  opacity: var(--oracle-star-opacity);
+}
+.oracle-constellation svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.6;
+}
+.oracle-constellation circle {
+  fill: var(--oracle-star);
+}
+
+/* ─── Shell layout ──────────────────────────────────────────────────────── */
+.oracle-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.oracle-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--oracle-gutter);
+  border-bottom: 1px solid var(--oracle-border);
+}
+.oracle-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.oracle-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--oracle-gutter) var(--space-16);
+}
+@media (min-width: 1024px) {
+  .oracle-main {
+    grid-template-columns: 18rem minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-8);
+  }
+  .oracle-main__tree {
+    position: sticky;
+    top: var(--space-6);
+  }
+}
+.oracle-main__content {
+  max-width: var(--oracle-max-width);
+  width: 100%;
+}
+
+.oracle-footer {
+  border-top: 1px solid var(--oracle-border);
+  padding: var(--space-4) var(--oracle-gutter);
+}
+.oracle-footer p {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--oracle-ink-faint);
+  max-width: 70ch;
+}
+
+/* ─── Prototype badge — persistent, honest ─────────────────────────────── */
+.oracle-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--oracle-radius-chip);
+  border: 1px solid var(--oracle-border-strong);
+  background: var(--oracle-bg-elevated);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--oracle-ink-muted);
+  white-space: nowrap;
+}
+.oracle-badge svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+/* ─── Toggles (theme / language) ───────────────────────────────────────── */
+.oracle-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--oracle-border);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink-muted);
+  cursor: pointer;
+  transition:
+    color var(--motion-duration-fast) var(--motion-ease-standard),
+    border-color var(--motion-duration-fast) var(--motion-ease-standard),
+    background-color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+.oracle-toggle:hover {
+  color: var(--oracle-ink);
+  border-color: var(--oracle-border-strong);
+}
+.oracle-toggle-group {
+  display: inline-flex;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--oracle-border);
+  overflow: hidden;
+}
+.oracle-toggle-group button {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: none;
+  background: transparent;
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--motion-duration-fast)
+    var(--motion-ease-standard);
+}
+.oracle-toggle-group button[aria-pressed="true"] {
+  background: var(--oracle-canopy);
+  color: var(--oracle-bg-elevated);
+}
+
+/* ─── Focus (WCAG AA — visible on every interactive element) ───────────── */
+.oracle-root :is(button, a, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--oracle-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Living tree ───────────────────────────────────────────────────────── */
+.oracle-tree {
+  border: 1px solid var(--oracle-border);
+  border-radius: var(--oracle-radius-card);
+  background: var(--oracle-bg-elevated);
+  padding: var(--space-4);
+}
+.oracle-tree__trunk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.oracle-tree__step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--oracle-ink-faint);
+  border-left: 2px solid var(--oracle-leaf-pending);
+  padding-left: var(--space-3);
+  transition:
+    color var(--motion-duration-standard) var(--motion-ease-standard),
+    border-color var(--motion-duration-standard) var(--motion-ease-standard);
+}
+.oracle-tree__step[data-status="done"] {
+  color: var(--oracle-ink-muted);
+  border-left-color: var(--oracle-canopy);
+}
+.oracle-tree__step[data-status="current"] {
+  color: var(--oracle-ink);
+  font-weight: 600;
+  border-left-color: var(--oracle-leaf-active);
+}
+.oracle-tree__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.oracle-tree__step[data-status="current"] .oracle-tree__dot {
+  animation: oracle-breathe 3.2s var(--motion-ease-standard) infinite;
+}
+
+.oracle-tree__leaves {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--oracle-border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.oracle-tree__leaf {
+  font-size: var(--text-xs);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--oracle-radius-chip);
+  border: 1px solid var(--oracle-border);
+  color: var(--oracle-ink-faint);
+  background: transparent;
+}
+.oracle-tree__leaf[data-status="done"] {
+  color: var(--oracle-bg-elevated);
+  background: var(--oracle-leaf-active);
+  border-color: var(--oracle-leaf-active);
+  font-weight: 600;
+}
+.oracle-tree__leaf[data-status="pending"] {
+  color: var(--oracle-ink-faint);
+}
+
+/* Minimap trigger — mobile only (collapsible top minimap, spec item 33). */
+.oracle-tree-minimap-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--oracle-border);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  width: 100%;
+  justify-content: space-between;
+  cursor: pointer;
+}
+/*
+ * Finding #10 (adversarial review 2026-07-17): the base `.oracle-tree--desktop
+ * { display: none; }` rule previously sat AFTER the `@media (min-width:
+ * 1024px)` block below — equal specificity, later source order always
+ * wins regardless of which one is inside a media query, so the desktop
+ * tree stayed hidden on every viewport, including desktop. Moving the
+ * base rule BEFORE the media query (source order now: base → override)
+ * restores the intended cascade: hidden by default, shown once the
+ * `min-width: 1024px` query's `display: block` is the LAST matching rule.
+ * The redundant `@media (max-width: 1023.98px)` block that used to follow
+ * this is deleted — the base rule above already covers every viewport
+ * narrower than the desktop breakpoint; a second rule saying the same
+ * thing with `!important` was never load-bearing, it just looked like it
+ * was doing the job the base rule's position was failing to do.
+ */
+.oracle-tree--desktop {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .oracle-tree-minimap-trigger {
+    display: none;
+  }
+  .oracle-tree--desktop {
+    display: block;
+  }
+}
+
+@keyframes oracle-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: 0.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oracle-tree__step[data-status="current"] .oracle-tree__dot {
+    animation: none;
+  }
+}
+
+/* Screen-reader-only path description — non-visual tree equivalent. */
+.oracle-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ─── Paths counter ─────────────────────────────────────────────────────── */
+.oracle-paths-counter {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--oracle-ink-muted);
+}
+.oracle-paths-counter strong {
+  font-size: var(--text-lg);
+  color: var(--oracle-ink);
+}
+
+/* ─── Question screen ───────────────────────────────────────────────────── */
+.oracle-question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.oracle-question__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  width: fit-content;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.oracle-question__back:hover {
+  color: var(--oracle-ink);
+}
+.oracle-question__hint {
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-base);
+  margin: 0;
+}
+.oracle-question__notice {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--oracle-border-strong);
+  background: var(--oracle-state-conditional-bg);
+  color: var(--oracle-ink);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.oracle-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.oracle-option-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-4);
+  border-radius: var(--oracle-radius-card);
+  border: 1px solid var(--oracle-border);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink);
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--text-base);
+  font-weight: 500;
+  transition:
+    border-color var(--motion-duration-fast) var(--motion-ease-standard),
+    transform var(--motion-duration-fast) var(--motion-ease-standard);
+}
+.oracle-option-card:hover {
+  border-color: var(--oracle-canopy);
+}
+.oracle-option-card:active {
+  transform: scale(0.99);
+}
+.oracle-option-card[aria-pressed="true"] {
+  border-color: var(--oracle-canopy);
+  background: color-mix(
+    in srgb,
+    var(--oracle-canopy) 8%,
+    var(--oracle-bg-elevated)
+  );
+}
+/* Finding #5: the review-gate Continue button is disabled until an
+   explicit checklist choice is made — visibly, not just functionally. */
+.oracle-option-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.oracle-option-card:disabled:hover {
+  border-color: var(--oracle-border);
+}
+.oracle-option-card__hint {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--oracle-ink-muted);
+  margin-top: 0.15rem;
+}
+
+.oracle-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: var(--space-3);
+}
+.oracle-tile {
+  min-height: 44px;
+  padding: var(--space-4);
+  border-radius: var(--oracle-radius-card);
+  border: 1px solid var(--oracle-border);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-duration-fast) var(--motion-ease-standard),
+    transform var(--motion-duration-fast) var(--motion-ease-standard);
+}
+.oracle-tile:hover {
+  border-color: var(--oracle-canopy);
+}
+.oracle-tile:active {
+  transform: scale(0.98);
+}
+
+/* ─── Why we ask ────────────────────────────────────────────────────────── */
+.oracle-whyweask {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.oracle-whyweask__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  background: none;
+  border: none;
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  width: fit-content;
+}
+.oracle-whyweask__trigger:hover {
+  color: var(--oracle-canopy);
+}
+.oracle-whyweask__panel {
+  font-size: var(--text-sm);
+  color: var(--oracle-ink-muted);
+  border-left: 2px solid var(--oracle-canopy);
+  padding-left: var(--space-3);
+  max-width: 46ch;
+}
+.oracle-whyweask__regulation {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--oracle-ink-faint);
+}
+
+/* ─── Not sure ──────────────────────────────────────────────────────────── */
+.oracle-notsure {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  background: none;
+  border: 1px dashed var(--oracle-border-strong);
+  border-radius: var(--radius-md);
+  padding: 0 var(--space-3);
+  color: var(--oracle-ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  width: fit-content;
+}
+.oracle-notsure:hover {
+  color: var(--oracle-ink);
+  border-color: var(--oracle-ink-muted);
+}
+
+/* ─── Review gate checklist ─────────────────────────────────────────────── */
+.oracle-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.oracle-checklist__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--oracle-border);
+  background: var(--oracle-bg-elevated);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+.oracle-checklist__item input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--oracle-canopy);
+}
+
+/* ─── Confirmation card ─────────────────────────────────────────────────── */
+.oracle-confirmation__group {
+  border: 1px solid var(--oracle-border);
+  border-radius: var(--oracle-radius-card);
+  background: var(--oracle-bg-elevated);
+  overflow: hidden;
+}
+.oracle-confirmation__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--oracle-border);
+  font-size: var(--text-sm);
+}
+.oracle-confirmation__row:last-child {
+  border-bottom: none;
+}
+.oracle-confirmation__label {
+  color: var(--oracle-ink-muted);
+}
+.oracle-confirmation__value {
+  color: var(--oracle-ink);
+  font-weight: 600;
+  text-align: right;
+}
+.oracle-confirmation__edit {
+  background: none;
+  border: none;
+  color: var(--oracle-canopy);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+}
+.oracle-confirmation__assumption {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--oracle-ink-muted);
+  border-bottom: 1px solid var(--oracle-border);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+}
+.oracle-confirmation__assumption:last-child {
+  border-bottom: none;
+}
+
+/* ─── Verdict reveal ────────────────────────────────────────────────────── */
+.oracle-verdict-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--oracle-radius-chip);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+.oracle-verdict-chip[data-state="eligible"] {
+  color: var(--oracle-state-eligible);
+  background: var(--oracle-state-eligible-bg);
+}
+.oracle-verdict-chip[data-state="likely"] {
+  color: var(--oracle-state-likely);
+  background: var(--oracle-state-likely-bg);
+}
+.oracle-verdict-chip[data-state="conditional"] {
+  color: var(--oracle-state-conditional);
+  background: var(--oracle-state-conditional-bg);
+}
+.oracle-verdict-chip[data-state="likely-not"] {
+  color: var(--oracle-state-likely-not);
+  background: var(--oracle-state-likely-not-bg);
+}
+.oracle-verdict-card {
+  border-radius: var(--oracle-radius-card);
+  border: 1px solid var(--oracle-border-strong);
+  background: var(--oracle-bg-elevated);
+  padding: var(--space-6);
+  box-shadow: 0 20px 60px -30px
+    color-mix(in srgb, var(--oracle-canopy) 40%, transparent);
+}
+
+/* ─── Outcome sheet ─────────────────────────────────────────────────────── */
+.oracle-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+.oracle-outcome__section-title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--oracle-ink);
+  margin: 0 0 var(--space-3);
+}
+.oracle-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--oracle-border);
+  border-radius: var(--oracle-radius-card);
+}
+.oracle-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 32rem;
+  font-size: var(--text-sm);
+}
+.oracle-table th,
+.oracle-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--oracle-border);
+  white-space: nowrap;
+}
+.oracle-table th {
+  color: var(--oracle-ink-faint);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+}
+.oracle-table tr:last-child td {
+  border-bottom: none;
+}
+
+.oracle-price {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.oracle-price__value {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+  color: var(--oracle-ink);
+}
+.oracle-price__note {
+  font-size: var(--text-xs);
+  color: var(--oracle-ink-faint);
+}
+
+.oracle-checklist-doc {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.oracle-checklist-doc li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--oracle-ink-muted);
+}
+/* Finding #15: NO_SUPPORTED_PATH alternatives render as full-width
+   `.oracle-option-card` buttons inside this list — reset the plain-text
+   list-item gap/color so the button owns its own spacing. */
+.oracle-checklist-doc--actionable li {
+  display: block;
+  color: inherit;
+}
+.oracle-checklist-doc--actionable .oracle-option-card {
+  width: 100%;
+}
+
+.oracle-next-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.oracle-next-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--oracle-ink);
+}
+.oracle-next-steps__index {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--oracle-canopy);
+  color: var(--oracle-bg-elevated);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.oracle-whatsapp-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-md);
+  background: var(--accent-whatsapp);
+  /* Finding #11: was #ffffff (~1.98:1, failing AA) — see the
+     --oracle-whatsapp-fg definition at the top of this file. */
+  color: var(--oracle-whatsapp-fg);
+  font-weight: 700;
+  text-decoration: none;
+  width: fit-content;
+  transition: transform var(--motion-duration-fast) var(--motion-ease-standard);
+}
+.oracle-whatsapp-cta:hover {
+  transform: translateY(-1px);
+}
+
+.oracle-receipt {
+  border-radius: var(--oracle-radius-card);
+  border: 1px dashed var(--oracle-border-strong);
+  padding: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--oracle-ink-muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.oracle-disclaimer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--oracle-ink-faint);
+}
+
+/* ─── Reduced motion — cut everything that isn't structural ────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .oracle-root * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

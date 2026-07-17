@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
     root: path.join(__dirname, "../.."),
   },
   reactStrictMode: true,
+  // CI e2e runs hit the dev server via 127.0.0.1 while Next considers its
+  // origin "localhost"; without this, Next 16 blocks cross-origin dev
+  // resources and React never hydrates (visa-oracle-v2.spec.ts red, CI-only).
+  allowedDevOrigins: ["127.0.0.1"],
   typescript: {
     ignoreBuildErrors: false,
   },
@@ -289,6 +293,14 @@ const nextConfig: NextConfig = {
       {
         source: "/kbli-navigator/:path*",
         destination: "/kbli/:path*",
+        permanent: true,
+      },
+      // Track C consolidation (2026-07-17, #2610 + C2): /visa-v2 was the
+      // twin session's C1 foundation prototype, superseded by the
+      // complete (visa-oracle) experience at /visa-oracle.
+      {
+        source: "/visa-v2",
+        destination: "/visa-oracle",
         permanent: true,
       },
       // Note: /chat redirect to zantara.balizero.com is handled by middleware
