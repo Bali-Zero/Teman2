@@ -559,35 +559,63 @@ async def enqueue_post_publish(
     request: Request,
     pool: Any = Depends(get_database_pool),
 ) -> dict:
-    """Internal: add a slug to the post-processing queue (translate + image + SEO)."""
+    """Internal: add a slug to the post-processing queue (translate + image + SEO).
+
+    `force: true` is the reconciliation path (2026-07-17): a batch flush lost
+    mid-run leaves `completed_steps.image=true` recorded even though the cover
+    never landed on GitHub — the default ON CONFLICT below only resets 'failed'
+    rows, so a 'done' item with a missing cover would never be re-run. `force`
+    unconditionally resets status/attempts/completed_steps regardless of the
+    row's current status.
+    """
     body = await request.json()
     slug = body.get("slug", "")
     category = body.get("category", "business")
     source = body.get("source", "intel")
     article_id = body.get("article_id")
     title = body.get("title")
+    force = bool(body.get("force", False))
     if not slug:
         raise HTTPException(status_code=400, detail="slug required")
     async with pool.acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO post_publish_queue (slug, title, category, source, article_id)
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (slug) DO UPDATE SET
-                status = CASE WHEN post_publish_queue.status = 'failed'
-                              THEN 'pending' ELSE post_publish_queue.status END,
-                attempts = CASE WHEN post_publish_queue.status = 'failed'
-                                THEN 0 ELSE post_publish_queue.attempts END,
-                error_message = NULL
-            """,
-            slug,
-            title,
-            category,
-            source,
-            article_id,
-        )
+        if force:
+            await conn.execute(
+                """
+                INSERT INTO post_publish_queue (slug, title, category, source, article_id)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (slug) DO UPDATE SET
+                    status = 'pending',
+                    attempts = 0,
+                    completed_steps = '{}'::jsonb,
+                    error_message = NULL
+                """,
+                slug,
+                title,
+                category,
+                source,
+                article_id,
+            )
+        else:
+            await conn.execute(
+                """
+                INSERT INTO post_publish_queue (slug, title, category, source, article_id)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (slug) DO UPDATE SET
+                    status = CASE WHEN post_publish_queue.status = 'failed'
+                                  THEN 'pending' ELSE post_publish_queue.status END,
+                    attempts = CASE WHEN post_publish_queue.status = 'failed'
+                                    THEN 0 ELSE post_publish_queue.attempts END,
+                    error_message = NULL
+                """,
+                slug,
+                title,
+                category,
+                source,
+                article_id,
+            )
     logger.info(
-        "📥 Post-publish queue: added", extra={"slug": slug, "category": category, "source": source}
+        "📥 Post-publish queue: added",
+        extra={"slug": slug, "category": category, "source": source, "force": force},
     )
     return {"ok": True, "slug": slug}
 

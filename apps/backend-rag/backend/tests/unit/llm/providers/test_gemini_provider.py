@@ -22,7 +22,7 @@ class TestGeminiProvider:
 
         provider = GeminiProvider()
 
-        assert provider._model_name == "gemini-3-flash-preview"
+        assert provider._model_name == "gemini-3.5-flash"
         assert provider._service == mock_service
         assert provider._available is True
 
@@ -104,7 +104,7 @@ class TestGeminiProvider:
         response = await provider.generate(messages)
 
         assert response.content == "Test response"
-        assert response.model == "gemini-3-flash-preview"
+        assert response.model == "gemini-3.5-flash"
         assert response.provider == "gemini"
         assert response.finish_reason == "stop"
 

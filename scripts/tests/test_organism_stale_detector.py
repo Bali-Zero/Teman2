@@ -23,7 +23,6 @@ import time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from organism_stale_detector import (  # noqa: E402
-    StaleFinding,
     scan_sidecars,
     sync_cross_host_sidecars,
 )

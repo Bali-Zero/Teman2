@@ -352,6 +352,17 @@
       "repo": "infra/claude-hooks/runtime_state_allowlist.json",
       "_note": "DATA read by worktree_isolation.py (the ff-only exception's per-machine allowlist). install_worktree_hooks.sh deploys it as 644 alongside the two .py hooks.",
       "machines": ["all"]
+    },
+    {
+      "live": "~/scripts/log-rotate-run.sh",
+      "repo": "infra/launchagents/wrappers/log-rotate-run.sh",
+      "_note": "Born via organ_birth.py 2026-07-17 (pro.log_rotate) to cure Pro logs growing unrotated (PENDING-ARMS ledger line ~306: supervisor.err 182M, cron-log-sentinel.log 122M, mata-garuda-kg-api.err 111M, translate-hourly.log 100M).",
+      "machines": ["pro"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.log-rotate.daily.plist",
+      "repo": "infra/launchagents/com.nuzantara.log-rotate.daily.plist",
+      "machines": ["pro"]
     }
   ],
   "allow": [

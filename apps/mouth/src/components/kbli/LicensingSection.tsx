@@ -864,6 +864,11 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
   // be read as a how-to for a foreign-owned company IN BALI. Frame, don't hide:
   // the steps are national truth; the Bali restriction is the local override.
   const baliBlocked = !!kbli.baliL4?.blocked;
+  // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): a code whose Bali risk tier
+  // was carried over from a different activity (code-number collision) is
+  // neither blocked nor confirmed open — an analogous frame, warn tone
+  // rather than block tone, since this is an unresolved gap, not a verdict.
+  const baliNonClassifiable = kbli.baliL4?.status === "NON_CLASSIFICABILE";
 
   return (
     <div className="space-y-8">
@@ -894,6 +899,35 @@ export function LicensingSection({ kbli, gold }: LicensingSectionProps) {
               : "blocked for a PT PMA under the 13 May 2026 moratorium"}
             {kbli.baliL4?.reason ? ` — ${kbli.baliL4.reason}` : ""}. See the
             Bali status badge above before planning a Bali setup.
+          </p>
+        </div>
+      )}
+
+      {/* ── NATIONAL-vs-BALI FRAME (Bali applicability not yet classifiable) ── */}
+      {!baliBlocked && baliNonClassifiable && (
+        <div
+          className="rounded-xl border px-5 py-4"
+          style={{
+            background: "rgba(232, 168, 73, 0.06)",
+            borderColor: "rgba(232, 168, 73, 0.25)",
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span aria-hidden="true">🏝️</span>
+            <span
+              className="text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--kbli-pma-restricted)" }}
+            >
+              National procedure — Bali applicability not yet classifiable
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--foreground-secondary)]">
+            The licensing path below is the <strong>national</strong> procedure,
+            valid for a foreign-owned company outside Bali (e.g. Jakarta). In{" "}
+            <strong>Bali</strong>, whether this activity is open to a PT PMA
+            cannot be determined until the correct risk tier is established.
+            {kbli.baliL4?.reason ? ` ${kbli.baliL4.reason}` : ""} Verify with
+            the Bali Zero team before planning a Bali setup.
           </p>
         </div>
       )}

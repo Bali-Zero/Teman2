@@ -1,0 +1,123 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { CheckCircle2, CircleAlert, HelpCircle, Info } from "lucide-react";
+import type { RecommendState } from "@/lib/visa-oracle/types";
+import type { Language } from "../_lib/flow";
+import type { EligibilityState } from "../_lib/tree";
+import { translate, BODY_FIRST, type I18nKey } from "../_lib/i18n";
+
+export interface VerdictRevealProps {
+  language: Language;
+  state: RecommendState;
+  /** Only meaningful for SUPPORTED_CANDIDATES — the strongest candidate's
+   * eligibility, shown as a 4-state chip (color+icon+text, never
+   * color-alone — spec hard-constraint 4). */
+  eligibility?: EligibilityState;
+}
+
+const STATE_ICON: Record<RecommendState, typeof CheckCircle2> = {
+  SUPPORTED_CANDIDATES: CheckCircle2,
+  HUMAN_REVIEW_REQUIRED: HelpCircle,
+  NO_SUPPORTED_PATH: CircleAlert,
+  TEMPORARILY_UNAVAILABLE: Info,
+  NEEDS_INPUT: Info,
+};
+
+// Finding #14 (adversarial review 2026-07-17): exported so OutcomeSheet's
+// comparison-table eligibility chips use the SAME icon set as the hero
+// verdict chip above them — previously OutcomeSheet rendered eligibility
+// as color+text only in that table, a spec hard-constraint-4 violation
+// (never color-alone) that this module already solved once, locally.
+export const ELIGIBILITY_ICON: Record<EligibilityState, typeof CheckCircle2> = {
+  eligible: CheckCircle2,
+  likely: CheckCircle2,
+  conditional: HelpCircle,
+  "likely-not": CircleAlert,
+};
+
+/**
+ * "The Oracle deals your card" (design doc §3 interaction #4): the
+ * strongest path resolves into a hero verdict card. Uses
+ * `--motion-curve-reveal` (the overshoot curve made for this moment) —
+ * a scoped, honest interpretation of the shared-element idea: the tree
+ * panel stays visible alongside this reveal rather than literally
+ * morphing across components (a craft debt noted for a follow-up pass).
+ */
+export function VerdictReveal({
+  language,
+  state,
+  eligibility,
+}: VerdictRevealProps) {
+  const reducedMotion = useReducedMotion();
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, [state]);
+
+  const StateIcon = STATE_ICON[state] ?? Info;
+  const bodyFirst = BODY_FIRST[language];
+
+  const heading = (
+    <h1
+      className="oracle-headline"
+      style={{
+        marginTop: bodyFirst ? "var(--space-2)" : "var(--space-3)",
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--space-2)",
+      }}
+      tabIndex={-1}
+      ref={headingRef}
+    >
+      <StateIcon aria-hidden="true" size={28} />
+      {translate(language, `verdict.headline.${state}` as I18nKey)}
+    </h1>
+  );
+  const body = (
+    <p
+      className="oracle-subhead"
+      style={{ marginTop: bodyFirst ? "var(--space-3)" : "var(--space-2)" }}
+    >
+      {translate(language, `verdict.state_description.${state}` as I18nKey)}
+    </p>
+  );
+
+  return (
+    <motion.div
+      className="oracle-verdict-card"
+      initial={reducedMotion ? undefined : { opacity: 0, scale: 0.92, y: 12 }}
+      animate={reducedMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
+      transition={{
+        duration: reducedMotion ? 0 : 0.5,
+        ease: [0.5, 0, 0.3, 1.2], // var(--motion-curve-reveal)
+      }}
+    >
+      {eligibility && (
+        <span className="oracle-verdict-chip" data-state={eligibility}>
+          {(() => {
+            const Icon = ELIGIBILITY_ICON[eligibility];
+            return <Icon aria-hidden="true" size={16} />;
+          })()}
+          {translate(language, `verdict.eligibility.${eligibility}` as I18nKey)}
+        </span>
+      )}
+      {/* Finding #16: design doc §3's ID register is body-first — swap
+          render order per language rather than hardcoding EN's
+          headline-then-body convention. */}
+      {bodyFirst ? (
+        <>
+          {body}
+          {heading}
+        </>
+      ) : (
+        <>
+          {heading}
+          {body}
+        </>
+      )}
+    </motion.div>
+  );
+}

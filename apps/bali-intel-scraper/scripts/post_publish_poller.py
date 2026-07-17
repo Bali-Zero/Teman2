@@ -334,6 +334,38 @@ def flush_layout_batch() -> bool:
     return _flush_batch("layout", "bot/homepage-layout", "chore(homepage): hero rotation {date}")
 
 
+_FLUSH_THRESHOLD = 8
+
+
+def maybe_flush_all_batches(threshold: int = _FLUSH_THRESHOLD) -> bool:
+    """Mid-run flush: once staged GitHub writes reach `threshold`, flush image+seo+
+    layout batches immediately instead of waiting for the end-of-run sweep in main().
+
+    Crash-exposure fix (2026-07-17): a run that dies mid-tick (translate hang,
+    killer unknown, no traceback — live incident: the 16:56 run died ~22:20 with
+    ~2 dozen covers staged and lost) previously kept every staged write in RAM
+    for the FULL run — 5-10h with the current backlog. This shrinks the exposure
+    window to ~`threshold` items (~30-40min). Same flush functions + same
+    Telegram-alert-on-failure condition as the final sweep in main() — more
+    flushes per run (more bot PRs) is intentional, not a bug.
+
+    Returns True iff a flush was actually triggered this call.
+    """
+    if len(_PENDING_COMMITS) < threshold:
+        return False
+    log(f"🔁 Mid-run flush triggered ({len(_PENDING_COMMITS)} staged ≥ {threshold})")
+    img_ok = flush_image_batch()
+    seo_ok = flush_seo_batch()
+    layout_ok = flush_layout_batch()
+    if not img_ok or not seo_ok or not layout_ok:
+        send_telegram_alert(
+            "⚠️ *Post-publish poller*\n"
+            f"GitHub batch flush failed (image={img_ok}, seo={seo_ok}, "
+            f"layout={layout_ok}) — see log"
+        )
+    return True
+
+
 def _image_exists_on_github(gh_path: str) -> bool:
     try:
         check = subprocess.run(
@@ -402,7 +434,7 @@ def wait_for_ollama_free(max_wait: int = 60 * 15) -> bool:
         check = subprocess.run(["pgrep", "-f", "translate_articles.py"], capture_output=True, text=True)
         if check.returncode != 0:
             return True
-        log(f"⏳ Ollama busy — waiting 60s...")
+        log("⏳ Ollama busy — waiting 60s...")
         time.sleep(60)
         waited += 60
     log("⚠ Timeout waiting for Ollama")
@@ -543,7 +575,7 @@ def run_translate(slug: str, category: str) -> bool:
     repo_root = SCRIPT_DIR.parent.parent.parent
     mdx_local = repo_root / "apps" / "mouth" / "src" / "content" / "articles" / category / f"{slug}.mdx"
     if not mdx_local.exists():
-        log(f"  ⚠ MDX not found locally — pulling from GitHub")
+        log("  ⚠ MDX not found locally — pulling from GitHub")
         try:
             import base64 as _b64
             gh_result = subprocess.run(
@@ -558,7 +590,7 @@ def run_translate(slug: str, category: str) -> bool:
                 mdx_local.write_text(content, encoding="utf-8")
                 log(f"  ✅ MDX pulled from GitHub ({len(content)} chars)")
             else:
-                log(f"  ❌ MDX not on GitHub either — cannot translate")
+                log("  ❌ MDX not on GitHub either — cannot translate")
                 return False
         except Exception as e:
             log(f"  ❌ GitHub pull error: {e}")
@@ -781,7 +813,7 @@ def git_pull_monorepo():
     try:
         result = subprocess.run(["git", "pull", "--ff-only"], capture_output=True, text=True, cwd=str(repo_root), timeout=60)
         if result.returncode == 0:
-            log(f"✅ git pull OK")
+            log("✅ git pull OK")
         else:
             # Try stash + pull + pop
             subprocess.run(["git", "stash"], capture_output=True, cwd=str(repo_root), timeout=10)
@@ -848,29 +880,30 @@ def process_item(item: dict) -> tuple[bool, list[str]]:
         if not done.get("translate"):
             if run_translate(slug, category):
                 mark_step_done(slug, "translate")
-                return_translate = True
                 # Auto-rotate hero after successful translate
                 rotate_hero(slug)
             else:
                 failed_steps.append("translate")
-                return_translate = False
+        # Image — NEVER skip based on completed_steps alone (2026-07-17 fix): the
+        # flag can lie if a prior run died mid-tick before flushing (see
+        # maybe_flush_all_batches). run_image()'s own idempotency check
+        # (_image_exists_on_github against main) makes calling it unconditionally
+        # a cheap no-op (~2 `gh api` calls) when the covers genuinely exist, and
+        # regenerates them when the flag lied.
+        if run_image(slug, category, title=title):
+            mark_step_done(slug, "image")
         else:
-            return_translate = True
-        # Image
-        if not done.get("image"):
-            if run_image(slug, category, title=title):
-                mark_step_done(slug, "image")
-            else:
-                failed_steps.append("image")
+            failed_steps.append("image")
 
         return (len(failed_steps) == 0, failed_steps)
 
     elif source == "news":
-        if not done.get("image"):
-            if run_image(slug, category, title=title, article_id=article_id):
-                mark_step_done(slug, "image")
-            else:
-                failed_steps.append("image")
+        # Image — same "never skip on completed_steps alone" rule as the intel
+        # branch above (see comment there).
+        if run_image(slug, category, title=title, article_id=article_id):
+            mark_step_done(slug, "image")
+        else:
+            failed_steps.append("image")
         return (len(failed_steps) == 0, failed_steps)
 
     else:
@@ -922,7 +955,10 @@ def main():
             if "translate" not in failed_steps and item.get("source") == "intel":
                 translated_slugs.append(slug)
 
-    # Flush this tick's staged GitHub writes (images + SEO + homepage layout) —
+        # Periodic mid-run flush (crash exposure fix) — see maybe_flush_all_batches.
+        maybe_flush_all_batches()
+
+    # Final sweep: flush this tick's staged GitHub writes (images + SEO + homepage layout) —
     # ONE bot branch + auto-merged PR per kind, replacing the direct-to-main
     # PUTs branch protection has been rejecting since ~2026-05-22.
     img_flush_ok = flush_image_batch()

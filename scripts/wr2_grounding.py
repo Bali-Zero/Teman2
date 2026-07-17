@@ -190,7 +190,6 @@ async def _query_oracle(topic: str) -> str:
     (backend/services/rag/agentic/tools.py). The scan corpus is `answer` plus
     every `citations[].snippet` and `sources[].snippet` — "" on any failure.
     """
-    import json
 
     import httpx
 
