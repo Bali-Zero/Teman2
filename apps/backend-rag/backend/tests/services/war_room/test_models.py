@@ -51,6 +51,7 @@ def test_draft_status_values_match_migration():
         "rejected",
         "published",
         "missed",
+        "parked",  # 2026-07-17 (migration 245): B2 backstop, no usable source content
     }
     assert {s.value for s in DraftStatus} == expected
 
