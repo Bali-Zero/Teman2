@@ -829,6 +829,280 @@ func test_externalImportOutcomeParsing() {
     }
 }
 
+// MARK: - External post registration (§A, 2026-07-17)
+
+func test_externalPostRegistrationURLValidation() {
+    T.suite("ExternalPostRegistration — Instagram URL validation/canonicalization")
+
+    // INNOCENZA — well-formed URLs in several shapes all canonicalize correctly.
+    do {
+        let canon = try ExternalPostRegistration.canonicalizeInstagramURL("https://instagram.com/p/Cabc123_-")
+        T.eq(canon, "https://www.instagram.com/p/Cabc123_-/", "bare p/ URL (no www, no trailing slash) canonicalizes")
+    } catch { T.check(false, "well-formed p/ URL should not throw: \(error)") }
+
+    do {
+        let canon = try ExternalPostRegistration.canonicalizeInstagramURL("  https://www.instagram.com/reel/Xyz789/?igshid=foo  ")
+        T.eq(canon, "https://www.instagram.com/reel/Xyz789/", "reel URL with query string + surrounding whitespace canonicalizes, drops query")
+    } catch { T.check(false, "well-formed reel URL should not throw: \(error)") }
+
+    // COLPEVOLEZZA — reject empty/garbage (acceptance criteria §A).
+    func expectThrows(_ url: String, _ expected: ExternalPostRegistration.ValidationError, _ msg: String) {
+        do {
+            _ = try ExternalPostRegistration.canonicalizeInstagramURL(url)
+            T.check(false, "\(msg): should have thrown")
+        } catch let e as ExternalPostRegistration.ValidationError {
+            T.eq(e, expected, msg)
+        } catch {
+            T.check(false, "\(msg): wrong error type \(error)")
+        }
+    }
+    expectThrows("", .emptyURL, "empty string rejected")
+    expectThrows("   ", .emptyURL, "whitespace-only rejected")
+    expectThrows("not a url", .notAnInstagramPostURL, "garbage string rejected")
+    expectThrows("https://instagram.com/balizero0", .notAnInstagramPostURL, "profile URL (not a post) rejected")
+    expectThrows("https://example.com/p/abc/", .notAnInstagramPostURL, "wrong host rejected")
+}
+
+func test_externalPostRegistrationTopicAndIdentity() {
+    T.suite("ExternalPostRegistration — topic validation + item_id/dir-name/entry construction")
+
+    do {
+        let t = try ExternalPostRegistration.validateTopic("  My manual post  ")
+        T.eq(t, "My manual post", "topic is trimmed")
+    } catch { T.check(false, "well-formed topic should not throw") }
+
+    do {
+        _ = try ExternalPostRegistration.validateTopic("   ")
+        T.check(false, "blank topic should throw emptyTopic")
+    } catch ExternalPostRegistration.ValidationError.emptyTopic {
+        T.check(true, "blank topic throws emptyTopic")
+    } catch { T.check(false, "wrong error type") }
+
+    var comps = DateComponents()
+    comps.year = 2026; comps.month = 7; comps.day = 17; comps.hour = 9; comps.minute = 0; comps.second = 0
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = TimeZone(identifier: "UTC")!
+    let date = cal.date(from: comps)!
+
+    T.eq(ExternalPostRegistration.makeItemID(publishDate: date, slug: "my-manual-post"),
+         "external_2026-07-17T090000_my-manual-post", "item_id format: external_<date>T<time>_<slug>")
+    // Codex red-team finding H, 2026-07-17: dir name now carries TIME too (matches
+    // makeItemID's date+time uniqueness) — was date+slug only, which let two
+    // same-day same-slug registrations collide into one directory.
+    T.eq(ExternalPostRegistration.carouselDirName(publishDate: date, slug: "my-manual-post"),
+         "external-2026-07-17T090000-my-manual-post", "carousel dir name: external-<date>T<time>-<slug>")
+
+    // GUILT (finding H): two same-day, same-slug registrations at DIFFERENT times
+    // must now produce DISTINCT dir names — the exact collision the date-only
+    // format allowed.
+    var comps2 = comps
+    comps2.hour = 14; comps2.minute = 30
+    let laterSameDay = cal.date(from: comps2)!
+    T.check(
+        ExternalPostRegistration.carouselDirName(publishDate: date, slug: "my-manual-post") !=
+        ExternalPostRegistration.carouselDirName(publishDate: laterSameDay, slug: "my-manual-post"),
+        "two same-day same-slug registrations at different times get DISTINCT dir names (finding H)")
+
+    let entryNoImages = ExternalPostRegistration.buildQueueEntry(
+        instagramURL: "https://www.instagram.com/p/Abc123/", topic: "My manual post",
+        slug: "my-manual-post", publishDate: date, slideCount: 0, carouselPath: nil)
+    T.eq(entryNoImages["item_id"] as? String, "external_2026-07-17T090000_my-manual-post", "0-image entry item_id")
+    T.eq(entryNoImages["state"] as? String, "published", "0-image entry state=published")
+    T.eq(entryNoImages["source"] as? String, "external_manual", "0-image entry source=external_manual")
+    T.eq(entryNoImages["slide_count"] as? Int, 0, "0-image entry slide_count=0")
+    T.check(entryNoImages["carousel_path"] == nil, "0-image entry has NO carousel_path (renders as virtual card)")
+    T.check(entryNoImages["instagram_published_at"] != nil, "instagram_published_at set (existing consumers read this key)")
+    T.check(entryNoImages["published_at"] != nil, "published_at also set (spec's literal field name)")
+
+    let entryWithImages = ExternalPostRegistration.buildQueueEntry(
+        instagramURL: "https://www.instagram.com/p/Abc123/", topic: "My manual post",
+        slug: "my-manual-post", publishDate: date, slideCount: 3,
+        carouselPath: "~/nuzantara/apps/war-room/output/carousel/external-2026-07-17T090000-my-manual-post/")
+    T.eq(entryWithImages["slide_count"] as? Int, 3, "image entry slide_count reflects the copied-image count")
+    T.check(entryWithImages["carousel_path"] != nil, "image entry HAS carousel_path")
+}
+
+// MARK: - Gallery recency sort key (§D, 2026-07-17 — re-rendered cards must not stay buried)
+
+func test_recencySortKeyPure() {
+    T.suite("WarRoom.recencySortKey — max(dir, slide-mtime) for drafts, publishedAt for published")
+
+    let dirOld = Date(timeIntervalSince1970: 1_752_000_000)
+    let slideNew = Date(timeIntervalSince1970: 1_752_800_000)   // later than dirOld
+
+    // COLPEVOLEZZA (the pre-fix bug: dir mtime alone) — a fresher slide mtime must win.
+    let key1 = WarRoom.recencySortKey(dirModified: dirOld, newestSlideModified: slideNew,
+                                        isPublished: false, publishedAt: nil)
+    T.eq(key1, slideNew, "unpublished: newer slide mtime wins over older dir mtime")
+
+    // INNOCENZA — max, not "always prefer slide": dir mtime wins when it IS the newer one.
+    let key2 = WarRoom.recencySortKey(dirModified: slideNew, newestSlideModified: dirOld,
+                                        isPublished: false, publishedAt: nil)
+    T.eq(key2, slideNew, "unpublished: dir mtime wins when it's the newer one")
+
+    let key3 = WarRoom.recencySortKey(dirModified: dirOld, newestSlideModified: nil,
+                                        isPublished: false, publishedAt: nil)
+    T.eq(key3, dirOld, "unpublished, no slide mtime available: falls back to dir mtime alone")
+
+    // PUBLISHED — publishedAt wins even when file mtimes are much newer (an unrelated
+    // later touch, e.g. a metrics backfill, must never bump a live post's position).
+    let pubDate = "2026-06-01T00:00:00Z"
+    let key4 = WarRoom.recencySortKey(dirModified: slideNew, newestSlideModified: slideNew,
+                                        isPublished: true, publishedAt: pubDate)
+    T.eq(key4, WarRoom.parsePublishedAt(pubDate), "published: publishedAt wins over much-newer file mtimes")
+
+    // published but no/unparseable publishedAt → falls back to max(dir, slide).
+    let key5 = WarRoom.recencySortKey(dirModified: dirOld, newestSlideModified: slideNew,
+                                        isPublished: true, publishedAt: nil)
+    T.eq(key5, slideNew, "published with no publishedAt: falls back to max(dir, slide)")
+}
+
+func test_scanCarouselsRerenderSortsToTop() {
+    T.suite("WarRoom.scanCarousels — re-rendered carousel sorts to top of drafted (§D acceptance #3)")
+
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+
+    let oldDir = makeCarousel(in: root, slug: "old-draft", slides: ["1.png", "2.png"])
+    // "re-rendered" dir: same shape — a re-render overwrites the PNG bytes in place,
+    // same filenames, so its directory's OWN mtime does not bump (see doc comment).
+    let rerenderedDir = makeCarousel(in: root, slug: "rerendered-draft", slides: ["1.png", "2.png"])
+
+    let farPast = Date(timeIntervalSinceNow: -86_400 * 30)
+    let justNow = Date()
+    try? fm.setAttributes([.modificationDate: farPast], ofItemAtPath: oldDir.path)
+    try? fm.setAttributes([.modificationDate: farPast], ofItemAtPath: rerenderedDir.path)
+    let rerenderedSlide = rerenderedDir.appendingPathComponent("slides/1.png")
+    try? fm.setAttributes([.modificationDate: justNow], ofItemAtPath: rerenderedSlide.path)
+
+    let queueJSON = """
+    [
+      {"id":"od","topic_slug":"old-draft","slide_count":2,"state":"drafted"},
+      {"id":"rd","topic_slug":"rerendered-draft","slide_count":2,"state":"drafted"}
+    ]
+    """
+    let qurl = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? queueJSON.data(using: .utf8)!.write(to: qurl)
+    defer { try? fm.removeItem(at: qurl) }
+    let queue = WarRoom.readQueue(queueFile: qurl)
+
+    let carousels = WarRoom.scanCarousels(carouselRoot: croot, queue: queue)
+        .sorted { $0.modified > $1.modified }
+    T.eq(carousels.first?.slug, "rerendered-draft",
+         "the re-rendered carousel (fresh slide mtime) sorts FIRST despite both dirs sharing an old dir-mtime")
+}
+
+// MARK: - Duplicate virtual-entry detection (§E, 2026-07-17)
+
+func test_igShortcodeExtraction() {
+    T.suite("WarRoom.igShortcode — entity extraction for URL-equality dedup")
+    T.eq(WarRoom.igShortcode(from: "https://www.instagram.com/p/DaxDJuYFPi6/"), "DaxDJuYFPi6", "p/ URL")
+    T.eq(WarRoom.igShortcode(from: "https://instagram.com/reel/Xyz789/?igshid=x"), "Xyz789", "reel/ URL with query string")
+    T.check(WarRoom.igShortcode(from: "https://instagram.com/balizero0") == nil, "profile URL has no shortcode")
+}
+
+func test_matchesAnyPhysicalInstagramURL() {
+    T.suite("WarRoom.matchesAnyPhysicalInstagramURL — cosmetic-difference-tolerant URL dedup")
+
+    let known = ["https://www.instagram.com/p/DaxDJuYFPi6/", "https://www.instagram.com/p/Other111/"]
+    T.check(WarRoom.matchesAnyPhysicalInstagramURL("https://instagram.com/p/DaxDJuYFPi6/?igshid=x", knownURLs: known),
+            "same shortcode, different cosmetic form (no www, query string) still matches")
+    T.check(WarRoom.matchesAnyPhysicalInstagramURL("https://www.instagram.com/p/Unrelated999/", knownURLs: known) == false,
+            "a genuinely different shortcode does not match")
+    T.check(WarRoom.matchesAnyPhysicalInstagramURL("", knownURLs: known) == false, "empty string never matches")
+    T.check(WarRoom.matchesAnyPhysicalInstagramURL("https://instagram.com/p/DaxDJuYFPi6/", knownURLs: []) == false,
+            "no known URLs at all -> no match")
+}
+
+func test_scanCarouselsDedupesVirtualEntrySharingURL() {
+    T.suite("WarRoom.scanCarousels — virtual ig-* entry hidden when a physical sibling shares its URL (§E)")
+
+    // Live shape (team-lead diagnosis, 2026-07-17): the real queue had TWO
+    // entries for this post — idx 61 (native, this fixture's "real-1") only
+    // got its instagram_post_url once flipped to published, and idx 71
+    // (ig-DaxDJuYFPi6) was discovery-ingested 07-14 while idx 61's URL was
+    // still null, with its topic mislabeled "150 LICENSED." — kept verbatim
+    // here for direct traceability to the incident, not a placeholder.
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+
+    // the REAL carousel, published, with its own queue-joined instagram_post_url.
+    _ = makeCarousel(in: root, slug: "bali-pma-rental-crackdown", slides: ["1.png"], declareSlides: .absent)
+
+    let queueJSON = """
+    [
+      {"id":"real-1","topic_slug":"bali-pma-rental-crackdown","state":"published",
+       "instagram_post_url":"https://www.instagram.com/p/DaxDJuYFPi6/",
+       "instagram_published_at":"2026-06-01T00:00:00Z"},
+      {"item_id":"ig-DaxDJuYFPi6","topic":"150 LICENSED.","state":"published",
+       "instagram_post_url":"https://www.instagram.com/p/DaxDJuYFPi6/?igshid=x",
+       "instagram_published_at":"2026-06-01T00:00:00Z"},
+      {"item_id":"ig-GenuinelyUnrelated1","topic":"(a real other IG-only post)","state":"published",
+       "instagram_post_url":"https://www.instagram.com/p/GenuinelyUnrelated1/",
+       "instagram_published_at":"2026-06-02T00:00:00Z"}
+    ]
+    """
+    let qurl = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? queueJSON.data(using: .utf8)!.write(to: qurl)
+    defer { try? fm.removeItem(at: qurl) }
+    let queue = WarRoom.readQueue(queueFile: qurl)
+
+    let carousels = WarRoom.scanCarousels(carouselRoot: croot, queue: queue)
+
+    // GUILT — without the fix this would show TWO cards for the same post.
+    let dupMatches = carousels.filter { $0.instagramURL?.contains("DaxDJuYFPi6") == true }
+    T.eq(dupMatches.count, 1, "only ONE card total for the DaxDJuYFPi6 post (the real on-disk one, virtual hidden)")
+    T.check(dupMatches.first?.slug == "bali-pma-rental-crackdown",
+            "the surviving card is the REAL on-disk carousel, not the virtual phantom")
+
+    // INNOCENCE — a genuinely unrelated IG-only post (no physical sibling) still shows.
+    T.check(carousels.contains { $0.slug == "ig-GenuinelyUnrelated1" },
+            "a genuinely different IG-only post with no physical sibling still renders as a virtual card")
+}
+
+// MARK: - External-manual entries: completeness gate exemption (§A guilt+innocence pair)
+
+func test_externalManualCompletenessGateGuiltInnocence() {
+    T.suite("A2 completeness gate — external_manual entries stay exempt (§A guilt+innocence regression)")
+
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+
+    // GUILT — an ordinary DRAFTED (unpublished) dir whose real PNG count (1) doesn't
+    // match its declared count (3) must STILL be excluded — the pre-existing A2 gate,
+    // unchanged by the external-post feature.
+    _ = makeCarousel(in: root, slug: "mismatched-draft", slides: ["1.png"], declareSlides: .objectSlides(3))
+
+    let queueJSON = """
+    [
+      {"id":"md","topic_slug":"mismatched-draft","state":"drafted"},
+      {"item_id":"external_2026-07-17T090000_no-image-test","state":"published",
+       "instagram_post_url":"https://www.instagram.com/p/ExternalNoImage1/",
+       "instagram_published_at":"2026-07-17T09:00:00Z","source":"external_manual",
+       "topic":"No-image external post","topic_slug":"no-image-test","slide_count":0}
+    ]
+    """
+    let qurl = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? queueJSON.data(using: .utf8)!.write(to: qurl)
+    defer { try? fm.removeItem(at: qurl) }
+    let queue = WarRoom.readQueue(queueFile: qurl)
+
+    let carousels = WarRoom.scanCarousels(carouselRoot: croot, queue: queue)
+
+    T.check(carousels.contains { $0.slug == "mismatched-draft" } == false,
+            "GUILT: mismatched-disk drafted entry is still excluded from the gallery")
+    T.eq(WarRoom.excludedIncompleteCount, 1,
+         "GUILT: the exclusion is observable via excludedIncompleteCount (scar #2)")
+
+    let external = carousels.first { $0.instagramURL == "https://www.instagram.com/p/ExternalNoImage1/" }
+    T.check(external != nil, "INNOCENCE: the 0-image external_manual entry IS present in the gallery")
+    T.check(external?.isPublished == true, "INNOCENCE: it renders as published")
+    T.eq(external?.slideCount, 0, "INNOCENCE: slideCount reflects the declared 0")
+}
+
 // MARK: - main
 
 let suites: [() -> Void] = [
@@ -853,6 +1127,14 @@ let suites: [() -> Void] = [
     test_externalImportClassification,
     test_externalImportArguments,
     test_externalImportOutcomeParsing,
+    test_externalPostRegistrationURLValidation,
+    test_externalPostRegistrationTopicAndIdentity,
+    test_recencySortKeyPure,
+    test_scanCarouselsRerenderSortsToTop,
+    test_igShortcodeExtraction,
+    test_matchesAnyPhysicalInstagramURL,
+    test_scanCarouselsDedupesVirtualEntrySharingURL,
+    test_externalManualCompletenessGateGuiltInnocence,
 ]
 for s in suites { s() }
 exit(T.report())

@@ -156,6 +156,40 @@ for e in rep.get("push_back", []): print(e["ref_code"], e["ig_url"])' | \
               echo "[$(ts)] WARN push-back $ref failed (state not publishable on Pro yet?)" >> "$LOG"
             fi
           done
+          # push external-manual entries back to Pro (§A/§B external-post feature,
+          # 2026-07-17): each is a FULL JSON payload with operator-typed free-text
+          # fields (topic/slug) — unlike ref/url above these are NOT regex-constrained,
+          # so they must NEVER be shell-interpolated into the ssh command string (an
+          # apostrophe in "Zero's post" would break a naive '$payload' embedding —
+          # scar-family #3, substring-safety mistaken for shell-safety). Instead each
+          # compact JSON line is piped over ssh's OWN stdin channel and the remote
+          # reads it back with `"$(cat)"` — the payload never appears literally in any
+          # shell command text on either side.
+          echo "$report" | python3 -c 'import json,sys
+try: rep=json.load(sys.stdin)
+except Exception: rep={}
+for e in rep.get("push_back_external", []):
+    print(json.dumps(e, ensure_ascii=False))' | \
+          while IFS= read -r payload_json; do
+            item_id=$(printf '%s' "$payload_json" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("item_id","") or "")' 2>/dev/null)
+            if [ -z "$item_id" ]; then
+              echo "[$(ts)] WARN push-back-external: entry with no item_id, skipping" >> "$LOG"
+              continue
+            fi
+            if printf '%s' "$payload_json" | ssh -o ConnectTimeout=10 -o BatchMode=yes pro \
+                 "cd ~/nuzantara && python3 scripts/wr2_queue_writer.py add-external \"\$(cat)\"" >>"$LOG" 2>&1; then
+              # Pro confirmed the entry exists (added now OR already_present from a
+              # prior retry — both are terminal success) — mark the LOCAL copy so
+              # external_push_candidates never re-offers it (idempotent replay-safety).
+              if python3 "$MERGE_PY" --mark-synced-item-id "$item_id" --mark-synced-file "$DEST_DIR/$f" >>"$LOG" 2>&1; then
+                echo "[$(ts)] pushed back external $item_id -> Pro, marked synced_to_pro" >> "$LOG"
+              else
+                echo "[$(ts)] WARN pushed back external $item_id but failed to mark synced_to_pro locally (will retry next cycle)" >> "$LOG"
+              fi
+            else
+              echo "[$(ts)] WARN push-back-external $item_id failed (ssh/add-external error, will retry next cycle)" >> "$LOG"
+            fi
+          done
         else
           # merge failed (rc) or produced empty/invalid output → keep old
           # local file, log, wipe both tmps.

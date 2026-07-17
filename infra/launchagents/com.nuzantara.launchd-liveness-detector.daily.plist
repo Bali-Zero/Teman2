@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Repo canon of the plist to install on Pro (~/Library/LaunchAgents). NOT YET INSTALLED
+     (liveness-detector-arm-0717, PENDING-ARMS: install is operator[control-plane]). Arms
+     scripts/launchd_liveness_detector.py (PR #1518, cicatrix W84) — 4 test suites but zero
+     launchd/crontab attachment before this. One-shot daily audit, hence KeepAlive=false
+     (cicatrix superscar #7: KeepAlive=true on a one-shot causes a restart-storm). Pro-only:
+     the detector reads ~/Library/LaunchAgents + local log files, which are per-host state —
+     a Mini copy would need its own instance, not a shared one (superscar #10 active-active). -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.launchd-liveness-detector.daily</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/nuzantara/scripts/launchd-liveness-detector.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>8</integer>
+        <key>Minute</key>
+        <integer>15</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/launchd-liveness-detector.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/launchd-liveness-detector.error.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

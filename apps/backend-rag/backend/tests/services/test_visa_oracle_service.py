@@ -308,6 +308,216 @@ def test_build_telegram_summary_contains_nationality(service: VisaOracleService)
 
 
 # ---------------------------------------------------------------------------
+# build_telegram_summary — FIX-5 (Codex red-team P1 #4) Markdown escaping
+# ---------------------------------------------------------------------------
+#
+# `build_telegram_summary` is sent with `parse_mode="Markdown"` (legacy
+# Telegram v1), which treats `_`, `*`, backtick, and `[` as formatting
+# syntax. A user who types e.g. `nationality: "_pwned_"` into the quiz can
+# otherwise inject formatting/link-like structure into the message Damar's
+# team reads. Deliberately NOT the full MarkdownV2 char set — legacy v1
+# doesn't recognize backslash as an escape prefix outside these 4 chars, so
+# escaping e.g. `.`/`-`/`!` would insert a literal stray backslash instead
+# of hiding one.
+
+
+def test_build_telegram_summary_escapes_underscore_in_nationality(
+    service: VisaOracleService,
+) -> None:
+    """Guilt: an underscore in a user-controlled field must not survive
+    unescaped — Markdown v1 would render `_pwned_` as italic."""
+    summary = service.build_telegram_summary(
+        session_id="x" * 32,
+        quiz_answers={"nationality": "_pwned_", "purpose": "visit", "duration": "short"},
+        recommended_visas=[],
+        messages=[],
+        language="en",
+    )
+    assert "_pwned_" not in summary
+    assert "\\_pwned\\_" in summary
+
+
+def test_build_telegram_summary_escapes_asterisk_and_backtick(
+    service: VisaOracleService,
+) -> None:
+    """Guilt: `*` (bold) and backtick (code span) must also be escaped."""
+    summary = service.build_telegram_summary(
+        session_id="x" * 32,
+        quiz_answers={"nationality": "US", "purpose": "*bold* `code`", "duration": "short"},
+        recommended_visas=[],
+        messages=[],
+        language="en",
+    )
+    assert "*bold*" not in summary
+    assert "`code`" not in summary
+    assert "\\*bold\\*" in summary
+    assert "\\`code\\`" in summary
+
+
+def test_build_telegram_summary_escapes_visa_name_and_price(
+    service: VisaOracleService,
+) -> None:
+    """Guilt: `visa_name`/`price` in `recommended_visas` are also
+    user-influenced (they trace back to a client-declared session in the
+    body-only handoff fallback path) — defense-in-depth even though the
+    router now resolves them server-side for the verified path."""
+    summary = service.build_telegram_summary(
+        session_id="x" * 32,
+        quiz_answers={"nationality": "US", "purpose": "work", "duration": "long"},
+        recommended_visas=[{"visa_name": "[Fake_Visa]", "price": "1_000_000 IDR", "score": 1.0}],
+        messages=[],
+        language="en",
+    )
+    assert "[Fake_Visa]" not in summary
+    assert "\\[Fake\\_Visa]" in summary
+
+
+def test_build_telegram_summary_plain_text_unaffected(service: VisaOracleService) -> None:
+    """Innocence: ordinary text with none of the 4 special chars renders
+    byte-for-byte unchanged — no stray backslashes inserted."""
+    summary = service.build_telegram_summary(
+        session_id="x" * 32,
+        quiz_answers={"nationality": "Brazilian", "purpose": "retire", "duration": "long"},
+        recommended_visas=[],
+        messages=[],
+        language="en",
+    )
+    assert "\\" not in summary
+
+
+def test_escape_telegram_markdown_v1_only_escapes_four_chars() -> None:
+    """Unit test for the escape helper directly: legacy Markdown v1 doesn't
+    treat `.`/`-`/`!`/`(`/`)` as syntax — escaping them would introduce a
+    stray literal backslash into the rendered message rather than hiding
+    one, so they must pass through untouched."""
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _escape_telegram_markdown_v1,
+    )
+
+    result = _escape_telegram_markdown_v1("a_b*c`d[e.f-g!h(i)j")
+    assert result == "a\\_b\\*c\\`d\\[e.f-g!h(i)j"
+
+
+# ---------------------------------------------------------------------------
+# R2-B (Codex re-review NEW-BUG, F4) — code-span sanitization for
+# session_id/language, distinct from escaping (which is invalid inside a
+# Telegram Markdown code span).
+# ---------------------------------------------------------------------------
+
+
+def test_sanitize_session_id_strips_disallowed_chars() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_session_id,
+    )
+
+    assert _sanitize_code_entity_session_id("abc`*_[123") == "abc_123"
+
+
+def test_sanitize_session_id_truncates_to_40_chars() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_session_id,
+    )
+
+    result = _sanitize_code_entity_session_id("a" * 100)
+    assert result == "a" * 40
+
+
+def test_sanitize_session_id_falls_back_to_unknown_when_emptied() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_session_id,
+    )
+
+    assert _sanitize_code_entity_session_id("`*[]()~>!.,") == "unknown"
+
+
+def test_sanitize_session_id_passes_through_valid_charset_unchanged() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_session_id,
+    )
+
+    assert _sanitize_code_entity_session_id("deadbeef-1234_5678") == "deadbeef-1234_5678"
+
+
+def test_sanitize_language_strips_disallowed_chars() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_language,
+    )
+
+    assert _sanitize_code_entity_language("en`*_[9") == "en"
+
+
+def test_sanitize_language_truncates_to_8_chars() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_language,
+    )
+
+    assert _sanitize_code_entity_language("abcdefghij") == "abcdefgh"
+
+
+def test_sanitize_language_falls_back_to_unknown_when_emptied() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_language,
+    )
+
+    assert _sanitize_code_entity_language("123`*_[") == "unknown"
+
+
+def test_sanitize_language_lowercases_and_passes_through_hyphen() -> None:
+    from backend.services.visa_oracle.visa_oracle_service import (
+        _sanitize_code_entity_language,
+    )
+
+    assert _sanitize_code_entity_language("EN-us") == "en-us"
+
+
+def test_build_telegram_summary_session_id_with_backtick_does_not_break_entity(
+    service: VisaOracleService,
+) -> None:
+    """R2-B adversarial test (Codex re-review): a `session_id` containing a
+    backtick plus `*_[` characters must not break the code-span entity nor
+    inject formatting into the surrounding message. Structural check: every
+    backtick in the summary is part of a properly PAIRED code span (an even
+    total count), and none of the injected symbols survive verbatim."""
+    malicious_session_id = "abc`*_[def`123"
+    summary = service.build_telegram_summary(
+        session_id=malicious_session_id,
+        quiz_answers={"nationality": "US", "purpose": "work", "duration": "long"},
+        recommended_visas=[],
+        messages=[],
+        language="en",
+    )
+
+    # The raw malicious payload must not appear anywhere in the output.
+    assert malicious_session_id not in summary
+    assert "abc`*_[def`123" not in summary
+
+    # Every backtick present belongs to a well-formed code span — an odd
+    # count would mean a span was left open (or one was force-closed
+    # early), corrupting the rest of the message's formatting.
+    assert summary.count("`") % 2 == 0
+
+    # The sanitized session_id keeps only the whitelisted charset — no
+    # backtick/asterisk/underscore/bracket survives into the code span.
+    assert "abc_def123"[:12] in summary or "abc_def" in summary
+
+
+def test_build_telegram_summary_language_with_backtick_does_not_break_entity(
+    service: VisaOracleService,
+) -> None:
+    """Same adversarial property for `language`."""
+    summary = service.build_telegram_summary(
+        session_id="x" * 32,
+        quiz_answers={"nationality": "US", "purpose": "work", "duration": "long"},
+        recommended_visas=[],
+        messages=[],
+        language="en`*_[injected",
+    )
+
+    assert "en`*_[injected" not in summary
+    assert summary.count("`") % 2 == 0
+
+
+# ---------------------------------------------------------------------------
 # hash_ip and generate_session_id
 # ---------------------------------------------------------------------------
 

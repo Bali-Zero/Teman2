@@ -329,6 +329,12 @@
       "live": "~/Library/LaunchAgents/com.nuzantara.git-pull-main.15min.plist",
       "repo": "infra/launchagents/com.nuzantara.git-pull-main.15min.plist",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/scripts/launchd-liveness-detector.sh",
+      "repo": "infra/launchagents/wrappers/launchd-liveness-detector.sh",
+      "_note": "liveness-detector-arm-0717 (PENDING-ARMS, not yet installed): declared pre-emptively so lint_home_fork.py --discover does not flag the future HOME-fork copy as undeclared once operator[control-plane] installs it. Pro-only by design (per-host launchd/log state — a Mini copy would need its own instance, not a shared one, cf. superscar #10 active-active).",
+      "machines": ["pro"]
     }
   ],
   "allow": [
