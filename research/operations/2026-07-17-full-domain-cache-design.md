@@ -411,7 +411,7 @@ a handful of rows with 100% review and the FATAL fixes applied) can proceed once
 close — the pilot's small scope is precisely what makes it safe to run before every MAJOR is
 resolved; fan-out is not.
 
-## 9. §Panel — Codex GPT-5.6-terra red-team (2026-07-17, effort high, read-only sandbox)
+## Adversarial review — §Panel Codex GPT-5.6-terra red-team (2026-07-17, effort high, read-only sandbox)
 
 Full findings, verbatim (translated from the panel's Italian output, tags/section-citations
 preserved). Verdict stated by the panel: *would not authorize the verbatim-cache pilot until
