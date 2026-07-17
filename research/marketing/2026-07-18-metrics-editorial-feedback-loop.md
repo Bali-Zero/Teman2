@@ -2,92 +2,122 @@
 date: 2026-07-18
 domain: marketing
 client_case: none — WR2 growth loop SPRINT R1
+adversarial_review: codex
 sources:
+  - https://arxiv.org/abs/2406.02611 (LOLA — deep-read; characterization corrected after adversarial review, see below)
   - https://arxiv.org/abs/2401.09804 (Clickbait vs Quality, ACM WebConf 2024 — deep-read)
-  - https://arxiv.org/html/2406.02611v2 (LOLA, Wharton/Upworthy — deep-read)
   - https://arxiv.org/abs/1908.06256 (Yahoo batched Thompson Sampling — deep-read)
-  - https://mediacopilot.ai/how-the-salt-lake-tribune-uses-chartbeat-to-guide-editorial-decisions/ (deep-read)
-  - https://www.socialinsider.io/social-media-benchmarks/instagram (2026 Q2 measured benchmarks — deep-read)
-  - https://smartocto.com/blog/ai-editorial-analytics-next-step/ (deep-read)
+  - https://mediacopilot.ai/how-the-salt-lake-tribune-uses-chartbeat-to-guide-editorial-decisions/ (vendor/trade blog — normative only)
+  - https://www.socialinsider.io/social-media-benchmarks/instagram (vendor benchmark, 2025 posts, ER = likes+comments/follower — scope-limited)
+  - https://smartocto.com/blog/ai-editorial-analytics-next-step/ (vendor blog)
   - internal: human-review-queue.json engagement_metrics n=49 (M5 mirror, hash-verified vs Pro SSOT 2026-07-17)
   - internal: ~/.claude/skills/bali-zero-brand/_proposed-amendments/2026-06-29-ig-insights.md (weekly analyst)
 ---
 
-# Metrics-driven editorial feedback for WR2: what SOTA actually does, what our 49 posts say, and the one thing to build
+# Metrics→selection feedback for WR2: what the evidence actually supports, and the honest first step
 
-**Question.** WR2 now measures real IG engagement per carousel (49 entries with reach/saves/shares
-since #2578). The weekly analyst turns metrics into BRAND amendments, but nothing feeds the
-TOPIC SELECTOR: selection is still blind to what the audience amplifies. What is the
-evidence-based minimal design to close the metrics→selection loop without the documented
-failure modes?
+**Question.** WR2 now measures real IG engagement per carousel (49 entries since #2578). The
+weekly analyst turns metrics into BRAND amendments, but nothing feeds the TOPIC SELECTOR.
+What is the evidence-based minimal design to close the metrics→selection loop without the
+documented failure modes?
 
-## What the evidence says (external)
+**Process note.** V1 of this capture was adversarially REFUTED (seat: codex, gpt-5.6-terra,
+2026-07-18) — over-claimed sources and statistically indefensible per-domain inferences. This
+is the amended, surviving version. Details in §Adversarial review.
 
-1. **Engagement-only optimization can be worse than random.** Formal result (ACM WebConf 2024,
-   validated on Twitter data): when producers can invest in "gaming" as well as quality, a pure
-   engagement-optimizing recommender converges to LOWER average realized quality than random
-   selection. Any WR2 auto-tune must therefore sit BEHIND the brand/accuracy gates, never trade
-   against them.
-2. **LLM judgment is a useful but capped prior.** LOLA (17,681 real Upworthy headline tests):
-   LLM-alone engagement prediction plateaus ~83% accuracy and overfits if trusted statically;
-   hybrid LLM-prior + live-bandit beats both pure A/B and pure bandit. Translation: the weekly
-   analyst's proposals are a PRIOR to be corrected by measured data, not ground truth.
-3. **At low throughput, tune STRATEGIES, not items.** Item-level bandits need volume we will
-   never have (2 post/week ≈ 104/yr). ACM UMAP 2026: bandit over k curated strategy profiles is
-   the tractable, editorially-bounded form. Yahoo (production): BATCHED updates (+3.69% clicks
-   vs static) — per-post reweighting is neither needed nor sound.
-4. **Delay the reward.** Saves/shares/reach accumulate for days (and IG reportedly stages
-   audience expansion); scoring a post before ~48-72h reads noise.
-5. **Every credible operation keeps a human veto.** smartocto ("the editor remains the one to
-   decide"), Salt Lake Tribune ("viral ≠ important" norm on top of Chartbeat). No serious source
-   documents autonomous weight-rewrite as best practice.
-6. **Vanity metrics are explicitly de-weighted everywhere**: engaged-time/completion/recirculation
-   (news vendors), saves+shares over likes (IG ecosystem, though the "sends 3-5x likes" figure is
-   marketing paraphrase, not Meta documentation).
+## What the external evidence supports (corrected scope)
 
-## What our own 49 posts say (internal, measured 2026-07-17)
+1. **Engagement-only optimization can degrade realized quality** (ACM WebConf 2024,
+   arxiv 2401.09804): a game-theoretic equilibrium model of strategic creators, empirically
+   motivated on Twitter data, shows engagement-optimizing recommendation can converge below
+   random on consumed quality once producers can invest in gaming. It is a MODEL-CONDITIONAL
+   warning, not a prescriptive design rule — but it motivates keeping any engagement tuner
+   strictly behind the brand/accuracy gates.
+2. **LLM engagement prediction is weak — weaker than v1 of this memo claimed** (LOLA,
+   arxiv 2406.02611, Ye/Yoganarasimhan/Zheng, Upworthy 17,681 headline tests): per the
+   abstract, prompt-based prediction performs POORLY and even embedding/fine-tuned models are
+   only "marginally higher accuracy than random predictions". The hybrid (LLM prior + UCB
+   bandit corrected by live traffic) beats A/B, pure bandit, and pure LLM, especially under
+   limited traffic. Lesson that survives: never trust model-predicted engagement as more than
+   a weak, decaying prior — live data must dominate.
+3. **Batched (not per-item) updates are the production pattern** (Yahoo, arxiv 1908.06256):
+   batched Thompson Sampling on live HEADLINE traffic beat static test-rollout (+3.69% clicks).
+   Scope caveat: this validates batched allocation for headline variants at portal scale — it
+   does NOT directly validate weekly cross-post topic weights on Instagram. We borrow the
+   batching principle, not the effect size.
+4. **Human veto is universal in credible practice** (smartocto explicitly; Salt Lake Tribune
+   per a vendor-blog account — normative, not auditable evidence): no serious source documents
+   fully autonomous weight rewrites as best practice.
+5. **IG benchmark data is thin and definition-sensitive**: Socialinsider's benchmark (2025
+   posts) defines engagement as likes+comments per follower — it CANNOT substantiate
+   saves/shares-as-reward, a 72h maturation window, or any save-rate target. No source found
+   quantifies a saves/shares→follower-growth regression. Treat all such claims as unmeasured
+   marketing narrative.
 
-- Massive variance: reach 515 → 141,240 (median 1,872); shares 0 → 5,870; saves 1 → 1,908.
-- **Every top-reach post is a concrete-number/event hook** ("165 foreigners deported",
-  "37,881 villas", "$7B mega-project shut down"); every bottom post is an abstract evergreen
-  ("Own a PT PMA", "Your company doesn't stay still"). This independently validates the
-  liveness rewire (SPRINT B1): the audience amplifies exactly the breaking/developing register
-  the pipeline could not see until now.
-- Per-domain medians (n=45 joinable): property med reach 4,144 / save-rate 1.01%; visa 3,094 /
-  0.70%; regulatory 1,946 / 0.59%; tax 1,416 but save-rate 1.82% (highest utility — matches the
-  analyst's +78% SL finding); company 719 / 0.28% (structurally weak).
-- The weekly analyst (2026-06-29) already produces solid brand-side findings but emits only
-  human-readable prose — nothing machine-readable ever reaches selection.
+## What our own 49 posts say — hypothesis-generating ONLY
 
-## THE recommendation (one, actionable)
+n=49 observational posts; per-domain cells as small as n=2-5; domain is confounded with hook
+shape, post age, format, timing, follower exposure, and execution quality. NO causal domain
+claim is defensible from this data. Descriptively (unblinded, post-hoc reading):
 
-**Adopt a bounded weekly "editorial prior" file — not a bandit, not a rewrite.**
+- Variance is enormous: reach 515 → 141,240 (median 1,872); shares 0 → 5,870; saves 1 → 1,908.
+- The highest-reach posts happen to be concrete-number/event hooks ("165 deported",
+  "37,881 villas"); the lowest are abstract evergreens. This is CONSISTENT with the liveness
+  rewire (B1) being valuable, but does not independently prove it — the reading was not
+  pre-registered and has no denominator control.
+- Tax posts show the highest save-rates in both our reading and the weekly analyst's
+  2026-06-29 finding (+78% SL, n=5) — a hypothesis worth testing, not a fact.
 
-- The weekly `wr2-ig-metrics-analyst` additionally emits a machine-readable
-  `editorial-priors.json`: per-domain (and later per-liveness-tier) additive bonus derived from
-  measured save-rate + share-rate on posts ≥72h old, EMA-decayed (half-life ~8 weeks so the
-  prior corrects itself as data accumulates, per LOLA).
-- `wr2_topic_selector.score_item` adds it as ONE soft term, **hard-capped at ±10 points**
-  (~10% of typical scores — the same magnitude as the routine-title penalty), reading the file
-  defensively (missing/stale file → 0, like live_news_score today).
-- Guardrails wired from day one: (a) the cap; (b) critic/brand gates untouched and upstream-
-  unaware of the prior (accuracy floor per ACM WebConf 2024); (c) a topic-category entropy
-  monitor line in the weekly report — if selected-domain entropy falls while engagement rises,
-  the analyst FLAGS for review, never auto-suspends silently; (d) the prior file lands via PR
-  (auto-merge) so every weight change is a reviewable diff — Zero's veto surface, zero new
-  ceremony.
-- **Expected effect**: selection tilts toward tax/property/concrete-event topics (the measured
-  amplification) within ~2 weeks of arming, verifiable in the next monthly window as median
-  save-rate ↑ vs the 1.02% corpus baseline, with domain entropy not collapsing below current
-  6-domain spread.
+## THE recommendation (amended after adversarial review)
 
-This is seed #5 of the growth-loop backlog, now evidence-shaped: build it as a SPRINT B after
-the liveness chain (B1) is proven live, since the prior's per-tier leg consumes B1's fields.
+**Build the metrics→selection loop in SHADOW MODE first; arm nothing until pre-registered
+criteria are met.**
 
-## Pitfalls we explicitly avoid (from the checklist)
+- **Phase 1 (build now, report-only)**: the weekly `wr2-ig-metrics-analyst` additionally emits
+  `editorial-priors.json` as a DIAGNOSTIC artifact: per-domain (later per-tier) engagement
+  summaries on posts ≥72h old, each cell carrying its n and an uncertainty interval; plus the
+  hypothetical bonus it WOULD have applied and which past topic picks it would have changed
+  (counterfactual log). The topic selector does NOT consume it. This produces the evidence to
+  design Phase 2 honestly, at zero editorial risk.
+- **Phase 2 (armed only if pre-registered criteria pass, each prior update behind explicit
+  operator approval — auto-merge audit trail is NOT a veto)**: minimum per-cell sample
+  (pre-declared, e.g. n≥10 in-window), bonus cap CALIBRATED against the measured historical
+  score-margin distribution (not asserted), expiry + zero-on-stale-data, explicit
+  rollback/kill thresholds, and quota-balanced exploration with propensity logging so the
+  prior's own selection effect can be corrected (the self-reinforcement failure: topics chosen
+  BY the prior then measured as "winning").
+- At ~2 posts/week across 6 domains, ANY per-domain scheme accumulates ~2-3 observations per
+  domain per 8-week half-life — Phase 2 may legitimately conclude "never arm per-domain;
+  only per-liveness-tier or global format signals have enough data". Shadow mode will show this.
 
-Item-level bandit at our cadence (underpowered) · per-post weight updates (batched weekly
-only) · scoring before 72h (staged reach) · trusting analyst predictions as truth (decaying
-prior) · letting engagement trade against the brand/accuracy gates (cap + unchanged critic) ·
-silent narrowing (entropy flag, human-reviewed) · treating vendor numbers (Echobox +36%,
-"sends 3-5x likes") as targets — directional only, unaudited.
+## Pitfalls checklist (extended)
+
+Vanity-metric reward (likes) over saves/shares/completion · item-level bandit at 2/week
+(underpowered) · per-post weight updates · scoring before 72h (late accumulation + possible
+staged reach) · trusting LLM/analyst predictions as truth (LOLA: barely-better-than-random) ·
+letting engagement trade against brand/accuracy gates · silent topic narrowing (entropy +
+accuracy + lead-quality guardrails, human-reviewed — entropy alone is not enough) ·
+self-reinforcing priors without propensity logging · metric API revisions / late-accumulating
+counts · denominator instability at low reach · Simpson's paradox across liveness tiers ·
+seasonality and news shocks · novelty fatigue · optimizing saves/shares at the expense of
+qualified leads or regulatory accuracy · vendor numbers (Echobox +36%, "sends 3-5x likes")
+as targets — unaudited, directional at best.
+
+## Adversarial review
+
+- **Seat**: codex (gpt-5.6-terra, read-only sandbox, 2026-07-18) — seat ≠ author (author:
+  Fable 5 orchestrator session + Sonnet 5 web-research lane).
+- **Verdict on v1: REFUTED** — 4 FATAL attacks: (1) LOLA mischaracterized (wrong affiliation,
+  "83% ceiling" overstated — the abstract reports prompt-based prediction performs poorly and
+  even fine-tuned models are only marginally above random; verified against the arxiv abstract
+  and corrected); (2) n=49 observational with 2-5-post domain cells cannot establish domain
+  effects (confounding); (3) "every top is concrete/every bottom abstract" was unblinded
+  post-hoc coding presented as validation; (4) the proposed prior was self-reinforcing with no
+  selection-bias correction. SERIOUS: Yahoo/WebConf/Socialinsider scope inflation; EMA math
+  (~2-3 obs/domain/half-life); uncalibrated ±10 cap; auto-merge conflated with human veto.
+- **What changed in v2**: sources re-scoped to what they actually show; internal analysis
+  demoted to hypothesis-generating with confounds named; recommendation restructured to
+  shadow-mode-first with pre-registered arming criteria, operator approval per prior update,
+  propensity-logged exploration, and calibrated (not asserted) caps; pitfalls extended with
+  the refuter's additions. The one-line recommendation survives in weakened form: build the
+  measurement artifact now, earn the right to arm it later.
