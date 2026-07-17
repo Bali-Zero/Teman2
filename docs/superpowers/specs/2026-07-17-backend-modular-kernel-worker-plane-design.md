@@ -1,12 +1,14 @@
 ---
 date: 2026-07-17
 component: backend-architecture
-status: reviewed-draft
+status: implementation-plan-review-pending
 decision_owner: Antonello
-implementation: not-started
+implementation: plan-review
+authorization: active-goal-2026-07-18
+authorization_thread: 019f6f94-4863-7f62-acc7-16bc5a706f74
 decision: incremental-hardening
 review_council: Fable-5 + Gemini-3.1-Pro + GLM-5.2
-panel_verdicts: Fable-GO-WITH-CHANGES-82 + Gemini-GO-WITH-CHANGES-85 + GLM-NO-GO-72
+historical_spec_panel_verdicts: Fable-GO-WITH-CHANGES-82 + Gemini-GO-WITH-CHANGES-85 + GLM-NO-GO-72
 verified_at_commit: cdaf6bb8553639498a0d333a01c1cc707844ac88
 sources:
   - apps/backend-rag/fly.toml
@@ -62,8 +64,8 @@ The original draft received two `GO-WITH-CHANGES` verdicts and one adversarial
 The direction survived; the original cutover contract did not. This reviewed
 draft closes the accepted blockers by:
 
-- installing fencing in legacy claim and side-effect paths one release before
-  any ownership cutover;
+- installing fencing in legacy claim and side-effect paths fleet-wide and
+  observing the compatible build before any ownership cutover;
 - making rollback a new atomic ownership generation, not a flag reversal;
 - replacing unsupported exactly-once claims with explicit provider capability,
   reconciliation, and `outcome_unknown` semantics;
@@ -73,8 +75,15 @@ draft closes the accepted blockers by:
   inventory gates.
 
 The raw reviews and finding-by-finding disposition remain part of this decision
-record. `reviewed-draft` means the panel has been processed, not that the owner
-has approved implementation.
+record. They approve only the historical bytes recorded by that panel. The spec
+and execution plans have since been materially amended to make the rollout
+executable; therefore the current implementation authority is **pending a fresh
+hash-bound Fable 5, Gemini 3.1 Pro High, and GLM 5.2 review of one immutable
+spec-and-plan packet**. The owner's active goal authorizes execution after that
+gate passes, including the protected compatibility and receipt-activation
+merges/deploys, exact-digest staging proof, ordered production cutovers, heavy
+production verification, and later deletion release described by the
+implementation and rollout plans.
 
 ## 1. Verified ground
 
@@ -214,7 +223,9 @@ documented.
 - no runtime microfrontend federation;
 - no automatic migration of every existing direct SQL call;
 - no simultaneous activation of old and new scheduler owners;
-- no production deployment authorized by this document.
+- no production deployment authorized by architecture direction alone; the
+  explicit active-goal authorization and falsifiable release gates in section
+  20 govern implementation and rollout.
 
 ## 3. Architecture invariants
 
@@ -325,6 +336,16 @@ RAG, ingestion, messaging, automation, and analytics are capabilities around
 the kernel. They may advise or execute, but they do not silently overwrite an
 authoritative decision owned by a kernel context.
 
+The implementation vocabulary has two independent, non-interchangeable axes:
+`BusinessContext`/`business_context` identifies bounded business and data
+ownership, while `RuntimeOwner`/`runtime_owner` identifies a process eligible
+to execute a workload (`api`, `rag`, `worker`, or `drive`). Route and table
+catalogs use `business_context`; workload grants, expected-instance census
+rows, heartbeats, claims, leases, and ownership compare-and-set operations use
+`runtime_owner`. Table write eligibility is a separate executable
+`writer_bindings` policy and never a second business-ownership axis. No
+compatibility alias between these axes is permitted.
+
 ### 5.2 Dependency direction
 
 For new or materially changed code, dependency direction is:
@@ -360,14 +381,125 @@ before physical separation:
   invariant requires a documented composition service;
 - schema migrations identify the owning context and compatibility window.
 
-The inventory is executable. A checked-in table-ownership manifest assigns
-every non-system mutable table an owning context, write interface, and optional
-legacy exception with owner and expiry. Schema introspection fails CI when a
-table is missing, duplicated, or assigned to an unknown context; migration lint
-fails when a created or altered table has no matching ownership update. This is
-an ownership map, not authorization by documentation: the worker database role
-is checked against the cataloged grant profile before a workload may become
-`active`.
+The inventory is executable. Every non-system table has exactly one
+`TableOwnership` record with `table_name`, `business_context`, a non-empty
+sorted set of discriminated `writer_bindings`, a non-empty sorted set of
+`migration_sources`, and an optional dated legacy exception. Every binding
+has a stable, unique `binding_id`; the tuple is sorted by that ID. Every
+binding owns a non-empty `operation_interfaces` map from operation name to a
+non-empty sorted set of interface references. A Python reference is an
+absolute `module:symbol`; a migration-defined callable is
+`sql:<schema>.<function>`. No other reference grammar is accepted. An
+operation/interface pair must belong to exactly one binding. A writer binding
+is exactly one of:
+
+- `static`: exactly one `runtime_owner`; candidate lists and workload fields are
+  forbidden. An ordinary table has exactly one static binding covering its
+  complete write surface. A migrated table may retain a narrowly named static
+  producer/admin binding (for example `enqueue`) while its claim/effect
+  transitions use a separate grant-fenced binding.
+- `grant-fenced`: one or more workload bindings. Each binding names a cataloged
+  workload, an explicit non-empty sorted `candidate_runtime_owners` set, and an
+  operation-to-allowed-ownership-mode map. The candidate set is eligibility,
+  not authority: each state-changing call must read the live
+  `OwnershipGrant`, require an exact workload, `runtime_owner`, generation and
+  permitted mode match, and fail closed when the grant store is unavailable.
+  `off` and `shadow` never permit a mutation; a new claim/schedule requires
+  `active`; only a claim already carrying the same owner and generation may use
+  an explicitly cataloged `active|draining` late-effect or reconciliation
+  operation. `operation_modes` and `operation_interfaces` must have identical
+  sorted key sets.
+- `heartbeat-evidence`: an exact `workload_candidates` map from each workload
+  to its non-empty sorted candidate set whose only operation is
+  `heartbeat-upsert` and whose only write interface is the self-identity
+  heartbeat upsert. It requires a matching expected-instance census row and
+  may write only build/liveness evidence. It cannot change a grant, census,
+  audit, job, claim, schedule, or side effect. This exception is necessary so
+  a reviewed target candidate can prove compatibility before it becomes the
+  active grant; it conveys no work authority.
+
+Within one table, an interface reference may not appear in two different
+bindings, even under different operation names. A shared mutable table used by
+multiple workloads therefore exposes one workload-specific mutation wrapper
+per grant-fenced binding. Each wrapper hard-codes its workload and operation,
+performs the exact live-grant check, and owns the mutation transaction. A
+caller-selected workload passed to one generic writer is forbidden; common
+helpers behind the wrappers must be pure/read-only and are not cataloged as
+write authority. This rule applies to the shared effect-ledger projection and
+attempt tables introduced later: workflow, legal, notification, and WhatsApp
+receive distinct wrapper symbols rather than sharing one generic writer symbol.
+
+The canonical catalog shape is therefore fixed rather than inferred:
+
+```json
+{
+  "table_name": "<qualified-table>",
+  "business_context": "<BusinessContext>",
+  "writer_bindings": [
+    {
+      "binding_id": "<stable-id>",
+      "kind": "static",
+      "runtime_owner": "<RuntimeOwner>",
+      "operation_interfaces": {
+        "<operation>": ["<interface-reference>"]
+      }
+    },
+    {
+      "binding_id": "<stable-id>",
+      "kind": "grant-fenced",
+      "workload_name": "<catalog-workload>",
+      "candidate_runtime_owners": ["<RuntimeOwner>"],
+      "operation_modes": { "<operation>": ["active"] },
+      "operation_interfaces": {
+        "<operation>": ["<interface-reference>"]
+      }
+    },
+    {
+      "binding_id": "<stable-id>",
+      "kind": "heartbeat-evidence",
+      "workload_candidates": { "<catalog-workload>": ["<RuntimeOwner>"] },
+      "operation_interfaces": {
+        "heartbeat-upsert": ["<interface-reference>"]
+      }
+    }
+  ],
+  "migration_sources": ["<repo-relative-sql-path>"],
+  "legacy_exception": null
+}
+```
+
+The three displayed binding variants describe the union schema; a real table
+contains only the binding instances required for its complete write surface.
+Fields belonging to another variant are invalid. The operation set of a
+binding is exactly the sorted key set of `operation_interfaces`; for a
+`grant-fenced` binding it must also equal the key set of `operation_modes`.
+
+The grant, expected-instance census, and ownership-audit tables are bootstrap
+control-plane authority. Their mutations use the `static` policy and narrow,
+protected, audited CAS/register/retire interfaces; making them grant-fenced by
+the grant they create would be a self-authorization cycle. The heartbeat table
+uses `heartbeat-evidence`. Migrated job/state tables use `grant-fenced` for the
+workload transitions introduced by the migration while preserving explicitly
+cataloged static producers where needed. Thus no table has an unbounded
+multiwriter policy, no producer is accidentally blocked by a consumer grant,
+and no static writer claim is used to pretend that both an old and candidate
+runtime own a migrated workload.
+
+The manifest checker validates this tagged schema, rejects overlapping or
+unclassified operation/interface pairs, resolves every interface, and compares
+each grant binding's candidate set exactly with the corresponding
+`WorkloadSpec.candidate_runtime_owners`. Migration lint requires a per-table
+ownership annotation block for every `CREATE TABLE` and ownership-affecting
+`ALTER TABLE`; the block must reproduce the matching catalog policy. Schema
+introspection fails CI when a table is missing, duplicated, assigned to an
+unknown business context, contains mixed binding fields, has overlapping or
+missing write coverage, has an empty/wildcard candidate set, references an
+unknown workload/interface, or has policy/catalog drift. Source ratchets reject
+writes outside the exact binding that owns the operation and reject a declared
+grant-fenced interface that bypasses the shared grant-authority check. This is
+authorization, not documentation: a catalog candidate cannot perform a fenced
+operation unless its runtime evidence satisfies that binding at the moment of
+the operation.
 
 ## 6. Canonical route topology
 
@@ -404,24 +536,49 @@ other route list. Removing the entry must make both disappear.
 
 A canonical worker catalog declares for every durable workload:
 
-| Field                    | Meaning                                                |
-| ------------------------ | ------------------------------------------------------ |
-| `name`                   | stable worker identity                                 |
-| `owner_context`          | business/data owner                                    |
-| `runtime_profile`        | `cloud-worker`, `drive`, or `local-pro-mini`           |
-| `queue_or_schedule`      | durable queue/table or schedule definition             |
-| `concurrency`            | allowed parallelism                                    |
-| `lease_seconds`          | claim expiry                                           |
-| `retry_policy`           | attempts, backoff, retryable errors                    |
-| `kill_switch`            | workload-specific switch                               |
-| `heartbeat_slo`          | liveness expectation                                   |
-| `side_effect_class`      | none, reversible, or irreversible                      |
-| `delivery_semantics`     | provider-idempotent, reconcilable, or non-reconcilable |
-| `database_grant_profile` | required tables, operations, and stored procedures     |
-| `pii_class`              | allowed payload classification                         |
+| Field                      | Meaning                                                                                                                                                     |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                     | stable worker identity                                                                                                                                      |
+| `business_context`         | bounded business/data owner                                                                                                                                 |
+| `runtime_owner`            | process currently granted execution                                                                                                                         |
+| `candidate_runtime_owners` | explicit bounded processes eligible across a cutover                                                                                                        |
+| `runtime_profile`          | `cloud-worker`, `drive`, or `local-pro-mini`                                                                                                                |
+| `queue_or_schedule`        | durable queue/table or schedule definition                                                                                                                  |
+| `concurrency`              | allowed parallelism                                                                                                                                         |
+| `lease_seconds`            | claim expiry                                                                                                                                                |
+| `retry_policy`             | attempts, backoff, retryable errors                                                                                                                         |
+| `kill_switch`              | workload-specific switch                                                                                                                                    |
+| `heartbeat_slo`            | liveness expectation                                                                                                                                        |
+| `side_effect_class`        | none, reversible, or irreversible                                                                                                                           |
+| `delivery_semantics`       | provider-idempotent, reconcilable, or non-reconcilable                                                                                                      |
+| `database_grant_profile`   | required tables, operations, and stored procedures                                                                                                          |
+| `provider_secret_symbols`  | sorted unique provider-runtime injection names required by the selected workload adapter; credentials and opaque provider IDs are allowed, values never are |
+| `pii_class`                | allowed payload classification                                                                                                                              |
 
 The catalog is not a generic dependency injection framework. It is a small,
 auditable ownership registry used by startup, health, tests, and operations.
+`provider_secret_symbols` is the protected provider-runtime injection allowlist,
+not a claim that every value is intrinsically secret. It contains only names
+matching `^[A-Z][A-Z0-9_]*$`; it may be empty, but it may not contain
+duplicates, assignments, URIs, whitespace, secret material, or resolved values.
+Credentials and operational identifiers such as a provider phone-number ID are
+both transported through the same protected, redacted capability path so the
+effective symbol set can be hashed and reconciled exactly. Phase 2 derives the
+worker allowlist from these names and rejects any selected adapter whose
+transitive `os.getenv`/settings dependency is absent or any injected symbol not
+declared.
+
+For this compatibility release, `notification_scheduler` is pinned to an
+explicitly injected SendGrid adapter and declares exactly the sorted symbols
+`EFFECT_KEY_HMAC_SECRET_V1,SENDGRID_API_KEY`; worker mode may not call the legacy
+SMTP/auto-detect provider factory. A non-SendGrid legacy source configuration
+blocks cutover until a separately cataloged, reviewed profile exists. The HMAC
+is only for privacy-preserving stable effect identity, never provider
+idempotency or proof of delivery. `wa_outbox` declares exactly
+`WHATSAPP_API_TOKEN,WHATSAPP_PHONE_NUMBER_ID`; webhook-only
+`WHATSAPP_APP_SECRET` is not part of the outbound adapter. Values exist only in
+the environment/secret manager and never in a catalog, fixture, snapshot, log,
+or review packet.
 
 ### 7.2 Initial ownership migration
 
@@ -448,11 +605,12 @@ Configuration validation fails startup if more than one process is declared
 `active` for the same workload. Configuration is necessary but not sufficient:
 an old process may survive a deploy or hold stale configuration. A small
 PostgreSQL ownership table is authoritative and stores, per workload, the
-current runtime owner, monotonically increasing fencing generation, mode,
+current `runtime_owner`, monotonically increasing fencing generation, mode,
 minimum compatible build, and update audit. Claiming work or creating a
-schedule run performs a compare-and-set against that row and persists the
-generation on the claim. Runtimes fetch the current grant dynamically; a
-generation is never a startup-only environment value.
+schedule run performs a compare-and-set against that row and persists
+`claim_runtime_owner` plus the generation on the claim. Runtimes fetch the
+current grant dynamically; a generation is never a startup-only environment
+value.
 
 The database, not only application code, rejects unfenced state transitions.
 Each migrated domain table uses a narrow claim function or an equivalent
@@ -463,20 +621,30 @@ grant fields fails before it can claim. This database guard is mandatory where
 a pre-compatibility binary could otherwise ignore the ownership table.
 
 The claim guard is **not** armed merely because its migration exists. Arming is
-itself a gated ownership transition: every live owner heartbeat must first meet
-the compatibility build floor, and a stale or missing heartbeat fails closed.
-This prevents a legitimate active owner on pre-compatibility SQL from being
-locked out during a rolling release. The same build-floor evidence is required
-again at cutover.
+itself a gated ownership transition. Its source of truth is an authoritative
+expected-instance census imported from the current deployment/process
+inventory, including desired counts and process identity; runtime
+self-registration is heartbeat evidence, not census evidence. The compatible
+fresh-heartbeat set must equal the complete expected set. A missing expected
+instance, a vanished pre-compatible replica, a desired-count mismatch, or a
+stale/old heartbeat fails closed. Removing an expected instance requires an
+audited, versioned retirement operation tied to deployment evidence; silence
+or heartbeat expiry never retires it. This prevents a legitimate active owner
+on pre-compatibility SQL from disappearing from the proof or being locked out
+during a rolling release. The same census/build-floor evidence is required
+again at every cutover and guard re-arm.
 
 Fencing must exist on both sides before migration. A compatibility release adds
 the ownership and kill-switch checkpoint to the **existing** workflow, legal,
 notification, and WhatsApp claim paths while they still own the work. It is
-deployed fleet-wide at least one release before the worker can become active.
-Cutover is blocked until every live owner heartbeat reports a build at or above
-that compatibility floor. A cached or pre-compatibility release is not allowed
-to coexist with cutover; the stale-owner test exercises the legacy execution
-path from the compatibility release, not only the new runner.
+deployed fleet-wide and observed for the complete declared compatibility
+interval before the worker can become active; a second binary release is not
+required when the same reviewed merged digest contains both dormant paths.
+Cutover is blocked until the authoritative expected census equals the fresh
+heartbeat set and every member reports a build at or above that compatibility
+floor. A cached or pre-compatibility release is not allowed to coexist with
+cutover; the stale-owner test exercises the legacy execution path from the
+compatibility release, not only the new runner.
 
 Cutover atomically assigns the new owner and increments the generation. A stale
 owner then fails its next claim and the late side-effect checkpoint even if its
@@ -508,9 +676,9 @@ Idempotency is enforced at the side-effect boundary, not only in the queue. A
 handler creates a unique deterministic `effect_key` ledger row before an
 external attempt and performs a late database check of its claim lease,
 current owner, and fencing generation immediately before the call. The
-`effect_key` derives from stable business identity and effect purpose, such as
-notification ID plus scheduled period; it never derives from a queue row,
-attempt number, or ownership generation. This closes concurrent stale-owner
+`effect_key` derives from stable business identity and effect purpose; it never
+derives from a queue row, polling/retry instant, attempt number, claim token,
+runtime owner, or ownership generation. This closes concurrent stale-owner
 calls; it cannot cancel an HTTP request already in flight.
 
 Exactly-once delivery is therefore **not** promised for an arbitrary external
@@ -522,19 +690,63 @@ provider. Every irreversible handler declares and tests one of these contracts:
 | `reconcilable`        | only after querying the provider or destination by stable reference | reconciliation confirms sent/not-sent before retry          |
 | `non-reconcilable`    | never automatically                                                 | mark `outcome_unknown`; require audited operator resolution |
 
-The side-effect ledger records `prepared`, `attempting`, `confirmed`, `failed`,
-or `outcome_unknown`. A unique pre-flight row prevents concurrent automatic
-attempts, but it is not treated as proof that an effect happened. A crash or
-timeout after dispatch and before confirmation enters `outcome_unknown` unless
-provider idempotency or reconciliation resolves it. This explicitly trades an
-automatic duplicate for visible uncertainty; no generic SEND→RECORD→ACK
-sequence is described as exactly-once.
+The notification scheduler has an exact contract because its current SMTP and
+SendGrid adapters provide neither a provider idempotency key nor a lookup by
+stable effect reference. Its email capability is `non-reconcilable`. The
+logical schedule run is `(notification_scheduler,
+originating_scheduled_for_utc)`, where the originating daily business instant
+is persisted and normalized to UTC rather than replaced by a later hourly
+poll/retry time. The external effect identity is canonical versioned data
+containing that origin, purpose `email:<alert_type>`, and the business recipient
+reference `client:<client_id>`. It is persisted only as
+`notification:v1:<HMAC-SHA-256>` using the cataloged symbolic secret
+`EFFECT_KEY_HMAC_SECRET_V1`; raw recipient identity, email address, To/BCC,
+subject/body, randomized content, alert row ID, and ownership/attempt fields
+are not key material in storage, logs, metrics, or evidence. The To/BCC envelope
+is frozen and versioned separately so a retry cannot silently change the
+recipient. Scheduler execution, request-facing send-pending, and admin retry
+share the same claim/effect fence. Provider `confirmed` maps to ledger
+`confirmed`, `definite_failure` to `failed`, and timeout, cancellation,
+post-dispatch crash, or any other ambiguous result to `outcome_unknown` with no
+automatic resend.
 
-Cutover cannot advance while the old generation has an `attempting` effect.
-It waits at least the declared maximum provider-call timeout plus clock margin,
-then requires every old-generation effect to be terminal or
-`outcome_unknown`. Non-reconcilable ambiguous effects block activation until an
-operator resolves them.
+The side-effect ledger separates stable effect identity from attempt history.
+One projection row keyed by the generation-independent `effect_key` records
+`prepared`, `attempting`, `confirmed`, `failed`, or `outcome_unknown`; every
+begin, confirmation, failure, reconciliation, and resolution is also appended
+to an immutable attempt/audit table with attempt ID, owner, generation, claim
+token, lease, expected state, and resulting state. Ownership generation and
+attempt identity never become part of the stable effect key.
+
+If these ledger tables are shared by several workloads, each workload reaches
+them through its own cataloged mutation wrapper and grant-fenced binding. The
+wrappers may share pure serialization/state-machine helpers, but not a generic
+SQL-writing entrypoint or a caller-supplied workload selector. This preserves
+exact per-workload authority while retaining one physical ledger schema.
+
+`begin_attempt` is the final dispatch fence, not a check followed by a later
+write. In one transaction it locks, in fixed order, the authoritative workload
+grant, the workload-specific domain claim/run, and the stable effect row; it
+then validates current owner, generation, claim token, unexpired lease, effect
+state, delivery contract, and absence of a concurrent attempt before appending
+the attempt and returning permission to dispatch. `finish_attempt` and
+reconciliation require the exact expected attempt and state. A stale owner
+cannot pass a late read and race another generation into dispatch.
+
+A unique projection row prevents concurrent automatic attempts, but it is not
+treated as proof that an effect happened. A crash or timeout after dispatch and
+before confirmation enters `outcome_unknown` unless provider idempotency or
+reconciliation resolves it. This explicitly trades an automatic duplicate for
+visible uncertainty; no generic SEND→RECORD→ACK sequence is described as
+exactly-once.
+
+Cutover cannot advance while either generation has a live claim lease, an
+unadopted or uncancelled pending schedule run, a `prepared` intent, a retryable
+`failed` effect, an `attempting` effect, or a delivery-semantics-blocking
+`outcome_unknown`. It waits at least the declared maximum provider-call timeout
+plus clock margin. A non-reconcilable ambiguous effect blocks activation until
+an audited operator resolution; lease expiry alone never authorizes activation
+or an automatic retry.
 
 This contract does **not** require every workload to share one generic table.
 Existing domain queues may retain their tables when they already encode useful
@@ -587,6 +799,22 @@ catalog at startup and registration time and fail closed on an uncataloged
 durable subscription. No naming convention, dynamic registration, or
 in-process handler list may bypass this guard. Adding durable fan-out is
 blocked, not implemented optimistically on the current row.
+
+Receipt installation and receipt authority are separate releases. The first
+release adds an idempotent dual-read/dual-write bridge but keeps global
+`consumed_at` authoritative and keeps the one-subscriber guard. It snapshots an
+event-ID high watermark: already consumed rows create terminal receipts only
+for the legacy subscriber, unconsumed rows create pending legacy receipts, and
+subscribers introduced later start strictly after their audited activation
+boundary. Backfill never replays consumed history to a new subscriber and is
+resumable across crashes on either side of the dual write. A second protected
+release remains bridge-compatible during rolling overlap and may activate
+receipt authority only after the authoritative expected RAG census equals the
+fresh activation-build heartbeat set, the old/new binary matrix is green, the
+backfill/reconciliation checkpoint is complete, and an audited CAS binds the
+catalog hash plus subscriber boundaries. Once a post-boundary fan-out event is
+admitted, an old binary cannot be restored until fan-out publication stops and
+every named receipt is drained/reconciled back to bridge-safe state.
 
 Each event type has an owner, schema version, compatibility policy, allowed PII
 class, subscriber list, retention, and replay window. Unknown schema versions
@@ -708,10 +936,11 @@ process or file.
 - replace durable-event stale ack/drop with cataloged replay windows and
   quarantine/DLQ behavior.
 
-Exit: every current durable loop has one named runtime owner; every mutable
-table has exactly one checked owner; the local Redis bus passes crash recovery;
-and no declared durable event is silently acknowledged because it aged past a
-global window.
+Exit: every current durable loop has one named runtime owner and a bounded
+candidate set; every mutable table has exactly one checked business owner and
+one executable tagged writer-bindings policy; the local Redis bus passes crash
+recovery; and no declared durable event is silently acknowledged because it
+aged past a global window.
 
 ### Phase 1 — Make catalogs authoritative
 
@@ -719,12 +948,12 @@ global window.
   catalog;
 - introduce the worker catalog, PostgreSQL ownership table, fencing generation,
   and configuration conflict check;
-- deploy fencing and kill-switch checkpoints into the existing workflow,
-  legal, notification, and WhatsApp claim/effect paths while they remain the
-  owners;
-- after every live owner heartbeat meets the compatibility build floor, arm a
-  database claim guard for each pilot table so SQL that omits the current
-  owner/generation cannot transition work into a claimed state;
+- add fencing and kill-switch checkpoints to the existing workflow, legal,
+  notification, and WhatsApp claim/effect paths while they remain the owners;
+- prove the authoritative expected-instance census, compatible heartbeat-set
+  equality, audited retirement, and database claim-guard arm/disarm mechanics
+  against disposable PostgreSQL while every live-environment guard remains
+  unarmed;
 - enforce the event-catalog rule at CI and in the runtime dispatcher and
   `subscribe()` path so a second durable subscriber on a global-ack channel
   fails closed;
@@ -732,63 +961,86 @@ global window.
 - retain current behavior and process placement.
 
 Exit: no route or worker placement needs a second hand-maintained list; the
-legacy owners have run one complete release with dynamic database fencing; and
-the heartbeat inventory contains no live build below the compatibility floor.
+compatibility candidate contains dynamic database fencing for every live
+legacy owner; disposable guard mechanics pass against the complete census;
+and no live-environment deploy, arm, or ownership move has occurred.
 
-### Phase 2 — Deploy an inert worker plane
+### Phase 2 — Prove the inert private worker contract before merge
 
 - reconcile the checked infrastructure governance before creating the app:
   replace stale fixed-app-count statements with a current inventory plus the
   approved companion target, and record that Qdrant is external where that is
   the deployed reality;
-- define the companion app's `release_command` policy explicitly: it either
-  skips migrations or uses the same advisory-locked migration runner; deploy
-  the primary app and verify schema compatibility before promoting the
-  companion app;
-- deploy the companion worker Fly app from the same immutable image digest and
-  coordinated release, with its scoped PostgreSQL role and no public service;
-- expose the internal `:9091/ready` probe plus heartbeat/build/catalog/grant
-  telemetry and make both a CI promotion gate;
-- run all workloads `off`, then run the workflow queue in side-effect-free
-  `shadow` mode;
+- define two private live-staging targets, `nuzantara-rag-staging` for the
+  legacy API/RAG owner topology and `nuzantara-worker-staging` for the companion,
+  both consuming the exact immutable production artifact digest without a
+  rebuild or mutable tag;
+- make the primary app the sole migration runner in each environment. Its
+  protected chain is pre-deploy -> old-image compatibility apply -> deploy with
+  fresh-image `release_command` apply plus schema audit before promotion ->
+  post-deploy SQL-v2 -> Python migrations -> explicit fresh-image schema audit
+  -> health -> digest export. The worker has no `release_command`;
+- define and test the companion deployment contract with no public service,
+  an internal `:9091/ready` probe, heartbeat/build/catalog/grant telemetry,
+  scoped PostgreSQL role, and every workload defaulting to `off`;
+- make the deployment contract, readiness behavior, catalog/grant checks, and
+  side-effect-free `shadow` semantics CI promotion gates using injected
+  fixtures and disposable services before any live staging mutation;
 - enforce that the base entrypoint does not eagerly import `app_factory`, any
   router, Qdrant clients, or inference models; workload adapters load lazily;
 - measure startup, memory, DB connections, and schedule drift against these
-  initial hard ceilings: one 1 GB VM, readiness within 60 seconds, RSS no more
-  than 750 MiB at steady state or 850 MiB peak in a 30-minute workflow shadow
-  cycle, and at most eight worker DB connections.
+  initial hard ceilings on Pro/CI: one 1 GB VM profile, readiness within 60
+  seconds, RSS no more than 750 MiB at steady state or 850 MiB peak in a
+  30-minute workflow shadow cycle, and at most eight worker DB connections.
 
-Exit: G13 and G14 pass; the companion app is observable, stays inside all four
-absolute budgets, has only cataloged database grants, and is incapable of
-claims or side effects.
+Exit: the G13/G14 implementation, injected-failure suites, and Pro/CI resource
+profile pass; the reviewed companion contract is incapable of claims or side
+effects while `off`/`shadow`; and no live staging or production companion has
+been created or mutated. Exact merged-digest staging proof is deferred to the
+final protected rollout.
 
 ### Phase 3 — Move durable consumers one by one
 
-Move the workflow queue first, then legal ingestion. For each move:
+Implement the workflow queue first, then legal ingestion. Before merge, for
+each move:
 
-1. prove all live legacy owners meet the compatibility build floor;
+1. prove the compatibility-floor algorithm against an authoritative injected
+   census and heartbeat fixture;
 2. complete the side-effect capability row for the workload and satisfy G15;
-3. execute the cutover transaction and drain protocol in section 13;
+3. execute the cutover transaction and drain protocol in section 13 against
+   deterministic and disposable-database fixtures;
 4. inject restart, timeout, duplicate-delivery, stale-owner, and DB reconnect
    failures;
-5. execute and verify reverse-cutover rollback before production activation;
-6. observe for a full workload cycle before the next move.
+5. verify forward and reverse transitions without mutating a live environment;
+6. reject staging and production targets from pre-merge execution paths.
 
-Exit: restart/replay/rollback gates pass; no job has two ownership generations;
-and every ambiguous external effect is resolved or explicitly blocks progress.
+Exit: code/CI/disposable-database restart, replay, rollback, and ambiguity gates
+pass; no simulated job has two ownership generations; every ambiguous external
+effect is resolved or explicitly blocks progress; and all live staging
+activation/observation is deferred to the exact merged-digest rollout.
 
 ### Phase 4 — Remove API-side schedulers
 
-Move Notification Scheduler and WhatsApp outbox only after their
-domain-specific schedule, ordering, and provider-capability tests pass. A
-non-reconcilable handler cannot move while G15 depends on an automatic retry.
-Delete obsolete lifespan wiring only after the rollback window closes.
+Implement and rehearse Notification Scheduler and WhatsApp outbox adapters in
+deterministic/disposable fixtures only after their domain-specific schedule,
+ordering, and provider-capability tests pass. A non-reconcilable handler cannot
+move while G15 depends on an automatic retry. Keep compatible legacy lifespan
+wiring in the compatibility release; delete it only through a later protected
+release after all production rollback windows close.
 
-Exit: `api` and `rag` lifespans own no durable perpetual workload.
+Compatibility checkpoint: both adapters pass pre-merge forward/reverse fixture
+gates and the legacy lifespan paths remain dormant-capable rollback wiring.
+The checkpoint permits Phase 5 but is not final Phase 4 closure. Deletion-
+release exit: after exact-digest staging, production proof, rollback windows,
+and the later protected deletion release, `api` and `rag` lifespans own none of
+the four migrated durable loops.
 
 ### Phase 5 — Normalize events and enforce module boundaries
 
-- introduce per-subscription event receipts for fan-out event types;
+- introduce per-subscription event receipts behind a Release-A global-ack
+  bridge, with deterministic backfill and old/new overlap tests;
+- admit fan-out only through the separately protected Release-B build-floor,
+  catalog-hash, activation-boundary, and backfill gate;
 - unify envelope/version/ownership registries without merging the two physical
   buses;
 - ratchet direct router SQL and cross-context writes down on touched code.
@@ -796,18 +1048,71 @@ Exit: `api` and `rag` lifespans own no durable perpetual workload.
 Exit: every new cross-process interaction has a versioned, observable,
 replayable contract.
 
+### Final protected production rollout
+
+All Phases 0-5 and their independent panels remain on one feature branch.
+Protected Release A applies additive schema and runs the existing API/RAG
+legacy owners from the reviewed merged digest while every guard is unarmed and
+event delivery remains `legacy-global-bridge`. Its rolling overlap admits only
+the legacy subscriber and treats receipts as a repairable projection. The
+existing protected main-push workflow performs that primary-app compatibility
+deploy; it does not create the separate production companion app. At this
+boundary, verified absence of `nuzantara-worker` (or an unchanged previously
+approved inert instance) is part of the proof: the plan must not claim companion
+readiness, heartbeat, or `off` state from a Machine that was never deployed.
+
+After that deploy, the protected staging workflow deploys the exact same
+recorded digest to both private `nuzantara-rag-staging` and
+`nuzantara-worker-staging`; the staging primary retains the legacy API/RAG
+owners and is the sole staging migration runner, while the companion starts
+all-off with a distinct least-privilege database role. The workflow then admits
+only the next workload's cataloged test capabilities. A separate protected
+live-control workflow arms guards and performs one censused drain, barrier,
+activation, reverse, re-cutover, and disarm command per admission row. Direct
+CLI, SQL, Fly mutation, rebuild, mutable tag, or competing staging deploy path
+is forbidden. Staging proves every forward/reverse drill and full observation
+cycle behind an independent Release-A gate. A focused protected Release B then
+deploys the receipt-activation binary to production still in bridge mode,
+deploys that exact digest to staging, and proves the full census/build-floor,
+backfill, activation-boundary, independent replay, reversal, and re-activation
+contract behind a fresh panel. Only after production receipt activation and its
+observation window pass may the environment-protected production bootstrap
+deploy that same Release-B digest to the named private companion app
+`nuzantara-worker`. It starts with every worker workload `off`,
+guards unarmed, only the base control-plane PostgreSQL credential/grants needed
+for readiness and heartbeat, and no workload provider capability. Production
+then verifies that companion's private readiness and digest-bound heartbeat,
+adds one workload's scoped capability at a time, and performs strict drain ->
+lease/effect barrier -> newer-generation activation in the fixed order
+workflow, legal, notification, WhatsApp. Each workload completes forward
+observation, production-safe reverse proof, re-cutover, and post-proof before
+the next receives capability. The bootstrap never rebuilds or redeploys the
+primary app. Only after all four rollback windows close may a separate
+protected deletion release remove dormant lifespan wiring. That later release
+first proves an old/new API-worker compatibility matrix, then deploys its new
+digest to the primary through protected main. The protected production worker
+workflow must subsequently roll the existing companion to that exact deletion
+digest while preserving active grants, ownership generations, modes, and claim
+continuity. Final closure requires primary/worker digest equality. A partial
+worker update restores the prior companion digest and rolls the primary back to
+the previous Release-B receipt-compatible image without reversing ownership or
+crossing the recorded receipt activation boundary unsafely.
+
 ## 13. Cutover and rollback
 
 Cutover is per workload, never global.
 
-1. Verify every live old-owner heartbeat meets the minimum compatible build.
+1. Load the authoritative expected-instance/deployment census and verify its
+   complete desired set equals the fresh compatible old-owner heartbeat set;
+   an absent, stale, retired-without-audit, or pre-compatible instance blocks.
 2. Set the new owner to `shadow`; verify zero claims and zero side effects.
 3. Compare-and-set the current grant from `active` to `draining`; the old owner
    may finish leased work but cannot claim or schedule anything new.
-4. Wait for leases to finish and for the declared maximum provider-call timeout
-   plus clock margin. Require zero `attempting` effects. Resolve every
-   non-reconcilable `outcome_unknown`; lease expiry alone is insufficient.
-   Inventory pending unclaimed scheduled runs and prepare their transactional
+4. Under the coordinator's locked inventory, wait for leases to finish and for
+   the declared maximum provider-call timeout plus clock margin. Require zero
+   live lease, unadopted/uncancelled pending run, `prepared`, retryable
+   `failed`, or `attempting` effect. Resolve every delivery-semantics-blocking
+   `outcome_unknown`; lease expiry alone is insufficient. Prepare transactional
    adoption or audited cancellation under the generation-independent run key.
 5. In one database transaction, verify the expected old generation, increment
    it, assign the worker as owner, adopt or cancel the inventoried pending runs,
@@ -864,9 +1169,12 @@ release, retain a stale local grant across cutover, and verify that it cannot
 enqueue, claim, or pass the late side-effect fence. Then run the
 pre-compatibility pilot claim SQL, which does not send owner/generation, and
 verify the database guard rejects its state transition. The promotion gate also
-rejects the old build. Production telemetry reports zero intervals with grants
-for different owners or generations; cataloged concurrency inside one grant is
-not a violation.
+rejects the old build. Delete a pre-compatible replica's heartbeat without an
+audited census retirement and verify arming still fails; then perform the
+versioned retirement against deployment evidence and verify the expected/fresh
+sets converge. Desired-count mismatch also fails. Production telemetry reports
+zero intervals with grants for different owners or generations; cataloged
+concurrency inside one grant is not a violation.
 
 ### G3 — Lease recovery works
 
@@ -883,19 +1191,23 @@ cancelled; none disappears or remains indefinitely running.
 
 ### G5 — Fan-out acknowledges independently
 
-Publish one domain event to two durable subscriptions. One subscriber may
-succeed while the other crashes; the successful receipt remains complete and
-the failed subscription replays independently. Before receipts are installed,
-the same two-subscriber catalog mutation must fail CI, and a direct runtime
-`subscribe()` attempt that bypasses the catalog must fail startup or
-registration, instead of using the global `consumed_at` acknowledgement.
+Before activation, prove all four old/new producer-consumer combinations on the
+additive receipt schema, deterministic consumed/unconsumed-row backfill, and
+every dual-write/checkpoint crash point; global acknowledgement remains
+authoritative and a second subscriber still fails. After the complete activation
+build floor, backfill, catalog-hash, and boundary gate passes, publish one domain
+event to two durable subscriptions. One subscriber may succeed while the other
+crashes; the successful receipt remains complete and the failed subscription
+replays independently. A direct runtime `subscribe()` attempt that bypasses the
+catalog must fail startup or registration instead of using global
+`consumed_at`.
 
 ### G6 — Redis abandoned work is reclaimed
 
 Kill consumer A with an unacked Redis entry, start consumer B, wait past the
 idle threshold, and verify the designated reclaimer lets B reclaim or DLQ it
 through `XAUTOCLAIM`/`XCLAIM`. Simulate an unavailable idempotency store and
-verify an irreversible handler fails closed. This gate passes in Phase 0.
+verify an irreversible handler fails closed. Phase 0 passes the repository reclaim contract and produces the protected authoritative-runtime handoff; full G6 becomes green only after the exact protected-merged SHA is allowlist-synced to the authoritative Pro `~/scripts/eventbus` runtime, its three LaunchAgents restart successfully, smoke proof passes, and the rollback manifest is retained during production-rollout Task 2.
 
 ### G7 — Module-boundary ratchet does not regress
 
@@ -913,9 +1225,16 @@ explicit versioned compatibility window.
 
 ### G9 — Runtime regression stays bounded
 
-Compared with the Phase 0 baseline, each migration step keeps API/RAG startup
-time, steady-state memory, DB connection count, and HTTP error rate within 10%
-unless an owner approves a measured exception. Worker resource use is reported
+Compared with the Phase 0 baseline, each **runtime-observable release
+checkpoint** keeps API/RAG startup time, steady-state memory, DB connection
+count, and HTTP error rate within 10% unless an owner approves a measured
+exception. Here a migration step means one authoritative deployment checkpoint
+at which the running process/schema pair can be measured; it does not mean each
+individual DDL file inside one atomic protected migration chain. For this
+release, migrations 246–250 form one authoritative compatibility-chain
+checkpoint, followed by a fresh G9 comparison after each workload forward
+cutover, reverse cutover, and final re-cutover. A partial migration stage is
+never reported as a green checkpoint. Worker resource use is reported
 separately and must also pass the absolute Phase 2 limits: 1 GB VM, readiness
 within 60 seconds, at most 750 MiB steady/850 MiB peak RSS, and at most eight DB
 connections.
@@ -934,10 +1253,11 @@ because API readiness is green.
 
 ### G12 — Rollback is demonstrated
 
-For the pilot workload, execute active-worker cutover and rollback in staging
-or an isolated production-safe fixture. Rollback must increment the generation,
-assign the legacy owner dynamically, and prove that owner claims and completes
-a canary within the workload SLO. Evidence must show no cross-generation
+Before merge, execute active-worker cutover and rollback only in an isolated
+disposable fixture. After protected merge, repeat it in staging against the
+exact merged digest before production is eligible. Rollback must increment the
+generation, assign the legacy owner dynamically, and prove that owner claims
+and completes a canary within the workload SLO. Evidence must show no cross-generation
 overlap and no lost claim; external effects obey G15 rather than an unsupported
 universal exactly-once claim. For a schedule-class fixture, enqueue a future
 run, cut over before it becomes due, and prove the new generation executes
@@ -946,17 +1266,21 @@ repeat the same scenario across reverse-cutover rollback.
 
 ### G13 — Worker deployment health is gated
 
-Deploy the companion app in staging with no public service. Its top-level
-`:9091/ready` check and build-SHA database heartbeat must pass before CI permits
-promotion or any workload leaves `off`. Kill its event loop while leaving the
-probe process alive and verify readiness fails.
+Before merge, CI proves the companion manifest has no public service and tests
+the top-level `:9091/ready` behavior plus build-SHA heartbeat contract through
+injected failures. After protected merge, deploy that exact merged digest to
+staging; the real readiness check and database heartbeat must pass before any
+workload leaves `off`. Kill its event loop while leaving the probe process
+alive and verify readiness fails.
 
 ### G14 — Worker footprint is isolated
 
 An import test proves the base entrypoint does not eagerly load `app_factory`,
-routers, Qdrant clients, or inference models. A 30-minute workflow shadow run
-passes every absolute G9 budget. Failure blocks Phase 2; raising a limit
-requires a recorded spec amendment, not a silent VM resize.
+routers, Qdrant clients, or inference models. A 30-minute workflow shadow
+profile on Pro/CI passes every absolute G9 budget before merge; the exact merged
+digest repeats the profile in staging before production. Failure at either
+gate blocks promotion; raising a limit requires a recorded spec amendment, not
+a silent VM resize.
 
 ### G15 — External ambiguity is explicit
 
@@ -965,14 +1289,29 @@ request leaves the process but before a response is recorded. The replacement
 must either reuse a provider-enforced key, reconcile before retry, or produce
 one `outcome_unknown` requiring audited resolution. It must never blindly send
 again. Cutover remains blocked while an old-generation effect is `attempting`
-or an unresolved non-reconcilable effect is unknown.
+or while either side has a live lease, an unadopted pending run, `prepared`,
+retryable `failed`, or delivery-semantics-blocking `outcome_unknown` state.
 
 ### G16 — Table ownership is complete
 
 Compare PostgreSQL schema introspection with the checked ownership manifest.
-Every non-system mutable table has exactly one valid context and write
-interface. A fixture migration that creates or alters an unassigned table fails
-CI; an expired legacy exception also fails.
+Every non-system mutable table has exactly one valid context and one complete,
+non-overlapping set of tagged writer bindings with resolved interfaces. An
+ordinary static table has exactly one runtime; a migrated table may retain a
+named static producer binding while its consumer transitions use exact
+grant-fenced workload bindings, bounded candidate sets, and operation/mode
+rules whose keys exactly match the operation-to-interface map. A catalog
+candidate still fails unless the mutation-time `OwnershipGrant` exactly
+matches workload, runtime owner, generation, and allowed mode. Heartbeat
+evidence has only its restricted self-upsert surface. The gate provisions a
+disposable PostgreSQL schema, applies the real migration chain, introspects
+actual tables/views and `sql:<schema>.<function>` references, and compares that
+result with the manifest and per-table migration annotations; a static fixture
+is bootstrap evidence and cannot satisfy the gate. A fixture migration that
+creates or alters an unassigned table, a source write that bypasses its exact
+operation/interface binding, a wildcard/unbounded candidate set, a policy
+variant containing fields from another variant, raw bootstrap-control DML, or
+an expired legacy exception fails CI.
 
 ### G17 — Durable event age is visible
 
@@ -983,21 +1322,21 @@ when its catalog explicitly allows that behavior.
 
 ## 16. Risks and mitigations
 
-| Risk                                                | Consequence                        | Mitigation                                                                                     |
-| --------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------- |
-| catalogs become documentation only                  | drift returns                      | startup consumes catalogs; mutation and liveness tests prove behavior                          |
-| same-image worker still imports too much            | slow/expensive worker              | lazy entrypoint plus absolute G9/G14 limits                                                    |
-| generic worker framework becomes a platform project | delivery stalls                    | small catalog/runner; migrate one existing queue before adding abstractions                    |
-| external outcome is ambiguous after timeout         | duplicate or missing client action | capability matrix, late fence, reconciliation, or fail to `outcome_unknown` without auto-retry |
-| fan-out migration changes event behavior            | missed/duplicate handlers          | block second subscriber until receipts pass G5                                                 |
-| stale durable event is acknowledged away            | silent work loss                   | per-event replay SLO and quarantine/DLQ under G17                                              |
-| shadow mode accidentally mutates                    | duplicate side effects             | shadow API exposes no claim or effect capability; mutation attempts fail tests                 |
-| direct SQL ratchet is gamed                         | coupling moves rather than shrinks | lexical floor plus semantic review of touched modules and table ownership                      |
-| worker outage is hidden by healthy API              | silent backlog                     | separate heartbeat and oldest-pending-age alerts                                               |
-| companion app deploys a different image             | release skew                       | immutable digest equality and build-SHA promotion gate                                         |
-| worker credentials drift broader                    | cross-context writes               | dedicated app role and effective-grant audit                                                   |
-| boundary work delays product work                   | architecture tax                   | touched-code rule; no mass rewrite; stop after measurable gates are met                        |
-| service extraction happens prematurely              | distributed-monolith cost          | mandatory 30-day extraction gate and owner sign-off                                            |
+| Risk                                                | Consequence                        | Mitigation                                                                                                       |
+| --------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| catalogs become documentation only                  | drift returns                      | startup consumes catalogs; mutation and liveness tests prove behavior                                            |
+| same-image worker still imports too much            | slow/expensive worker              | lazy entrypoint plus absolute G9/G14 limits                                                                      |
+| generic worker framework becomes a platform project | delivery stalls                    | small catalog/runner; migrate one existing queue before adding abstractions                                      |
+| external outcome is ambiguous after timeout         | duplicate or missing client action | capability matrix, late fence, reconciliation, or fail to `outcome_unknown` without auto-retry                   |
+| fan-out migration changes event behavior            | missed/duplicate handlers          | Release-A dual-write/backfill plus old/new matrix; Release-B build-floor/catalog-boundary gate before G5 fan-out |
+| stale durable event is acknowledged away            | silent work loss                   | per-event replay SLO and quarantine/DLQ under G17                                                                |
+| shadow mode accidentally mutates                    | duplicate side effects             | shadow API exposes no claim or effect capability; mutation attempts fail tests                                   |
+| direct SQL ratchet is gamed                         | coupling moves rather than shrinks | lexical floor plus semantic review of touched modules and table ownership                                        |
+| worker outage is hidden by healthy API              | silent backlog                     | separate heartbeat and oldest-pending-age alerts                                                                 |
+| companion app deploys a different image             | release skew                       | immutable digest equality and build-SHA promotion gate                                                           |
+| worker credentials drift broader                    | cross-context writes               | dedicated app role and effective-grant audit                                                                     |
+| boundary work delays product work                   | architecture tax                   | touched-code rule; no mass rewrite; stop after measurable gates are met                                          |
+| service extraction happens prematurely              | distributed-monolith cost          | mandatory 30-day extraction gate and owner sign-off                                                              |
 
 ## 17. Alternatives considered
 
@@ -1071,12 +1410,23 @@ count. The authoritative artifacts are:
 - [GLM 5.2 raw review](../reviews/2026-07-17-backend-modular-kernel-worker-plane/03-glm-5.2-adversarial.md);
 - [orchestrator synthesis and disposition](../reviews/2026-07-17-backend-modular-kernel-worker-plane/99-synthesis.md).
 
-The owner retains the final approval gate. Until that approval, the status is
-`reviewed-draft` and implementation remains unauthorized.
+The owner retains the final approval gate. That gate was exercised by the
+active goal authorizing implementation through all phases, protected merge,
+deployment, heavy production proof, and the later rollback-path deletion
+release, provided scope, digest, provider capability, destructive behavior,
+target environments, and rollback policy remain exactly as reviewed.
 
 ## 20. Approval boundary
 
-Approval of this document authorizes creation of an implementation plan for
-Phases 0-2 only. It does not authorize production deploy, job cutover, event
-schema migration, service extraction, or deletion of rollback paths. Each later
-phase requires its preceding falsifiable exit gates to pass.
+The active goal in Codex task
+`019f6f94-4863-7f62-acc7-16bc5a706f74` authorizes the implementation plan and
+execution of Phases 0-5 on one feature branch, a protected compatibility
+merge/deploy, exact merged-digest staging proof, ordered per-workload
+production cutovers, heavy
+production testing, and a later protected deletion release after all rollback
+windows close. Every later phase and production transition still requires its
+preceding falsifiable exit gates and independent panel to pass. No additional
+operator pause is inserted for unchanged in-scope work. A new approval is
+required only for a changed workload scope, target app/environment, image
+digest, provider capability, destructive migration behavior, service
+extraction, or rollback policy.
