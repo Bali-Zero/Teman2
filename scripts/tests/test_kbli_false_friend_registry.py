@@ -672,3 +672,32 @@ def test_gold_untouched_neighbor_keeps_real_licensing():
     assert "not yet reliably defined" not in (ref.get("whatYouNeed") or "").lower(), (
         "01111 gold was accidentally honest-gapped — the cure is scoped to 49213/50115."
     )
+
+
+# --- Cure-4 (2026-07-17): editorial + l4_bali NON_CLASSIFICABILE for all 8 ---
+
+CURE4_CODES = ["68112", "49213", "51103", "51203", "20111", "50115", "60312", "64310"]
+
+
+@pytest.mark.parametrize("code", CURE4_CODES)
+def test_cure4_l4_bali_non_classificabile_and_editorial_clean(code: str):
+    rec = _load_record(REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json", code)
+    l4 = rec.get("l4_bali") or {}
+    assert l4.get("status") == "NON_CLASSIFICABILE", f"{code}: l4 status regressed"
+    assert l4.get("needs_review") is True
+    assert "Previous status:" in (l4.get("reason") or ""), f"{code}: audit provenance missing"
+    blob = json.dumps(rec.get("intel_2026", {}).get("editorial", {}), ensure_ascii=False)
+    for m in ["OK_or_HIGHER_RISK", "medium-high risk", "Menengah-Tinggi", "Low risk (Rendah)"]:
+        assert m not in blob, f"{code}: collision marker {m!r} back in editorial"
+
+
+def test_cure4_gold_49213_clean_and_neighbor_l4_untouched():
+    gold = json.loads(GOLD_PATH.read_text(encoding="utf-8"))["49213"]
+    blob = json.dumps(gold, ensure_ascii=False)
+    for m in ["Izin Trayek", "AKAP"]:
+        assert m not in blob, f"gold 49213 still asserts {m!r}"
+    assert not re.search(r"\bKIR\b", blob), "gold 49213 still asserts KIR"
+    neighbor = _load_record(REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json", "68124")
+    assert (neighbor.get("l4_bali") or {}).get("status") != "NON_CLASSIFICABILE", (
+        "innocence: 68124 l4 must be untouched by cure-4"
+    )
