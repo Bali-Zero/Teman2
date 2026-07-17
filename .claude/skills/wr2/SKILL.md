@@ -51,8 +51,16 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
 **Open wounds / next targets:**
 
 - **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof NOT yet landed (checked 2026-07-18 05:29 WITA): every topic-selector run 07-07→07-18 logs "live pool empty"; today's top-ranked items — incl. breaking-shaped "Bali Deports Three Foreigners" — all carry `live=0/0.0`. Whether this is expected timing (fresh enricher scores land next scraper cycle post-deploy) or a residual break (enricher not emitting non-zero, or fresh items not carrying fields) is NOT yet distinguished — staging is file-based (not Postgres-queryable) so it needs a dedicated probe. Watch the REAL app log `~/logs/wr2_topic_selector.log` — NOT `.launchd.out.log`, which is empty because the daemon logs via Python logging, not stdout (watching the wrong file = blind receptor, scar #2). Related open item (ledgered): enrichment silent-drop — build_staging_payload sends brief/faq/slug/tags/seo/featured but ScraperSubmission has no such fields → `enrichment: {}` on drafts.
-- **13 unknown_intent** queue entries (complete-or-nothing backfill refused to guess) — need
-  adjudication = re-render from slides.json. · **3 render_incomplete** same family.
+- **~~13 unknown_intent + 3 render_incomplete~~ → RESOLVED, verified 2026-07-18 (growth-loop B).**
+  The live queue (Pro SSOT + M5 mirror, both fresh) has **0 render_incomplete, 0 unknown_intent** —
+  cleared by the daily reconciler + the #2563 `slides_dir`-resolution fix (`unknown_intent` was a
+  reconciler classification, not a persisted state; the "13" was a report count). Genuine
+  resolution proven: 2 live entries carry `render_incomplete → drafted → published` in
+  `state_history`; only 1 render_incomplete was archived. **The real current render-lane residue
+  (a different, lower-urgency backlog — DB `war_room_drafts.status`):** `render_failed`=20
+  (slow-accumulating since 2026-06-09, ~4/wk, 1 in last 3d — not acute), `missed`=17 (one-time
+  2026-06-23), `rendered_shadow`=7 (2026-06-13 test batch). A render-failure sweep, if wanted, is
+  a fresh item — not the (now-closed) queue-stuck one.
 - **fact_check_status "degraded" pipeline-wide** — ROOT-CAUSED 2026-07-18 (growth-loop B4,
   `research/marketing/2026-07-18-wr2-fact-check-degraded-root-cause.md`, Codex-CADE-sharpened):
   NOT a bug — correct fail-closed. The checker verifies each draft against `brief_json`, the
@@ -191,8 +199,9 @@ Regole del loop:
 ```
 
 **Seed backlog for the first loops** (in rough value order): (1) liveness scorer rewire — the
-single highest-leverage fix, unlocks the whole breaking/developing register system; (2)
-fact-check degraded root-cause; (3) unknown_intent/render_incomplete adjudication via re-render;
+single highest-leverage fix, unlocks the whole breaking/developing register system [DONE #2631];
+(2) fact-check degraded root-cause [DONE #2651 + R #2655]; (3) ~~unknown_intent/render_incomplete
+adjudication~~ [DONE — verified resolved 2026-07-18, see §1];
 (4) `--rebrief` official verb; (5) metrics→editorial feedback: use the now-live IG metrics to
 auto-tune topic selection weights; (6) gate log delta-emission; (7) accessibility amendment
 implementation once Zero rules; (8) slide-7 closer layout fix; (9) A/B hook experiments on
