@@ -28,6 +28,7 @@ import argparse
 import json
 import os
 import socket
+import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
@@ -63,6 +64,90 @@ def _core_organs_expected_here() -> tuple[str, ...]:
 DEFAULT_SIDECAR_DIR = os.path.expanduser("~/.organism/last_seen")
 DEFAULT_ALERTS_FILE = os.path.expanduser("~/.organism/alerts/open.jsonl")
 DEFAULT_STALE_DAYS = 7
+
+# Cross-host visibility gap (found 2026-07-17, PENDING-ARMS "infra.eventbus_redis_mini
+# heartbeat frozen"): a handful of organ_ids are TCP-probed and written by a cron that
+# is resident on ANOTHER host, not the machine that owns the organ. The one live case:
+# infra.eventbus_redis_mini is Mini's own redis, but the probe that exercises it lives
+# in launchagent-state-bridge.py's BRIDGED_TCP_PROBES, which is gated to run ONLY on
+# Pro (RESIDENT_HOST) — so the fresh receipt lands in Pro's ~/.organism/last_seen/,
+# never Mini's. Mini's local copy of the sidecar can freeze forever with nothing on
+# Mini able to refresh it, while the organ itself is perfectly healthy. This maps
+# organ_id -> where to read a fresher receipt FROM, keyed by the host that has the
+# blind spot (read-only ssh pull, never a write to the remote host).
+CROSS_HOST_SIDECAR_SOURCES: dict[str, dict[str, str]] = {
+    "infra.eventbus_redis_mini": {
+        "blind_host": "mini-pro2",
+        "ssh_alias": "pro",
+        "remote_path": "~/.organism/last_seen/infra.eventbus_redis_mini.json",
+    },
+}
+# The Pro-side writer refreshes every 300s (launchagent-state-bridge cron cadence) —
+# refresh a bit faster than that so we rarely serve a receipt older than one cycle,
+# but never so fast that a SessionStart hook invocation pays for an ssh round-trip
+# on every single call.
+CROSS_HOST_SYNC_MIN_INTERVAL_SEC = 240.0
+CROSS_HOST_SYNC_TIMEOUT_SEC = 3.0
+
+
+def sync_cross_host_sidecars(
+    sidecar_dir: str = DEFAULT_SIDECAR_DIR,
+    *,
+    sources: dict[str, dict[str, str]] = CROSS_HOST_SIDECAR_SOURCES,
+    min_interval_sec: float = CROSS_HOST_SYNC_MIN_INTERVAL_SEC,
+    timeout_sec: float = CROSS_HOST_SYNC_TIMEOUT_SEC,
+    now: float | None = None,
+    host: str | None = None,
+) -> None:
+    """Best-effort refresh of sidecars whose live writer runs on another host.
+
+    Read-only ssh pull, never a write to the remote host (cicatrix-superscar
+    perimeter). Silently a no-op on ANY failure — unreachable host, timeout, bad
+    JSON, or a local mirror that is already fresh enough — so this never blocks
+    or breaks the SessionStart hot path: scan_sidecars() reports the existing
+    (however stale) local file honestly, same as before this function existed.
+    """
+    this_host = (host or socket.gethostname()).split(".")[0].lower()
+    now = time.time() if now is None else now
+    for organ_id, spec in sources.items():
+        if this_host != spec.get("blind_host"):
+            continue
+        local_path = os.path.join(sidecar_dir, f"{organ_id}.json")
+        try:
+            if os.path.getmtime(local_path) > now - min_interval_sec:
+                continue  # fresh enough — don't hammer ssh every invocation
+        except OSError:
+            pass  # missing sidecar is worth trying to fetch
+        try:
+            result = subprocess.run(
+                [
+                    "ssh",
+                    "-o", "BatchMode=yes",
+                    "-o", f"ConnectTimeout={int(timeout_sec)}",
+                    spec["ssh_alias"],
+                    "cat", spec["remote_path"],
+                ],
+                capture_output=True,
+                text=True,
+                timeout=timeout_sec + 2,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            continue
+        if result.returncode != 0 or not result.stdout.strip():
+            continue
+        try:
+            payload = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            continue
+        try:
+            os.makedirs(sidecar_dir, exist_ok=True)
+            tmp_path = f"{local_path}.tmp.{os.getpid()}"
+            with open(tmp_path, "w", encoding="utf-8") as fh:
+                json.dump(payload, fh, sort_keys=True)
+                fh.write("\n")
+            os.replace(tmp_path, local_path)
+        except OSError:
+            continue
 
 # Statuses that mean "the organ is breathing but reporting trouble".
 UNHEALTHY_STATUSES: frozenset[str] = frozenset({"failed", "fail", "degraded", "error"})
@@ -332,7 +417,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--stale-days", type=float, default=DEFAULT_STALE_DAYS)
     ap.add_argument("--emit", action="store_true", help="write alerts file")
     ap.add_argument("--json", action="store_true", help="machine-readable output")
+    ap.add_argument(
+        "--no-cross-host-sync",
+        action="store_true",
+        help=(
+            "skip the best-effort ssh refresh of cross-host organ sidecars "
+            "(CROSS_HOST_SIDECAR_SOURCES) — for tests/determinism, or a "
+            "network-isolated run"
+        ),
+    )
     args = ap.parse_args(argv)
+
+    if not args.no_cross_host_sync:
+        sync_cross_host_sidecars(args.dir)
 
     findings = scan_sidecars_status(args.dir, stale_days=args.stale_days)
 
