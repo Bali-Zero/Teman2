@@ -1023,6 +1023,57 @@ def _cmd_repair_false_incomplete(apply: bool, exclude_ids: list[str]) -> int:
     return 0
 
 
+async def _rebrief_async(draft_id: str) -> bool:
+    """Open the SAME connection the normal tick opens (DATABASE_URL, asyncpg,
+    timeout=15 — see `run()` above), call the DB-leg verb, and close it. Not a
+    new connection path (scar: one-true-way pg) — just the sibling one-shot to
+    `wr2_rerender_requeue.py`'s DSN pattern, reused here because --rebrief lives
+    on THIS CLI (spec B5), not a standalone script."""
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        raise RuntimeError("DATABASE_URL not set — run where prod PG is reachable (see scripts/pg.sh)")
+
+    import asyncpg
+
+    sys.path.insert(0, str(_REPO / "apps" / "backend-rag"))
+    from backend.services.canva_renderer_v2 import _pg  # noqa: PLC0415
+
+    conn = await asyncpg.connect(dsn, timeout=15)
+    try:
+        return await _pg.rebrief_draft(conn, draft_id)
+    finally:
+        await conn.close()
+
+
+def _cmd_rebrief(draft_id: str, *, dry_run: bool) -> int:
+    """One-shot CLI mode (B5): reset a composed draft back to 'briefed' and
+    atomically clear fact_check_json/status/at + drive_url + html_render_attempts
+    so it recomposes cleanly (remake hygiene). Respects lease + status whitelist
+    (see `_pg.rebrief_draft`); no-op on leased/pre-compose/terminal drafts.
+
+    --dry-run is trivially wired here: it logs the intended action and returns
+    without opening a DB connection at all — it does NOT preview the draft's
+    live status/lease first (that would need an extra SELECT this one-shot
+    doesn't otherwise make; out of scope for this verb, see spec B5 note)."""
+    if dry_run:
+        logger.info(
+            "DRY-RUN: would rebrief draft %s (status->briefed, fact-check trio + "
+            "drive_url + html_render_attempts cleared) — no DB connection opened",
+            draft_id,
+        )
+        return 0
+    try:
+        ok = asyncio.run(_rebrief_async(draft_id))
+    except Exception as exc:  # noqa: BLE001 — connection/env failure, not a refusal
+        logger.error("rebrief: connection/query failed for draft %s: %s", draft_id, exc)
+        return 2
+    if ok:
+        logger.info("rebrief: draft %s reset to briefed (remake hygiene applied)", draft_id)
+        return 0
+    logger.warning("rebrief: draft %s NOT reset (leased, wrong status, or not found)", draft_id)
+    return 1
+
+
 def _cmd_backfill_completeness(apply: bool) -> int:
     """One-shot mode (A3): apply the 3-way completeness classification to
     every non-terminal queue entry. Default dry-run (report only); --apply
@@ -1065,7 +1116,17 @@ def main() -> int:
         help="with --backfill-completeness or --repair-false-incomplete: "
              "actually mutate the queue (default: report only)",
     )
+    parser.add_argument(
+        "--rebrief", metavar="DRAFT_ID",
+        help="one-shot: reset a composed draft back to 'briefed' and atomically "
+             "clear fact_check_json/status/at + drive_url + html_render_attempts "
+             "so it recomposes cleanly (remake hygiene). Respects lease + status "
+             "whitelist; no-op on leased/rejected/briefed. Combine with --dry-run "
+             "to log the intended action without opening a DB connection.",
+    )
     args = parser.parse_args()
+    if args.rebrief:
+        return _cmd_rebrief(args.rebrief, dry_run=args.dry_run)
     if args.repair_false_incomplete:
         return _cmd_repair_false_incomplete(apply=args.apply, exclude_ids=args.exclude_id)
     if args.backfill_completeness:

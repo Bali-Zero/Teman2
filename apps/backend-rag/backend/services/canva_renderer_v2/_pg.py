@@ -10,6 +10,8 @@ Functions:
 - release_lease_permanent(conn, ..., status=...) — set terminal status
 - reset_stale_leases(conn, stale_after_minutes) — watchdog recovery
 - requeue_draft_for_rerender(conn, draft_id) — official re-render verb (DB leg)
+- rebrief_draft(conn, draft_id) — official remake-hygiene verb: reset to 'briefed'
+  + atomically clear fact-check trio + render leg
 """
 
 from __future__ import annotations
@@ -107,6 +109,77 @@ async def requeue_draft_for_rerender(conn: asyncpg.Connection, draft_id: UUID | 
         )
         return False
     logger.info("requeue_draft_for_rerender: draft %s back in HTML lane", draft_id)
+    return True
+
+
+async def rebrief_draft(conn: asyncpg.Connection, draft_id: UUID | str) -> bool:
+    """Official remake-hygiene verb: reset a COMPOSED draft back to 'briefed' so it
+    recomposes cleanly from its existing brief_json, atomically clearing every
+    downstream field a stale draft would otherwise leave dangling. Same W82
+    exist-not-content shape as `requeue_draft_for_rerender` above: the row EXISTS
+    at a later pipeline stage but its content is now stale relative to the fresh
+    recompose the operator wants — the gates below decide who re-runs on it.
+
+    Why each field is cleared (every one gates a downstream worker's fetch):
+    - status = 'briefed': the draft-generator fetches on this status — the draft
+      recomposes from brief_json instead of dragging forward the old slides.
+    - fact_check_json/status/at = NULL: the fact-EXTRACTOR gates on
+      `fact_check_json IS NULL` to decide whether to run. A stale (non-NULL) JSON
+      from the PREVIOUS compose makes it skip — the checker then runs against
+      facts that no longer describe the recomposed content.
+    - drive_url = NULL: the HTML lane's fetch gates on `drive_url IS NULL` — a
+      stale url from a PREVIOUS render starves re-entry forever (identical W82
+      shape to the one `requeue_draft_for_rerender` cures for the render-only leg).
+    - html_render_attempts = 0: a rebrief is a NEW retry budget — carrying a
+      previously-burned attempts counter forward would let the first transient
+      error of the new cycle go terminal (same reasoning as the sibling fn).
+
+    Guards:
+    - CAS on `lease_owner IS NULL`: a draft mid-lane (fact-check/image/render) is
+      never yanked from under its worker.
+    - status whitelist: only drafts that already reached compose-or-later may be
+      rebriefed — a pre-compose draft ('briefed'/'briefed_facted'/'researched'/
+      'concept') is a no-op, it's already at/before this state — and only
+      mid-pipeline or failure-retry states, NEVER a deliberate human/terminal
+      state ('rejected'/'parked'/'published'/'approved'/'pending_review'/
+      'missed'). Every literal below is validated against the
+      `war_room_drafts_status_check` CHECK constraint in
+      migrations_v2/245_war_room_drafts_parked_status.sql — the SSOT — NOT the
+      ORM DraftStatus enum, which is a strict subset (omits drafts_imaged*,
+      drafts_checked, fact_check_failed, image_failed).
+
+    Out of scope: hero-image fields / image lease. Recomposition regenerates
+    slides and the image lane re-runs on the new slides — if a hero-image field
+    also goes stale, that's a follow-up, not this verb's job.
+
+    Returns True when the draft was reset, False (leased, wrong status, or not
+    found) otherwise.
+    """
+    row = await conn.fetchrow(
+        """
+        UPDATE war_room_drafts
+           SET status = 'briefed',
+               fact_check_json = NULL,
+               fact_check_status = NULL,
+               fact_check_at = NULL,
+               drive_url = NULL,
+               html_render_attempts = 0
+         WHERE id = $1
+           AND lease_owner IS NULL
+           AND status IN ('drafts', 'drafts_checked', 'drafts_imaged',
+                           'drafts_imaged_facted', 'drafts_imaged_checked',
+                           'rendering', 'rendered', 'render_failed',
+                           'fact_check_failed', 'image_failed')
+        RETURNING id
+        """,
+        draft_id,
+    )
+    if row is None:
+        logger.warning(
+            "rebrief_draft: draft %s NOT rebriefed (leased or wrong status)", draft_id
+        )
+        return False
+    logger.info("rebrief_draft: draft %s reset to briefed (remake hygiene)", draft_id)
     return True
 
 

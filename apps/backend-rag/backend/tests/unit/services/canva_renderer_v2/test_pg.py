@@ -14,6 +14,7 @@ from backend.services.canva_renderer_v2._pg import (
     is_kill_switch_enabled,
     persist_canva_result,
     persist_html_result_and_enqueue_notifications,
+    rebrief_draft,
     release_lease_permanent,
     release_lease_transient,
     requeue_draft_for_rerender,
@@ -298,3 +299,62 @@ async def test_requeue_rerender_refused_returns_false():
     conn = AsyncMock()
     conn.fetchrow.return_value = None
     assert await requeue_draft_for_rerender(conn, "abc") is False
+
+
+# ── rebrief_draft (B5 remake-hygiene verb) ────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_rebrief_resets_status_and_gate_trio_atomically():
+    """GUILT: a draft in 'drafts_imaged_checked' with a stale fact_check_json,
+    drive_url, and html_render_attempts=3 must come back with ALL of status,
+    the fact-check trio, drive_url, and html_render_attempts reset — in ONE
+    atomic statement (single fetchrow call) — and report True."""
+    conn = AsyncMock()
+    conn.fetchrow.return_value = {"id": "abc"}
+    assert await rebrief_draft(conn, "abc") is True
+    assert conn.fetchrow.call_count == 1  # atomic: one statement, not a sequence of UPDATEs
+    sql = conn.fetchrow.call_args[0][0]
+    # target reset — every field the fact-check trio + render leg gate on
+    assert "SET status = 'briefed'" in sql
+    assert "fact_check_json = NULL" in sql
+    assert "fact_check_status = NULL" in sql
+    assert "fact_check_at = NULL" in sql
+    assert "drive_url = NULL" in sql
+    assert "html_render_attempts = 0" in sql
+    # guards
+    assert "lease_owner IS NULL" in sql
+    assert "status IN (" in sql
+    for literal in (
+        "'drafts'", "'drafts_checked'", "'drafts_imaged'", "'drafts_imaged_facted'",
+        "'drafts_imaged_checked'", "'rendering'", "'rendered'", "'render_failed'",
+        "'fact_check_failed'", "'image_failed'",
+    ):
+        assert literal in sql
+    # never allow a deliberate human/terminal or pre-compose state into the whitelist
+    for excluded in (
+        "'rejected'", "'parked'", "'published'", "'approved'", "'pending_review'",
+        "'missed'", "'briefed_facted'", "'researched'", "'concept'",
+    ):
+        assert excluded not in sql
+    assert conn.fetchrow.call_args[0][1] == "abc"
+
+
+@pytest.mark.asyncio
+async def test_rebrief_refused_when_leased():
+    """INNOCENCE 1: a draft with an active lease_owner must never be yanked
+    mid-lane — the CAS guard filters it out (0 rows), the verb reports False."""
+    conn = AsyncMock()
+    conn.fetchrow.return_value = None
+    assert await rebrief_draft(conn, "abc") is False
+
+
+@pytest.mark.asyncio
+async def test_rebrief_refused_when_wrong_status():
+    """INNOCENCE 2: a 'briefed' draft (pre-compose, already a no-op target) or a
+    'rejected' draft (deliberate terminal) is outside the status whitelist — the
+    guard filters it out (0 rows), the verb reports False, row untouched."""
+    conn = AsyncMock()
+    conn.fetchrow.return_value = None
+    assert await rebrief_draft(conn, "briefed-draft") is False
+    assert await rebrief_draft(conn, "rejected-draft") is False

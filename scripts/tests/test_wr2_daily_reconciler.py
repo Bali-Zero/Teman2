@@ -207,3 +207,59 @@ def test_visibility_dry_run_touches_nothing(tmp_path, monkeypatch):
     monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
     assert rec._verify_visibility_or_backfill(_rendered_row("d-dry"), dry_run=True) == "dry_run"
     assert not (tmp_path / "queue" / "human-review-queue.json").exists()
+
+
+# ── --rebrief one-shot CLI dispatch (B5 remake-hygiene verb) ─────────────────
+
+
+def test_cmd_rebrief_dry_run_skips_connection(monkeypatch):
+    """--dry-run must not open a DB connection at all — the trivial-wiring
+    scope documented in _cmd_rebrief's docstring."""
+
+    async def _boom(_draft_id):
+        raise AssertionError("dry-run must not call _rebrief_async")
+
+    monkeypatch.setattr(rec, "_rebrief_async", _boom)
+    assert rec._cmd_rebrief("abc-123", dry_run=True) == 0
+
+
+def test_cmd_rebrief_success_returns_zero(monkeypatch):
+    async def _fake(draft_id):
+        assert draft_id == "abc-123"
+        return True
+
+    monkeypatch.setattr(rec, "_rebrief_async", _fake)
+    assert rec._cmd_rebrief("abc-123", dry_run=False) == 0
+
+
+def test_cmd_rebrief_refused_returns_one(monkeypatch):
+    """INNOCENCE (leased/wrong-status/not-found, per rebrief_draft's False path)
+    surfaces as exit 1 — distinct from a connection/env failure (exit 2)."""
+
+    async def _fake(_draft_id):
+        return False
+
+    monkeypatch.setattr(rec, "_rebrief_async", _fake)
+    assert rec._cmd_rebrief("abc-123", dry_run=False) == 1
+
+
+def test_cmd_rebrief_connection_failure_returns_two(monkeypatch):
+    async def _fake(_draft_id):
+        raise RuntimeError("DATABASE_URL not set")
+
+    monkeypatch.setattr(rec, "_rebrief_async", _fake)
+    assert rec._cmd_rebrief("abc-123", dry_run=False) == 2
+
+
+def test_main_dispatches_rebrief_before_normal_tick(monkeypatch):
+    """--rebrief must short-circuit main() before the normal decide()/run() tick —
+    same dispatch shape as --repair-false-incomplete / --backfill-completeness."""
+    calls = []
+    monkeypatch.setattr(
+        rec,
+        "_cmd_rebrief",
+        lambda draft_id, *, dry_run: calls.append((draft_id, dry_run)) or 0,
+    )
+    monkeypatch.setattr(sys, "argv", ["wr2_daily_reconciler.py", "--rebrief", "abc-123"])
+    assert rec.main() == 0
+    assert calls == [("abc-123", False)]
