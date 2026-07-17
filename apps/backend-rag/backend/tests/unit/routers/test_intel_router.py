@@ -398,3 +398,47 @@ class TestGetPendingQueueSelfHealing:
         test_client, _conn = _client_with_auth(mock_services)
         response = test_client.get("/api/intel/post-publish-queue/pending")
         assert response.status_code == 401
+
+
+# ── mark_step_done ──────────────────────────────────────────────────────────
+#
+# Regression coverage for the "could not determine data type of parameter $2"
+# 500 (Fly prod log, reproduced live): `jsonb_build_object($2, true)` gives
+# asyncpg/Postgres nothing to infer $2's type from in that position. Fix casts
+# it explicitly: `jsonb_build_object($2::text, true)`. These tests pin the
+# cast in the executed SQL text (mocked connection, no real DB — see
+# `_client_with_auth` above) and confirm the endpoint returns 200/401 as
+# expected.
+
+
+class TestMarkStepDone:
+    def test_step_done_casts_param_and_returns_200(self, mock_services):
+        from backend.app.routers import intel as intel_router_module
+
+        intel_router_module.settings.intel_scraper_api_key = "test-key"
+        test_client, conn = _client_with_auth(mock_services)
+
+        response = test_client.post(
+            "/api/intel/post-publish-queue/step-done",
+            headers={"X-API-Key": "test-key"},
+            json={"slug": "test-article", "step": "hero_image"},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"ok": True, "slug": "test-article", "step": "hero_image"}
+
+        conn.execute.assert_awaited_once()
+        executed_sql = conn.execute.await_args_list[0].args[0]
+        assert "jsonb_build_object($2::text, true)" in executed_sql
+
+    def test_unauthorized_without_api_key(self, mock_services):
+        from backend.app.routers import intel as intel_router_module
+
+        intel_router_module.settings.intel_scraper_api_key = "test-key"
+        test_client, _conn = _client_with_auth(mock_services)
+
+        response = test_client.post(
+            "/api/intel/post-publish-queue/step-done",
+            json={"slug": "test-article", "step": "hero_image"},
+        )
+        assert response.status_code == 401
