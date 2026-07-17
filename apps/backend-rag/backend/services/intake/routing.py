@@ -507,6 +507,11 @@ async def _match_sender_phone(
     ]
 
 
+# Cap the folder segments probed per document — bounds the 2×N fuzzy round-trips
+# (a Drive path can nest arbitrarily; the client folder is always in the top few).
+_MAX_FOLDER_SEGMENTS = 8
+
+
 def _clean_one_segment(seg: str) -> str | None:
     """Strip human folder decorations from ONE path segment → a matchable name.
 
@@ -517,7 +522,9 @@ def _clean_one_segment(seg: str) -> str | None:
     seg = re.sub(r"\([^)]*\)", " ", seg)        # drop parenthetical suffixes
     seg = re.sub(r"[#@_*\[\]{}!]+", " ", seg)   # drop decoration characters
     seg = re.sub(r"\s+", " ", seg).strip()
-    if len(seg) < 3 or not re.search(r"[A-Za-z]", seg):
+    # reject <3 chars or alpha-less — Unicode-aware so Cyrillic/Arabic/CJK client
+    # names (Russian/Ukrainian clients) are NOT dropped as "alpha-less".
+    if len(seg) < 3 or not any(ch.isalpha() for ch in seg):
         return None
     return seg
 
@@ -550,7 +557,7 @@ def _folder_segments(value: Any) -> list[str]:
         return []
     parts = str(value).split("/")
     if parts:  # strip the file extension on the leaf segment only
-        parts[-1] = re.sub(r"\.[A-Za-z0-9]{1,5}$", "", parts[-1])
+        parts[-1] = re.sub(r"\.[A-Za-z0-9]{1,7}$", "", parts[-1])
     out: list[str] = []
     seen: set[str] = set()
     for part in parts:
@@ -558,6 +565,8 @@ def _folder_segments(value: Any) -> list[str]:
         if cleaned and cleaned.lower() not in seen:
             seen.add(cleaned.lower())
             out.append(cleaned)
+        if len(out) >= _MAX_FOLDER_SEGMENTS:  # cap the fuzzy round-trips per doc
+            break
     return out
 
 
@@ -569,28 +578,52 @@ async def _match_folder_name(
     Fuzzy (pg_trgm) against ``clients.full_name`` AND ``companies.company_name`` for
     each folder segment (m227 fix 2026-07-18: was root-segment-only, blind to Drive's
     deep hierarchy). Only a similarity >= FUZZY_APPLY_THRESHOLD counts as a transport
-    hint (a weak folder sim is noise). Candidates are deduped by (table, id) keeping
-    the best-scoring segment; one clear winner → a single CONF_FOLDER_MATCH candidate;
-    top-2 (distinct clients) inside the ambiguity margin → both returned so the
-    decision matrix degrades to AMBIGUOUS rather than guessing. NEVER auto-attaches
-    (folder = transport hint, human confirms — 2026-05-17 identity-hallucination scar).
+    hint (a weak folder sim is noise).
+
+    Two-level disambiguation (the AMBIGUITY_MARGIN is a WITHIN-segment tool — scores
+    from different segments are not comparable): (1) each segment resolves to ONE
+    winner, unless its own top-2 are DISTINCT clients within the margin (a homonym
+    folder) → both kept; (2) winners are unioned and deduped by (table, id) keeping the
+    best score. If the union names ONE distinct entity → a single CONF_FOLDER_MATCH
+    LINK_CANDIDATE; if it names ≥2 DISTINCT entities (homonyms, OR two different client
+    folders in one path) → the top-2 are returned so the decision matrix degrades to
+    AMBIGUOUS rather than silently picking the higher-scoring segment. Favouring
+    AMBIGUOUS (human disambiguates) over a confident single pick is the safe direction
+    for a NEVER-auto signal (2026-05-17 identity-hallucination scar; a wrong attach is
+    worse than an unattached doc).
     """
     segments = _folder_segments(source_path)
     if not segments:
         return []
 
-    best: dict[tuple[str, Any], dict[str, Any]] = {}
+    # (1) per-segment winners — the margin disambiguates homonyms WITHIN a segment.
+    seg_winners: list[dict[str, Any]] = []
     for name in segments:
         merged = await _match_fuzzy_name(conn, "clients", "full_name", name)
         merged += await _match_fuzzy_name(conn, "companies", "company_name", name)
-        for c in merged:
-            if c["score"] < FUZZY_APPLY_THRESHOLD:
-                continue
-            key = (c["table"], c["id"])
-            if key not in best or c["score"] > best[key]["score"]:
-                cc = dict(c)
-                cc["matched_value"] = name
-                best[key] = cc
+        usable = [c for c in merged if c["score"] >= FUZZY_APPLY_THRESHOLD]
+        if not usable:
+            continue
+        usable.sort(key=lambda c: c["score"], reverse=True)
+        winners = [usable[0]]
+        # a homonym folder: two DISTINCT entities matched within the margin → keep both.
+        if (
+            len(usable) >= 2
+            and (usable[1]["table"], usable[1]["id"]) != (usable[0]["table"], usable[0]["id"])
+            and usable[0]["score"] - usable[1]["score"] < AMBIGUITY_MARGIN
+        ):
+            winners.append(usable[1])
+        for w in winners:
+            ww = dict(w)
+            ww["matched_value"] = name
+            seg_winners.append(ww)
+
+    # (2) union across segments, dedup by entity keeping the best-scoring segment.
+    best: dict[tuple[str, Any], dict[str, Any]] = {}
+    for c in seg_winners:
+        key = (c["table"], c["id"])
+        if key not in best or c["score"] > best[key]["score"]:
+            best[key] = c
     if not best:
         return []
 
@@ -604,7 +637,8 @@ async def _match_folder_name(
             "folder_sim": c["score"],
         }
 
-    if len(ranked) >= 2 and ranked[0]["score"] - ranked[1]["score"] < AMBIGUITY_MARGIN:
+    # ≥2 DISTINCT entities anywhere in the path → AMBIGUOUS (never guess); else single.
+    if len(ranked) >= 2:
         return [_as_hint(ranked[0]), _as_hint(ranked[1])]
     return [_as_hint(ranked[0])]
 
