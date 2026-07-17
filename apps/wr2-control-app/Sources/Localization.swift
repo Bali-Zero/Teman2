@@ -205,6 +205,17 @@ enum L10n {
         "detail.openIG":       [.it: "Apri su Instagram",                              .id: "Buka di Instagram"],
         "detail.critic":       [.it: "Controllo qualità",                              .id: "Pemeriksaan kualitas"],
         "detail.close":        [.it: "Chiudi",                                          .id: "Tutup"],
+        // external post registration (§A, 2026-07-17) — a post published OUTSIDE the app
+        "externalPost.button":    [.it: "Aggiungi post esterno",                            .id: "Tambah post eksternal"],
+        "externalPost.title":     [.it: "Registra un post pubblicato fuori dall'app",        .id: "Daftarkan post yang diterbitkan di luar app"],
+        "externalPost.urlLabel":  [.it: "URL Instagram",                                     .id: "URL Instagram"],
+        "externalPost.topicLabel":[.it: "Titolo / argomento",                                .id: "Judul / topik"],
+        "externalPost.dateLabel": [.it: "Data di pubblicazione",                             .id: "Tanggal publikasi"],
+        "externalPost.imagesLabel":[.it: "Immagini (opzionale)",                             .id: "Gambar (opsional)"],
+        "externalPost.pickImages":[.it: "Scegli immagini",                                   .id: "Pilih gambar"],
+        "externalPost.imagesCount":[.it: "%d immagine/i selezionate",                        .id: "%d gambar dipilih"],
+        "externalPost.save":      [.it: "Salva",                                             .id: "Simpan"],
+        "externalPost.saved":     [.it: "Post registrato ✓",                                 .id: "Post terdaftar ✓"],
         // gallery sort + result badges (Task 6)
         "gallery.sort.viral":        [.it: "Più condivisi",   .id: "Paling dibagikan"],
         "gallery.sort.recent":       [.it: "Più recenti",     .id: "Terbaru"],

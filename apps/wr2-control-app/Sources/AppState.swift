@@ -715,6 +715,71 @@ final class AppState: ObservableObject {
         }
     }
 
+    // MARK: - External post registration (§A, 2026-07-17 — "aggiungi upload e URL di
+    // un post che abbiamo fatto e non obbligatoriamente passato per la app")
+
+    /// Register a manually-published Instagram post that bypassed the WR2 pipeline
+    /// entirely — no drafted carousel ever existed for it. Validates the URL/topic
+    /// (ExternalPostRegistration, pure), optionally copies+converts picked images to
+    /// PNG under `<root>/carousel/external-<date>-<slug>/slides/` (numeric naming so
+    /// WarRoom's existing cover/scan logic just works — that logic only recognizes
+    /// `.png`, so a JPG pick is re-encoded, not just renamed), then appends the queue
+    /// entry via `QueueWriter.addExternalPost` (throws on validation failure or
+    /// duplicate URL/id — refused, not silently ignored) and refreshes the gallery so
+    /// the new card appears immediately, matching `importCarousel`'s idiom.
+    func addExternalPost(igURLRaw: String, topicRaw: String, publishDate: Date,
+                         images: [URL], lang: LanguageManager) throws {
+        let url = try ExternalPostRegistration.canonicalizeInstagramURL(igURLRaw)
+        let topic = try ExternalPostRegistration.validateTopic(topicRaw)
+        let slug = CarouselIO.safeSlug(topic)
+        guard slug.isEmpty == false else { throw ExternalPostRegistration.ValidationError.emptyTopic }
+
+        var carouselPath: String?
+        var slideCount = 0
+        if images.isEmpty == false {
+            let dirName = ExternalPostRegistration.carouselDirName(publishDate: publishDate, slug: slug)
+            let dir = WarRoom.carouselRoot().appendingPathComponent(dirName, isDirectory: true)
+            let slidesDir = dir.appendingPathComponent("slides", isDirectory: true)
+            try FileManager.default.createDirectory(at: slidesDir, withIntermediateDirectories: true)
+            for (i, src) in images.enumerated() {
+                let dest = slidesDir.appendingPathComponent(String(format: "%02d.png", i + 1))
+                try Self.writeImageAsPNG(from: src, to: dest)
+            }
+            slideCount = images.count
+            carouselPath = "~/nuzantara/apps/war-room/output/carousel/\(dirName)/"
+        }
+
+        let entry = ExternalPostRegistration.buildQueueEntry(
+            instagramURL: url, topic: topic, slug: slug, publishDate: publishDate,
+            slideCount: slideCount, carouselPath: carouselPath)
+        try QueueWriter.addExternalPost(queueFile: WarRoom.queueFile(), entry: entry)
+        refreshFromDisk()
+        notice("✓ " + lang.t("externalPost.saved"))
+    }
+
+    /// Copy `src` to `dest` as PNG. A `.png` source is a plain file copy; any other
+    /// image type (JPG etc., per §A's "PNG/JPG" acceptance) is decoded and re-encoded
+    /// via NSImage/NSBitmapImageRep — `WarRoom.slidePNGs` filters strictly on `.png`
+    /// extension, so a bytes-only rename would silently vanish from the slide count.
+    private static func writeImageAsPNG(from src: URL, to dest: URL) throws {
+        if FileManager.default.fileExists(atPath: dest.path) {
+            try FileManager.default.removeItem(at: dest)
+        }
+        if src.pathExtension.lowercased() == "png" {
+            try FileManager.default.copyItem(at: src, to: dest)
+            return
+        }
+        guard let image = NSImage(contentsOf: src),
+              let tiff = image.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:]) else {
+            throw NSError(domain: "AppState", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "Non riesco a leggere l'immagine: \(src.lastPathComponent)"
+            ])
+        }
+        try png.write(to: dest)
+    }
+
     // MARK: - Disk refresh (gallery + queue)
 
     func refreshFromDisk() {
