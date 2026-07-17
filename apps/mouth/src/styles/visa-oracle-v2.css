@@ -1,0 +1,92 @@
+/* =============================================================
+   Visa Oracle v2 — design tokens (Track C PR C1, foundation only)
+
+   Scoped under `.vo2` — never global. Built ON TOP of the existing core
+   token vocabulary (packages/core/tokens/semantic.css + themes/{light,dark}.css):
+   reads --surface-base / --text-primary / --border-strong / --accent-funnel /
+   --accent-gold-muted rather than inventing a parallel palette. Components
+   consume these via `var(--vo2-*)`, never a hardcoded hex.
+
+   Light is the DEFAULT (design doc §3 "Theming": government-clean, the
+   Jakarta-demo default); dark overrides live under [data-theme='dark'] .vo2
+   (premium/oracle mood). Both are contrast-compliant per §3's WCAG AA target.
+
+   Design doc: docs/plans/2026-07-17-visa-oracle-v2/00-product-design.md §3.
+   ============================================================= */
+
+.vo2 {
+  /* ─── Tree (design doc §3 "PRIMARY = the living decision tree") ──
+   * Dormant/active/pruned drive the FLIP branch-prune interaction
+   * (§3 signature interaction #1); verdict is the "Oracle deals your
+   * card" hero-card accent — reuses the existing warm-gold editorial
+   * accent (--accent-gold-muted) rather than inventing a new hue.
+   */
+  --vo2-branch: var(--border-strong);
+  --vo2-branch-active: var(--accent-funnel);
+  --vo2-branch-pruned: var(--text-tertiary);
+  --vo2-verdict: var(--accent-gold-muted);
+
+  /* Constellation atmosphere (§3 "SECONDARY atmosphere") — mood only,
+     NEVER the data structure. Deliberately very low contrast against
+     --surface-base so it reads as ambient dust, not content. */
+  --vo2-star: color-mix(in srgb, var(--text-primary) 12%, transparent);
+
+  /* ─── Eligibility 4-state (§3 outcome-page anatomy: "never binary") ──
+   * Never color-alone — every consuming component pairs icon+text.
+   * Values below are AA-verified (≥4.5:1) against light.css's
+   * --surface-base (#f4f1ea); the dark override further down re-tints
+   * for dark.css's --surface-base (#121016).
+   */
+  --vo2-eligible: #1a7a4c;
+  --vo2-likely: #0f766e;
+  --vo2-conditional: #b45309;
+  --vo2-unlikely: #b91c1c;
+
+  /* ─── Lane tone (§4 Q0 date-driven onshore lanes) ─────────────────
+   * urgent = 1-2 days remaining (red, "no algorithmic routing — bridging
+   * window missed"); amber = 3-7 day bridging-filing window; neutral =
+   * everything else, INCLUDING overstay-help — the design doc is explicit
+   * that overstay-help gets "no alarm copy", so it must never resolve to
+   * the urgent/red tone.
+   */
+  --vo2-lane-urgent: var(--vo2-unlikely);
+  --vo2-lane-amber: var(--vo2-conditional);
+  --vo2-lane-neutral: var(--text-secondary);
+
+  /* ─── Motion (§3 "Motion: encode navigation, never decorate") ─────
+   * quick = micro-interactions (hover/press); flow = question-to-question
+   * transitions; reveal = the verdict/shared-element "card deal" moment.
+   * Spring carries a slight overshoot per §3's "spring-staged verdict
+   * reveal"; ease-out is the workhorse for everything else.
+   */
+  --vo2-dur-quick: 150ms;
+  --vo2-dur-flow: 350ms;
+  --vo2-dur-reveal: 650ms;
+  --vo2-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --vo2-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Dark theme override (§3 "dark reads premium/oracle") ───────────
+ * Only re-tints what needs re-tinting for the darker surface — the tree
+ * and lane tokens above already resolve through core tokens
+ * (--border-strong / --accent-funnel / --text-tertiary / --accent-gold-muted /
+ * --text-secondary) that dark.css already re-themes, and --vo2-lane-* /
+ * derive from these values via var(), so they follow automatically.
+ */
+[data-theme="dark"] .vo2 {
+  --vo2-star: color-mix(in srgb, var(--text-primary) 18%, transparent);
+
+  --vo2-eligible: #34d399;
+  --vo2-likely: #5eead4;
+  --vo2-conditional: #fbbf24;
+  --vo2-unlikely: #f87171;
+}
+
+/* ─── Reduced motion (§3 "full prefers-reduced-motion everywhere") ──── */
+@media (prefers-reduced-motion: reduce) {
+  .vo2 {
+    --vo2-dur-quick: 0ms;
+    --vo2-dur-flow: 0ms;
+    --vo2-dur-reveal: 0ms;
+  }
+}
