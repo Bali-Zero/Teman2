@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from backend.services.canva_renderer_v2._pg import (
+    REBRIEF_STATUS_WHITELIST,
     acquire_html_lease_and_fetch,
     acquire_lease_and_fetch,
     fetch_pending_html_draft_ids,
@@ -322,6 +323,12 @@ async def test_rebrief_resets_status_and_gate_trio_atomically():
     assert "fact_check_at = NULL" in sql
     assert "drive_url = NULL" in sql
     assert "html_render_attempts = 0" in sql
+    # stale Canva refs (Codex red-team B5 FIX 2): a remade draft must not carry
+    # the PREVIOUS generation's Canva design forward
+    assert "canva_design_id = NULL" in sql
+    assert "canva_edit_url = NULL" in sql
+    assert "canva_view_url = NULL" in sql
+    assert "canva_applied_at = NULL" in sql
     # guards
     assert "lease_owner IS NULL" in sql
     assert "status IN (" in sql
@@ -358,3 +365,15 @@ async def test_rebrief_refused_when_wrong_status():
     conn.fetchrow.return_value = None
     assert await rebrief_draft(conn, "briefed-draft") is False
     assert await rebrief_draft(conn, "rejected-draft") is False
+
+
+def test_rebrief_status_whitelist_is_the_exact_ten_literals():
+    """Single-source contract: the exported whitelist (consumed by the CLI
+    dry-run preview in wr2_daily_reconciler.py) must be EXACTLY the 10
+    mid-pipeline/failure-retry states — no drift between the SQL and the
+    Python-side classifier that mirrors it (cicatrix #9)."""
+    assert set(REBRIEF_STATUS_WHITELIST) == {
+        "drafts", "drafts_checked", "drafts_imaged", "drafts_imaged_facted",
+        "drafts_imaged_checked", "rendering", "rendered", "render_failed",
+        "fact_check_failed", "image_failed",
+    }
