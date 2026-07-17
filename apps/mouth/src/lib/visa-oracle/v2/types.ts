@@ -91,6 +91,19 @@ export interface Assumption {
 }
 
 /**
+ * Fail-closed date validation (Codex sol review F2, 2026-07-17). An
+ * ISO-shaped-but-invalid date (e.g. "2026-99-99", "2026-02-30") must never
+ * silently resolve to a lane — `answer()` instead leaves the state
+ * UNCHANGED and records this, so the UI can show an inline "Please check
+ * the date" message. Cleared on the next successfully-processed `answer()`
+ * call (any question, not just the one that failed).
+ */
+export interface ValidationError {
+  qid: string;
+  message: I18nText;
+}
+
+/**
  * Q0 date-driven onshore lanes (design doc §4 table). `plan` covers the
  * "60+ days" row (named for its "Convert / Extend (planned)" UI tone).
  */
@@ -106,6 +119,9 @@ export interface InterviewState {
   assumptions: Assumption[];
   currentQuestionId: string | null;
   lane?: Lane;
+  /** Set by `answer()` on a fail-closed invalid date; cleared on the next
+   * successfully-processed answer. See `ValidationError` above. */
+  validationError?: ValidationError;
 }
 
 export interface MockPrice {

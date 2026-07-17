@@ -25,6 +25,7 @@ import type {
   Lane,
   MockOutcome,
   QuestionOption,
+  ValidationError,
 } from "./types";
 
 // ────────────────────────────────────────────────────────────────────────
@@ -331,18 +332,71 @@ export function createInterview(): InterviewState {
   };
 }
 
-function isIsoDate(value: unknown): value is string {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+const ISO_DATE_SHAPE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Fail-CLOSED calendar-date validation (Codex sol review F2). ISO-*shaped*
+ * strings that don't name a real calendar day — "2026-99-99" (out-of-range
+ * month/day), "2026-02-30" (Feb has 28/29 days) — must be rejected, not
+ * silently accepted and later handed to `computeLane` as NaN. Round-trips
+ * the parsed y/m/d through the LOCAL `Date` constructor (never
+ * `Date.parse`/UTC) and checks the constructed date reports back the same
+ * y/m/d — `Date`'s constructor otherwise normalizes out-of-range fields
+ * (e.g. month 13 rolls into the next year) instead of rejecting them.
+ */
+function isValidCalendarDateString(value: unknown): value is string {
+  if (typeof value !== "string" || !ISO_DATE_SHAPE.test(value)) return false;
+  const [y, m, d] = value.split("-").map(Number);
+  const parsed = new Date(y, m - 1, d);
+  return (
+    parsed.getFullYear() === y &&
+    parsed.getMonth() === m - 1 &&
+    parsed.getDate() === d
+  );
 }
 
-function daysBetween(fromISO: string, toISO: string): number {
-  const from = Date.parse(`${fromISO}T00:00:00Z`);
-  const to = Date.parse(`${toISO}T00:00:00Z`);
-  return Math.round((to - from) / (1000 * 60 * 60 * 24));
+/**
+ * Parses a validated `YYYY-MM-DD` string as LOCAL midnight (never UTC —
+ * `new Date(y, m-1, d)` uses the runtime's local timezone by construction).
+ * Callers must validate with `isValidCalendarDateString` first; this never
+ * runs on unvalidated input.
+ */
+function parseLocalDate(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
 }
 
-function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+/** Truncates a `Date` to LOCAL midnight of the same local calendar day. */
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/**
+ * Whole local calendar days between two already-local-midnight `Date`s.
+ * Local-time throughout (Codex sol review F1) — the previous implementation
+ * parsed both operands as UTC via `Date.parse(iso + "T00:00:00Z")`, which
+ * silently off-by-ones the result whenever the caller's local timezone
+ * offset moves the calendar day relative to UTC (e.g. any hour before
+ * 08:00 local at UTC+8 is still "yesterday" in UTC).
+ */
+function daysBetweenLocal(
+  fromLocalMidnight: Date,
+  toLocalMidnight: Date,
+): number {
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  return Math.round(
+    (toLocalMidnight.getTime() - fromLocalMidnight.getTime()) / MS_PER_DAY,
+  );
+}
+
+function invalidDateValidationError(qid: string): ValidationError {
+  return {
+    qid,
+    message: {
+      en: "Please check the date — that doesn't look like a real date.",
+      id: "Periksa kembali tanggalnya — tanggal tersebut tampaknya tidak valid.",
+    },
+  };
 }
 
 /**
@@ -388,25 +442,51 @@ export function nextQuestion(state: InterviewState): InterviewQuestion | null {
 
 /**
  * Records an answer. Never mutates `state` — returns a new InterviewState.
- * When answering the expiry-date question, also derives `lane` (wall-clock
- * dependent by necessity; `computeLane()` itself stays pure and is what
- * the test suite exercises directly for boundary behavior). A non-ISO key
- * (e.g. the date question's "unknown" skip sentinel) resolves to the most
- * conservative lane, `urgent-review`, rather than throwing.
+ *
+ * `today` (Codex sol review F1) defaults to LOCAL midnight "now" but is an
+ * explicit parameter threaded through the whole date-lane call chain, so
+ * `answer()` stays testable/pure w.r.t. the wall clock — tests inject a
+ * fixed `Date` instead of depending on when the suite happens to run.
+ * `computeLane()` itself was always pure (plain `daysRemaining: number`)
+ * and is unchanged; only the day-counting that FEEDS it was impure/UTC.
+ *
+ * When answering the expiry-date question with the "unknown" skip
+ * sentinel, this resolves to the most conservative lane, `urgent-review`,
+ * same as before. Any OTHER value must now be a genuinely valid calendar
+ * date (Codex sol review F2, fail-CLOSED): an ISO-shaped-but-invalid date
+ * ("2026-99-99", "2026-02-30") does NOT advance state — `answer()` returns
+ * the state unchanged except for a `validationError` describing the
+ * problem, and `computeLane` is never reached with a NaN/garbage input.
+ * A prior `validationError` is cleared on any subsequent call that DOES
+ * successfully process (this or any other question).
  */
 export function answer(
   state: InterviewState,
   qid: string,
   key: string,
+  today: Date = startOfLocalDay(new Date()),
 ): InterviewState {
+  const isDateQuestion = qid === Q0_EXPIRY_DATE.id;
+  const isSkipSentinel = key === Q0_EXPIRY_DATE.skipAssumption?.key;
+
+  if (isDateQuestion && !isSkipSentinel && !isValidCalendarDateString(key)) {
+    return {
+      ...state,
+      validationError: invalidDateValidationError(qid),
+    };
+  }
+
   const nextAnswers = { ...state.answers, [qid]: key };
   const nextAssumptions = state.assumptions.filter((a) => a.qid !== qid);
 
   let lane = state.lane;
-  if (qid === Q0_EXPIRY_DATE.id) {
-    lane = isIsoDate(key)
-      ? computeLane(daysBetween(todayISO(), key))
-      : "urgent-review";
+  if (isDateQuestion) {
+    // isSkipSentinel is the only remaining non-valid-date case reachable
+    // here — the fail-closed guard above already returned early on any
+    // other invalid input, so computeLane() never sees NaN.
+    lane = isSkipSentinel
+      ? "urgent-review"
+      : computeLane(daysBetweenLocal(today, parseLocalDate(key)));
   }
 
   const next: InterviewState = {
@@ -414,6 +494,7 @@ export function answer(
     assumptions: nextAssumptions,
     currentQuestionId: null,
     lane,
+    validationError: undefined,
   };
   next.currentQuestionId = nextQuestion(next)?.id ?? null;
   return next;
@@ -422,15 +503,20 @@ export function answer(
 /**
  * "Not sure?" affordance (design doc §3). Only meaningful on questions
  * that declare `skipAssumption` (date + RW_DURATION in this PR) — a no-op
- * on any other question id, so it is always safe to call.
+ * on any other question id, so it is always safe to call. `today` (F1)
+ * forwards through to `answer()` for the same testability reason.
  */
-export function skip(state: InterviewState, qid: string): InterviewState {
+export function skip(
+  state: InterviewState,
+  qid: string,
+  today: Date = startOfLocalDay(new Date()),
+): InterviewState {
   const question = QUESTIONS_BY_ID[qid];
   if (!question?.skipAssumption) {
     return state;
   }
   const assumedKey = question.skipAssumption.key;
-  const answered = answer(state, qid, assumedKey);
+  const answered = answer(state, qid, assumedKey, today);
   const newAssumption: Assumption = { qid, assumedKey };
   return {
     ...answered,

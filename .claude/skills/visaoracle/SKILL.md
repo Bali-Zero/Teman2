@@ -107,7 +107,7 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
   dispositions). Calling-visa corrected 8→7 (live-verified). Bridging ≥3-day interview-lane correction
   recorded.
 - 2026-07-17: TRACK B claimed by Mini/2026-07-17 — content program active in worktree `research-visa-content` (lane research). FASE 1 in flight: Bridging Visa branch profile + D7A/D7B close-out + diaspora-index coverage check (per PR #2602 bonifica report Table 2). FASE 2 (7 interview categories) gated on PR #2602 merge.
-- 2026-07-17: TRACK C claimed by Pro/2026-07-17 — experience track active in worktree `mouth-visa-experience` (lane mouth). PR C1: vo2 design tokens + mock interview model + `/visa/v2` prototype route (noindex, mock-only; engine wiring deferred until PR1 engine contracts land on main).
+- 2026-07-17: TRACK C claimed by Pro/2026-07-17 — experience track active in worktree `mouth-visa-experience-c1` (lane mouth; relocated from `mouth-visa-experience` after a twin-session filesystem race — twin's untracked work at `apps/mouth/src/app/(visa-oracle)/` left intact, candidate salvage for PR C2 once that session ends). PR C1: vo2 design tokens + mock interview model + `/visa-v2` prototype route (noindex, mock-only; engine wiring deferred until PR1 engine contracts land on main). C1 diff passed independent Codex GPT-5.6-sol review (6 P1 findings, all fixed in-PR).
 
 ## PENDING (W81 ledger, project-scoped)
 

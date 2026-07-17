@@ -44,6 +44,91 @@ describe("computeLane", () => {
   });
 });
 
+describe("answer — local-time date lane routing (Codex sol review F1 regression)", () => {
+  it("routes a date exactly 7 LOCAL days ahead to bridging-urgent, regardless of the hour of `today`", () => {
+    // Reviewer's exact bug report: at 00:30 UTC+8, an expiry seven local
+    // days away was counted as eight days by a UTC-based `today` and
+    // mis-routed to extend-convert instead of bridging-urgent. Local-time
+    // day-counting must be invariant to the WALL-CLOCK HOUR of `today` —
+    // only the local calendar day matters. `new Date(y, m, d, h, min)`
+    // constructs a genuinely local Date in the test runner's own
+    // timezone, so this exercises the same local/UTC divergence class of
+    // bug the report describes, independent of which timezone CI runs in.
+    for (const hour of [0, 0.5, 6, 12, 18, 23.98]) {
+      const wholeHour = Math.floor(hour);
+      const minute = Math.round((hour - wholeHour) * 60);
+      const today = new Date(2026, 6, 17, wholeHour, minute);
+
+      let state = createInterview();
+      state = answer(state, Q0_IN_INDONESIA.id, "yes", today);
+      state = answer(state, Q0_EXPIRY_DATE.id, "2026-07-24", today);
+
+      expect(state.lane).toBe("bridging-urgent");
+    }
+  });
+
+  it("draws the bridging-urgent/extend-convert boundary at exactly 7 vs 8 local days, using local Date construction throughout", () => {
+    const today = new Date(2026, 6, 17, 0, 30); // 00:30 local, the report's exact repro hour
+    let s7 = createInterview();
+    s7 = answer(s7, Q0_IN_INDONESIA.id, "yes", today);
+    s7 = answer(s7, Q0_EXPIRY_DATE.id, "2026-07-24", today); // 7 local days ahead
+    expect(s7.lane).toBe("bridging-urgent");
+
+    let s8 = createInterview();
+    s8 = answer(s8, Q0_IN_INDONESIA.id, "yes", today);
+    s8 = answer(s8, Q0_EXPIRY_DATE.id, "2026-07-25", today); // 8 local days ahead
+    expect(s8.lane).toBe("extend-convert");
+  });
+});
+
+describe("answer — fail-closed on ISO-shaped-but-invalid dates (Codex sol review F2 regression)", () => {
+  it("'2026-99-99' does not advance state, sets a validationError, and never reaches computeLane", () => {
+    const s0 = createInterview();
+    const s1 = answer(s0, Q0_IN_INDONESIA.id, "yes");
+    const s2 = answer(s1, Q0_EXPIRY_DATE.id, "2026-99-99");
+
+    expect(s2.answers[Q0_EXPIRY_DATE.id]).toBeUndefined();
+    expect(s2.lane).toBeUndefined();
+    expect(s2.validationError).toEqual({
+      qid: Q0_EXPIRY_DATE.id,
+      message: expect.any(Object),
+    });
+    // Unchanged: still parked on the date question, not advanced to category.
+    expect(nextQuestion(s2)?.id).toBe(Q0_EXPIRY_DATE.id);
+  });
+
+  it("'2026-02-30' (February has no 30th) does not advance state and sets a validationError", () => {
+    const s0 = createInterview();
+    const s1 = answer(s0, Q0_IN_INDONESIA.id, "yes");
+    const s2 = answer(s1, Q0_EXPIRY_DATE.id, "2026-02-30");
+
+    expect(s2.answers[Q0_EXPIRY_DATE.id]).toBeUndefined();
+    expect(s2.lane).toBeUndefined();
+    expect(s2.validationError?.qid).toBe(Q0_EXPIRY_DATE.id);
+  });
+
+  it("clears a prior validationError on the next successfully-processed answer", () => {
+    const today = new Date(2026, 6, 17, 12, 0);
+    const s0 = createInterview();
+    const s1 = answer(s0, Q0_IN_INDONESIA.id, "yes", today);
+    const s2 = answer(s1, Q0_EXPIRY_DATE.id, "2026-99-99", today);
+    expect(s2.validationError).toBeDefined();
+
+    const s3 = answer(s2, Q0_EXPIRY_DATE.id, "2026-08-01", today);
+    expect(s3.validationError).toBeUndefined();
+    expect(s3.lane).toBeDefined();
+    expect(s3.answers[Q0_EXPIRY_DATE.id]).toBe("2026-08-01");
+  });
+
+  it("still accepts the 'unknown' skip sentinel (not a calendar date, but not user-typed garbage either)", () => {
+    const s0 = createInterview();
+    const s1 = answer(s0, Q0_IN_INDONESIA.id, "yes");
+    const s2 = skip(s1, Q0_EXPIRY_DATE.id);
+    expect(s2.validationError).toBeUndefined();
+    expect(s2.lane).toBe("urgent-review");
+  });
+});
+
 describe("nextQuestion + answer — offshore walkthrough", () => {
   it("routes the 'no' branch straight to category selection, skipping the date question", () => {
     const s0 = createInterview();
@@ -54,11 +139,13 @@ describe("nextQuestion + answer — offshore walkthrough", () => {
   });
 
   it("routes the 'yes' branch through the expiry-date question before category", () => {
+    // Fixed `today` (F1) — removes wall-clock flakiness from this test.
+    const today = new Date(2026, 6, 17, 12, 0);
     const s0 = createInterview();
-    const s1 = answer(s0, Q0_IN_INDONESIA.id, "yes");
+    const s1 = answer(s0, Q0_IN_INDONESIA.id, "yes", today);
     expect(nextQuestion(s1)?.id).toBe(Q0_EXPIRY_DATE.id);
 
-    const s2 = answer(s1, Q0_EXPIRY_DATE.id, "2026-08-01");
+    const s2 = answer(s1, Q0_EXPIRY_DATE.id, "2026-08-01", today);
     expect(nextQuestion(s2)?.id).toBe(Q1_CATEGORY.id);
     expect(s2.lane).toBeDefined();
   });

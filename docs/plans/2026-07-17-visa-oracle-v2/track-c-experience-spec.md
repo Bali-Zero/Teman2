@@ -29,17 +29,25 @@ visa_engine/contracts/`) land on main — see "Deferral" below.
   categories, one simplified `remote-worker` behavioral tree, pure `nextQuestion` /
   `answer` / `skip` / `pathsRemaining` / `computeLane` / `resolveOutcome`), colocated
   vitest suite.
-- `/visa/v2` prototype route: `noindex`/`nofollow`, framing card verbatim copy, Begin CTA,
-  Q0 (yes/no), date-driven lane display for the onshore branch, 10 category tiles for the
-  offshore branch, a quiet "the living tree arrives in the next iteration" placeholder
-  after category selection. No deeper navigation, no outcome page, no API calls.
+- `/visa-v2` prototype route (relocated 2026-07-17 from `/visa/v2`, see "Route location"
+  below): `noindex`/`nofollow`, framing card verbatim copy, Begin CTA, Q0 (yes/no),
+  date-driven lane display for the onshore branch, 10 category tiles for the offshore
+  branch, a quiet "the living tree arrives in the next iteration" placeholder after
+  category selection. No deeper navigation, no outcome page, no API calls.
+
+**Route location (Codex sol review F6, 2026-07-17):** the prototype lives at
+`apps/mouth/src/app/visa-v2/` — a sibling top-level segment, NOT nested inside
+`apps/mouth/src/app/visa/`. It was originally built at `/visa/v2` but that nesting
+silently inherited the parent `/visa` route's `VisaLayout` → `<SessionInit funnel="visa">`,
+which POSTs `/api/funnel/session/touch` on every visit, violating the "no API calls"
+invariant below. `/visa-v2` inherits only the app's root layout.
 
 **Acceptance criteria (C1):**
 
 1. `npx vitest run src/lib/visa-oracle/v2/` green.
 2. `npx tsc --noEmit` introduces no new errors on touched files.
-3. `/visa/v2` renders with `robots: noindex,nofollow` and does not touch any file under
-   `apps/mouth/src/app/visa/` outside `v2/`, nor `research/visa/`, `apps/backend-rag/`, or
+3. `/visa-v2` renders with `robots: noindex,nofollow` and does not touch any file under
+   `apps/mouth/src/app/visa/` (v1's own tree), nor `research/visa/`, `apps/backend-rag/`, or
    v1 files (`quiz-logic.ts`, `VisaChat.tsx`, etc.).
 4. No hardcoded real prices; every mock candidate carries exactly one
    `priceAllInclusive.mock === true` field, never a fee/PNBP/official split.
