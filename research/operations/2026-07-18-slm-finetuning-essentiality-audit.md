@@ -7,6 +7,7 @@ sources:
   - Codex GPT-5.6-sol xhigh red-team (242k tokens, independent live repo re-grounding)
   - Gemini via agy red-team (independent second attack)
   - Live probes: launchctl, Ollama inventories Pro+Mini, Postgres row counts, log greps
+adversarial_review: codex
 ---
 
 # SLM Fine-Tuning Essentiality Audit — where fine-tuned small models are (and are not) essential in Nuzantara
@@ -84,6 +85,25 @@ Corollary disease, second occurrence pattern: **collectors without consumers** �
 - **MODEL_TOPOLOGY.json drift**: role `translation: gemma3:27b` is stale (live worker hardcodes SEA-LION-32B); `intake_extraction: SEA-LION-32B` never used live (plist overrides to qwen3.5:9b); glm-ocr and qwen3-vl:8b are pulled on disk but referenced nowhere.
 - **Cascade health-check theater**: claude-cascade.sh checks binary existence, not live auth/quota (family #2 Esiste≠Armato); yield-optimizer lost 4 of 9 runs to full-cascade death because the Ollama tier refuses `--agent` mode.
 - **Legacy WA bridge liveness**: alive and serving; its relationship to the live Meta number needs one decisive trace before any investment/decommission decision.
+
+## Adversarial review
+
+This audit ran under a generator≠grader protocol (see **Method**): Fable synthesized
+the seven candidate positions (E1–E7); two heterogeneous red-teams then attacked every
+position independently, before any conclusion was adopted:
+
+- **Codex GPT-5.6-sol, xhigh effort, read-only sandbox** — 242k-token independent live
+  re-grounding of the repo.
+- **Gemini via `agy`** — independent second attack.
+
+Both converged, independently, on the same structural refutation: the draft conflated
+four distinct needs (local processing / local fallback / structured output / fine-tuning)
+and established the fourth *nowhere*. Per-position verdicts are the table in §"The positions
+and how they survived contact" — E1/E2/E3/E5/E7 DEMOLITA by both red-teams; E4/E6
+REGGE-CON-MODIFICA. Every load-bearing refutation was re-verified on disk in the same turn
+before adoption (e.g. `auto_attach.py:23,129` governance killswitch, `config.py:307` local
+reranker default, WR2 `WR2_FACT_CHECKER_LLM` default-false at line 756, and a live
+LaunchAgent probe of the legacy WA bridge).
 
 ## §Solo-operatore
 
