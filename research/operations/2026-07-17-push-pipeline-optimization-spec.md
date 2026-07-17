@@ -1,3 +1,13 @@
+---
+date: 2026-07-17
+domain: operations
+client_case: none (CI/infra architecture)
+sources:
+  - "3-LLM adversarial panel 2026-07-17: GPT-5.6 Sol (ultra, via the `codex` CLI) red-team + GLM 5.2 + Gemini 3.1 Pro constructive review — raw verdicts verbatim in the Appendix below"
+  - ".husky/pre-push (live hook, inspected by Sol against the actual states 1-4)"
+adversarial_review: codex
+---
+
 # SPEC v2 — Push-pipeline optimization without safety reduction (Nuzantara monorepo)
 
 Date: 2026-07-17 · Author: orchestrator session (Fable) · Status: **PANEL-REVIEWED**
@@ -80,6 +90,21 @@ Measurement per PR (unchanged): pushes count, minutes in local gates, minutes in
 - Convergent (high confidence): P2 silent-green step-skip hole (3/3 independently); P1 allowlist-class hardening (3/3); P6 timeout-fails-not-skips (3/3); P4 unsafety (2 reject + 1 heavy conditions); P5/P7 rejections (3/3).
 - Divergent, arbitrated by final gate: P3 (Gemini approve / GLM guard / Sol reject-redesign → Sol's design adopted); sequencing (Gemini P2-first vs GLM/Sol local-first → local-first adopted; rationale: P2 without P3′ keeps the docs treadmill alive INSIDE the queue, and P2 carries the only merge-time risk class found).
 - Reviewer depth note: Sol read the live hook and falsified one spec premise (I2 wording) — recorded in I2 above.
+
+## Adversarial review
+
+Three independent seats reviewed every proposal (P1-P7) and open question (Q1-Q6) before this spec
+reached v2: **GPT-5.6 Sol (ultra, dispatched via the `codex` CLI)**, **GLM 5.2**, and **Gemini 3.1
+Pro** — each ran blind to the others' output, none grading its own diff (the spec's own author, the
+orchestrator session, wrote none of the three verdicts). Convergent findings the final gate adopted
+without contest: the P2 `merge_group` silent-green step-skip hole (found independently by all 3), P1
+allowlist-class hardening (3/3), P6 fail-on-timeout-never-bypass (3/3), P4's cache-poisoning unsafety
+(2 reject + 1 heavy-condition), and the P5/P7 rejections (3/3 concur). The one real split — P3 — was
+arbitrated, not averaged: Gemini APPROVEd the original `as_of` pinning design, GLM approved it with a
+staleness guard, and Sol REJECTed it outright as a fresh proxy-state scar (cron dies silently, `as_of`
+freezes valid, the freshness gate certifies stale docs forever); the final gate upheld Sol's
+reject-and-redesign over the other two's approve/approve-with-changes, recorded in §5 above. Full raw
+verdicts, unedited, are transcribed below for audit.
 
 ## Appendix — raw panel verdicts (verbatim)
 
