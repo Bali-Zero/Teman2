@@ -332,8 +332,13 @@ async def main() -> None:
                     f" + _disputed_requires({len(plan.disputed_requires)})" if plan.disputed_requires else "",
                 )
                 if args.apply:
+                    # W89 jsonb double-encoding class-guard: bind the pre-serialized
+                    # json.dumps() string to a $N::text::jsonb placeholder (form (a)) so
+                    # the server casts text->jsonb exactly once — correct whether or not a
+                    # json codec is registered on the connection. A bare $N::jsonb next to
+                    # json.dumps() is the double-encoding disease.
                     await conn.execute(
-                        "UPDATE kg_nodes SET description = $2, properties = $3::jsonb, updated_at = now() "
+                        "UPDATE kg_nodes SET description = $2, properties = $3::text::jsonb, updated_at = now() "
                         "WHERE entity_id = $1",
                         f"kbli:{code}",
                         plan.new_description,
