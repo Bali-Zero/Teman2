@@ -59,7 +59,12 @@ ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 # calls below keep ConnectTimeout=10.
 pick_pro_host() {
   for h in $PRO_HOSTS; do
-    ssh -o ConnectTimeout=5 -o BatchMode=yes "$h" true 2>/dev/null && { echo "$h"; return 0; }
+    # -n (no stdin) + stdout redirected to /dev/null (Codex red-team,
+    # 2026-07-17): without both, the remote shell's own stdout (MOTD/banner)
+    # can leak into this command substitution alongside `echo "$h"`,
+    # polluting PRO_HOST with extra bytes ("banner\npro"). Only the alias
+    # printed by the trailing echo may reach the caller.
+    ssh -n -o ConnectTimeout=5 -o BatchMode=yes "$h" true >/dev/null 2>&1 && { echo "$h"; return 0; }
   done
   return 1
 }
@@ -91,7 +96,13 @@ while true; do
   PRO_HOST=$(pick_pro_host)
   if [ -z "$PRO_HOST" ]; then
     echo "[$(ts)] WARN no reachable Pro host this tick (tried: $PRO_HOSTS)" >> "$LOG"
-    [ "$ONCE" = "1" ] && break
+    # Codex red-team, 2026-07-17: `break` here made a --once reconcile with
+    # zero reachable hosts exit 0 — a caller (cron, orchestrator) would read
+    # "one-shot pass succeeded" when NOTHING was pulled. Exit 1 so the
+    # failure is honest; the daemon loop (ONCE=0) still sleeps and retries.
+    if [ "$ONCE" = "1" ]; then
+      exit 1
+    fi
     sleep "$INTERVAL"
     continue
   fi
