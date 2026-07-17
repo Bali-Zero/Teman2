@@ -71,7 +71,15 @@ _LAUNCHER_FAILURE_RE = re.compile(
 )
 
 # Only audit OUR jobs (avoid noise from Apple/homebrew agents).
-OURS_RE = re.compile(r"\b(nuzantara|balizero)\b", re.IGNORECASE)
+# liveness-detector-arm-0717: `matagaruda` added — a live audit while wiring this
+# detector to a cron found 3 named-ambiguous jobs (redis-split-brain.check,
+# pipeline-health.hourly, kg-query-api) silently invisible to `audit()` because
+# their label is `com.matagaruda.*`, which matched neither prior branch. Mata
+# Garuda is part of the same organism (same repo, same infra/launchagents/ dir,
+# same "ours" intent as the comment states) — the gap was an oversight, not a
+# deliberate exclusion. Without this fix, arming a cron for this detector would
+# leave 3/10 of the jobs it was just tasked to disambiguate permanently unmonitored.
+OURS_RE = re.compile(r"\b(nuzantara|balizero|matagaruda)\b", re.IGNORECASE)
 
 # A stdout "green" line older than this (seconds) while the job claims to run more
 # often is itself suspicious (the stale-interactive-run smell). 3 days default.

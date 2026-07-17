@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: eb8b8a5ee15c82b4d66789355dbb65fd19a98ca499ae334a6eae2b41e76a807a
+checksum: 3617fe89bec8863bf0d869416d064e3993f63356890a8f270bcc696de960f5e2
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2021,5 +2021,30 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.git_pull_main.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.launchd_liveness
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: infra/launchagents/wrappers/launchd-liveness-detector.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.launchd-liveness-detector.daily
+  severity_on_silence: warning
+  notes: 'Arms scripts/launchd_liveness_detector.py (PR #1518, cicatrix W84) for
+    the first time — 4 test suites existed with zero launchd/cron attachment
+    before infra-liveness-detector-arm-0717 (Esiste≠Armato, superscar #2).
+    Pro-only by design: reads ~/Library/LaunchAgents plus local log tails, which
+    are per-host state — a Mini copy would need its own instance (superscar #10
+    active-active), not this shared registry row. Kill switch env var:
+    LAUNCHD_LIVENESS_DETECTOR_ENABLED=false.'
+  cicatrix_refs:
+  - 2026-06-16-W84-tcc-green-dead
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.launchd_liveness.json
     timestamp_field: ts
     status_field: status
