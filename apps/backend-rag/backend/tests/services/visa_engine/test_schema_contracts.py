@@ -22,6 +22,7 @@ has never seen Pydantic's internals, not the models that produced the data).
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -468,6 +469,119 @@ class TestJsonSchemaGoldenInstanceValidation:
         assert errors != []
 
 
+class TestExportedSchemaAllOfFidelity:
+    """Round 3 (Codex round-2 re-review finding 2 residue, R3-D): proves the
+    ``allOf`` conditionals ``schema_export.py`` now injects actually gate —
+    an instance ``models.py`` already rejects at construction must ALSO be
+    rejected by the independent ``jsonschema`` engine validating against the
+    *exported* document (generator != grader, same rationale as
+    ``TestJsonSchemaGoldenInstanceValidation`` above). Every instance below
+    is built via ``model_construct`` (bypassing Pydantic validation) purely
+    to obtain JSON-shaped data that would be illegal via normal construction.
+    """
+
+    def test_global_rule_with_product_version_ids_fails_exported_schema(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        # Rule's allOf[0] (spec §2): scope=GLOBAL forbids product_version_ids.
+        valid_rule = minimal_valid_pack.payload.rules[0]
+        bogus_rule = valid_rule.model_construct(
+            **{**valid_rule.__dict__, "scope": "GLOBAL", "product_version_ids": [uuid.uuid4()]}
+        )
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "rule.schema.json")
+        instance = bogus_rule.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors != []
+
+    def test_hard_filter_with_support_effect_fails_exported_schema(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        # Rule's allOf[1] (spec §2): stage=HARD_FILTER requires effect.type
+        # EXCLUDE — a SUPPORT effect must fail.
+        valid_rule = minimal_valid_pack.payload.rules[0]
+        bogus_effect = M.EffectSupport.model_construct(
+            type="SUPPORT", reason_code="X", covered_purposes=["TOURISM"]
+        )
+        bogus_rule = valid_rule.model_construct(
+            **{**valid_rule.__dict__, "stage": "HARD_FILTER", "effect": bogus_effect}
+        )
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "rule.schema.json")
+        instance = bogus_rule.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors != []
+
+    def test_sequence_one_with_non_null_previous_hash_fails_exported_schema(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        # RulePackPayload's allOf (spec §2): sequence=1 forbids a non-null
+        # previous_payload_sha256.
+        bogus_payload = minimal_valid_pack.payload.model_construct(
+            **{**minimal_valid_pack.payload.__dict__, "previous_payload_sha256": "e" * 64}
+        )
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "rule-pack.schema.json")
+        instance = bogus_payload.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors != []
+
+    def test_price_quote_available_with_null_amount_fails_exported_schema(self) -> None:
+        # PriceQuote's allOf (spec §2): status=AVAILABLE requires a non-null
+        # amount + catalog fields.
+        bogus_quote = M.PriceQuote.model_construct(
+            quote_id=uuid.uuid4(),
+            product_version_id=uuid.uuid4(),
+            product_code="C1",
+            status="AVAILABLE",
+            currency="IDR",
+            amount=None,
+            pricing_key=M.PricingKey(category="visa", item_key="c1"),
+            catalog_version=None,
+            catalog_sha256=None,
+            row_sha256=None,
+            quoted_at=GOLD_EFFECTIVE_AT,
+            valid_until=None,
+            reason_code="X",
+        )
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "price-quote.schema.json")
+        instance = bogus_quote.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors != []
+
+    def test_decision_supported_candidates_with_zero_candidates_fails_exported_schema(
+        self,
+    ) -> None:
+        # Decision's allOf[0] (spec §2): state=SUPPORTED_CANDIDATES requires
+        # candidates.minItems=1.
+        bogus_decision = M.Decision.model_construct(
+            schema_version="1.0.0",
+            decision_id=uuid.uuid4(),
+            public_id="a" * 16,
+            state="SUPPORTED_CANDIDATES",
+            effective_at=GOLD_EFFECTIVE_AT,
+            observed_at=GOLD_EFFECTIVE_AT,
+            evaluated_at=GOLD_EFFECTIVE_AT,
+            rule_pack=make_rule_pack_ref(),
+            facts_fingerprint=make_fingerprint(),
+            candidates=(),
+            missing_facts=(),
+            review_reasons=(),
+            no_path_reasons=(),
+            outage=None,
+            quotes=(),
+            notices=(),
+            trace_sha256="e" * 64,
+            decision_integrity=None,
+        )
+        schemas = SE.build_schemas()
+        validator = _jsonschema_validator_for(schemas, "decision.schema.json")
+        instance = bogus_decision.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors != []
+
+
 class TestApplicantFactsContract:
     def test_round_trips(self) -> None:
         facts = make_applicant_facts()
@@ -842,6 +956,265 @@ class TestStrictIntFields:
     def test_effect_add_score_points_rejects_float(self) -> None:
         with pytest.raises(ValidationError):
             M.EffectAddScore(type="ADD_SCORE", reason_code="X", points=1.0)  # type: ignore[arg-type]
+
+
+def _snapshot_dir() -> Path:
+    """``backend/services/visa_engine/contracts/`` — the static, committed,
+    hand-reviewed schema files R3-E introduces to break the validation
+    circularity Codex's finding 10 flagged (``jsonschema`` validating golden
+    instances against a schema generated by the SAME implementation under
+    test). These files are the reviewed ground truth; ``export_schemas``
+    (the live implementation) is what the drift tripwire below holds
+    accountable to them.
+    """
+    return Path(SE.__file__).resolve().parent / "contracts"
+
+
+def _load_snapshot(filename: str) -> dict:
+    return json.loads((_snapshot_dir() / filename).read_text())
+
+
+def _jsonschema_validator_for_snapshot(entrypoint_filename: str) -> Draft202012Validator:
+    """Same shape as ``_jsonschema_validator_for`` but reads from the
+    COMMITTED snapshot files on disk, never from a live ``build_schemas()``
+    call — this is what makes the snapshot (not the exporter) the artifact
+    under review.
+    """
+    contract = _load_snapshot("contract.schema.json")
+    entrypoint = _load_snapshot(entrypoint_filename)
+    registry = Registry().with_resources(
+        [
+            (contract["$id"], Resource.from_contents(contract)),
+            (entrypoint["$id"], Resource.from_contents(entrypoint)),
+        ]
+    )
+    return Draft202012Validator(
+        entrypoint, registry=registry, format_checker=Draft202012Validator.FORMAT_CHECKER
+    )
+
+
+class TestContractSnapshotDriftTripwire:
+    """R3-E requirement 1: the live exporter must still match the committed
+    snapshots byte-for-byte (normalized JSON compare) — this is what keeps
+    the snapshot honest as the models evolve: a silent divergence here means
+    someone changed ``models.py``/``schema_export.py`` without regenerating
+    and re-reviewing the frozen contract.
+    """
+
+    def test_every_exported_schema_matches_its_committed_snapshot(self) -> None:
+        live = SE.build_schemas()
+        mismatches = []
+        for filename, live_schema in live.items():
+            committed = _load_snapshot(filename)
+            if live_schema != committed:
+                mismatches.append(filename)
+        assert mismatches == [], (
+            f"live export diverges from committed snapshot for: {mismatches} — "
+            "regenerate via export_schemas() into "
+            "backend/services/visa_engine/contracts/, review the diff against "
+            "spec §2, then commit both the code change and the regenerated "
+            "snapshot in the SAME commit (cicatrix W86: docs/derived-artifact "
+            "regen must never be a separate, later commit)"
+        )
+
+    def test_no_stray_uncommitted_snapshot_files(self) -> None:
+        # The reverse direction: every file on disk must be one build_schemas()
+        # actually produces — catches an orphaned/renamed snapshot.
+        live_filenames = set(SE.build_schemas().keys())
+        disk_filenames = {p.name for p in _snapshot_dir().glob("*.schema.json")}
+        assert disk_filenames == live_filenames
+
+
+class TestContractSnapshotGoldenValidInstances:
+    """R3-E requirement 2: golden VALID instances validate against the
+    COMMITTED snapshots (not a live ``build_schemas()`` call) — mirrors
+    ``TestJsonSchemaGoldenInstanceValidation`` above, but proves the FROZEN
+    artifact accepts real data, not just whatever the exporter currently
+    happens to produce.
+    """
+
+    def test_rule_pack_instance_validates_against_snapshot(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        validator = _jsonschema_validator_for_snapshot("rule-pack.schema.json")
+        instance = minimal_valid_pack.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_source_record_instance_validates_against_snapshot(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        validator = _jsonschema_validator_for_snapshot("source-record.schema.json")
+        instance = source_record.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_applicant_facts_instance_validates_against_snapshot(self) -> None:
+        validator = _jsonschema_validator_for_snapshot("applicant-facts.schema.json")
+        instance = make_applicant_facts().model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_decision_instance_validates_against_snapshot(self) -> None:
+        decision = make_supported_candidates_decision(product_version_id=uuid.uuid4())
+        validator = _jsonschema_validator_for_snapshot("decision.schema.json")
+        instance = decision.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_price_quote_instance_validates_against_snapshot(self) -> None:
+        quote = make_price_quote(product_version_id=uuid.uuid4())
+        validator = _jsonschema_validator_for_snapshot("price-quote.schema.json")
+        instance = quote.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+    def test_visa_product_version_instance_validates_against_snapshot(self) -> None:
+        product = make_product(product_version_id=uuid.uuid4(), source_refs=[uuid.uuid4()])
+        validator = _jsonschema_validator_for_snapshot("visa-product-version.schema.json")
+        instance = product.model_dump(mode="json", by_alias=True)
+        errors = list(validator.iter_errors(instance))
+        assert errors == [], [str(e) for e in errors]
+
+
+class TestContractSnapshotGoldenInvalidInstances:
+    """R3-E requirement 3: golden INVALID instances — one per ``allOf``
+    conditional, plus one per required-array — FAIL against the committed
+    snapshots. The ``allOf`` cases mirror ``TestExportedSchemaAllOfFidelity``
+    exactly (same instances, snapshot-backed validator instead of live); the
+    required-array cases delete one required top-level key from an
+    otherwise-valid instance for each of the 7 entrypoints.
+    """
+
+    # --- one per allOf conditional -----------------------------------
+
+    def test_global_rule_with_product_version_ids_fails_snapshot(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        valid_rule = minimal_valid_pack.payload.rules[0]
+        bogus_rule = valid_rule.model_construct(
+            **{**valid_rule.__dict__, "scope": "GLOBAL", "product_version_ids": [uuid.uuid4()]}
+        )
+        validator = _jsonschema_validator_for_snapshot("rule.schema.json")
+        instance = bogus_rule.model_dump(mode="json", by_alias=True)
+        assert list(validator.iter_errors(instance)) != []
+
+    def test_hard_filter_with_support_effect_fails_snapshot(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        valid_rule = minimal_valid_pack.payload.rules[0]
+        bogus_effect = M.EffectSupport.model_construct(
+            type="SUPPORT", reason_code="X", covered_purposes=["TOURISM"]
+        )
+        bogus_rule = valid_rule.model_construct(
+            **{**valid_rule.__dict__, "stage": "HARD_FILTER", "effect": bogus_effect}
+        )
+        validator = _jsonschema_validator_for_snapshot("rule.schema.json")
+        instance = bogus_rule.model_dump(mode="json", by_alias=True)
+        assert list(validator.iter_errors(instance)) != []
+
+    def test_sequence_one_with_non_null_previous_hash_fails_snapshot(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        bogus_payload = minimal_valid_pack.payload.model_construct(
+            **{**minimal_valid_pack.payload.__dict__, "previous_payload_sha256": "e" * 64}
+        )
+        validator = _jsonschema_validator_for_snapshot("rule-pack.schema.json")
+        instance = bogus_payload.model_dump(mode="json", by_alias=True)
+        assert list(validator.iter_errors(instance)) != []
+
+    def test_price_quote_available_with_null_amount_fails_snapshot(self) -> None:
+        bogus_quote = M.PriceQuote.model_construct(
+            quote_id=uuid.uuid4(),
+            product_version_id=uuid.uuid4(),
+            product_code="C1",
+            status="AVAILABLE",
+            currency="IDR",
+            amount=None,
+            pricing_key=M.PricingKey(category="visa", item_key="c1"),
+            catalog_version=None,
+            catalog_sha256=None,
+            row_sha256=None,
+            quoted_at=GOLD_EFFECTIVE_AT,
+            valid_until=None,
+            reason_code="X",
+        )
+        validator = _jsonschema_validator_for_snapshot("price-quote.schema.json")
+        instance = bogus_quote.model_dump(mode="json", by_alias=True)
+        assert list(validator.iter_errors(instance)) != []
+
+    @pytest.mark.parametrize(
+        "state",
+        [
+            "SUPPORTED_CANDIDATES",
+            "NEEDS_INPUT",
+            "HUMAN_REVIEW_REQUIRED",
+            "NO_SUPPORTED_PATH",
+            "TEMPORARILY_UNAVAILABLE",
+        ],
+    )
+    def test_decision_state_conditional_violation_fails_snapshot(self, state: str) -> None:
+        # One deliberately-wrong instance per Decision allOf branch: reuse
+        # the SUPPORTED_CANDIDATES-shaped instance (identity present,
+        # candidates non-empty, all reason lists empty) for every state —
+        # each OTHER state's "then"/"else" branch forbids at least one of
+        # those properties, so it is guaranteed to violate every branch but
+        # its own; for SUPPORTED_CANDIDATES itself, empty candidates violates
+        # minItems=1.
+        decision = make_supported_candidates_decision(product_version_id=uuid.uuid4())
+        candidates = () if state == "SUPPORTED_CANDIDATES" else decision.candidates
+        bogus_decision = decision.model_construct(
+            **{**decision.__dict__, "state": state, "candidates": candidates}
+        )
+        validator = _jsonschema_validator_for_snapshot("decision.schema.json")
+        instance = bogus_decision.model_dump(mode="json", by_alias=True)
+        assert list(validator.iter_errors(instance)) != []
+
+    # --- one per required-array (per entrypoint) ----------------------
+
+    @pytest.mark.parametrize(
+        ("entrypoint_filename", "instance_factory", "required_key"),
+        [
+            ("rule.schema.json", lambda p: p.payload.rules[0], "rule_id"),
+            ("source-record.schema.json", lambda p: p.payload.source_records[0], "source_key"),
+            ("visa-product-version.schema.json", lambda p: p.payload.products[0], "product_code"),
+            ("rule-pack.schema.json", lambda p: p, "canonicalization"),
+        ],
+    )
+    def test_missing_required_key_fails_snapshot(
+        self,
+        minimal_valid_pack: M.RulePack,
+        entrypoint_filename: str,
+        instance_factory,
+        required_key: str,
+    ) -> None:
+        model_instance = instance_factory(minimal_valid_pack)
+        instance = model_instance.model_dump(mode="json", by_alias=True)
+        del instance[required_key]
+        validator = _jsonschema_validator_for_snapshot(entrypoint_filename)
+        assert list(validator.iter_errors(instance)) != []
+
+    def test_applicant_facts_missing_required_key_fails_snapshot(self) -> None:
+        instance = make_applicant_facts().model_dump(mode="json", by_alias=True)
+        del instance["assessment_id"]
+        validator = _jsonschema_validator_for_snapshot("applicant-facts.schema.json")
+        assert list(validator.iter_errors(instance)) != []
+
+    def test_decision_missing_required_key_fails_snapshot(self) -> None:
+        instance = make_supported_candidates_decision(product_version_id=uuid.uuid4()).model_dump(
+            mode="json", by_alias=True
+        )
+        del instance["schema_version"]
+        validator = _jsonschema_validator_for_snapshot("decision.schema.json")
+        assert list(validator.iter_errors(instance)) != []
+
+    def test_price_quote_missing_required_key_fails_snapshot(self) -> None:
+        instance = make_price_quote(product_version_id=uuid.uuid4()).model_dump(
+            mode="json", by_alias=True
+        )
+        del instance["quote_id"]
+        validator = _jsonschema_validator_for_snapshot("price-quote.schema.json")
+        assert list(validator.iter_errors(instance)) != []
 
 
 class TestStageEffectTypeImmutable:

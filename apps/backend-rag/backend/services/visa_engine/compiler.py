@@ -28,7 +28,7 @@ built here: PR1's job is to validate and report, not to compile into the
 evaluator's runtime representation, which needs the evaluator itself (PR3)
 to define what "compiled" means operationally.
 
-PR1 hardening round (Codex correctness findings 4/6/7/8/9, see git log for
+PR1 hardening round 2 (Codex correctness findings 4/6/7/8/9, see git log for
 the full fix-round commit message): this module now (a) re-validates the
 whole pack from its serialized form before running any check, so a
 ``model_construct``-smuggled structure never crashes compilation with an
@@ -40,14 +40,47 @@ the SUPPORT-purpose check's vacuous-truth and GLOBAL-rule gaps (finding 7);
 (e) adds compiler-side ID-uniqueness/UTC/NFC/size-limit checks that are
 *intentionally redundant* with ``models.py``'s own validators — every one of
 those is bypass-proof against ``model_construct`` by design.
+
+PR1 hardening round 3 (Codex round-2 re-review — 3 new defects the round-2
+fix itself introduced): (a) **fail-stop revalidation** — round 2's
+non-short-circuit design (report the revalidation failure, then keep
+checking the *original*, unrevalidated pack "for its own more specific
+diagnosis") let a ``model_copy(update={"stage": "BOGUS"})``-tampered rule
+reach ``_check_stage_effect_compatibility``'s ``STAGE_EFFECT_TYPE[rule.stage]``
+dict lookup with a non-enum value and crash with an uncaught ``KeyError`` —
+exactly the "never raises" violation this module promises. ``compile_rule_pack``
+now stops immediately when ``_revalidate_structurally`` fails: the report
+carries that one structural error and nothing else, since a pack that fails
+full-model round-trip validation cannot be assumed to satisfy ANY of the
+Pydantic-level invariants several checks below depend on (dict lookups keyed
+by enum, ``RuleEffectType(...)`` coercion, ...). When revalidation succeeds,
+every check runs against the REVALIDATED pack, never the original — this
+also means several of this module's own "bypass-proof redundant" checks
+(``_check_header_environment``, ``_check_stage_effect_compatibility``,
+``_check_unique_ids``) are now *provably unreachable* for any pack that
+reaches them: a successfully round-tripped pack, by construction, already
+satisfies every ``models.py`` invariant those checks duplicate (the
+serialize-then-reparse in ``_revalidate_structurally`` rebuilds every nested
+model from a plain dict, so no pre-existing model-instance identity survives
+to skip a nested ``model_validator``). They stay as documented
+defense-in-depth (see each check's own docstring), not because they can
+still fire today. (b) **GLOBAL-rule SUPPORT semantics corrected from union to
+intersection** — a GLOBAL-scope rule structurally applies to *every* product
+in the pack, so claiming a purpose that only *some* products cover is still a
+defect even though the union-of-all-products test from round 2 let it pass;
+see ``_check_support_purposes_on_product``. (c) **UTC/NFC coverage widened
+from a curated field list to a generic walker over the entire signed
+payload** (``payload.model_dump(mode="json")``) — round 2's field-by-field
+version missed ``source_records[].document_number``, locator values, and
+condition string literals entirely; see ``_check_utc_and_nfc``.
 """
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 
 from backend.services.visa_engine import ast as ast_module
 from backend.services.visa_engine.enums import FactValueKind, RuleEffectType, RuleStage
@@ -122,16 +155,28 @@ def compile_rule_pack(
     errors: list[CompilationError] = []
 
     revalidated = _revalidate_structurally(pack, errors)
-    if revalidated is not None:
-        # Prefer the freshly-revalidated pack for every subsequent check: it
-        # is now guaranteed to have round-tripped through full Pydantic
-        # validation, so no downstream check can be handed a
-        # `model_construct`-smuggled structure. If revalidation *failed*,
-        # deliberately keep operating on the original `pack` below — this
-        # preserves the compiler's own redundant checks' ability to report
-        # their own, more specific error (e.g. `_check_header_environment`
-        # on a tampered-but-otherwise-parseable envelope).
-        pack = revalidated
+    if revalidated is None:
+        # Fail-stop (round 3, Codex round-2 re-review HIGH finding): a pack
+        # that does not round-trip through full Pydantic validation cannot
+        # be assumed to satisfy ANY of the model-level invariants the checks
+        # below depend on — e.g. `_check_stage_effect_compatibility`'s
+        # `STAGE_EFFECT_TYPE[rule.stage]` dict lookup assumes `rule.stage` is
+        # one of the four real `RuleStage` members, which a
+        # `model_construct`/`model_copy(update=...)`-tampered rule is not
+        # guaranteed to be (Codex counterexample:
+        # `rule.model_copy(update={"stage": "BOGUS"})` crashed this exact
+        # lookup with an uncaught `KeyError` under round 2's non-short-circuit
+        # design). Stop here: the report carries the one structural error and
+        # nothing else — no semantic check ever runs against an unproven pack.
+        return CompilationReport(
+            rule_pack_id=str(pack.payload.rule_pack_id),
+            sequence=pack.payload.sequence,
+            errors=tuple(errors),
+        )
+    # Revalidation succeeded: operate on the freshly-revalidated pack for
+    # every subsequent check, never the original — guarantees no downstream
+    # check can be handed a `model_construct`-smuggled structure.
+    pack = revalidated
     payload = pack.payload
 
     _check_header_environment(pack, errors)
@@ -174,11 +219,13 @@ def _revalidate_structurally(pack: RulePack, errors: list[CompilationError]) -> 
     ordinary ``CompilationError`` instead of crashing ``compile_rule_pack``
     (or, worse, a caller three layers up) with an unrelated exception.
 
-    Returns the freshly-validated pack on success. On failure, returns
-    ``None`` and appends one error — the caller then keeps operating on the
-    *original* ``pack``, so the compiler's own redundant, more specific
-    checks (e.g. ``_check_header_environment``) still get to run and report
-    their own diagnosis of the same underlying tamper.
+    Returns the freshly-validated pack on success. On failure (round 3:
+    fail-stop, see ``compile_rule_pack``), returns ``None`` and appends one
+    error — the caller then STOPS, returning a report with only this one
+    error. No check below ever runs against a pack that failed this
+    round-trip: several of them (dict lookups keyed by enum, discriminated-
+    union coercion, ...) assume Pydantic-level invariants that only a
+    successfully-revalidated pack is guaranteed to hold.
     """
     try:
         serialized = pack.model_dump(mode="json")
@@ -726,14 +773,20 @@ def _check_support_purposes_on_product(
        declares.
     3. A GLOBAL-scope SUPPORT rule (``product_version_ids is None`` — Codex's
        exact counterexample: this branch used to be skipped entirely via
-       ``continue``) is checked against the *union* of every declared
-       product's ``covered_purposes`` in the pack: since a GLOBAL rule
-       structurally applies to all products, claiming a purpose that no
-       product in the whole pack ever declares is still a defect.
+       ``continue``) is checked against the *intersection* of every declared
+       product's ``covered_purposes`` in the pack, not their union (round 3,
+       Codex round-2 re-review HIGH finding). A GLOBAL rule structurally
+       applies to EVERY product, so its claim must be valid for EVERY
+       product it touches — the union test from round 2 wrongly validated
+       against ANY single product rather than ALL of them: products
+       {C1: TOURISM, E23: EMPLOYMENT} + a GLOBAL SUPPORT rule claiming
+       {TOURISM} passed round 2's union check (TOURISM ∈ union) even though
+       the rule also structurally applies to E23, which does not cover
+       TOURISM — a real defect the union test could not see.
     """
     products_by_id: dict = {p.product_version_id: p for p in payload.products}
-    all_product_purposes: frozenset = (
-        frozenset().union(*(frozenset(p.covered_purposes) for p in payload.products))
+    common_product_purposes: frozenset = (
+        frozenset.intersection(*(frozenset(p.covered_purposes) for p in payload.products))
         if payload.products
         else frozenset()
     )
@@ -753,15 +806,16 @@ def _check_support_purposes_on_product(
             continue
 
         if rule.product_version_ids is None:
-            extra = claimed - all_product_purposes
+            extra = claimed - common_product_purposes
             if extra:
                 errors.append(
                     CompilationError(
                         code="SUPPORT_RULE_PURPOSE_NOT_ON_ANY_PRODUCT",
                         message=(
                             f"GLOBAL SUPPORT rule claims purpose(s) "
-                            f"{sorted(p.value for p in extra)} not covered by any "
-                            "product in the pack"
+                            f"{sorted(p.value for p in extra)} not covered by every "
+                            "product in the pack (a GLOBAL rule applies to all of "
+                            "them, so its claim must hold for all of them)"
                         ),
                         rule_id=rule.rule_id,
                     )
@@ -824,84 +878,83 @@ def _check_unique_ids(payload: RulePackPayload, errors: list[CompilationError]) 
         )
 
 
-def _is_utc(value: datetime) -> bool:
-    try:
-        return value.tzinfo is not None and value.utcoffset() == timedelta(0)
-    except Exception:
-        return False
-
-
 def _is_nfc(text: str) -> bool:
     return text == unicodedata.normalize("NFC", text)
 
 
+#: Matches the ISO-8601 *shape* Pydantic's `model_dump(mode="json")` renders
+#: for any ``UtcDateTime`` field (e.g. ``"2026-07-17T00:00:00Z"``) — verified
+#: empirically: a tz-aware UTC ``datetime`` serializes with a literal ``Z``
+#: suffix, not ``+00:00``. Anchored at the start only, so a string that
+#: merely *contains* a date-shaped substring elsewhere is not misflagged; in
+#: practice only genuine datetime fields start with this exact shape.
+_DATETIME_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}")
+
+
+def _looks_like_datetime(value: str) -> bool:
+    return bool(_DATETIME_SHAPE.match(value))
+
+
+def _iter_json_strings(node: object, path: str) -> Iterable[tuple[str, str]]:
+    """Recurse over a ``model_dump(mode="json")`` tree (dicts/lists/scalars
+    only) and yield ``(dotted_path, value)`` for every ``str`` leaf, at any
+    nesting depth — the generic replacement for a curated field list (round
+    3, Codex round-2 re-review finding 6 residue: the previous scoped-fields
+    version missed ``source_records[].document_number``, locator values, and
+    condition string literals entirely). RFC 8785 canonicalization/signing
+    doesn't care *which* field carries a non-normalized string, so neither
+    should this check.
+    """
+    if isinstance(node, str):
+        yield path, node
+    elif isinstance(node, dict):
+        for key, value in node.items():
+            yield from _iter_json_strings(value, f"{path}.{key}" if path else str(key))
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            yield from _iter_json_strings(value, f"{path}[{index}]")
+
+
 def _check_utc_and_nfc(payload: RulePackPayload, errors: list[CompilationError]) -> None:
-    """Spec §2 compiler-only invariant: "UTC normalization and Unicode NFC".
+    """Spec §2 compiler-only invariant: "UTC normalization and Unicode NFC" —
+    swept over the ENTIRE signed payload (round 3, Codex round-2 re-review
+    finding 6 residue), not a curated field list.
 
     NFC matters because two visually-identical strings in different Unicode
     normalization forms (NFC vs NFD) are different byte sequences — and a
     RulePack's payload is what gets canonicalized (RFC 8785) and signed in
     PR2's ``bundle.py``. A human-authored field that silently carries NFD
     would produce a canonical payload whose bytes diverge from what the
-    author actually typed, without any visible symptom.
+    author actually typed, without any visible symptom — and canonicalization
+    doesn't care which field it happens to land in, so this walker checks
+    every ``str`` leaf anywhere in ``payload.model_dump(mode="json")``:
+    ``created_by``, source-record titles AND ``document_number`` AND locator
+    values, product names, rule ``explanation_key``, and every string literal
+    inside a rule's ``when`` condition tree — none of these are special-cased
+    or excluded.
+
+    UTC matters for the same signing reason. In practice, ``models.py``'s own
+    field validators already force every ``datetime`` field to be UTC-aware
+    at construction time (``_validate_utc``), so — for a pack that reached
+    this point, i.e. survived ``compile_rule_pack``'s fail-stop revalidation
+    gate — this half of the walker is reachable only in a hypothetical future
+    where a model-level validator is relaxed without this compiler-side check
+    being updated too. Kept anyway: "duplicated from model validators BY
+    DESIGN" (orchestrator triage, verbatim), same rationale as every other
+    check in this section.
     """
-    if not _is_utc(payload.created_at):
-        errors.append(
-            CompilationError(code="NON_UTC_DATETIME", message="payload.created_at is not UTC")
-        )
-    if not _is_nfc(payload.created_by):
-        errors.append(
-            CompilationError(
-                code="NON_NFC_STRING", message="payload.created_by is not NFC-normalized"
-            )
-        )
-
-    for record in payload.source_records:
-        for dt_name, dt_value in (
-            ("retrieved_at", record.retrieved_at),
-            ("verified_at", record.verified_at),
-        ):
-            if not _is_utc(dt_value):
-                errors.append(
-                    CompilationError(
-                        code="NON_UTC_DATETIME",
-                        message=f"source_record {record.source_key!r}.{dt_name} is not UTC",
-                    )
-                )
-        for field_name, text in (
-            ("title", record.title),
-            ("publisher", record.publisher),
-            ("verified_by", record.verified_by),
-        ):
-            if not _is_nfc(text):
-                errors.append(
-                    CompilationError(
-                        code="NON_NFC_STRING",
-                        message=(
-                            f"source_record {record.source_key!r}.{field_name} is not "
-                            "NFC-normalized"
-                        ),
-                    )
-                )
-
-    for product in payload.products:
-        for field_name, text in (("names.id", product.names.id), ("names.en", product.names.en)):
-            if not _is_nfc(text):
-                errors.append(
-                    CompilationError(
-                        code="NON_NFC_STRING",
-                        message=f"product {product.product_code}.{field_name} is not NFC-normalized",
-                        product_code=product.product_code,
-                    )
-                )
-
-    for rule in payload.rules:
-        if not _is_nfc(rule.explanation_key):
+    for path, text in _iter_json_strings(payload.model_dump(mode="json"), ""):
+        if not _is_nfc(text):
             errors.append(
                 CompilationError(
-                    code="NON_NFC_STRING",
-                    message="rule.explanation_key is not NFC-normalized",
-                    rule_id=rule.rule_id,
+                    code="NON_NFC_STRING", message=f"payload.{path} is not NFC-normalized"
+                )
+            )
+        if _looks_like_datetime(text) and not text.endswith("Z"):
+            errors.append(
+                CompilationError(
+                    code="NON_UTC_DATETIME",
+                    message=f"payload.{path} is not UTC (missing 'Z' suffix): {text!r}",
                 )
             )
 

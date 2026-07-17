@@ -3,24 +3,48 @@
 Source: ``research/visa/2026-07-17-visa-oracle-v2-round2-codex-engine-
 concretization.md`` §1 (module layout, ``schema_export.py``: ``def
 export_schemas(output_dir: Path) -> None``) and §2 (the JSON Schema contract
-these exports approximate), specifically the "Equivalent entrypoints" table
-plus the ``rule-pack.schema.json`` example that precedes it (seven files
-total).
+this module exports), specifically the "Equivalent entrypoints" table plus
+the ``rule-pack.schema.json`` example that precedes it (seven files total).
 
-Honest scope note (see ``test_schema_contracts.py`` for the enforcement):
-Pydantic v2's ``model_json_schema()``/``models_json_schema()`` emit JSON
-Schema Draft 2020-12-*compatible* output (``$defs``, discriminated unions as
-``oneOf``, patterns, enums) but this is not a byte-for-byte reproduction of
-spec §2's hand-authored ``contract.schema.json`` — in particular, Pydantic
-does not encode a cross-field ``model_validator`` (e.g. ``Rule``'s
-stage<->effect pairing, ``Decision``'s five state-conditionals) as an
-``allOf``/``if``/``then`` schema construct; those live in code
-(``models.py``'s ``model_validator``s and ``compiler.py``) instead of the
-exported document, which is the normal, expected shape of a
-Pydantic-schema-export approach (the same tradeoff spec §2 itself
-acknowledges is unavoidable for cheap single-object conditionals).
+**The export IS the contract** (round 3, Codex round-2 re-review finding 2
+residue — this replaces an earlier "approximate" disclaimer that was too
+weak): Pydantic v2's ``model_json_schema()``/``models_json_schema()`` emit
+JSON Schema Draft 2020-12 output (``$defs``, discriminated unions, patterns,
+enums) faithfully for every *single-object* constraint, but do not
+automatically encode a cross-field ``model_validator`` (e.g. ``Rule``'s
+scope<->product_version_ids and stage<->effect pairings, ``RulePackPayload``'s
+sequence<->previous_payload_sha256 chain, ``PriceQuote``'s status<->amount
+conditional, ``Decision``'s five state-conditionals) as an ``allOf``/``if``/
+``then`` schema construct on their own — so ``build_schemas`` below
+hand-injects all four of spec §2's single-object ``allOf`` blocks
+(``Rule``, ``RulePackPayload``, ``PriceQuote``, ``Decision`` — verified by
+grepping the spec document for every ``"allOf"`` occurrence: exactly these
+four, transcribed verbatim from spec §2 below, no more and no fewer) into
+the generated ``$defs`` post-generation. ``test_schema_contracts.py`` proves
+each injected block actually gates: a GLOBAL rule with a non-null
+``product_version_ids``, or a HARD_FILTER rule with a SUPPORT effect, now
+FAILS jsonschema validation against this export, matching what Pydantic
+already enforces at construction time via ``models.py``'s own
+``model_validator``s.
 
-PR1 hardening round (Codex finding 1, part of the FX-1 contract-completeness
+One deliberate, documented exception: ``RulePack``'s own header/environment
+consistency check ("protected.environment must equal payload.environment")
+has **no ``allOf`` in spec §2 at all** — confirmed by reading the spec's
+``RulePack`` ``$def`` directly (it has no ``allOf`` key whatsoever). Spec's
+own "Compiler-only invariants, because JSON Schema cannot express them
+safely" list (§2, the section right after the "Equivalent entrypoints"
+table) places this exact check there instead: it is a same-payload
+cross-*object* comparison (``protected.X == payload.Y``, two different
+top-level properties compared to each other) that JSON Schema's ``if``/
+``then`` machinery — which conditions on ONE property's value to constrain
+OTHERS, not compare two arbitrary properties to each other — cannot express.
+Pydantic enforces it anyway (``RulePack._check_header_environment``,
+``models.py``) because ``model_validator`` is a general Python function, not
+bound by JSON Schema's expressiveness; this export honestly leaves it
+uninjected rather than force an artificial ``anyOf`` workaround spec itself
+chose not to write.
+
+PR1 hardening round 2 (Codex finding 1, part of the FX-1 contract-completeness
 fix): this module now exports **all seven** spec §2 entrypoints —
 ``rule-pack``, ``rule``, ``visa-product-version``, ``applicant-facts``,
 ``decision``, ``price-quote``, ``source-record`` — plus a ``contract``
@@ -77,6 +101,172 @@ _BONUS_CONDITION_FILENAME = "condition.schema.json"
 _SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
 _ID_BASE = "https://schemas.balizero.com/visa-engine/"
 
+#: Inline primitive shapes used inside the ``allOf`` blocks below, in place
+#: of spec §2's own ``{"$ref": "#/$defs/Uuid"}``/``{"$ref":
+#: "#/$defs/Sha256Hex"}`` — spec's hand-authored ``contract.schema.json``
+#: declares ``Uuid``/``Sha256Hex`` as named top-level ``$defs``, but
+#: Pydantic's generator renders bare ``Annotated[str, Field(pattern=...)]``
+#: type aliases (``models.Sha256Hex``) and well-known stdlib types
+#: (``uuid.UUID``) INLINE at every usage site instead of emitting a shared
+#: named ``$def`` for them (confirmed empirically: neither name appears in
+#: ``models_json_schema``'s output ``$defs``) — a ``$ref`` to either would be
+#: dangling in this export. Using the identical inline shape Pydantic already
+#: renders elsewhere in the same document (e.g. ``Rule.product_version_ids``'
+#: items) keeps these blocks self-consistent with the rest of the export.
+_UUID_INLINE: dict[str, Any] = {"type": "string", "format": "uuid"}
+_SHA256_HEX_INLINE: dict[str, Any] = {"type": "string", "pattern": r"^[0-9a-f]{64}$"}
+
+#: Spec §2's four single-object ``allOf`` conditionals, transcribed verbatim
+#: (research/visa/2026-07-17-visa-oracle-v2-round2-codex-engine-
+#: concretization.md §2 — Rule ~L1332, RulePackPayload ~L1790, PriceQuote
+#: ~L1911, Decision ~L2136), keyed by the ``$defs`` name each attaches to.
+#: This is the complete list — `grep -n '"allOf"'` over the whole spec
+#: document returns exactly these four matches, no more. ``RulePack`` is
+#: deliberately absent: see module docstring's "one deliberate, documented
+#: exception" paragraph.
+_ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
+    "Rule": [
+        {
+            "if": {"properties": {"scope": {"const": "GLOBAL"}}},
+            "then": {"not": {"required": ["product_version_ids"]}},
+            "else": {"required": ["product_version_ids"]},
+        },
+        {
+            "if": {"properties": {"stage": {"const": "HARD_FILTER"}}},
+            "then": {"properties": {"effect": {"properties": {"type": {"const": "EXCLUDE"}}}}},
+        },
+        {
+            "if": {"properties": {"stage": {"const": "ELIGIBILITY"}}},
+            "then": {"properties": {"effect": {"properties": {"type": {"const": "SUPPORT"}}}}},
+        },
+        {
+            "if": {"properties": {"stage": {"const": "HUMAN_REVIEW"}}},
+            "then": {
+                "properties": {"effect": {"properties": {"type": {"const": "REQUIRE_REVIEW"}}}}
+            },
+        },
+        {
+            "if": {"properties": {"stage": {"const": "RANKING"}}},
+            "then": {"properties": {"effect": {"properties": {"type": {"const": "ADD_SCORE"}}}}},
+        },
+    ],
+    "RulePackPayload": [
+        {
+            "if": {"properties": {"sequence": {"const": 1}}},
+            "then": {"properties": {"previous_payload_sha256": {"type": "null"}}},
+            "else": {"properties": {"previous_payload_sha256": _SHA256_HEX_INLINE}},
+        },
+    ],
+    "PriceQuote": [
+        {
+            "if": {"properties": {"status": {"const": "AVAILABLE"}}},
+            "then": {
+                "properties": {
+                    "amount": {"type": "integer", "minimum": 0},
+                    "catalog_version": {"type": "string"},
+                    "catalog_sha256": _SHA256_HEX_INLINE,
+                    "row_sha256": _SHA256_HEX_INLINE,
+                }
+            },
+            "else": {"properties": {"amount": {"type": "null"}}},
+        },
+    ],
+    "Decision": [
+        {
+            "if": {"properties": {"state": {"const": "SUPPORTED_CANDIDATES"}}},
+            "then": {
+                "properties": {
+                    "decision_id": _UUID_INLINE,
+                    "public_id": {"type": "string", "pattern": "^[a-z0-9]{16,20}$"},
+                    "rule_pack": {"$ref": "#/$defs/RulePackRef"},
+                    "candidates": {"minItems": 1},
+                    "missing_facts": {"maxItems": 0},
+                    "review_reasons": {"maxItems": 0},
+                    "no_path_reasons": {"maxItems": 0},
+                    "outage": {"type": "null"},
+                }
+            },
+            "else": {"properties": {"candidates": {"maxItems": 0}, "quotes": {"maxItems": 0}}},
+        },
+        {
+            "if": {"properties": {"state": {"const": "NEEDS_INPUT"}}},
+            "then": {
+                "properties": {
+                    "decision_id": _UUID_INLINE,
+                    "public_id": {"type": "string", "pattern": "^[a-z0-9]{16,20}$"},
+                    "rule_pack": {"$ref": "#/$defs/RulePackRef"},
+                    "missing_facts": {"minItems": 1},
+                    "review_reasons": {"maxItems": 0},
+                    "no_path_reasons": {"maxItems": 0},
+                    "outage": {"type": "null"},
+                }
+            },
+        },
+        {
+            "if": {"properties": {"state": {"const": "HUMAN_REVIEW_REQUIRED"}}},
+            "then": {
+                "properties": {
+                    "decision_id": _UUID_INLINE,
+                    "public_id": {"type": "string", "pattern": "^[a-z0-9]{16,20}$"},
+                    "rule_pack": {"$ref": "#/$defs/RulePackRef"},
+                    "missing_facts": {"maxItems": 0},
+                    "review_reasons": {"minItems": 1},
+                    "no_path_reasons": {"maxItems": 0},
+                    "outage": {"type": "null"},
+                }
+            },
+        },
+        {
+            "if": {"properties": {"state": {"const": "NO_SUPPORTED_PATH"}}},
+            "then": {
+                "properties": {
+                    "decision_id": _UUID_INLINE,
+                    "public_id": {"type": "string", "pattern": "^[a-z0-9]{16,20}$"},
+                    "rule_pack": {"$ref": "#/$defs/RulePackRef"},
+                    "missing_facts": {"maxItems": 0},
+                    "review_reasons": {"maxItems": 0},
+                    "no_path_reasons": {"minItems": 1},
+                    "outage": {"type": "null"},
+                }
+            },
+        },
+        {
+            "if": {"properties": {"state": {"const": "TEMPORARILY_UNAVAILABLE"}}},
+            "then": {
+                "properties": {
+                    "candidates": {"maxItems": 0},
+                    "missing_facts": {"maxItems": 0},
+                    "review_reasons": {"maxItems": 0},
+                    "no_path_reasons": {"maxItems": 0},
+                    "quotes": {"maxItems": 0},
+                    "outage": {"type": "object"},
+                }
+            },
+        },
+    ],
+}
+
+
+def _inject_allof_conditionals(contract_defs: dict[str, Any]) -> None:
+    """Mutate ``contract_defs`` in place, attaching each entry of
+    ``_ALLOF_INJECTIONS`` to its named ``$def`` — see module docstring for
+    why Pydantic's generator cannot produce these on its own and
+    ``_UUID_INLINE``/``_SHA256_HEX_INLINE`` for why the spec's own ``$ref``
+    forms had to be substituted with inline shapes.
+
+    ``contract_defs`` is ``models_json_schema``'s raw return shape: a
+    single-key dict ``{"$defs": {name: schema, ...}}`` — NOT the flat
+    ``{name: schema, ...}`` mapping the name might suggest.
+    """
+    defs = contract_defs["$defs"]
+    for def_name, allof_blocks in _ALLOF_INJECTIONS.items():
+        if def_name not in defs:
+            raise KeyError(
+                f"expected $defs/{def_name} in the generated contract — "
+                "a model rename/removal broke the allOf injection target"
+            )
+        defs[def_name]["allOf"] = allof_blocks
+
 
 def build_schemas() -> dict[str, dict[str, Any]]:
     """Return ``{filename: schema_dict}`` for the ``contract.schema.json``
@@ -88,6 +278,8 @@ def build_schemas() -> dict[str, dict[str, Any]]:
         [(model, "validation") for model in _ENTRYPOINT_MODELS.values()],
         ref_template="#/$defs/{model}",
     )
+    contract_defs = dict(contract_defs)
+    _inject_allof_conditionals(contract_defs)
 
     schemas: dict[str, dict[str, Any]] = {}
     schemas["contract.schema.json"] = _with_envelope(dict(contract_defs), "contract.schema.json")

@@ -1,0 +1,3756 @@
+{
+  "$defs": {
+    "AllCondition": {
+      "additionalProperties": false,
+      "description": "Kleene conjunction: FALSE if any child FALSE; else UNKNOWN if any\nchild UNKNOWN; else TRUE (spec \u00a74.1). No short-circuit at evaluation\ntime \u2014 every child is evaluated so the trace stays complete.",
+      "properties": {
+        "args": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "all": "#/$defs/AllCondition",
+                "any": "#/$defs/AnyCondition",
+                "between": "#/$defs/BetweenCondition",
+                "contains_all": "#/$defs/ContainsAllCondition",
+                "eq": "#/$defs/EqCondition",
+                "gt": "#/$defs/GtCondition",
+                "gte": "#/$defs/GteCondition",
+                "in": "#/$defs/InCondition",
+                "intersects": "#/$defs/IntersectsCondition",
+                "known": "#/$defs/PresenceCondition",
+                "lt": "#/$defs/LtCondition",
+                "lte": "#/$defs/LteCondition",
+                "neq": "#/$defs/NeqCondition",
+                "not": "#/$defs/NotCondition",
+                "not_in": "#/$defs/NotInCondition",
+                "unknown": "#/$defs/PresenceCondition"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/AllCondition"
+              },
+              {
+                "$ref": "#/$defs/AnyCondition"
+              },
+              {
+                "$ref": "#/$defs/NotCondition"
+              },
+              {
+                "$ref": "#/$defs/PresenceCondition"
+              },
+              {
+                "$ref": "#/$defs/EqCondition"
+              },
+              {
+                "$ref": "#/$defs/NeqCondition"
+              },
+              {
+                "$ref": "#/$defs/LtCondition"
+              },
+              {
+                "$ref": "#/$defs/LteCondition"
+              },
+              {
+                "$ref": "#/$defs/GtCondition"
+              },
+              {
+                "$ref": "#/$defs/GteCondition"
+              },
+              {
+                "$ref": "#/$defs/InCondition"
+              },
+              {
+                "$ref": "#/$defs/NotInCondition"
+              },
+              {
+                "$ref": "#/$defs/BetweenCondition"
+              },
+              {
+                "$ref": "#/$defs/IntersectsCondition"
+              },
+              {
+                "$ref": "#/$defs/ContainsAllCondition"
+              }
+            ]
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Args",
+          "type": "array"
+        },
+        "op": {
+          "const": "all",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": ["op", "args"],
+      "title": "AllCondition",
+      "type": "object"
+    },
+    "AnyCondition": {
+      "additionalProperties": false,
+      "description": "Kleene disjunction: TRUE if any child TRUE; else UNKNOWN if any child\nUNKNOWN; else FALSE (spec \u00a74.1).",
+      "properties": {
+        "args": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "all": "#/$defs/AllCondition",
+                "any": "#/$defs/AnyCondition",
+                "between": "#/$defs/BetweenCondition",
+                "contains_all": "#/$defs/ContainsAllCondition",
+                "eq": "#/$defs/EqCondition",
+                "gt": "#/$defs/GtCondition",
+                "gte": "#/$defs/GteCondition",
+                "in": "#/$defs/InCondition",
+                "intersects": "#/$defs/IntersectsCondition",
+                "known": "#/$defs/PresenceCondition",
+                "lt": "#/$defs/LtCondition",
+                "lte": "#/$defs/LteCondition",
+                "neq": "#/$defs/NeqCondition",
+                "not": "#/$defs/NotCondition",
+                "not_in": "#/$defs/NotInCondition",
+                "unknown": "#/$defs/PresenceCondition"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/AllCondition"
+              },
+              {
+                "$ref": "#/$defs/AnyCondition"
+              },
+              {
+                "$ref": "#/$defs/NotCondition"
+              },
+              {
+                "$ref": "#/$defs/PresenceCondition"
+              },
+              {
+                "$ref": "#/$defs/EqCondition"
+              },
+              {
+                "$ref": "#/$defs/NeqCondition"
+              },
+              {
+                "$ref": "#/$defs/LtCondition"
+              },
+              {
+                "$ref": "#/$defs/LteCondition"
+              },
+              {
+                "$ref": "#/$defs/GtCondition"
+              },
+              {
+                "$ref": "#/$defs/GteCondition"
+              },
+              {
+                "$ref": "#/$defs/InCondition"
+              },
+              {
+                "$ref": "#/$defs/NotInCondition"
+              },
+              {
+                "$ref": "#/$defs/BetweenCondition"
+              },
+              {
+                "$ref": "#/$defs/IntersectsCondition"
+              },
+              {
+                "$ref": "#/$defs/ContainsAllCondition"
+              }
+            ]
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "title": "Args",
+          "type": "array"
+        },
+        "op": {
+          "const": "any",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": ["op", "args"],
+      "title": "AnyCondition",
+      "type": "object"
+    },
+    "ApplicantFacts": {
+      "additionalProperties": false,
+      "description": "``$defs/ApplicantFacts`` (spec \u00a72).",
+      "properties": {
+        "assessment_id": {
+          "format": "uuid",
+          "title": "Assessment Id",
+          "type": "string"
+        },
+        "collected_at": {
+          "format": "date-time",
+          "title": "Collected At",
+          "type": "string"
+        },
+        "facts": {
+          "$ref": "#/$defs/ApplicantFactsData"
+        },
+        "schema_version": {
+          "const": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "assessment_id", "collected_at", "facts"],
+      "title": "ApplicantFacts",
+      "type": "object"
+    },
+    "ApplicantFactsData": {
+      "additionalProperties": false,
+      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all 35 keys required. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``process.*``/``commercial.*`` grouping.",
+      "properties": {
+        "commercial.service_fee_budget_idr": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownMoney",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownMoney"
+            }
+          ],
+          "title": "Commercial.Service Fee Budget Idr"
+        },
+        "commercial.wants_quote": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Commercial.Wants Quote"
+        },
+        "family.marriage_registered": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Family.Marriage Registered"
+        },
+        "family.relation_to_sponsor": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownRelation",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownRelation"
+            }
+          ],
+          "title": "Family.Relation To Sponsor"
+        },
+        "family.sponsor_confirmed": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Family.Sponsor Confirmed"
+        },
+        "family.sponsor_nationalities": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownCountrySet",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownCountrySet"
+            }
+          ],
+          "title": "Family.Sponsor Nationalities"
+        },
+        "family.sponsor_status_code": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownString",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownString"
+            }
+          ],
+          "title": "Family.Sponsor Status Code"
+        },
+        "immigration.current_status_code": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownString",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownString"
+            }
+          ],
+          "title": "Immigration.Current Status Code"
+        },
+        "immigration.current_status_expiry": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownDate",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownDate"
+            }
+          ],
+          "title": "Immigration.Current Status Expiry"
+        },
+        "immigration.currently_in_indonesia": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Immigration.Currently In Indonesia"
+        },
+        "immigration.last_entry_date": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownDate",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownDate"
+            }
+          ],
+          "title": "Immigration.Last Entry Date"
+        },
+        "immigration.overstay_days": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownNonNegativeInteger",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownNonNegativeInteger"
+            }
+          ],
+          "title": "Immigration.Overstay Days"
+        },
+        "immigration.violation_history": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownViolationSet",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownViolationSet"
+            }
+          ],
+          "title": "Immigration.Violation History"
+        },
+        "intent.desired_entry_date": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownDate",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownDate"
+            }
+          ],
+          "title": "Intent.Desired Entry Date"
+        },
+        "intent.entry_pattern": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownEntryPattern",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownEntryPattern"
+            }
+          ],
+          "title": "Intent.Entry Pattern"
+        },
+        "intent.purposes": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownPurposeSet",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownPurposeSet"
+            }
+          ],
+          "title": "Intent.Purposes"
+        },
+        "intent.requested_product_code": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownString",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownString"
+            }
+          ],
+          "title": "Intent.Requested Product Code"
+        },
+        "intent.stay_days": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownNonNegativeInteger",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownNonNegativeInteger"
+            }
+          ],
+          "title": "Intent.Stay Days"
+        },
+        "investment.investment_capital_idr": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownMoney",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownMoney"
+            }
+          ],
+          "title": "Investment.Investment Capital Idr"
+        },
+        "investment.paid_up_capital_idr": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownMoney",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownMoney"
+            }
+          ],
+          "title": "Investment.Paid Up Capital Idr"
+        },
+        "investment.proposed_role": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownProposedRole",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownProposedRole"
+            }
+          ],
+          "title": "Investment.Proposed Role"
+        },
+        "investment.pt_pma_committed": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Investment.Pt Pma Committed"
+        },
+        "person.birth_date": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownDate",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownDate"
+            }
+          ],
+          "title": "Person.Birth Date"
+        },
+        "person.marital_status": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownMaritalStatus",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownMaritalStatus"
+            }
+          ],
+          "title": "Person.Marital Status"
+        },
+        "person.nationalities": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownCountrySet",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownCountrySet"
+            }
+          ],
+          "title": "Person.Nationalities"
+        },
+        "process.application_channel": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownApplicationChannel",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownApplicationChannel"
+            }
+          ],
+          "title": "Process.Application Channel"
+        },
+        "process.wants_onshore_conversion": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Process.Wants Onshore Conversion"
+        },
+        "study.admission_confirmed": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Study.Admission Confirmed"
+        },
+        "study.level": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownStudyLevel",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownStudyLevel"
+            }
+          ],
+          "title": "Study.Level"
+        },
+        "study.sponsor_confirmed": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Study.Sponsor Confirmed"
+        },
+        "work.employer_country_code": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownCountryCode",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownCountryCode"
+            }
+          ],
+          "title": "Work.Employer Country Code"
+        },
+        "work.employer_is_indonesian_entity": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Work.Employer Is Indonesian Entity"
+        },
+        "work.indonesia_source_compensation": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Work.Indonesia Source Compensation"
+        },
+        "work.indonesian_work_sponsor_confirmed": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Work.Indonesian Work Sponsor Confirmed"
+        },
+        "work.serves_indonesian_clients": {
+          "discriminator": {
+            "mapping": {
+              "KNOWN": "#/$defs/KnownBoolean",
+              "UNKNOWN": "#/$defs/UnknownFact"
+            },
+            "propertyName": "status"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/UnknownFact"
+            },
+            {
+              "$ref": "#/$defs/KnownBoolean"
+            }
+          ],
+          "title": "Work.Serves Indonesian Clients"
+        }
+      },
+      "required": [
+        "person.birth_date",
+        "person.nationalities",
+        "person.marital_status",
+        "immigration.currently_in_indonesia",
+        "immigration.current_status_code",
+        "immigration.current_status_expiry",
+        "immigration.last_entry_date",
+        "immigration.overstay_days",
+        "immigration.violation_history",
+        "intent.purposes",
+        "intent.stay_days",
+        "intent.desired_entry_date",
+        "intent.entry_pattern",
+        "intent.requested_product_code",
+        "work.employer_country_code",
+        "work.employer_is_indonesian_entity",
+        "work.serves_indonesian_clients",
+        "work.indonesia_source_compensation",
+        "work.indonesian_work_sponsor_confirmed",
+        "investment.pt_pma_committed",
+        "investment.investment_capital_idr",
+        "investment.paid_up_capital_idr",
+        "investment.proposed_role",
+        "family.relation_to_sponsor",
+        "family.sponsor_nationalities",
+        "family.sponsor_status_code",
+        "family.marriage_registered",
+        "family.sponsor_confirmed",
+        "study.level",
+        "study.admission_confirmed",
+        "study.sponsor_confirmed",
+        "process.application_channel",
+        "process.wants_onshore_conversion",
+        "commercial.service_fee_budget_idr",
+        "commercial.wants_quote"
+      ],
+      "title": "ApplicantFactsData",
+      "type": "object"
+    },
+    "ApplicationChannel": {
+      "enum": ["OFFSHORE", "ONSHORE_CONVERSION", "STATUS_BRIDGING"],
+      "title": "ApplicationChannel",
+      "type": "string"
+    },
+    "BetweenCondition": {
+      "additionalProperties": false,
+      "description": "Inclusive ``[lower, upper]`` range (spec \u00a74.1).",
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "lower": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Lower"
+        },
+        "op": {
+          "const": "between",
+          "title": "Op",
+          "type": "string"
+        },
+        "upper": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Upper"
+        }
+      },
+      "required": ["op", "fact", "lower", "upper"],
+      "title": "BetweenCondition",
+      "type": "object"
+    },
+    "Candidate": {
+      "additionalProperties": false,
+      "description": "``$defs/Candidate`` (spec \u00a72). ``covered_purposes`` is deliberately a\nbare ``str`` tuple, not ``tuple[VisaPurpose, ...]`` \u2014 spec \u00a72's own\n``items`` schema for this field is ``{\"type\": \"string\"}`` with no enum\nconstraint (unlike every other ``covered_purposes`` field in this\npackage), so this class follows the spec literally.",
+      "properties": {
+        "covered_purposes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Covered Purposes",
+          "type": "array"
+        },
+        "product_code": {
+          "maxLength": 32,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9-]{0,31}$",
+          "title": "Product Code",
+          "type": "string"
+        },
+        "product_version_id": {
+          "format": "uuid",
+          "title": "Product Version Id",
+          "type": "string"
+        },
+        "rank": {
+          "maximum": 256,
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "reason_codes": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "score": {
+          "maximum": 1000000,
+          "minimum": -1000000,
+          "title": "Score",
+          "type": "integer"
+        },
+        "source_refs": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "support_rule_ids": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Support Rule Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "rank",
+        "product_version_id",
+        "product_code",
+        "score",
+        "covered_purposes",
+        "support_rule_ids",
+        "source_refs",
+        "reason_codes"
+      ],
+      "title": "Candidate",
+      "type": "object"
+    },
+    "ClockAnchor": {
+      "enum": ["ENTRY_DATE", "PERMIT_ISSUED_AT", "NOT_APPLICABLE"],
+      "title": "ClockAnchor",
+      "type": "string"
+    },
+    "ClockCheckpointSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "body_key": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+          "title": "Body Key",
+          "type": "string"
+        },
+        "code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+          "title": "Code",
+          "type": "string"
+        },
+        "offset_days": {
+          "maximum": 36500,
+          "minimum": -3650,
+          "title": "Offset Days",
+          "type": "integer"
+        },
+        "title_key": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+          "title": "Title Key",
+          "type": "string"
+        }
+      },
+      "required": ["code", "offset_days", "title_key", "body_key"],
+      "title": "ClockCheckpointSpec",
+      "type": "object"
+    },
+    "ClockPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/ClockAnchor"
+        },
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        },
+        "checkpoints": {
+          "items": {
+            "$ref": "#/$defs/ClockCheckpointSpec"
+          },
+          "maxItems": 64,
+          "title": "Checkpoints",
+          "type": "array"
+        }
+      },
+      "required": ["available", "anchor", "checkpoints"],
+      "title": "ClockPolicy",
+      "type": "object"
+    },
+    "ContainsAllCondition": {
+      "additionalProperties": false,
+      "description": "True iff the fact's set-value is a superset of ``values``.",
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "contains_all",
+          "title": "Op",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": ["fact", "values", "op"],
+      "title": "ContainsAllCondition",
+      "type": "object"
+    },
+    "Decision": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "candidates": {
+                "maxItems": 0
+              },
+              "quotes": {
+                "maxItems": 0
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "state": {
+                "const": "SUPPORTED_CANDIDATES"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "candidates": {
+                "minItems": 1
+              },
+              "decision_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "missing_facts": {
+                "maxItems": 0
+              },
+              "no_path_reasons": {
+                "maxItems": 0
+              },
+              "outage": {
+                "type": "null"
+              },
+              "public_id": {
+                "pattern": "^[a-z0-9]{16,20}$",
+                "type": "string"
+              },
+              "review_reasons": {
+                "maxItems": 0
+              },
+              "rule_pack": {
+                "$ref": "#/$defs/RulePackRef"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "NEEDS_INPUT"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "decision_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "missing_facts": {
+                "minItems": 1
+              },
+              "no_path_reasons": {
+                "maxItems": 0
+              },
+              "outage": {
+                "type": "null"
+              },
+              "public_id": {
+                "pattern": "^[a-z0-9]{16,20}$",
+                "type": "string"
+              },
+              "review_reasons": {
+                "maxItems": 0
+              },
+              "rule_pack": {
+                "$ref": "#/$defs/RulePackRef"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "HUMAN_REVIEW_REQUIRED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "decision_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "missing_facts": {
+                "maxItems": 0
+              },
+              "no_path_reasons": {
+                "maxItems": 0
+              },
+              "outage": {
+                "type": "null"
+              },
+              "public_id": {
+                "pattern": "^[a-z0-9]{16,20}$",
+                "type": "string"
+              },
+              "review_reasons": {
+                "minItems": 1
+              },
+              "rule_pack": {
+                "$ref": "#/$defs/RulePackRef"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "NO_SUPPORTED_PATH"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "decision_id": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "missing_facts": {
+                "maxItems": 0
+              },
+              "no_path_reasons": {
+                "minItems": 1
+              },
+              "outage": {
+                "type": "null"
+              },
+              "public_id": {
+                "pattern": "^[a-z0-9]{16,20}$",
+                "type": "string"
+              },
+              "review_reasons": {
+                "maxItems": 0
+              },
+              "rule_pack": {
+                "$ref": "#/$defs/RulePackRef"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "TEMPORARILY_UNAVAILABLE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "candidates": {
+                "maxItems": 0
+              },
+              "missing_facts": {
+                "maxItems": 0
+              },
+              "no_path_reasons": {
+                "maxItems": 0
+              },
+              "outage": {
+                "type": "object"
+              },
+              "quotes": {
+                "maxItems": 0
+              },
+              "review_reasons": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ],
+      "description": "``$defs/Decision`` (spec \u00a72), including its five ``state``-conditional\n``allOf`` entries. PR1 only guarantees the shape is well-typed and the\nfive state invariants hold; *producing* a real ``Decision`` (running the\nevaluator over an ``ApplicantFacts`` + compiled ``RulePack``) is PR3.",
+      "properties": {
+        "candidates": {
+          "items": {
+            "$ref": "#/$defs/Candidate"
+          },
+          "maxItems": 256,
+          "title": "Candidates",
+          "type": "array"
+        },
+        "decision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Decision Id"
+        },
+        "decision_integrity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Fingerprint"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effective_at": {
+          "format": "date-time",
+          "title": "Effective At",
+          "type": "string"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "facts_fingerprint": {
+          "$ref": "#/$defs/Fingerprint"
+        },
+        "missing_facts": {
+          "items": {
+            "$ref": "#/$defs/FactPath"
+          },
+          "title": "Missing Facts",
+          "type": "array"
+        },
+        "no_path_reasons": {
+          "items": {
+            "$ref": "#/$defs/Reason"
+          },
+          "title": "No Path Reasons",
+          "type": "array"
+        },
+        "notices": {
+          "items": {
+            "$ref": "#/$defs/Reason"
+          },
+          "title": "Notices",
+          "type": "array"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "outage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Outage"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "public_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9]{16,20}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Public Id"
+        },
+        "quotes": {
+          "items": {
+            "$ref": "#/$defs/PriceQuote"
+          },
+          "title": "Quotes",
+          "type": "array"
+        },
+        "review_reasons": {
+          "items": {
+            "$ref": "#/$defs/Reason"
+          },
+          "title": "Review Reasons",
+          "type": "array"
+        },
+        "rule_pack": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RulePackRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "schema_version": {
+          "const": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/DecisionState"
+        },
+        "trace_sha256": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Trace Sha256"
+        }
+      },
+      "required": [
+        "schema_version",
+        "decision_id",
+        "public_id",
+        "state",
+        "effective_at",
+        "observed_at",
+        "evaluated_at",
+        "rule_pack",
+        "facts_fingerprint",
+        "candidates",
+        "missing_facts",
+        "review_reasons",
+        "no_path_reasons",
+        "outage",
+        "quotes",
+        "notices",
+        "trace_sha256",
+        "decision_integrity"
+      ],
+      "title": "Decision",
+      "type": "object"
+    },
+    "DecisionState": {
+      "description": "The exactly-one-of-five global states a Decision resolves to (spec \u00a75.3).\n\nPrecedence (highest first): TEMPORARILY_UNAVAILABLE (unavailable pack\nfails closed) > HUMAN_REVIEW_REQUIRED > SUPPORTED_CANDIDATES >\nNEEDS_INPUT > NO_SUPPORTED_PATH.",
+      "enum": [
+        "NEEDS_INPUT",
+        "SUPPORTED_CANDIDATES",
+        "HUMAN_REVIEW_REQUIRED",
+        "NO_SUPPORTED_PATH",
+        "TEMPORARILY_UNAVAILABLE"
+      ],
+      "title": "DecisionState",
+      "type": "string"
+    },
+    "EffectAddScore": {
+      "additionalProperties": false,
+      "properties": {
+        "points": {
+          "maximum": 10000,
+          "minimum": -10000,
+          "title": "Points",
+          "type": "integer"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "type": {
+          "const": "ADD_SCORE",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": ["type", "reason_code", "points"],
+      "title": "EffectAddScore",
+      "type": "object"
+    },
+    "EffectExclude": {
+      "additionalProperties": false,
+      "properties": {
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "type": {
+          "const": "EXCLUDE",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": ["type", "reason_code"],
+      "title": "EffectExclude",
+      "type": "object"
+    },
+    "EffectRequireReview": {
+      "additionalProperties": false,
+      "properties": {
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "type": {
+          "const": "REQUIRE_REVIEW",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": ["type", "reason_code"],
+      "title": "EffectRequireReview",
+      "type": "object"
+    },
+    "EffectSupport": {
+      "additionalProperties": false,
+      "properties": {
+        "covered_purposes": {
+          "items": {
+            "$ref": "#/$defs/VisaPurpose"
+          },
+          "minItems": 1,
+          "title": "Covered Purposes",
+          "type": "array"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "type": {
+          "const": "SUPPORT",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": ["type", "reason_code", "covered_purposes"],
+      "title": "EffectSupport",
+      "type": "object"
+    },
+    "EntryCount": {
+      "enum": ["SINGLE", "MULTIPLE", "NOT_APPLICABLE"],
+      "title": "EntryCount",
+      "type": "string"
+    },
+    "EntryPattern": {
+      "enum": ["SINGLE", "MULTIPLE"],
+      "title": "EntryPattern",
+      "type": "string"
+    },
+    "EntryPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "entry_count": {
+          "$ref": "#/$defs/EntryCount"
+        }
+      },
+      "required": ["entry_count"],
+      "title": "EntryPolicy",
+      "type": "object"
+    },
+    "Environment": {
+      "description": "RulePack target environment (spec \u00a72 ``RulePackPayload.environment`` / ``ProtectedHeader.environment``).",
+      "enum": ["TEST", "STAGING", "PRODUCTION"],
+      "title": "Environment",
+      "type": "string"
+    },
+    "EqCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "eq",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "EqCondition",
+      "type": "object"
+    },
+    "ExtensionPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed": {
+          "title": "Allowed",
+          "type": "boolean"
+        },
+        "days_per_extension": {
+          "anyOf": [
+            {
+              "maximum": 3650,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Days Per Extension"
+        },
+        "maximum_extensions": {
+          "maximum": 100,
+          "minimum": 0,
+          "title": "Maximum Extensions",
+          "type": "integer"
+        }
+      },
+      "required": ["allowed", "maximum_extensions", "days_per_extension"],
+      "title": "ExtensionPolicy",
+      "type": "object"
+    },
+    "FactPath": {
+      "description": "Every fact path the engine may ever reference \u2014 35 applicant-collected\n+ 3 derived (spec \u00a72 ``ApplicantFactPath`` + ``FactPath``).\n\nClosed by design (spec \u00a75.2): a Condition's ``fact`` field and a Rule's\n``required_facts`` array are both typed against this enum, so a rule\nthat references an unknown fact path is a Pydantic ``ValidationError``\nat parse time, not a runtime surprise. ``fact_registry.py`` layers typed\nmetadata (value kind, PII class, commercial flag) on top of this same\nvocabulary \u2014 see that module's docstring for why both exist.",
+      "enum": [
+        "person.birth_date",
+        "person.nationalities",
+        "person.marital_status",
+        "immigration.currently_in_indonesia",
+        "immigration.current_status_code",
+        "immigration.current_status_expiry",
+        "immigration.last_entry_date",
+        "immigration.overstay_days",
+        "immigration.violation_history",
+        "intent.purposes",
+        "intent.stay_days",
+        "intent.desired_entry_date",
+        "intent.entry_pattern",
+        "intent.requested_product_code",
+        "work.employer_country_code",
+        "work.employer_is_indonesian_entity",
+        "work.serves_indonesian_clients",
+        "work.indonesia_source_compensation",
+        "work.indonesian_work_sponsor_confirmed",
+        "investment.pt_pma_committed",
+        "investment.investment_capital_idr",
+        "investment.paid_up_capital_idr",
+        "investment.proposed_role",
+        "family.relation_to_sponsor",
+        "family.sponsor_nationalities",
+        "family.sponsor_status_code",
+        "family.marriage_registered",
+        "family.sponsor_confirmed",
+        "study.level",
+        "study.admission_confirmed",
+        "study.sponsor_confirmed",
+        "process.application_channel",
+        "process.wants_onshore_conversion",
+        "commercial.service_fee_budget_idr",
+        "commercial.wants_quote",
+        "derived.age_years",
+        "derived.is_minor",
+        "derived.has_indonesian_citizenship"
+      ],
+      "title": "FactPath",
+      "type": "string"
+    },
+    "Fingerprint": {
+      "additionalProperties": false,
+      "description": "``$defs/Fingerprint`` (spec \u00a72) \u2014 an HMAC-SHA256 integrity tag over a\n``Decision`` or its facts, distinct from the Ed25519 RulePack signature.",
+      "properties": {
+        "algorithm": {
+          "const": "HMAC-SHA256",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "digest": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "key_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+          "title": "Key Id",
+          "type": "string"
+        }
+      },
+      "required": ["algorithm", "key_id", "digest"],
+      "title": "Fingerprint",
+      "type": "object"
+    },
+    "GtCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "gt",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "GtCondition",
+      "type": "object"
+    },
+    "GteCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "gte",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "GteCondition",
+      "type": "object"
+    },
+    "HitPolicyDeclaration": {
+      "additionalProperties": false,
+      "description": "Every field is a JSON Schema ``const`` \u2014 but with no Python default\n(Codex finding 2, exact counterexample: ``HitPolicyDeclaration()`` with\nzero args was wrongly accepted). See ``TimeRange.to``'s docstring for\nthe general \"signed-payload field, no silent default\" rationale.",
+      "properties": {
+        "eligibility": {
+          "const": "COVER_ALL_DECLARED_PURPOSES",
+          "title": "Eligibility",
+          "type": "string"
+        },
+        "hard_filter": {
+          "const": "COLLECT_ALL",
+          "title": "Hard Filter",
+          "type": "string"
+        },
+        "human_review": {
+          "const": "COLLECT_ALL",
+          "title": "Human Review",
+          "type": "string"
+        },
+        "ranking": {
+          "const": "SUM_TRUE_INTEGER_WEIGHTS",
+          "title": "Ranking",
+          "type": "string"
+        }
+      },
+      "required": ["hard_filter", "eligibility", "human_review", "ranking"],
+      "title": "HitPolicyDeclaration",
+      "type": "object"
+    },
+    "InCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "in",
+          "title": "Op",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": ["fact", "values", "op"],
+      "title": "InCondition",
+      "type": "object"
+    },
+    "IntersectsCondition": {
+      "additionalProperties": false,
+      "description": "True iff the fact's set-value and ``values`` share at least one element.",
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "intersects",
+          "title": "Op",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": ["fact", "values", "op"],
+      "title": "IntersectsCondition",
+      "type": "object"
+    },
+    "KnownApplicationChannel": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/ApplicationChannel"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownApplicationChannel",
+      "type": "object"
+    },
+    "KnownBoolean": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "boolean"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownBoolean",
+      "type": "object"
+    },
+    "KnownCountryCode": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "pattern": "^[A-Z]{2}$",
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownCountryCode",
+      "type": "object"
+    },
+    "KnownCountrySet": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "items": {
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownCountrySet",
+      "type": "object"
+    },
+    "KnownDate": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownDate",
+      "type": "object"
+    },
+    "KnownEntryPattern": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/EntryPattern"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownEntryPattern",
+      "type": "object"
+    },
+    "KnownMaritalStatus": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/MaritalStatus"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownMaritalStatus",
+      "type": "object"
+    },
+    "KnownMoney": {
+      "additionalProperties": false,
+      "description": "Structurally identical to ``KnownNonNegativeInteger`` \u2014 kept as a\ndistinct class because spec \u00a72 declares ``KnownMoney`` as its own\n``$def`` (semantically an IDR amount, not an arbitrary count).",
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Value",
+          "type": "integer"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownMoney",
+      "type": "object"
+    },
+    "KnownNonNegativeInteger": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Value",
+          "type": "integer"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownNonNegativeInteger",
+      "type": "object"
+    },
+    "KnownProposedRole": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/ProposedRole"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownProposedRole",
+      "type": "object"
+    },
+    "KnownPurposeSet": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "items": {
+            "$ref": "#/$defs/VisaPurpose"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownPurposeSet",
+      "type": "object"
+    },
+    "KnownRelation": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/RelationType"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownRelation",
+      "type": "object"
+    },
+    "KnownString": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownString",
+      "type": "object"
+    },
+    "KnownStudyLevel": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/StudyLevel"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownStudyLevel",
+      "type": "object"
+    },
+    "KnownViolationSet": {
+      "additionalProperties": false,
+      "description": "No ``min_length`` (spec \u00a72, deliberately): ``value=[]`` is a\nmeaningful KNOWN fact \u2014 \"we asked, they have zero violations\" \u2014 distinct\nfrom ``UnknownFact`` (\"we don't know\").",
+      "properties": {
+        "status": {
+          "const": "KNOWN",
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "items": {
+            "$ref": "#/$defs/ViolationType"
+          },
+          "maxItems": 8,
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": ["status", "value"],
+      "title": "KnownViolationSet",
+      "type": "object"
+    },
+    "LtCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "lt",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "LtCondition",
+      "type": "object"
+    },
+    "LteCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "lte",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "LteCondition",
+      "type": "object"
+    },
+    "MaritalStatus": {
+      "enum": ["SINGLE", "MARRIED", "DIVORCED", "WIDOWED", "OTHER"],
+      "title": "MaritalStatus",
+      "type": "string"
+    },
+    "NeqCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "neq",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": ["fact", "value", "op"],
+      "title": "NeqCondition",
+      "type": "object"
+    },
+    "NotCondition": {
+      "additionalProperties": false,
+      "description": "Negation: TRUE<->FALSE swap; UNKNOWN remains UNKNOWN (spec \u00a74.1).",
+      "properties": {
+        "arg": {
+          "discriminator": {
+            "mapping": {
+              "all": "#/$defs/AllCondition",
+              "any": "#/$defs/AnyCondition",
+              "between": "#/$defs/BetweenCondition",
+              "contains_all": "#/$defs/ContainsAllCondition",
+              "eq": "#/$defs/EqCondition",
+              "gt": "#/$defs/GtCondition",
+              "gte": "#/$defs/GteCondition",
+              "in": "#/$defs/InCondition",
+              "intersects": "#/$defs/IntersectsCondition",
+              "known": "#/$defs/PresenceCondition",
+              "lt": "#/$defs/LtCondition",
+              "lte": "#/$defs/LteCondition",
+              "neq": "#/$defs/NeqCondition",
+              "not": "#/$defs/NotCondition",
+              "not_in": "#/$defs/NotInCondition",
+              "unknown": "#/$defs/PresenceCondition"
+            },
+            "propertyName": "op"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AllCondition"
+            },
+            {
+              "$ref": "#/$defs/AnyCondition"
+            },
+            {
+              "$ref": "#/$defs/NotCondition"
+            },
+            {
+              "$ref": "#/$defs/PresenceCondition"
+            },
+            {
+              "$ref": "#/$defs/EqCondition"
+            },
+            {
+              "$ref": "#/$defs/NeqCondition"
+            },
+            {
+              "$ref": "#/$defs/LtCondition"
+            },
+            {
+              "$ref": "#/$defs/LteCondition"
+            },
+            {
+              "$ref": "#/$defs/GtCondition"
+            },
+            {
+              "$ref": "#/$defs/GteCondition"
+            },
+            {
+              "$ref": "#/$defs/InCondition"
+            },
+            {
+              "$ref": "#/$defs/NotInCondition"
+            },
+            {
+              "$ref": "#/$defs/BetweenCondition"
+            },
+            {
+              "$ref": "#/$defs/IntersectsCondition"
+            },
+            {
+              "$ref": "#/$defs/ContainsAllCondition"
+            }
+          ],
+          "title": "Arg"
+        },
+        "op": {
+          "const": "not",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": ["op", "arg"],
+      "title": "NotCondition",
+      "type": "object"
+    },
+    "NotInCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "const": "not_in",
+          "title": "Op",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": ["fact", "values", "op"],
+      "title": "NotInCondition",
+      "type": "object"
+    },
+    "OnUnknownAction": {
+      "description": "What an UNKNOWN condition result does to the global decision (spec \u00a72 ``Rule.on_unknown``).",
+      "enum": ["NEEDS_INPUT", "HUMAN_REVIEW", "NO_EFFECT"],
+      "title": "OnUnknownAction",
+      "type": "string"
+    },
+    "Outage": {
+      "additionalProperties": false,
+      "description": "``Decision.outage`` inline object (spec \u00a72, not a separate top-level $def).",
+      "properties": {
+        "code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Code",
+          "type": "string"
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        }
+      },
+      "required": ["code", "retryable"],
+      "title": "Outage",
+      "type": "object"
+    },
+    "PresenceCondition": {
+      "additionalProperties": false,
+      "description": "``known``: TRUE iff the fact is KNOWN, else FALSE.\n``unknown``: TRUE iff the fact is UNKNOWN, else FALSE (spec \u00a74.1).",
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/FactPath"
+        },
+        "op": {
+          "enum": ["known", "unknown"],
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": ["op", "fact"],
+      "title": "PresenceCondition",
+      "type": "object"
+    },
+    "PriceQuote": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "amount": {
+                "type": "null"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "status": {
+                "const": "AVAILABLE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "amount": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "catalog_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "catalog_version": {
+                "type": "string"
+              },
+              "row_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              }
+            }
+          }
+        }
+      ],
+      "description": "``$defs/PriceQuote`` (spec \u00a72), including its ``status``-conditional\n``allOf`` (AVAILABLE requires non-null amount/catalog fields; otherwise\namount must be null).",
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Amount"
+        },
+        "catalog_sha256": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Catalog Sha256"
+        },
+        "catalog_version": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Catalog Version"
+        },
+        "currency": {
+          "const": "IDR",
+          "title": "Currency",
+          "type": "string"
+        },
+        "pricing_key": {
+          "$ref": "#/$defs/PricingKey"
+        },
+        "product_code": {
+          "maxLength": 32,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9-]{0,31}$",
+          "title": "Product Code",
+          "type": "string"
+        },
+        "product_version_id": {
+          "format": "uuid",
+          "title": "Product Version Id",
+          "type": "string"
+        },
+        "quote_id": {
+          "format": "uuid",
+          "title": "Quote Id",
+          "type": "string"
+        },
+        "quoted_at": {
+          "format": "date-time",
+          "title": "Quoted At",
+          "type": "string"
+        },
+        "reason_code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "row_sha256": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Row Sha256"
+        },
+        "status": {
+          "enum": ["AVAILABLE", "CONTACT_REQUIRED", "UNAVAILABLE"],
+          "title": "Status",
+          "type": "string"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Valid Until"
+        }
+      },
+      "required": [
+        "quote_id",
+        "product_version_id",
+        "product_code",
+        "status",
+        "currency",
+        "amount",
+        "pricing_key",
+        "catalog_version",
+        "catalog_sha256",
+        "row_sha256",
+        "quoted_at",
+        "valid_until",
+        "reason_code"
+      ],
+      "title": "PriceQuote",
+      "type": "object"
+    },
+    "PricingKey": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Category",
+          "type": "string"
+        },
+        "item_key": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Item Key",
+          "type": "string"
+        }
+      },
+      "required": ["category", "item_key"],
+      "title": "PricingKey",
+      "type": "object"
+    },
+    "ProductNames": {
+      "additionalProperties": false,
+      "properties": {
+        "en": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "En",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": ["id", "en"],
+      "title": "ProductNames",
+      "type": "object"
+    },
+    "ProposedRole": {
+      "enum": [
+        "SHAREHOLDER_DIRECTOR",
+        "SHAREHOLDER_COMMISSIONER",
+        "EMPLOYEE",
+        "NO_OPERATIONAL_ROLE",
+        "OTHER"
+      ],
+      "title": "ProposedRole",
+      "type": "string"
+    },
+    "ProtectedHeader": {
+      "additionalProperties": false,
+      "description": "``$defs/ProtectedHeader`` (spec \u00a72, \u00a73 signing envelope).",
+      "properties": {
+        "alg": {
+          "const": "Ed25519",
+          "title": "Alg",
+          "type": "string"
+        },
+        "domain": {
+          "const": "balizero.visa-rulepack.v1",
+          "title": "Domain",
+          "type": "string"
+        },
+        "environment": {
+          "$ref": "#/$defs/Environment"
+        },
+        "kid": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+          "title": "Kid",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "1.0.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "signed_at": {
+          "format": "date-time",
+          "title": "Signed At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "alg",
+        "kid",
+        "signed_at",
+        "schema_version",
+        "environment"
+      ],
+      "title": "ProtectedHeader",
+      "type": "object"
+    },
+    "Reason": {
+      "additionalProperties": false,
+      "description": "``$defs/Reason`` (spec \u00a72).",
+      "properties": {
+        "code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]{0,127}$",
+          "title": "Code",
+          "type": "string"
+        },
+        "rule_ids": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Rule Ids",
+          "type": "array"
+        },
+        "source_refs": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Source Refs",
+          "type": "array"
+        }
+      },
+      "required": ["code", "rule_ids", "source_refs"],
+      "title": "Reason",
+      "type": "object"
+    },
+    "RelationType": {
+      "enum": ["SPOUSE", "CHILD", "PARENT", "DEPENDENT", "OTHER"],
+      "title": "RelationType",
+      "type": "string"
+    },
+    "Rule": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "required": ["product_version_ids"]
+          },
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "GLOBAL"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": ["product_version_ids"]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "HARD_FILTER"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "properties": {
+                  "type": {
+                    "const": "EXCLUDE"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "ELIGIBILITY"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "properties": {
+                  "type": {
+                    "const": "SUPPORT"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "HUMAN_REVIEW"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "properties": {
+                  "type": {
+                    "const": "REQUIRE_REVIEW"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "RANKING"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "properties": {
+                  "type": {
+                    "const": "ADD_SCORE"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "description": "``$defs/Rule`` (spec \u00a72), including its two ``allOf``/``if``/``then``\nconditionals as ``model_validator``s: (1) ``scope: GLOBAL`` forbids\n``product_version_ids``, ``scope: PRODUCTS`` requires it; (2) each stage\nrequires its matching effect type (spec's ``STAGE_EFFECT_TYPE`` mapping\nabove). Both are cheap, single-object, always-true rules stated directly\nin the JSON Schema, so they belong at the model layer.\n\nDeliberately NOT enforced here (see ``ast.py``'s ``validate_ast_limits``\ndocstring): AST depth/node-count limits. The spec buckets those under\n\"compiler-only invariants\" \u2014 ``compiler.py`` is the sole enforcement\npoint, so a Rule with an oversized condition tree *can* be constructed\n(matching how a raw pack loads before compilation) and is instead\nreported as a collected ``CompilationError``, never a raised exception.",
+      "properties": {
+        "effect": {
+          "discriminator": {
+            "mapping": {
+              "ADD_SCORE": "#/$defs/EffectAddScore",
+              "EXCLUDE": "#/$defs/EffectExclude",
+              "REQUIRE_REVIEW": "#/$defs/EffectRequireReview",
+              "SUPPORT": "#/$defs/EffectSupport"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/EffectExclude"
+            },
+            {
+              "$ref": "#/$defs/EffectSupport"
+            },
+            {
+              "$ref": "#/$defs/EffectRequireReview"
+            },
+            {
+              "$ref": "#/$defs/EffectAddScore"
+            }
+          ],
+          "title": "Effect"
+        },
+        "explanation_key": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+          "title": "Explanation Key",
+          "type": "string"
+        },
+        "on_unknown": {
+          "$ref": "#/$defs/OnUnknownAction"
+        },
+        "priority": {
+          "maximum": 100000,
+          "minimum": 0,
+          "title": "Priority",
+          "type": "integer"
+        },
+        "product_version_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 256,
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Product Version Ids"
+        },
+        "required_facts": {
+          "items": {
+            "$ref": "#/$defs/FactPath"
+          },
+          "maxItems": 128,
+          "title": "Required Facts",
+          "type": "array"
+        },
+        "rule_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "safety_critical": {
+          "title": "Safety Critical",
+          "type": "boolean"
+        },
+        "scope": {
+          "$ref": "#/$defs/RuleScope"
+        },
+        "source_refs": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "stage": {
+          "$ref": "#/$defs/RuleStage"
+        },
+        "valid_period": {
+          "$ref": "#/$defs/TimeRange"
+        },
+        "when": {
+          "discriminator": {
+            "mapping": {
+              "all": "#/$defs/AllCondition",
+              "any": "#/$defs/AnyCondition",
+              "between": "#/$defs/BetweenCondition",
+              "contains_all": "#/$defs/ContainsAllCondition",
+              "eq": "#/$defs/EqCondition",
+              "gt": "#/$defs/GtCondition",
+              "gte": "#/$defs/GteCondition",
+              "in": "#/$defs/InCondition",
+              "intersects": "#/$defs/IntersectsCondition",
+              "known": "#/$defs/PresenceCondition",
+              "lt": "#/$defs/LtCondition",
+              "lte": "#/$defs/LteCondition",
+              "neq": "#/$defs/NeqCondition",
+              "not": "#/$defs/NotCondition",
+              "not_in": "#/$defs/NotInCondition",
+              "unknown": "#/$defs/PresenceCondition"
+            },
+            "propertyName": "op"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/AllCondition"
+            },
+            {
+              "$ref": "#/$defs/AnyCondition"
+            },
+            {
+              "$ref": "#/$defs/NotCondition"
+            },
+            {
+              "$ref": "#/$defs/PresenceCondition"
+            },
+            {
+              "$ref": "#/$defs/EqCondition"
+            },
+            {
+              "$ref": "#/$defs/NeqCondition"
+            },
+            {
+              "$ref": "#/$defs/LtCondition"
+            },
+            {
+              "$ref": "#/$defs/LteCondition"
+            },
+            {
+              "$ref": "#/$defs/GtCondition"
+            },
+            {
+              "$ref": "#/$defs/GteCondition"
+            },
+            {
+              "$ref": "#/$defs/InCondition"
+            },
+            {
+              "$ref": "#/$defs/NotInCondition"
+            },
+            {
+              "$ref": "#/$defs/BetweenCondition"
+            },
+            {
+              "$ref": "#/$defs/IntersectsCondition"
+            },
+            {
+              "$ref": "#/$defs/ContainsAllCondition"
+            }
+          ],
+          "title": "When"
+        }
+      },
+      "required": [
+        "rule_id",
+        "stage",
+        "scope",
+        "priority",
+        "valid_period",
+        "when",
+        "effect",
+        "on_unknown",
+        "required_facts",
+        "source_refs",
+        "explanation_key",
+        "safety_critical"
+      ],
+      "title": "Rule",
+      "type": "object"
+    },
+    "RulePack": {
+      "additionalProperties": false,
+      "description": "``$defs/RulePack`` (spec \u00a72) \u2014 the signed envelope.\n\nPR1 does not verify the signature (that is ``bundle.py``, PR2 scope):\nthis model only guarantees the envelope is well-typed. ``compiler.py``\ntakes a plain ``RulePack`` for the same reason (see that module's\ndocstring) rather than the spec's ``VerifiedRulePack`` (a PR2 concept).",
+      "properties": {
+        "canonicalization": {
+          "const": "RFC8785",
+          "title": "Canonicalization",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/RulePackPayload"
+        },
+        "payload_sha256": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Payload Sha256",
+          "type": "string"
+        },
+        "protected": {
+          "$ref": "#/$defs/ProtectedHeader"
+        },
+        "signature": {
+          "pattern": "^[A-Za-z0-9_-]{86}$",
+          "title": "Signature",
+          "type": "string"
+        }
+      },
+      "required": [
+        "canonicalization",
+        "protected",
+        "payload",
+        "payload_sha256",
+        "signature"
+      ],
+      "title": "RulePack",
+      "type": "object"
+    },
+    "RulePackPayload": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "previous_payload_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "sequence": {
+                "const": 1
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "previous_payload_sha256": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "description": "``$defs/RulePackPayload`` (spec \u00a72).",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+          "title": "Created By",
+          "type": "string"
+        },
+        "decision_domain": {
+          "const": "IMMIGRATION_VISA",
+          "title": "Decision Domain",
+          "type": "string"
+        },
+        "engine_contract_version": {
+          "const": "1.0.0",
+          "title": "Engine Contract Version",
+          "type": "string"
+        },
+        "engine_max_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "title": "Engine Max Version",
+          "type": "string"
+        },
+        "engine_min_version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "title": "Engine Min Version",
+          "type": "string"
+        },
+        "environment": {
+          "$ref": "#/$defs/Environment"
+        },
+        "hit_policy": {
+          "$ref": "#/$defs/HitPolicyDeclaration"
+        },
+        "jurisdiction": {
+          "const": "ID",
+          "title": "Jurisdiction",
+          "type": "string"
+        },
+        "previous_payload_sha256": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Previous Payload Sha256"
+        },
+        "products": {
+          "items": {
+            "$ref": "#/$defs/VisaProductVersion"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "title": "Products",
+          "type": "array"
+        },
+        "rollback_of_payload_sha256": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rollback Of Payload Sha256"
+        },
+        "rule_pack_id": {
+          "format": "uuid",
+          "title": "Rule Pack Id",
+          "type": "string"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/Rule"
+          },
+          "maxItems": 4096,
+          "minItems": 1,
+          "title": "Rules",
+          "type": "array"
+        },
+        "sequence": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "source_records": {
+          "items": {
+            "$ref": "#/$defs/SourceRecord"
+          },
+          "maxItems": 4096,
+          "minItems": 1,
+          "title": "Source Records",
+          "type": "array"
+        },
+        "valid_period": {
+          "$ref": "#/$defs/TimeRange"
+        },
+        "version": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_pack_id",
+        "sequence",
+        "version",
+        "environment",
+        "jurisdiction",
+        "decision_domain",
+        "engine_contract_version",
+        "engine_min_version",
+        "engine_max_version",
+        "valid_period",
+        "created_at",
+        "created_by",
+        "previous_payload_sha256",
+        "rollback_of_payload_sha256",
+        "hit_policy",
+        "source_records",
+        "products",
+        "rules"
+      ],
+      "title": "RulePackPayload",
+      "type": "object"
+    },
+    "RulePackRef": {
+      "additionalProperties": false,
+      "description": "``$defs/RulePackRef`` (spec \u00a72). ``version`` is a bare ``str`` per\nspec (no semver pattern applied here, unlike ``RulePackPayload.version``\n\u2014 a reference snapshot, not the payload itself).",
+      "properties": {
+        "payload_sha256": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Payload Sha256",
+          "type": "string"
+        },
+        "rule_pack_id": {
+          "format": "uuid",
+          "title": "Rule Pack Id",
+          "type": "string"
+        },
+        "sequence": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Sequence",
+          "type": "integer"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": ["rule_pack_id", "sequence", "version", "payload_sha256"],
+      "title": "RulePackRef",
+      "type": "object"
+    },
+    "RuleScope": {
+      "description": "Whether a rule applies to every product (GLOBAL) or a declared subset (PRODUCTS).",
+      "enum": ["GLOBAL", "PRODUCTS"],
+      "title": "RuleScope",
+      "type": "string"
+    },
+    "RuleStage": {
+      "description": "The four rule stages, evaluated in this strict order (spec \u00a75.3).\n\nHARD_FILTER: any TRUE excludes the product outright.\nELIGIBILITY: SUPPORT rules whose ``covered_purposes`` union must cover\n    every declared purpose (``COVER_ALL_DECLARED_PURPOSES``).\nHUMAN_REVIEW: any TRUE forces HUMAN_REVIEW_REQUIRED, no candidate emitted.\nRANKING: only runs on already-SUPPORTED products; integer score deltas.",
+      "enum": ["HARD_FILTER", "ELIGIBILITY", "HUMAN_REVIEW", "RANKING"],
+      "title": "RuleStage",
+      "type": "string"
+    },
+    "SourceAuthorityType": {
+      "enum": [
+        "PRIMARY_LAW",
+        "IMPLEMENTING_REGULATION",
+        "OFFICIAL_PORTAL",
+        "OFFICIAL_CIRCULAR",
+        "BALI_ZERO_POLICY",
+        "PRICING_CATALOG"
+      ],
+      "title": "SourceAuthorityType",
+      "type": "string"
+    },
+    "SourceLocator": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/SourceLocatorKind"
+        },
+        "value": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": ["kind", "value"],
+      "title": "SourceLocator",
+      "type": "object"
+    },
+    "SourceLocatorKind": {
+      "enum": ["ARTICLE", "SECTION", "PAGE", "PARAGRAPH", "ANCHOR"],
+      "title": "SourceLocatorKind",
+      "type": "string"
+    },
+    "SourceRecord": {
+      "additionalProperties": false,
+      "description": "A single verified regulatory/pricing source, bitemporally tracked.\n\n``legal_period`` = when the cited rule was legally true; ``recorded_period``\n= when Visa Oracle's system knew it (spec \u00a75.4's bitemporal model \u2014 the\ntwo clocks tracked independently, never conflated).",
+      "properties": {
+        "authority_type": {
+          "$ref": "#/$defs/SourceAuthorityType"
+        },
+        "canonical_url": {
+          "maxLength": 2048,
+          "title": "Canonical Url",
+          "type": "string"
+        },
+        "content_sha256": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "document_number": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Document Number"
+        },
+        "jurisdiction": {
+          "const": "ID",
+          "title": "Jurisdiction",
+          "type": "string"
+        },
+        "language": {
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+          "title": "Language",
+          "type": "string"
+        },
+        "legal_period": {
+          "$ref": "#/$defs/TimeRange"
+        },
+        "locators": {
+          "items": {
+            "$ref": "#/$defs/SourceLocator"
+          },
+          "maxItems": 64,
+          "title": "Locators",
+          "type": "array"
+        },
+        "publisher": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Publisher",
+          "type": "string"
+        },
+        "recorded_period": {
+          "$ref": "#/$defs/TimeRange"
+        },
+        "retrieved_at": {
+          "format": "date-time",
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "source_key": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+          "title": "Source Key",
+          "type": "string"
+        },
+        "source_record_id": {
+          "format": "uuid",
+          "title": "Source Record Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/SourceStatus"
+        },
+        "supersedes_source_record_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Supersedes Source Record Id"
+        },
+        "title": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "verified_at": {
+          "format": "date-time",
+          "title": "Verified At",
+          "type": "string"
+        },
+        "verified_by": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+          "title": "Verified By",
+          "type": "string"
+        },
+        "version": {
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "source_record_id",
+        "source_key",
+        "version",
+        "authority_type",
+        "status",
+        "jurisdiction",
+        "title",
+        "publisher",
+        "canonical_url",
+        "language",
+        "document_number",
+        "locators",
+        "content_sha256",
+        "legal_period",
+        "recorded_period",
+        "retrieved_at",
+        "verified_at",
+        "verified_by",
+        "supersedes_source_record_id"
+      ],
+      "title": "SourceRecord",
+      "type": "object"
+    },
+    "SourceStatus": {
+      "enum": ["VERIFIED", "SUPERSEDED", "REVOKED", "UNAVAILABLE"],
+      "title": "SourceStatus",
+      "type": "string"
+    },
+    "SponsorType": {
+      "enum": [
+        "NONE",
+        "INDIVIDUAL",
+        "EMPLOYER",
+        "EDUCATION",
+        "INVESTMENT",
+        "GOVERNMENT"
+      ],
+      "title": "SponsorType",
+      "type": "string"
+    },
+    "StayPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/StayPolicyKind"
+        },
+        "maximum_days": {
+          "anyOf": [
+            {
+              "maximum": 36500,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Maximum Days"
+        },
+        "minimum_days": {
+          "anyOf": [
+            {
+              "maximum": 36500,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Minimum Days"
+        }
+      },
+      "required": ["kind", "minimum_days", "maximum_days"],
+      "title": "StayPolicy",
+      "type": "object"
+    },
+    "StayPolicyKind": {
+      "enum": ["FIXED_DAYS", "VARIABLE_BY_GRANT", "NOT_APPLICABLE"],
+      "title": "StayPolicyKind",
+      "type": "string"
+    },
+    "StudyLevel": {
+      "enum": [
+        "PRIMARY",
+        "SECONDARY",
+        "VOCATIONAL",
+        "UNDERGRADUATE",
+        "POSTGRADUATE",
+        "RESEARCH",
+        "OTHER"
+      ],
+      "title": "StudyLevel",
+      "type": "string"
+    },
+    "TimeRange": {
+      "additionalProperties": false,
+      "description": "``$defs/TimeRange`` \u2014 an open-ended (``to: null`` = still open) interval.\n\n``to`` has no Python default (Codex finding 2): JSON Schema's\n``required: [\"from\", \"to\"]`` means the *key* must be present even though\nits *value* may legally be ``null`` \u2014 a Python ``= None`` default would\nlet ``TimeRange(from=...)`` silently omit the key, which for a field\ninside a signed payload changes what gets canonicalized/hashed.",
+      "properties": {
+        "from": {
+          "format": "date-time",
+          "title": "From",
+          "type": "string"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "To"
+        }
+      },
+      "required": ["from", "to"],
+      "title": "TimeRange",
+      "type": "object"
+    },
+    "UnknownFact": {
+      "additionalProperties": false,
+      "description": "``$defs/UnknownFact`` \u2014 a fact never collected/confirmed, with an\nexplicit reason (spec \u00a72; mirrors ``enums.UnknownReason``'s docstring:\n\"no fact is ever just missing outside the type system\").",
+      "properties": {
+        "reason": {
+          "$ref": "#/$defs/UnknownReason"
+        },
+        "status": {
+          "const": "UNKNOWN",
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": ["status", "reason"],
+      "title": "UnknownFact",
+      "type": "object"
+    },
+    "UnknownReason": {
+      "description": "Why a fact is UNKNOWN rather than silently absent (spec \u00a72 ``UnknownFact``).\n\nNo fact is ever \"just missing\" outside the type system \u2014 every UNKNOWN\ncarries one of these reasons explicitly.",
+      "enum": [
+        "NOT_ASKED",
+        "NOT_PROVIDED",
+        "UNVERIFIED",
+        "CONFLICTING",
+        "NOT_APPLICABLE"
+      ],
+      "title": "UnknownReason",
+      "type": "string"
+    },
+    "ViolationType": {
+      "enum": [
+        "OVERSTAY",
+        "DEPORTATION",
+        "BLACKLIST",
+        "IMMIGRATION_INVESTIGATION",
+        "OTHER"
+      ],
+      "title": "ViolationType",
+      "type": "string"
+    },
+    "VisaProductCategory": {
+      "enum": [
+        "SHORT_STAY",
+        "MULTIPLE_ENTRY",
+        "LIMITED_STAY",
+        "PERMANENT_STAY",
+        "TRANSIT",
+        "OTHER"
+      ],
+      "title": "VisaProductCategory",
+      "type": "string"
+    },
+    "VisaProductStatus": {
+      "enum": ["ACTIVE", "DEPRECATED", "OBSOLETE"],
+      "title": "VisaProductStatus",
+      "type": "string"
+    },
+    "VisaProductVersion": {
+      "additionalProperties": false,
+      "description": "``$defs/VisaProductVersion`` (spec \u00a72). Included in PR1 because\n``RulePackPayload.products`` requires it \u2014 see module docstring.",
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/VisaProductCategory"
+        },
+        "clock_policy": {
+          "$ref": "#/$defs/ClockPolicy"
+        },
+        "covered_purposes": {
+          "items": {
+            "$ref": "#/$defs/VisaPurpose"
+          },
+          "minItems": 1,
+          "title": "Covered Purposes",
+          "type": "array"
+        },
+        "entry_policy": {
+          "$ref": "#/$defs/EntryPolicy"
+        },
+        "extension_policy": {
+          "$ref": "#/$defs/ExtensionPolicy"
+        },
+        "legacy_codes": {
+          "items": {
+            "maxLength": 32,
+            "minLength": 1,
+            "pattern": "^[A-Z][A-Z0-9-]{0,31}$",
+            "type": "string"
+          },
+          "title": "Legacy Codes",
+          "type": "array"
+        },
+        "legacy_slugs": {
+          "items": {
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "title": "Legacy Slugs",
+          "type": "array"
+        },
+        "names": {
+          "$ref": "#/$defs/ProductNames"
+        },
+        "pricing_key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PricingKey"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "product_code": {
+          "maxLength": 32,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9-]{0,31}$",
+          "title": "Product Code",
+          "type": "string"
+        },
+        "product_version_id": {
+          "format": "uuid",
+          "title": "Product Version Id",
+          "type": "string"
+        },
+        "prohibited_activities": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Prohibited Activities",
+          "type": "array"
+        },
+        "public_catalog": {
+          "title": "Public Catalog",
+          "type": "boolean"
+        },
+        "source_refs": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "sponsor_types": {
+          "items": {
+            "$ref": "#/$defs/SponsorType"
+          },
+          "title": "Sponsor Types",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/VisaProductStatus"
+        },
+        "stay_policy": {
+          "$ref": "#/$defs/StayPolicy"
+        },
+        "valid_period": {
+          "$ref": "#/$defs/TimeRange"
+        }
+      },
+      "required": [
+        "product_version_id",
+        "product_code",
+        "legacy_codes",
+        "legacy_slugs",
+        "names",
+        "category",
+        "status",
+        "valid_period",
+        "covered_purposes",
+        "prohibited_activities",
+        "sponsor_types",
+        "entry_policy",
+        "stay_policy",
+        "extension_policy",
+        "clock_policy",
+        "pricing_key",
+        "source_refs",
+        "public_catalog"
+      ],
+      "title": "VisaProductVersion",
+      "type": "object"
+    },
+    "VisaPurpose": {
+      "enum": [
+        "TOURISM",
+        "BUSINESS_MEETINGS",
+        "INVESTMENT",
+        "EMPLOYMENT",
+        "REMOTE_WORK",
+        "FAMILY",
+        "STUDY",
+        "RETIREMENT",
+        "SECOND_HOME",
+        "TRANSIT",
+        "MEDICAL",
+        "OTHER"
+      ],
+      "title": "VisaPurpose",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.balizero.com/visa-engine/contract.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

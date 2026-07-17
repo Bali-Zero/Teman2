@@ -358,10 +358,18 @@ class TestSupportRulePurposeNotOnProduct:
 class TestEnvironmentMismatch:
     def test_header_environment_mismatch_reported(self, minimal_valid_pack: M.RulePack) -> None:
         # protected.environment=STAGING while payload.environment stays TEST
-        # would already fail Pydantic's own RulePack validator, so exercise
-        # the compiler's independent re-check directly via model_construct
-        # (bypassing validation), matching the defense-in-depth rationale
-        # documented in compiler.py.
+        # would already fail Pydantic's own RulePack validator
+        # (RulePack._check_header_environment, models.py), so the only way to
+        # get a mismatched pack at all is model_construct (bypassing
+        # validation). Round 3 (fail-stop): compile_rule_pack's structural
+        # revalidation gate round-trips the WHOLE pack through
+        # model_dump(mode="json") -> RulePack.model_validate(...), which
+        # re-runs that exact model_validator — so the mismatch is now caught
+        # at the revalidation gate, and compile_rule_pack stops there. The
+        # compiler's own `_check_header_environment` never gets a chance to
+        # run (and, per its updated docstring, never will for ANY
+        # successfully-revalidated pack — it stays only as documented
+        # defense-in-depth for a hypothetical relaxed model validator).
         tampered_protected = minimal_valid_pack.protected.model_copy(
             update={"environment": "STAGING"}
         )
@@ -372,8 +380,9 @@ class TestEnvironmentMismatch:
             payload_sha256=minimal_valid_pack.payload_sha256,
             signature=minimal_valid_pack.signature,
         )
-        report = C.compile_rule_pack(tampered_pack)
-        assert any(e.code == "ENVIRONMENT_MISMATCH" for e in report.errors)
+        report = C.compile_rule_pack(tampered_pack)  # must not raise
+        assert not report.ok
+        assert any(e.code == "PACK_FAILS_STRUCTURAL_REVALIDATION" for e in report.errors)
 
 
 class TestRequiredFactNotInRegistry:
@@ -635,7 +644,10 @@ class TestStructuralRevalidationAndCycleSafety:
             signature=minimal_valid_pack.signature,
         )
         report = C.compile_rule_pack(tampered_pack)  # must not raise
-        assert any(e.code == "ENVIRONMENT_MISMATCH" for e in report.errors)
+        # Round 3 (fail-stop): caught at the revalidation gate, not by the
+        # compiler's own header/environment re-check — see
+        # TestEnvironmentMismatch's updated comment for the full rationale.
+        assert any(e.code == "PACK_FAILS_STRUCTURAL_REVALIDATION" for e in report.errors)
 
     def test_cyclic_condition_tree_reported_not_crashed(
         self, source_record: M.SourceRecord
@@ -701,7 +713,25 @@ class TestStructuralRevalidationAndCycleSafety:
 
 
 class TestBypassProofRedundantChecks:
+    """Round 3 note: with ``compile_rule_pack``'s fail-stop revalidation gate
+    (see that function's docstring), every bypass technique below that also
+    violates a ``models.py``-level invariant is now caught AT the
+    revalidation gate — ``PACK_FAILS_STRUCTURAL_REVALIDATION`` alone, never
+    the compiler's own more-specific code — because
+    ``_revalidate_structurally`` round-trips the ENTIRE pack through
+    ``model_dump(mode="json") -> RulePack.model_validate(...)``, which
+    re-parses every nested model from a plain dict (no model-instance
+    identity survives) and therefore re-runs every field/model validator the
+    bypass skipped. The ``NON_NFC_STRING``/NFC case moved to
+    ``TestNfcUtcGenericWalker`` below: NFC-normalization is NOT enforced by
+    any ``models.py`` validator, so it remains genuinely reachable post-
+    fail-stop for a NORMALLY-constructed (non-bypass) pack.
+    """
+
     def test_duplicate_rule_id_bypass_reported(self, minimal_valid_pack: M.RulePack) -> None:
+        # RulePackPayload._check_unique_rule_ids (models.py field_validator)
+        # enforces this — the bypass is only reachable via model_construct,
+        # and the revalidation gate re-runs that exact validator on re-parse.
         rule = minimal_valid_pack.payload.rules[0]
         payload = minimal_valid_pack.payload.model_construct(
             **{**minimal_valid_pack.payload.__dict__, "rules": (rule, rule)}
@@ -709,10 +739,13 @@ class TestBypassProofRedundantChecks:
         pack = minimal_valid_pack.model_construct(
             **{**minimal_valid_pack.__dict__, "payload": payload}
         )
-        report = C.compile_rule_pack(pack)
-        assert any(e.code == "DUPLICATE_RULE_ID" for e in report.errors)
+        report = C.compile_rule_pack(pack)  # must not raise
+        assert any(e.code == "PACK_FAILS_STRUCTURAL_REVALIDATION" for e in report.errors)
 
     def test_non_utc_datetime_bypass_reported(self, minimal_valid_pack: M.RulePack) -> None:
+        # RulePackPayload._check_utc / _validate_utc (models.py
+        # field_validator on created_at) enforces this — same fail-stop
+        # rationale as the duplicate-rule-id case above.
         import datetime as dt
 
         naive_payload = minimal_valid_pack.payload.model_construct(
@@ -721,25 +754,8 @@ class TestBypassProofRedundantChecks:
         pack = minimal_valid_pack.model_construct(
             **{**minimal_valid_pack.__dict__, "payload": naive_payload}
         )
-        report = C.compile_rule_pack(pack)
-        assert any(e.code == "NON_UTC_DATETIME" for e in report.errors)
-
-    def test_non_nfc_string_bypass_reported(self, minimal_valid_pack: M.RulePack) -> None:
-        import unicodedata
-
-        # "é" as NFD (e + combining acute accent) vs NFC (single codepoint)
-        # — visually identical, byte-distinct.
-        nfd_name = unicodedata.normalize("NFD", "café")
-        assert nfd_name != unicodedata.normalize("NFC", nfd_name)
-
-        naive_payload = minimal_valid_pack.payload.model_construct(
-            **{**minimal_valid_pack.payload.__dict__, "created_by": nfd_name}
-        )
-        pack = minimal_valid_pack.model_construct(
-            **{**minimal_valid_pack.__dict__, "payload": naive_payload}
-        )
-        report = C.compile_rule_pack(pack)
-        assert any(e.code == "NON_NFC_STRING" for e in report.errors)
+        report = C.compile_rule_pack(pack)  # must not raise
+        assert any(e.code == "PACK_FAILS_STRUCTURAL_REVALIDATION" for e in report.errors)
 
     def test_pack_size_limit_rules_exceeded_reported(
         self, minimal_valid_pack: M.RulePack, monkeypatch
@@ -763,6 +779,13 @@ class TestBypassProofRedundantChecks:
 
 class TestSupportPurposeCoverageFixed:
     def test_empty_covered_purposes_bypass_reported(self, source_record: M.SourceRecord) -> None:
+        # EffectSupport.covered_purposes carries Field(..., min_length=1)
+        # (models.py) — the bypass is only reachable via model_construct, and
+        # round 3's fail-stop revalidation gate re-runs that exact
+        # constraint on re-parse, so the report now carries
+        # PACK_FAILS_STRUCTURAL_REVALIDATION alone (never
+        # SUPPORT_RULE_EMPTY_COVERED_PURPOSES — the compiler's own check
+        # never gets a chance to run against an unproven pack).
         product_id = uuid.uuid4()
         product = make_product(
             product_version_id=product_id, source_refs=[source_record.source_record_id]
@@ -779,8 +802,8 @@ class TestSupportPurposeCoverageFixed:
         payload = make_rule_pack_payload(
             rules=[rule], products=[product], source_records=[source_record]
         )
-        report = C.compile_rule_pack(make_rule_pack(payload))
-        assert any(e.code == "SUPPORT_RULE_EMPTY_COVERED_PURPOSES" for e in report.errors)
+        report = C.compile_rule_pack(make_rule_pack(payload))  # must not raise
+        assert any(e.code == "PACK_FAILS_STRUCTURAL_REVALIDATION" for e in report.errors)
 
     def test_global_support_rule_claiming_unsupported_purpose_reported(
         self, source_record: M.SourceRecord
@@ -851,3 +874,308 @@ class TestSupportPurposeCoverageFixed:
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
         assert not any(e.code.startswith("SUPPORT_RULE") for e in report.errors)
+
+
+# ---------------------------------------------------------------------------
+# Round 3 (Codex round-2 re-review HIGH finding) — GLOBAL SUPPORT rule
+# purpose coverage must use the INTERSECTION of every product's
+# covered_purposes, not their union: a GLOBAL rule structurally applies to
+# EVERY product, so its claim must hold for ALL of them, not just one.
+# ---------------------------------------------------------------------------
+
+
+class TestGlobalSupportPurposeIntersectionSemantics:
+    def test_global_support_purpose_not_common_to_all_products_reported(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Exact orchestrator/Codex counterexample: products {C1: TOURISM,
+        # E23: EMPLOYMENT} + a GLOBAL SUPPORT rule claiming {TOURISM}. Round
+        # 2's union test wrongly let this pass (TOURISM is in the union) —
+        # but the rule structurally also applies to E23, which does not
+        # cover TOURISM, so this must be a compile error under intersection
+        # semantics.
+        c1_id = uuid.uuid4()
+        e23_id = uuid.uuid4()
+        c1 = make_product(
+            product_version_id=c1_id,
+            product_code="C1",
+            source_refs=[source_record.source_record_id],
+            covered_purposes=["TOURISM"],
+        )
+        e23 = make_product(
+            product_version_id=e23_id,
+            product_code="E23",
+            source_refs=[source_record.source_record_id],
+            covered_purposes=["EMPLOYMENT"],
+        )
+        global_rule = M.Rule(
+            rule_id="rule.global.intersection.guilty",
+            stage="ELIGIBILITY",
+            scope="GLOBAL",
+            product_version_ids=None,
+            priority=100,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
+            effect={"type": "SUPPORT", "reason_code": "X", "covered_purposes": ["TOURISM"]},
+            on_unknown="NEEDS_INPUT",
+            required_facts=["intent.purposes"],
+            source_refs=[source_record.source_record_id],
+            explanation_key="explain.global.intersection.guilty",
+            safety_critical=False,
+        )
+        payload = make_rule_pack_payload(
+            rules=[global_rule], products=[c1, e23], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "SUPPORT_RULE_PURPOSE_NOT_ON_ANY_PRODUCT" for e in report.errors)
+
+    def test_global_support_purpose_common_to_all_products_is_innocent(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Innocence half: every product shares TOURISM, and the GLOBAL rule
+        # claims only TOURISM — valid under both union AND intersection
+        # semantics.
+        c1_id = uuid.uuid4()
+        e23_id = uuid.uuid4()
+        c1 = make_product(
+            product_version_id=c1_id,
+            product_code="C1",
+            source_refs=[source_record.source_record_id],
+            covered_purposes=["TOURISM"],
+        )
+        e23 = make_product(
+            product_version_id=e23_id,
+            product_code="E23",
+            source_refs=[source_record.source_record_id],
+            covered_purposes=["TOURISM", "EMPLOYMENT"],
+        )
+        global_rule = M.Rule(
+            rule_id="rule.global.intersection.innocent",
+            stage="ELIGIBILITY",
+            scope="GLOBAL",
+            product_version_ids=None,
+            priority=100,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
+            effect={"type": "SUPPORT", "reason_code": "X", "covered_purposes": ["TOURISM"]},
+            on_unknown="NEEDS_INPUT",
+            required_facts=["intent.purposes"],
+            source_refs=[source_record.source_record_id],
+            explanation_key="explain.global.intersection.innocent",
+            safety_critical=False,
+        )
+        payload = make_rule_pack_payload(
+            rules=[global_rule], products=[c1, e23], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code.startswith("SUPPORT_RULE") for e in report.errors)
+
+    def test_global_support_zero_products_guard_unit_level(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # RulePackPayload.products carries Field(..., min_length=1) — a
+        # normally-constructed payload can never have zero products, and
+        # even a model_construct-bypassed one would be caught by
+        # compile_rule_pack's fail-stop revalidation gate before reaching
+        # this check at all (min_length=1 is re-enforced on re-parse). The
+        # `if payload.products else frozenset()` guard in
+        # _check_support_purposes_on_product (avoiding a TypeError from
+        # frozenset.intersection(*()) on empty args) is therefore only
+        # reachable by calling the check function directly — exercised here
+        # at the unit level so the guard itself stays covered.
+        global_rule = M.Rule(
+            rule_id="rule.global.zero.products",
+            stage="ELIGIBILITY",
+            scope="GLOBAL",
+            product_version_ids=None,
+            priority=100,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
+            effect={"type": "SUPPORT", "reason_code": "X", "covered_purposes": ["TOURISM"]},
+            on_unknown="NEEDS_INPUT",
+            required_facts=["intent.purposes"],
+            source_refs=[source_record.source_record_id],
+            explanation_key="explain.global.zero.products",
+            safety_critical=False,
+        )
+        empty_products_payload = M.RulePackPayload.model_construct(
+            rule_pack_id=uuid.uuid4(),
+            sequence=1,
+            version="1.0.0",
+            environment="TEST",
+            jurisdiction="ID",
+            decision_domain="IMMIGRATION_VISA",
+            engine_contract_version="1.0.0",
+            engine_min_version="1.0.0",
+            engine_max_version="1.0.0",
+            valid_period=_OPEN_PERIOD,
+            created_at=GOLD_EFFECTIVE_AT,
+            created_by="pipeline.compiler",
+            previous_payload_sha256=None,
+            rollback_of_payload_sha256=None,
+            hit_policy=M.HitPolicyDeclaration(
+                hard_filter="COLLECT_ALL",
+                eligibility="COVER_ALL_DECLARED_PURPOSES",
+                human_review="COLLECT_ALL",
+                ranking="SUM_TRUE_INTEGER_WEIGHTS",
+            ),
+            source_records=(source_record,),
+            products=(),  # only reachable via model_construct — see docstring above
+            rules=(global_rule,),
+        )
+        errors: list[C.CompilationError] = []
+        C._check_support_purposes_on_product(empty_products_payload, errors)  # must not raise
+        assert any(e.code == "SUPPORT_RULE_PURPOSE_NOT_ON_ANY_PRODUCT" for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# Round 3 (Codex round-2 re-review NEW HIGH finding) — fail-stop
+# revalidation: compile_rule_pack must never raise, even when a
+# `model_copy(update=...)`-tampered structural field (here: `rule.stage`)
+# would otherwise reach a dict lookup keyed by the real enum.
+# ---------------------------------------------------------------------------
+
+
+class TestFailStopRevalidation:
+    def test_bogus_stage_model_copy_never_crashes_reports_clean_error(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        # Codex's exact counterexample: rule.model_copy(update={"stage":
+        # "BOGUS"}) bypasses validation (model_copy does not re-validate),
+        # producing a Rule whose `.stage` is the raw string "BOGUS" instead
+        # of a RuleStage member. Round 2's non-short-circuit design let this
+        # reach `_check_stage_effect_compatibility`'s
+        # `STAGE_EFFECT_TYPE[rule.stage]` dict lookup and crash with an
+        # uncaught KeyError. Round 3's fail-stop gate catches it at
+        # revalidation instead (RuleStage enum coercion fails on "BOGUS"
+        # during RulePack.model_validate) and stops before any semantic
+        # check runs.
+        original_rule = minimal_valid_pack.payload.rules[0]
+        bogus_rule = original_rule.model_copy(update={"stage": "BOGUS"})
+        tampered_payload = minimal_valid_pack.payload.model_construct(
+            **{**minimal_valid_pack.payload.__dict__, "rules": (bogus_rule,)}
+        )
+        tampered_pack = minimal_valid_pack.model_construct(
+            **{**minimal_valid_pack.__dict__, "payload": tampered_payload}
+        )
+        report = C.compile_rule_pack(tampered_pack)  # must not raise KeyError
+        assert not report.ok
+        assert any(e.code == "PACK_FAILS_STRUCTURAL_REVALIDATION" for e in report.errors)
+
+
+# ---------------------------------------------------------------------------
+# Round 3 (Codex round-2 re-review finding 6 residue) — the NFC/UTC check
+# now walks the ENTIRE signed payload (payload.model_dump(mode="json")), not
+# a curated field list. NFC-normalization is NOT enforced by any models.py
+# validator (unlike UTC-ness, ID-uniqueness, and covered_purposes
+# non-emptiness — all bypass-proof-redundant per TestBypassProofRedundantChecks
+# above), so a NORMALLY-constructed (non-bypass) pack with an NFD string can
+# genuinely reach this check post-fail-stop.
+# ---------------------------------------------------------------------------
+
+
+class TestNfcUtcGenericWalker:
+    def test_source_record_document_number_nfd_reported(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # document_number has no Identifier pattern constraint (unlike
+        # created_by/explanation_key/verified_by, which are ASCII-only
+        # Identifier fields a non-ASCII string could never pass even via
+        # bypass+revalidation) — this is the genuine target the orchestrator
+        # specified, and needs no bypass trick at all: a normally-
+        # constructed SourceRecord with an NFD document_number sails through
+        # full Pydantic validation cleanly.
+        import unicodedata
+
+        nfd_number = unicodedata.normalize("NFD", "Café-2026/A")
+        assert nfd_number != unicodedata.normalize("NFC", nfd_number)
+
+        tampered_source = source_record.model_copy(update={"document_number": nfd_number})
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[tampered_source.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.nfc.document.number",
+            product_version_ids=[product_id],
+            source_refs=[tampered_source.source_record_id],
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[tampered_source]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "NON_NFC_STRING" for e in report.errors)
+
+    def test_source_record_document_number_nfc_is_innocent(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        import unicodedata
+
+        nfc_number = unicodedata.normalize("NFC", "Café-2026/A")
+        tampered_source = source_record.model_copy(update={"document_number": nfc_number})
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[tampered_source.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.nfc.document.number.valid",
+            product_version_ids=[product_id],
+            source_refs=[tampered_source.source_record_id],
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[tampered_source]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code == "NON_NFC_STRING" for e in report.errors)
+
+    def test_source_locator_value_nfd_reported(self, source_record: M.SourceRecord) -> None:
+        # Locator values were entirely excluded from round 2's curated field
+        # list (Codex round-2 re-review finding 6 residue, explicit
+        # counterexample). SourceLocator.value has no pattern constraint.
+        import unicodedata
+
+        nfd_locator = unicodedata.normalize("NFD", "Pasal 5 ayat é")
+        tampered_source = source_record.model_copy(
+            update={"locators": (M.SourceLocator(kind="ARTICLE", value=nfd_locator),)}
+        )
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[tampered_source.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.nfc.locator.value",
+            product_version_ids=[product_id],
+            source_refs=[tampered_source.source_record_id],
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[tampered_source]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "NON_NFC_STRING" for e in report.errors)
+
+    def test_condition_string_literal_nfd_reported(self, source_record: M.SourceRecord) -> None:
+        # Condition string literals (inside `when`) were also excluded from
+        # round 2's curated field list — this is the "string literals of
+        # conditions" gap Codex called out explicitly. intent.requested_
+        # product_code is a STRING-kind fact with no allowed_values
+        # restriction, so an `eq` literal against it is a clean vehicle: no
+        # FACT_LITERAL_NOT_ALLOWED noise to disambiguate from NON_NFC_STRING.
+        import unicodedata
+
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        nfd_code = unicodedata.normalize("NFD", "É2")
+        rule = make_support_rule(
+            rule_id="rule.nfc.condition.literal",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "intent.requested_product_code", "value": nfd_code},
+            required_facts=("intent.requested_product_code",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "NON_NFC_STRING" for e in report.errors)
