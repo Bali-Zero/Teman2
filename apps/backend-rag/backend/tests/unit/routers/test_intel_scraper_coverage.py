@@ -232,6 +232,144 @@ async def test_submit_scraper_duplicate_article(client_no_auth):
     assert data["item_id"] == "news-existing"
 
 
+# ---------------------------------------------------------------------------
+# Tests: submit_from_scraper — live_news fields (WR2 liveness rewire, break #2)
+#
+# The enricher (claude_cli_enricher._normalize_live_news_fields) computes
+# live_news_score/liveness_tier/live_news_reasons, but ScraperSubmission had
+# no fields to receive them — carried, validated, and defaulted here.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_live_news_fields_persisted(client_no_auth):
+    """GUILT: submitted live_news_score/liveness_tier/live_news_reasons are
+    carried into staging_data verbatim."""
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-2026-live"
+    mock_staging_svc.check_duplicate.return_value = None
+    mock_staging_svc.save_staging_item.return_value = (
+        "/tmp/intel_pending/news/news-2026-live.json"
+    )
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    payload = {
+        **SCRAPER_PAYLOAD,
+        "live_news_score": 85,
+        "liveness_tier": "breaking",
+        "live_news_reasons": ["official announcement", "effective today"],
+    }
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    mock_staging_svc.save_staging_item.assert_called_once()
+    staging_data = mock_staging_svc.save_staging_item.call_args[0][2]
+    assert staging_data["live_news_score"] == 85
+    assert staging_data["liveness_tier"] == "breaking"
+    assert staging_data["live_news_reasons"] == ["official announcement", "effective today"]
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_live_news_fields_default(client_no_auth):
+    """INNOCENCE: submission WITHOUT live_news fields defaults to
+    0 / "evergreen" / [] in staging_data (legacy scraper payloads must not
+    break)."""
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-2026-default"
+    mock_staging_svc.check_duplicate.return_value = None
+    mock_staging_svc.save_staging_item.return_value = (
+        "/tmp/intel_pending/news/news-2026-default.json"
+    )
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=SCRAPER_PAYLOAD,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    staging_data = mock_staging_svc.save_staging_item.call_args[0][2]
+    assert staging_data["live_news_score"] == 0
+    assert staging_data["liveness_tier"] == "evergreen"
+    assert staging_data["live_news_reasons"] == []
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_live_news_score_out_of_range_rejected(client_no_auth):
+    """VALIDATION: live_news_score > 100 is rejected (422) before it can
+    ever reach staging."""
+    payload = {**SCRAPER_PAYLOAD, "live_news_score": 150}
+
+    with patch(
+        "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+        return_value={"role": "service"},
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_liveness_tier_invalid_value_rejected(client_no_auth):
+    """VALIDATION: liveness_tier outside the 3-value enum is rejected
+    (422)."""
+    payload = {**SCRAPER_PAYLOAD, "liveness_tier": "hot"}
+
+    with patch(
+        "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+        return_value={"role": "service"},
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 422
+
+
 @pytest.mark.asyncio
 async def test_submit_scraper_missing_api_key(client_no_auth):
     """Missing API key → 401."""

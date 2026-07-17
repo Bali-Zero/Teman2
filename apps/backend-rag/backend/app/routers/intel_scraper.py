@@ -413,6 +413,16 @@ async def submit_from_scraper(
             "status": "pending",
             "detection_type": "scraper_auto",
             "detected_at": datetime.now(timezone.utc).isoformat(),
+            # WR2 liveness rewire (SPRINT B1, scar family #9 break #2):
+            # normalize with uniform defaults so every staging item — scraper
+            # sent them or not — has a consistent liveness shape downstream.
+            "live_news_score": (
+                submission.live_news_score if submission.live_news_score is not None else 0
+            ),
+            "liveness_tier": submission.liveness_tier or "evergreen",
+            "live_news_reasons": [
+                r.strip()[:200] for r in (submission.live_news_reasons or [])
+            ][:3],
         }
 
         if submission.cover_image:

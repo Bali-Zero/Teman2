@@ -59,6 +59,72 @@ PIPELINE_STEPS = [
     '7_publishing',      # Publish with cover image already in payload
 ]
 
+
+def build_staging_payload(art: dict) -> dict:
+    """Build the /api/intel/scraper/submit payload dict from a pipeline article.
+
+    Extracted from step_publishing()::_push() (WR2 liveness rewire, SPRINT B1,
+    scar family #9 break #1) so it's independently testable. Pure function:
+    reads only `art` (and its nested "enrichment" dict) — no I/O, no `self`
+    closure state. The cover-image base64 file read and the HTTP POST /
+    Telegram / intel-lake side-effects stay in `_push` inside
+    `step_publishing()`.
+    """
+    enr = art.get("enrichment") or {}
+    # Build full article from new enrichment structure
+    sections = []
+    if enr.get("the_facts"):
+        sections.append("## Facts\n\n" + enr["the_facts"])
+    if enr.get("bali_zero_take"):
+        sections.append("## Bali Zero Take\n\n" + enr["bali_zero_take"])
+    if enr.get("in_practice"):
+        sections.append("## In Practice\n\n" + enr["in_practice"])
+    if enr.get("next_steps"):
+        sections.append("## Next Steps\n\n" + enr["next_steps"])
+    # Fallback to legacy format
+    if not sections:
+        brief = enr.get("executive_brief", "")
+        text = art.get("text", "")
+        sections = [s for s in [brief, text] if s]
+    content = "\n\n".join(sections)[:8000]
+    headline = enr.get("headline", art.get("title", ""))
+    payload = {
+        "title":           headline,
+        "content":         content,
+        "category":        art.get("qwen_category", art.get("category", "general")),
+        "source_name":     art.get("source_name", art.get("source", "")),
+        "source_url":      art.get("url", art.get("source_url", "")),
+        "relevance_score": int(round(art.get("qwen_score", 7) * 10)),
+        "tier":            art.get("tier", "T3"),
+    }
+    # Include SEO metadata if available
+    if art.get("seo"):
+        payload["seo"] = art["seo"]
+    if art.get("image_url"):
+        payload["image_url"] = art["image_url"]
+    # Include enrichment metadata
+    if enr.get("thirty_second_brief"):
+        payload["brief"] = enr["thirty_second_brief"]
+    if enr.get("faq"):
+        payload["faq"] = enr["faq"]
+    enr_meta = enr.get("metadata", {})
+    if enr_meta.get("suggested_slug"):
+        payload["slug"] = enr_meta["suggested_slug"]
+    if enr_meta.get("tags"):
+        payload["tags"] = enr_meta["tags"]
+    payload["featured"] = art.get("featured", False)
+    # WR2 liveness rewire (SPRINT B1): carry the enricher's live-news scoring
+    # fields through to staging so downstream consumers (wr2_topic_selector,
+    # News Room UI) see something other than always-0. Post-normalization
+    # fields from claude_cli_enricher._normalize_live_news_fields are trusted
+    # (tier == bucket(score) invariant already holds there).
+    if enr.get("live_news_score") is not None:
+        payload["live_news_score"] = enr["live_news_score"]
+        payload["liveness_tier"] = enr.get("liveness_tier") or "evergreen"
+        payload["live_news_reasons"] = (enr.get("live_news_reasons") or [])[:3]
+    return payload
+
+
 class IntelPipeline:
     def __init__(self, config: dict):
         self.config = config
@@ -1721,38 +1787,7 @@ IMPORTANT:
         published   = 0
 
         async def _push(art):
-            enr   = art.get("enrichment") or {}
-            # Build full article from new enrichment structure
-            sections = []
-            if enr.get("the_facts"):
-                sections.append("## Facts\n\n" + enr["the_facts"])
-            if enr.get("bali_zero_take"):
-                sections.append("## Bali Zero Take\n\n" + enr["bali_zero_take"])
-            if enr.get("in_practice"):
-                sections.append("## In Practice\n\n" + enr["in_practice"])
-            if enr.get("next_steps"):
-                sections.append("## Next Steps\n\n" + enr["next_steps"])
-            # Fallback to legacy format
-            if not sections:
-                brief = enr.get("executive_brief", "")
-                text = art.get("text", "")
-                sections = [s for s in [brief, text] if s]
-            content = "\n\n".join(sections)[:8000]
-            headline = enr.get("headline", art.get("title", ""))
-            payload = {
-                "title":           headline,
-                "content":         content,
-                "category":        art.get("qwen_category", art.get("category", "general")),
-                "source_name":     art.get("source_name", art.get("source", "")),
-                "source_url":      art.get("url", art.get("source_url", "")),
-                "relevance_score": int(round(art.get("qwen_score", 7) * 10)),
-                "tier":            art.get("tier", "T3"),
-            }
-            # Include SEO metadata if available
-            if art.get("seo"):
-                payload["seo"] = art["seo"]
-            if art.get("image_url"):
-                payload["image_url"] = art["image_url"]
+            payload = build_staging_payload(art)
             # Send cover image as base64 for Drive upload on backend
             if art.get("image_path"):
                 try:
@@ -1763,17 +1798,6 @@ IMPORTANT:
                         payload["cover_image_base64"] = _b64.b64encode(img_p.read_bytes()).decode("utf-8")
                 except Exception as _img_err:
                     self.log(f'Warning: could not read image for upload: {_img_err}', 'WARN')
-            # Include enrichment metadata
-            if enr.get("thirty_second_brief"):
-                payload["brief"] = enr["thirty_second_brief"]
-            if enr.get("faq"):
-                payload["faq"] = enr["faq"]
-            enr_meta = enr.get("metadata", {})
-            if enr_meta.get("suggested_slug"):
-                payload["slug"] = enr_meta["suggested_slug"]
-            if enr_meta.get("tags"):
-                payload["tags"] = enr_meta["tags"]
-            payload["featured"] = art.get("featured", False)
             async with _httpx.AsyncClient(timeout=60) as c:
                 r = await c.post(
                     f"{BACKEND_URL}/api/intel/scraper/submit",

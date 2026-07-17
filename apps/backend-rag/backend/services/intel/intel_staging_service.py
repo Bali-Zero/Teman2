@@ -279,6 +279,17 @@ class IntelStagingService:
                                 "detection_type": data.get("detection_type", "NEW"),
                                 "content": data.get("content"),
                                 "cover_image": data.get("cover_image"),
+                                # WR2 liveness rewire (SPRINT B1, scar family
+                                # #9 break #3): these were already persisted
+                                # in staging JSON but never served — legacy
+                                # items (no key) uniformly default to
+                                # 0/"evergreen".
+                                "tier": data.get("tier"),
+                                "published_at": data.get("published_at"),
+                                "relevance_score": data.get("relevance_score"),
+                                "category": data.get("category"),
+                                "live_news_score": data.get("live_news_score", 0),
+                                "liveness_tier": data.get("liveness_tier", "evergreen"),
                             },
                         )
                 except Exception as e:
@@ -313,6 +324,12 @@ class IntelStagingService:
                                     "detection_type": data.get("detection_type", "NEW"),
                                     "content": data.get("content"),
                                     "cover_image": data.get("cover_image"),
+                                    "tier": data.get("tier"),
+                                    "published_at": data.get("published_at"),
+                                    "relevance_score": data.get("relevance_score"),
+                                    "category": data.get("category"),
+                                    "live_news_score": data.get("live_news_score", 0),
+                                    "liveness_tier": data.get("liveness_tier", "evergreen"),
                                 },
                             )
                     except Exception as e:
