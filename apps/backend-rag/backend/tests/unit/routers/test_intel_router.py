@@ -307,3 +307,138 @@ class TestPostPublishQueue:
             json={"category": "business"},
         )
         assert response.status_code == 400
+
+
+# ── get_pending_queue self-healing (stale-claim reaper + failed re-pick) ───
+#
+# Regression coverage for the queue-necrosis fix: `get_pending_queue` now runs
+# 3 UPDATEs before the claim SELECT — (1) reaper for 'processing' rows stuck
+# >2h, (2) re-pick for 'failed' rows with attempts<5, (3) the pre-existing
+# dead-letter sweep. These tests assert the SQL text of each UPDATE the mocked
+# connection receives, since the endpoint is exercised against a mocked
+# asyncpg pool (no real DB in this test module — see `client` fixture above).
+
+
+def _client_with_auth(mock_services, mock_conn=None):
+    """Build a TestClient wired for the X-API-Key-gated poller endpoints.
+
+    Unlike `client` (which overrides get_current_user for admin endpoints),
+    get_pending_queue/done/failed/step-done authenticate via the
+    intel_scraper_api_key header checked inside the handler body — so the
+    mocked `settings` object needs that attribute set.
+    """
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from backend.app.routers.intel import router
+
+    app = FastAPI()
+    app.include_router(router)
+
+    from backend.app.dependencies import get_database_pool
+
+    conn = mock_conn if mock_conn is not None else AsyncMock()
+    if mock_conn is None:
+        conn.execute = AsyncMock()
+        conn.fetch = AsyncMock(return_value=[])
+    mock_pool = MagicMock()
+    ctx = MagicMock()
+    ctx.__aenter__ = AsyncMock(return_value=conn)
+    ctx.__aexit__ = AsyncMock(return_value=False)
+    mock_pool.acquire.return_value = ctx
+    app.dependency_overrides[get_database_pool] = lambda: mock_pool
+
+    return TestClient(app), conn
+
+
+class TestGetPendingQueueSelfHealing:
+    def test_reaper_and_failed_repick_run_before_claim(self, mock_services):
+        """All 3 UPDATEs fire, in order: reaper, failed re-pick, dead-letter sweep."""
+        # mock_services already patches backend.app.routers.intel.settings —
+        # set the attribute the pending-queue handler checks on that same mock.
+        from backend.app.routers import intel as intel_router_module
+
+        intel_router_module.settings.intel_scraper_api_key = "test-key"
+        test_client, conn = _client_with_auth(mock_services)
+
+        response = test_client.get(
+            "/api/intel/post-publish-queue/pending",
+            headers={"X-API-Key": "test-key"},
+        )
+
+        assert response.status_code == 200
+        # 3 execute() calls (reaper, failed-repick, dead-letter) + 1 fetch() (claim)
+        assert conn.execute.await_count == 3
+        executed_sql = [call.args[0] for call in conn.execute.await_args_list]
+
+        reaper_sql = executed_sql[0]
+        assert "status = 'pending'" in reaper_sql
+        assert "status = 'processing'" in reaper_sql
+        assert "started_at < NOW() - INTERVAL '2 hours'" in reaper_sql
+
+        repick_sql = executed_sql[1]
+        assert "status = 'pending'" in repick_sql
+        assert "status = 'failed'" in repick_sql
+        assert "attempts < 5" in repick_sql
+
+        dead_letter_sql = executed_sql[2]
+        assert "status = 'dead'" in dead_letter_sql
+        assert "status = 'pending'" in dead_letter_sql
+        assert "attempts >= 5" in dead_letter_sql
+
+        # Claim SELECT still runs last, unchanged
+        claim_sql = conn.fetch.await_args_list[0].args[0]
+        assert "status = 'processing'" in claim_sql
+        assert "attempts = attempts + 1" in claim_sql
+
+    def test_unauthorized_without_api_key(self, mock_services):
+        from backend.app.routers import intel as intel_router_module
+
+        intel_router_module.settings.intel_scraper_api_key = "test-key"
+        test_client, _conn = _client_with_auth(mock_services)
+        response = test_client.get("/api/intel/post-publish-queue/pending")
+        assert response.status_code == 401
+
+
+# ── mark_step_done ──────────────────────────────────────────────────────────
+#
+# Regression coverage for the "could not determine data type of parameter $2"
+# 500 (Fly prod log, reproduced live): `jsonb_build_object($2, true)` gives
+# asyncpg/Postgres nothing to infer $2's type from in that position. Fix casts
+# it explicitly: `jsonb_build_object($2::text, true)`. These tests pin the
+# cast in the executed SQL text (mocked connection, no real DB — see
+# `_client_with_auth` above) and confirm the endpoint returns 200/401 as
+# expected.
+
+
+class TestMarkStepDone:
+    def test_step_done_casts_param_and_returns_200(self, mock_services):
+        from backend.app.routers import intel as intel_router_module
+
+        intel_router_module.settings.intel_scraper_api_key = "test-key"
+        test_client, conn = _client_with_auth(mock_services)
+
+        response = test_client.post(
+            "/api/intel/post-publish-queue/step-done",
+            headers={"X-API-Key": "test-key"},
+            json={"slug": "test-article", "step": "hero_image"},
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"ok": True, "slug": "test-article", "step": "hero_image"}
+
+        conn.execute.assert_awaited_once()
+        executed_sql = conn.execute.await_args_list[0].args[0]
+        assert "jsonb_build_object($2::text, true)" in executed_sql
+
+    def test_unauthorized_without_api_key(self, mock_services):
+        from backend.app.routers import intel as intel_router_module
+
+        intel_router_module.settings.intel_scraper_api_key = "test-key"
+        test_client, _conn = _client_with_auth(mock_services)
+
+        response = test_client.post(
+            "/api/intel/post-publish-queue/step-done",
+            json={"slug": "test-article", "step": "hero_image"},
+        )
+        assert response.status_code == 401

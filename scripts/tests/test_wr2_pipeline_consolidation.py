@@ -328,7 +328,7 @@ class TestDraftGeneratorDrainLoop:
 
         fetch = AsyncMock(side_effect=[[_row("a"), _row("b")], [_row("c")], []])
         monkeypatch.setattr(dg, "_fetch_briefed_drafts", fetch)
-        process = AsyncMock(return_value=True)
+        process = AsyncMock(return_value="success")
         monkeypatch.setattr(dg, "_process_one", process)
 
         rc = await dg.run()
@@ -351,6 +351,67 @@ class TestDraftGeneratorDrainLoop:
         rc = await dg.run()
 
         assert rc == 1  # first-fetch-empty semantics preserved (launchd contract)
+
+    @pytest.mark.asyncio
+    async def test_run_all_parked_batch_exits_zero_not_two(self, monkeypatch):
+        """2026-07-17 red-team finding #4: a batch where every draft is
+        correctly parked (0 successes, 0 real failures) must exit 0. The old
+        `return 0 if successes > 0 else 2` treated an all-parked batch the
+        same as an all-failed batch, and
+        scripts/launchagent-state-bridge.py:594 reads any nonzero exit as a
+        failed run -> false P-incident. `parked` is a deliberate terminal
+        outcome (B2 backstop), not an error, so it must not count against
+        the exit code."""
+        dg = _load("wr2_draft_generator")
+        monkeypatch.setenv("DATABASE_URL", "postgres://x")
+        conn = MagicMock()
+        pool = MagicMock()
+        pool.acquire = MagicMock(return_value=_AcquireCM(conn))
+        pool.close = AsyncMock()
+        monkeypatch.setattr(dg.asyncpg, "create_pool", AsyncMock(return_value=pool))
+
+        def _row(topic: str):
+            r = MagicMock()
+            r.__getitem__ = MagicMock(side_effect=lambda k: {"id": uuid.uuid4(), "topic": topic, "brief_json": "{}"}[k])
+            return r
+
+        fetch = AsyncMock(side_effect=[[_row("a")], []])
+        monkeypatch.setattr(dg, "_fetch_briefed_drafts", fetch)
+        process = AsyncMock(return_value="parked")
+        monkeypatch.setattr(dg, "_process_one", process)
+
+        rc = await dg.run()
+
+        assert process.await_count == 1
+        assert rc == 0
+
+    @pytest.mark.asyncio
+    async def test_run_all_failed_batch_still_exits_two(self, monkeypatch):
+        """Innocence pair for the finding #4 fix: a batch with a REAL
+        failure and zero successes/parks must still exit 2 — the fix must
+        not accidentally launder genuine failures into a green exit."""
+        dg = _load("wr2_draft_generator")
+        monkeypatch.setenv("DATABASE_URL", "postgres://x")
+        conn = MagicMock()
+        pool = MagicMock()
+        pool.acquire = MagicMock(return_value=_AcquireCM(conn))
+        pool.close = AsyncMock()
+        monkeypatch.setattr(dg.asyncpg, "create_pool", AsyncMock(return_value=pool))
+
+        def _row(topic: str):
+            r = MagicMock()
+            r.__getitem__ = MagicMock(side_effect=lambda k: {"id": uuid.uuid4(), "topic": topic, "brief_json": "{}"}[k])
+            return r
+
+        fetch = AsyncMock(side_effect=[[_row("a")], []])
+        monkeypatch.setattr(dg, "_fetch_briefed_drafts", fetch)
+        process = AsyncMock(return_value="failed")
+        monkeypatch.setattr(dg, "_process_one", process)
+
+        rc = await dg.run()
+
+        assert process.await_count == 1
+        assert rc == 2
 
 
 # ─────────────────────────────────────────────────────────────────────────

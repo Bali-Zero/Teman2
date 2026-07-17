@@ -55,6 +55,12 @@ uv.lock
 # Ignore everything under data/ EXCEPT evaluation/, which we carve out.
 apps/backend-rag/data/*
 !apps/backend-rag/data/evaluation/
+# apps/backend-rag/data/curated_qa/ holds the harvester's *.jsonl corpus
+# input (P7/D3-L2 SPEC v2) — real corpus files are ops-populated, not
+# committed. Track only the schema-documenting README.
+!apps/backend-rag/data/curated_qa/
+apps/backend-rag/data/curated_qa/*
+!apps/backend-rag/data/curated_qa/README.md
 # Prevent recursive apps structure
 apps/backend-rag/apps/
 check_ingest.py

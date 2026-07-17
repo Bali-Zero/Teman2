@@ -9,13 +9,22 @@ The previous behavior shipped only 25% of the available material to Claude;
 this fix is the difference between "11 slides built on a paragraph" and
 "11 slides built on the_facts + bali_zero_take + in_practice + next_steps + faq".
 
+2026-07-17 (B1/B2, draft 1229c367): a SECOND bug in the same neighborhood —
+when enrichment was truthy but only carried a grounding-injected citation block
+(wr2_grounding.py `_grounding_injected_only`), it SHADOWED the real article
+summary outright and Claude invented the story. B1 below locks the fix
+(compose both, article leads); B2 locks the park backstop for when there is
+truly no source anywhere.
+
 These tests don't call Claude — they verify the prompt construction
 deterministically, which is the unit boundary we control.
 """
 from __future__ import annotations
 
-from pathlib import Path
 import sys
+import uuid
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -24,10 +33,13 @@ import pytest
 SCRIPTS_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+import wr2_draft_generator as dg  # noqa: E402
 from wr2_draft_generator import (  # noqa: E402
     _build_draft_prompt,
     _build_enriched_brief,
     _cap_subhead,
+    _has_usable_source,
+    _is_news_shaped,
     _normalise_slides,
 )
 
@@ -381,3 +393,366 @@ def test_normalise_slides_caps_subhead_field() -> None:
     assert len(cover_subhead.split()) <= 6
     assert len(cover_subhead) <= 32
     assert "..." not in cover_subhead
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# B1 — facts-first composition (draft 1229c367, 2026-07-16)
+#
+# Bug: a citations-only grounding injection was TRUTHY, so it fully replaced
+# the real article summary — Claude composed from a legal-brief fragment
+# instead of the actual news event. Fix: when BOTH are usable, the article
+# leads and the enriched brief follows as supporting material.
+# ─────────────────────────────────────────────────────────────────────────
+
+_DISTINCTIVE_FACTS_SENTENCE = (
+    "Three foreign nationals have been deported from Bali after Indonesian "
+    "immigration officials determined they were engaged in work activities."
+)
+
+
+def test_guilt_facts_shadowed_by_citations_only_enrichment_fails_on_old_behavior(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT: reproduces draft 1229c367 exactly — enrichment.the_facts is a
+    grounding-injected citations-only block (the `_grounding_injected_only`
+    marker set), article_summary carries the real event. The built prompt
+    MUST contain the article's facts AND the citations — this is the
+    assertion that failed on the pre-fix code (enrichment alone replaced the
+    body, so the distinctive facts sentence was absent)."""
+    monkeypatch.setenv("WR2_USE_FULL_ENRICHED_PROMPT", "true")
+    enrichment = {
+        "the_facts": "Riferimenti normativi (verbatim, citare senza parafrasare): PP 31/2013 · Pasal 187",
+        "_grounding_injected_only": True,
+    }
+    prompt = _build_draft_prompt(
+        topic="Bali Deports Three Foreigners Caught Working on Tourist Visas",
+        summary=_DISTINCTIVE_FACTS_SENTENCE + " Full article body continues here.",
+        source_url="https://example.com/deported",
+        enrichment=enrichment,
+        live_reasons=None,
+    )
+    assert _DISTINCTIVE_FACTS_SENTENCE in prompt
+    assert "PP 31/2013" in prompt
+    assert "Pasal 187" in prompt
+
+
+def test_innocence_rich_enrichment_and_summary_both_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INNOCENCE: a real (non-injected) rich enrichment object alongside a
+    real summary — both the article facts AND every enriched section must
+    still appear; facts-first must not drop the enriched material."""
+    monkeypatch.setenv("WR2_USE_FULL_ENRICHED_PROMPT", "true")
+    enrichment = {
+        "the_facts": "Full journalism paragraph on the regulation change.",
+        "bali_zero_take": "Our editorial take on what this means.",
+        "in_practice": "What expats should actually do about it.",
+    }
+    prompt = _build_draft_prompt(
+        topic="Test topic",
+        summary=_DISTINCTIVE_FACTS_SENTENCE,
+        source_url="https://example.com",
+        enrichment=enrichment,
+        live_reasons=None,
+    )
+    assert _DISTINCTIVE_FACTS_SENTENCE in prompt
+    assert "Full journalism paragraph on the regulation change." in prompt
+    assert "Our editorial take on what this means." in prompt
+    assert "What expats should actually do about it." in prompt
+    assert "Source article" in prompt
+    assert "Supporting brief" in prompt
+
+
+def test_legacy_opt_out_stays_summary_only_even_with_facts_first_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Legacy opt-out (WR2_USE_FULL_ENRICHED_PROMPT=false) unaffected by B1:
+    summary[:3500] only, enrichment never even considered."""
+    monkeypatch.setenv("WR2_USE_FULL_ENRICHED_PROMPT", "false")
+    enrichment = {"the_facts": "ENRICHED", "_grounding_injected_only": True}
+    prompt = _build_draft_prompt(
+        topic="t",
+        summary=_DISTINCTIVE_FACTS_SENTENCE,
+        source_url="",
+        enrichment=enrichment,
+        live_reasons=None,
+    )
+    assert _DISTINCTIVE_FACTS_SENTENCE in prompt
+    assert "ENRICHED" not in prompt
+    assert "Source article" not in prompt
+
+
+def test_facts_first_steer_line_present_only_when_both_sources_compose() -> None:
+    """The SOURCE-GROUNDING steer line only fires when facts-first actually
+    composed (both summary and enrichment usable) — never on the pure
+    summary-only or pure-enrichment-only paths."""
+    both = _build_draft_prompt(
+        topic="t", summary="real summary text", source_url="",
+        enrichment={"the_facts": "real facts"}, live_reasons=None,
+    )
+    assert dg._FACTS_FIRST_STEER in both
+
+    summary_only = _build_draft_prompt(
+        topic="t", summary="real summary text", source_url="",
+        enrichment=None, live_reasons=None,
+    )
+    assert dg._FACTS_FIRST_STEER not in summary_only
+
+    enrichment_only = _build_draft_prompt(
+        topic="t", summary="", source_url="",
+        enrichment={"the_facts": "real facts"}, live_reasons=None,
+    )
+    assert dg._FACTS_FIRST_STEER not in enrichment_only
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# B2 — refuse-to-guess park backstop: _is_news_shaped / _has_usable_source
+# ─────────────────────────────────────────────────────────────────────────
+
+def test_is_news_shaped_by_staging_type() -> None:
+    assert _is_news_shaped({"staging_type": "news"}, "", "Some headline") is True
+    assert _is_news_shaped({"staging_type": "visa"}, "", "A generic guide") is False
+
+
+def test_is_news_shaped_by_liveness_tier() -> None:
+    assert _is_news_shaped({}, "breaking", "x") is True
+    assert _is_news_shaped({}, "developing", "x") is True
+    assert _is_news_shaped({}, "evergreen", "x") is False
+    assert _is_news_shaped({}, "", "x") is False
+
+
+def test_is_news_shaped_by_title_event_pattern() -> None:
+    assert _is_news_shaped({}, "", "Bali Deports Three Foreigners") is True
+    assert _is_news_shaped({}, "", "Immigration Raid Nets Five Overstayers") is True
+    assert _is_news_shaped({}, "", "How KITAS Renewal Works: A Complete Guide") is False
+
+
+def test_has_usable_source_true_when_summary_present() -> None:
+    """A real summary is usable regardless of enrichment state — including
+    when enrichment is citations-only (the marker doesn't matter here)."""
+    assert _has_usable_source("Real article text.", None) is True
+    assert _has_usable_source(
+        "Real article text.", {"_grounding_injected_only": True}
+    ) is True
+
+
+def test_has_usable_source_false_when_summary_empty_and_enrichment_injected_only() -> None:
+    """GUILT case for the park decision: nothing anywhere."""
+    assert _has_usable_source("", {"_grounding_injected_only": True}) is False
+    assert _has_usable_source("", None) is False
+    assert _has_usable_source("   ", {}) is False
+
+
+def test_has_usable_source_true_when_enrichment_has_real_facts_no_summary() -> None:
+    """A real (non-injected) enrichment object counts as usable even with no
+    article_summary at all."""
+    assert _has_usable_source(
+        "", {"the_facts": "Real journalism paragraph, no marker."}
+    ) is True
+
+
+def test_has_usable_source_false_when_article_summary_is_whitespace_only() -> None:
+    """Red-team finding #1a companion: a whitespace-only summary must be
+    treated the same as an empty one — it is truthy in Python but carries no
+    real content, so it must NOT short-circuit `_has_usable_source` to True."""
+    assert _has_usable_source("   ", {"_grounding_injected_only": True}) is False
+
+
+def test_has_usable_source_false_when_facts_structurally_citations_only_without_marker_key() -> None:
+    """Red-team finding #1b companion: the structural detector
+    (wg.is_citations_only_the_facts) must catch a citations-only the_facts
+    even when the `_grounding_injected_only` marker key was never set at all
+    (the early-return gap in wr2_grounding.ground_enrichment) — detection
+    must not depend on the marker alone."""
+    enrichment = {
+        "the_facts": (
+            "Riferimenti normativi (verbatim, citare senza parafrasare): PP 31/2013"
+        ),
+    }
+    assert _has_usable_source("", enrichment) is False
+
+
+def test_has_usable_source_true_when_facts_citations_only_but_other_fields_real() -> None:
+    """Red-team finding #2: the_facts is citations-only (marker set), but the
+    enrichment object ALSO carries real content in another structured field.
+    The old implementation returned False the moment it saw the
+    citations-only signal, discarding real content elsewhere. The fix strips
+    ONLY the_facts from consideration and still checks the rest
+    (thirty_second_brief / bali_zero_take / in_practice / next_steps / faq)."""
+    enrichment = {
+        "the_facts": (
+            "Riferimenti normativi (verbatim, citare senza parafrasare): PP 31/2013"
+        ),
+        "_grounding_injected_only": True,
+        "thirty_second_brief": {
+            "what": "Three foreigners were deported for working illegally."
+        },
+    }
+    assert _has_usable_source("", enrichment) is True
+
+
+def test_has_usable_source_false_when_only_citations_only_facts_and_nothing_else() -> None:
+    """INNOCENCE for finding #2's fix: stripping the_facts must not create a
+    false-positive when there really is nothing else — the marker-only case
+    (no other structured fields) must still park."""
+    enrichment = {
+        "the_facts": (
+            "Riferimenti normativi (verbatim, citare senza parafrasare): PP 31/2013"
+        ),
+        "_grounding_injected_only": True,
+    }
+    assert _has_usable_source("", enrichment) is False
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# B2 — _process_one integration: park path vs. conservative no-park path
+# ─────────────────────────────────────────────────────────────────────────
+
+_FAKE_SLIDES_RESPONSE = {
+    "register": "analitico",
+    "register_reason": "test",
+    "slides": [
+        {
+            "slide_number": i,
+            "slide_type": "cover" if i == 1 else ("cta" if i == 6 else "body"),
+            "is_cover": i == 1,
+            "is_hero_image": i == 1,
+            "headline": f"Headline {i}",
+            "subhead": "TEST TAG" if i == 1 else "",
+            "body": f"Body copy for slide {i}." if i < 6 else "Short close now.",
+            "image_prompt": "editorial scene" if i == 1 else "",
+        }
+        for i in range(1, 7)
+    ],
+}
+
+
+@pytest.mark.asyncio
+async def test_process_one_parks_news_shaped_draft_with_no_usable_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Integration GUILT: news-shaped (staging_type=news) + empty
+    article_summary + citations-only enrichment -> parked, Claude NEVER
+    called, no compose attempt."""
+    draft_id = uuid.uuid4()
+    row = {
+        "id": draft_id,
+        "topic": "Some News Event",
+        "brief_json": {
+            "article_summary": "",
+            "enrichment": {
+                "the_facts": (
+                    "Riferimenti normativi (verbatim, citare senza parafrasare): "
+                    "PP 31/2013"
+                ),
+                "_grounding_injected_only": True,
+            },
+            "staging_type": "news",
+            "liveness_tier": None,
+        },
+    }
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    compose_mock = AsyncMock()
+    monkeypatch.setattr(dg, "claude_compose_slides", compose_mock)
+
+    outcome = await dg._process_one(conn, row)
+
+    assert outcome == "parked"
+    compose_mock.assert_not_called()
+    conn.execute.assert_awaited_once()
+    args, _kwargs = conn.execute.call_args
+    assert "parked" in args[0]
+    assert args[1] == draft_id
+
+
+@pytest.mark.asyncio
+async def test_process_one_composes_when_news_shaped_but_summary_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Integration no-park (conservative): news-shaped AND enrichment is
+    citations-only, BUT article_summary is real -> composes normally, never
+    parked. Proves the backstop doesn't over-trigger on the common case
+    (B1's facts-first fix handles this one, not B2's park)."""
+    draft_id = uuid.uuid4()
+    row = {
+        "id": draft_id,
+        "topic": "Bali Deports Three Foreigners Caught Working on Tourist Visas",
+        "brief_json": {
+            "article_summary": _DISTINCTIVE_FACTS_SENTENCE,
+            "enrichment": {
+                "the_facts": "Riferimenti normativi: PP 31/2013",
+                "_grounding_injected_only": True,
+            },
+            "staging_type": "news",
+            "liveness_tier": None,
+            "source_url": "https://example.com",
+        },
+    }
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    conn.fetch = AsyncMock(return_value=[])
+
+    compose_mock = AsyncMock(return_value=_FAKE_SLIDES_RESPONSE)
+    monkeypatch.setattr(dg, "claude_compose_slides", compose_mock)
+    monkeypatch.setattr(dg, "generate_cover_image", AsyncMock(return_value=(None, "skip-in-test")))
+    monkeypatch.setattr(dg, "_send_telegram", MagicMock())
+    monkeypatch.setattr(dg.wom, "resolve_carousel_id", AsyncMock(return_value="cid-test"))
+    monkeypatch.setattr(dg.wom, "record_step", AsyncMock())
+
+    outcome = await dg._process_one(conn, row)
+
+    assert outcome == "success"
+    compose_mock.assert_awaited_once()
+    # Persisted as a normal draft, not parked.
+    persist_calls = [c for c in conn.execute.call_args_list if "status" in c.args[0]]
+    assert any("'drafts'" in c.args[0] for c in persist_calls)
+    assert not any("parked" in c.args[0] for c in persist_calls)
+
+
+@pytest.mark.asyncio
+async def test_process_one_composes_when_facts_citations_only_but_enrichment_rich(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Integration no-park for red-team finding #2: article_summary is
+    EMPTY and the_facts IS citations-only (marker set) — but the enrichment
+    object carries real content in another structured field
+    (thirty_second_brief). The old _has_usable_source parked on the
+    citations-only signal alone, discarding that real content. The fix must
+    compose instead."""
+    draft_id = uuid.uuid4()
+    row = {
+        "id": draft_id,
+        "topic": "Bali Deports Three Foreigners Caught Working on Tourist Visas",
+        "brief_json": {
+            "article_summary": "",
+            "enrichment": {
+                "the_facts": "Riferimenti normativi: PP 31/2013",
+                "_grounding_injected_only": True,
+                "thirty_second_brief": {
+                    "what": "Three foreigners were deported for working illegally on tourist visas."
+                },
+            },
+            "staging_type": "news",
+            "liveness_tier": None,
+            "source_url": "https://example.com",
+        },
+    }
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    conn.fetch = AsyncMock(return_value=[])
+
+    compose_mock = AsyncMock(return_value=_FAKE_SLIDES_RESPONSE)
+    monkeypatch.setattr(dg, "claude_compose_slides", compose_mock)
+    monkeypatch.setattr(dg, "generate_cover_image", AsyncMock(return_value=(None, "skip-in-test")))
+    monkeypatch.setattr(dg, "_send_telegram", MagicMock())
+    monkeypatch.setattr(dg.wom, "resolve_carousel_id", AsyncMock(return_value="cid-test"))
+    monkeypatch.setattr(dg.wom, "record_step", AsyncMock())
+
+    outcome = await dg._process_one(conn, row)
+
+    assert outcome == "success"
+    compose_mock.assert_awaited_once()
+    persist_calls = [c for c in conn.execute.call_args_list if "status" in c.args[0]]
+    assert any("'drafts'" in c.args[0] for c in persist_calls)
+    assert not any("parked" in c.args[0] for c in persist_calls)
