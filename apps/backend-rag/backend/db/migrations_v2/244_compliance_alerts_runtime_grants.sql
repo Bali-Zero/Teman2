@@ -39,8 +39,6 @@ DECLARE
     runtime_role constant text := 'backend_rag_v2';
     object_name text;
     object_reg regclass;
-    sequence_name text;
-    sequence_reg regclass;
     write_objects text[] := ARRAY[
         'public.compliance_alerts'
     ];
@@ -110,51 +108,19 @@ BEGIN
                 object_name;
         END IF;
 
-        -- Defensive/future-proofing only: compliance_alerts.alert_id is
-        -- TEXT PRIMARY KEY (db/migrations_v2/114_compliance_alerts.sql), not
-        -- a serial/identity column, so pg_get_serial_sequence(..., 'id')
-        -- always returns NULL today and this block never executes. Kept for
-        -- parity with the 209/211 write_objects pattern in case the PK
-        -- shape ever changes.
-        sequence_name := pg_get_serial_sequence(object_name, 'id');
-
-        IF sequence_name IS NOT NULL THEN
-            sequence_reg := to_regclass(sequence_name);
-
-            IF sequence_reg IS NOT NULL
-                AND NOT (
-                    has_sequence_privilege(runtime_role, sequence_reg, 'USAGE')
-                    AND has_sequence_privilege(runtime_role, sequence_reg, 'SELECT')
-                ) THEN
-                BEGIN
-                    EXECUTE format(
-                        'GRANT USAGE, SELECT ON SEQUENCE %s TO %I',
-                        sequence_reg,
-                        runtime_role
-                    );
-                EXCEPTION
-                    WHEN insufficient_privilege THEN
-                        RAISE WARNING
-                            'manual grant required: GRANT USAGE, SELECT ON SEQUENCE % TO %',
-                            sequence_name,
-                            runtime_role;
-                END;
-            END IF;
-
-            IF sequence_reg IS NOT NULL
-                AND NOT has_sequence_privilege(runtime_role, sequence_reg, 'USAGE') THEN
-                RAISE EXCEPTION
-                    'backend_rag_v2 is missing USAGE on sequence %; apply manual grant with an owner/admin role',
-                    sequence_name;
-            END IF;
-
-            IF sequence_reg IS NOT NULL
-                AND NOT has_sequence_privilege(runtime_role, sequence_reg, 'SELECT') THEN
-                RAISE EXCEPTION
-                    'backend_rag_v2 is missing SELECT on sequence %; apply manual grant with an owner/admin role',
-                    sequence_name;
-            END IF;
-        END IF;
+        -- NOTE (fix244-seqbug): a sequence-grant sub-block used to live here,
+        -- guarded on `pg_get_serial_sequence(object_name, 'id')`. It assumed
+        -- that call returns NULL when the table has no `id` column — it does
+        -- not; Postgres RAISEs "column ... does not exist" instead, which is
+        -- not caught by any exception handler in this DO-block. Because
+        -- compliance_alerts.alert_id is TEXT PRIMARY KEY (no `id` column,
+        -- no serial/identity — see 114_compliance_alerts.sql) and
+        -- write_objects here is only ever `public.compliance_alerts`, that
+        -- call ALWAYS raised in any environment where `backend_rag_v2`
+        -- exists (i.e. prod), aborting this DO-block on every apply attempt
+        -- and failing the Fly release_command (`apply_all_pending`). The
+        -- sub-block was genuinely dead code (table has no sequence to grant
+        -- on), so it is removed rather than guarded — least-surface fix.
     END LOOP;
 END
 $grant_block$;
@@ -165,8 +131,6 @@ DECLARE
     runtime_role text := 'backend_rag_v2';
     object_name text;
     object_reg regclass;
-    sequence_name text;
-    sequence_reg regclass;
     write_objects text[] := ARRAY[
         'public.compliance_alerts'
     ];
@@ -184,20 +148,6 @@ BEGIN
                 object_reg,
                 runtime_role
             );
-        END IF;
-
-        sequence_name := pg_get_serial_sequence(object_name, 'id');
-
-        IF sequence_name IS NOT NULL THEN
-            sequence_reg := to_regclass(sequence_name);
-
-            IF sequence_reg IS NOT NULL THEN
-                EXECUTE format(
-                    'REVOKE USAGE, SELECT ON SEQUENCE %s FROM %I',
-                    sequence_reg,
-                    runtime_role
-                );
-            END IF;
         END IF;
     END LOOP;
 END
