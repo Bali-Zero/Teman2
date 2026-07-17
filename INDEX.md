@@ -153,7 +153,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | ----- | ----------------------- |
 | `.claude/skills/agent-session-discipline/` | Use at session start when working on a feature/fix that involves code changes. Creates an isolated worktree via L1 broker (scripts/agent_start.py) to prevent... |
 | `.claude/skills/karpathy-discipline/` | Use BEFORE any feature implementation, refactor, bug fix, or non-trivial code change. Applies 4 Karpathy principles to reduce common LLM coding mistakes (sil... |
-| `.claude/skills/kbli-navigator/` | "KBLI Navigator corner — the live shared context for ALL KBLI corpus/product work (dataset, gold, KG, editorial, kbli pages on balizero.com). Load BEFORE tou... |
+| `.claude/skills/kbli-navigator/` | "KBLI Navigator corner — the live shared context AND the full plan-to-the-end for ALL KBLI corpus/product work (dataset, gold, KG, editorial, kbli pages on b... |
 | `.claude/skills/modus/` | USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content — coding or not. The master operating loop of the organism: TRIAGE ... |
 | `.claude/skills/reuse-first/` | Use BEFORE implementing/building/writing-from-scratch any non-trivial component (queue, OCR, adapter, entity-resolution, review-UI, scraper, parser, etc.). C... |
 | `.claude/skills/skill-catalog/` | Use when a user request does NOT match any currently-loaded skill — BEFORE answering "I don't have a skill for that". The full Claude Code skill ecosystem (T... |
