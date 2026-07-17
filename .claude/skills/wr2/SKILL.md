@@ -29,13 +29,16 @@ back into the next editorial decision. Growth = the standing loop in §4.
 **Legge 5 (absolute)**: publishing to Instagram is Zero's act. The pipeline stops at `drafted`
 in the review queue. No session ever publishes autonomously.
 
-## 1. LIVE STATE (last update 2026-07-17 night — keep current)
+## 1. LIVE STATE (last update 2026-07-18 — keep current)
 
 **Shipped & proven (July 16-17 arc):** complete-or-nothing gate (#2543 app / #2553 py) ·
 take-label variety + vendored agent defs (#2544) · archive-aware M5 merge + reconciler repair
 (#2563) · external-post registration + IG metrics FIRST LIVE on native carousels (#2578, hotfix
 #2579, 49 entries backfilled with numeric Graph ids) · **facts-first + park backstop (#2598,
-migration 245 `parked` on prod)** · capture ledger (#2581, #2609).
+migration 245 `parked` on prod)** · capture ledger (#2581, #2609) ·
+multi-path Pro ssh fallback in the M5 queue-pull wrapper (#2625 — scar #8: Tailscale/mDNS
+alternate dying, 1102 timeouts logged; fallback probe + honest --once exit, proven live
+2026-07-18).
 
 **In queue awaiting Zero (Legge 5):** deportation carousel remake (`drafted`, 2026-07-17, tells
 the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari reply.
