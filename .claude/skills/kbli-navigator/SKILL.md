@@ -26,7 +26,7 @@ pattern_, NOT the goal. The goal is a navigator where every rendered risk / lice
 fact is either government-sourced (with a citable locator + vintage) or an honest declared gap —
 zero silent cross-vintage fill anywhere in the catalog. §5 is the plan that gets us there.
 
-## 1. LIVE STATE (last update 2026-07-17 — keep current)
+## 1. LIVE STATE (last update 2026-07-18 — keep current)
 
 **Where the 1,559 actually stand (grounded on the Filiera methodology census):**
 
@@ -63,6 +63,17 @@ false-friends **49213, 51103, 51203, 20111, 50115, 60312, 64310**:
 **What is NOT done (the actual remaining program):** ~213 no-scope codes un-adjudicated · the
 `pma_status` cross-vintage audit across the catalog · the KG 68% disease at the root · the 63
 phantom gold-remap rows · Batches A(remainder)/B/C/D of the Filiera sweep. See §5.
+
+**Batch-0 vault base DONE — extraction still BLOCKED (2026-07-18, LANE-B0 task #8, PR #2622 merged `17f360df4`):**
+raw-evidence vault live on Mini `~/nuzantara-vault/` (bps 1 + oss 4,933 + pp28 21 blobs) ·
+manifest committed `data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json` (4,955
+entries, all sha256+provenance, deterministic; file sha256 `e7d25a37…`) · Tigris mirror
+proven-live 4,959/4,959 at `nuzantara-backups/kbli-vault/` · OSS coverage 6,236/6,236
+(code,endpoint) pairs — 1,303 absences at 3 probes each, no-scope set EXACTLY 221 (zero drift
+vs census). **Open quarantines (proposed in PR #2622, NOT resolved):** BPS Vol.1 missing
+(Turnstile → browser lane) · Perpres-annex compiler not built · absence ≥72h window needs one
+probe after 2026-07-19T18:10Z · stray mirror copy in `nuzantara-warroom-images/kbli-vault/`
+(pre-fix run) to delete. **EXTRACTION GATE — collapsed to ONE precondition (updated 2026-07-18):** the gate is now just **P0 membership** (#2640 LANDING; the Detect Secrets git-SHA false-positive on `canonical_revision` was fixed via a durable auto-triage rule for `data/kbli-filiera/membership/`, proven end-to-end; auto-merge armed SQUASH). Two prior "gates" dissolved: (a) **renders are NOT a bulk pre-build** — the PP28 300-dpi renders are produced **on-demand per-code at D2** from the sha256-pinned PP28 PDFs (`pdftoppm -r 300`, deterministic, offline); (b) the **OSS endpoint inventory is DONE** (6,236/6,236 pairs, in the manifest). **P1-v2 addendum HELD until AFTER Pilota A1** — Zero ruling 2026-07-18 (_"aspetti dopo il Pilota A1 così misuriamo prima su vault-core pulito"_): Perpres 10/49 + Bali/Kepmenaker + per-instrument status snapshots come as a SECOND vault wave; `pma_status`/`l4_bali`/TKA facets **abstain fail-safe** (A1/A5/A6) this pass and are lifted later — never published wrong. **⇒ Pilota A1 starts on the OSS+PP28+BPS core the moment P0 is on main.** Genuinely-deferred (NOT gates): BPS Vol.1 (Turnstile → browser lane), absence-window one probe after 2026-07-19T18:10Z, stray warroom mirror copy to delete.
 
 **Governance flags:**
 

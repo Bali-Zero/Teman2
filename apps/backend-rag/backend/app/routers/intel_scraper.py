@@ -339,6 +339,29 @@ async def register_notification(
     }
 
 
+def _derive_tier_from_score(score: Any) -> str:
+    """Bucket a live_news_score into the enricher's tier scheme.
+
+    WR2 liveness rewire — red-team round FIX3, 2026-07-18. Mirrors
+    claude_cli_enricher._normalize_live_news_fields's own buckets
+    (>=80 breaking, >=40 developing, else evergreen) so a submission that
+    carries a score WITHOUT an explicit tier doesn't silently default to
+    "evergreen" and fall out of wr2_topic_selector's live pool (a score=85
+    item with no tier previously persisted as 85/"evergreen" — excluded).
+    Defensive against non-numeric input even though ScraperSubmission
+    already validates `live_news_score` as `int | None`.
+    """
+    try:
+        s = int(round(float(score)))
+    except (TypeError, ValueError):
+        return "evergreen"
+    if s >= 80:
+        return "breaking"
+    if s >= 40:
+        return "developing"
+    return "evergreen"
+
+
 @router.post("/api/intel/scraper/submit")
 async def submit_from_scraper(
     submission: ScraperSubmission,
@@ -397,6 +420,22 @@ async def submit_from_scraper(
                 "duplicate": True,
             }
 
+        # WR2 liveness rewire (SPRINT B1, scar family #9 break #2; red-team
+        # FIX3 2026-07-18): normalize with uniform defaults so every staging
+        # item — scraper sent them or not — has a consistent liveness shape
+        # downstream. When liveness_tier is absent but a score IS present,
+        # derive the tier from the score instead of defaulting to
+        # "evergreen" — a validated, explicitly-provided tier is always
+        # trusted as-is.
+        _live_news_score = (
+            submission.live_news_score if submission.live_news_score is not None else 0
+        )
+        _liveness_tier = (
+            submission.liveness_tier
+            if submission.liveness_tier is not None
+            else _derive_tier_from_score(_live_news_score)
+        )
+
         # Prepare staging data
         staging_data = {
             "item_id": item_id,
@@ -413,6 +452,11 @@ async def submit_from_scraper(
             "status": "pending",
             "detection_type": "scraper_auto",
             "detected_at": datetime.now(timezone.utc).isoformat(),
+            "live_news_score": _live_news_score,
+            "liveness_tier": _liveness_tier,
+            "live_news_reasons": [
+                r.strip()[:200] for r in (submission.live_news_reasons or [])
+            ][:3],
         }
 
         if submission.cover_image:
