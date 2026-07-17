@@ -38,16 +38,19 @@ take-label variety + vendored agent defs (#2544) · archive-aware M5 merge + rec
 migration 245 `parked` on prod)** · capture ledger (#2581, #2609) ·
 multi-path Pro ssh fallback in the M5 queue-pull wrapper (#2625 — scar #8: Tailscale/mDNS
 alternate dying, 1102 timeouts logged; fallback probe + honest --once exit, proven live
-2026-07-18).
+2026-07-18) · **liveness rewire end-to-end (#2631, growth-loop B1) — carried the enricher's
+live_news_score/liveness_tier/live_news_reasons through the 3-break contract chain
+(scraper→ScraperSubmission→staging JSON→/pending projection), scar family #9; Codex red-team
+round added projection normalization + score→tier derivation; PROVE-LIVE 2026-07-18: prod probe
+submitted score=85 with NO tier, /pending returned 85/"breaking"(derived)/["probe reason"], then
+rejected. Fly deployed, Pro ~/nuzantara blob-aligned, WR2_PREFER_LIVE_NEWS=true already armed**.
 
 **In queue awaiting Zero (Legge 5):** deportation carousel remake (`drafted`, 2026-07-17, tells
 the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari reply.
 
 **Open wounds / next targets:**
 
-- **Liveness scorer returns 0.0 for ALL items** (classifier lane paused, #2501) → live pool
-  always empty → every topic composes as `evergreen`. The tier steers (length/tone) are dead
-  weight until this is rewired. HIGH-value fix.
+- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural end-to-end proof: next nightly (03:00 WITA) — enricher yields non-zero scores → live pool non-empty → a breaking item is picked (topic-selector logs "using live pool"). Watch `~/logs/wr2_topic_selector.launchd.out.log`. Related open item (ledgered): enrichment silent-drop — build_staging_payload sends brief/faq/slug/tags/seo/featured but ScraperSubmission has no such fields → `enrichment: {}` on drafts.
 - **13 unknown_intent** queue entries (complete-or-nothing backfill refused to guess) — need
   adjudication = re-render from slides.json. · **3 render_incomplete** same family.
 - **fact_check_status "degraded" pipeline-wide** — the checker runs in degraded mode on every
