@@ -28,6 +28,7 @@ class IntelligentRouter:
         personality_service=None,
         collaborator_service=None,
         db_pool=None,
+        faq_cache=None,
     ) -> None:
         # Initialize the new Brain (Agentic RAG)
         # We need to pass the retriever (search_service) and db_pool
@@ -61,6 +62,7 @@ class IntelligentRouter:
             _web_search_client=None,
             clarification_service=self.clarification_service,
             semantic_cache=semantic_cache,
+            faq_cache=faq_cache,
         )
 
         logger.info("🎯 [IntelligentRouter] Initialized (NEXT-GEN AGENTIC RAG MODE)")

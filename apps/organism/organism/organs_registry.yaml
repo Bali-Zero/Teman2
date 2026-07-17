@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 3617fe89bec8863bf0d869416d064e3993f63356890a8f270bcc696de960f5e2
+checksum: 25af0bde5e40fa20e626d78169f64e940301becabd6729e6a7936e2985c8468c
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -2034,17 +2034,35 @@ organs:
     host: pro
     label: com.nuzantara.launchd-liveness-detector.daily
   severity_on_silence: warning
-  notes: 'Arms scripts/launchd_liveness_detector.py (PR #1518, cicatrix W84) for
-    the first time — 4 test suites existed with zero launchd/cron attachment
-    before infra-liveness-detector-arm-0717 (Esiste≠Armato, superscar #2).
-    Pro-only by design: reads ~/Library/LaunchAgents plus local log tails, which
-    are per-host state — a Mini copy would need its own instance (superscar #10
-    active-active), not this shared registry row. Kill switch env var:
-    LAUNCHD_LIVENESS_DETECTOR_ENABLED=false.'
+  notes: 'Arms scripts/launchd_liveness_detector.py (PR #1518, cicatrix W84) for the
+    first time — 4 test suites existed with zero launchd/cron attachment before infra-liveness-detector-arm-0717
+    (Esiste≠Armato, superscar #2). Pro-only by design: reads ~/Library/LaunchAgents
+    plus local log tails, which are per-host state — a Mini copy would need its own
+    instance (superscar #10 active-active), not this shared registry row. Kill switch
+    env var: LAUNCHD_LIVENESS_DETECTOR_ENABLED=false.'
   cicatrix_refs:
   - 2026-06-16-W84-tcc-green-dead
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.launchd_liveness.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.log_rotate
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 86400
+  owner_module: infra/launchagents/wrappers/log-rotate-run.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.log-rotate.daily
+  severity_on_silence: warning
+  notes: Copytruncate rotation for logs over 50MB under ~/logs (5-generation retention)
+    (born via organ_birth.py, genes imprinted 2026+)
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.log_rotate.json
     timestamp_field: ts
     status_field: status

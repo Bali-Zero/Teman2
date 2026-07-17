@@ -440,9 +440,21 @@ class QdrantClient:
 
         return result if result else None
 
+    # Collections whose payload puts metadata fields at the TOP LEVEL (flat),
+    # not nested under a "metadata" key — filters against these must also try
+    # the bare key (see _convert_filter_to_qdrant_format's include_flat_payload).
+    _FLAT_PAYLOAD_COLLECTIONS: frozenset[str] = frozenset(
+        {
+            "legal_unified",
+            # SPEC v2 D3 (F1b): curated_qa is written via upsert_documents(...,
+            # flatten_payload=True) — domain/source_ref/etc. sit at top level.
+            "curated_qa",
+        },
+    )
+
     def _include_flat_payload_filters(self) -> bool:
         """Return True for collections that may contain top-level metadata fields."""
-        return canonicalize_collection_name(self.collection_name) == "legal_unified"
+        return canonicalize_collection_name(self.collection_name) in self._FLAT_PAYLOAD_COLLECTIONS
 
     async def search(
         self,

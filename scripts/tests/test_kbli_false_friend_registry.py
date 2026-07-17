@@ -595,3 +595,109 @@ def test_68112_gold_bali_context_untouched_and_innocent():
         "baliContext should not mention MICE/Venue at all — if it does now, the "
         "disclaimer-aware guard above, not a bare-substring ban, is what must clear it."
     )
+
+
+# ---------------------------------------------------------------------------
+# Gold-layer honest-gap cure for 49213 + 50115 (2026-07-17, follow-up to the
+# canonical Fase-1 cure).
+#
+# 49213 and 50115 are the ONLY two of the seven Fase-1 codes that also had a
+# record in the SEPARATE gold layer (apps/mouth/data/kbli-gold-all.json). Gold
+# takes precedence over intel_2026 for editorial fields on /kbli/<code>
+# (apps/mouth/src/lib/kbli-data.server.ts merges gold first;
+# apps/mouth/src/components/kbli/LicensingSection.tsx parses gold.whatYouNeed
+# directly, bypassing the merge) — so the canonical per_skala detach + the
+# intel_2026 honest-gap did NOT reach the served page: the gold whatYouNeed kept
+# asserting the collision-derived risk/authority as this code's own licensing:
+#   49213 gold: "Low risk (Rendah) ... Authority: Bupati/Walikota" + a full
+#         Izin-Trayek / KIR / AKDP step list carried from the inter-city AKDP
+#         collision (see 49213 _data_note) — it even contradicted the code's own
+#         l4_bali reason (Menengah-Tinggi/Tinggi).
+#   50115 gold: "Medium-High risk ... Authority: Menteri · 3 Hari" carried from
+#         the wrong AIR-transport source 51107 (see 50115 _data_note).
+# Both cured to a short structured honest-gap (Codex-gated, generator != grader)
+# that retracts the wrong risk/authority, keeps PMA-open, and routes the client
+# to the Bali Zero team. The other 5 Fase-1 codes are NOT in gold, so intel_2026
+# renders directly for them (no gold cure needed).
+
+GOLD_HONEST_GAP_CODES = ["49213", "50115"]
+
+# Collision-derived markers that must NOT reappear in the cured gold whatYouNeed.
+# Verified (2026-07-17, via git show HEAD) to have been present in the pre-cure
+# gold — so this guilt check would have failed on the old data. Word/phrase
+# matched (scar #3), never a bare substring.
+GOLD_STALE_MARKERS = {
+    "49213": ["Rendah", "Bupati", "Izin Trayek", "AKDP"],
+    "50115": ["Medium-High risk", "Menteri", "3 Hari"],
+}
+
+
+@pytest.mark.parametrize("code", GOLD_HONEST_GAP_CODES)
+def test_gold_what_you_need_is_honest_gap_no_collision_markers(code: str):
+    """GUILT: the cured gold whatYouNeed must declare the gap and route to the
+    team, and must never again assert the collision-derived risk/authority."""
+    rec = json.loads(GOLD_PATH.read_text(encoding="utf-8"))[code]
+    wyn = rec.get("whatYouNeed", "")
+    assert wyn, f"gold {code}: whatYouNeed missing"
+    for marker in GOLD_STALE_MARKERS[code]:
+        assert not _contains_word_or_phrase(wyn, marker), (
+            f"gold {code}.whatYouNeed still asserts collision-derived {marker!r} — "
+            "the wrong-code licensing has leaked back into the customer-facing gold "
+            "step list (it masks the canonical intel_2026 honest-gap on /kbli/<code>)."
+        )
+    low = wyn.lower()
+    assert "not yet reliably defined" in low, (
+        f"gold {code}.whatYouNeed must declare the risk/licensing gap explicitly."
+    )
+    assert "bali zero team" in low, (
+        f"gold {code}.whatYouNeed must route the client to team verification."
+    )
+    assert "100%" not in wyn, (
+        f"gold {code}.whatYouNeed must not assert an ownership percentage."
+    )
+
+
+def test_gold_untouched_neighbor_keeps_real_licensing():
+    """INNOCENCE (scar #3): the cure is scoped to 49213/50115 only — a
+    legitimate gold code must keep its substantive licensing prose, not a gap
+    stub. 01111 (corn cultivation, present at the file head) is a stable,
+    unrelated entry; if it ever reads as honest-gapped, the cure over-reached."""
+    gold = json.loads(GOLD_PATH.read_text(encoding="utf-8"))
+    assert len(gold) == 428, (
+        f"gold entry count changed ({len(gold)} != 428) — the cure must edit "
+        "values in place, never add/remove records."
+    )
+    ref = gold.get("01111")
+    assert ref is not None, "01111 (innocence reference) missing from gold"
+    assert "not yet reliably defined" not in (ref.get("whatYouNeed") or "").lower(), (
+        "01111 gold was accidentally honest-gapped — the cure is scoped to 49213/50115."
+    )
+
+
+# --- Cure-4 (2026-07-17): editorial + l4_bali NON_CLASSIFICABILE for all 8 ---
+
+CURE4_CODES = ["68112", "49213", "51103", "51203", "20111", "50115", "60312", "64310"]
+
+
+@pytest.mark.parametrize("code", CURE4_CODES)
+def test_cure4_l4_bali_non_classificabile_and_editorial_clean(code: str):
+    rec = _load_record(REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json", code)
+    l4 = rec.get("l4_bali") or {}
+    assert l4.get("status") == "NON_CLASSIFICABILE", f"{code}: l4 status regressed"
+    assert l4.get("needs_review") is True
+    assert "Previous status:" in (l4.get("reason") or ""), f"{code}: audit provenance missing"
+    blob = json.dumps(rec.get("intel_2026", {}).get("editorial", {}), ensure_ascii=False)
+    for m in ["OK_or_HIGHER_RISK", "medium-high risk", "Menengah-Tinggi", "Low risk (Rendah)"]:
+        assert m not in blob, f"{code}: collision marker {m!r} back in editorial"
+
+
+def test_cure4_gold_49213_clean_and_neighbor_l4_untouched():
+    gold = json.loads(GOLD_PATH.read_text(encoding="utf-8"))["49213"]
+    blob = json.dumps(gold, ensure_ascii=False)
+    for m in ["Izin Trayek", "AKAP"]:
+        assert m not in blob, f"gold 49213 still asserts {m!r}"
+    assert not re.search(r"\bKIR\b", blob), "gold 49213 still asserts KIR"
+    neighbor = _load_record(REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json", "68124")
+    assert (neighbor.get("l4_bali") or {}).get("status") != "NON_CLASSIFICABILE", (
+        "innocence: 68124 l4 must be untouched by cure-4"
+    )

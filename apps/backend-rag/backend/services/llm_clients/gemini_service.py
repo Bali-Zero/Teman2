@@ -23,15 +23,15 @@ logger = logging.getLogger(__name__)
 
 
 class GeminiJakselService:
-    def __init__(self, model_name: str = "gemini-3-flash-preview") -> None:
+    def __init__(self, model_name: str = "gemini-3.5-flash") -> None:
         """
         Initialize Gemini Service with Jaksel Persona and OpenRouter fallback.
 
         Args:
-            model_name: "gemini-3-flash-preview" (primary) or fallback model
+            model_name: "gemini-3.5-flash" (primary) or fallback model
 
         Note:
-            - Primary: 3 Flash Preview (fast, cost-effective)
+            - Primary: 3.5 Flash (fast, cost-effective)
             - Fallback: 2.0 Flash (stable, reliable)
             - Automatic fallback to OpenRouter free models on 429
         """

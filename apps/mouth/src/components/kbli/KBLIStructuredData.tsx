@@ -1,5 +1,6 @@
 import type { KBLICode } from "@/lib/kbli-types";
 import { buildKbliFaq } from "@/lib/kbli-faq";
+import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
 
 export function KBLICodeJsonLd({
   code,
@@ -16,25 +17,40 @@ export function KBLICodeJsonLd({
   // ownership allowed" unqualified — it would surface in rich results / AI answers
   // as a green light that is false for a Bali setup.
   const baliBlocked = !!code.baliL4?.blocked;
+  // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): a code whose Bali risk tier
+  // was carried over from a different activity (code-number collision) is
+  // neither blocked nor confirmed open — don't let Google/AI answers read
+  // it as an unqualified "100% foreign ownership allowed" green light.
+  const baliNonClassifiable = code.baliL4?.status === "NON_CLASSIFICABILE";
   const baliNat = baliBlocked
     ? " nationally — but blocked for a PT PMA in Bali"
-    : "";
-  const pmaLabel =
+    : baliNonClassifiable
+      ? " nationally — Bali PMA applicability not yet classifiable, verify with the team"
+      : "";
+  // PMA source attribution with vintage (FATAL-2 axis): cite the in-force
+  // annexes and their pending KBLI-2025 crosswalk instead of bare fact.
+  const pmaLabel = `${
     code.pma.status === "open"
       ? `100% foreign ownership allowed (TERBUKA)${baliNat}`
       : code.pma.status === "restricted"
         ? `Restricted to max ${code.pma.maxForeign}% foreign ownership (TERBATAS)`
-        : "Closed to foreign investment (TERTUTUP)";
+        : "Closed to foreign investment (TERTUTUP)"
+  } per Perpres 10/2021 as amended (crosswalk to KBLI 2025 pending)`;
 
   const riskLevel: string = code.licensing[0]?.riskCategory ?? "Unknown";
   const licenseType = code.licensing[0]?.licenseType ?? "NIB";
+  // Rows not verified against a KBLI-2025-native OSS source must not reach
+  // Google/AI answers as unqualified fact (Codex gate round 4).
+  const pendingSuffix = isLicensingVerificationPending(code)
+    ? " (verification pending)"
+    : "";
 
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
     name: `KBLI ${code.code} — ${code.titleId}`,
     headline: `KBLI ${code.code}: ${code.titleId} — Indonesian Business Code Guide`,
-    description: `${code.description.slice(0, 160)}. ${pmaLabel}. Risk: ${riskLevel}.`,
+    description: `${code.description.slice(0, 160)}. ${pmaLabel}. Risk: ${riskLevel}${pendingSuffix}.`,
     inLanguage: "en",
     datePublished: "2025-06-18",
     ...(dateModified
@@ -79,7 +95,7 @@ export function KBLICodeJsonLd({
     about: {
       "@type": "GovernmentService",
       name: `KBLI ${code.code} — ${code.titleId}`,
-      description: `${code.titleEn}. ${pmaLabel}. License: ${licenseType}. Risk level: ${riskLevel}.`,
+      description: `${code.titleEn}. ${pmaLabel}. License: ${licenseType}${pendingSuffix}. Risk level: ${riskLevel}${pendingSuffix}.`,
       serviceType: "Business Classification",
       jurisdiction: {
         "@type": "AdministrativeArea",

@@ -268,6 +268,25 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"_state\.json$"),
         "pipeline state file: run IDs and hashes, not credentials",
     ),
+    # GARUDA-FILIERA vault manifests — compiler-generated integrity layer
+    # (scripts/kbli_filiera/vault_manifest.py): one sha256+bytes+source_url
+    # row per evidence blob. Thousands of high-entropy hex strings by design,
+    # zero credentials (the OSS user_key never enters the manifest).
+    (
+        re.compile(r"(^|/)data/kbli-filiera/manifest/[^/]+\.json$"),
+        "KBLI vault manifest: sha256 integrity checksums, not credentials",
+    ),
+    # GARUDA-FILIERA batch membership artifacts — compiler-generated
+    # (scripts/kbli_filiera/emit_batch_membership.py): the reason-coded member
+    # list carries `canonical_revision` (a git commit SHA, flagged as a Hex
+    # High Entropy String) plus public KBLI codes and PP28 citations. Zero
+    # credentials by construction — the data-plane guard (#2550) restricts
+    # writers to scripts/kbli_filiera/ compilers, and the OSS user_key never
+    # enters the artifact. Sibling of the manifest rule above.
+    (
+        re.compile(r"(^|/)data/kbli-filiera/membership/[^/]+\.json$"),
+        "KBLI batch membership: git-SHA revision + public codes, not credentials",
+    ),
     (
         re.compile(r"(^|/)apps/evaluator/nlm_deep_research/.*\.json$"),
         "NLM deep research state files: pipeline artifacts",

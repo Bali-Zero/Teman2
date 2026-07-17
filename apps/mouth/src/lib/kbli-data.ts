@@ -22,6 +22,7 @@ import { ENGLISH_TITLES_GENERATED } from "./kbli-english-generated";
 import { resolveLicenseType } from "./kbli-derive";
 import { GOLD_CODES } from "./kbli-gold-codes";
 import { getSectionVisual } from "./kbli-cover-design";
+import { deriveProvenance } from "./kbli-provenance";
 
 // =============================================================================
 // Constants: Section metadata
@@ -464,6 +465,7 @@ function transformRecord(raw: KBLIRawCode): KBLICode {
             : undefined,
         }
       : undefined,
+    provenance: deriveProvenance(raw),
   };
 }
 

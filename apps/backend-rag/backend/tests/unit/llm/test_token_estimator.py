@@ -23,7 +23,7 @@ class TestTokenEstimator:
     def test_init_default_model(self):
         """Test initialization with default model"""
         estimator = TokenEstimator()
-        assert estimator.model == "gemini-3-flash-preview"
+        assert estimator.model == "gemini-3.5-flash"
 
     def test_init_custom_model(self):
         """Test initialization with custom model"""
