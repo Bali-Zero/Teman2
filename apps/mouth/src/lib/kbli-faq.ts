@@ -29,12 +29,19 @@ const KBLI_2025_MIGRATION_OVERDUE_NOTE =
  */
 export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   const baliBlocked = !!code.baliL4?.blocked;
+  // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): the risk tier the earlier
+  // ok/blocked Bali verdict depended on was carried over from a different
+  // activity through a code-number collision and has been detached — Bali
+  // applicability is genuinely unresolved, not "open" or "blocked".
+  const baliNonClassifiable = code.baliL4?.status === "NON_CLASSIFICABILE";
 
   const pmaAnswer =
     code.pma.status === "open"
       ? baliBlocked
         ? `Nationally yes — but NOT in Bali. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level, but a PT PMA currently cannot register it in Bali (reserved for UMKM / 2026 moratorium). ${code.baliL4?.reason ?? "See the Bali status above."} Outside Bali it is open to a PT PMA with no local partner required.`
-        : `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
+        : baliNonClassifiable
+          ? `Nationally yes — but Bali applicability cannot be determined yet. KBLI ${code.code} (${code.titleId}) is TERBUKA (100% foreign ownership) at the national level; whether Bali's PMA moratorium applies to this specific activity is not yet classifiable, pending re-derivation of the correct risk tier. Verify with the Bali Zero team before planning a Bali setup.`
+          : `Yes. KBLI ${code.code} (${code.titleId}) is TERBUKA — open to 100% foreign ownership via PT PMA. No local Indonesian partner required.`
       : code.pma.status === "restricted"
         ? code.pma.capSpecial
           ? `Conditionally. KBLI ${code.code} (${code.titleId}) is TERBATAS with special distribution conditions (open to foreign ownership but subject to a special distribution-network/location requirement — verify the exact terms in OSS).${code.pma.condition ? ` Condition: ${code.pma.condition}` : ""}`

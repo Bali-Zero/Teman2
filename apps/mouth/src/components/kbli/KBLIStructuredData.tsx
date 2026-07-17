@@ -16,9 +16,16 @@ export function KBLICodeJsonLd({
   // ownership allowed" unqualified — it would surface in rich results / AI answers
   // as a green light that is false for a Bali setup.
   const baliBlocked = !!code.baliL4?.blocked;
+  // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): a code whose Bali risk tier
+  // was carried over from a different activity (code-number collision) is
+  // neither blocked nor confirmed open — don't let Google/AI answers read
+  // it as an unqualified "100% foreign ownership allowed" green light.
+  const baliNonClassifiable = code.baliL4?.status === "NON_CLASSIFICABILE";
   const baliNat = baliBlocked
     ? " nationally — but blocked for a PT PMA in Bali"
-    : "";
+    : baliNonClassifiable
+      ? " nationally — Bali PMA applicability not yet classifiable, verify with the team"
+      : "";
   const pmaLabel =
     code.pma.status === "open"
       ? `100% foreign ownership allowed (TERBUKA)${baliNat}`
