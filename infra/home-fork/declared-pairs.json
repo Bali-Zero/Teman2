@@ -335,6 +335,23 @@
       "repo": "infra/launchagents/wrappers/launchd-liveness-detector.sh",
       "_note": "liveness-detector-arm-0717 (PENDING-ARMS, not yet installed): declared pre-emptively so lint_home_fork.py --discover does not flag the future HOME-fork copy as undeclared once operator[control-plane] installs it. Pro-only by design (per-host launchd/log state — a Mini copy would need its own instance, not a shared one, cf. superscar #10 active-active).",
       "machines": ["pro"]
+    },
+    {
+      "live": "~/.claude/hooks/worktree_isolation.py",
+      "repo": "infra/claude-hooks/worktree_isolation.py",
+      "_note": "worktree-isolation guard (superscar #3, most-scarred guard in the organism). install via infra/claude-hooks/install_worktree_hooks.sh (self-verifying vaccine + rollback), NOT install_phase_aware.sh which skips it. Declared 2026-07-17 after an 11-day fleet-wide drift went unnoticed (no pair existed) — superscar #1 antidote applied to the guard itself.",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/worktree_file_write_check.py",
+      "repo": "infra/claude-hooks/worktree_file_write_check.py",
+      "machines": ["all"]
+    },
+    {
+      "live": "~/.claude/hooks/runtime_state_allowlist.json",
+      "repo": "infra/claude-hooks/runtime_state_allowlist.json",
+      "_note": "DATA read by worktree_isolation.py (the ff-only exception's per-machine allowlist). install_worktree_hooks.sh deploys it as 644 alongside the two .py hooks.",
+      "machines": ["all"]
     }
   ],
   "allow": [
