@@ -201,6 +201,69 @@ async def _ensure_role(conn: asyncpg.Connection, role: str) -> None:
         await conn.execute(f'CREATE ROLE "{role}"')
 
 
+async def _can_exercise_migration_244(conn: asyncpg.Connection) -> tuple[bool, str]:
+    """Return (can_run, reason) for whether `conn` can exercise migration
+    244's happy path (self-grant actually succeeding, not just hitting its
+    "manual grant required" fallback).
+
+    That needs the connecting role to be able to (a) `CREATE ROLE
+    backend_rag_v2` if absent, and (b) `GRANT` on compliance_alerts —
+    which Postgres requires being a superuser, the table's owner, or a
+    member of the owning role for. In prod this is trivially true: the
+    SAME role (backend_rag_v2) runs the whole migration chain in one
+    `apply_all_pending()` pass, so it already owns every table earlier
+    migrations created (114 creates compliance_alerts unconditionally, no
+    role guard). CI's `postgres:15` service container's bootstrap
+    `POSTGRES_USER` is a superuser, so both hold there too. A given local
+    Postgres install may have neither — e.g. a restricted `test` role
+    connecting to a database whose tables were bootstrapped, at some
+    point in that machine's history, under a different admin account.
+    That is an environment precondition this migration's SQL does not
+    control, so callers should skip rather than assert a false negative
+    that reflects local ambient state instead of a bug in the fix.
+
+    Uses Postgres's own authority (`pg_has_role`, `pg_tables.tableowner`,
+    `pg_roles.rolcreaterole`, `pg_user.usesuper`) rather than pattern-
+    matching a caught exception's message — the entity, not a substring
+    (see the guard-over-match note on
+    test_migration_244_forward_sql_has_no_serial_sequence_lookup above).
+    """
+    is_super = await conn.fetchval(
+        "SELECT usesuper FROM pg_user WHERE usename = current_user"
+    )
+    if is_super:
+        return True, ""
+
+    has_createrole = await conn.fetchval(
+        "SELECT rolcreaterole FROM pg_roles WHERE rolname = current_user"
+    )
+    if not has_createrole:
+        return False, f"current_user lacks CREATEROLE (needed to provision {RUNTIME_ROLE})"
+
+    owner = await conn.fetchval(
+        "SELECT tableowner FROM pg_tables WHERE schemaname = 'public' "
+        "AND tablename = 'compliance_alerts'"
+    )
+    if owner is None:
+        # Table doesn't exist yet — this connection will create (and thus
+        # own) it via _ensure_compliance_alerts_table.
+        return True, ""
+
+    current_user = await conn.fetchval("SELECT current_user")
+    if owner == current_user:
+        return True, ""
+
+    is_member = await conn.fetchval("SELECT pg_has_role($1, $2, 'MEMBER')", current_user, owner)
+    if is_member:
+        return True, ""
+
+    return False, (
+        f"current_user ('{current_user}') is not a superuser, does not own "
+        f"compliance_alerts (owned by '{owner}'), and is not a member of "
+        f"'{owner}' — cannot GRANT on it"
+    )
+
+
 async def _ensure_compliance_alerts_table(conn: asyncpg.Connection) -> None:
     """Idempotently ensure compliance_alerts exists (114's forward SQL is
     itself `CREATE TABLE IF NOT EXISTS`). In both local dev and CI this
@@ -228,6 +291,10 @@ async def test_migration_244_applies_cleanly_with_runtime_role_present(
     code path. Pre-fix, `db_tx.execute(forward)` below raised
     `asyncpg.exceptions.UndefinedColumnError`.
     """
+    can_run, reason = await _can_exercise_migration_244(db_tx)
+    if not can_run:
+        pytest.skip(f"environment precondition not met: {reason}")
+
     await _ensure_role(db_tx, RUNTIME_ROLE)
     await _ensure_compliance_alerts_table(db_tx)
 
@@ -263,6 +330,10 @@ async def test_migration_244_idempotent_when_reapplied(
     manual remediation / a re-run after a stuck deploy, and mirrors the
     file's own `has_table_privilege(...)` re-check-before-grant contract.
     """
+    can_run, reason = await _can_exercise_migration_244(db_tx)
+    if not can_run:
+        pytest.skip(f"environment precondition not met: {reason}")
+
     await _ensure_role(db_tx, RUNTIME_ROLE)
     await _ensure_compliance_alerts_table(db_tx)
 
