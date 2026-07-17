@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime, timezone
 from typing import Any
 import logging
 
@@ -26,6 +27,10 @@ Category: {category}
 Published: {published_date}
 Content: {content}
 </notizia_scraped>
+
+AS OF: {as_of} — this is the current date/time; use it (together with
+Published, and any dates mentioned in Content) to judge whether events are
+"in the last ~48h" for the LIVENESS TIER section below.
 
 <base_legale_certificata>
 {nlm_legal_basis}
@@ -57,7 +62,7 @@ OUTPUT FORMAT (strict JSON only, no markdown):
     {{"question": "...", "answer": "..."}},
     {{"question": "...", "answer": "..."}}
   ],
-  "liveness_tier": "evergreen",
+  "liveness_tier": "<breaking|developing|evergreen>",
   "live_news_reasons": [],
   "metadata": {{
     "suggested_slug": "url-friendly-slug-max-60-chars",
@@ -69,27 +74,32 @@ OUTPUT FORMAT (strict JSON only, no markdown):
 
 LIVENESS TIER (forced choice):
 You MUST choose exactly one of: "breaking", "developing", "evergreen". Do not compute a
-score — pick the tier directly from the signal definitions below.
+score — pick the tier directly from the signal definitions below. Judge "last ~48h" and
+"near-term" relative to AS OF above (not to the calibrated anchors below, which are shape
+references only, not date references).
 
-- breaking — a concrete dated event/decision in the last ~48h that changes what readers
-  must do NOW (new decree published with date, enforcement action, fee change effective
-  immediately).
+- breaking — a concrete dated event/decision within the last ~48h of AS OF that changes
+  what readers must do NOW: a new decree published with a date, a single enforcement
+  action (arrest/deportation/raid) that concluded within that ~48h window with immediate
+  effect, or a fee change effective immediately.
 - developing — a dated, concrete story that is actively unfolding or has a near-term
-  deadline/effect (announced-but-not-yet-effective rule, dated arrests/raids with policy
-  implications, official figures just released, imminent deadlines).
+  deadline/effect: an announced-but-not-yet-effective rule, dated arrests/raids reported as
+  part of a broader enforcement pattern or policy story (not the initial <48h enforcement
+  moment itself), official figures just released, imminent deadlines.
 - evergreen — routine guides, how-tos, explainer content, undated or old news, recurring
   seasonal content.
 
-CALIBRATED ANCHORS (real examples from our corpus):
+CALIBRATED ANCHORS (real examples from our corpus; shape references, not date references):
 - developing:
-  * "15 WNA China dan Vietnam Ditangkap Usai Buka Lowongan Kerja" (dated arrests, policy
-    implication)
+  * "15 WNA China dan Vietnam Ditangkap Usai Buka Lowongan Kerja" (dated arrests, part of
+    an enforcement pattern, policy implication)
   * "Immigration Cuts Visa-Free Entry by 87.91%" (official figure just released)
   * "Empat Marketplace Besar Jadi Pemungut Pajak Mulai Agustus" (dated upcoming policy)
-- breaking (illustrative shape — "effective now, published <48h"):
-  * "Permenkumham 12/2026 diundangkan 2026-07-17: syarat KITAS investor berubah efektif
-    hari ini"
-  * "Deportasi 8 WNA di Bandara Ngurah Rai hari ini usai razia overstay"
+- breaking (illustrative shape — "effective now, published within 48h of AS OF"):
+  * "Permenkumham 12/2026 diundangkan kemarin: syarat KITAS investor berubah efektif hari
+    ini"
+  * "Deportasi 8 WNA di Bandara Ngurah Rai hari ini usai razia overstay" (single enforcement
+    action, immediate effect — not a pattern reported after the fact)
   * "PNBP visa D2 naik jadi IDR 6 juta, berlaku efektif hari ini"
 - evergreen:
   * "How to apply for KITAS"
@@ -117,6 +127,36 @@ RULES:
 
 _TIER_TO_SCORE = {'breaking': 90, 'developing': 60, 'evergreen': 0}
 
+# F5 (Codex red-team, 2026-07-18): buffer above the prompt's ≤80-char
+# instruction for live_news_reasons, so minor model overshoot doesn't get
+# truncated mid-thought — but bounded well below the old 200, which let a
+# reason balloon into a near-paragraph.
+_REASON_MAX_CHARS = 120
+
+
+def _derive_tier_from_score(raw_score: Any) -> str:
+    """F2 (Codex red-team, 2026-07-18): legacy/truncated-output fallback.
+
+    #2631's persistence contract still tolerates a `live_news_score`-only
+    payload with no `liveness_tier` (e.g. a truncated JSON parse, or an
+    older enrichment run). Rather than silently discarding that signal and
+    collapsing to evergreen, best-effort derive a tier from the score using
+    the pre-B2 80/40 buckets — with the same defensive float coercion and
+    clamping the old additive-rubric normalizer used. Garbage,
+    out-of-range, or absent scores fall back to evergreen (no signal),
+    never raise.
+    """
+    try:
+        score = int(round(float(raw_score)))
+    except (TypeError, ValueError):
+        return 'evergreen'
+    score = max(0, min(100, score))
+    if score >= 80:
+        return 'breaking'
+    elif score >= 40:
+        return 'developing'
+    return 'evergreen'
+
 
 def _normalize_live_news_fields(enriched: dict[str, Any]) -> dict[str, Any]:
     """Trust the validated TIER, derive live_news_score deterministically.
@@ -129,19 +169,36 @@ def _normalize_live_news_fields(enriched: dict[str, Any]) -> dict[str, Any]:
     breaking/developing/evergreen directly; `live_news_score` is a DERIVED
     compatibility value for the selector's `>=40` filter and #2631's
     persistence contract, NOT a measurement — never trust a model-provided
-    score, even if present (stray field / prompt drift tolerated but ignored).
+    score over a VALID tier, even if present (stray field / prompt drift
+    tolerated but ignored — see test_score_only_fallback_never_fires_when_
+    tier_is_valid).
 
-    liveness_tier missing or not one of the three valid values -> evergreen
-    (score 0, reasons []). This also means downstream WR2 selector code can
-    still rely on the strict invariant `tier == bucket(score)` under the
-    existing 80/40 buckets (90->breaking, 60->developing, 0->evergreen).
+    F1 (Codex red-team, 2026-07-18): raw_tier is normalized (str + strip +
+    lower) BEFORE the membership check — the pre-fix code did
+    `raw_tier in _TIER_TO_SCORE` directly, which raises TypeError for a
+    non-str, unhashable value (list/dict) and silently mis-evergreens a
+    differently-cased/whitespace-padded valid tier ("Developing").
+
+    F2 (Codex red-team, 2026-07-18): if the (normalized) tier is not one of
+    the three valid values — missing, garbage, or a non-str type — fall
+    back to deriving it from a legacy/truncated `live_news_score` if one was
+    still sent (see `_derive_tier_from_score`), instead of discarding the
+    signal outright.
+
+    Either way the strict invariant downstream WR2 selector code relies on
+    still holds: `tier == bucket(score)` under the existing 80/40 buckets
+    (90->breaking, 60->developing, 0->evergreen).
 
     Mutates and returns the same dict. Missing fields are filled with
     safe defaults (tier="evergreen", score=0, reasons=[]) so downstream
     code never has to handle KeyError.
     """
     raw_tier = enriched.get('liveness_tier')
-    tier = raw_tier if raw_tier in _TIER_TO_SCORE else 'evergreen'
+    tier_candidate = raw_tier.strip().lower() if isinstance(raw_tier, str) else ''
+    if tier_candidate in _TIER_TO_SCORE:
+        tier = tier_candidate
+    else:
+        tier = _derive_tier_from_score(enriched.get('live_news_score'))
     score = _TIER_TO_SCORE[tier]
 
     raw_reasons = enriched.get('live_news_reasons', [])
@@ -150,7 +207,7 @@ def _normalize_live_news_fields(enriched: dict[str, Any]) -> dict[str, Any]:
     reasons: list[str] = []
     for r in raw_reasons[:3]:
         if isinstance(r, str) and r.strip():
-            reasons.append(r.strip()[:200])
+            reasons.append(r.strip()[:_REASON_MAX_CHARS])
     if tier == 'evergreen':
         reasons = []
 
@@ -187,6 +244,11 @@ def enrich_article_claude_cli(article: dict[str, Any]) -> dict[str, Any]:
     nlm_legal = _escape_for_prompt(str(nlm_legal or '')[:3000])
     nlm_web = _escape_for_prompt(str(nlm_web or '')[:2000])
 
+    # F4 (Codex red-team, 2026-07-18): AS OF anchors the LIVENESS TIER "last
+    # ~48h" judgment to the real current date instead of nothing — system
+    # generated, not user/article input, so no _escape_for_prompt needed.
+    as_of = datetime.now(timezone.utc).isoformat()
+
     # Build prompt — ALL article fields escaped to prevent XML tag spoofing
     prompt = ENRICHMENT_PROMPT_TEMPLATE.format(
         title=_escape_for_prompt(str(article.get('title') or 'Unknown')[:300]),
@@ -196,6 +258,7 @@ def enrich_article_claude_cli(article: dict[str, Any]) -> dict[str, Any]:
         content=_escape_for_prompt(str(article.get('content') or '')[:4000]),
         nlm_legal_basis=nlm_legal,
         nlm_web_findings=nlm_web,
+        as_of=as_of,
     )
 
     try:

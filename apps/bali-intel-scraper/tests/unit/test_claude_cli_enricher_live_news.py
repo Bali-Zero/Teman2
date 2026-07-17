@@ -15,6 +15,17 @@ persistence contract — not a measurement. Downstream code still relies on
 the invariant `tier == bucket(score)` (90->breaking, 60->developing,
 0->evergreen under the existing 80/40 buckets), so score derivation must
 keep hitting those exact buckets.
+
+B2 red-team round (Codex, 2026-07-18) added 5 hardening fixes (F1-F5):
+F1 — normalize raw_tier defensively BEFORE membership check (case/whitespace,
+never crash on a non-str type like list/dict). F2 — legacy/truncated
+score-only output (`{"live_news_score": 85}`, no tier) still derives a tier
+via the pre-B2 80/40 buckets instead of collapsing to evergreen. F3 — the
+prompt's OUTPUT FORMAT no longer shows a literal `"evergreen"` default
+(anchoring risk now that tier is authoritative) — a bracket placeholder
+instead. F4 — prompt-only: AS OF context + relative dates in the breaking
+anchors + enforcement-vs-pattern disambiguation for arrests. F5 — reasons
+truncation buffer lowered from 200 to 120 chars.
 """
 from __future__ import annotations
 
@@ -89,6 +100,143 @@ def test_stray_model_score_overridden_for_breaking_too() -> None:
 
 
 # ---------------------------------------------------------------------------
+# F1 (HIGH, Codex red-team): raw_tier must be normalized (case/whitespace)
+# BEFORE the membership check, and must never crash on a non-str type — the
+# pre-fix code did `raw_tier in _TIER_TO_SCORE` directly, which raises
+# TypeError: unhashable type for a list/dict value.
+# ---------------------------------------------------------------------------
+
+def test_tier_case_insensitive() -> None:
+    out = _normalize_live_news_fields({"liveness_tier": "Developing"})
+    assert out["liveness_tier"] == "developing"
+    assert out["live_news_score"] == 60
+
+
+def test_tier_whitespace_stripped() -> None:
+    out = _normalize_live_news_fields({"liveness_tier": " developing "})
+    assert out["liveness_tier"] == "developing"
+    assert out["live_news_score"] == 60
+
+
+def test_tier_list_value_no_crash() -> None:
+    """Pre-fix: `["breaking"] in _TIER_TO_SCORE` raises TypeError (unhashable
+    type: 'list'). Post-fix: non-str tier values are never used as a dict
+    membership key — they fall through to evergreen (no score to derive
+    from) without an exception."""
+    out = _normalize_live_news_fields({"liveness_tier": ["breaking"]})
+    assert out["liveness_tier"] == "evergreen"
+    assert out["live_news_score"] == 0
+
+
+def test_tier_dict_value_no_crash() -> None:
+    """Same TypeError class as the list case, dict is unhashable too."""
+    out = _normalize_live_news_fields({"liveness_tier": {"tier": "x"}})
+    assert out["liveness_tier"] == "evergreen"
+    assert out["live_news_score"] == 0
+
+
+# ---------------------------------------------------------------------------
+# F2 (HIGH, Codex red-team): legacy/truncated score-only output — a model
+# response that dropped `liveness_tier` but still carries `live_news_score`
+# (e.g. a truncated JSON parse, or a #2631-era output) must not collapse to
+# evergreen/0 and silently discard the signal. Fall back to deriving the
+# tier from the score via the pre-B2 80/40 buckets, then re-derive the
+# canonical score from THAT tier so the tier==bucket(score) invariant holds.
+# ---------------------------------------------------------------------------
+
+def test_score_only_legacy_output_85_derives_breaking() -> None:
+    out = _normalize_live_news_fields({"live_news_score": 85})
+    assert out["liveness_tier"] == "breaking"
+    assert out["live_news_score"] == 90
+
+
+def test_score_only_legacy_output_55_derives_developing() -> None:
+    out = _normalize_live_news_fields({"live_news_score": 55})
+    assert out["liveness_tier"] == "developing"
+    assert out["live_news_score"] == 60
+
+
+def test_score_only_legacy_output_garbage_falls_back_to_evergreen() -> None:
+    out = _normalize_live_news_fields({"live_news_score": "high"})
+    assert out["liveness_tier"] == "evergreen"
+    assert out["live_news_score"] == 0
+
+
+def test_score_only_fallback_never_fires_when_tier_is_valid() -> None:
+    """Regression guard: the F2 fallback must only trigger when the tier is
+    ABSENT/invalid — a valid tier (even 'evergreen') always wins over any
+    score, matching test_stray_model_score_is_overridden_tier_wins above."""
+    out = _normalize_live_news_fields({"liveness_tier": "evergreen", "live_news_score": 85})
+    assert out["liveness_tier"] == "evergreen"
+    assert out["live_news_score"] == 0
+
+
+# ---------------------------------------------------------------------------
+# F3 (HIGH, Codex red-team): the OUTPUT FORMAT template used to show a
+# literal `"liveness_tier": "evergreen"` default — an anchoring risk now
+# that the tier is authoritative (same central-tendency-bias shape as the
+# additive rubric this sprint replaced). Must be a bracket placeholder.
+# ---------------------------------------------------------------------------
+
+def test_prompt_template_does_not_default_to_evergreen_literal() -> None:
+    assert '"liveness_tier": "evergreen"' not in ENRICHMENT_PROMPT_TEMPLATE
+
+
+def test_prompt_template_has_tier_placeholder() -> None:
+    assert '"liveness_tier": "<breaking|developing|evergreen>"' in ENRICHMENT_PROMPT_TEMPLATE
+
+
+def test_normalizer_handles_literal_placeholder_copy() -> None:
+    """If Claude echoes the template placeholder literally instead of
+    picking a real tier, the normalizer must not crash and must fall back
+    to evergreen (passes through the F1 str-normalize + F2 score-fallback
+    path — no live_news_score present here, so lands on evergreen)."""
+    out = _normalize_live_news_fields({"liveness_tier": "<breaking|developing|evergreen>"})
+    assert out["liveness_tier"] == "evergreen"
+    assert out["live_news_score"] == 0
+
+
+# ---------------------------------------------------------------------------
+# F4 (MEDIUM/partial, Codex red-team): prompt-only. AS OF context anchors
+# "last ~48h" to the actual current date instead of nothing; breaking
+# anchors use relative dates (a frozen absolute date goes stale as the
+# calendar moves and mis-anchors the corpus); arrests are disambiguated —
+# breaking only for <48h enforcement with immediate effect, dated arrests
+# as part of a broader pattern are developing. (Selector-side change is
+# NOT needed — MAX_ARTICLE_AGE_HOURS=72 hard cutoff on fresh_items already
+# covers the downstream staleness concern Codex raised.)
+# ---------------------------------------------------------------------------
+
+def test_prompt_has_as_of_context() -> None:
+    assert "AS OF" in ENRICHMENT_PROMPT_TEMPLATE
+    assert "{as_of}" in ENRICHMENT_PROMPT_TEMPLATE
+
+
+def test_prompt_formats_with_as_of_parameter() -> None:
+    """enrich_article_claude_cli must pass as_of (UTC ISO date) into the
+    template — this is what anchors the breaking/developing 48h window to
+    today instead of to whatever date happened to be baked into the
+    calibrated anchors at prompt-authoring time."""
+    formatted = ENRICHMENT_PROMPT_TEMPLATE.format(
+        title="t", source="s", category="c", published_date="p", content="x",
+        nlm_legal_basis="", nlm_web_findings="",
+        as_of="2026-07-18T00:00:00+00:00",
+    )
+    assert "2026-07-18T00:00:00+00:00" in formatted
+
+
+def test_prompt_breaking_anchor_has_no_frozen_absolute_date() -> None:
+    """The original B2 breaking anchor baked in a literal 2026-07-17 date —
+    exactly the staleness trap AS OF exists to avoid. Anchors must use
+    relative time language instead."""
+    assert "2026-07-17" not in ENRICHMENT_PROMPT_TEMPLATE
+
+
+def test_prompt_disambiguates_dated_arrests_as_pattern() -> None:
+    assert "pattern" in ENRICHMENT_PROMPT_TEMPLATE.lower()
+
+
+# ---------------------------------------------------------------------------
 # Innocence: reasons pass through intact for non-evergreen tiers, sanitation
 # rules from the pre-B2 module are unchanged.
 # ---------------------------------------------------------------------------
@@ -118,10 +266,13 @@ def test_reasons_capped_at_three() -> None:
     assert out["live_news_reasons"] == ["one", "two", "three"]
 
 
-def test_reasons_truncated_at_200_chars() -> None:
+def test_reasons_truncated_at_120_chars() -> None:
+    """F5: buffer lowered from 200 to 120 — still well above the prompt's
+    ≤80-char instruction (tolerates minor model overshoot) but bounded
+    tighter than the old 200 to keep the reasons list actually short."""
     long = "x" * 500
     out = _normalize_live_news_fields({"liveness_tier": "breaking", "live_news_reasons": [long]})
-    assert len(out["live_news_reasons"][0]) == 200
+    assert len(out["live_news_reasons"][0]) == 120
 
 
 def test_reasons_filter_non_strings() -> None:
