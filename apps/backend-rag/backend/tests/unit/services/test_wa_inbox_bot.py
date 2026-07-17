@@ -12,6 +12,7 @@ Covers the Option-B safety contract:
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -181,3 +182,85 @@ async def test_get_rag_client_applies_internal_key_header(monkeypatch):
     finally:
         await client.aclose()
         wa_inbox_bot._rag_client = None
+
+
+# ── P9: admission semaphore bounding concurrent RAG calls ──────────────────
+
+
+def test_bot_generation_semaphore_defaults_to_3(monkeypatch):
+    monkeypatch.delenv("WA_BOT_MAX_CONCURRENT_GENERATIONS", raising=False)
+    monkeypatch.setattr(wa_inbox_bot, "_bot_generation_semaphore", None)
+    sem = wa_inbox_bot._get_bot_generation_semaphore()
+    assert sem._value == 3
+
+
+def test_bot_generation_semaphore_env_override(monkeypatch):
+    monkeypatch.setattr(wa_inbox_bot, "_bot_generation_semaphore", None)
+    monkeypatch.setenv("WA_BOT_MAX_CONCURRENT_GENERATIONS", "7")
+    sem = wa_inbox_bot._get_bot_generation_semaphore()
+    assert sem._value == 7
+
+
+def test_bot_generation_semaphore_invalid_env_falls_back_to_3(monkeypatch):
+    monkeypatch.setattr(wa_inbox_bot, "_bot_generation_semaphore", None)
+    monkeypatch.setenv("WA_BOT_MAX_CONCURRENT_GENERATIONS", "not-a-number")
+    sem = wa_inbox_bot._get_bot_generation_semaphore()
+    assert sem._value == 3
+
+
+def test_bot_generation_semaphore_is_a_singleton(monkeypatch):
+    monkeypatch.setattr(wa_inbox_bot, "_bot_generation_semaphore", None)
+    monkeypatch.setenv("WA_BOT_MAX_CONCURRENT_GENERATIONS", "2")
+    first = wa_inbox_bot._get_bot_generation_semaphore()
+    # a second env value must NOT retroactively resize an already-built semaphore
+    monkeypatch.setenv("WA_BOT_MAX_CONCURRENT_GENERATIONS", "9")
+    second = wa_inbox_bot._get_bot_generation_semaphore()
+    assert first is second
+    assert second._value == 2
+
+
+@pytest.mark.asyncio
+async def test_bot_generation_semaphore_bounds_concurrent_rag_calls(monkeypatch):
+    """5 concurrent generate_bot_reply calls with max_concurrent=2 must never
+    have more than 2 RAG POSTs in flight at once."""
+    monkeypatch.setenv("WA_INBOX_BOT_AUTOREPLY", "true")
+    monkeypatch.setattr(wa_inbox_bot, "_bot_generation_semaphore", None)
+    monkeypatch.setenv("WA_BOT_MAX_CONCURRENT_GENERATIONS", "2")
+
+    in_flight = 0
+    max_in_flight = 0
+    lock = asyncio.Lock()
+
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock(return_value=None)
+    resp.json = MagicMock(return_value={"abstain": False, "answer": "ok"})
+
+    async def _post(url: str, json: dict[str, Any]) -> Any:
+        nonlocal in_flight, max_in_flight
+        async with lock:
+            in_flight += 1
+            max_in_flight = max(max_in_flight, in_flight)
+        await asyncio.sleep(0.05)
+        async with lock:
+            in_flight -= 1
+        return resp
+
+    client = MagicMock()
+    client.post = AsyncMock(side_effect=_post)
+
+    async def _get_client() -> Any:
+        return client
+
+    monkeypatch.setattr(wa_inbox_bot, "_get_rag_client", _get_client)
+
+    pool = _Pool(_ROWS_NEWEST_FIRST)
+    results = await asyncio.gather(
+        *[
+            wa_inbox_bot.generate_bot_reply(pool, _thread(thread_id=i))
+            for i in range(5)
+        ]
+    )
+
+    assert results == ["ok"] * 5
+    assert max_in_flight <= 2
+    assert client.post.await_count == 5
