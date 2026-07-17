@@ -165,6 +165,110 @@ async def test_dup_counts_as_already_present(monkeypatch, http_client):
     assert counters.enqueued_new == 0
 
 
+class _FakeTxnCtx:
+    async def __aenter__(self):
+        return None
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _FakeIdentityConn:
+    def transaction(self):
+        return _FakeTxnCtx()
+
+
+class _FakeAcquireCtx:
+    async def __aenter__(self):
+        return _FakeIdentityConn()
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _FakePoolWithAcquire:
+    """A pool stub that supports `.acquire()` (unlike the bare object() used
+    elsewhere in this file) so the identity-capture leg's `pool.acquire()` /
+    `conn.transaction()` calls succeed instead of raising — needed to prove
+    client_id_hint really flows end to end, not just "gracefully degrades"."""
+
+    def acquire(self):
+        return _FakeAcquireCtx()
+
+
+@pytest.mark.asyncio
+async def test_contact_autocreate_client_id_hint_flows_into_enqueue(monkeypatch, http_client):
+    """intake-v2 PR-1 wiring: resolve_or_create_contact's client_id must reach
+    enqueue()'s client_id_hint — this is the whole point of the entry-door
+    identity-capture feature (never leave a document 0-candidate for the
+    trivial reason nobody made a contact for this WA number yet)."""
+
+    async def fake_download(client, *, media_id, **kw):
+        return DownloadedMedia(blob_path="/tmp/x", mime_type="application/pdf",
+                                sha256="h", byte_size=1, media_id=media_id)
+
+    captured = {}
+
+    async def fake_enqueue(pool, **kw):
+        captured.update(kw)
+        return EnqueueResult(instance_id=1, queue_id=2, was_new=True)
+
+    class _StubResolution:
+        kind = "created"
+        client_id = 555
+
+    async def fake_resolve(_conn, *, sender_phone, full_name_hint=None):
+        assert sender_phone == "62811"
+        return _StubResolution()
+
+    monkeypatch.setattr(mod, "download_media", fake_download)
+    monkeypatch.setattr(mod, "enqueue", fake_enqueue)
+    monkeypatch.setattr(mod, "resolve_or_create_contact", fake_resolve)
+
+    async with http_client:
+        counters = await mod.ingest_live_media(
+            _doc_envelope(), pool=_FakePoolWithAcquire(), http_client=http_client,
+            access_token="t", dest_dir="/tmp",
+            resolve_received_by=(await _resolver_const("ari@balizero.com")),
+        )
+
+    assert counters.enqueued_new == 1
+    assert captured["client_id_hint"] == 555
+
+
+@pytest.mark.asyncio
+async def test_contact_autocreate_resolver_exception_falls_back_to_no_hint(monkeypatch, http_client):
+    """A resolver fault (DB blip, whatever) must never drop the document — it
+    degrades to client_id_hint=None, the same as before this feature existed."""
+
+    async def fake_download(client, *, media_id, **kw):
+        return DownloadedMedia(blob_path="/tmp/x", mime_type="application/pdf",
+                                sha256="h", byte_size=1, media_id=media_id)
+
+    captured = {}
+
+    async def fake_enqueue(pool, **kw):
+        captured.update(kw)
+        return EnqueueResult(instance_id=1, queue_id=2, was_new=True)
+
+    async def fake_resolve(_conn, *, sender_phone, full_name_hint=None):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(mod, "download_media", fake_download)
+    monkeypatch.setattr(mod, "enqueue", fake_enqueue)
+    monkeypatch.setattr(mod, "resolve_or_create_contact", fake_resolve)
+
+    async with http_client:
+        counters = await mod.ingest_live_media(
+            _doc_envelope(), pool=_FakePoolWithAcquire(), http_client=http_client,
+            access_token="t", dest_dir="/tmp",
+            resolve_received_by=(await _resolver_const("ari@balizero.com")),
+        )
+
+    assert counters.enqueued_new == 1, "a resolver fault must not drop the document"
+    assert captured["client_id_hint"] is None
+
+
 @pytest.mark.asyncio
 async def test_no_media_is_noop(monkeypatch, http_client):
     async def fake_download(*a, **k):  # should never be called
