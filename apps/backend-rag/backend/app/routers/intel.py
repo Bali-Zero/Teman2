@@ -9,7 +9,7 @@ import logging
 import os
 import sys
 from pathlib import Path as PathLib
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -85,6 +85,19 @@ class ScraperSubmission(BaseModel):
         None,
         description="Cover image as base64 string (uploaded to Drive on submit)",
     )
+    # WR2 liveness rewire (SPRINT B1, scar family #9): the enricher
+    # (claude_cli_enricher._normalize_live_news_fields) already computes
+    # these three — carry them through so the WR2 topic selector and News
+    # Room UI see something other than always-0. All optional: legacy
+    # scrapers/callers that don't send them must keep working unchanged.
+    live_news_score: int | None = Field(
+        None,
+        ge=0,
+        le=100,
+        description="Enricher live-news score 0-100",
+    )
+    liveness_tier: Literal["breaking", "developing", "evergreen"] | None = None
+    live_news_reasons: list[str] | None = Field(None, max_length=3)
 
 
 class ApprovalRequest(BaseModel):

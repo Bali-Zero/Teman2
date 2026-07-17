@@ -1,4 +1,5 @@
 import type { KBLICode } from "@/lib/kbli-types";
+import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
 
 export interface KbliFaqEntry {
   question: string;
@@ -48,13 +49,37 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
           : `Partially. KBLI ${code.code} (${code.titleId}) is TERBATAS — foreign ownership is ${code.pma.capVerified ? "capped" : "indicatively capped (unverified)"} at ${code.pma.maxForeign}%.${code.pma.condition ? ` Condition: ${code.pma.condition}` : ""} An Indonesian partner holds the remaining shares.`
         : `No. KBLI ${code.code} (${code.titleId}) is TERTUTUP — closed to foreign investment. Reserved for Indonesian nationals only.`;
 
+  // PMA source attribution with vintage (FATAL-2 axis): the investment-list
+  // annexes are the in-force regulation but predate KBLI 2025 — disclose the
+  // source and the pending per-code crosswalk instead of asserting bare fact.
+  const pmaSourceNote =
+    " (Source: Perpres 10/2021 as amended by Perpres 49/2021 — the investment-list annexes predate KBLI 2025; per-code crosswalk audit in progress.)";
+
+  // Rows whose provenance is not KBLI-2025-native (crosswalk pending /
+  // unreadable marker) must never be stated as unqualified fact — visible FAQ
+  // and FAQPage JSON-LD both come from this builder (Codex gate round 4).
+  const licenseQualifier = isLicensingVerificationPending(code)
+    ? " Note: the source of these rows has not been verified against a KBLI-2025-native OSS scope; per-code crosswalk adjudication is pending — verify before relying on them (see Sources & Verification on this page)."
+    : "";
+
   const licenseAnswer =
     code.licensing.length > 0
-      ? `KBLI ${code.code} has a ${code.licensing[0].riskCategory} risk classification. Required license: ${code.licensing[0].licenseType ?? "NIB (Nomor Induk Berusaha)"}. ${code.licensing[0].timeframe ? `Processing time: ${code.licensing[0].timeframe}.` : "Processed through OSS (Online Single Submission)."}`
-      : // No OSS-RBA scale rows → special/sectoral regime (government, finance/OJK,
-        // education, health, culture …). Claiming "requires a NIB via OSS" here
-        // would be wrong for most of these activities.
-        `KBLI ${code.code} sits outside the ordinary OSS-RBA risk-based licensing flow: OSS publishes no business-scale licensing rows for it. Activities in this group are typically licensed under a special or sectoral regime (e.g. government affairs, financial services under OJK/BI, education or health authorities) — verify the applicable regulator case-by-case before relying on an NIB alone.`;
+      ? `KBLI ${code.code} has a ${code.licensing[0].riskCategory} risk classification. Required license: ${code.licensing[0].licenseType ?? "NIB (Nomor Induk Berusaha)"}. ${code.licensing[0].timeframe ? `Processing time: ${code.licensing[0].timeframe}.` : "Processed through OSS (Online Single Submission)."}${licenseQualifier}`
+      : // No OSS-RBA scale rows. Discriminated by the structured provenance
+        // state (TRACK-P), never by prose:
+        code.provenance?.state === "not_classifiable"
+        ? // Cure-detached. The marker only attests that the old block was
+          // quarantined — the CAUSE varies per code (digit collision,
+          // wrong-pointer transplant, unlocatable source; the correction note
+          // carries the specifics). So this class string is the WEAKEST common
+          // truthful claim: it speaks about our verification, never asserts
+          // regulatory absence (Codex gate F1).
+          `We cannot yet show a verified licensing basis for KBLI ${code.code}: the licensing previously associated with this code was removed because its source could not be verified as applying to this activity. See the Regulatory Divergence section on this page for the documented sources, and verify the current OSS treatment before relying on any licensing assumption.`
+        : // Special/sectoral regime (government, finance/OJK, education, health,
+          // culture …). Claiming "requires a NIB via OSS" here would be wrong
+          // for most of these activities. Wording per F12: a 404 attests
+          // retrievability via the OSS API, never publication or absence.
+          `KBLI ${code.code} sits outside the ordinary OSS-RBA risk-based licensing flow: no business-scale licensing rows for it are retrievable from OSS. Activities in this group are typically licensed under a special or sectoral regime (e.g. government affairs, financial services under OJK/BI, education or health authorities) — verify the applicable regulator case-by-case before relying on an NIB alone.`;
 
   // Only show an English gloss when a real English title exists — otherwise the
   // copy degenerates to `"X" (X)` with the Indonesian title repeated twice.
@@ -66,7 +91,7 @@ export function buildKbliFaq(code: KBLICode): KbliFaqEntry[] {
   const entries: KbliFaqEntry[] = [
     {
       question: `Can foreigners operate a ${code.titleEn.toLowerCase()} business in Indonesia?`,
-      answer: pmaAnswer,
+      answer: `${pmaAnswer}${pmaSourceNote}`,
     },
     {
       question: `What license is required for KBLI ${code.code}?`,
