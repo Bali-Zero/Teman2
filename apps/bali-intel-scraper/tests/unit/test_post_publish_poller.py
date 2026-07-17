@@ -409,3 +409,90 @@ class TestMaybeFlushAllBatches:
 
         assert triggered is True
         mock_img.assert_called_once()
+
+
+# ── process_item: image step must never be skipped on completed_steps alone ─
+#
+# Regression coverage for the queue-necrosis bug: `completed_steps.image=true`
+# used to gate a hard skip of run_image() — if a run died before flushing, the
+# flag was already true in the DB (mark_step_done fires before the flush), so
+# the cover was lost FOREVER (next run trusts the lying flag). run_image()'s
+# own idempotency (_image_exists_on_github check against main) makes calling
+# it unconditionally safe: cheap no-op when covers are really there, regen
+# when the flag lied.
+
+
+class TestProcessItemNeverSkipsImageStep:
+    def test_intel_source_calls_run_image_even_when_completed_steps_true(self):
+        item = {
+            "slug": "test-slug",
+            "category": "business",
+            "source": "intel",
+            "title": "Test Title",
+            "completed_steps": {"seo": True, "translate": True, "image": True},
+        }
+        with (
+            patch.object(ppp, "run_seo", return_value=True) as mock_seo,
+            patch.object(ppp, "run_translate", return_value=True) as mock_translate,
+            patch.object(ppp, "run_image", return_value=True) as mock_image,
+            patch.object(ppp, "mark_step_done") as mock_mark,
+            patch.object(ppp, "rotate_hero") as mock_rotate,
+        ):
+            all_ok, failed_steps = ppp.process_item(item)
+
+        assert all_ok is True
+        assert failed_steps == []
+        mock_image.assert_called_once_with("test-slug", "business", title="Test Title")
+        mock_mark.assert_called_once_with("test-slug", "image")
+        # seo/translate are genuinely done — only the image gate is bypassed
+        mock_seo.assert_not_called()
+        mock_translate.assert_not_called()
+        mock_rotate.assert_not_called()
+
+    def test_news_source_calls_run_image_even_when_completed_steps_true(self):
+        item = {
+            "slug": "news-slug",
+            "category": "regulation",
+            "source": "news",
+            "article_id": "art-1",
+            "title": "News Title",
+            "completed_steps": {"image": True},
+        }
+        with (
+            patch.object(ppp, "run_image", return_value=True) as mock_image,
+            patch.object(ppp, "mark_step_done") as mock_mark,
+        ):
+            all_ok, failed_steps = ppp.process_item(item)
+
+        assert all_ok is True
+        assert failed_steps == []
+        mock_image.assert_called_once_with(
+            "news-slug", "regulation", title="News Title", article_id="art-1"
+        )
+        mock_mark.assert_called_once_with("news-slug", "image")
+
+    def test_regenerates_and_reports_failure_when_flag_lied_and_regen_fails(self):
+        """completed_steps.image=true but run_image() itself returns False
+        (cover genuinely missing + Codex unreachable) — must be reported as a
+        failed step (retried next tick), never silently trusted as done."""
+        item = {
+            "slug": "lost-slug",
+            "category": "business",
+            "source": "intel",
+            "title": "Lost",
+            "completed_steps": {"seo": True, "translate": True, "image": True},
+        }
+        with (
+            patch.object(ppp, "run_seo", return_value=True),
+            patch.object(ppp, "run_translate", return_value=True),
+            patch.object(ppp, "run_image", return_value=False) as mock_image,
+            patch.object(ppp, "mark_step_done") as mock_mark,
+            patch.object(ppp, "rotate_hero"),
+        ):
+            all_ok, failed_steps = ppp.process_item(item)
+
+        assert all_ok is False
+        assert failed_steps == ["image"]
+        mock_image.assert_called_once()
+        # mark_step_done must NOT be called for "image" when run_image fails
+        assert ("lost-slug", "image") not in [c.args for c in mock_mark.call_args_list]

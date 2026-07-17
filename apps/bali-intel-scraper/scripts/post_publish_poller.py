@@ -884,21 +884,26 @@ def process_item(item: dict) -> tuple[bool, list[str]]:
                 rotate_hero(slug)
             else:
                 failed_steps.append("translate")
-        # Image
-        if not done.get("image"):
-            if run_image(slug, category, title=title):
-                mark_step_done(slug, "image")
-            else:
-                failed_steps.append("image")
+        # Image — NEVER skip based on completed_steps alone (2026-07-17 fix): the
+        # flag can lie if a prior run died mid-tick before flushing (see
+        # maybe_flush_all_batches). run_image()'s own idempotency check
+        # (_image_exists_on_github against main) makes calling it unconditionally
+        # a cheap no-op (~2 `gh api` calls) when the covers genuinely exist, and
+        # regenerates them when the flag lied.
+        if run_image(slug, category, title=title):
+            mark_step_done(slug, "image")
+        else:
+            failed_steps.append("image")
 
         return (len(failed_steps) == 0, failed_steps)
 
     elif source == "news":
-        if not done.get("image"):
-            if run_image(slug, category, title=title, article_id=article_id):
-                mark_step_done(slug, "image")
-            else:
-                failed_steps.append("image")
+        # Image — same "never skip on completed_steps alone" rule as the intel
+        # branch above (see comment there).
+        if run_image(slug, category, title=title, article_id=article_id):
+            mark_step_done(slug, "image")
+        else:
+            failed_steps.append("image")
         return (len(failed_steps) == 0, failed_steps)
 
     else:
