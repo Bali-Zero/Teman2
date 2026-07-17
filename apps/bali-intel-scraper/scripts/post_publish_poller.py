@@ -334,6 +334,38 @@ def flush_layout_batch() -> bool:
     return _flush_batch("layout", "bot/homepage-layout", "chore(homepage): hero rotation {date}")
 
 
+_FLUSH_THRESHOLD = 8
+
+
+def maybe_flush_all_batches(threshold: int = _FLUSH_THRESHOLD) -> bool:
+    """Mid-run flush: once staged GitHub writes reach `threshold`, flush image+seo+
+    layout batches immediately instead of waiting for the end-of-run sweep in main().
+
+    Crash-exposure fix (2026-07-17): a run that dies mid-tick (translate hang,
+    killer unknown, no traceback — live incident: the 16:56 run died ~22:20 with
+    ~2 dozen covers staged and lost) previously kept every staged write in RAM
+    for the FULL run — 5-10h with the current backlog. This shrinks the exposure
+    window to ~`threshold` items (~30-40min). Same flush functions + same
+    Telegram-alert-on-failure condition as the final sweep in main() — more
+    flushes per run (more bot PRs) is intentional, not a bug.
+
+    Returns True iff a flush was actually triggered this call.
+    """
+    if len(_PENDING_COMMITS) < threshold:
+        return False
+    log(f"🔁 Mid-run flush triggered ({len(_PENDING_COMMITS)} staged ≥ {threshold})")
+    img_ok = flush_image_batch()
+    seo_ok = flush_seo_batch()
+    layout_ok = flush_layout_batch()
+    if not img_ok or not seo_ok or not layout_ok:
+        send_telegram_alert(
+            "⚠️ *Post-publish poller*\n"
+            f"GitHub batch flush failed (image={img_ok}, seo={seo_ok}, "
+            f"layout={layout_ok}) — see log"
+        )
+    return True
+
+
 def _image_exists_on_github(gh_path: str) -> bool:
     try:
         check = subprocess.run(
@@ -918,7 +950,10 @@ def main():
             if "translate" not in failed_steps and item.get("source") == "intel":
                 translated_slugs.append(slug)
 
-    # Flush this tick's staged GitHub writes (images + SEO + homepage layout) —
+        # Periodic mid-run flush (crash exposure fix) — see maybe_flush_all_batches.
+        maybe_flush_all_batches()
+
+    # Final sweep: flush this tick's staged GitHub writes (images + SEO + homepage layout) —
     # ONE bot branch + auto-merged PR per kind, replacing the direct-to-main
     # PUTs branch protection has been rejecting since ~2026-05-22.
     img_flush_ok = flush_image_batch()

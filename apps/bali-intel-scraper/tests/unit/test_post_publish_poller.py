@@ -332,3 +332,80 @@ class TestRotateHero:
 
         assert ok is True
         assert ppp._PENDING_COMMITS == []
+
+
+# ── maybe_flush_all_batches (periodic mid-run flush, crash-exposure fix) ───
+#
+# Regression coverage: the poller used to stage every GitHub write in RAM for
+# the FULL run (5-10h with the current backlog) and only flush once at the
+# very end — a run that dies mid-tick (no traceback, killer unknown) lost
+# every staged cover. maybe_flush_all_batches() shrinks that exposure window
+# by flushing image+seo+layout batches once staged writes reach a threshold.
+
+
+class TestMaybeFlushAllBatches:
+    def test_below_threshold_is_noop(self):
+        for i in range(ppp._FLUSH_THRESHOLD - 1):
+            ppp._stage_commit("image", f"apps/mouth/public/static/news/{i}.jpg", b"x", "m")
+
+        with (
+            patch.object(ppp, "flush_image_batch") as mock_img,
+            patch.object(ppp, "flush_seo_batch") as mock_seo,
+            patch.object(ppp, "flush_layout_batch") as mock_layout,
+            patch.object(ppp, "send_telegram_alert") as mock_alert,
+        ):
+            triggered = ppp.maybe_flush_all_batches()
+
+        assert triggered is False
+        mock_img.assert_not_called()
+        mock_seo.assert_not_called()
+        mock_layout.assert_not_called()
+        mock_alert.assert_not_called()
+
+    def test_at_threshold_flushes_all_three_batches(self):
+        for i in range(ppp._FLUSH_THRESHOLD):
+            ppp._stage_commit("image", f"apps/mouth/public/static/news/{i}.jpg", b"x", "m")
+
+        with (
+            patch.object(ppp, "flush_image_batch", return_value=True) as mock_img,
+            patch.object(ppp, "flush_seo_batch", return_value=True) as mock_seo,
+            patch.object(ppp, "flush_layout_batch", return_value=True) as mock_layout,
+            patch.object(ppp, "send_telegram_alert") as mock_alert,
+        ):
+            triggered = ppp.maybe_flush_all_batches()
+
+        assert triggered is True
+        mock_img.assert_called_once()
+        mock_seo.assert_called_once()
+        mock_layout.assert_called_once()
+        mock_alert.assert_not_called()
+
+    def test_flush_failure_sends_telegram_alert_same_condition_as_final_sweep(self):
+        for i in range(ppp._FLUSH_THRESHOLD):
+            ppp._stage_commit("image", f"apps/mouth/public/static/news/{i}.jpg", b"x", "m")
+
+        with (
+            patch.object(ppp, "flush_image_batch", return_value=False),
+            patch.object(ppp, "flush_seo_batch", return_value=True),
+            patch.object(ppp, "flush_layout_batch", return_value=True),
+            patch.object(ppp, "send_telegram_alert") as mock_alert,
+        ):
+            triggered = ppp.maybe_flush_all_batches()
+
+        assert triggered is True
+        mock_alert.assert_called_once()
+        assert "image=False" in mock_alert.call_args.args[0]
+
+    def test_custom_threshold_respected(self):
+        ppp._stage_commit("image", "apps/mouth/public/static/news/a.jpg", b"x", "m")
+        ppp._stage_commit("image", "apps/mouth/public/static/news/b.jpg", b"x", "m")
+
+        with (
+            patch.object(ppp, "flush_image_batch", return_value=True) as mock_img,
+            patch.object(ppp, "flush_seo_batch", return_value=True),
+            patch.object(ppp, "flush_layout_batch", return_value=True),
+        ):
+            triggered = ppp.maybe_flush_all_batches(threshold=2)
+
+        assert triggered is True
+        mock_img.assert_called_once()
