@@ -20,6 +20,7 @@ Sources:
   - 'intel': MDX articles from intel scraper (full pipeline: SEO + translate + image)
   - 'news':  news_items from /api/news (image generation only)
 """
+import base64
 import json
 import os
 import subprocess
@@ -157,23 +158,80 @@ def codex_generate_image(prompt: str, out_path: Path) -> bool:
     return False
 
 
-def _commit_image_to_github(img_path: Path, gh_path: str, title: str) -> bool:
-    """Commit a single image file to GitHub Contents API (create or update)."""
-    import base64
+# ── GitHub batch-branch/PR commit mechanism ──────────────────────────────────
+# Direct PUT-to-main via the Contents API is rejected by branch protection (25
+# required status checks, enforce_admins=true, since ~2026-05-22) — every
+# generated cover image / SEO update was silently discarded (last successful
+# direct commit b19de9bf5a). Writes are staged in-memory during a poller tick
+# and flushed once, per kind, into ONE branch + auto-merged PR.
+_PENDING_COMMITS: list[dict] = []  # {"kind", "gh_path", "content_b64", "message"}
 
-    # existing sha (for update)
+
+def _log_gh_failure(op: str, result: "subprocess.CompletedProcess[str]") -> None:
+    """Never a bare 'X failed' — always the tail of what `gh` actually said."""
+    tail = (result.stderr or result.stdout or "").strip()[-200:]
+    log(f"  ❌ gh failure ({op}) rc={result.returncode}: {tail}")
+
+
+def _stage_commit(kind: str, gh_path: str, content_bytes: bytes, message: str) -> None:
+    """Queue a file write for the end-of-tick batch flush (see flush_*_batch)."""
+    _PENDING_COMMITS.append({
+        "kind": kind,
+        "gh_path": gh_path,
+        "content_b64": base64.b64encode(content_bytes).decode("utf-8"),
+        "message": message,
+    })
+
+
+def _github_default_branch_sha() -> str | None:
+    """SHA of `main` HEAD, to branch a bot branch off of."""
+    try:
+        result = subprocess.run(
+            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/refs/heads/main", "--jq", ".object.sha"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+        _log_gh_failure("get main HEAD sha", result)
+        return None
+    except Exception as e:
+        log(f"  ❌ get main HEAD sha error: {e}")
+        return None
+
+
+def _create_bot_branch(branch: str) -> bool:
+    sha = _github_default_branch_sha()
+    if not sha:
+        return False
+    try:
+        result = subprocess.run(
+            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/refs", "--method", "POST", "--input", "-"],
+            input=json.dumps({"ref": f"refs/heads/{branch}", "sha": sha}),
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            _log_gh_failure(f"create-ref {branch}", result)
+            return False
+        return True
+    except Exception as e:
+        log(f"  ❌ create-ref error ({branch}): {e}")
+        return False
+
+
+def _commit_to_branch(gh_path: str, content_b64: str, message: str, branch: str) -> bool:
+    """PUT one file to `branch` (create or update — resolves existing sha on that branch)."""
     existing_sha = ""
     try:
         check = subprocess.run(
-            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}", "--jq", ".sha"],
+            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{gh_path}",
+             "-f", f"ref={branch}", "--jq", ".sha"],
             capture_output=True, text=True, timeout=15,
         )
         existing_sha = check.stdout.strip() if check.returncode == 0 else ""
     except Exception:
         existing_sha = ""
 
-    encoded_img = base64.b64encode(img_path.read_bytes()).decode("utf-8")
-    payload = {"message": f"feat(image): cover for '{title[:50]}'", "content": encoded_img}
+    payload = {"message": message, "content": content_b64, "branch": branch}
     if existing_sha:
         payload["sha"] = existing_sha
     try:
@@ -182,10 +240,130 @@ def _commit_image_to_github(img_path: Path, gh_path: str, title: str) -> bool:
              "--method", "PUT", "--input", "-"],
             input=json.dumps(payload), capture_output=True, text=True, timeout=60,
         )
-        return result.returncode == 0
+        if result.returncode != 0:
+            _log_gh_failure(f"PUT {gh_path}@{branch}", result)
+            return False
+        return True
     except Exception as e:
-        log(f"  ⚠ Image commit error ({gh_path}): {e}")
+        log(f"  ❌ commit error ({gh_path}@{branch}): {e}")
         return False
+
+
+def _open_and_arm_pr(branch: str, title: str, body: str) -> bool:
+    try:
+        pr_result = subprocess.run(
+            ["gh", "pr", "create", "--repo", f"{GITHUB_OWNER}/{GITHUB_REPO}",
+             "--head", branch, "--base", "main", "--title", title, "--body", body],
+            capture_output=True, text=True, timeout=30,
+        )
+    except Exception as e:
+        log(f"  ❌ pr create error ({branch}): {e}")
+        return False
+    if pr_result.returncode != 0:
+        _log_gh_failure(f"pr create {branch}", pr_result)
+        return False
+    log(f"  ✅ PR opened: {pr_result.stdout.strip()}")
+
+    try:
+        merge_result = subprocess.run(
+            ["gh", "pr", "merge", "--auto", "--squash", "--repo", f"{GITHUB_OWNER}/{GITHUB_REPO}", branch],
+            capture_output=True, text=True, timeout=30,
+        )
+    except Exception as e:
+        log(f"  ⚠ pr merge --auto arm error ({branch}): {e}")
+        return True  # PR exists even if arming failed — not a hard failure
+    if merge_result.returncode != 0:
+        _log_gh_failure(f"pr merge --auto {branch}", merge_result)
+    else:
+        log(f"  ✅ auto-merge armed for {branch}")
+    return True
+
+
+def _flush_batch(kind: str, branch_prefix: str, title_template: str) -> bool:
+    """Flush all pending commits of `kind` into ONE bot branch + auto-merged PR.
+
+    Returns True iff the batch was empty, or branch+commits+PR all succeeded
+    (a failed auto-merge arm is logged but not treated as a hard failure — the
+    PR still exists for manual merge).
+    """
+    global _PENDING_COMMITS
+    batch = [c for c in _PENDING_COMMITS if c["kind"] == kind]
+    if not batch:
+        return True
+    _PENDING_COMMITS = [c for c in _PENDING_COMMITS if c["kind"] != kind]
+
+    branch = f"{branch_prefix}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    log(f"▶ Flushing {len(batch)} {kind} change(s) → branch {branch}")
+
+    if not _create_bot_branch(branch):
+        # The queue items behind this batch were already marked step-done in the
+        # DB (staging succeeds independently of the flush) — a lost batch here
+        # needs a manual re-push, not an automatic retry. The Telegram alert in
+        # main() is what surfaces this instead of it failing silently.
+        log(f"  ❌ Could not create branch {branch} — {len(batch)} staged {kind} change(s) lost, needs manual re-push")
+        return False
+
+    all_ok = True
+    for item in batch:
+        if _commit_to_branch(item["gh_path"], item["content_b64"], item["message"], branch):
+            log(f"  ✅ staged → {item['gh_path']} @ {branch}")
+        else:
+            all_ok = False
+
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    title = title_template.format(date=date_str, n=len(batch))
+    body = (
+        f"Automated {kind} batch — {len(batch)} file(s) via the post-publish poller.\n\n"
+        "Files:\n" + "\n".join(f"- `{c['gh_path']}`" for c in batch) +
+        "\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)"
+    )
+    if not _open_and_arm_pr(branch, title, body):
+        return False
+    return all_ok
+
+
+def flush_image_batch() -> bool:
+    return _flush_batch("image", "bot/news-covers", "feat(images): news covers {date} ({n} files)")
+
+
+def flush_seo_batch() -> bool:
+    return _flush_batch("seo", "bot/seo-metadata", "fix(seo): GEO/AEO metadata {date} ({n} files)")
+
+
+def flush_layout_batch() -> bool:
+    return _flush_batch("layout", "bot/homepage-layout", "chore(homepage): hero rotation {date}")
+
+
+_FLUSH_THRESHOLD = 8
+
+
+def maybe_flush_all_batches(threshold: int = _FLUSH_THRESHOLD) -> bool:
+    """Mid-run flush: once staged GitHub writes reach `threshold`, flush image+seo+
+    layout batches immediately instead of waiting for the end-of-run sweep in main().
+
+    Crash-exposure fix (2026-07-17): a run that dies mid-tick (translate hang,
+    killer unknown, no traceback — live incident: the 16:56 run died ~22:20 with
+    ~2 dozen covers staged and lost) previously kept every staged write in RAM
+    for the FULL run — 5-10h with the current backlog. This shrinks the exposure
+    window to ~`threshold` items (~30-40min). Same flush functions + same
+    Telegram-alert-on-failure condition as the final sweep in main() — more
+    flushes per run (more bot PRs) is intentional, not a bug.
+
+    Returns True iff a flush was actually triggered this call.
+    """
+    if len(_PENDING_COMMITS) < threshold:
+        return False
+    log(f"🔁 Mid-run flush triggered ({len(_PENDING_COMMITS)} staged ≥ {threshold})")
+    img_ok = flush_image_batch()
+    seo_ok = flush_seo_batch()
+    layout_ok = flush_layout_batch()
+    if not img_ok or not seo_ok or not layout_ok:
+        send_telegram_alert(
+            "⚠️ *Post-publish poller*\n"
+            f"GitHub batch flush failed (image={img_ok}, seo={seo_ok}, "
+            f"layout={layout_ok}) — see log"
+        )
+    return True
 
 
 def _image_exists_on_github(gh_path: str) -> bool:
@@ -256,7 +434,7 @@ def wait_for_ollama_free(max_wait: int = 60 * 15) -> bool:
         check = subprocess.run(["pgrep", "-f", "translate_articles.py"], capture_output=True, text=True)
         if check.returncode != 0:
             return True
-        log(f"⏳ Ollama busy — waiting 60s...")
+        log("⏳ Ollama busy — waiting 60s...")
         time.sleep(60)
         waited += 60
     log("⚠ Timeout waiting for Ollama")
@@ -267,7 +445,6 @@ def wait_for_ollama_free(max_wait: int = 60 * 15) -> bool:
 
 def run_seo(slug: str, category: str) -> bool:
     """Optimize SEO/GEO metadata of published MDX via Gemini. Uses stdin for prompt."""
-    import base64
     import re
 
     ARTICLES_PATH = "apps/mouth/src/content/articles"
@@ -285,7 +462,6 @@ def run_seo(slug: str, category: str) -> bool:
             return True
         data = json.loads(result.stdout)
         content = base64.b64decode(data["content"]).decode("utf-8")
-        sha = data.get("sha", "")
     except Exception as e:
         log(f"  ⚠ SEO: GitHub read error: {e}")
         return False
@@ -379,19 +555,12 @@ Return this exact JSON structure:
 
     new_content = f"---\n{fm_raw}\n---\n{body}"
 
-    encoded = __import__("base64").b64encode(new_content.encode("utf-8")).decode("utf-8")
-    payload = {"message": f"feat(seo): optimize GEO/AEO metadata for '{title[:50]}'", "content": encoded, "sha": sha}
-    try:
-        result = subprocess.run(
-            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{mdx_path}", "--method", "PUT", "--input", "-"],
-            input=json.dumps(payload), capture_output=True, text=True, timeout=30,
-        )
-        ok = result.returncode == 0
-        log(f"  {'✅' if ok else '❌'} SEO/GEO metadata updated")
-        return ok
-    except Exception as e:
-        log(f"  ⚠ SEO commit error: {e}")
-        return False
+    # Direct PUT-to-main is rejected by branch protection (see module note on
+    # _PENDING_COMMITS) — stage for the end-of-tick batch-branch/PR flush instead.
+    _stage_commit("seo", mdx_path, new_content.encode("utf-8"),
+                  f"feat(seo): optimize GEO/AEO metadata for '{title[:50]}'")
+    log("  📦 SEO/GEO metadata staged for batch commit")
+    return True
 
 
 # ─── TRANSLATION ───────────────────────────────────────────────────────────────
@@ -406,7 +575,7 @@ def run_translate(slug: str, category: str) -> bool:
     repo_root = SCRIPT_DIR.parent.parent.parent
     mdx_local = repo_root / "apps" / "mouth" / "src" / "content" / "articles" / category / f"{slug}.mdx"
     if not mdx_local.exists():
-        log(f"  ⚠ MDX not found locally — pulling from GitHub")
+        log("  ⚠ MDX not found locally — pulling from GitHub")
         try:
             import base64 as _b64
             gh_result = subprocess.run(
@@ -421,7 +590,7 @@ def run_translate(slug: str, category: str) -> bool:
                 mdx_local.write_text(content, encoding="utf-8")
                 log(f"  ✅ MDX pulled from GitHub ({len(content)} chars)")
             else:
-                log(f"  ❌ MDX not on GitHub either — cannot translate")
+                log("  ❌ MDX not on GitHub either — cannot translate")
                 return False
         except Exception as e:
             log(f"  ❌ GitHub pull error: {e}")
@@ -477,14 +646,17 @@ def _fetch_mdx_meta(slug: str, category: str) -> tuple[str | None, str | None]:
 
 
 def run_image(slug: str, category: str, title: str | None = None, article_id: str | None = None) -> bool:
-    """Generate TWO cover images via Codex $imagegen (gpt-image-2), commit to GitHub.
+    """Generate TWO cover images via Codex $imagegen (gpt-image-2), stage for GitHub.
 
     hero  → {slug}.jpg       (21:9, article top hero — frontmatter coverImage)
     card  → {slug}_card.jpg  (16:10, homepage news card — frontmatter cardImage)
 
     Codex-total (no Fireworks). Pre-flight health-check: if Codex is unreachable
     the item stays queued (returns False → retried next tick) rather than
-    publishing a cover-less article. Idempotent: skips if both already on GitHub.
+    publishing a cover-less article. Idempotent: skips if both already on GitHub
+    (main only — re-staging onto the bot branch if a PR is already in flight is
+    harmless, see flush_image_batch). Actual GitHub write happens at end-of-tick
+    via flush_image_batch(), batched with every other image staged this run.
     """
     hero_gh_path = f"{IMAGE_GH_DIR}/{slug}.jpg"
     card_gh_path = f"{IMAGE_GH_DIR}/{slug}_card.jpg"
@@ -526,6 +698,7 @@ def run_image(slug: str, category: str, title: str | None = None, article_id: st
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         all_ok = True
+        hero_staged = False
 
         for kind, gh_path, already in (
             ("hero", hero_gh_path, hero_done),
@@ -540,14 +713,15 @@ def run_image(slug: str, category: str, title: str | None = None, article_id: st
                 log(f"  ❌ {kind} generation failed")
                 all_ok = False
                 continue
-            if _commit_image_to_github(img_path, gh_path, title):
-                log(f"  ✅ {kind} committed → {gh_path}")
-            else:
-                log(f"  ❌ {kind} commit failed")
-                all_ok = False
+            _stage_commit("image", gh_path, img_path.read_bytes(),
+                          f"feat(image): cover for '{title[:50]}'")
+            log(f"  📦 {kind} staged → {gh_path}")
+            if kind == "hero":
+                hero_staged = True
 
-        # hero is what coverImage/news points at; only update DB once it's live
-        if (hero_done or (tmp / Path(hero_gh_path).name).exists()) and article_id:
+        # hero is what coverImage/news points at; only update DB once it's staged
+        # (the PR landing — flush_image_batch, auto-merged — is what makes it live)
+        if (hero_done or hero_staged) and article_id:
             _update_news_image_url(article_id, f"/static/news/{slug}.jpg")
 
         return all_ok
@@ -570,7 +744,10 @@ LATEST_KEYS = ["latest_1", "latest_2", "latest_3", "latest_4", "latest_5"]
 def rotate_hero(new_slug: str) -> bool:
     """Rotate homepage-layout.json: push new_slug to hero_main, cascade others down.
     Old hero_5 moves to latest_1, shifting latest_* down (latest_5 dropped).
-    Commits and pushes to GitHub.
+
+    Stages the write for the end-of-tick batch flush (`flush_layout_batch`) instead
+    of PUT-ing straight to main — direct PUTs are rejected by branch protection
+    (see the "GitHub batch-branch/PR commit mechanism" note above `_stage_commit`).
     """
     import base64 as _b64
 
@@ -587,7 +764,6 @@ def rotate_hero(new_slug: str) -> bool:
             return False
         data = json.loads(result.stdout)
         layout = json.loads(_b64.b64decode(data["content"]).decode("utf-8"))
-        sha = data["sha"]
     except Exception as e:
         log(f"  ⚠ Hero: read error: {e}")
         return False
@@ -620,26 +796,14 @@ def rotate_hero(new_slug: str) -> bool:
         if i < len(new_latests):
             layout[key] = new_latests[i]
 
-    # Write back to GitHub
+    # Stage the write for the end-of-tick layout batch flush (see flush_layout_batch)
     new_content = json.dumps(layout, indent=2, ensure_ascii=False) + "\n"
-    encoded = _b64.b64encode(new_content.encode("utf-8")).decode("utf-8")
-    payload = {
-        "message": f"feat(homepage): rotate hero → {new_slug[:50]}",
-        "content": encoded,
-        "sha": sha,
-    }
-    try:
-        result = subprocess.run(
-            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{HOMEPAGE_LAYOUT_PATH}",
-             "--method", "PUT", "--input", "-"],
-            input=json.dumps(payload), capture_output=True, text=True, timeout=30,
-        )
-        ok = result.returncode == 0
-        log(f"  {'✅' if ok else '❌'} Hero rotation pushed (hero_main={new_slug[:40]})")
-        return ok
-    except Exception as e:
-        log(f"  ⚠ Hero rotation push error: {e}")
-        return False
+    _stage_commit(
+        "layout", HOMEPAGE_LAYOUT_PATH, new_content.encode("utf-8"),
+        f"feat(homepage): rotate hero → {new_slug[:50]}",
+    )
+    log(f"  ✅ Hero rotation staged (hero_main={new_slug[:40]})")
+    return True
 
 
 # ─── GIT OPERATIONS ───────────────────────────────────────────────────────────
@@ -649,7 +813,7 @@ def git_pull_monorepo():
     try:
         result = subprocess.run(["git", "pull", "--ff-only"], capture_output=True, text=True, cwd=str(repo_root), timeout=60)
         if result.returncode == 0:
-            log(f"✅ git pull OK")
+            log("✅ git pull OK")
         else:
             # Try stash + pull + pop
             subprocess.run(["git", "stash"], capture_output=True, cwd=str(repo_root), timeout=10)
@@ -716,29 +880,30 @@ def process_item(item: dict) -> tuple[bool, list[str]]:
         if not done.get("translate"):
             if run_translate(slug, category):
                 mark_step_done(slug, "translate")
-                return_translate = True
                 # Auto-rotate hero after successful translate
                 rotate_hero(slug)
             else:
                 failed_steps.append("translate")
-                return_translate = False
+        # Image — NEVER skip based on completed_steps alone (2026-07-17 fix): the
+        # flag can lie if a prior run died mid-tick before flushing (see
+        # maybe_flush_all_batches). run_image()'s own idempotency check
+        # (_image_exists_on_github against main) makes calling it unconditionally
+        # a cheap no-op (~2 `gh api` calls) when the covers genuinely exist, and
+        # regenerates them when the flag lied.
+        if run_image(slug, category, title=title):
+            mark_step_done(slug, "image")
         else:
-            return_translate = True
-        # Image
-        if not done.get("image"):
-            if run_image(slug, category, title=title):
-                mark_step_done(slug, "image")
-            else:
-                failed_steps.append("image")
+            failed_steps.append("image")
 
         return (len(failed_steps) == 0, failed_steps)
 
     elif source == "news":
-        if not done.get("image"):
-            if run_image(slug, category, title=title, article_id=article_id):
-                mark_step_done(slug, "image")
-            else:
-                failed_steps.append("image")
+        # Image — same "never skip on completed_steps alone" rule as the intel
+        # branch above (see comment there).
+        if run_image(slug, category, title=title, article_id=article_id):
+            mark_step_done(slug, "image")
+        else:
+            failed_steps.append("image")
         return (len(failed_steps) == 0, failed_steps)
 
     else:
@@ -789,6 +954,22 @@ def main():
             completed = item.get("completed_steps", {})
             if "translate" not in failed_steps and item.get("source") == "intel":
                 translated_slugs.append(slug)
+
+        # Periodic mid-run flush (crash exposure fix) — see maybe_flush_all_batches.
+        maybe_flush_all_batches()
+
+    # Final sweep: flush this tick's staged GitHub writes (images + SEO + homepage layout) —
+    # ONE bot branch + auto-merged PR per kind, replacing the direct-to-main
+    # PUTs branch protection has been rejecting since ~2026-05-22.
+    img_flush_ok = flush_image_batch()
+    seo_flush_ok = flush_seo_batch()
+    layout_flush_ok = flush_layout_batch()
+    if not img_flush_ok or not seo_flush_ok or not layout_flush_ok:
+        send_telegram_alert(
+            "⚠️ *Post-publish poller*\n"
+            f"GitHub batch flush failed (image={img_flush_ok}, seo={seo_flush_ok}, "
+            f"layout={layout_flush_ok}) — see log"
+        )
 
     # Commit translations
     if translated_slugs:

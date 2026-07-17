@@ -29,6 +29,7 @@ class DraftStatus(str, Enum):
     REJECTED = "rejected"
     PUBLISHED = "published"
     MISSED = "missed"
+    PARKED = "parked"  # 2026-07-17 B2 backstop: news-shaped draft, no usable source content
 
 
 class Platform(str, Enum):

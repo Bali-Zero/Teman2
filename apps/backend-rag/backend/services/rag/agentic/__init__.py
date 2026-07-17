@@ -116,8 +116,9 @@ def create_agentic_rag(
     _web_search_client=None,
     semantic_cache: "SemanticCache" = None,
     clarification_service: "ClarificationService" = None,
-    nlm_enrichment_service: Any = None,  # noqa: Phase 6: DEPRECATED — call-site compat
+    nlm_enrichment_service: Any = None,  # noqa: ARG001 — Phase 6 DEPRECATED, kept for call-site compat
     specialized_service_router: Any = None,
+    faq_cache: Any = None,  # NotebookLMCacheService (P7 SPEC v2 D3: exact-match FAQ cache)
 ) -> AgenticRAGOrchestrator:
     """
     Factory function to create a fully configured AgenticRAGOrchestrator.
@@ -134,6 +135,9 @@ def create_agentic_rag(
         clarification_service: Optional service for resolving ambiguous queries
         nlm_enrichment_service: Optional NLM enrichment service for CAUTIOUS-zone queries
         specialized_service_router: Optional SpecializedServiceRouter for complex query routing
+        faq_cache: Optional NotebookLMCacheService for exact-match FAQ caching (< 1ms lookup).
+            Without this, every orchestrator built via this factory silently loses the
+            FAQ-cache fast path (P7 scar — prewarm/harvester entries become unreachable).
 
     Returns:
         Configured AgenticRAGOrchestrator instance
@@ -181,6 +185,7 @@ def create_agentic_rag(
         tools=tools,
         db_pool=db_pool,
         semantic_cache=semantic_cache,
+        faq_cache=faq_cache,
         retriever=retriever,
         clarification_service=clarification_service,
         specialized_service_router=specialized_service_router,

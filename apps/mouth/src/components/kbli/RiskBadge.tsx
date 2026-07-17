@@ -4,6 +4,12 @@ interface RiskBadgeProps {
   category?: string;
   riskCategory?: string;
   size?: "sm" | "md";
+  /**
+   * The rows behind this risk value are not verified against a
+   * KBLI-2025-native OSS source (crosswalk pending / unreadable marker) —
+   * the badge must not state the tier as unqualified fact (TRACK-P).
+   */
+  verificationPending?: boolean;
 }
 
 function parseRisk(category: string): { label: string; color: string } {
@@ -35,6 +41,7 @@ export function RiskBadge({
   category,
   riskCategory,
   size = "md",
+  verificationPending = false,
 }: RiskBadgeProps) {
   const { label, color } = parseRisk(category ?? riskCategory ?? "");
   return (
@@ -48,12 +55,20 @@ export function RiskBadge({
         borderColor: `${color}33`,
         backgroundColor: `${color}15`,
       }}
+      title={
+        verificationPending
+          ? "This risk tier is not verified against a KBLI-2025-native OSS source; crosswalk adjudication is pending."
+          : undefined
+      }
     >
       <span
         className="inline-block w-1.5 h-1.5 rounded-full"
         style={{ backgroundColor: color }}
       />
       {label} Risk
+      {verificationPending && (
+        <span className="opacity-70">· pending verification</span>
+      )}
     </span>
   );
 }

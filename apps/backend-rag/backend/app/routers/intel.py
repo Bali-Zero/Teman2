@@ -9,7 +9,7 @@ import logging
 import os
 import sys
 from pathlib import Path as PathLib
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -85,6 +85,19 @@ class ScraperSubmission(BaseModel):
         None,
         description="Cover image as base64 string (uploaded to Drive on submit)",
     )
+    # WR2 liveness rewire (SPRINT B1, scar family #9): the enricher
+    # (claude_cli_enricher._normalize_live_news_fields) already computes
+    # these three — carry them through so the WR2 topic selector and News
+    # Room UI see something other than always-0. All optional: legacy
+    # scrapers/callers that don't send them must keep working unchanged.
+    live_news_score: int | None = Field(
+        None,
+        ge=0,
+        le=100,
+        description="Enricher live-news score 0-100",
+    )
+    liveness_tier: Literal["breaking", "developing", "evergreen"] | None = None
+    live_news_reasons: list[str] | None = Field(None, max_length=3)
 
 
 class ApprovalRequest(BaseModel):
@@ -559,35 +572,63 @@ async def enqueue_post_publish(
     request: Request,
     pool: Any = Depends(get_database_pool),
 ) -> dict:
-    """Internal: add a slug to the post-processing queue (translate + image + SEO)."""
+    """Internal: add a slug to the post-processing queue (translate + image + SEO).
+
+    `force: true` is the reconciliation path (2026-07-17): a batch flush lost
+    mid-run leaves `completed_steps.image=true` recorded even though the cover
+    never landed on GitHub — the default ON CONFLICT below only resets 'failed'
+    rows, so a 'done' item with a missing cover would never be re-run. `force`
+    unconditionally resets status/attempts/completed_steps regardless of the
+    row's current status.
+    """
     body = await request.json()
     slug = body.get("slug", "")
     category = body.get("category", "business")
     source = body.get("source", "intel")
     article_id = body.get("article_id")
     title = body.get("title")
+    force = bool(body.get("force", False))
     if not slug:
         raise HTTPException(status_code=400, detail="slug required")
     async with pool.acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO post_publish_queue (slug, title, category, source, article_id)
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (slug) DO UPDATE SET
-                status = CASE WHEN post_publish_queue.status = 'failed'
-                              THEN 'pending' ELSE post_publish_queue.status END,
-                attempts = CASE WHEN post_publish_queue.status = 'failed'
-                                THEN 0 ELSE post_publish_queue.attempts END,
-                error_message = NULL
-            """,
-            slug,
-            title,
-            category,
-            source,
-            article_id,
-        )
+        if force:
+            await conn.execute(
+                """
+                INSERT INTO post_publish_queue (slug, title, category, source, article_id)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (slug) DO UPDATE SET
+                    status = 'pending',
+                    attempts = 0,
+                    completed_steps = '{}'::jsonb,
+                    error_message = NULL
+                """,
+                slug,
+                title,
+                category,
+                source,
+                article_id,
+            )
+        else:
+            await conn.execute(
+                """
+                INSERT INTO post_publish_queue (slug, title, category, source, article_id)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (slug) DO UPDATE SET
+                    status = CASE WHEN post_publish_queue.status = 'failed'
+                                  THEN 'pending' ELSE post_publish_queue.status END,
+                    attempts = CASE WHEN post_publish_queue.status = 'failed'
+                                    THEN 0 ELSE post_publish_queue.attempts END,
+                    error_message = NULL
+                """,
+                slug,
+                title,
+                category,
+                source,
+                article_id,
+            )
     logger.info(
-        "📥 Post-publish queue: added", extra={"slug": slug, "category": category, "source": source}
+        "📥 Post-publish queue: added",
+        extra={"slug": slug, "category": category, "source": source, "force": force},
     )
     return {"ok": True, "slug": slug}
 
@@ -602,6 +643,29 @@ async def get_pending_queue(
     if api_key != settings.intel_scraper_api_key:
         raise HTTPException(status_code=401, detail="Unauthorized")
     async with pool.acquire() as conn:
+        # Stale-claim reaper: a poller that dies/times out mid-batch leaves items
+        # stuck in 'processing' forever (no reaper existed — 26 corpses found in
+        # prod, 22 from 2026-07-11). Re-queue anything claimed >2h ago; attempts
+        # is left untouched (it already incremented at claim time).
+        await conn.execute(
+            """
+            UPDATE post_publish_queue
+            SET status = 'pending'
+            WHERE status = 'processing' AND started_at < NOW() - INTERVAL '2 hours'
+            """,
+        )
+        # Failed re-pick: items marked 'failed' were never re-queued automatically
+        # — the only path back was enqueue_post_publish's ON CONFLICT, which never
+        # fires for slugs no longer being re-published (87 items stuck at
+        # attempts=1). Re-queue anything still under the attempt cap so the
+        # documented "max 5 attempts then dead" design actually happens.
+        await conn.execute(
+            """
+            UPDATE post_publish_queue
+            SET status = 'pending'
+            WHERE status = 'failed' AND attempts < 5
+            """,
+        )
         # Mark as processing and return (max 5 attempts, then dead-letter)
         await conn.execute(
             """
@@ -703,7 +767,7 @@ async def mark_step_done(
         await conn.execute(
             """
             UPDATE post_publish_queue
-            SET completed_steps = COALESCE(completed_steps, '{}'::jsonb) || jsonb_build_object($2, true)
+            SET completed_steps = COALESCE(completed_steps, '{}'::jsonb) || jsonb_build_object($2::text, true)
             WHERE slug = $1
             """,
             slug,

@@ -38,6 +38,13 @@ function statusChip(kbli: NonNullable<ReturnType<typeof getCode>>): {
   if (kbli.baliL4?.blocked) {
     return { label: "BALI: BLOCKED", color: "#e0645a" };
   }
+  // GARUDA-FILIERA Fase-1 cure #4 (2026-07-17): a code whose Bali risk tier
+  // was carried over from a different activity (code-number collision) is
+  // neither blocked nor confirmed open — a neutral verify chip, not the
+  // green "OPEN" the pma.status fallthrough below would otherwise render.
+  if (kbli.baliL4?.status === "NON_CLASSIFICABILE") {
+    return { label: "BALI: VERIFY", color: "#c9a227" };
+  }
   switch (kbli.pma.status) {
     case "open":
       return { label: "OPEN", color: "#5aab6e" };
@@ -119,207 +126,205 @@ export async function GET(
   const fingerprintMaxHeight = 340;
 
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: `${WIDTH}px`,
-          height: `${HEIGHT}px`,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          background: sectionGradient(visual),
-          fontFamily: "system-ui, sans-serif",
-          position: "relative",
-          padding: "64px",
-        }}
-      >
-        {/* Motif layer (Super Ultra v2) — per-section deterministic geometry,
+    <div
+      style={{
+        width: `${WIDTH}px`,
+        height: `${HEIGHT}px`,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        background: sectionGradient(visual),
+        fontFamily: "system-ui, sans-serif",
+        position: "relative",
+        padding: "64px",
+      }}
+    >
+      {/* Motif layer (Super Ultra v2) — per-section deterministic geometry,
             seeded by the code fingerprint. Sits behind everything. */}
-        {motif.map((s: MotifShape, i: number) => (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              left: `${s.x}px`,
-              top: `${s.y}px`,
-              width: `${s.w}px`,
-              height: `${s.h}px`,
-              borderRadius: s.kind === "circle" ? "9999px" : `${s.r}px`,
-              background: s.outline ? "transparent" : visual.accent,
-              border: s.outline ? `1.5px solid ${visual.accent}` : "none",
-              opacity: s.opacity,
-              display: "flex",
-              // satori rejects `transform: undefined` — only emit the property
-              // when there is an actual rotation (found live 2026-07-08)
-              ...(s.rotateDeg ? { transform: `rotate(${s.rotateDeg}deg)` } : {}),
-            }}
-          />
-        ))}
-
-        {/* Fingerprint motif — the code charted as five bars on a baseline,
-            anchored to the right third above the footer. */}
+      {motif.map((s: MotifShape, i: number) => (
         <div
+          key={i}
           style={{
             position: "absolute",
-            right: "64px",
-            bottom: "128px",
-            width: `${fingerprintZoneWidth}px`,
-            height: `${fingerprintMaxHeight}px`,
+            left: `${s.x}px`,
+            top: `${s.y}px`,
+            width: `${s.w}px`,
+            height: `${s.h}px`,
+            borderRadius: s.kind === "circle" ? "9999px" : `${s.r}px`,
+            background: s.outline ? "transparent" : visual.accent,
+            border: s.outline ? `1.5px solid ${visual.accent}` : "none",
+            opacity: s.opacity,
             display: "flex",
-            flexDirection: "column",
+            // satori rejects `transform: undefined` — only emit the property
+            // when there is an actual rotation (found live 2026-07-08)
+            ...(s.rotateDeg ? { transform: `rotate(${s.rotateDeg}deg)` } : {}),
           }}
-        >
-          {/* bars on the baseline */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-end",
-              height: `${fingerprintMaxHeight - 44}px`,
-              width: "100%",
-              borderBottom: "2px solid rgba(255,255,255,0.22)",
-            }}
-          >
-            {fp.bars.map((bar) => (
-              <FingerprintBarEl
-                key={bar.digitIndex}
-                bar={bar}
-                accent={visual.accent}
-                maxHeight={fingerprintMaxHeight - 52}
-              />
-            ))}
-          </div>
-          {/* the digits under their bars — the cover charts its own code */}
-          <div
-            style={{
-              display: "flex",
-              width: "100%",
-              marginTop: "10px",
-            }}
-          >
-            {fp.bars.map((bar) => (
-              <span
-                key={bar.digitIndex}
-                style={{
-                  flexGrow: 1,
-                  display: "flex",
-                  justifyContent: "center",
-                  fontFamily: "monospace",
-                  fontSize: "17px",
-                  color: "rgba(255,255,255,0.38)",
-                }}
-              >
-                {bar.digit}
-              </span>
-            ))}
-          </div>
-        </div>
+        />
+      ))}
 
-        {/* Top row: section label + status chip */}
+      {/* Fingerprint motif — the code charted as five bars on a baseline,
+            anchored to the right third above the footer. */}
+      <div
+        style={{
+          position: "absolute",
+          right: "64px",
+          bottom: "128px",
+          width: `${fingerprintZoneWidth}px`,
+          height: `${fingerprintMaxHeight}px`,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* bars on the baseline */}
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            alignItems: "flex-end",
+            height: `${fingerprintMaxHeight - 44}px`,
             width: "100%",
+            borderBottom: "2px solid rgba(255,255,255,0.22)",
           }}
         >
-          <span
-            style={{
-              fontSize: "20px",
-              fontWeight: 600,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.55)",
-            }}
-          >
-            {visual.label}
-          </span>
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              padding: "8px 18px",
-              borderRadius: "999px",
-              fontSize: "18px",
-              fontWeight: 700,
-              letterSpacing: "0.08em",
-              color: chip.color,
-              border: `1px solid ${chip.color}`,
-              backgroundColor: "rgba(0,0,0,0.25)",
-            }}
-          >
-            {chip.label}
-          </span>
+          {fp.bars.map((bar) => (
+            <FingerprintBarEl
+              key={bar.digitIndex}
+              bar={bar}
+              accent={visual.accent}
+              maxHeight={fingerprintMaxHeight - 52}
+            />
+          ))}
         </div>
-
-        {/* Main content: code + title */}
+        {/* the digits under their bars — the cover charts its own code */}
         <div
           style={{
             display: "flex",
-            flexDirection: "column",
-            // stop short of the fingerprint zone (right third) — long titles
-            // wrap to two lines instead of colliding with the bars
-            maxWidth: "640px",
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "monospace",
-              fontSize: "34px",
-              fontWeight: 700,
-              color: visual.accent,
-              letterSpacing: "0.04em",
-              marginBottom: "18px",
-              display: "flex",
-            }}
-          >
-            KBLI {kbli.code}
-          </span>
-          <span
-            style={{
-              fontSize: title.length > 60 ? "44px" : "54px",
-              fontWeight: 700,
-              lineHeight: 1.15,
-              color: "#ffffff",
-              display: "flex",
-            }}
-          >
-            {title}
-          </span>
-        </div>
-
-        {/* Footer branding bar */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
             width: "100%",
+            marginTop: "10px",
           }}
         >
-          <span
-            style={{
-              fontSize: "22px",
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              color: "#ffffff",
-            }}
-          >
-            BALI ZERO
-          </span>
-          <span
-            style={{
-              fontSize: "18px",
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,0.45)",
-            }}
-          >
-            KBLI 2025 Navigator
-          </span>
+          {fp.bars.map((bar) => (
+            <span
+              key={bar.digitIndex}
+              style={{
+                flexGrow: 1,
+                display: "flex",
+                justifyContent: "center",
+                fontFamily: "monospace",
+                fontSize: "17px",
+                color: "rgba(255,255,255,0.38)",
+              }}
+            >
+              {bar.digit}
+            </span>
+          ))}
         </div>
       </div>
-    ),
+
+      {/* Top row: section label + status chip */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "20px",
+            fontWeight: 600,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "rgba(255,255,255,0.55)",
+          }}
+        >
+          {visual.label}
+        </span>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            padding: "8px 18px",
+            borderRadius: "999px",
+            fontSize: "18px",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            color: chip.color,
+            border: `1px solid ${chip.color}`,
+            backgroundColor: "rgba(0,0,0,0.25)",
+          }}
+        >
+          {chip.label}
+        </span>
+      </div>
+
+      {/* Main content: code + title */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          // stop short of the fingerprint zone (right third) — long titles
+          // wrap to two lines instead of colliding with the bars
+          maxWidth: "640px",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "monospace",
+            fontSize: "34px",
+            fontWeight: 700,
+            color: visual.accent,
+            letterSpacing: "0.04em",
+            marginBottom: "18px",
+            display: "flex",
+          }}
+        >
+          KBLI {kbli.code}
+        </span>
+        <span
+          style={{
+            fontSize: title.length > 60 ? "44px" : "54px",
+            fontWeight: 700,
+            lineHeight: 1.15,
+            color: "#ffffff",
+            display: "flex",
+          }}
+        >
+          {title}
+        </span>
+      </div>
+
+      {/* Footer branding bar */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "22px",
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            color: "#ffffff",
+          }}
+        >
+          BALI ZERO
+        </span>
+        <span
+          style={{
+            fontSize: "18px",
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "rgba(255,255,255,0.45)",
+          }}
+        >
+          KBLI 2025 Navigator
+        </span>
+      </div>
+    </div>,
     {
       width: WIDTH,
       height: HEIGHT,

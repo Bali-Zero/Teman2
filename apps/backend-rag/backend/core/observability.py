@@ -25,6 +25,7 @@ Usage:
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import threading
@@ -244,6 +245,58 @@ def get_langfuse_client() -> Any | None:
     return _CLIENT
 
 
+@contextlib.contextmanager
+def _noop_span_cm() -> Any:
+    yield None
+
+
+def start_traced_span(
+    lf: Any,
+    *,
+    name: str,
+    input: Any = None,  # matches Langfuse SDK kwarg name
+    metadata: Any = None,
+) -> Any:
+    """Start a Langfuse span, tolerant of the v3->v4 SDK rename.
+
+    Incident (2026-07-05 to 2026-07-17): dependabot bumped `langfuse`
+    3.14.6 -> 4.x. v3.x exposed `Langfuse.start_as_current_span(...)`;
+    v4.x renamed it to `Langfuse.start_as_current_observation(...,
+    as_type="span")` and dropped the old name entirely (verified against
+    the pinned `langfuse==4.14.0` in requirements.lock.txt). Every call
+    site that did `with lf.start_as_current_span(...) as span:`
+    unconditionally raised `AttributeError` on the FIRST call, taking down
+    `/api/agentic-rag/query` end to end for 11 days (61 failed WA-bot
+    sends vs 1 success) until the `LANGFUSE_ENABLED=false` kill-switch
+    was flipped as an emergency mitigation.
+
+    This helper resolves the right method by `hasattr` (v4 preferred,
+    v3 as a defense-in-depth fallback for a hypothetical downgrade) and
+    degrades to a no-op span on ANY failure — telemetry must never crash
+    the query path again. Returns a **synchronous** context manager that
+    yields the span object (or None when tracing could not start).
+    """
+    try:
+        if hasattr(lf, "start_as_current_observation"):
+            return lf.start_as_current_observation(
+                name=name,
+                as_type="span",
+                input=input,
+                metadata=metadata,
+            )
+        if hasattr(lf, "start_as_current_span"):
+            return lf.start_as_current_span(name=name, input=input, metadata=metadata)
+        logger.warning(
+            "langfuse.span_api_missing name=%s — client exposes neither "
+            "start_as_current_observation (v4) nor start_as_current_span "
+            "(v3); tracing disabled for this call (fail-open)",
+            name,
+        )
+    except Exception as exc:
+        logger.warning("langfuse.span_start_failed name=%s error=%s", name, exc)
+    return _noop_span_cm()
+
+
 def shutdown_observability() -> None:
     """Flush pending spans. Call on FastAPI shutdown / CLI exit."""
     global _CLIENT, _INITIALIZED
@@ -263,4 +316,5 @@ __all__ = [
     "init_observability",
     "is_enabled",
     "shutdown_observability",
+    "start_traced_span",
 ]

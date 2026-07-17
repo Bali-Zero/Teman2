@@ -78,6 +78,19 @@ _ENABLE_HYDE = os.getenv("ENABLE_HYDE", "false").lower() in ("true", "1", "yes")
 # R5 Phase 6: _ENABLE_NLM_ORCHESTRATOR removed — NLM routing decommissioned, Qdrant+KG canonical
 _ENABLE_DEEP_RESEARCH = os.getenv("ENABLE_DEEP_RESEARCH", "false").lower() in ("true", "1", "yes")
 
+# SPEC v2 D3-L2 (F1b, 2026-07-17): curated_qa grounding injection.
+# NOT verbatim serving — a hit is prepended to the ReAct system context as
+# high-priority evidence; the LLM still answers the real question and the
+# abstain gate still runs downstream. Default ON, env-flagged off-switch.
+_CURATED_QA_INJECTION_ENABLED = os.getenv("CURATED_QA_INJECTION_ENABLED", "true").lower() in (
+    "true",
+    "1",
+    "yes",
+)
+_CURATED_QA_COLLECTION_NAME = "curated_qa"
+_CURATED_QA_TOP_K = 2
+_CURATED_QA_SCORE_THRESHOLD = 0.90
+
 
 class OrchestratorCore:
     """
@@ -322,6 +335,89 @@ class OrchestratorCore:
                 set_span_status("error", str(e))
 
         return None
+
+    async def _inject_curated_qa_grounding(self, query: str) -> str:
+        """D3-L2 (SPEC v2, F1b): grounding injection from the curated_qa collection.
+
+        This is NOT verbatim serving. On a high-confidence hit (score >=
+        _CURATED_QA_SCORE_THRESHOLD) the pre-vetted answer is formatted as a
+        tagged evidence block and returned for the CALLER to prepend to the
+        ReAct system context — the LLM still reasons over and answers the
+        real question, and the abstain gate still runs on its output. This
+        method never returns an answer directly and never short-circuits the
+        query pipeline.
+
+        Defensive by design: any failure (Qdrant down, malformed payload,
+        missing retriever) is logged and degrades to "" (no injection) —
+        this step must never break the main query path.
+
+        Args:
+            query: The user's query (embedded and searched verbatim against
+                the curated_qa collection).
+
+        Returns:
+            A formatted evidence-block string ready to append to
+            `system_context_for_prompt`, or "" if disabled/no qualifying hit/
+            error.
+        """
+        if not _CURATED_QA_INJECTION_ENABLED or not self.retriever:
+            return ""
+
+        try:
+            search_result = await self.retriever.search_collection(
+                query=query,
+                collection_name=_CURATED_QA_COLLECTION_NAME,
+                limit=_CURATED_QA_TOP_K,
+            )
+            if not isinstance(search_result, dict):
+                # Defensive: search_collection's real contract returns a plain
+                # dict ({"results": [...], ...}); anything else (including a
+                # not-yet-awaited object from an under-specced test double) is
+                # treated as a miss rather than risking a sync .get() call on
+                # something that expects to be awaited.
+                return ""
+
+            blocks: list[str] = []
+            for hit in search_result.get("results", []):
+                if not isinstance(hit, dict):
+                    continue
+                if hit.get("score", 0.0) < _CURATED_QA_SCORE_THRESHOLD:
+                    continue
+                metadata = hit.get("metadata") or {}
+                answer = metadata.get("answer")
+                if not answer:
+                    # Question-only seeds (prewarm/golden) must never reach
+                    # here (the harvester skips them for the Qdrant sink too),
+                    # but skip defensively rather than inject an empty block.
+                    continue
+                source_ref = metadata.get("source_ref", "unknown")
+                source_date = metadata.get("source_date", "unknown")
+                blocks.append(f"[CURATED {source_ref} {source_date}]\n{answer}")
+
+            if not blocks:
+                return ""
+
+            try:
+                from backend.app.metrics import curated_qa_injections_total
+
+                curated_qa_injections_total.inc()
+            except ImportError:
+                pass
+
+            logger.info(
+                "✅ [CuratedQA] Injected %d curated evidence block(s) for query",
+                len(blocks),
+            )
+            return (
+                "\n\n--- CURATED KNOWLEDGE (high-priority, pre-vetted evidence) ---\n"
+                + "\n\n".join(blocks)
+            )
+        except Exception as e:
+            logger.warning(
+                "⚠️ [CuratedQA] Grounding injection failed (continuing without): %s",
+                e,
+            )
+            return ""
 
     async def extract_entities_and_kg_context(
         self,
@@ -866,6 +962,16 @@ class OrchestratorCore:
         )
         if cached_result:
             return cached_result
+
+        # 3c. [SPEC v2 D3-L2] Curated QA grounding injection — NOT verbatim
+        # serving: on a high-confidence curated_qa hit, prepend it as
+        # high-priority evidence to the system context. The query still goes
+        # through the full ReAct loop + abstain gate below; this only shapes
+        # the evidence the LLM reasons over. Defensive by design (see
+        # _inject_curated_qa_grounding docstring) — never raises.
+        curated_qa_context = await self._inject_curated_qa_grounding(query)
+        if curated_qa_context:
+            system_context_for_prompt += curated_qa_context
 
         # 3b. Phase 6: Check if multi-agent coordination is needed
         if self._multi_agent_coordinator and requires_multi_agent(query):

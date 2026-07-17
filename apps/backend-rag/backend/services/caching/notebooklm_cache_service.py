@@ -22,6 +22,19 @@ from redis.exceptions import RedisError
 
 logger = logging.getLogger(__name__)
 
+# P7 (SPEC v2 D3): provenance metadata required on every set() call. This is the
+# safety guardrail behind "NO verbatim serving from any similarity-based layer;
+# verbatim only from exact-match FAQ cache with pre-vetted provenance" — an
+# entry with no source_ref/source_date/domain/confidence_class/source_priority
+# has no provable provenance and must never be written.
+REQUIRED_FAQ_PROVENANCE_KEYS: tuple[str, ...] = (
+    "source_ref",
+    "source_date",
+    "domain",
+    "confidence_class",
+    "source_priority",
+)
+
 
 class NotebookLMCacheService:
     """
@@ -106,6 +119,28 @@ class NotebookLMCacheService:
         # Hash to fixed length
         return hashlib.md5(key_input.encode()).hexdigest()
 
+    @staticmethod
+    def _is_valid_cache_shape(entry: Any) -> bool:
+        """Validate the cached JSON shape: {"answer": str, "metadata": dict, ...}.
+
+        Anything else (missing answer, non-string answer, non-dict metadata) is
+        treated as corrupt — get() self-heals by deleting it (see get()).
+        """
+        return (
+            isinstance(entry, dict)
+            and isinstance(entry.get("answer"), str)
+            and isinstance(entry.get("metadata"), dict)
+        )
+
+    async def _self_heal_delete(self, key: str) -> None:
+        """Best-effort delete of a corrupt/malformed cache entry."""
+        try:
+            await self.redis_client.delete(key)
+        except (RedisError, OSError) as e:
+            logger.warning("Redis error during self-heal delete of corrupt key: %s", e)
+        except Exception:
+            logger.exception("Unexpected error during self-heal delete of corrupt key")
+
     async def get(self, question: str, notebook_id: str = "") -> dict | None:
         """
         Get cached answer for question.
@@ -122,25 +157,47 @@ class NotebookLMCacheService:
                 "question": "What is PPh Badan?",
                 "answer": "PPh Badan is...",
                 "cached_at": "2026-02-11T10:00:00Z",
-                "source": "cache"
+                "source": "cache",
+                "metadata": {...}
             }
+
+        Malformed entries (invalid JSON, or valid JSON that doesn't match the
+        expected shape) are treated as a cache MISS and self-heal by deleting
+        the corrupt key — a stale/garbled entry must never be served.
         """
         if not self.redis_client:
             logger.warning("⚠️ Redis not connected, cache disabled")
             return None
 
+        key = self.cache_prefix + self._hash_question(question, notebook_id)
         try:
-            key = self.cache_prefix + self._hash_question(question, notebook_id)
             cached = await self.redis_client.get(key)
 
-            if cached:
-                logger.info(f"✅ Cache HIT: {question[:50]}...")
-                return json.loads(cached)
-            logger.debug(f"❌ Cache MISS: {question[:50]}...")
-            return None
-        except (json.JSONDecodeError, TypeError) as e:
-            logger.warning("Corrupt cache entry for question '%.50s': %s", question, e)
-            return None
+            if not cached:
+                logger.debug(f"❌ Cache MISS: {question[:50]}...")
+                return None
+
+            try:
+                entry = json.loads(cached)
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.warning(
+                    "Corrupt cache entry (invalid JSON) for question '%.50s': %s — self-healing",
+                    question,
+                    e,
+                )
+                await self._self_heal_delete(key)
+                return None
+
+            if not self._is_valid_cache_shape(entry):
+                logger.warning(
+                    "Malformed cache entry shape for question '%.50s' — self-healing",
+                    question,
+                )
+                await self._self_heal_delete(key)
+                return None
+
+            logger.info(f"✅ Cache HIT: {question[:50]}...")
+            return entry
         except (RedisError, OSError) as e:
             logger.warning("Redis error during cache get: %s", e)
             return None
@@ -161,18 +218,53 @@ class NotebookLMCacheService:
         Args:
             question: User question
             answer: Response answer
-            metadata: Optional metadata (domain, language, etc.)
+            metadata: REQUIRED provenance metadata — must include source_ref,
+                source_date, domain, confidence_class, and source_priority (int).
+                This is the P7 (SPEC v2 D3) safety guardrail: verbatim serving
+                from this cache is only safe when every entry carries provable,
+                pre-vetted provenance.
             notebook_id: Optional notebook identifier to scope the cache key
 
         Returns:
-            True if cached successfully
+            True if cached successfully. False if a collision was refused
+            (an existing entry has a strictly higher source_priority) or if
+            the write failed for infra reasons (Redis unavailable/error).
+
+        Raises:
+            ValueError: If metadata is missing a required provenance key, or
+                source_priority is not an int. This is a caller-contract
+                violation and is raised even when Redis is unavailable — it
+                must never be silently swallowed as a "degraded mode".
         """
+        metadata = metadata or {}
+        missing = [k for k in REQUIRED_FAQ_PROVENANCE_KEYS if k not in metadata]
+        if missing:
+            raise ValueError(
+                f"NotebookLMCacheService.set() requires provenance metadata keys "
+                f"{missing} (P7 — verbatim FAQ entries must carry pre-vetted "
+                f"provenance: source_ref, source_date, domain, confidence_class, "
+                f"source_priority)."
+            )
+        source_priority = metadata["source_priority"]
+        if not isinstance(source_priority, int) or isinstance(source_priority, bool):
+            raise ValueError(
+                "NotebookLMCacheService.set() requires metadata['source_priority'] "
+                "to be an int (used for the collision policy — higher wins)."
+            )
+
         if not self.redis_client:
             logger.warning("⚠️ Redis not connected, cannot cache")
             return False
 
         try:
             key = self.cache_prefix + self._hash_question(question, notebook_id)
+
+            # Collision policy (P7): an existing entry with a HIGHER
+            # source_priority is never silently overwritten by a lower-
+            # priority write — last-writer-wins is exactly what provenance
+            # enforcement exists to prevent.
+            if not await self._existing_entry_outranks(key, source_priority, question):
+                return False
 
             # Build cache entry
             from datetime import datetime, timezone
@@ -182,7 +274,7 @@ class NotebookLMCacheService:
                 "answer": answer,
                 "cached_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat() + "Z",
                 "source": "cache",
-                "metadata": metadata or {},
+                "metadata": metadata,
             }
 
             # Store with TTL
@@ -203,6 +295,42 @@ class NotebookLMCacheService:
         except Exception:
             logger.exception("Unexpected error during cache set")
             return False
+
+    async def _existing_entry_outranks(
+        self,
+        key: str,
+        incoming_priority: int,
+        question: str,
+    ) -> bool:
+        """Return False iff an existing, well-formed entry at `key` has a
+        strictly higher source_priority than `incoming_priority` (i.e. the
+        write must be refused). Malformed existing entries never block a
+        write — they self-heal via overwrite."""
+        try:
+            existing_raw = await self.redis_client.get(key)
+        except (RedisError, OSError):
+            return True  # can't check collision — best-effort, allow write
+
+        if not existing_raw:
+            return True
+
+        try:
+            existing_entry = json.loads(existing_raw)
+            existing_priority = existing_entry.get("metadata", {}).get("source_priority")
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            return True  # corrupt existing entry — allow overwrite (self-heal)
+
+        if isinstance(existing_priority, int) and existing_priority > incoming_priority:
+            logger.warning(
+                "FAQ cache set() collision refused for '%.50s': existing "
+                "source_priority=%d > incoming=%d",
+                question,
+                existing_priority,
+                incoming_priority,
+            )
+            return False
+
+        return True
 
     async def delete(self, question: str, notebook_id: str = "") -> bool:
         """
