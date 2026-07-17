@@ -602,6 +602,29 @@ async def get_pending_queue(
     if api_key != settings.intel_scraper_api_key:
         raise HTTPException(status_code=401, detail="Unauthorized")
     async with pool.acquire() as conn:
+        # Stale-claim reaper: a poller that dies/times out mid-batch leaves items
+        # stuck in 'processing' forever (no reaper existed — 26 corpses found in
+        # prod, 22 from 2026-07-11). Re-queue anything claimed >2h ago; attempts
+        # is left untouched (it already incremented at claim time).
+        await conn.execute(
+            """
+            UPDATE post_publish_queue
+            SET status = 'pending'
+            WHERE status = 'processing' AND started_at < NOW() - INTERVAL '2 hours'
+            """,
+        )
+        # Failed re-pick: items marked 'failed' were never re-queued automatically
+        # — the only path back was enqueue_post_publish's ON CONFLICT, which never
+        # fires for slugs no longer being re-published (87 items stuck at
+        # attempts=1). Re-queue anything still under the attempt cap so the
+        # documented "max 5 attempts then dead" design actually happens.
+        await conn.execute(
+            """
+            UPDATE post_publish_queue
+            SET status = 'pending'
+            WHERE status = 'failed' AND attempts < 5
+            """,
+        )
         # Mark as processing and return (max 5 attempts, then dead-letter)
         await conn.execute(
             """

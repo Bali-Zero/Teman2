@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import asyncpg
+import pytest
+
+from backend.db.migration_base import split_migration_sql
 from backend.db.migration_manager import _extract_rollback_sql
 
 MIGRATION_FILE = (
@@ -13,7 +17,16 @@ MIGRATION_FILE = (
     / "244_compliance_alerts_runtime_grants.sql"
 )
 
+COMPLIANCE_ALERTS_MIGRATION_FILE = (
+    Path(__file__).resolve().parents[2]
+    / "db"
+    / "migrations_v2"
+    / "114_compliance_alerts.sql"
+)
+
 WRITE_OBJECTS = ("public.compliance_alerts",)
+
+RUNTIME_ROLE = "backend_rag_v2"
 
 
 def _forward(sql: str) -> str:
@@ -97,3 +110,170 @@ def test_migration_244_rollback_revokes_same_grants() -> None:
     assert "DELETE" not in rollback
     for object_name in WRITE_OBJECTS:
         assert object_name in rollback
+
+
+def _strip_sql_line_comments(sql: str) -> str:
+    """Drop lines that are pure `--` comments.
+
+    Guard-over-match note (cicatrix family #3): a bare
+    `"needle" not in forward` substring check is exactly the trap this
+    repo's own guardrail doctrine warns about — this migration file's own
+    explanatory prose is allowed to *discuss* a removed function call
+    (as it does, in the NOTE comment above the FOREACH loop's tail) without
+    that meaning the call is still executable. Every comment line in this
+    file's style starts with `--` on its own line (no trailing inline
+    comments), so filtering by line-prefix is precise here — this checks
+    the entity (executable code), not the substring (any occurrence at
+    all, including prose).
+    """
+    return "\n".join(
+        line for line in sql.splitlines() if not line.strip().startswith("--")
+    )
+
+
+def test_migration_244_forward_sql_has_no_serial_sequence_lookup() -> None:
+    """Structural guard against regressing the 2026-07-17 fix.
+
+    compliance_alerts.alert_id is TEXT PRIMARY KEY (no `id` column — see
+    114_compliance_alerts.sql), so any future edit that reintroduces
+    `pg_get_serial_sequence(object_name, 'id')` (or an equivalent
+    per-column-name sequence lookup) inside the FOREACH loop would
+    reintroduce the exact bug: that call RAISES "column ... does not
+    exist" when the table has no `id` column, uncaught by any exception
+    handler in this DO-block, aborting the whole migration on every real
+    apply attempt (i.e. whenever `backend_rag_v2` exists — prod). This is
+    a cheap static tripwire alongside the dynamic proof below, not a
+    replacement for it — see
+    test_migration_244_applies_cleanly_with_runtime_role_present for the
+    bug this guards against (which this line-only check cannot itself
+    catch: the text-contract tests in this file existed BEFORE the fix and
+    never ran the SQL, which is why the bug reached prod in the first
+    place).
+
+    Checks executable code only (comment lines stripped) — the migration's
+    own NOTE comment legitimately mentions `pg_get_serial_sequence` in
+    prose explaining why it's gone; a bare substring scan of the whole
+    file would false-positive on that prose instead of checking for the
+    live call (same over-match class the existing
+    test_migration_244_does_not_over_grant_delete docstring already
+    warns about).
+    """
+    forward_code = _strip_sql_line_comments(_forward(MIGRATION_FILE.read_text()))
+    assert "pg_get_serial_sequence" not in forward_code
+
+
+# ---------------------------------------------------------------------------
+# Real-DB regression tests for the 2026-07-17 prod outage.
+#
+# Root cause: `pg_get_serial_sequence(object_name, 'id')` (previously at
+# line ~119) does not return NULL for a table with no `id` column — it
+# RAISEs `UndefinedColumnError: column "id" of relation "compliance_alerts"
+# does not exist`, uncaught by any exception handler in this DO-block. Every
+# text-contract test above reads the file and asserts on substrings; none of
+# them ever EXECUTE the SQL, so none could catch a runtime-only failure mode.
+#
+# The bug was invisible locally/CI because the whole DO-block is guarded by
+# `IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = runtime_role) THEN
+# RETURN; END IF;` — `backend_rag_v2` is never created locally or in CI, so
+# the guard RETURNs before the FOREACH loop ever reaches the crashing line.
+# In prod, the role exists, the guard passes through, and the migration
+# aborted on every `apply_all_pending()` call (i.e. every `flyctl deploy`
+# release_command) from 2026-07-16 19:47Z onward.
+#
+# These tests create `backend_rag_v2` for real (inside the transaction-
+# scoped `db_tx` fixture, which is always rolled back at teardown — nothing
+# persists, no manual cleanup needed) so the FOREACH loop's grant logic
+# actually executes, exercising the exact code path that broke prod.
+# ---------------------------------------------------------------------------
+
+
+async def _ensure_role(conn: asyncpg.Connection, role: str) -> None:
+    """Create `role` if it doesn't already exist (e.g. a CI/staging DB where
+    the runtime role is provisioned out-of-band). Runs inside the caller's
+    transaction — `db_tx` rolls it back at teardown either way, so this
+    never leaves cluster-wide state behind when it's this function that
+    created the role."""
+    exists = await conn.fetchval(
+        "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = $1)",
+        role,
+    )
+    if not exists:
+        await conn.execute(f'CREATE ROLE "{role}"')
+
+
+async def _ensure_compliance_alerts_table(conn: asyncpg.Connection) -> None:
+    """Idempotently ensure compliance_alerts exists (114's forward SQL is
+    itself `CREATE TABLE IF NOT EXISTS`). In both local dev and CI this
+    table is already present by the time this test file runs, but building
+    it defensively keeps this test self-sufficient rather than relying on
+    ambient ordering."""
+    exists = await conn.fetchval(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+        "WHERE table_schema = 'public' AND table_name = 'compliance_alerts')"
+    )
+    if not exists:
+        sql = COMPLIANCE_ALERTS_MIGRATION_FILE.read_text(encoding="utf-8")
+        forward, _ = split_migration_sql(sql)
+        await conn.execute(forward)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_migration_244_applies_cleanly_with_runtime_role_present(
+    db_tx: asyncpg.Connection,
+) -> None:
+    """The forward SQL must complete without raising, and must grant exactly
+    SELECT/INSERT/UPDATE (never DELETE) to backend_rag_v2 on
+    compliance_alerts, when the runtime role actually exists — the prod
+    code path. Pre-fix, `db_tx.execute(forward)` below raised
+    `asyncpg.exceptions.UndefinedColumnError`.
+    """
+    await _ensure_role(db_tx, RUNTIME_ROLE)
+    await _ensure_compliance_alerts_table(db_tx)
+
+    sql = MIGRATION_FILE.read_text(encoding="utf-8")
+    forward, _ = split_migration_sql(sql)
+
+    # Must not raise. This is the exact statement the Fly release_command
+    # (`python -m backend.db.migrate apply-all` -> apply_all_pending() ->
+    # BaseMigration.apply() -> conn.execute(sql_forward)) executes in prod.
+    await db_tx.execute(forward)
+
+    for priv in ("SELECT", "INSERT", "UPDATE"):
+        granted = await db_tx.fetchval(
+            "SELECT has_table_privilege($1, 'public.compliance_alerts', $2)",
+            RUNTIME_ROLE,
+            priv,
+        )
+        assert granted, f"{RUNTIME_ROLE} missing {priv} after migration 244 applied"
+
+    delete_granted = await db_tx.fetchval(
+        "SELECT has_table_privilege($1, 'public.compliance_alerts', 'DELETE')",
+        RUNTIME_ROLE,
+    )
+    assert not delete_granted, "migration 244 must never grant DELETE (least privilege)"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_migration_244_idempotent_when_reapplied(
+    db_tx: asyncpg.Connection,
+) -> None:
+    """The forward SQL must be safe to execute twice in a row. Matters for
+    manual remediation / a re-run after a stuck deploy, and mirrors the
+    file's own `has_table_privilege(...)` re-check-before-grant contract.
+    """
+    await _ensure_role(db_tx, RUNTIME_ROLE)
+    await _ensure_compliance_alerts_table(db_tx)
+
+    sql = MIGRATION_FILE.read_text(encoding="utf-8")
+    forward, _ = split_migration_sql(sql)
+
+    await db_tx.execute(forward)
+    await db_tx.execute(forward)  # must not raise the second time either
+
+    granted = await db_tx.fetchval(
+        "SELECT has_table_privilege($1, 'public.compliance_alerts', 'SELECT')",
+        RUNTIME_ROLE,
+    )
+    assert granted
