@@ -402,7 +402,7 @@ def wait_for_ollama_free(max_wait: int = 60 * 15) -> bool:
         check = subprocess.run(["pgrep", "-f", "translate_articles.py"], capture_output=True, text=True)
         if check.returncode != 0:
             return True
-        log(f"⏳ Ollama busy — waiting 60s...")
+        log("⏳ Ollama busy — waiting 60s...")
         time.sleep(60)
         waited += 60
     log("⚠ Timeout waiting for Ollama")
@@ -543,7 +543,7 @@ def run_translate(slug: str, category: str) -> bool:
     repo_root = SCRIPT_DIR.parent.parent.parent
     mdx_local = repo_root / "apps" / "mouth" / "src" / "content" / "articles" / category / f"{slug}.mdx"
     if not mdx_local.exists():
-        log(f"  ⚠ MDX not found locally — pulling from GitHub")
+        log("  ⚠ MDX not found locally — pulling from GitHub")
         try:
             import base64 as _b64
             gh_result = subprocess.run(
@@ -558,7 +558,7 @@ def run_translate(slug: str, category: str) -> bool:
                 mdx_local.write_text(content, encoding="utf-8")
                 log(f"  ✅ MDX pulled from GitHub ({len(content)} chars)")
             else:
-                log(f"  ❌ MDX not on GitHub either — cannot translate")
+                log("  ❌ MDX not on GitHub either — cannot translate")
                 return False
         except Exception as e:
             log(f"  ❌ GitHub pull error: {e}")
@@ -781,7 +781,7 @@ def git_pull_monorepo():
     try:
         result = subprocess.run(["git", "pull", "--ff-only"], capture_output=True, text=True, cwd=str(repo_root), timeout=60)
         if result.returncode == 0:
-            log(f"✅ git pull OK")
+            log("✅ git pull OK")
         else:
             # Try stash + pull + pop
             subprocess.run(["git", "stash"], capture_output=True, cwd=str(repo_root), timeout=10)
@@ -848,14 +848,10 @@ def process_item(item: dict) -> tuple[bool, list[str]]:
         if not done.get("translate"):
             if run_translate(slug, category):
                 mark_step_done(slug, "translate")
-                return_translate = True
                 # Auto-rotate hero after successful translate
                 rotate_hero(slug)
             else:
                 failed_steps.append("translate")
-                return_translate = False
-        else:
-            return_translate = True
         # Image
         if not done.get("image"):
             if run_image(slug, category, title=title):
