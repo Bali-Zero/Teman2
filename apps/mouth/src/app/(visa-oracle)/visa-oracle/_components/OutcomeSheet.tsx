@@ -1,17 +1,27 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
   ArrowRight,
   CalendarClock,
+  Check,
+  Copy,
   ListChecks,
   MessageCircle,
-  QrCode,
+  Printer,
 } from "lucide-react";
+import QRCode from "qrcode";
 import type { Assumption, EvaluateResult } from "../_lib/mock-engine";
-import { QUESTIONS, getLane, type OracleFacts } from "../_lib/tree";
+import {
+  QUESTIONS,
+  formatIsoDateForDisplay,
+  getLane,
+  type OracleFacts,
+} from "../_lib/tree";
 import type { Language } from "../_lib/flow";
 import { translate, type I18nKey } from "../_lib/i18n";
 import { ELIGIBILITY_ICON } from "./VerdictReveal";
+import { DISPLAY_ORDER, reviewGateDisplay } from "./ConfirmationCard";
 
 export interface OutcomeSheetProps {
   language: Language;
@@ -67,12 +77,63 @@ function buildWhatsAppSummary(language: Language, facts: OracleFacts): string {
   return [header, ...lines].join("\n");
 }
 
+function localeFor(language: Language): string {
+  return language === "id" ? "id-ID" : "en-GB";
+}
+
+/**
+ * Real QR handoff (design doc §3 interaction #8 — the decorative lucide
+ * `QrCode` glyph this replaced never encoded anything). `QRCode.create()`
+ * (the `qrcode` npm package, MIT, already a monorepo dependency via
+ * `apps/wa-mirror` — reuse-first) is a PURE, SYNCHRONOUS bitmap builder —
+ * no canvas, no async I/O, so it's identical on the server-rendered pass
+ * and the client hydration pass (no hydration mismatch) and needs no
+ * network. The bitmap is hand-rendered as a single `<path>` of unit
+ * squares — a handful of DOM nodes, crisp at any size. Colors are fixed
+ * black-on-white regardless of the oracle light/dark theme: a themed QR
+ * code risks falling under the contrast ratio scanners need.
+ */
+function useQrPath(value: string): { size: number; path: string } {
+  return useMemo(() => {
+    const qr = QRCode.create(value, { errorCorrectionLevel: "M" });
+    const { size, data } = qr.modules;
+    let path = "";
+    for (let row = 0; row < size; row++) {
+      for (let col = 0; col < size; col++) {
+        if (data[row * size + col]) {
+          path += `M${col},${row}h1v1h-1z`;
+        }
+      }
+    }
+    return { size, path };
+  }, [value]);
+}
+
+function OracleQrCode({ value, label }: { value: string; label: string }) {
+  const { size, path } = useQrPath(value);
+  return (
+    <div className="oracle-qr-wrap oracle-no-print">
+      <svg
+        className="oracle-qr"
+        viewBox={`0 0 ${size} ${size}`}
+        role="img"
+        aria-label={label}
+        shapeRendering="crispEdges"
+      >
+        <rect width={size} height={size} fill="#ffffff" />
+        <path d={path} fill="#000000" />
+      </svg>
+    </div>
+  );
+}
+
 /**
  * Outcome-page anatomy, top to bottom (design doc §3): comparison table
  * (≥2 candidates), timeline anchored to today, the single all-inclusive
- * price, document checklist, next 3 steps, WhatsApp handoff + QR
- * placeholder, and a dated assumptions/caveats receipt with the
- * Ditjen-decides disclaimer. Never a fee breakdown — one number.
+ * price, a checkable document checklist, next 3 steps, WhatsApp handoff +
+ * a real QR, share/print/PDF + copy-summary, and a dated assumptions/
+ * caveats receipt with the Ditjen-decides disclaimer. Never a fee
+ * breakdown — one number.
  */
 export function OutcomeSheet({
   language,
@@ -89,8 +150,74 @@ export function OutcomeSheet({
     },
   ).format(today);
 
+  // Item 4 (checklist + share/print): local-to-this-visit checkbox state —
+  // never persisted, never fed back into `facts`/the mock engine, purely a
+  // "what have I gathered" scratchpad for the person reading this page.
+  const [checkedDocs, setCheckedDocs] = useState<Set<string>>(new Set());
+  const toggleDoc = (key: string) => {
+    setCheckedDocs((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const summaryText = buildWhatsAppSummary(language, facts);
+  const [copied, setCopied] = useState(false);
+  const handleCopySummary = async () => {
+    try {
+      await navigator.clipboard.writeText(summaryText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard permission denied or API unavailable (older browsers) —
+      // the summary/WhatsApp link stay visible either way; fail quiet
+      // rather than throw at the user.
+    }
+  };
+
+  // Print-only "your answers" recap (design doc §3 print anatomy: "clean
+  // verdict + answers + checklist + assumptions + disclaimer"). Nothing
+  // else on the verdict screen shows the raw facts — reuses
+  // ConfirmationCard's exact row-building logic so the printed page never
+  // drifts from what the confirmation screen showed earlier in the visit.
+  const answerRows = DISPLAY_ORDER.filter(
+    (id) => facts[id] !== undefined && facts[id] !== "unsure",
+  ).map((id) => {
+    const question = QUESTIONS[id];
+    const value = facts[id];
+    const display =
+      id === "permit_expiry"
+        ? formatIsoDateForDisplay(value, localeFor(language))
+        : id === "review_gate"
+          ? reviewGateDisplay(language, value)
+          : translate(language, `${question.i18nKey}.opt.${value}` as I18nKey);
+    return {
+      id,
+      label: translate(language, question.i18nKey as I18nKey),
+      value: display,
+    };
+  });
+
   return (
     <div className="oracle-outcome">
+      {answerRows.length > 0 && (
+        <section className="oracle-print-only">
+          <h2 className="oracle-outcome__section-title">
+            {translate(language, "confirmation.your_answers")}
+          </h2>
+          <div className="oracle-confirmation__group">
+            {answerRows.map((row) => (
+              <div key={row.id} className="oracle-confirmation__row">
+                <span className="oracle-confirmation__label">{row.label}</span>
+                <span className="oracle-confirmation__value">{row.value}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {result.state === "HUMAN_REVIEW_REQUIRED" && (
         <section>
           <p style={{ margin: 0, color: "var(--oracle-ink)" }}>
@@ -261,15 +388,33 @@ export function OutcomeSheet({
               />
               {translate(language, "outcome.checklist_title")}
             </h2>
-            <ul className="oracle-checklist-doc">
+            {/* Item 4: checkable — mirrors the review-gate checklist
+                pattern (`.oracle-checklist`/`.oracle-checklist__item`,
+                QuestionScreen.tsx's `ReviewGateChecklist`) rather than
+                inventing a new one. State is local to this visit only —
+                never written back to `facts`/the mock engine. */}
+            <fieldset
+              className="oracle-checklist oracle-checklist-doc--checkable"
+              style={{ border: "none", padding: 0, margin: 0 }}
+            >
+              <legend className="oracle-sr-only">
+                {translate(language, "outcome.checklist_title")}
+              </legend>
               {Array.from(
                 new Set(
                   result.candidates.flatMap((c) => c.requirementI18nKeys),
                 ),
               ).map((key) => (
-                <li key={key}>{translate(language, key as I18nKey)}</li>
+                <label key={key} className="oracle-checklist__item">
+                  <input
+                    type="checkbox"
+                    checked={checkedDocs.has(key)}
+                    onChange={() => toggleDoc(key)}
+                  />
+                  {translate(language, key as I18nKey)}
+                </label>
               ))}
-            </ul>
+            </fieldset>
           </section>
         </>
       )}
@@ -298,6 +443,7 @@ export function OutcomeSheet({
           </section>
 
           <section
+            className="oracle-no-print"
             style={{
               display: "flex",
               flexWrap: "wrap",
@@ -308,7 +454,7 @@ export function OutcomeSheet({
             <a
               className="oracle-whatsapp-cta"
               href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                buildWhatsAppSummary(language, facts),
+                summaryText,
               )}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -316,21 +462,49 @@ export function OutcomeSheet({
               <MessageCircle aria-hidden="true" size={18} />
               {translate(language, "outcome.whatsapp_cta")}
             </a>
-            <div
-              aria-hidden="true"
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: "var(--radius-md)",
-                border: "1px dashed var(--oracle-border-strong)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--oracle-ink-faint)",
-              }}
+            {/* Item 3: a real, scannable QR encoding the exact same
+                pre-loaded wa.me URL as the link beside it — the link
+                itself is the text alternative (never aria-hidden). */}
+            <OracleQrCode
+              value={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                summaryText,
+              )}`}
+              label={translate(language, "outcome.qr_aria" as I18nKey)}
+            />
+          </section>
+
+          <section className="oracle-outcome-actions oracle-no-print">
+            <button
+              type="button"
+              className="oracle-print-cta"
+              onClick={() => window.print()}
             >
-              <QrCode size={28} />
-            </div>
+              <Printer aria-hidden="true" size={18} />
+              {translate(language, "outcome.print_cta" as I18nKey)}
+            </button>
+            <button
+              type="button"
+              className="oracle-copy-cta"
+              data-copied={copied ? "true" : "false"}
+              onClick={handleCopySummary}
+            >
+              {copied ? (
+                <Check aria-hidden="true" size={18} />
+              ) : (
+                <Copy aria-hidden="true" size={18} />
+              )}
+              {translate(
+                language,
+                copied
+                  ? ("outcome.copy_confirmed" as I18nKey)
+                  : ("outcome.copy_cta" as I18nKey),
+              )}
+            </button>
+            <span role="status" aria-live="polite" className="oracle-sr-only">
+              {copied
+                ? translate(language, "outcome.copy_confirmed" as I18nKey)
+                : ""}
+            </span>
           </section>
 
           <section className="oracle-receipt">

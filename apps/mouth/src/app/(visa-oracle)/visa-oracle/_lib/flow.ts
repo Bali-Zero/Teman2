@@ -395,6 +395,26 @@ export function getTreeSteps(
   return { trunk, categoryLeaves };
 }
 
+/**
+ * Tree tap-to-edit (design doc §3 interaction #6): a trunk step is a valid
+ * `EDIT` jump target only if it is BOTH a completed answer ("done") AND an
+ * actual question node. "framing"/"confirmation"/"verdict" can reach
+ * "done" status too (they're plain forward moves through the trunk, not
+ * questions) and must never render as editable — `flowReducer`'s EDIT
+ * action only knows how to truncate history to a `{ kind: "question" }`
+ * node, so dispatching EDIT with one of those ids would silently no-op
+ * (`truncateToNode` finds no match and returns the history unchanged).
+ * Current/pending/pruned steps are never editable either — you can't jump
+ * forward to an answer that doesn't exist yet. Pure, so `LivingTree` never
+ * has to re-derive this rule itself.
+ */
+export function isEditableTreeStep(step: TreeStep): boolean {
+  return (
+    step.status === "done" &&
+    Object.prototype.hasOwnProperty.call(QUESTIONS, step.id)
+  );
+}
+
 function behavioralSteps(
   facts: OracleFacts,
 ): { id: string; labelI18nKey: string }[] {
