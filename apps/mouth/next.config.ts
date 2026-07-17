@@ -291,6 +291,14 @@ const nextConfig: NextConfig = {
         destination: "/kbli/:path*",
         permanent: true,
       },
+      // Track C consolidation (2026-07-17, #2610 + C2): /visa-v2 was the
+      // twin session's C1 foundation prototype, superseded by the
+      // complete (visa-oracle) experience at /visa-oracle.
+      {
+        source: "/visa-v2",
+        destination: "/visa-oracle",
+        permanent: true,
+      },
       // Note: /chat redirect to zantara.balizero.com is handled by middleware
       // (cannot be here — next.config redirects would conflict with middleware rewrites)
     ];

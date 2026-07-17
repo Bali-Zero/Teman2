@@ -4,7 +4,6 @@
 @import "../../../../packages/core/effects/grain.css";
 @import "../../../../packages/core/effects/shimmer.css";
 @import "../styles/kbli-theme.css";
-@import "../styles/visa-oracle-v2.css";
 
 /* Redefine dark variant to target data-theme instead of .dark class
    (design doc §5 "Toggle mechanism", step 2 of three coupled changes). */
