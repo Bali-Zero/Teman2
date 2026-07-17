@@ -1,5 +1,7 @@
 """Unit tests for wr2_grounding — deterministic paths (no network)."""
-import asyncio, sys, os
+import asyncio
+import sys
+import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 import wr2_grounding as g  # noqa: E402
 
@@ -264,5 +266,6 @@ if __name__ == "__main__":
                test_marker_set_when_article_summary_is_whitespace_only,
                test_early_return_leaves_marker_unset_but_structural_detector_still_catches_it,
                test_marker_absent_when_no_citations_found]:
-        fn(); print("PASS", fn.__name__)
+        fn()
+        print("PASS", fn.__name__)
     print("ALL PASS")

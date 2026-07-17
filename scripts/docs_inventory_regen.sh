@@ -1,0 +1,71 @@
+#!/bin/bash
+# docs_inventory_regen.sh — SSOT regen for the docs-inventory + DOCSYNC derived artifacts.
+#
+# Single source of truth for the exact docs_audit.py invocation (whitelist + cluster
+# args) so automation that needs a fresh docs/DOCS_INVENTORY.md never carries a second
+# copy of that arg list that silently drifts from the original (cicatrix superscar #1 —
+# HOME-fork / duplicate-copy family). Introduced 2026-07-17 as the structural cure for
+# "docs-guardian inventory-check marcisce col calendario": docs_audit.py's classify()
+# flips a doc LIVE->ARCHIVED purely on wall-clock (mtime>90d, Rule 2), independent of any
+# PR's content — so the table committed on main silently rots until an unrelated PR's
+# `inventory-check` gate hits the accumulated calendar delta and fails innocently (2x on
+# #2509 2026-07-16, again on #2592 2026-07-17). See memory
+# discovery_docs_guardian_wallclock_gate_rot_2026_07_16.md for the full incident history.
+#
+# LOCKSTEP NOTICE (read before editing --whitelist/--cluster args):
+#   .github/workflows/docs-guardian.yml's `inventory-check` job (the required PR gate)
+#   still INLINES its own copy of this same args list (for --check, read-only) rather
+#   than calling this script. That required/hot-zone workflow file was deliberately left
+#   untouched here — editing it for a non-functional refactor was judged higher risk
+#   (CODEOWNERS-TIER1 + pre-commit lease-check + meta-verifier surface) than the benefit
+#   of a single extra indirection, per the design tradeoff documented in the PR that added
+#   this script. If you add/remove/rename a --whitelist or --cluster entry, you MUST
+#   update BOTH this file AND docs-guardian.yml's inline args, or the two will diverge
+#   and one of them will start reporting false drift.
+#   scripts/docs_guardian.sh (the existing weekly Pro cron, docs/operations/docs-guardian-cron.md)
+#   ALSO inlines a third copy today (pre-dates this script) — not touched here, out of
+#   scope for this change; a future cleanup could point it at this script too.
+#
+# What this does:
+#   1. Re-syncs DOCSYNC markers (scripts/docs_sync.py, write mode).
+#   2. Regenerates docs/DOCS_INVENTORY.md in TABLE-ONLY mode (docs_audit.py --regen-only):
+#      refreshes the calendar-driven LIVE/STALE/ARCHIVED classification WITHOUT physically
+#      git-mv'ing orphans into docs/archive/. Physical archival remains
+#      scripts/docs_guardian.sh's weekly L1 job — this script only cures the TABLE drift.
+#
+# Exit code: always 0 on a completed run (regardless of whether content changed) — both
+# underlying tools return RC=1 BY DESIGN when they rewrite content ("drift detected" is
+# not a failure). Callers must check `git diff --quiet` on the working tree afterward to
+# detect real drift; this script does not make that decision.
+#
+# Usage: scripts/docs_inventory_regen.sh   (no args; run from anywhere, cd's to repo root)
+
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
+# Kept identical to .github/workflows/docs-guardian.yml's inventory-check step args —
+# see LOCKSTEP NOTICE above.
+WHITELIST_ARGS=(
+  --whitelist "docs/ARCHITECTURE_DECISION_RECORDS.md"
+  --whitelist "docs/API_REFERENCE.md"
+  --whitelist "AUTONOMOUS_OPS.md"
+  --whitelist "docs/PRO_AIR_CONNECTION.md"
+)
+
+CLUSTER_ARGS=(
+  --cluster "automation-autonomy:docs/archive/autonomy-history/AUTOMATION_AUTONOMY_PLAN_v3_1.md,docs/archive/autonomy-history/AUTOMATION_AUTONOMY_SYSTEM_V3_2.md,docs/AUTOMATION_AUTONOMY_SYSTEM_V3_3.md,docs/archive/autonomy-history/AUTOMATION_AUTONOMY_NB1_SUBMISSION.md:docs/AUTOMATION_AUTONOMY_SYSTEM_V3_3.md"
+  --cluster "automations-catalog:docs/archive/ACTIVE_AUTOMATIONS.md,docs/archive/AUTOMATION_MODEL_MAP.md,docs/AUTOMATIONS.md:docs/AUTOMATIONS.md"
+  --cluster "system-map:docs/archive/system-map-history/SYSTEM_MAP_4D.md,docs/archive/system-map-history/SYSTEM_OVERVIEW.md,docs/archive/system-map-history/CODEBASE_THEMATIC_AREAS.md,docs/LIVING_ARCHITECTURE.md:docs/LIVING_ARCHITECTURE.md"
+  --cluster "system-audit:docs/archive/SYSTEM_AUDIT_2026-04-03.md,docs/SYSTEM_AUDIT_FINAL_2026-04-03.md:docs/SYSTEM_AUDIT_FINAL_2026-04-03.md"
+)
+
+echo "docs_inventory_regen: syncing DOCSYNC markers..." >&2
+python3 scripts/docs_sync.py --quiet || true
+
+echo "docs_inventory_regen: regenerating docs/DOCS_INVENTORY.md (table-only, --regen-only)..." >&2
+python3 scripts/docs_audit.py --regen-only --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" || true
+
+echo "docs_inventory_regen: done." >&2
+exit 0
