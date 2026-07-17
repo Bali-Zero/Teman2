@@ -78,7 +78,7 @@ class TestInitialization:
 
     def test_default_model_name(self, _patch_persona: Any) -> None:
         svc = GeminiJakselService()
-        assert svc.model_name == "gemini-3-flash-preview"
+        assert svc.model_name == "gemini-3.5-flash"
 
     def test_few_shot_history_populated(self, _patch_persona: Any) -> None:
         svc = GeminiJakselService()

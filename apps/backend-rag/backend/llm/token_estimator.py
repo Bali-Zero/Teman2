@@ -18,7 +18,7 @@ _TOKEN_WORD_RATIO = 1.3
 class TokenEstimator:
     """Lightweight token estimator using word-count approximation."""
 
-    def __init__(self, model: str = "gemini-3-flash-preview") -> None:
+    def __init__(self, model: str = "gemini-3.5-flash") -> None:
         self.model = model
 
     def estimate_tokens(self, text: str) -> int:
