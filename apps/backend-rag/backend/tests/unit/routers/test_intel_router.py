@@ -309,6 +309,78 @@ class TestPostPublishQueue:
         assert response.status_code == 400
 
 
+# ── enqueue_post_publish force reconciliation (2026-07-17) ─────────────────
+#
+# Regression coverage for the poller-necrosis reconciliation path: a batch
+# flush lost mid-run leaves completed_steps.image=true recorded even though
+# the cover never landed on GitHub — the default ON CONFLICT only resets
+# 'failed' rows, so a 'done' item with a missing cover would never re-run.
+# `force: true` must unconditionally reset status/attempts/completed_steps;
+# the default (force absent/false) must stay byte-identical to before.
+
+
+class TestEnqueuePostPublishForce:
+    def test_force_true_resets_unconditionally(self, mock_services):
+        from backend.app.routers import intel as intel_router_module
+
+        intel_router_module.settings.intel_scraper_api_key = "test-key"
+        test_client, conn = _client_with_auth(mock_services)
+
+        response = test_client.post(
+            "/api/intel/post-publish-queue",
+            json={"slug": "test-article", "category": "business", "force": True},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["ok"] is True
+
+        conn.execute.assert_awaited_once()
+        executed_sql = conn.execute.await_args_list[0].args[0]
+        assert "status = 'pending'" in executed_sql
+        assert "attempts = 0" in executed_sql
+        assert "completed_steps = '{}'::jsonb" in executed_sql
+        assert "error_message = NULL" in executed_sql
+        # Unconditional — no CASE WHEN status='failed' guard like the default path
+        assert "CASE WHEN" not in executed_sql
+
+    def test_force_absent_keeps_existing_conditional_sql(self, mock_services):
+        """Non-regression pin: default behavior (no `force`) is untouched."""
+        from backend.app.routers import intel as intel_router_module
+
+        intel_router_module.settings.intel_scraper_api_key = "test-key"
+        test_client, conn = _client_with_auth(mock_services)
+
+        response = test_client.post(
+            "/api/intel/post-publish-queue",
+            json={"slug": "test-article", "category": "business"},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["ok"] is True
+
+        conn.execute.assert_awaited_once()
+        executed_sql = conn.execute.await_args_list[0].args[0]
+        assert "CASE WHEN post_publish_queue.status = 'failed'" in executed_sql
+        assert "THEN 'pending' ELSE post_publish_queue.status END" in executed_sql
+        assert "THEN 0 ELSE post_publish_queue.attempts END" in executed_sql
+        assert "completed_steps = '{}'::jsonb" not in executed_sql
+
+    def test_force_false_explicit_same_as_absent(self, mock_services):
+        from backend.app.routers import intel as intel_router_module
+
+        intel_router_module.settings.intel_scraper_api_key = "test-key"
+        test_client, conn = _client_with_auth(mock_services)
+
+        response = test_client.post(
+            "/api/intel/post-publish-queue",
+            json={"slug": "test-article", "force": False},
+        )
+
+        assert response.status_code == 200
+        executed_sql = conn.execute.await_args_list[0].args[0]
+        assert "CASE WHEN post_publish_queue.status = 'failed'" in executed_sql
+
+
 # ── get_pending_queue self-healing (stale-claim reaper + failed re-pick) ───
 #
 # Regression coverage for the queue-necrosis fix: `get_pending_queue` now runs
