@@ -20,23 +20,32 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-17 ~20:20 WITA — keep current)
+## 1. LIVE STATE (last update 2026-07-17 ~23:40 WITA — keep current)
 
 - **PR #2586 MERGED**: 4 production bugs of the outbox worker fixed (burst duplicate replies,
   takeover-during-generation send, generating-crash orphan, FAQ prewarm scope mismatch) +
   per-thread advisory lock, claim-token fencing, lease heartbeat, burst coalescing, K workers
   (`WA_OUTBOX_WORKERS=2`), admission semaphore (`WA_BOT_MAX_CONCURRENT_GENERATIONS=3`).
-- **PR #2588 (cache F1b) MERGED** (2026-07-17 ~21:00 WITA): FAQ cache wired into the orchestrator
-  the WA bot uses (was cache-less), provenance-mandatory cache writes, curated_qa Qdrant collection +
-  grounding injection, harvester/converter tooling. On main, NOT yet deployed.
-- **Model swap IN FLIGHT**: Gemini **3.5 Flash** primary (Zero GO 2026-07-17). Slug
-  `gemini-3.5-flash` double-verified (GA, function calling OK). PR opened right after #2588:
-  `backend/llm/config.py` ModelName.PRIMARY + CHANNEL; consumer-map also
-  `verification_service.py:68`, `pricing.py` cost table, `token_estimator.py` + provider defaults.
-  FALLBACK stays `gemini-2.5-flash`. Rollback = revert. Check `gh pr list` for its status.
-- **Then, in order**: fly deploy rolling → run converters+harvester (216 E33 + 28 golden) into
-  prod FAQ cache + curated_qa → PROVE-LIVE (real WA question, metrics `faq_cache_hits_total`,
-  `curated_qa_injections_total`) → tell Zero to test from his phone.
+- **PR #2588 (cache F1b) MERGED + DEPLOYED**: FAQ cache wired into the orchestrator the WA bot
+  uses, provenance-mandatory cache writes, curated_qa Qdrant collection + grounding injection,
+  harvester/converter tooling. **E33 216 loaded and verified live**: Redis 216 keys + Qdrant 216
+  points.
+- **PR #2611 (Gemini 3.5 Flash) MERGED + DEPLOYED**: PRIMARY/CHANNEL = `gemini-3.5-flash`,
+  proven in prod (GA, function calling OK). FALLBACK stays `gemini-2.5-flash`.
+- **PROVE-LIVE done** on the real bot path: 200 responses in 1.6–3.9s.
+- **LANGFUSE INCIDENT (2026-07-05 → 2026-07-17, bot dead 11 days)**: a dependabot bump
+  (langfuse 3.14.6 → 4.x) renamed `Langfuse.start_as_current_span()` to
+  `start_as_current_observation(..., as_type="span")` — the old name doesn't exist in v4 at all.
+  `_process_query_traced` in `agentic_rag.py` called the v3 name unguarded, so every
+  `/api/agentic-rag/query` call raised `AttributeError` before the orchestrator ever ran. Outbox
+  outcome: 61 failed sends vs 1 success. Emergency mitigation (still active): Fly secret
+  `LANGFUSE_ENABLED=false` (kill-switch in `observability.py::is_enabled`). **Durable fix**: this
+  PR — `backend/core/observability.py::start_traced_span()` resolves v4-first/v3-fallback via
+  `hasattr` and fails open (no-op span + WARNING log) on any mismatch, applied at both real call
+  sites (`agentic_rag.py`, `tone_council.py`). Re-enabling tracing in prod (`fly secrets unset
+LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR merges+deploys —
+  not done yet as of this update.
+- **Corner PR #2612 MERGED** (prior §1 refresh, superseded by this update).
 - **F2 (team check-in) NOT started** — begins after F1 ships. F3 (member profiles) after F2.
 - **Prompt v4 lane SHIPPED, PR #<PR_NUMBER_PENDING> — unified versioned prompt door + v4
   template (split-brain cure) — auto-merge armed.** `zantara_core_v4.py` (deadline-neutral KBLI

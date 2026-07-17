@@ -13,11 +13,15 @@ import {
   getKbliDatasetLastModified,
 } from "@/lib/kbli-data.server";
 import { formatTimeframe } from "@/lib/kbli-derive";
+import { isLicensingVerificationPending } from "@/lib/kbli-provenance";
 import { KBLIBreadcrumb } from "@/components/kbli/KBLIBreadcrumb";
 import { PMABadge } from "@/components/kbli/PMABadge";
 import { RiskBadge } from "@/components/kbli/RiskBadge";
 import { TransitionBadge } from "@/components/kbli/TransitionBadge";
 import { BaliStatusBadge } from "@/components/kbli/BaliStatusBadge";
+import { ProvenanceBadge } from "@/components/kbli/ProvenanceBadge";
+import { KBLIDivergence } from "@/components/kbli/KBLIDivergence";
+import { KBLIProvenancePanel } from "@/components/kbli/KBLIProvenancePanel";
 import { cn } from "@/lib/utils";
 import { KBLICard } from "@/components/kbli/KBLICard";
 import {
@@ -336,7 +340,10 @@ export default async function KBLICodePage({
                   baliBlocked={!!kbli.baliL4?.blocked}
                 />
                 {kbli.licensing[0] && (
-                  <RiskBadge category={kbli.licensing[0].riskCategory} />
+                  <RiskBadge
+                    category={kbli.licensing[0].riskCategory}
+                    verificationPending={isLicensingVerificationPending(kbli)}
+                  />
                 )}
                 <TransitionBadge status={kbli.transition.mappingStatus} />
                 {kbli.baliL4 && (
@@ -347,6 +354,9 @@ export default async function KBLICodePage({
                     needsReview={kbli.baliL4.needsReview}
                     pmaStatus={kbli.pma.status}
                   />
+                )}
+                {kbli.provenance && (
+                  <ProvenanceBadge state={kbli.provenance.state} />
                 )}
               </div>
             </div>
@@ -860,6 +870,16 @@ export default async function KBLICodePage({
                         </div>
                       </div>
                     </div>
+                    {/* One grid-level qualifier instead of per-cell noise:
+                        risk, license AND processing above all come from the
+                        same unverified rows (Codex gate round 5). */}
+                    {isLicensingVerificationPending(kbli) && (
+                      <p className="mt-2 text-[11px] text-[var(--foreground-muted)]">
+                        ⏳ The licensing facts above (risk, license, processing)
+                        await KBLI-2025 crosswalk verification — see Sources
+                        &amp; Verification below.
+                      </p>
+                    )}
                   </section>
                 </>
               )}
@@ -961,6 +981,21 @@ export default async function KBLICodePage({
                 </a>
               )}
             </div>
+          )}
+
+          {/* REGULATORY DIVERGENCE — only on collision-cured codes: the
+              documented 2020-vs-2025 divergence, with citations (TRACK-P) */}
+          {kbli.provenance && (
+            <KBLIDivergence code={kbli.code} provenance={kbli.provenance} />
+          )}
+
+          {/* SOURCES & VERIFICATION — per-fact provenance with vintage,
+              rendered on gold AND non-gold layouts (TRACK-P) */}
+          {kbli.provenance && (
+            <KBLIProvenancePanel
+              kbli={kbli}
+              lastModified={getKbliDatasetLastModified()}
+            />
           )}
 
           {/* COMMON QUESTIONS — visible counterpart of the FAQPage JSON-LD,

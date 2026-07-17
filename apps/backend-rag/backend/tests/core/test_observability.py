@@ -190,10 +190,13 @@ def test_disabled_path_opens_no_socket(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_shutdown_noop_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANGFUSE_ENABLED", "false")
 
-    from backend.core.observability import shutdown_observability
+    import backend.core.observability as obs
 
-    # Must not raise, must not flush anything (there's nothing to flush).
-    shutdown_observability()
+    assert obs._CLIENT is None  # nothing to flush before shutdown
+
+    obs.shutdown_observability()  # must not raise
+
+    assert obs._CLIENT is None  # still no client — nothing was ever constructed
 
 
 def test_shutdown_flushes_when_client_present() -> None:
@@ -216,3 +219,108 @@ def test_shutdown_swallows_flush_errors() -> None:
     obs._INITIALIZED = True
 
     obs.shutdown_observability()  # must not raise
+
+    fake.flush.assert_called_once()  # flush WAS attempted; the error was swallowed
+
+
+# ── 5. start_traced_span — v3/v4 SDK-rename tolerance (2026-07-17) ──────
+#
+# Root cause of the 2026-07-05..17 incident: dependabot bumped langfuse
+# 3.14.6 -> 4.x. v3.x exposed `Langfuse.start_as_current_span(...)`; v4.x
+# renamed it to `Langfuse.start_as_current_observation(..., as_type="span")`
+# and dropped the old name (verified against the pinned langfuse==4.14.0).
+# Every real call site used the v3 name unconditionally with NO guard around
+# the `with` statement itself -> AttributeError crashed every
+# /api/agentic-rag/query call. These tests pin the fix: prefer the real v4
+# API, tolerate a v3 client, and never let a broken/missing span API raise
+# out of start_traced_span.
+
+
+def test_start_traced_span_uses_v4_api_when_available() -> None:
+    from backend.core.observability import start_traced_span
+
+    v4_client = mock.MagicMock(spec=["start_as_current_observation"])
+    sentinel_cm = mock.MagicMock(name="span_cm")
+    v4_client.start_as_current_observation.return_value = sentinel_cm
+
+    result = start_traced_span(
+        v4_client,
+        name="agentic_rag.query",
+        input={"query_hash": "abc"},
+        metadata={"session_id": "s1"},
+    )
+
+    assert result is sentinel_cm
+    v4_client.start_as_current_observation.assert_called_once_with(
+        name="agentic_rag.query",
+        as_type="span",
+        input={"query_hash": "abc"},
+        metadata={"session_id": "s1"},
+    )
+
+
+def test_start_traced_span_falls_back_to_v3_api() -> None:
+    """Defense-in-depth: a hypothetical downgrade to v3.x must still trace."""
+    from backend.core.observability import start_traced_span
+
+    v3_client = mock.MagicMock(spec=["start_as_current_span"])
+    sentinel_cm = mock.MagicMock(name="span_cm")
+    v3_client.start_as_current_span.return_value = sentinel_cm
+
+    result = start_traced_span(
+        v3_client,
+        name="agentic_rag.query",
+        input={"query_hash": "abc"},
+        metadata=None,
+    )
+
+    assert result is sentinel_cm
+    v3_client.start_as_current_span.assert_called_once_with(
+        name="agentic_rag.query",
+        input={"query_hash": "abc"},
+        metadata=None,
+    )
+
+
+def test_start_traced_span_prefers_v4_over_v3_when_both_present() -> None:
+    from backend.core.observability import start_traced_span
+
+    both_client = mock.MagicMock(
+        spec=["start_as_current_observation", "start_as_current_span"],
+    )
+
+    start_traced_span(both_client, name="x")
+
+    both_client.start_as_current_observation.assert_called_once()
+    both_client.start_as_current_span.assert_not_called()
+
+
+def test_start_traced_span_fails_open_when_span_api_missing() -> None:
+    """The exact regression: neither v3 nor v4 method present.
+
+    This is what a mismatched SDK looks like from the caller's side —
+    accessing the missing attribute must NOT raise, and the returned
+    context manager must yield None so `with ... as span:` degrades
+    cleanly instead of crashing the query path.
+    """
+    from backend.core.observability import start_traced_span
+
+    broken_client = mock.MagicMock(spec=[])  # no span methods at all
+
+    cm = start_traced_span(broken_client, name="agentic_rag.query")
+    with cm as span:
+        assert span is None  # no-op span, never raises
+
+
+def test_start_traced_span_fails_open_when_call_raises() -> None:
+    """Even if the attribute exists but calling it explodes, don't crash."""
+    from backend.core.observability import start_traced_span
+
+    exploding_client = mock.MagicMock(spec=["start_as_current_observation"])
+    exploding_client.start_as_current_observation.side_effect = AttributeError(
+        "'Langfuse' object has no attribute 'start_as_current_span'",
+    )
+
+    cm = start_traced_span(exploding_client, name="agentic_rag.query")
+    with cm as span:
+        assert span is None
