@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildKbliFaq } from "./kbli-faq";
-import { getCode } from "./kbli-data";
+import { getAllCodes, getCode } from "./kbli-data";
 import type { KBLICode } from "./kbli-types";
 
 describe("buildKbliFaq", () => {
@@ -75,6 +75,38 @@ describe("buildKbliFaq", () => {
     expect(pmaAnswer).not.toContain("capped at 0%");
   });
 
+  it("declares the licensing gap on every cure-detached subtype — never 'special regime', never asserting regulatory absence", () => {
+    // Real cured pilot codes across cause subtypes: 49213 (authority
+    // collision), 60312 (unlocatable source), 64310 (wrong-pointer
+    // transplant). The class answer must be the weakest common truthful
+    // claim: about OUR verification, not about the regulation (Codex gate F1).
+    for (const c of ["49213", "60312", "64310"]) {
+      const cured = getCode(c);
+      expect(cured, `code ${c}`).toBeDefined();
+      expect(cured!.provenance?.state, `code ${c}`).toBe("not_classifiable");
+      const licenseAnswer = buildKbliFaq(cured as KBLICode)[1].answer;
+      expect(licenseAnswer).toContain("could not be verified");
+      expect(licenseAnswer).toContain("Regulatory Divergence");
+      expect(licenseAnswer).not.toContain("special or sectoral regime");
+      // Never assert absence of a regulation — only our verification state.
+      expect(licenseAnswer).not.toContain("not yet defined");
+      expect(licenseAnswer).not.toContain("does not apply");
+    }
+  });
+
+  it("innocence: a legit no-OSS-rows code keeps the special-regime answer", () => {
+    // A code with zero licensing rows but NO collision cure (the ~100-code
+    // special/sectoral group) must keep the special-regime answer.
+    const special = getAllCodes().find(
+      (c) =>
+        c.licensing.length === 0 && c.provenance?.state !== "not_classifiable",
+    );
+    expect(special).toBeDefined();
+    const licenseAnswer = buildKbliFaq(special as KBLICode)[1].answer;
+    expect(licenseAnswer).toContain("special or sectoral regime");
+    expect(licenseAnswer).not.toContain("Regulatory Divergence");
+  });
+
   it("returns 3-4 entries and every answer names the code", () => {
     const code = getCode("56101") as KBLICode;
     const faq = buildKbliFaq(code);
@@ -83,5 +115,28 @@ describe("buildKbliFaq", () => {
     for (const entry of faq) {
       expect(entry.answer).toContain(code.code);
     }
+  });
+
+  it("qualifies the license answer on pending-with-rows codes; verified codes stay unqualified", () => {
+    // 114 real codes serve rows whose provenance awaits crosswalk
+    // adjudication — the FAQ (visible + JSON-LD) must qualify them.
+    const pending = getAllCodes().find(
+      (c) =>
+        c.licensing.length > 0 &&
+        c.provenance?.licensing.status === "pending_crosswalk",
+    );
+    expect(pending).toBeDefined();
+    const pendingAnswer = buildKbliFaq(pending as KBLICode)[1].answer;
+    expect(pendingAnswer).toContain("crosswalk adjudication is pending");
+
+    // Innocence: an OSS-verified code keeps the plain factual answer.
+    const verified = getAllCodes().find(
+      (c) =>
+        c.licensing.length > 0 &&
+        c.provenance?.licensing.status === "oss_native",
+    );
+    expect(verified).toBeDefined();
+    const verifiedAnswer = buildKbliFaq(verified as KBLICode)[1].answer;
+    expect(verifiedAnswer).not.toContain("crosswalk adjudication is pending");
   });
 });
