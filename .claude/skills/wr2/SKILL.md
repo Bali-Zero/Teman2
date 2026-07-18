@@ -43,7 +43,21 @@ live_news_score/liveness_tier/live_news_reasons through the 3-break contract cha
 (scraper→ScraperSubmission→staging JSON→/pending projection), scar family #9; Codex red-team
 round added projection normalization + score→tier derivation; PROVE-LIVE 2026-07-18: prod probe
 submitted score=85 with NO tier, /pending returned 85/"breaking"(derived)/["probe reason"], then
-rejected. Fly deployed, Pro ~/nuzantara blob-aligned, WR2_PREFER_LIVE_NEWS=true already armed**.
+rejected. Fly deployed, Pro ~/nuzantara blob-aligned, WR2_PREFER_LIVE_NEWS=true already armed** ·
+**official `--rebrief <draft_id>` verb SHIPPED + PROVEN (#2667, growth-loop B5) — `_pg.rebrief_draft`
+atomic reset (`status`→briefed + `fact_check_json`/status/at + `drive_url` + `html_render_attempts`=0 +
+`canva_*` all cleared) mirroring `requeue_draft_for_rerender`; reconciler `--rebrief` one-shot guarded
+by `lease_owner IS NULL` + a status whitelist (every literal mig-245-verified) + a queue-published
+resurrection guard (reuses `wr2_rerender_requeue.check_queue_state` → refuses if the draft's queue
+entry is published/published_with_edits — blood-bought #4). Codex red-team round added the queue
+guard (BLOCKER it caught: rebrief of a DB-`rendered` draft whose queue entry was already published
+would resurrect a live carousel). PROVE-LIVE 2026-07-18 BOTH sides on Pro: APPLY reset a real
+`render_failed` draft (8e582ce0) to `briefed`, fact-check trio + attempts cleared (MCP-confirmed
+delta); REFUSE left a queue-published `rendered` draft (4ca7b22b) byte-identical — exit-refused, zero
+mutation. LIMITATION ledgered: the fact-extractor/checker lane takes no `lease_owner` CAS (unlike
+render/image), so `--rebrief`'s lease guard cannot exclude a concurrent fact-lane run — low-risk
+(rebrief resets upstream of the fact lane, extractor re-runs idempotently) but structurally
+asymmetric**.
 
 **In queue awaiting Zero (Legge 5):** deportation carousel remake (`drafted`, 2026-07-17, tells
 the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari reply.
@@ -82,8 +96,8 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   (`~/.claude/skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md`).
 - **Slide-7 closer micro-text** (remake deck): elegant-close layout renders the kicker tiny.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
-  official `--rebrief` verb (see §3 remake hygiene) · M5 queue shared-lock protocol ·
-  Swift tolerant decode · plist validator red on main · 19 env-coupled tests.
+  M5 queue shared-lock protocol · Swift tolerant decode · plist validator red on main ·
+  19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).
 
 ## 2. Anatomy — the hot files (verified 2026-07-17)
 
@@ -136,9 +150,11 @@ pull both checkouts + kickstart affected daemons. Prove-live per consumer surfac
    composition prompt; grounding citations SUPPORT, never replace. News-shaped topic with no
    usable source → `parked`, never composed. Never "tidy" this.
 2. **Remake hygiene**: re-briefing a composed draft by status reset leaves stale derived fields —
-   `fact_check_json` starves the extractor, `drive_url` starves the render lane. Clear
-   fact_check_json/status/at + use `_pg.requeue_draft_for_rerender` for the render leg. (Official
-   `--rebrief` verb is a ledgered TODO.)
+   `fact_check_json` starves the extractor, `drive_url` starves the render lane. Use the official
+   verb `python scripts/wr2_daily_reconciler.py --rebrief <draft_id>` (#2667) — one atomic reset
+   (`status`→briefed + `fact_check_json`/status/at + `drive_url` + `html_render_attempts`=0 + `canva_*`),
+   lease-guarded + queue-published-guarded (refuses to resurrect a published carousel). Do NOT
+   hand-reset status + clear fields piecemeal; the verb is the single safe path.
 3. **Never `launchctl kickstart -k` a one-shot job that may be mid-run** — it kills the worker
    and orphans its DB lease (42-min starvation, 2026-07-17). Plain kickstart; `-k` only for
    daemons you intend to restart.
@@ -202,7 +218,7 @@ Regole del loop:
 single highest-leverage fix, unlocks the whole breaking/developing register system [DONE #2631];
 (2) fact-check degraded root-cause [DONE #2651 + R #2655]; (3) ~~unknown_intent/render_incomplete
 adjudication~~ [DONE — verified resolved 2026-07-18, see §1];
-(4) `--rebrief` official verb; (5) metrics→editorial feedback: use the now-live IG metrics to
+(4) `--rebrief` official verb [DONE #2667, proven live 2026-07-18]; (5) metrics→editorial feedback: use the now-live IG metrics to
 auto-tune topic selection weights; (6) gate log delta-emission; (7) accessibility amendment
 implementation once Zero rules; (8) slide-7 closer layout fix; (9) A/B hook experiments on
 cover copy measured via the metrics loop.
