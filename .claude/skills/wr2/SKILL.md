@@ -102,7 +102,7 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   (`~/.claude/skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md`).
 - **Slide-7 closer micro-text** (remake deck): elegant-close layout renders the kicker tiny.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
-  M5 queue shared-lock protocol · Swift tolerant decode · plist validator red on main ·
+  M5 queue shared-lock protocol · plist validator red on main ·
   19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).
 
 ## 2. Anatomy — the hot files (verified 2026-07-17)
