@@ -463,17 +463,28 @@ function evidenceDirFor(code) {
   return `${evidenceRoot}/${code}`;
 }
 
+// SYMMETRIC BLIND TREATMENT (2026-07-19, Lot 4 conductor gate finding, runner defect FILED at the
+// Lot 4 gate for a Lot 5 fix): the prior version of this prompt announced the expected verdict
+// ("INNOCENCE CONTROL", "the dossier MUST come out boring", "Verify that NOTHING needs changing")
+// and asserted a FALSE claim about the evidence ("no pp28_sources" — both reused controls, 59140
+// and 59201, carry the field). A control the seat is told must be boring is not a blind specificity
+// measure — it only proves the pipeline doesn't manufacture work when told not to. This prompt never
+// reveals that the code is a control, nor the expected outcome: it reads the identical evidence
+// surfaces as before and asks for the SAME neutral adjudication a lane member would get, exactly the
+// wording sanctioned by the fix ("adjudicate this dossier exactly as any other — report what the
+// evidence shows"). See the ADJUDICATE phase docstring in `adjudicateInnocence()` above for how the
+// resulting verdict is normalized into the frozen certified|quarantined|abstained taxonomy.
 function innocencePrompt(code) {
   const dir = evidenceDirFor(code);
   return (
-    `INNOCENCE CONTROL — KBLI-2025 code ${code} (GARUDA-FILIERA Batch A lot ${lotId}, OSS-native, no ` +
-    `pp28_sources — the dossier MUST come out boring). ${OUT_OF_SCOPE_NOTICE} Read ${dir}/canonical.json, ` +
-    `${dir}/evidence-index.json, and every file under ${dir}/oss/, ${dir}/crosswalk/, ${dir}/pp28/ ` +
-    `(renders or their ABSENT/NOT_APPLICABLE verdict). Verify that NOTHING needs changing. Hold ` +
-    `yourself to the pilot's bar: any proposed change here is itself a finding of over-extraction in ` +
-    `the pipeline, not a legitimate regulatory discovery — do not manufacture a finding to seem ` +
-    `thorough. Emit verdict=certified if boring as expected, verdict=quarantined if you find an ` +
-    `unexpected change is needed, verdict=abstained only if an out-of-scope facet above blocks you.`
+    `KBLI-2025 code ${code} adjudication (GARUDA-FILIERA Batch A lot ${lotId}). ${OUT_OF_SCOPE_NOTICE} ` +
+    `Read ${dir}/canonical.json, ${dir}/evidence-index.json, and every file under ${dir}/oss/, ` +
+    `${dir}/crosswalk/, ${dir}/pp28/ (renders or their ABSENT/NOT_APPLICABLE verdict). Adjudicate this ` +
+    `dossier exactly as any other — report what the evidence shows, neither more nor less. A proposed ` +
+    `change is a legitimate finding if the evidence supports it; an absence of findings is equally ` +
+    `legitimate if the evidence supports that instead. Emit verdict=certified if the evidence shows ` +
+    `nothing needs changing, verdict=quarantined if it shows something does, verdict=abstained only if ` +
+    `an out-of-scope facet above blocks your determination.`
   );
 }
 
