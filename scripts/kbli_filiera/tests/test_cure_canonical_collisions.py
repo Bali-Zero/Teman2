@@ -157,3 +157,104 @@ def test_apply_raises_when_intel_missing_but_whatyouneed_requested() -> None:
     entry = {"code": "51103", "data_note": "n", "whatYouNeed": "gap"}
     with pytest.raises(cure.CureError):
         cure.apply_cure(rec, entry, DISPUTED_KEY)
+
+
+# ---------------------------------------------------------------------------
+# Batch A Lot 2 extension (2026-07-18): status_mapping_correction /
+# whatChanged_correction — the mapping_metadata_false class (e.g. 47771).
+# ---------------------------------------------------------------------------
+
+
+def test_plan_flags_status_mapping_and_whatchanged_correction() -> None:
+    rec = _record(per_skala=[{"kategori_risiko": "Rendah"}])
+    rec["status_mapping"] = "MATCH_LANGSUNG"
+    rec["intel_2026"]["whatChanged"] = "Unchanged from KBLI 2020 — direct match."
+    entry = {
+        "code": "51103",
+        "data_note": "n",
+        "whatYouNeed": "gap",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+        "whatChanged_correction": "Merged from multiple KBLI 2020 codes.",
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "apply"
+    assert plan.needs_detach is True
+    assert plan.needs_status_mapping is True
+    assert plan.needs_whatchanged is True
+
+
+def test_apply_sets_status_mapping_and_whatchanged_together_with_detach() -> None:
+    rec = _record(per_skala=[{"kategori_risiko": "Rendah"}])
+    rec["status_mapping"] = "MATCH_LANGSUNG"
+    rec["intel_2026"]["whatChanged"] = "Unchanged from KBLI 2020 — direct match."
+    entry = {
+        "code": "51103",
+        "data_note": "n",
+        "whatYouNeed": "gap",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+        "whatChanged_correction": "Merged from multiple KBLI 2020 codes.",
+    }
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out["per_skala"] == []
+    assert out[DISPUTED_KEY] == [{"kategori_risiko": "Rendah"}]
+    assert out["status_mapping"] == "MATCH_CON_AGGREGAZIONE"
+    assert out["intel_2026"]["whatChanged"] == "Merged from multiple KBLI 2020 codes."
+    assert out["intel_2026"]["whatYouNeed"] == "gap"
+
+
+def test_plan_metadata_only_correction_when_already_detached() -> None:
+    """A record already detached (prior lot) can still need a metadata-only
+    correction with no further per_skala change — needs_detach stays False."""
+    rec = _record(per_skala=[], whatYouNeed="gap", disputed=True)
+    rec["status_mapping"] = "MATCH_LANGSUNG"
+    entry = {
+        "code": "51103",
+        "data_note": "n",
+        "whatYouNeed": "gap",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "apply"
+    assert plan.needs_detach is False
+    assert plan.needs_whatyouneed is False
+    assert plan.needs_status_mapping is True
+
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out["per_skala"] == []
+    assert out[DISPUTED_KEY] == [{"kategori_risiko": "Tinggi"}], "prior disputed block untouched"
+    assert out["status_mapping"] == "MATCH_CON_AGGREGAZIONE"
+
+
+def test_plan_already_cured_when_metadata_correction_matches() -> None:
+    rec = _record(per_skala=[], whatYouNeed="gap", disputed=True)
+    rec["status_mapping"] = "MATCH_CON_AGGREGAZIONE"
+    entry = {
+        "code": "51103",
+        "data_note": "n",
+        "whatYouNeed": "gap",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "already-cured"
+
+
+def test_apply_raises_when_intel_missing_but_whatchanged_requested() -> None:
+    rec = {"kode_kbli_2025": "51103", "per_skala": []}
+    entry = {"code": "51103", "data_note": "n", "whatChanged_correction": "x"}
+    with pytest.raises(cure.CureError):
+        cure.apply_cure(rec, entry, DISPUTED_KEY)
+
+
+def test_lot1_and_fase1_specs_unaffected_by_absent_metadata_keys() -> None:
+    """Entries with no status_mapping_correction/whatChanged_correction keys
+    (every Fase 1 and Lot 1 entry) must behave exactly as before — pure no-op
+    on the new fields."""
+    rec = _record(per_skala=[], whatYouNeed="gap", disputed=True)
+    rec["status_mapping"] = "MATCH_LANGSUNG"
+    entry = {"code": "51103", "data_note": "n", "whatYouNeed": "gap"}
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "already-cured"
+    assert plan.needs_status_mapping is False
+    assert plan.needs_whatchanged is False
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out["status_mapping"] == "MATCH_LANGSUNG", "untouched when spec supplies no correction"
