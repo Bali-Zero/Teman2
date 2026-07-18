@@ -1392,6 +1392,76 @@ class TestFactLiteralDateShape:
         assert not any(e.code.startswith(("FACT_LITERAL", "BETWEEN")) for e in report.errors)
 
 
+class TestBetweenBoundsInvertedSuppressedOnInvalidDate:
+    """PR1b item 6 (Codex nit on hotfix #2739): a ``between`` bound that
+    already fails date validation is not a meaningful basis for the
+    lower>upper ordering comparison — comparing an invalid string
+    lexicographically produced a SECOND, confusing ``BETWEEN_BOUNDS_INVERTED``
+    error on top of the real ``FACT_LITERAL_INVALID_DATE`` one, for what is
+    really a single defect. The task brief's exact counterexample:
+    ``["2026-99-99", "2026-01-01"]`` — the invalid lower bound sorts
+    lexicographically greater than the valid upper bound.
+    """
+
+    def test_invalid_lower_bound_suppresses_inverted_error(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.between.invalid_lower_suppresses_inverted",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "person.birth_date",
+                "lower": "2026-99-99",
+                "upper": "2026-01-01",
+            },
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        codes = [e.code for e in report.errors]
+        assert "FACT_LITERAL_INVALID_DATE" in codes
+        assert "BETWEEN_BOUNDS_INVERTED" not in codes
+
+    def test_valid_bounds_still_report_inverted_when_actually_inverted(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Innocence-of-the-suppression: two SHAPE/CALENDAR-valid bounds that
+        # are genuinely inverted must still be caught — the fix only
+        # suppresses the ordering check when a bound is invalid, it must
+        # never suppress a real BETWEEN_BOUNDS_INVERTED defect.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.between.genuinely_inverted",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "person.birth_date",
+                "lower": "2026-12-31",
+                "upper": "2026-01-01",
+            },
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        codes = [e.code for e in report.errors]
+        assert "BETWEEN_BOUNDS_INVERTED" in codes
+        assert "FACT_LITERAL_INVALID_DATE" not in codes
+
+
 class TestOrderingOpsRestrictedToNumericOrDate:
     """Gap B: ``lt``/``lte``/``gt``/``gte``/``between`` were rejected only
     against BOOLEAN-kind facts — a plain enum-ish STRING fact (e.g.

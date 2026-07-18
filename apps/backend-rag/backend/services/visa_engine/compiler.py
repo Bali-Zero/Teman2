@@ -579,7 +579,15 @@ _DATE_LITERAL_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 def _check_date_literal_shape(
     value: str, spec: FactSpec, op: str, rule: Rule, errors: list[CompilationError]
-) -> None:
+) -> bool:
+    """Returns ``True`` iff ``value`` is a valid ISO-8601 calendar-date
+    literal (shape AND calendar validity), ``False`` otherwise — in the
+    ``False`` case, one ``FACT_LITERAL_INVALID_DATE`` has already been
+    appended to ``errors``. PR1b item 6: the caller (``_check_between_bounds``)
+    uses this return value to skip its own ``lower > upper`` ordering check
+    when a bound already failed here, so one invalid-date defect is never
+    reported twice under two different, confusing codes.
+    """
     if not _DATE_LITERAL_SHAPE.fullmatch(value):
         errors.append(
             CompilationError(
@@ -591,7 +599,7 @@ def _check_date_literal_shape(
                 rule_id=rule.rule_id,
             )
         )
-        return
+        return False
     try:
         date.fromisoformat(value)
     except ValueError as exc:
@@ -605,6 +613,8 @@ def _check_date_literal_shape(
                 rule_id=rule.rule_id,
             )
         )
+        return False
+    return True
 
 
 #: Hotfix (2026-07-18, Gap D): a fact marked ``value_format="country_code"``
@@ -730,8 +740,18 @@ def _check_between_bounds(
     # `_check_single_literal_against_kind` entirely, so without this a
     # `between` on a date fact with e.g. lower="2026-02-30" compiled clean.
     if spec.value_format == "date" and isinstance(lower, str) and isinstance(upper, str):
-        _check_date_literal_shape(lower, spec, "between", rule, errors)
-        _check_date_literal_shape(upper, spec, "between", rule, errors)
+        lower_is_valid_date = _check_date_literal_shape(lower, spec, "between", rule, errors)
+        upper_is_valid_date = _check_date_literal_shape(upper, spec, "between", rule, errors)
+        if not (lower_is_valid_date and upper_is_valid_date):
+            # PR1b item 6 (Codex nit on hotfix #2739): a bound that already
+            # failed date validation is not a meaningful basis for an
+            # ordering comparison — e.g. `["2026-99-99", "2026-01-01"]`
+            # would otherwise ALSO report BETWEEN_BOUNDS_INVERTED (the
+            # invalid string sorts lexicographically greater than the valid
+            # one) on top of FACT_LITERAL_INVALID_DATE, two codes for what
+            # is really one defect. Skip the lower>upper check entirely once
+            # either bound is already reported invalid.
+            return
     if lower > upper:
         errors.append(
             CompilationError(
