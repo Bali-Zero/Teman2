@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "75faf8a0e25b04b4b828f314a03f566334e708d7",
-  "canonical_sha256": "e5acc547b051e8c3a626c1d283e96bcd2290455784b6c47f8f08d786b52711a1",
+  "canonical_revision": "ca8e3ee35226a0ce8c82faf62d521b67364ab0a2",
+  "canonical_sha256": "1afc18a5c137cb6c10c1af16b8945b5e4994e0c5e5d7ece19b83c196d9f5d281",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
@@ -10,10 +10,10 @@
     "A-empty/gap": "_l2_status == 'no_oss_risk' AND per_skala == []"
   },
   "census": {
-    "A-empty/gap": 120,
-    "A-serving/pp28": 100,
+    "A-empty/gap": 133,
+    "A-serving/pp28": 87,
     "A-serving/orphan": 1,
-    "_in_scope_total": 101,
+    "_in_scope_total": 88,
     "_total": 221
   },
   "members": [
@@ -149,8 +149,8 @@
     },
     {
       "kode_kbli_2025": "42999",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.H",
       "judul": "Konstruksi Bangunan Sipil Lainnya YTDL",
       "pp28_sources": [
@@ -159,8 +159,8 @@
     },
     {
       "kode_kbli_2025": "47771",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.A",
       "judul": "Perdagangan Eceran Minyak Tanah",
       "pp28_sources": [
@@ -169,8 +169,8 @@
     },
     {
       "kode_kbli_2025": "49233",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Angkutan Tidak Bermotor untuk Barang",
       "pp28_sources": [
@@ -179,8 +179,8 @@
     },
     {
       "kode_kbli_2025": "49296",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Angkutan Ojek Motor",
       "pp28_sources": [
@@ -189,8 +189,8 @@
     },
     {
       "kode_kbli_2025": "50113",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Angkutan Laut Dalam Negeri untuk Wisata",
       "pp28_sources": [
@@ -231,8 +231,8 @@
     },
     {
       "kode_kbli_2025": "52103",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.A",
       "judul": "Aktivitas Gudang Berikat",
       "pp28_sources": [
@@ -241,8 +241,8 @@
     },
     {
       "kode_kbli_2025": "52105",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Aktivitas Penyimpanan Barang Berbahaya dan Beracun (B3)",
       "pp28_sources": [
@@ -251,8 +251,8 @@
     },
     {
       "kode_kbli_2025": "52211",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Aktivitas Terminal Darat",
       "pp28_sources": [
@@ -261,8 +261,8 @@
     },
     {
       "kode_kbli_2025": "52219",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Aktivitas Jasa Terkait Transportasi Darat Lainnya",
       "pp28_sources": [
@@ -271,8 +271,8 @@
     },
     {
       "kode_kbli_2025": "52232",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Jasa Pelayanan Navigasi Penerbangan",
       "pp28_sources": [
@@ -281,8 +281,8 @@
     },
     {
       "kode_kbli_2025": "52239",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Aktivitas Jasa Terkait Angkutan Udara Lainnya",
       "pp28_sources": [
@@ -291,8 +291,8 @@
     },
     {
       "kode_kbli_2025": "52299",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.I",
       "judul": "Aktivitas Penunjang Angkutan Lainnya YTDL",
       "pp28_sources": [
@@ -301,8 +301,8 @@
     },
     {
       "kode_kbli_2025": "59131",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Distribusi Film, Video, dan Program Televisi oleh Pemerintah",
       "pp28_sources": [
