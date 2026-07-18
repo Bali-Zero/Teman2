@@ -20,7 +20,7 @@ WhatsApp Business (Meta Cloud API) number **+62 821-3465-159** = Zantara. Two au
 - **Bali Zero team**: work-support assistant. Check-in via WA (opens the free Meta 24h window),
   CRM nudges, PII-light briefings. Persona = "assistente operativo interno", not sales.
 
-## 1. LIVE STATE (last update 2026-07-17 ~23:40 WITA — keep current)
+## 1. LIVE STATE (last update 2026-07-18 ~23:30 WITA — keep current)
 
 - **PR #2586 MERGED**: 4 production bugs of the outbox worker fixed (burst duplicate replies,
   takeover-during-generation send, generating-crash orphan, FAQ prewarm scope mismatch) +
@@ -47,8 +47,28 @@ LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR mer
   not done yet as of this update.
 - **Corner PR #2612 MERGED** (prior §1 refresh, superseded by this update).
 - **F2 (team check-in) NOT started** — begins after F1 ships. F3 (member profiles) after F2.
-- **Prompt v4 lane OPEN** (audit done, 7 findings — see §5). **Full-domain cache lane OPEN**
-  (design pending). Both tracked in the main session's task list.
+- **Prompt v4 + versioned door MERGED (#2629) AND prod FLIPPED `ZANTARA_PROMPT_VERSION=v4` —
+  PROVEN-LIVE 2026-07-18.** `zantara_core_v4.py` (deadline-neutral KBLI guidance, phantom KBLI
+  codes fixed 55130/55194→55203/55901/55400, `{today_wita}` date injection,
+  `_safe_template_fill()` — the WORKED_EXAMPLES `.format()` P0 stays fixed) + `prompt_builder.py`
+  imports `ZANTARA_MASTER_TEMPLATE` from `prompt_manager` (the door). Prod log proof:
+  `PromptManager: using zantara_core_v4` (clean INFO, no fallback); battery on the door 2/2 PASS.
+  **Gotcha that almost shipped**: v4 was drafted BEFORE the #2736 trigger fix and re-listed bare
+  visa codes ("C1","C2","D1"⊂"D12") as get_pricing triggers — auto-merge was disarmed, the fix
+  folded in (parity commit `9b0e9ac120`), THEN merged. The deploy alone would have REGRESSED
+  ask_legal to v3's stale copy — the env flip is part of the ship, not an afterthought. v2/v3's
+  stale trigger copies are now dead code behind the door. Design doc:
+  `research/operations/2026-07-17-zantara-prompt-v4-design.md`.
+- **Bot quality campaign 5 lanes SHIPPED+PROVEN (2026-07-18)** — memory
+  `ops_zantara_bot_quality_campaign_4_lanes_2026_07_18` holds full detail: (A) 60s timeouts
+  root-caused to a broken verifier minting fake score=0.5 on empty Gemini responses → doomed
+  ~23s self-correction loop (#2712 `verdict_available` flag; C1→KITAS 2×timeout→35.3s) + 6
+  missing Qdrant `status_vigensi` indexes + `ENABLE_RERANKER` secret unset; (B) Fonti leak
+  proven never-reached WA clients; (C) stale WA number purged from 70 prod pricing points
+  (#2708); (D) unsolicited price dumps killed (#2707 intent-gated boost, word-boundary); (E)
+  zantara_core.py v1 trigger fix (#2736, operator two-key window) — bare visa codes are NOT
+  pricing triggers, visa-TYPE questions ground on current codes names-only + one-line cost offer.
+- **Full-domain cache lane OPEN** (design pending). Tracked in the main session's task list.
 
 ## 2. ESTABLISHED TRUTH (verified — do not re-litigate, do not re-derive)
 
@@ -73,6 +93,10 @@ LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR mer
    whatsapp_persona injects the full price list beside the "only get_pricing" rule; few-shots
    carry pre-BKPM-5/2025 capital claims. Cure = **v4 behind the same env flag**, one versioned
    entry point for ALL consumers + parity test. Never edit v1/v2/v3 in place.
+   **RESOLVED 2026-07-18**: door merged (#2629) and prod flipped to v4 — see §1. The audit
+   findings above are historical context; the split-brain no longer exists. Exception to
+   "never edit v1 in place" happened ONCE under operator two-key window (#2736 trigger fix,
+   before the door existed in prod) — with the door live, prompt changes go to v4 only.
 6. **Meta 24h window**: per-thread, resets on every user message, service replies inside it are
    free. Business-initiated outside it needs a paid approved template — which Zero has REJECTED
    for attendance nudges (reactive-only ruling).

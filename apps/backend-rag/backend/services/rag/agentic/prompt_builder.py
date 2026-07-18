@@ -22,13 +22,50 @@ import time
 from typing import Any
 
 from backend.app.core.config import settings
-from backend.prompts.zantara_core import (
-    CREATOR_PERSONA,
-    TEAM_PERSONA,
-    ZANTARA_MASTER_TEMPLATE,
-)
+
+# ZANTARA_MASTER_TEMPLATE MUST come from prompt_manager (the versioned door),
+# never imported directly from a zantara_core* module — see
+# research/operations/2026-07-17-zantara-prompt-v4-design.md §1 F1 and §4.
+# This was the split-brain: ZANTARA_PROMPT_VERSION had no effect on the WA
+# bot's brain (this class) because it bypassed prompt_manager entirely.
+# CREATOR_PERSONA/TEAM_PERSONA stay sourced from v1 directly — they are
+# persona overlays, not versioned templates (v2/v3/v4 all re-export them
+# unchanged, never redefine), so this is not a second instance of the bug.
+from backend.llm.prompt_manager import ZANTARA_MASTER_TEMPLATE
+from backend.prompts.zantara_core import CREATOR_PERSONA, TEAM_PERSONA
+from backend.prompts.zantara_core_v4 import today_wita_string
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_template_fill(template: str, **kwargs: str) -> str:
+    """Fill only the known {placeholder} tokens in ZANTARA_MASTER_TEMPLATE,
+    leaving every other brace in the text untouched.
+
+    ``str.format()`` is unsafe here: it requires EVERY ``{...}`` pair in the
+    ENTIRE template to be valid format syntax. v3's (and v4's, which inherits
+    v3's WORKED_EXAMPLES) worked examples intentionally embed illustrative
+    JSON as prose for the model to read, e.g. ``Tool returns:
+    {"price_idr": 1700000, ...}`` — that text survives v3/v4's OWN f-string
+    escaping (which resolves to single literal braces) but is then invisible
+    to a later ``.format()`` call, which raises ``KeyError('"price_idr"')``
+    on the first query.
+
+    Found live 2026-07-17/18 while verifying the v4 lane: this crash was
+    dormant because prompt_builder.py used to import ZANTARA_MASTER_TEMPLATE
+    directly from v1 (the F1 split-brain this PR fixes) — v1 has no such
+    JSON examples, so `.format()` never saw the problem. Once F1's fix
+    routes any selected version (v2/v3/v4) through here, and prod's
+    ZANTARA_PROMPT_VERSION Fly secret is ALREADY set to v3, `.format()`
+    would have taken down system-prompt generation on every one of the 4
+    live channels immediately on deploy. Plain substring replacement (not a
+    regex, not format()) sidesteps the whole class of "the template contains
+    braces I don't control" bugs without editing any zantara_core*.py file.
+    """
+    result = template
+    for key, value in kwargs.items():
+        result = result.replace("{" + key + "}", value)
+    return result
 
 
 class SystemPromptBuilder:
@@ -337,7 +374,32 @@ class SystemPromptBuilder:
         timeline_hash = _stable_hash(timeline_summary)
         ctx_hash = _stable_hash(additional_context)
 
-        cache_key = f"{user_id}:{deep_think_mode}:{facts_hash}:{coll_facts_hash}:{timeline_hash}:{is_creator}:{is_team}:{ctx_hash}:{lang_key}"
+        # Compute today's WITA date ONCE here (not a separate date.today() call
+        # later) so the cache-key date bucket and the <date_context> text
+        # injected into the prompt can never desync across a midnight boundary
+        # or a process/container timezone mismatch (panel finding #2,
+        # 2026-07-17 design doc). The bucket is the ISO date prefix of the
+        # same string that gets injected into the template.
+        today_wita_str = today_wita_string()
+        date_bucket = today_wita_str.split(" ", 1)[0]
+
+        # rag_results/query are ALREADY baked into the cached final_prompt via
+        # .format() below, but were NOT previously part of the cache key —
+        # meaning a second, different question from the same user within the
+        # 5-minute TTL could be served the FIRST question's system prompt
+        # (stale query context + stale RAG grounding). Verified pre-existing
+        # bug, found while adding the date bucket to this same key (panel
+        # finding #1) — fixed here as a strict superset addition (more
+        # granularity, never fewer correct cache hits, cannot serve a wrong
+        # answer, can only reduce hit rate).
+        rag_results = context.get("rag_results", "{rag_results}")
+        query_hash = _stable_hash(query)
+        rag_hash = _stable_hash(rag_results)
+
+        cache_key = (
+            f"{user_id}:{deep_think_mode}:{facts_hash}:{coll_facts_hash}:{timeline_hash}:"
+            f"{is_creator}:{is_team}:{ctx_hash}:{lang_key}:{date_bucket}:{query_hash}:{rag_hash}"
+        )
 
         if cache_key in self._cache:
             cached_prompt, cached_time = self._cache[cache_key]
@@ -387,7 +449,7 @@ class SystemPromptBuilder:
         user_memory_text = "\n\n".join(memory_parts) if memory_parts else "No specific memory yet."
 
         # Build Final Prompt using Master Template
-        rag_results = context.get("rag_results", "{rag_results}")
+        # (rag_results already extracted above, before the cache-key computation)
 
         # DeepThink Mode Instruction (if activated)
         deep_think_instr = ""
@@ -401,10 +463,12 @@ class SystemPromptBuilder:
         if detected_lang:
             # For non-Indonesian queries, use a STRIPPED version of the template
             # Remove Jaksel references that make Gemini respond in Indonesian
-            stripped_template = ZANTARA_MASTER_TEMPLATE.format(
+            stripped_template = _safe_template_fill(
+                ZANTARA_MASTER_TEMPLATE,
                 rag_results=rag_results,
                 user_memory=user_memory_text,
                 query=query if query else "General inquiry",
+                today_wita=today_wita_str,
             )
             # Remove Jaksel-specific instructions
             jaksel_phrases = [
@@ -443,10 +507,12 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
 """
             final_prompt = language_header + stripped_template
         else:
-            final_prompt = ZANTARA_MASTER_TEMPLATE.format(
+            final_prompt = _safe_template_fill(
+                ZANTARA_MASTER_TEMPLATE,
                 rag_results=rag_results,
                 user_memory=user_memory_text,
                 query=query if query else "General inquiry",
+                today_wita=today_wita_str,
             )
 
         if deep_think_instr:

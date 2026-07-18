@@ -334,6 +334,11 @@ def flush_layout_batch() -> bool:
     return _flush_batch("layout", "bot/homepage-layout", "chore(homepage): hero rotation {date}")
 
 
+def flush_translation_batch() -> bool:
+    return _flush_batch("translation", "bot/articles-translations",
+                         "feat(articles): add translations {date} ({n} files)")
+
+
 _FLUSH_THRESHOLD = 8
 
 
@@ -824,37 +829,54 @@ def git_pull_monorepo():
         log(f"⚠ git pull error: {e}")
 
 
-def git_commit_and_push_translations(slugs: list[str]):
+def git_commit_and_push_translations(slugs: list[str]) -> bool:
+    """Stage translation .mdx files and flush via the same batch-branch/PR
+    mechanism as flush_image_batch/flush_seo_batch/flush_layout_batch (see the
+    "GitHub batch-branch/PR commit mechanism" module note above `_stage_commit`).
+
+    Direct `git push origin main` (the old mechanism) is rejected by branch
+    protection EVERY time — and it doesn't fail loudly: the commit lands on the
+    main checkout regardless (git commit succeeds locally), then the push is
+    bounced, leaving an orphan local commit that blocks the next `git pull
+    --ff-only` for every subsequent tick until someone rescues it by hand
+    (live incident 2026-07-18: commits e2c3951c/be43e312d, both rescued
+    manually twice in one day). This function NEVER runs `git add`/`git
+    commit`/`git push` on the main checkout — files are read straight off disk
+    (translate_articles.py already wrote them there) and committed via the
+    GitHub Contents API on a bot branch, exactly like every other write path
+    in this module.
+
+    On any failure (branch create, PUT, PR create) `_flush_batch` logs the gh
+    failure and this returns False. Nothing was ever `git add`-ed, so the
+    local .mdx files are simply left untracked on disk — the next tick's
+    rglob picks them straight back up and re-stages them. No local git state
+    to unwind, no orphan commit possible.
+    """
     repo_root = SCRIPT_DIR.parent.parent.parent
     articles_dir = repo_root / "apps" / "mouth" / "src" / "content" / "articles"
 
-    translation_files = []
+    translation_files: list[Path] = []
     for slug in slugs:
         for f in articles_dir.rglob(f"{slug}.*.mdx"):
-            translation_files.append(str(f.relative_to(repo_root)))
+            translation_files.append(f)
 
     if not translation_files:
         log("⚠ No translation files to commit")
-        return
+        return True
 
-    log(f"▶ git commit+push {len(translation_files)} translation files")
-    try:
-        subprocess.run(["git", "add"] + translation_files, cwd=str(repo_root), capture_output=True, check=True, timeout=30)
-        status = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=str(repo_root), capture_output=True, timeout=10)
-        if status.returncode == 0:
-            log("⏭ Nothing staged — already committed")
-            return
-        msg = f"feat(articles): add translations for {', '.join(slugs[:3])}{'...' if len(slugs) > 3 else ''}"
-        subprocess.run(["git", "commit", "--no-verify", "-m", msg], cwd=str(repo_root), capture_output=True, check=True, timeout=30)
-        push = subprocess.run(["git", "push", "--no-verify", "origin", "main"], cwd=str(repo_root), capture_output=True, text=True, timeout=60)
-        if push.returncode == 0:
-            log("✅ Translations pushed")
-        else:
-            subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=str(repo_root), capture_output=True, timeout=60)
-            push2 = subprocess.run(["git", "push", "--no-verify", "origin", "main"], cwd=str(repo_root), capture_output=True, text=True, timeout=60)
-            log(f"{'✅' if push2.returncode == 0 else '❌'} Push after rebase: exit={push2.returncode}")
-    except Exception as e:
-        log(f"⚠ git push translations failed: {e}")
+    message = f"feat(articles): add translations for {', '.join(slugs[:3])}{'...' if len(slugs) > 3 else ''}"
+    log(f"▶ Staging {len(translation_files)} translation file(s) for batch commit")
+    for f in translation_files:
+        gh_path = str(f.relative_to(repo_root))
+        try:
+            content = f.read_bytes()
+        except OSError as e:
+            log(f"  ⚠ Could not read {gh_path}: {e}")
+            continue
+        _stage_commit("translation", gh_path, content, message)
+        log(f"  📦 staged → {gh_path}")
+
+    return flush_translation_batch()
 
 
 # ─── MAIN ──────────────────────────────────────────────────────────────────────
@@ -971,9 +993,14 @@ def main():
             f"layout={layout_flush_ok}) — see log"
         )
 
-    # Commit translations
+    # Commit translations — staged + flushed via the same batch-branch/PR
+    # mechanism as image/seo/layout (see git_commit_and_push_translations).
     if translated_slugs:
-        git_commit_and_push_translations(translated_slugs)
+        if not git_commit_and_push_translations(translated_slugs):
+            send_telegram_alert(
+                "⚠️ *Post-publish poller*\n"
+                f"Translation batch flush failed for: {', '.join(translated_slugs[:5])}"
+            )
 
     # Mark done
     if done_slugs:
