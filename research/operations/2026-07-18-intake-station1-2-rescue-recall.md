@@ -8,6 +8,7 @@ sources:
   - apps/backend-rag/backend/services/intake/drive_adapter.py — ingress (source_path build, enqueue)
   - scripts/intake_drive_folder_bridge.py + intake_station0_report.py + intake_reocr_sample.py (this branch)
   - memory discovery_refinery_panel_width_is_second_order_2026_07_18 + /intake skill corner
+adversarial_review: codex
 ---
 
 # Intake 0-candidate rescue — the folder-provenance lever (m227 root-only fix)
@@ -129,3 +130,24 @@ blind. NEVER auto-attach on folder alone (scar).
 (durable folder_id→client link, so future docs corroborate by id not fuzzy name); extend blob-retention
 TTL / cold-archive (so re-processing has raw material); enter the ~1,215 uncatalogued person-folders as
 clients (closes the 88% gap at the source).
+
+---
+
+## Adversarial review
+
+**Seat:** codex (GPT-5.6, read-only sandbox, 2 rounds, 2026-07-18) — generator≠grader on the m227 code fix.
+
+- **Round 1** on the multi-segment change found one **MAJOR**: `AMBIGUITY_MARGIN` was applied GLOBALLY
+  across candidates from different `source_path` segments (scores not comparable), so segment A@1.00 +
+  segment B@0.80 collapsed to a single confident `LINK_CANDIDATE`, silently dropping B. Plus MINORs:
+  `[A-Za-z]` alpha-check dropped Cyrillic/Arabic/CJK names; 2×N unbounded fuzzy queries; one tautological
+  test. **All addressed** — two-level disambiguation (margin resolves homonyms WITHIN a segment; distinct
+  entities across segments always surface as AMBIGUOUS), Unicode `str.isalpha()`, `_MAX_FOLDER_SEGMENTS=8`
+  cap, and 3 genuine regression tests.
+- **Round 2** on the fixed code (commit `9612ee4da`): **VERDICT CLEAN — no blocking defect.** Confirmed the
+  MAJOR resolved (harness: A@1.00 + B@0.80 → AMBIGUOUS), never-auto invariant intact (folder alone never
+  AUTO_ATTACH), best-score dedup correct, cap has no off-by-one, all 3 regression tests genuine. One
+  **residual MINOR (non-blocking, pre-existing):** `len(seg) < 3` still drops 2-character CJK names (e.g.
+  张伟) — rare for the Bali Zero client base; a script-aware min-length is a follow-up, not a blocker.
+
+Full backend suite green (17,612 passed / 0 failed); folder-matcher tests 33/33.
