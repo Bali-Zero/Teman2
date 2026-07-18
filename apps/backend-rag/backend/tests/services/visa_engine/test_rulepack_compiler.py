@@ -1256,3 +1256,137 @@ class TestUtcDetectionAnchoredFullMatch:
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
         assert any(e.code == "NON_UTC_DATETIME" for e in report.errors)
+
+
+# ---------------------------------------------------------------------------
+# Hotfix round (2026-07-18) — correctness gaps found by a comparative
+# analysis against the concretization spec.
+# ---------------------------------------------------------------------------
+
+
+class TestFactLiteralDateShape:
+    """Gap A: date-valued facts (``value_format="date"``) had no shape check
+    on their literals — ``person.birth_date eq "20260101"`` or
+    ``"2026-1-1"`` compiled clean, and a regex-shape-valid but
+    calendar-invalid date (``"2026-02-30"``) did too.
+    """
+
+    def test_no_dashes_shape_guilty(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.no_dashes",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.birth_date", "value": "20260101"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_INVALID_DATE" for e in report.errors)
+
+    def test_single_digit_month_day_shape_guilty(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.single_digit",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.birth_date", "value": "2026-1-1"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_INVALID_DATE" for e in report.errors)
+
+    def test_invalid_calendar_date_guilty(self, source_record: M.SourceRecord) -> None:
+        # Shape-valid (matches YYYY-MM-DD) but not a real calendar date —
+        # only caught by a `datetime.date.fromisoformat` round-trip.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.feb30",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.birth_date", "value": "2026-02-30"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_INVALID_DATE" for e in report.errors)
+
+    def test_valid_date_is_innocent(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.valid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.birth_date", "value": "2026-07-17"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+
+    def test_between_bounds_invalid_date_guilty(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.between.invalid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "person.birth_date",
+                "lower": "2026-02-30",
+                "upper": "2026-12-31",
+            },
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_INVALID_DATE" for e in report.errors)
+
+    def test_between_bounds_valid_date_is_innocent(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.between.valid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "person.birth_date",
+                "lower": "2026-01-01",
+                "upper": "2026-12-31",
+            },
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code.startswith(("FACT_LITERAL", "BETWEEN")) for e in report.errors)

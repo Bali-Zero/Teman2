@@ -81,6 +81,7 @@ import re
 import unicodedata
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from datetime import date
 
 from backend.services.visa_engine import ast as ast_module
 from backend.services.visa_engine.enums import FactValueKind, RuleEffectType, RuleStage
@@ -554,6 +555,44 @@ _ORDERING_OPS = frozenset({"lt", "lte", "gt", "gte"})
 #: shape, never a single literal's shape).
 _SCALAR_FACT_KINDS = frozenset({FactValueKind.BOOLEAN, FactValueKind.INTEGER, FactValueKind.STRING})
 
+#: Hotfix (2026-07-18, Gap A): a fact marked ``value_format="date"`` carries
+#: a STRING-kind value that must ALSO be a real ISO-8601 calendar date, not
+#: merely kind-compatible — ``kind`` alone accepted ``"20260101"`` or
+#: ``"2026-1-1"`` (wrong shape) and ``"2026-02-30"`` (right shape, no such
+#: calendar day). The regex catches shape; ``date.fromisoformat`` catches
+#: calendar validity (leap years, day-of-month bounds, month range).
+_DATE_LITERAL_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _check_date_literal_shape(
+    value: str, spec: FactSpec, op: str, rule: Rule, errors: list[CompilationError]
+) -> None:
+    if not _DATE_LITERAL_SHAPE.fullmatch(value):
+        errors.append(
+            CompilationError(
+                code="FACT_LITERAL_INVALID_DATE",
+                message=(
+                    f"operator {op!r} literal {value!r} for date fact {spec.path.value!r} "
+                    "must match YYYY-MM-DD"
+                ),
+                rule_id=rule.rule_id,
+            )
+        )
+        return
+    try:
+        date.fromisoformat(value)
+    except ValueError as exc:
+        errors.append(
+            CompilationError(
+                code="FACT_LITERAL_INVALID_DATE",
+                message=(
+                    f"operator {op!r} literal {value!r} for date fact {spec.path.value!r} "
+                    f"is not a valid calendar date: {exc}"
+                ),
+                rule_id=rule.rule_id,
+            )
+        )
+
 
 def _literal_kind(value: bool | int | str) -> FactValueKind:
     # `bool` before `int` — `bool` is an `int` subclass in Python.
@@ -602,6 +641,13 @@ def _check_single_literal_against_kind(
                 rule_id=rule.rule_id,
             )
         )
+        return
+    # Hotfix (2026-07-18, Gap A): `kind` alone cannot distinguish a
+    # free-form STRING from a date-shaped one — `value_format` is the extra
+    # axis for that. Only reachable for a `str` literal (date facts are
+    # always STRING-kind per fact_registry.py).
+    if spec.value_format == "date" and isinstance(value, str):
+        _check_date_literal_shape(value, spec, op, rule, errors)
 
 
 def _check_literal_list(
@@ -640,6 +686,13 @@ def _check_between_bounds(
             )
         )
         return
+    # Hotfix (2026-07-18, Gap A): same date-shape/calendar check as the
+    # single-literal path — `between` bounds bypass
+    # `_check_single_literal_against_kind` entirely, so without this a
+    # `between` on a date fact with e.g. lower="2026-02-30" compiled clean.
+    if spec.value_format == "date" and isinstance(lower, str) and isinstance(upper, str):
+        _check_date_literal_shape(lower, spec, "between", rule, errors)
+        _check_date_literal_shape(upper, spec, "between", rule, errors)
     if lower > upper:
         errors.append(
             CompilationError(
