@@ -37,6 +37,16 @@ logger = logging.getLogger("zantara.intake.client_enricher")
 # 2026-07-18-intake-identity-backfill-design.md §3 rule 6/11).
 _BACKFILL_PROVENANCE_COLUMNS = ("passport_number", "kitas_number")
 
+# Identifier columns the enricher writes FILL-ONLY (F1, council red-team verdict,
+# 2026-07-18-intake-identity-backfill-design.md §8): once the client card already
+# carries a non-empty value here, a CONFLICTING extracted value is never silently
+# written over it — "a wrong identity write is WORSE than a wrong attach" (design
+# doc §"North star"), because a poisoned id keeps poisoning every future strong-id
+# match. Superset of _BACKFILL_PROVENANCE_COLUMNS: npwp/nib get the same fill-only
+# discipline even though they don't carry GATE-11 provenance (that machinery is
+# passport/kitas-only — see the constant above).
+_IDENTITY_FILL_ONLY_COLUMNS = ("passport_number", "kitas_number", "npwp", "nib")
+
 
 def _normalize_for_promotion(value: Any) -> str:
     """Loose identifier normaliser for the GATE-11 verified-promotion check.
@@ -243,9 +253,15 @@ async def enrich_client_from_extracted_fields(
       (never overwrite an existing card value with NULL)
     * a value that fails coercion (e.g. garbage date) → that one field is skipped,
       the rest still apply; the document commit is never jeopardised by a bad field.
+    * an identifier column (passport_number/kitas_number/npwp/nib, see
+      ``_IDENTITY_FILL_ONLY_COLUMNS``) that already carries a non-empty value whose
+      normalization DIFFERS from the extracted one → FILL-ONLY (F1): that column is
+      skipped (never overwritten), logged as a review lead (never the values — Law
+      2), and its name collected into the returned ``"_skipped_conflicts"`` list.
 
-    Returns a ``{column: value}`` dict of what was written (for audit/response), or an
-    empty dict if nothing was updated.
+    Returns a ``{column: value}`` dict of what was written (for audit/response), plus
+    an ``"_skipped_conflicts": [column, ...]`` key ONLY when at least one identifier
+    conflict was skipped; an empty dict if nothing was updated and nothing conflicted.
     """
     if client_id is None or not doc_type:
         return {}
@@ -274,7 +290,8 @@ async def enrich_client_from_extracted_fields(
     # true). Schema-drift-guarded like every column below: a DB missing one
     # of these (e.g. an older dev snapshot) just gets None for it.
     fetch_cols = [
-        c for c in ("full_name", "passport_number", "kitas_number", "custom_fields")
+        c
+        for c in ("full_name", "passport_number", "kitas_number", "npwp", "nib", "custom_fields")
         if c in existing_cols
     ]
     current: dict[str, Any] = {}
@@ -291,6 +308,7 @@ async def enrich_client_from_extracted_fields(
     params: list[Any] = []
     idx = 1
     promoted_columns: list[str] = []
+    skipped_conflicts: list[str] = []
     for extract_key, column, coerce in mapping:
         if column not in existing_cols:
             continue  # column not present on this DB — skip silently (schema drift)
@@ -302,6 +320,26 @@ async def enrich_client_from_extracted_fields(
             continue
         if column == "full_name":
             if not _name_is_better(value, current_full_name):
+                continue
+        if column in _IDENTITY_FILL_ONLY_COLUMNS:
+            # F1 (design doc §8): fill-only. A non-empty current value that
+            # normalizes DIFFERENTLY from the extracted one is a conflict
+            # (renewal? OCR misread? wrong-person doc?) — never silently
+            # overwritten, surfaced as a review lead instead. Equal
+            # normalization or an empty current column keep today's write
+            # behavior (GATE-11 promotion below still applies to those).
+            current_value = current.get(column)
+            if current_value and _normalize_for_promotion(
+                current_value
+            ) != _normalize_for_promotion(value):
+                skipped_conflicts.append(column)
+                logger.warning(
+                    "intake.client_enricher: fill-only skip client=%s column=%s "
+                    "— existing identifier conflicts with the extracted value "
+                    "(review lead, never auto-overwritten; values never logged)",
+                    client_id,
+                    column,
+                )
                 continue
         set_parts.append(f"{column} = ${idx}")
         params.append(value)
@@ -365,7 +403,7 @@ async def enrich_client_from_extracted_fields(
             )
 
     if not set_parts:
-        return {}
+        return {"_skipped_conflicts": skipped_conflicts} if skipped_conflicts else {}
 
     # Serialize against concurrent strong-id verification/writes on the same
     # value. Sorted on the CANONICAL (kind, projected value) key — the same
@@ -391,4 +429,6 @@ async def enrich_client_from_extracted_fields(
         doc_type,
         sorted(written.keys()),
     )
+    if skipped_conflicts:
+        written["_skipped_conflicts"] = skipped_conflicts
     return written

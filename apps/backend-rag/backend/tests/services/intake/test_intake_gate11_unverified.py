@@ -181,7 +181,13 @@ async def test_confirming_document_promotes_unverified_provenance_to_verified() 
 
 
 @pytest.mark.asyncio
-async def test_confirming_a_different_value_does_not_promote() -> None:
+async def test_confirming_a_different_value_is_skipped_fill_only() -> None:
+    # F1 (design doc §8, council red-team): the enricher is fill-only on identifier
+    # columns. Before F1 this scenario OVERWROTE the card with the conflicting
+    # document value ("ZZ999999") — exactly the "wrong identity write" the design
+    # doc calls WORSE than a wrong attach. Now it must be skipped and surfaced as
+    # a review lead, never silently promoted (there is nothing to promote: the
+    # values don't even match).
     conn = FakeConn(
         _EXISTING_COLS,
         {
@@ -197,9 +203,9 @@ async def test_confirming_a_different_value_does_not_promote() -> None:
         {"passport_no": {"value": "ZZ999999"}},
     )
 
-    assert written["passport_number"] == "ZZ999999"
-    sql, _args = conn.execute_calls[0]
-    assert "custom_fields" not in sql
+    assert "passport_number" not in written
+    assert written == {"_skipped_conflicts": ["passport_number"]}
+    assert conn.execute_calls == [], "fill-only must never write a conflicting identifier"
 
 
 @pytest.mark.asyncio
