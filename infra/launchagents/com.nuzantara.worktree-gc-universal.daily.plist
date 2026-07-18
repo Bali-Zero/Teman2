@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Universal worktree garbage collector — daily 08:30 WITA
+Covers ALL git worktrees (not just WR2/broker lanes). 3-LLM panel 2026-05-29.
+Script: scripts/worktree_gc_universal.py (merged PR #925)
+
+ENFORCING since 2026-05-30: the apply flag was added after ~50h dry-run
+observation (panel recommended 48h). Dry-run logs 2026-05-29→30 showed
+correct decisions (KEEP on unpushed commits, quarantine-before-remove on
+dirty). Per W62 RESOLVED. To revert to report-only: remove the apply
+argument line in ProgramArguments below.
+
+Kill switch (without removing plist):
+    set WORKTREE_GC_ENABLED=false in EnvironmentVariables (already true here)
+
+TRACKED 2026-07-18 (cicatrix #1 HOME-fork cure): this plist previously lived
+ONLY on Pro's live LaunchAgents dir, untracked in the repo — closing the
+"no plist references worktree_gc_universal.py" gap. ProgramArguments,
+schedule, and paths below are byte-identical to Pro's live copy pulled
+2026-07-18 (same day the daily cron's "reaps 0 for days" bug — the
+unpushed-commit hard-KEEP gate, W88-inflated — was cured in the script);
+this comment block only was reworded to drop a literal double-hyphen that
+was silently-invalid XML inside a comment (macOS `plutil -lint` is lenient
+about it, Python's expat parser used by `scripts/lint_plist_keepalive.py`
+is not — same class of bug the "day-1" fix on branch-cleanup.weekly.plist
+already corrected once). This file is HOME-fork-scoped by nature (paths are
+per-machine under /Users/nuzantara/); install/update it on each machine's
+own ~/Library/LaunchAgents/ via `scripts/lint_home_fork.py` declared-pairs
+discipline, do not assume this tracked copy is symlinked live.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.nuzantara.worktree-gc-universal.daily</string>
+
+	<key>ProgramArguments</key>
+	<array>
+		<string>/opt/homebrew/bin/python3</string>
+		<string>/Users/nuzantara/nuzantara/scripts/worktree_gc_universal.py</string>
+		<string>--apply</string>
+	</array>
+
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>0</integer>
+		<key>Minute</key>
+		<integer>30</integer>
+	</dict>
+	<!-- 00:30 UTC = 08:30 WITA (30min after WR2 GC at 08:00) -->
+
+	<key>WorkingDirectory</key>
+	<string>/Users/nuzantara/nuzantara</string>
+
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>WORKTREE_GC_ENABLED</key>
+		<string>true</string>
+		<key>WORKTREE_GC_MAX_AGE_HOURS</key>
+		<string>24</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/bin:/bin</string>
+	</dict>
+
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/worktree-gc-universal.log</string>
+
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/worktree-gc-universal.error.log</string>
+
+	<key>RunAtLoad</key>
+	<false/>
+
+	<key>KeepAlive</key>
+	<false/>
+</dict>
+</plist>

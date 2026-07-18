@@ -12,14 +12,32 @@ scope. For each candidate it applies the panel's safety model:
 
   1. NEVER touch the main checkout or known long-lived worktrees (allowlist).
   2. Age gate: skip if mtime < MIN_AGE_MIN (active session).
+  2b. Live-cwd gate: skip if any process on the machine has its cwd inside the
+      worktree (exact match OR a subdirectory) — a precise "active session"
+      signal the mtime-age gate alone misses (a shell idling deep in the tree
+      touches no file, so mtime never moves). Best-effort via `lsof`; missing
+      binary / any error → falls through to the age/dirty gates below, never
+      crashes the GC.
   3. Dirty classification: `git status --porcelain` AND a whitespace-insensitive
      diff. Pure formatting noise (Prettier/Black reflow) is NOT real work
      (W62: the 6 orphans were all formatting-only). Real dirty → QUARANTINE.
   4. Quarantine before removal: if a worktree has real uncommitted work OR is on
      a detached HEAD with commits, stash it onto refs/agent-quarantine/<slug>
      so nothing is lost, THEN remove. Never blind-delete dirty work.
-  5. Unpushed-commit gate: if the branch has commits not on origin, do NOT
-     remove — report for operator (a branch may be mid-PR).
+  5. Unpushed-commit handling (FIXED 2026-07-18 — cure for the W88 "kept
+     forever" bug: the daily cron reaped 0 for days, 53 worktrees / 55G
+     accumulated, because this gate hard-KEPT every named-branch worktree
+     with `rev-list origin/main..HEAD` > 0 — a proxy that inflated to
+     7779-7833 on divergent/rebased/squashed bases). A NAMED branch's
+     unpushed commits no longer block dir removal: `git worktree remove`
+     only deletes the WORKING DIRECTORY, never the branch ref — the branch
+     (and every commit on it) survives in refs/heads/ untouched and is fully
+     recoverable via `git worktree add <path> <branch>`. The GC logs a
+     RECLAIM-DIR line (operator awareness + the exact resume command) and
+     proceeds to remove the dir. This script NEVER runs `git branch -D`/`-d`
+     — grep the file to confirm the invariant holds. Detached HEAD with
+     unpushed commits is the one case still quarantined first (those commits
+     have no branch ref to fall back on if the dir goes away).
   6. `git worktree prune` at the end → clears phantom admin entries for /tmp
      worktrees deleted on reboot (Pattern 7).
   7. dry-run by DEFAULT; --apply required to remove.
@@ -155,11 +173,80 @@ def _has_real_dirty(worktree: Path) -> bool:
     return bool(diff.strip())
 
 
+def _has_live_cwd(worktree: Path) -> bool:
+    """True if any process on the machine has its cwd inside this worktree
+    (exact match OR a subdirectory) — a precise "active session" signal the
+    mtime-age gate alone misses (a shell idling deep in the tree touches no
+    file, so mtime never moves).
+
+    Implementation note (verified empirically on macOS, 2026-07-18): the
+    obvious `lsof -a -d cwd -Fn -- <dir>` form only matches an EXACT cwd —
+    a shell cd'd into a *subdirectory* of the worktree (e.g.
+    `<worktree>/apps/backend-rag`) is invisible to it. `lsof +D <dir>`
+    recursively walks the target directory's open files and would be
+    catastrophically slow on a large worktree (this GC exists because
+    worktrees grow to tens of GB). The reliable+cheap form: ask lsof for
+    EVERY process's cwd system-wide (`lsof -a -d cwd -Fn`, no path filter —
+    a syscall-table read, ~0.2s even on a busy box) and prefix-match the
+    paths in Python. That correctly catches both exact and nested cwds.
+
+    lsof missing/erroring/timing out → False (fall back to the age/dirty
+    gates; a live-cwd check must never crash or hang the GC).
+    """
+    try:
+        target = str(worktree.resolve())
+    except OSError:
+        target = str(worktree)
+    try:
+        out = subprocess.run(
+            ["lsof", "-a", "-d", "cwd", "-Fn"],
+            capture_output=True, text=True, timeout=20,
+        ).stdout
+    except Exception:
+        return False
+    prefix = target.rstrip("/") + "/"
+    for line in out.splitlines():
+        if not line.startswith("n"):
+            continue
+        name = line[1:]
+        if name == target or name.startswith(prefix):
+            return True
+    return False
+
+
 def _unpushed_commits(worktree: Path, branch: str | None) -> int:
     """Count commits on this worktree's HEAD not present on origin/main.
 
-    Conservative: any error → return 1 (treat as has-unpushed, keep it).
+    W88 CAVEAT: this is a PROXY, not a truth signal. `rev-list --count
+    origin/main..HEAD` inflates wildly on a divergent/rebased/squashed base
+    (verified 2026-07-18: 7779-7833 on health/repush/one-shot worktrees whose
+    content was long since squash-merged) — that inflation is exactly what
+    made the GC's old unpushed-gate KEEP-FOREVER (see gc()). Since 2026-07-18
+    this count is used ONLY to produce an operator-facing log number, never to
+    gate dir-removal for a named branch (a clean branch's commits survive in
+    the branch ref regardless of what this reports).
+
+    Honesty short-circuit: if `git diff --quiet origin/main...HEAD` (three-dot,
+    content since common ancestor) reports no difference, the branch is fully
+    merged BY CONTENT — return 0 even if rev-list would over-count. The
+    three-dot form has its own known failure mode post-squash (cicatrix #9,
+    the W88 double-trap: an arrears merge-base can make it report a phantom
+    difference) — but that failure only produces a false NON-zero, never a
+    false zero, so trusting a "no diff" (exit 0) verdict here is safe; we
+    never trust a "has diff" verdict as truth, we just fall through to the
+    raw, known-noisy rev-list count for the log line.
+
+    Conservative on error: any git failure → return 1 (log-line only, no
+    longer a keep/remove gate for named branches).
     """
+    try:
+        quiet = _run_git(
+            ["diff", "--quiet", "origin/main...HEAD"], cwd=worktree, check=False,
+        )
+        if quiet.returncode == 0:
+            return 0
+    except Exception:  # noqa: BLE001 — best-effort short-circuit, never fatal
+        pass
     try:
         # Use origin/main as the canonical upstream baseline.
         out = _run_git(
@@ -235,7 +322,7 @@ def gc(*, apply: bool, max_age_hours: float) -> int:
     # In dry-run these count what WOULD happen; in apply they count what DID.
     removed = 0
     quarantined = 0
-    kept_unpushed = 0
+    reclaimed_unpushed = 0
     kept_active = 0
     pruned_phantom = 0
     verb = "would " if not apply else ""
@@ -260,6 +347,11 @@ def gc(*, apply: bool, max_age_hours: float) -> int:
             kept_active += 1
             continue
 
+        if _has_live_cwd(path):
+            logger.info("KEEP %s — live process cwd inside (active)", path_str)
+            kept_active += 1
+            continue
+
         if age < max_age_hours * 3600:
             # Not old enough yet.
             continue
@@ -271,14 +363,23 @@ def gc(*, apply: bool, max_age_hours: float) -> int:
         # Detached HEAD with commits OR real dirty work → quarantine first.
         needs_quarantine = real_dirty or (e.get("detached") and unpushed > 0)
 
+        # INVARIANT: this GC NEVER deletes a branch (no `git branch -D`/`-d`
+        # anywhere in this file — grep to confirm). `git worktree remove`
+        # only removes the WORKING DIRECTORY; the branch ref — and every
+        # commit on it — survives untouched in refs/heads/ and is fully
+        # recoverable via `git worktree add <path> <branch>`. So a clean
+        # named branch's unpushed commits must NOT block dir reclamation
+        # (W88 cure, 2026-07-18): log for operator awareness, then fall
+        # through to removal below (no quarantine needed — the branch ref
+        # IS the durable copy).
         if unpushed > 0 and not e.get("detached"):
-            # Branch with unpushed commits — may be mid-PR. Keep + report.
             logger.warning(
-                "KEEP %s — branch '%s' has %d unpushed commit(s); not GC'd "
-                "(operator review)", path_str, e.get("branch"), unpushed,
+                "RECLAIM-DIR %s — branch '%s' retains %d commit(s) not on "
+                "origin/main; dir reclaimed to free disk, branch ref "
+                "PRESERVED (resume with: git worktree add %s %s)",
+                path_str, e.get("branch"), unpushed, path_str, e.get("branch"),
             )
-            kept_unpushed += 1
-            continue
+            reclaimed_unpushed += 1
 
         if needs_quarantine:
             if not _quarantine(path, slug, apply=apply):
@@ -302,9 +403,9 @@ def gc(*, apply: bool, max_age_hours: float) -> int:
         )
 
     logger.info(
-        "done: removed=%d quarantined=%d kept_unpushed=%d kept_active=%d "
+        "done: removed=%d quarantined=%d reclaimed_unpushed=%d kept_active=%d "
         "phantom=%d apply=%s",
-        removed, quarantined, kept_unpushed, kept_active, pruned_phantom, apply,
+        removed, quarantined, reclaimed_unpushed, kept_active, pruned_phantom, apply,
     )
     return 0
 
