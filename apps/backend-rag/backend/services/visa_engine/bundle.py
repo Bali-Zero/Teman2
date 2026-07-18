@@ -590,7 +590,11 @@ def verify_rule_pack(
     of the flag. This is the only path that can return
     ``VerifiedRulePack(unsigned_dev=True)``; nothing downstream needs its
     own PRODUCTION-unsigned guard because this function never lets one
-    through.
+    through. The check is a STRICT identity comparison against ``True``
+    (3-seat verify FIX-NOW #6) — ``allow_unsigned="false"`` (a non-empty,
+    therefore truthy, string) is treated as ``False``, not accidentally
+    enabled, since Python does not enforce the ``bool`` type hint at
+    runtime.
 
     FUTURE-SKEW GUARD (3-seat verify FIX-NOW #3, signed path only): a
     ``signed_at`` more than :data:`_SIGNED_AT_FUTURE_TOLERANCE` ahead of
@@ -739,9 +743,18 @@ def _verify_unsigned_dev(
             "never applies to environment=PRODUCTION, regardless of the flag"
         )
 
-    if not allow_unsigned:
+    # Strict identity check (3-seat verify FIX-NOW #6): `allow_unsigned` is
+    # typed as `bool`, but Python does not enforce that at runtime — a
+    # caller accidentally passing the STRING `"false"` (e.g. an
+    # unvalidated env-var pass-through that skipped
+    # `resolve_allow_unsigned_default`) is truthy, and `not "false"` is
+    # `False`, silently ENABLING the unsigned-dev path. Only the exact
+    # value `True` enables it; anything else (including any other truthy
+    # non-bool) is treated as `False` and refused.
+    if allow_unsigned is not True:
         raise RulePackVerificationError(
-            "rule pack envelope has no signature and allow_unsigned=False"
+            "rule pack envelope has no signature and allow_unsigned is not True "
+            f"(got {allow_unsigned!r})"
         )
 
     try:

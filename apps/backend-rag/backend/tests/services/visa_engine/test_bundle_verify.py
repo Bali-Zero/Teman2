@@ -368,7 +368,7 @@ class TestUnsignedDevFirebreak:
         payload = minimal_valid_envelope()["payload"]
         envelope = {"payload": payload}  # no "signature" key at all
 
-        with pytest.raises(RulePackVerificationError, match="allow_unsigned=False"):
+        with pytest.raises(RulePackVerificationError, match="allow_unsigned is not True"):
             verify_rule_pack(
                 envelope,
                 trust_store=_trust_store_with(),
@@ -409,6 +409,40 @@ class TestUnsignedDevFirebreak:
     def test_empty_string_signature_also_treated_as_unsigned(self) -> None:
         payload = minimal_valid_envelope()["payload"]
         envelope = {"payload": payload, "signature": ""}
+
+        result = verify_rule_pack(
+            envelope,
+            trust_store=_trust_store_with(),
+            observed_at=_OBSERVED_AT,
+            allow_unsigned=True,
+        )
+        assert result.unsigned_dev is True
+
+    def test_truthy_non_bool_string_false_is_still_rejected(self) -> None:
+        """3-seat verify FIX-NOW #6: ``allow_unsigned`` is typed ``bool``,
+        but the interpreter does not enforce that at runtime. The STRING
+        ``"false"`` is non-empty, hence truthy — a naive ``if not
+        allow_unsigned`` would silently ENABLE the unsigned-dev path on a
+        value whose plain-English meaning is "disabled". Only the exact
+        value ``True`` may enable it."""
+
+        payload = minimal_valid_envelope()["payload"]
+        assert payload["environment"] == "TEST"  # non-PRODUCTION, so this
+        # is purely about allow_unsigned normalization, not the separate
+        # PRODUCTION-always-signed firebreak.
+        envelope = {"payload": payload}
+
+        with pytest.raises(RulePackVerificationError, match="allow_unsigned is not True"):
+            verify_rule_pack(
+                envelope,
+                trust_store=_trust_store_with(),
+                observed_at=_OBSERVED_AT,
+                allow_unsigned="false",  # type: ignore[arg-type]
+            )
+
+    def test_literal_true_still_accepted(self) -> None:
+        payload = minimal_valid_envelope()["payload"]
+        envelope = {"payload": payload}
 
         result = verify_rule_pack(
             envelope,
