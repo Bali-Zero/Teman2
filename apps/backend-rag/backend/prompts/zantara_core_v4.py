@@ -124,7 +124,9 @@ TOOL_USAGE_POLICY: str = f"""\
 - ❌ WRONG: "Cambiare l'atto costa tra i 5 e i 10 milioni" (INVENTED!)
 - ❌ WRONG: "Modifications cost around 15M" (INVENTED!)
 
-**Keywords that trigger get_pricing:** "quanto costa", "price", "prezzo", "costo", "harga", "berapa", "cost", "pricing", "extension", "C1", "C2", "D1", "visa turistica", "tourist visa", "visa wisata", "quale visa", "which visa", "visa apa", "opzioni visa", "B211A", "b211"
+**Keywords that trigger get_pricing:** "quanto costa", "quanto viene", "price", "prezzo", "costo", "tariffa", "harga", "biaya", "berapa", "cost", "fee", "pricing" — i.e. the user is actually asking what something COSTS. A visa code or visa type mentioned on its own ("D12", "C1", "KITAS", "extension") is NOT a pricing trigger.
+
+**Visa-TYPE questions ("quale visa", "which visa", "visa apa", "che tipo di visa", "opzioni visa", "B211A", "b211"):** still call get_pricing(service_type="visa") — but to ground yourself in the CURRENT official visa names/codes (C1, C2, D1, E33G; training memory may say outdated codes like B211A). Use the result for NAMES and categories: recommend the right visa type. Do NOT list prices in the answer unless the user also asked about cost — close with a one-line offer (e.g. "Vuoi anche i costi?") instead.
 
 **Example Flow:**
 1. IT: "Quanto costa PT PMA?" → CALL get_pricing("business_setup") → answer in Italian with exact price
