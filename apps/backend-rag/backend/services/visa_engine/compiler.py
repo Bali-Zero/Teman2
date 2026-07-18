@@ -73,6 +73,23 @@ from a curated field list to a generic walker over the entire signed
 payload** (``payload.model_dump(mode="json")``) — round 2's field-by-field
 version missed ``source_records[].document_number``, locator values, and
 condition string literals entirely; see ``_check_utc_and_nfc``.
+
+PR3 addition: ``build_compiled_pack(pack, *, fact_registry=...) ->
+CompiledRulePack`` — the compile-to-evaluator-form step this module's PR1
+scope note (above) named as PR3 territory, now that the evaluator
+(``ast.evaluate_condition``) exists to define what "compiled" means
+operationally. Deliberately a NEW function, not a change to
+``compile_rule_pack``: that function's validate-and-report contract (never
+raise on an ordinary pack defect, return every problem in one
+``CompilationReport``) is untouched — ``build_compiled_pack`` is a second,
+later step that assumes its precondition (``compile_rule_pack(pack,
+fact_registry=fact_registry).ok``) already holds, defensively re-checks it
+(raising ``RulePackCompilationError`` if it does not), and then performs a
+*pure structural transform* of an already-validated pack into
+``CompiledRule``/``CompiledProduct``/``CompiledRulePack`` — it repeats none
+of ``compile_rule_pack``'s semantic checks (fact-literal-kind matching, ast
+limits, stage/effect compatibility, ...), only AST-depth/node-count/
+fact-path bookkeeping every already-valid rule already satisfies.
 """
 
 from __future__ import annotations
@@ -81,16 +98,28 @@ import re
 import unicodedata
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
+from uuid import UUID
 
 from backend.services.visa_engine import ast as ast_module
-from backend.services.visa_engine.enums import FactValueKind, RuleEffectType, RuleStage
+from backend.services.visa_engine.enums import (
+    Environment,
+    FactValueKind,
+    OnUnknownAction,
+    RuleEffectType,
+    RuleScope,
+    RuleStage,
+)
+from backend.services.visa_engine.errors import RulePackCompilationError
 from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY, FactRegistry, FactSpec
 from backend.services.visa_engine.models import (
     STAGE_EFFECT_TYPE,
     Rule,
+    RuleEffect,
     RulePack,
     RulePackPayload,
+    TimeRange,
+    VisaProductVersion,
 )
 
 #: Legal stages: a rule here may never reference a `commercial.*` fact
@@ -1204,3 +1233,203 @@ def _is_commercial(fact_path: str, fact_registry: FactRegistry) -> bool:
         return fact_registry.is_commercial(fact_path)
     except Exception:  # broad: unknown path, reported separately by another check
         return False
+
+
+# ---------------------------------------------------------------------------
+# PR3: compile-to-evaluator-form (build_compiled_pack + CompiledRule/
+# CompiledProduct/CompiledRulePack) — a SEPARATE step from compile_rule_pack
+# above, which stays validate-and-report only. See module docstring.
+# ---------------------------------------------------------------------------
+
+
+def _valid_period_contains(period: TimeRange, moment: datetime) -> bool:
+    """True iff ``moment`` falls in the half-open interval ``[from_, to)``.
+
+    ``to=None`` = open-ended (still in force). ``moment`` must be tz-aware
+    UTC (same contract as ``FactRegistry.derive``'s ``effective_at``);
+    comparing a naive datetime here raises ``TypeError``, which fails closed
+    rather than silently miscomparing (F1, 2-seat review 2026-07-18).
+    """
+    return period.from_ <= moment and (period.to is None or moment < period.to)
+
+
+@dataclass(frozen=True, slots=True)
+class CompiledRule:
+    """A ``Rule`` pre-analyzed for the evaluator: AST depth/node-count
+    precomputed once, ``required_facts`` resolved via ``ast.collect_fact_paths``
+    (redundant with, and always equal to, ``Rule.required_facts`` for a rule
+    that reached here — ``compile_rule_pack``'s ``REQUIRED_FACTS_MISMATCH``
+    check already proved that equality; recomputing it is the same
+    defense-in-depth posture the rest of this module already takes, never a
+    second validation pass).
+    """
+
+    rule_id: str
+    stage: RuleStage
+    scope: RuleScope
+    #: ``None`` for a GLOBAL-scope rule (matches ``Rule.product_version_ids``
+    #: semantics); a non-empty ``frozenset`` for a PRODUCTS-scope rule.
+    product_version_ids: frozenset[UUID] | None
+    priority: int
+    when: ast_module.Condition
+    effect: RuleEffect
+    on_unknown: OnUnknownAction
+    required_facts: frozenset[str]
+    source_refs: frozenset[UUID]
+    explanation_key: str
+    safety_critical: bool
+    ast_depth: int
+    ast_node_count: int
+    source_rule: Rule
+
+
+@dataclass(frozen=True, slots=True)
+class CompiledProduct:
+    """A ``VisaProductVersion`` alongside its identity for evaluator lookups."""
+
+    product_version_id: UUID
+    product_code: str
+    product: VisaProductVersion
+
+
+@dataclass(frozen=True, slots=True)
+class CompiledRulePack:
+    """The evaluator-ready compiled form of an already-validated ``RulePack``."""
+
+    rule_pack_id: UUID
+    sequence: int
+    version: str
+    environment: Environment
+    products: tuple[CompiledProduct, ...]
+    rules: tuple[CompiledRule, ...]
+    source_pack: RulePack
+
+    def rules_for(
+        self, product: CompiledProduct, *, effective_at: datetime
+    ) -> tuple[CompiledRule, ...]:
+        """``GLOBAL`` rules + ``PRODUCTS``-scoped rules naming this product
+        that are IN FORCE at ``effective_at``, ordered by ``(stage.order,
+        priority, rule_id)`` for deterministic evaluation (spec §4.2/§4.5).
+        ``stage.order`` is the SEMANTIC processing order (``HARD_FILTER`` ->
+        ``HUMAN_REVIEW`` -> ``ELIGIBILITY`` -> ``RANKING``, see
+        ``enums.STAGE_ORDER``), not the alphabetical order of ``stage.value``.
+
+        ``effective_at`` must be tz-aware UTC (same contract as
+        ``FactRegistry.derive``). A rule whose ``source_rule.valid_period``
+        does not contain ``effective_at`` (expired, or not yet in force) is
+        EXCLUDED — the bitemporal ``RulePack`` deliberately holds rules with
+        different ``valid_period``s, and selecting without this filter would
+        let an expired rule drive a decision (F1, 2-seat review 2026-07-18).
+        """
+
+        selected = [
+            rule
+            for rule in self.rules
+            if (
+                rule.scope is RuleScope.GLOBAL
+                or (
+                    rule.product_version_ids is not None
+                    and product.product_version_id in rule.product_version_ids
+                )
+            )
+            and _valid_period_contains(rule.source_rule.valid_period, effective_at)
+        ]
+        return tuple(
+            sorted(selected, key=lambda rule: (rule.stage.order, rule.priority, rule.rule_id))
+        )
+
+
+def build_compiled_pack(
+    pack: RulePack,
+    *,
+    fact_registry: FactRegistry = DEFAULT_FACT_REGISTRY,
+) -> CompiledRulePack:
+    """Compile an already-report-OK ``RulePack`` into its evaluator-ready
+    runtime form.
+
+    Precondition: ``compile_rule_pack(pack, fact_registry=fact_registry).ok``
+    is ``True`` for this exact ``pack``. This function never trusts that
+    blindly — it re-runs ``compile_rule_pack`` itself and raises
+    ``RulePackCompilationError`` (joining every ``CompilationError`` message)
+    if even one defect is found, rather than silently building a
+    ``CompiledRulePack`` out of a pack some rule of which is still broken.
+    Once that precondition is confirmed, this function repeats NONE of
+    ``compile_rule_pack``'s semantic checks — it is a pure structural
+    transform over a pack already proven valid.
+    """
+
+    report = compile_rule_pack(pack, fact_registry=fact_registry)
+    if not report.ok:
+        raise RulePackCompilationError(
+            "cannot build a compiled pack from a RulePack that fails "
+            "compile_rule_pack: " + "; ".join(f"{e.code}: {e.message}" for e in report.errors)
+        )
+
+    # `compile_rule_pack`'s own fail-stop revalidation (see that function's
+    # docstring) already proved `pack` round-trips through full Pydantic
+    # validation as its very first step — re-running it here (rather than
+    # trusting the caller's `pack` object identity) is the same
+    # never-trust-a-model_construct-smuggled-instance posture the rest of
+    # this module takes, and is guaranteed to succeed given `report.ok` above
+    # (if it failed, `compile_rule_pack` would have reported exactly
+    # `PACK_FAILS_STRUCTURAL_REVALIDATION` and nothing else, making
+    # `report.ok` False).
+    revalidation_errors: list[CompilationError] = []
+    revalidated = _revalidate_structurally(pack, revalidation_errors)
+    if revalidated is None:  # pragma: no cover - unreachable given report.ok above
+        raise RulePackCompilationError(
+            "pack failed structural revalidation on the second pass despite "
+            "compile_rule_pack reporting ok=True — this should be unreachable: "
+            + "; ".join(f"{e.code}: {e.message}" for e in revalidation_errors)
+        )
+
+    payload = revalidated.payload
+    compiled_rules = tuple(_build_compiled_rule(rule) for rule in payload.rules)
+    compiled_products = tuple(
+        CompiledProduct(
+            product_version_id=product.product_version_id,
+            product_code=product.product_code,
+            product=product,
+        )
+        for product in payload.products
+    )
+
+    return CompiledRulePack(
+        rule_pack_id=payload.rule_pack_id,
+        sequence=payload.sequence,
+        version=payload.version,
+        environment=payload.environment,
+        products=compiled_products,
+        rules=compiled_rules,
+        source_pack=revalidated,
+    )
+
+
+def _build_compiled_rule(rule: Rule) -> CompiledRule:
+    """Pure structural transform, no validation — ``rule`` is assumed
+    already ``compile_rule_pack``-clean (see ``build_compiled_pack``)."""
+
+    depth = ast_module.compute_depth(rule.when)
+    node_count = ast_module.count_nodes(rule.when)
+    referenced_facts = ast_module.collect_fact_paths(rule.when)
+    product_version_ids = (
+        frozenset(rule.product_version_ids) if rule.product_version_ids is not None else None
+    )
+
+    return CompiledRule(
+        rule_id=rule.rule_id,
+        stage=rule.stage,
+        scope=rule.scope,
+        product_version_ids=product_version_ids,
+        priority=rule.priority,
+        when=rule.when,
+        effect=rule.effect,
+        on_unknown=rule.on_unknown,
+        required_facts=referenced_facts,
+        source_refs=frozenset(rule.source_refs),
+        explanation_key=rule.explanation_key,
+        safety_critical=rule.safety_critical,
+        ast_depth=depth,
+        ast_node_count=node_count,
+        source_rule=rule,
+    )

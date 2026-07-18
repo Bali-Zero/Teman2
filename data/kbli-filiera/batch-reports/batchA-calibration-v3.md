@@ -1,0 +1,162 @@
+# Batch A — calibration registry v3 (Lot 3 gate sign-off condition (3))
+
+- **Batch:** A
+- **Artifact version:** v3
+- **Date:** 2026-07-19
+- **Plan:** `research/operations/2026-07-18-kbli-batch-a-plan.md`
+
+> **Predecessor:** data/kbli-filiera/batch-reports/batchA-calibration-v2.json (v2) — SIGNED, NEVER rewritten (scar W88/#9). This v3 file is the successor artifact mandated by the Lot 3 conductor gate report's sign-off condition (3) (research/operations/2026-07-19-kbli-batch-a-lot3-conductor-gate.md); it does not edit or supersede v2's historical record, only the registry going forward.
+
+> **Precondition:** Lot 3 conductor gate report sign-off condition (3) (research/operations/2026-07-19-kbli-batch-a-lot3-conductor-gate.md): 'Lot 4 is authorized ONLY after: (1) cross-family m1/m5 adjudicated in an appendix to this report, (2) the Lot 3 cure shipped, (3) the v3 registry re-salt shipped.' This re-emission ships condition (3).
+
+## Pinned revisions
+
+| Artifact | Pin |
+| --- | --- |
+| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `edb310c436ffead9e14349d327a85c9eb1b780d9` |
+| vault manifest (`data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json`) | sha256 `e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d` |
+| membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `7eb14d9cf024113c15ba596ab29729963de9461ef0b79170d1f12b4e9d0659fd` |
+
+## Control limits m1-m5 (v3 — three-lot registry)
+
+| # | Metric | Limit | Lot-1 | Lot-2 | Lot-3 | On breach |
+| --- | --- | --- | --- | --- | --- | --- |
+| m1 | cross-family extractor-vs-extractor IAA (lane D1 vs blind cross-family extractor with vision) | floor 0.75 | 0.385 (declared-breach) | 1.00 (measured, no breach) | 1.00 (measured, no breach) | lane pauses at lot boundary, conductor-signed resume note in plan §8 |
+| m2 | certification rate per lot | floor 0.20 / ceiling 0.85 | 0.000 | 0.000 | 0.000 | lane pauses (ceiling breach = drift suspicion), conductor-signed resume note |
+| m3 | refutation-category registry (closed list) v3 (invariant from v2) | closed list: `code_collision`, `illegitimate_inheritance`, `wrong_authority_level`, `source_absent_in_vault`, `payload_cross_contamination`, `unresolvable_source_pointer`, `mapping_metadata_false` | pass | pass | pass | any category outside the registry = automatic lot pause + conductor triage |
+| m4 | tokens/dossier ceiling | ceiling 400000 | n/a (invariant) | n/a | n/a | lane pauses, investigate runaway |
+| m5 | gold-set hit rate | 1.00 | NEG 7/8 | NEG 3/3, POS 1 HIT + 1 DQ | NEG 3/3, POS n/a | any miss halts the lot immediately |
+
+m1 principle: cross-family extractor-vs-extractor IAA IS the measure (scar W100); same-family (D1-vs-D5) agreement is NEVER an m1 reading, however high it reads — it measures transcription fidelity, not truth. Every m1 reading recorded in this registry is the TRUE cross-family figure, never a same-family proxy.
+
+m1 Lot-1 note: TRUE cross-family (GLM-blind vs lane D1), Lot 1 gate report §7 — a real floor breach, not a proxy mislabel.
+
+m1 Lot-2 note: TRUE cross-family (Lot 2 gate report Appendix A, 5/5 lot codes blind-concur) — supersedes the first signing's same-family 0.538 figure, which was a mislabel (a red-team MAJOR), never a valid m1 reading.
+
+m1 Lot-3 note: TRUE cross-family (Lot 3 gate report Appendix A, 5/5 lot codes blind-concur, including an independent re-derivation of 64940's true ancestor 64992).
+
+m2 rule: per-lot explicit conductor adjudication required; no auto-resume; no floor re-registration (the advisory-floor-0.0 proposal was withdrawn, plan A-4). Three consecutive 0.000 readings (Lot 1/2/3) are read as the true state of the disease band, not instrument drift — pausing the program on this metric alone would reward the disease.
+
+m3 note: closed-7 registry INVARIANT from v2 — zero new categories surfaced in either Lot 2 (3 seen: payload_cross_contamination, source_absent_in_vault, mapping_metadata_false) or Lot 3 (5 seen, adding illegitimate_inheritance and unresolvable_source_pointer to the seen set) — every category in both lots was already in the v2 closed list.
+
+m5 NEG-miss ruling: a NEG miss raising an evidenced completion path is adjudicated per-ancestor image-grade by the conductor: certified -> scheduled data-plane restore + halt lifts (precedent: 49213, plan A-6(b)-RESOLVED); refuted -> halt stands. An in-gate fill is never permitted.
+
+m5 POS-disqualified ruling (NEW at v3): a POS control later found contaminated with a TRUE finding is DISQUALIFIED as a control (never scored as a miss on the extracting seat — the seat found a real defect, it just found it on a code the conductor had mis-enrolled as 'clean') and folds into the standalone metadata-fix cure list. Precedent: 10433 (Lot 2 conductor gate Appendix A) — the THIRD contaminated 'clean' control found that session (after 52101 and 46100), all on the crosswalk-metadata layer. Going forward, this class of miss is prevented at the source by the pos_preverification_required rule (see gold_sets.positive_control), not merely adjudicated after the fact.
+
+## m3 category rename (carried from v2)
+
+`phantom_source_pointer` renamed to `unresolvable_source_pointer` — text-hunt evidence cannot establish nonexistence (plan A-5 terminology note).
+
+## Gold sets v3 (digest-pinned, blind to lanes, re-salted)
+
+### NEGATIVE controls (47)
+
+Eligibility: the 47 codes cured as of Lot 3 close: the 21 v2 NEGATIVE codes (8 phase-1 cured + 13 Lot-1 quarantined) + the 13 Lot-2 quarantined codes + the 13 Lot-3 quarantined codes. Digest formula: `sha256(code + "|" + manifest_digest + "|v3")`, sorted:
+
+- `05d8797bc2132f1d5314b51d8d27470d92ec477f29274d3b85e296575cd361f0`
+- `0d268d367a240ceaee61a39e6ab4324aa9fac34e5779047aee013257ea5025e8`
+- `0f5a6880238b8d400f08607f59a0ce52f7bef48ef91052388847efd5b2044336`
+- `0f745357172517cdbc1a489b5343034ff1075803f9eab36e13fe7f8bc7a56ac5`
+- `116b36eb8c16bd18bfb8de89714eebbeb970cf84edff0a478d8e042107ff80a8`
+- `1244645495dd7d10c74915d863824ee06f0b27fb61cab2ffd89c71eafd277769`
+- `230431d01e088514b76f49a54aba91283a4811eac12aa37bd8e8bd2988d98cb1`
+- `264da2d46a82d41c9e32651741c9cb277365334a999895f2c097b15ce14770cd`
+- `2eade68516c71c8e12a0d61682f7945b3e1b9c820504eceab23c11b7b1fef532`
+- `41636558147e1f4175250721b76b8064cbba9651c60d0774a8f41d17ddd0d99a`
+- `41f26e1b1fe7f50cfce5172a5c439d3d60345fbb330800eaf32b527d2e2b81af`
+- `4cd23a7ec07f1cdb14d87c0cba914c6ae8ddaf19246415f7b2bfcd1cfec220e4`
+- `4d70bb0ac91e25f6fad233c6790ba72c57e4577a4d3b7fcba16f6d2fd6d9bfd1`
+- `534bdcd14c754c987e022d6f8209b8694c3a01cb5401232190fdb7b9adc3c4cd`
+- `5b0c46e890c8504bdb9fb4d7fe4961c1dd6645edf1848943e0ae3756f0be9150`
+- `5c5a042ca83fc94907208701f61f24b1eeb7a5e8f0189ea321051026be7ab370`
+- `5f875d1bd04dda90fa26f36ff763d4e5cfa99185c9af04f857400cf15c6e6771`
+- `625c97b63a7839cf3247a47dbcff2527127a8a66232fea371c0bf598c16834aa`
+- `6e96ce1b0658ca68b3457b1d43c24721091afe1829fbafe8d6b8e1c4f810632f`
+- `70797a112221bd665ebde97f2f71e7dd26684a03cdf3844f1f459503b31f9d54`
+- `767ea8e4e68a1a46f2ebb141016e80d55013d69c096cd116f52da9d04d89b285`
+- `7769e4a439d0488711bf08ba26c3a0e5dfc0360099bbbdad8ed89d9a7900d94a`
+- `82dc8b3196170af317ee2181f58c8a6a452cef42decfb2128536139483de4c7d`
+- `851a1b09f70d5022b714f98d3225b35b30d9fcb2d6cdccf815eedbe7c3de4399`
+- `87302d9b2a2f2a653105fd9ddb958f387421049a1185ca1185c2ebaca751afd5`
+- `8a33f3ab4164b3f2c499c272dd2849d7cc5f3c71cc3ae71a704a18418ae5d1e9`
+- `8bb8294a41a36d25790f38578b06773f0b7677f7823250050bfdd61990cd14be`
+- `8bbfcd707f288d7bc8977b2648a9f49ae2a8f288697ec8b9410ba8b17b8abf87`
+- `921036a48cd4e4cd71b15721df6d66884d321c1e3f790f8977a6f7ebca646afc`
+- `a0f87c11abd009279e27749e1cc86f3be9b9abe579604b40a34df190123c6869`
+- `a206e930142a96b9f64946bcea179b14540172de972fd951e997c5429edec3df`
+- `a2ee0a6b47adb55baa4c79836b72615f0c5801a395201d582acec14caa56fe6b`
+- `a718ee92cf4fcee8ae98c582326cabc3705c03f4d1eddc3881f26ff888ec1448`
+- `be9fdae644263f2aefaaa04bb8e642d58dcd3397d5a88e1abeacb53d1143c849`
+- `c943e18cd8968f781dd99e51a0031747a894810bc4d44f335946b9c9cfb2d013`
+- `d3f9ce29106243f6a2c46a3368524ab98c447b9fbc51b044c27880a9519341e0`
+- `d6438b9bb40e26194f9a0a438a2f1360d394b89573b0ba888e01a3f6982b43a6`
+- `d6b5ca0cd59076e861c102f5ac2b45bfba535979204771745ca19d349ddf1c84`
+- `d79a789202630b2ebf1b38a59429b9231f1f0f2ffa6f1f5f1db7868eaa939cc6`
+- `d857ceb642a4719a592aeab14f55c9ed76c6dfd172b05a632121fb4fd019fc57`
+- `db7c208b40b623fb3871688a866f7b2fbc7375aba524204a12e649d722ec955e`
+- `df7b437a2731d9d944b2e4b02095979deeb2c681f8f6e2f3dedd8139c034f252`
+- `e4a1d64c3e5b177528d0570a64e270ac12d9164a19cead8f5d746869cde167f7`
+- `e886039a50ae328596c1e19011c11580de073e08ef69967f71dd21e57157d178`
+- `f9fc39a254addbc4e37170849f822813a7720f01b027e010e7233abd9558ff5f`
+- `fc7f90f029841a6a574597c8f70c39c3ae8ccba314d5e4764ef0492dd67adf4e`
+- `ff23050a23380060fc68146fa0af51f7de411f7d6842387f8635185c72f29752`
+
+### POSITIVE controls (8 of 1321 eligible after excluding 8 Lot-1 + 8 Lot-2 revealed controls; 1329 eligible after Lot-1 exclusion only; 1337 eligible before any exclusion)
+
+Eligibility predicate: canonical record has kode_kbli_2025 set AND _l2_source is non-null AND per_skala is non-empty (the OSS-native Batch-C class).
+
+Selection rule: among eligible codes EXCLUDING both the 8 Lot-1 AND the 8 Lot-2 revealed positive controls (16 burned total), the 8 with the lowest sha256(code + "|" + manifest_digest + "|v3") hex digest, sorted ascending — deterministic, never conductor-picked.
+
+Digest formula: `sha256(code + "|" + manifest_digest + "|v3")`.
+
+- `001ce4e1329e860bba50c7d09160fa50b2f05af64e4466ab9d1eddc51d811713`
+- `003e609616da8a6172acad5588fd58ad58e0755566b4fc769c67377f4061c521`
+- `00502bf84d427c522399fb4b35fd17d37774db41fbb46a0b890df0e3f0e46da6`
+- `0062c5448efb68d9c9f966de9a0c7efae365151fea1dc767d162c4fd4e848a9b`
+- `00910c110d590ac572dde91a533de94ae60daa07c6159fc399a6d70caa8facf2`
+- `009884d9f928e4488d2aa0f6753765233b47a63710b23a42ad09db9611250611`
+- `009cc8bfe2df95fa52126ef90dd78332a703c202af680ffe8e0663962417fedf`
+- `00a9680947e8ebe3cc4b1ce828dc07dbfd60e515a04f91da8736b09306bcd0d6`
+
+**Lot-2 burn note:** 8 codes revealed at the Lot 2 cross-family Appendix A (2026-07-18) — the committed v2-lot2 digests, derivation independently replicated, matched byte-for-byte. 10433 is ADDITIONALLY a disqualified control (a TRUE finding, see m5_gold_set_hit_rate.pos_disqualified_ruling and the standalone metadata-fix cure metadata_fixes_2026_07_19.json) — it is excluded here for the SAME reveal-burn reason as the other 7, not specially; all 8 are permanently ineligible as v3+ gold controls.
+
+**POS pre-verification required (NEW, v3):** `pos_preverification_required` = True. POS controls are pre-verified on BOTH crosswalk directions (forward BPS Lampiran 5 AND reverse Lampiran 10) BEFORE enrollment as a gold control — not merely digest-selected by lowest sha256. Pre-verification is executed by the CONDUCTOR at REVEAL time (post-lot-close), per the Lot 3 gate report's control protocol note (§4): 'pre-verify on BOTH directions -> 2/2 clean controls (vs 0/2 in Lot 2)' — this is now the standing protocol for every lot from v3 forward.
+
+**Reveal rule:** Plaintext code lists for both control classes are revealed in the lot report AFTER the lot closes (plan §5). Never before.
+
+## Lot 1 outcome (pinned literal, reference)
+
+- Quarantined: 13 · Certified: 0
+- m1: 0.385 — declared-breach
+- m2: 0.000 — declared-breach
+- m3: pause (2 new categories)
+- m5 NEG hit rate: 7/8 — halt lifted per A-6(b)-RESOLVED
+- References: `research/operations/2026-07-18-kbli-batch-a-lot1-conductor-gate.md` — PR #2721 (docs) + PR #2725 (data apply)
+
+## Lot 2 outcome (pinned literal, reference)
+
+- Quarantined: 13 · Certified: 0
+- Innocence controls: 0/2 true-clean (BOTH contaminated on the crosswalk-metadata layer: 52101 lane-quarantined true finding, 46100 retro-quarantined post-red-team)
+- m1: 1.000 — measured, no breach
+- m2: 0.000 — declared-breach
+- m3: pass (3 seen, all in v2 closed registry)
+- m5 NEG hit rate: 3/3 · POS: 1 valid HIT (46329) + 1 DISQUALIFIED (10433, true finding)
+- References: `research/operations/2026-07-18-kbli-batch-a-lot2-conductor-gate.md` — PR #2753 (docs, second signing + Appendix A) + PR #2761 (data apply)
+
+## Lot 3 outcome (pinned literal, reference)
+
+- Quarantined: 13 · Certified: 0
+- Innocence controls: 2/2 true-clean (59140, 59201 — first lot to validate the pre-verify-both-directions control protocol)
+- m1: 1.000 — measured, no breach
+- m2: 0.000 — declared-breach
+- m3: pass (5 seen, all in v2 closed registry)
+- m5 NEG hit rate: 3/3 · POS: not run (POS leg deliberately skipped — v2-lot2 plaintexts burned, v3 re-salt ships in this PR)
+- References: `research/operations/2026-07-19-kbli-batch-a-lot3-conductor-gate.md` — PR #2768 (docs, second signing + Appendix A) + PR #2769 (data apply)
+
+## Pause/resume protocol
+
+Any control-limit breach (m1-m5) pauses the affected lane at the lot boundary. Resume requires a conductor-signed note appended to research/operations/2026-07-18-kbli-batch-a-plan.md §8, citing the specific breached metric and the root cause. No silent resume.
+
+## Sign-off
+
+Conductor sign-off: SIGNED — Fable conductor session (MANDATO S2, post-Lot-3-GO), 2026-07-19

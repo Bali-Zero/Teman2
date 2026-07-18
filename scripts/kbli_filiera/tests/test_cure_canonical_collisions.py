@@ -157,3 +157,265 @@ def test_apply_raises_when_intel_missing_but_whatyouneed_requested() -> None:
     entry = {"code": "51103", "data_note": "n", "whatYouNeed": "gap"}
     with pytest.raises(cure.CureError):
         cure.apply_cure(rec, entry, DISPUTED_KEY)
+
+
+# ---------------------------------------------------------------------------
+# Batch A Lot 2 extension (2026-07-18): status_mapping_correction /
+# whatChanged_correction — the mapping_metadata_false class (e.g. 47771).
+# ---------------------------------------------------------------------------
+
+
+def test_plan_flags_status_mapping_and_whatchanged_correction() -> None:
+    rec = _record(per_skala=[{"kategori_risiko": "Rendah"}])
+    rec["status_mapping"] = "MATCH_LANGSUNG"
+    rec["intel_2026"]["whatChanged"] = "Unchanged from KBLI 2020 — direct match."
+    entry = {
+        "code": "51103",
+        "data_note": "n",
+        "whatYouNeed": "gap",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+        "whatChanged_correction": "Merged from multiple KBLI 2020 codes.",
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "apply"
+    assert plan.needs_detach is True
+    assert plan.needs_status_mapping is True
+    assert plan.needs_whatchanged is True
+
+
+def test_apply_sets_status_mapping_and_whatchanged_together_with_detach() -> None:
+    rec = _record(per_skala=[{"kategori_risiko": "Rendah"}])
+    rec["status_mapping"] = "MATCH_LANGSUNG"
+    rec["intel_2026"]["whatChanged"] = "Unchanged from KBLI 2020 — direct match."
+    entry = {
+        "code": "51103",
+        "data_note": "n",
+        "whatYouNeed": "gap",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+        "whatChanged_correction": "Merged from multiple KBLI 2020 codes.",
+    }
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out["per_skala"] == []
+    assert out[DISPUTED_KEY] == [{"kategori_risiko": "Rendah"}]
+    assert out["status_mapping"] == "MATCH_CON_AGGREGAZIONE"
+    assert out["intel_2026"]["whatChanged"] == "Merged from multiple KBLI 2020 codes."
+    assert out["intel_2026"]["whatYouNeed"] == "gap"
+
+
+def test_plan_metadata_only_correction_when_already_detached() -> None:
+    """A record already detached (prior lot) can still need a metadata-only
+    correction with no further per_skala change — needs_detach stays False."""
+    rec = _record(per_skala=[], whatYouNeed="gap", disputed=True)
+    rec["status_mapping"] = "MATCH_LANGSUNG"
+    entry = {
+        "code": "51103",
+        "data_note": "n",
+        "whatYouNeed": "gap",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "apply"
+    assert plan.needs_detach is False
+    assert plan.needs_whatyouneed is False
+    assert plan.needs_status_mapping is True
+
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out["per_skala"] == []
+    assert out[DISPUTED_KEY] == [{"kategori_risiko": "Tinggi"}], "prior disputed block untouched"
+    assert out["status_mapping"] == "MATCH_CON_AGGREGAZIONE"
+
+
+def test_plan_already_cured_when_metadata_correction_matches() -> None:
+    rec = _record(per_skala=[], whatYouNeed="gap", disputed=True)
+    rec["status_mapping"] = "MATCH_CON_AGGREGAZIONE"
+    entry = {
+        "code": "51103",
+        "data_note": "n",
+        "whatYouNeed": "gap",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "already-cured"
+
+
+def test_apply_raises_when_intel_missing_but_whatchanged_requested() -> None:
+    rec = {"kode_kbli_2025": "51103", "per_skala": []}
+    entry = {"code": "51103", "data_note": "n", "whatChanged_correction": "x"}
+    with pytest.raises(cure.CureError):
+        cure.apply_cure(rec, entry, DISPUTED_KEY)
+
+
+def test_lot1_and_fase1_specs_unaffected_by_absent_metadata_keys() -> None:
+    """Entries with no status_mapping_correction/whatChanged_correction keys
+    (every Fase 1 and Lot 1 entry) must behave exactly as before — pure no-op
+    on the new fields."""
+    rec = _record(per_skala=[], whatYouNeed="gap", disputed=True)
+    rec["status_mapping"] = "MATCH_LANGSUNG"
+    entry = {"code": "51103", "data_note": "n", "whatYouNeed": "gap"}
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "already-cured"
+    assert plan.needs_status_mapping is False
+    assert plan.needs_whatchanged is False
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out["status_mapping"] == "MATCH_LANGSUNG", "untouched when spec supplies no correction"
+
+
+# ---------------------------------------------------------------------------
+# Standalone metadata-fix extension (2026-07-19): "action": "metadata_only"
+# and pp28_sources_correction — for OSS-native codes (52101/46100/10433)
+# whose HEALTHY, non-empty per_skala must NEVER be detached even though a
+# crosswalk-metadata defect needs curing.
+# ---------------------------------------------------------------------------
+
+
+def test_plan_metadata_only_action_forces_needs_detach_false_on_healthy_per_skala() -> None:
+    """Without action='metadata_only', a non-empty per_skala ALWAYS triggers
+    needs_detach (existing behavior, unaffected). WITH it, needs_detach must
+    stay False even though per_skala is non-empty and healthy."""
+    healthy_rows = [{"skala_usaha": ["Mikro"], "kategori_risiko": "Rendah"}]
+    rec = _record(per_skala=healthy_rows)
+    rec["status_mapping"] = "MATCH_LANGSUNG"
+    entry = {
+        "code": "51103",
+        "action": "metadata_only",
+        "data_note": "n",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "apply"
+    assert plan.needs_detach is False
+    assert plan.metadata_only is True
+    assert plan.needs_status_mapping is True
+
+
+def test_apply_metadata_only_leaves_healthy_per_skala_byte_invariant() -> None:
+    """The core guilt+innocence guarantee: per_skala must be byte-identical
+    before and after a metadata_only apply, even though status_mapping and
+    pp28_sources are corrected in the same call."""
+    healthy_rows = [
+        {"skala_usaha": ["Mikro"], "kategori_risiko": "Rendah", "persyaratan": ["NIB"]},
+        {"skala_usaha": ["Kecil"], "kategori_risiko": "Menengah Rendah", "persyaratan": ["NIB", "SS"]},
+    ]
+    original_rows = copy.deepcopy(healthy_rows)
+    rec = _record(per_skala=healthy_rows)
+    rec["status_mapping"] = "MATCH_LANGSUNG"
+    rec["pp28_sources"] = ["52101"]
+    entry = {
+        "code": "51103",
+        "action": "metadata_only",
+        "data_note": "n",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+        "whatChanged_correction": "Merged from multiple KBLI 2020 codes.",
+    }
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out["per_skala"] == original_rows, "per_skala must be byte-invariant under metadata_only"
+    assert DISPUTED_KEY not in out, "metadata_only must never write a disputed key"
+    assert out["status_mapping"] == "MATCH_CON_AGGREGAZIONE"
+    assert out["intel_2026"]["whatChanged"] == "Merged from multiple KBLI 2020 codes."
+    assert out["pp28_sources"] == ["52101"], "pp28_sources untouched when no pp28_sources_correction given"
+
+
+def test_plan_pp28_sources_correction_flags_needs_pp28_sources() -> None:
+    rec = _record(per_skala=[{"kategori_risiko": "Rendah"}])
+    rec["pp28_sources"] = ["10433", "10490"]
+    entry = {
+        "code": "51103",
+        "action": "metadata_only",
+        "data_note": "n",
+        "pp28_sources_correction": ["10433"],
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "apply"
+    assert plan.needs_detach is False
+    assert plan.needs_pp28_sources is True
+
+
+def test_apply_pp28_sources_correction_sets_new_list_and_leaves_per_skala_untouched() -> None:
+    healthy_rows = [{"skala_usaha": ["Mikro"], "kategori_risiko": "Menengah"}]
+    original_rows = copy.deepcopy(healthy_rows)
+    rec = _record(per_skala=healthy_rows)
+    rec["pp28_sources"] = ["10433", "10490"]
+    entry = {
+        "code": "10433",
+        "action": "metadata_only",
+        "data_note": "10490 belongs to 10419, not 10433",
+        "pp28_sources_correction": ["10433"],
+    }
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out["pp28_sources"] == ["10433"]
+    assert out["per_skala"] == original_rows
+    assert DISPUTED_KEY not in out
+    assert out["_data_note"] == "10490 belongs to 10419, not 10433"
+
+
+def test_pp28_sources_correction_is_deep_copied_not_aliased() -> None:
+    """A mutation of the spec's list after the fact must not leak into the
+    applied record (defensive copy, same discipline as the detach fold)."""
+    rec = _record(per_skala=[{"kategori_risiko": "Rendah"}])
+    rec["pp28_sources"] = ["10433", "10490"]
+    target = ["10433"]
+    entry = {
+        "code": "10433",
+        "action": "metadata_only",
+        "data_note": "n",
+        "pp28_sources_correction": target,
+    }
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    target.append("MUTATED")
+    assert out["pp28_sources"] == ["10433"], "output must not alias the spec's list object"
+
+
+def test_plan_already_cured_metadata_only_when_all_corrections_match() -> None:
+    rec = _record(per_skala=[{"kategori_risiko": "Rendah"}], disputed=False)
+    rec["status_mapping"] = "MATCH_CON_AGGREGAZIONE"
+    rec["pp28_sources"] = ["10433"]
+    entry = {
+        "code": "10433",
+        "action": "metadata_only",
+        "data_note": "n",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+        "pp28_sources_correction": ["10433"],
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "already-cured"
+
+
+def test_metadata_only_skips_ambiguous_check_even_when_per_skala_already_empty() -> None:
+    """A metadata_only entry never touches per_skala, so the ambiguous-skip
+    guard (which exists only to protect an about-to-detach write) must never
+    fire for it — even if per_skala happens to already be [] with no
+    disputed key present."""
+    rec = {
+        "kode_kbli_2025": "51103",
+        "per_skala": [],
+        "status_mapping": "MATCH_LANGSUNG",
+        "intel_2026": {"whatItMeans": "keep"},
+    }
+    entry = {
+        "code": "51103",
+        "action": "metadata_only",
+        "data_note": "n",
+        "status_mapping_correction": "MATCH_CON_AGGREGAZIONE",
+    }
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.status == "apply"
+    assert plan.needs_detach is False
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out["per_skala"] == []
+    assert DISPUTED_KEY not in out
+    assert out["status_mapping"] == "MATCH_CON_AGGREGAZIONE"
+
+
+def test_non_metadata_only_entry_on_healthy_per_skala_still_detaches_as_before() -> None:
+    """INNOCENCE control for the new action flag: an entry with NO 'action'
+    key, on a record with non-empty per_skala, must still detach exactly as
+    every Fase-1/Lot-1/Lot-2/Lot-3 entry always has — the new capability is
+    strictly opt-in."""
+    rec = _record(per_skala=[{"kategori_risiko": "Rendah"}])
+    entry = {"code": "51103", "data_note": "n", "status_mapping_correction": "MATCH_CON_AGGREGAZIONE"}
+    plan = cure.plan_cure(rec, entry, DISPUTED_KEY)
+    assert plan.needs_detach is True
+    assert plan.metadata_only is False
+    out = cure.apply_cure(rec, entry, DISPUTED_KEY)
+    assert out["per_skala"] == []
+    assert out[DISPUTED_KEY] == [{"kategori_risiko": "Rendah"}]

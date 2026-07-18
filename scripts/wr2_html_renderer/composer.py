@@ -407,7 +407,15 @@ def _levers_to_css(levers: dict[str, Any]) -> str:
         if steps:
             factor = max(0.6, 1.0 - 0.08 * int(steps))
             sel = {
-                "body": ".body,.text,[data-zone-type='text']",
+                # EXCLUDE .statement: the statement-bomb closer's punch text carries
+                # data-zone-type="text" but is Art-9.5 primary type with its OWN sizing
+                # (var(--font-size-statement-bomb) 72px / .statement.shrunk 56px), NOT
+                # body prose. A body lever hitting it via [data-zone-type='text'] +
+                # calc(1em*factor) collapsed the closer to a ~10-15px micro-caption
+                # (1em resolves to the ~16px PARENT, not the 72px statement). Photo-backed
+                # closer + a shrink_font:body lever (critic "bottom overflow") = the
+                # "slide-7 closer renders tiny" defect. Body prose (.body/.text) unaffected.
+                "body": ".body,.text,[data-zone-type='text']:not(.statement)",
                 "heading": ".headline,.heading,h1",
                 "subhead": ".subhead,.subheading",
             }[elem]
@@ -427,7 +435,15 @@ def _levers_to_css(levers: dict[str, Any]) -> str:
             # (NOT calc(1em*…)) so it never gets pinned by a floor above 1em.
             target_px = min(cap_px, round(min_px * (1.0 + _GROW_STEP * (int(steps) - 1))))
             sel = {
-                "body": ".body,.text,[data-zone-type='text']",
+                # EXCLUDE .statement: the statement-bomb closer's punch text carries
+                # data-zone-type="text" but is Art-9.5 primary type with its OWN sizing
+                # (var(--font-size-statement-bomb) 72px / .statement.shrunk 56px), NOT
+                # body prose. A body lever hitting it via [data-zone-type='text'] +
+                # calc(1em*factor) collapsed the closer to a ~10-15px micro-caption
+                # (1em resolves to the ~16px PARENT, not the 72px statement). Photo-backed
+                # closer + a shrink_font:body lever (critic "bottom overflow") = the
+                # "slide-7 closer renders tiny" defect. Body prose (.body/.text) unaffected.
+                "body": ".body,.text,[data-zone-type='text']:not(.statement)",
                 "heading": ".headline,.heading,h1",
                 "subhead": ".subhead,.subheading",
             }[elem]

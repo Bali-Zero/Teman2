@@ -3278,7 +3278,7 @@
       "type": "string"
     },
     "RuleStage": {
-      "description": "The four rule stages, evaluated in this strict order (spec \u00a75.3).\n\nHARD_FILTER: any TRUE excludes the product outright.\nELIGIBILITY: SUPPORT rules whose ``covered_purposes`` union must cover\n    every declared purpose (``COVER_ALL_DECLARED_PURPOSES``).\nHUMAN_REVIEW: any TRUE forces HUMAN_REVIEW_REQUIRED, no candidate emitted.\nRANKING: only runs on already-SUPPORTED products; integer score deltas.",
+      "description": "The four rule stages (spec \u00a75.3).\n\nHARD_FILTER: any TRUE excludes the product outright.\nELIGIBILITY: SUPPORT rules whose ``covered_purposes`` union must cover\n    every declared purpose (``COVER_ALL_DECLARED_PURPOSES``).\nHUMAN_REVIEW: any TRUE forces HUMAN_REVIEW_REQUIRED, no candidate emitted.\nRANKING: only runs on already-SUPPORTED products; integer score deltas.\n\nDeclaration order above matches the spec's public API listing \u2014 it is\nNOT the semantic processing/evaluation order (PR3 correction: an earlier\ndraft of this docstring claimed \"evaluated in this strict order\" for the\ndeclaration order itself, which contradicts spec \u00a74.2's own\n``evaluate_product`` algorithm \u2014 HARD_FILTER excludes first, then\nHUMAN_REVIEW is checked BEFORE ELIGIBILITY runs, then RANKING last, only\nover already-SUPPORTED products). For the true processing order use\n:data:`STAGE_ORDER` (or the :attr:`order` property below).",
       "enum": ["HARD_FILTER", "ELIGIBILITY", "HUMAN_REVIEW", "RANKING"],
       "title": "RuleStage",
       "type": "string"
