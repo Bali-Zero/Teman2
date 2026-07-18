@@ -250,7 +250,13 @@ class StayPolicy(BaseModel):
 class ExtensionPolicy(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    allowed: bool
+    # StrictBool (PR1b item 3): a bare `bool` field accepts `1`/`0`/"true"/
+    # "yes" via Pydantic's lax-mode coercion — the same class of gap the
+    # int fields in this module already closed with `strict=True` (see
+    # e.g. `maximum_extensions` right below). Field(strict=True) does not
+    # change the exported JSON schema (verified empirically: `{"type":
+    # "boolean"}` either way), so no contract regeneration is needed.
+    allowed: Annotated[bool, Field(strict=True)]
     maximum_extensions: Annotated[int, Field(ge=0, le=100, strict=True)]
     days_per_extension: Annotated[int, Field(ge=1, le=3650, strict=True)] | None
 
@@ -267,7 +273,8 @@ class ClockCheckpointSpec(BaseModel):
 class ClockPolicy(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    available: bool
+    # StrictBool (PR1b item 3) — see ExtensionPolicy.allowed's comment.
+    available: Annotated[bool, Field(strict=True)]
     anchor: ClockAnchor
     checkpoints: tuple[ClockCheckpointSpec, ...] = Field(..., max_length=64)
 
@@ -301,7 +308,8 @@ class VisaProductVersion(BaseModel):
     clock_policy: ClockPolicy
     pricing_key: PricingKey | None
     source_refs: tuple[uuid.UUID, ...] = Field(..., min_length=1)
-    public_catalog: bool
+    # StrictBool (PR1b item 3) — see ExtensionPolicy.allowed's comment.
+    public_catalog: Annotated[bool, Field(strict=True)]
 
     @field_validator("legacy_codes", "legacy_slugs", "covered_purposes", "source_refs")
     @classmethod
@@ -415,7 +423,11 @@ class Rule(BaseModel):
     required_facts: tuple[FactPath, ...] = Field(..., max_length=128)
     source_refs: tuple[uuid.UUID, ...] = Field(..., min_length=1, max_length=32)
     explanation_key: Identifier
-    safety_critical: bool
+    # StrictBool (PR1b item 3) — see ExtensionPolicy.allowed's comment.
+    # `safety_critical` is the highest-stakes bool in this package (gates
+    # human-review escalation for legally-sensitive rules), so this is the
+    # field the task brief calls out as P1 rather than P2.
+    safety_critical: Annotated[bool, Field(strict=True)]
 
     @field_validator("product_version_ids", "source_refs")
     @classmethod
@@ -1050,7 +1062,8 @@ class Outage(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     code: ReasonCode
-    retryable: bool
+    # StrictBool (PR1b item 3) — see ExtensionPolicy.allowed's comment.
+    retryable: Annotated[bool, Field(strict=True)]
 
 
 class Decision(BaseModel):

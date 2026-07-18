@@ -1045,6 +1045,73 @@ class TestStrictIntFields:
             M.EffectAddScore(type="ADD_SCORE", reason_code="X", points=1.0)  # type: ignore[arg-type]
 
 
+class TestStrictBoolFields:
+    """PR1b item 3: a bare ``bool`` field silently accepts truthy int/str
+    values (``1``, ``0``, ``"true"``, ``"yes"``) via Pydantic's lax-mode
+    coercion — the same class of gap ``TestStrictIntFields`` above already
+    closes for this package's integer fields. ``Field(strict=True)`` on a
+    boolean does not change the exported JSON schema (verified empirically:
+    ``{"type": "boolean"}`` either way), so no contract regeneration
+    accompanies this hardening — unlike item 8's ``IsoDate`` pattern change.
+    """
+
+    def test_extension_policy_allowed_rejects_int_one(self) -> None:
+        with pytest.raises(ValidationError):
+            M.ExtensionPolicy(
+                allowed=1,  # type: ignore[arg-type]
+                maximum_extensions=1,
+                days_per_extension=30,
+            )
+
+    def test_extension_policy_allowed_accepts_real_bool(self) -> None:
+        policy = M.ExtensionPolicy(allowed=True, maximum_extensions=1, days_per_extension=30)
+        assert policy.allowed is True
+
+    def test_clock_policy_available_rejects_string_true(self) -> None:
+        with pytest.raises(ValidationError):
+            M.ClockPolicy(available="true", anchor="ENTRY_DATE", checkpoints=[])  # type: ignore[arg-type]
+
+    def test_clock_policy_available_accepts_real_bool(self) -> None:
+        policy = M.ClockPolicy(available=True, anchor="ENTRY_DATE", checkpoints=[])
+        assert policy.available is True
+
+    def test_visa_product_version_public_catalog_rejects_int_zero(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        dumped = minimal_valid_pack.payload.products[0].model_dump(mode="json", by_alias=True)
+        dumped["public_catalog"] = 0
+        with pytest.raises(ValidationError):
+            M.VisaProductVersion.model_validate(dumped)
+
+    def test_visa_product_version_public_catalog_accepts_real_bool(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        dumped = minimal_valid_pack.payload.products[0].model_dump(mode="json", by_alias=True)
+        dumped["public_catalog"] = False
+        product = M.VisaProductVersion.model_validate(dumped)
+        assert product.public_catalog is False
+
+    def test_rule_safety_critical_rejects_int_zero(self, minimal_valid_pack: M.RulePack) -> None:
+        dumped = minimal_valid_pack.payload.rules[0].model_dump(mode="json", by_alias=True)
+        dumped["safety_critical"] = 0
+        with pytest.raises(ValidationError):
+            M.Rule.model_validate(dumped)
+
+    def test_rule_safety_critical_accepts_real_bool(self, minimal_valid_pack: M.RulePack) -> None:
+        dumped = minimal_valid_pack.payload.rules[0].model_dump(mode="json", by_alias=True)
+        dumped["safety_critical"] = True
+        rule = M.Rule.model_validate(dumped)
+        assert rule.safety_critical is True
+
+    def test_outage_retryable_rejects_string_yes(self) -> None:
+        with pytest.raises(ValidationError):
+            M.Outage(code="X", retryable="yes")  # type: ignore[arg-type]
+
+    def test_outage_retryable_accepts_real_bool(self) -> None:
+        outage = M.Outage(code="X", retryable=True)
+        assert outage.retryable is True
+
+
 def _snapshot_dir() -> Path:
     """``backend/services/visa_engine/contracts/`` — the static, committed,
     hand-reviewed schema files R3-E introduces to break the validation
