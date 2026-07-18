@@ -119,3 +119,53 @@ def test_audit_row_is_pii_free() -> None:
     serialized = str(row).lower()
     assert "in memory only" not in serialized
     assert "raw name" not in serialized
+
+
+class _FakeResponse:
+    def __init__(self, status_code: int, folder_value: str | None = None):
+        self.status_code = status_code
+        self._folder_value = folder_value
+
+    def json(self):
+        return {"client": {"google_drive_folder_id": self._folder_value}}
+
+
+class _FakeClient:
+    """Duck-typed httpx.AsyncClient: scripted GET responses, records PATCHes."""
+
+    def __init__(self, get_responses: list[_FakeResponse]):
+        self._gets = list(get_responses)
+        self.patch_calls: list[tuple[str, dict]] = []
+
+    async def get(self, url: str) -> _FakeResponse:
+        return self._gets.pop(0)
+
+    async def patch(self, url: str, json: dict) -> _FakeResponse:
+        self.patch_calls.append((url, json))
+        return _FakeResponse(200)
+
+
+async def test_apply_one_toctou_recheck_blocks_patch() -> None:
+    """The live screen may be minutes stale; a value set on prod in the gap
+    must block the PATCH (the endpoint has no server-side overwrite guard)."""
+    mod = _load()
+    plan = _plan(mod, 5, "folder-NEW")
+    fake = _FakeClient([_FakeResponse(200, folder_value="folder-SET-MEANWHILE")])
+    await mod._apply_one(plan, fake)
+    assert fake.patch_calls == []  # never overwritten
+    assert plan.decision == "skip" and plan.detail == "already_set_live"
+
+
+async def test_apply_one_happy_path_patches_and_verifies() -> None:
+    mod = _load()
+    plan = _plan(mod, 5, "folder-NEW")
+    fake = _FakeClient(
+        [
+            _FakeResponse(200, folder_value=None),  # pre-PATCH re-check: free
+            _FakeResponse(200, folder_value="folder-NEW"),  # post-PATCH verify
+        ]
+    )
+    await mod._apply_one(plan, fake)
+    assert len(fake.patch_calls) == 1
+    assert fake.patch_calls[0][1] == {"google_drive_folder_id": "folder-NEW"}
+    assert plan.decision == "applied" and plan.detail == "verified"

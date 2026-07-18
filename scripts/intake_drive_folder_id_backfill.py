@@ -102,6 +102,7 @@ DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
 DRIVE_DELEGATED_USER = "zero@balizero.com"
 JWT_TTL_HOURS = 2
 API_SLEEP_SECONDS = 0.15
+SNAPSHOT_MAX_AGE_DAYS = 7
 
 # Evidence query: one row per (client, normalized matched folder segment) that
 # clears the Tier-A textual bar. mv_norm is PII-in-memory only — never logged.
@@ -127,8 +128,8 @@ SELECT client_id,
        bool_or(mv_norm = crm_norm) AS has_exact,
        max(sim) AS max_sim,
        count(*) AS n_docs,
-       (array_agg(DISTINCT source_ref))[1:20] AS sample_refs,
-       (array_agg(DISTINCT source_path))[1:8] AS sample_paths
+       (array_agg(DISTINCT source_ref ORDER BY source_ref))[1:20] AS sample_refs,
+       (array_agg(DISTINCT source_path ORDER BY source_path))[1:8] AS sample_paths
 FROM cand
 WHERE mv_norm = crm_norm OR sim >= $2
 GROUP BY client_id, mv_norm
@@ -255,11 +256,14 @@ def _resolve_named_ancestor(
     return None
 
 
-async def _load_plans(dsn: str) -> tuple[list[ClientPlan], dict[str, int]]:
+async def _load_plans(
+    dsn: str,
+) -> tuple[list[ClientPlan], dict[str, int], datetime | None]:
     conn = await asyncpg.connect(dsn=dsn)
     try:
         rows = await conn.fetch(CANDIDATE_SQL, PIPELINE_VERSION, SIM_THRESHOLD)
         existing = await conn.fetch(EXISTING_MAPPING_SQL)
+        snapshot_age_marker = await conn.fetchval("SELECT max(updated_at) FROM clients")
     finally:
         await conn.close()
 
@@ -318,7 +322,7 @@ async def _load_plans(dsn: str) -> tuple[list[ClientPlan], dict[str, int]]:
                 raw_variants=raw_variants[:5],
             )
         )
-    return plans, folder_owner_snapshot
+    return plans, folder_owner_snapshot, snapshot_age_marker
 
 
 def _reaches_scope(
@@ -466,21 +470,28 @@ async def _live_screen(
     return live_owner
 
 
-async def _apply_via_api(
-    plans: list[ClientPlan], client: httpx.AsyncClient, apply: bool
-) -> None:
-    for plan in plans:
-        if plan.decision != "pending" or not plan.folder_id:
-            continue
-        if not apply:
-            plan.decision, plan.detail = "would_apply", ""
-            continue
-        await asyncio.sleep(API_SLEEP_SECONDS)
-        url = f"/api/crm/clients/{plan.client_id}/profile"
+async def _apply_one(plan: ClientPlan, client: httpx.AsyncClient) -> None:
+    """PATCH one client, with a TOCTOU re-check: the live-screen GET may be
+    minutes old by the time this plan's turn comes (Drive walks + long batch),
+    and the PATCH endpoint itself has NO server-side overwrite protection —
+    so the never-overwrite guard is re-evaluated on a FRESH GET immediately
+    before writing. All network calls guarded: a mid-batch exception must
+    mark THIS plan and let the rest of the batch proceed."""
+    url = f"/api/crm/clients/{plan.client_id}/profile"
+    try:
+        pre = await client.get(url)
+        if pre.status_code != 200:
+            plan.decision, plan.detail = "error", f"preget_http_{pre.status_code}"
+            return
+        live_value = (pre.json().get("client") or {}).get("google_drive_folder_id")
+        guard = _live_guard_decision(live_value, plan.folder_id)
+        if guard:
+            plan.decision, plan.detail = guard
+            return
         patch = await client.patch(url, json={"google_drive_folder_id": plan.folder_id})
         if patch.status_code != 200:
             plan.decision, plan.detail = "error", f"patch_http_{patch.status_code}"
-            continue
+            return
         verify = await client.get(url)
         verified = (
             verify.status_code == 200
@@ -491,6 +502,21 @@ async def _apply_via_api(
             plan.decision, plan.detail = "applied", "verified"
         else:
             plan.decision, plan.detail = "error", "applied_but_verify_mismatch"
+    except httpx.HTTPError as exc:
+        plan.decision, plan.detail = "error", f"apply_{type(exc).__name__}"
+
+
+async def _apply_via_api(
+    plans: list[ClientPlan], client: httpx.AsyncClient, apply: bool
+) -> None:
+    for plan in plans:
+        if plan.decision != "pending" or not plan.folder_id:
+            continue
+        if not apply:
+            plan.decision, plan.detail = "would_apply", ""
+            continue
+        await asyncio.sleep(API_SLEEP_SECONDS)
+        await _apply_one(plan, client)
 
 
 async def main() -> int:
@@ -506,53 +532,82 @@ async def main() -> int:
         "--scope-folder-id",
         default=os.getenv("INTAKE_DRIVE_SCOPE_FOLDER_ID", DEFAULT_SCOPE_FOLDER_ID),
     )
+    parser.add_argument(
+        "--allow-stale-snapshot",
+        action="store_true",
+        help="proceed even if the local clients snapshot is older than "
+        f"{SNAPSHOT_MAX_AGE_DAYS}d (bijectivity belt weakens with age)",
+    )
     args = parser.parse_args()
 
-    plans, folder_owner_snapshot = await _load_plans(args.dsn)
+    plans, folder_owner_snapshot, snapshot_marker = await _load_plans(args.dsn)
     logger.info("evidence loaded: %d clients clear the Tier-A textual bar", len(plans))
+
+    # Bijectivity's "who owns this folder" universe is the local snapshot plus
+    # this run's live GETs — a prod owner outside both is invisible. Make that
+    # residual risk a VISIBLE gate instead of a silent assumption: a stale
+    # snapshot requires either a refresh (nuz_db_refresh.sh) or an explicit
+    # override for --apply. Best-effort marker: local writers (intake
+    # enricher) also bump updated_at, so a fresh marker does NOT prove a
+    # fresh snapshot — the primary overwrite protections remain the live
+    # screen and the per-write TOCTOU re-check in _apply_one.
+    if snapshot_marker is not None:
+        if snapshot_marker.tzinfo is None:
+            snapshot_marker = snapshot_marker.replace(tzinfo=timezone.utc)
+        age_days = (datetime.now(timezone.utc) - snapshot_marker).days
+        logger.info("local clients snapshot age marker: %dd", age_days)
+        if args.apply and age_days > SNAPSHOT_MAX_AGE_DAYS and not args.allow_stale_snapshot:
+            raise SystemExit(
+                f"local snapshot is {age_days}d old (> {SNAPSHOT_MAX_AGE_DAYS}d): "
+                "refresh it (scripts/nuz_db_refresh.sh) or pass --allow-stale-snapshot"
+            )
+
     if args.limit > 0:
         plans = plans[: args.limit]
 
-    logger.info("resolving Drive folder ids (read-only metadata walk)...")
-    _resolve_drive_folders(plans, args.sa_file, args.scope_folder_id)
-
-    token = _mint_admin_jwt(_read_jwt_secret(args.jwt_env_file))
-    headers = {"Authorization": f"Bearer {token}"}
-    async with httpx.AsyncClient(
-        base_url=args.base_url, headers=headers, timeout=30.0
-    ) as http_client:
-        # Live screen FIRST (dead twins / already-served drop out), then
-        # bijectivity on the survivors with live ownership taking precedence
-        # over the (staler) local snapshot.
-        live_owner = await _live_screen(plans, http_client)
-        # Snapshot claims by clients PROVEN dead on prod (404) decay — the
-        # surviving duplicate-twin must not stay blocked by a ghost owner.
-        dead_ids = {p.client_id for p in plans if p.detail == "not_found_prod"}
-        effective_snapshot = {
-            folder: cid
-            for folder, cid in folder_owner_snapshot.items()
-            if cid not in dead_ids
-        }
-        _enforce_bijectivity(plans, {**effective_snapshot, **live_owner})
-        await _apply_via_api(plans, http_client, apply=args.apply)
-
-    audit_dir = Path(args.audit_dir)
-    audit_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     mode = "apply" if args.apply else "dryrun"
-    audit_path = audit_dir / f"gdrive_backfill_{mode}_{stamp}.jsonl"
-    with audit_path.open("w", encoding="utf-8") as fh:
-        for plan in plans:
-            fh.write(json.dumps(plan.audit_row()) + "\n")
+    try:
+        logger.info("resolving Drive folder ids (read-only metadata walk)...")
+        _resolve_drive_folders(plans, args.sa_file, args.scope_folder_id)
 
-    counts: dict[str, int] = defaultdict(int)
-    for plan in plans:
-        key = plan.decision if not plan.detail else f"{plan.decision}:{plan.detail}"
-        counts[key] += 1
-    logger.info("=== decision summary (%s) ===", mode)
-    for key in sorted(counts):
-        logger.info("%-40s %d", key, counts[key])
-    logger.info("audit log: %s", audit_path)
+        token = _mint_admin_jwt(_read_jwt_secret(args.jwt_env_file))
+        headers = {"Authorization": f"Bearer {token}"}
+        async with httpx.AsyncClient(
+            base_url=args.base_url, headers=headers, timeout=30.0
+        ) as http_client:
+            # Live screen FIRST (dead twins / already-served drop out), then
+            # bijectivity on the survivors with live ownership taking
+            # precedence over the (staler) local snapshot.
+            live_owner = await _live_screen(plans, http_client)
+            # Snapshot claims by clients PROVEN dead on prod (404) decay —
+            # the surviving duplicate-twin must not stay blocked by a ghost.
+            dead_ids = {p.client_id for p in plans if p.detail == "not_found_prod"}
+            effective_snapshot = {
+                folder: cid
+                for folder, cid in folder_owner_snapshot.items()
+                if cid not in dead_ids
+            }
+            _enforce_bijectivity(plans, {**effective_snapshot, **live_owner})
+            await _apply_via_api(plans, http_client, apply=args.apply)
+    finally:
+        # The audit trail must survive a mid-batch crash: writes already
+        # applied before an exception would otherwise leave zero trace.
+        audit_dir = Path(args.audit_dir)
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        audit_path = audit_dir / f"gdrive_backfill_{mode}_{stamp}.jsonl"
+        with audit_path.open("w", encoding="utf-8") as fh:
+            for plan in plans:
+                fh.write(json.dumps(plan.audit_row()) + "\n")
+
+        counts: dict[str, int] = defaultdict(int)
+        for plan in plans:
+            key = plan.decision if not plan.detail else f"{plan.decision}:{plan.detail}"
+            counts[key] += 1
+        logger.info("=== decision summary (%s) ===", mode)
+        for key in sorted(counts):
+            logger.info("%-40s %d", key, counts[key])
+        logger.info("audit log: %s", audit_path)
 
     errors = sum(1 for p in plans if p.decision == "error")
     return 1 if errors else 0
