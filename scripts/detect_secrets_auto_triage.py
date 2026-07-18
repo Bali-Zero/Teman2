@@ -294,6 +294,19 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         "KBLI filiera evidence layer: compiler-only writes (data-plane guard #2550), "
         "sha256 digests/git SHAs/public codes by design, zero credentials",
     ),
+    # scripts/kbli_filiera/cure_specs/ — the INPUT side of the same wall.
+    # These are hand-authored spec files that compilers (e.g.
+    # cure_restore_per_ancestor.py) read to produce the guarded
+    # data/kbli-filiera/ output above; they are not themselves under the
+    # data-plane guard, but they carry the identical content class — sha256
+    # render/evidence digests pinning which page-image was image-verified
+    # for a given adjudication (restore_49213.json's `adjudication.renders`
+    # block), never credentials.
+    (
+        re.compile(r"(^|/)scripts/kbli_filiera/cure_specs/.*\.json$"),
+        "KBLI filiera cure specs: compiler input artifacts (data-plane guard #2550), "
+        "sha256 render/evidence digests by design, zero credentials",
+    ),
     (
         re.compile(r"(^|/)apps/evaluator/nlm_deep_research/.*\.json$"),
         "NLM deep research state files: pipeline artifacts",
