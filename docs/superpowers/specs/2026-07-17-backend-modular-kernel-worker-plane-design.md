@@ -5,7 +5,8 @@ status: implementation-plan-review-pending
 decision_owner: Antonello
 implementation: plan-review
 authorization: active-goal-2026-07-18
-authorization_thread: 019f6f94-4863-7f62-acc7-16bc5a706f74
+authorization_thread: 019f734c-8e0c-7562-a448-14e73ac2e43d
+source_authorization_thread: 019f6f94-4863-7f62-acc7-16bc5a706f74
 decision: incremental-hardening
 review_council: Fable-5 + Gemini-3.1-Pro + GLM-5.2
 historical_spec_panel_verdicts: Fable-GO-WITH-CHANGES-82 + Gemini-GO-WITH-CHANGES-85 + GLM-NO-GO-72
@@ -921,6 +922,17 @@ process or file.
 
 ## 12. Migration sequence
 
+The worker-plane allocation is conditional and fail-closed. Migration `246`
+belongs to the intake-v2-entry change in GitHub PR #2669; this design reserves
+the contiguous block `247_event_quarantine.sql` through
+`251_event_subscription_receipts.sql` only after the reviewed branch is
+rebased onto an `origin/main` that contains that authoritative `246` source.
+The initial implementation-plan packet may not be frozen and Phase 0 may not
+create a migration while PR #2669 is unmerged, renumbered, or otherwise absent
+from the rebased base. In any such case, rerun the repository migration-number
+allocator, acquire a fresh lease for the complete five-file block, amend every
+covered spec/plan/review-brief byte consistently, and rerun the full panel.
+
 ### Phase 0 — Baseline and close live recovery gaps
 
 - freeze current route snapshots, process startup metrics, queue depths, and
@@ -1231,7 +1243,7 @@ count, and HTTP error rate within 10% unless an owner approves a measured
 exception. Here a migration step means one authoritative deployment checkpoint
 at which the running process/schema pair can be measured; it does not mean each
 individual DDL file inside one atomic protected migration chain. For this
-release, migrations 246–250 form one authoritative compatibility-chain
+release, migrations 247–251 form one authoritative compatibility-chain
 checkpoint, followed by a fresh G9 comparison after each workload forward
 cutover, reverse cutover, and final re-cutover. A partial migration stage is
 never reported as a green checkpoint. Worker resource use is reported
@@ -1419,7 +1431,8 @@ target environments, and rollback policy remain exactly as reviewed.
 ## 20. Approval boundary
 
 The active goal in Codex task
-`019f6f94-4863-7f62-acc7-16bc5a706f74` authorizes the implementation plan and
+`019f734c-8e0c-7562-a448-14e73ac2e43d`, continuing the archived Air-M5 source
+task `019f6f94-4863-7f62-acc7-16bc5a706f74`, authorizes the implementation plan and
 execution of Phases 0-5 on one feature branch, a protected compatibility
 merge/deploy, exact merged-digest staging proof, ordered per-workload
 production cutovers, heavy

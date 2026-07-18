@@ -58,6 +58,11 @@ Documents under review:
 - Are cross-phase dependencies consistent, especially migration numbers,
   catalog symbols, SQL function signatures, ownership table names, claim
   columns, build-floor arming, effect contracts, and reverse cutover?
+- Does the plan fail closed until intake-v2-entry PR #2669's authoritative
+  `246_clients_wa_intake_autocreate.sql` exists on the rebased `origin/main`,
+  with one collision-free leased worker-plane block `247`–`251`; and does any
+  absent, renumbered, or conflicting `246` force reallocation, covered-byte
+  amendment, and a complete new panel before migration implementation?
 - Is business/data ownership represented consistently by
   `BusinessContext`/`business_context`, and runtime execution by
   `RuntimeOwner`/`runtime_owner`, without an ambiguous `OwnerContext` crossing
@@ -114,11 +119,11 @@ Documents under review:
 - Are forward and reverse transitions strictly drain -> lease/effect barrier ->
   atomic generation advance/activation, with no interval containing two active
   owners or late effects from two generations?
-- Is heavy execution correctly routed to CI or Pro from Air-M5?
+- Is all execution bound to Pro/CI with no remaining Air-M5 worktree, artifact, provider, or service dependency?
 - Does G8 execute real breaking-contract tests against generated backend
   OpenAPI plus Mouth types/routes and MCP consumers, rather than only naming
   those adapters? Does G9 compare all four API/RAG metrics against the Phase 0
-  baseline after the complete authoritative 246–250 migration chain and after
+  baseline after the complete authoritative 247–251 migration chain and after
   every workload forward, reverse, and final re-cutover, while keeping worker
   absolute budgets separate? Does G10 reject prohibited raw PII before both job and
   event publication and prove logs, receipts, quarantine, and DLQ captures are

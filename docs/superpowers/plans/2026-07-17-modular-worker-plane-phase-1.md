@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Complete, review, and commit Phase 0 first on this same feature branch. Do not merge, deploy, or arm between phases; migration `246_event_quarantine.sql` must remain the latest migration before this phase begins.
+- Complete, review, and commit Phase 0 first on this same feature branch. Do not merge, deploy, or arm between phases; migration `247_event_quarantine.sql` must remain the latest migration before this phase begins.
 - Work only in an isolated agent worktree. Preserve unrelated changes and never mutate the shared checkout.
 - Read `docs/superpowers/specs/2026-07-17-backend-modular-kernel-worker-plane-design.md` and the Phase 0 exit evidence before implementation.
 - Run backend Python only from `apps/backend-rag/.venv`, with `PYTHONPATH=.` from `apps/backend-rag`.
@@ -23,8 +23,8 @@
 - The ownership generation is monotonic. Every forward or reverse ownership change increments it; rollback is a reverse cutover through the same compare-and-set function, never a decrement or stale-owner reactivation.
 - Runtime code refreshes its grant before every claim and every irreversible/late side effect. A startup-only grant cache is forbidden. Cache TTL, if used, is at most one-third of the workload lease.
 - Phase 1 produces compatibility-release code containing heartbeats, expected-instance census, claim metadata, kill switches, claim checks, and late-effect checks. Production deployment, the full compatibility observation window, and every production guard arm are deferred to the final protected rollout before any ownership transition.
-- Migration 247 installs database trigger guards but leaves every `guard_armed` value false. `worker_arm_claim_guard` may succeed in this phase only against disposable-PostgreSQL evidence after `worker_build_floor_ready` proves the complete authoritative expected-instance census; every live staging and production guard remains false throughout Phase 1.
-- Phase 1 consumes only migration `247_worker_plane_ownership.sql`; the next free migration number after this plan is 248. Migration 247 does not create a generic job table, side-effect ledger, or schedule-run ledger.
+- Migration 248 installs database trigger guards but leaves every `guard_armed` value false. `worker_arm_claim_guard` may succeed in this phase only against disposable-PostgreSQL evidence after `worker_build_floor_ready` proves the complete authoritative expected-instance census; every live staging and production guard remains false throughout Phase 1.
+- Phase 1 consumes only migration `248_worker_plane_ownership.sql`; the next free migration number after this plan is 249. Migration 248 does not create a generic job table, side-effect ledger, or schedule-run ledger.
 - Missing workload, missing owner/generation/build epoch, stale heartbeat, ownership mismatch, stale generation, old build, unavailable ownership storage, or kill switch all fail closed for claims and irreversible effects.
 - Phase 1 never merges independently, deploys to production, changes production ownership, or arms a production guard. Those actions belong only to the final rollout after the full branch passes all phases and reviews. Never edit ownership, census, or guard rows manually in any environment.
 - Do not add Kafka, Celery, a new service image, a new data store, or a parallel routing/ownership manifest.
@@ -100,13 +100,14 @@ Every `RouterEntry` now explicitly sets `process_groups`, `exposure`, `proxy_mat
 
 **Files:**
 
-- Create: `apps/backend-rag/backend/db/migrations_v2/247_worker_plane_ownership.sql`
-- Create: `apps/backend-rag/backend/tests/db/test_migration_247_worker_plane_ownership.py`
+- Create: `apps/backend-rag/backend/db/migrations_v2/248_worker_plane_ownership.sql`
+- Create: `apps/backend-rag/backend/tests/db/test_migration_248_worker_plane_ownership.py`
 - Expand: `apps/backend-rag/backend/worker_plane/models.py`
 - Create: `apps/backend-rag/backend/worker_plane/repository.py`
 - Create: `apps/backend-rag/backend/tests/worker_plane/test_repository.py`
+- Modify: `docs/architecture/worker-plane-migration-allocation.md`
 
-Migration 247 has a non-destructive rollback marker and creates exactly these four control tables. From its first RED test it also carries one ownership block immediately before every `CREATE TABLE` and each ownership-affecting `ALTER TABLE`. The parser grammar is exact and line-oriented:
+Migration 248 has a non-destructive rollback marker and creates exactly these four control tables. From its first RED test it also carries one ownership block immediately before every `CREATE TABLE` and each ownership-affecting `ALTER TABLE`. The parser grammar is exact and line-oriented:
 
 ```text
 -- table-ownership-begin: <qualified-table>
@@ -114,11 +115,11 @@ Migration 247 has a non-destructive rollback marker and creates exactly these fo
 -- writer-binding: <binding-id>|static|<RuntimeOwner>|<operation=interface-reference CSV;...>
 -- writer-binding: <binding-id>|grant-fenced|<workload>|<candidate RuntimeOwner CSV>|<operation=modes CSV;...>|<operation=interface-reference CSV;...>
 -- writer-binding: <binding-id>|heartbeat-evidence|<workload=candidates CSV;...>|heartbeat-upsert=<interface-reference CSV>
--- migration-source: backend/db/migrations_v2/247_worker_plane_ownership.sql
+-- migration-source: backend/db/migrations_v2/248_worker_plane_ownership.sql
 -- table-ownership-end
 ```
 
-`writer-binding` is repeatable and sorted by its stable, unique `binding-id`; each operation map, candidate list, mode list, and interface list is sorted too. Commas, pipes, semicolons, and equals signs have the literal meanings shown above, no wildcard or omitted field is accepted, and fields for one binding kind are invalid in another. A Python interface reference is an absolute `module:symbol`; a migration-defined callable is `sql:<schema>.<function>`; no third form is valid. For `grant-fenced`, the mode-map and interface-map operation keys must match exactly. Migration 247 declares the exact Task 2 control-plane interfaces below; Task 5 atomically adds the listed SQL callables to the same binding IDs when it creates them, so no task references a not-yet-existing symbol. The static `api` writer is the management-plane repository principal: after Task 5 the guard CLI can invoke only these protected functions through its least-privilege database role and never receives direct table DML. The three bootstrap tables cannot depend on a grant they themselves create, but their unlisted interface, missing actor/reason/version, raw DML, SQL error, or audit failure all fail closed.
+`writer-binding` is repeatable and sorted by its stable, unique `binding-id`; each operation map, candidate list, mode list, and interface list is sorted too. Commas, pipes, semicolons, and equals signs have the literal meanings shown above, no wildcard or omitted field is accepted, and fields for one binding kind are invalid in another. A Python interface reference is an absolute `module:symbol`; a migration-defined callable is `sql:<schema>.<function>`; no third form is valid. For `grant-fenced`, the mode-map and interface-map operation keys must match exactly. Migration 248 declares the exact Task 2 control-plane interfaces below; Task 5 atomically adds the listed SQL callables to the same binding IDs when it creates them, so no task references a not-yet-existing symbol. The static `api` writer is the management-plane repository principal: after Task 5 the guard CLI can invoke only these protected functions through its least-privilege database role and never receives direct table DML. The three bootstrap tables cannot depend on a grant they themselves create, but their unlisted interface, missing actor/reason/version, raw DML, SQL error, or audit failure all fail closed.
 
 | Table                       | Binding ID/kind                                    | Runtime/candidates              | Exact Task 2 operation interfaces                                                                                                                                                                                                                                                                                                                                                                   | Task 5 additions to same operation keys                                                                                                                                                                           |
 | --------------------------- | -------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -264,19 +265,21 @@ async def disarm_guard(
 ) -> OwnershipGrant: ...
 ```
 
-- [ ] Write migration tests for exact columns of all four control tables, census retirement consistency, runtime-owner checks on current/previous/new/claim columns, absence of any context-named execution column or compatibility alias, indexes, foreign keys, nullable claim compatibility, non-destructive rollback, migration uniqueness, and `guard_armed DEFAULT FALSE`. Parse every migration-247 ownership block and assert exact table coverage, sorted grammar, stable unique binding IDs, static bootstrap authority, heartbeat-evidence-only scope, all four fenced bindings above, exact catalog candidate parity, preservation of existing producer/admin bindings, and rejection of wildcard, mixed-kind fields, duplicate/uncovered operation-interface pairs, or a singular legacy `write-runtime-owner` annotation.
+- [ ] Before writing migration-248 tests/source, run `git fetch origin`, heartbeat all five allocation leases, and from the repository root run `apps/backend-rag/.venv/bin/python scripts/check_worker_plane_migration_allocation.py --base-ref origin/main --feature-ref HEAD --record docs/architecture/worker-plane-migration-allocation.md --next-number 248`. Update the record with the new fetched base commit plus unchanged upstream-246 blob identity and collision proof. Any changed 246 identity, occupied 247–251 number, missing lease, or feature-branch mapping drift stops Phase 1 and invalidates affected packets.
+- [ ] Rerun the unchanged comprehensive allocation-checker test, then prove the Phase 0-owned 247 basename exists exactly once on the feature ref while 248 is still absent and all later assigned numbers remain unoccupied there. The Phase 0 test already covers this `--next-number 248` state in a temporary repository; do not phase-edit the generic checker merely to accept the live branch.
+- [ ] Write migration tests for exact columns of all four control tables, census retirement consistency, runtime-owner checks on current/previous/new/claim columns, absence of any context-named execution column or compatibility alias, indexes, foreign keys, nullable claim compatibility, non-destructive rollback, migration uniqueness, and `guard_armed DEFAULT FALSE`. Parse every migration-248 ownership block and assert exact table coverage, sorted grammar, stable unique binding IDs, static bootstrap authority, heartbeat-evidence-only scope, all four fenced bindings above, exact catalog candidate parity, preservation of existing producer/admin bindings, and rejection of wildcard, mixed-kind fields, duplicate/uncovered operation-interface pairs, or a singular legacy `write-runtime-owner` annotation.
 - [ ] Write repository tests using an injected fake pool for mapping records, heartbeat upsert, live-heartbeat lease filtering, expected-instance registration/listing, audited CAS retirement, compare-and-set success, stale-version conflict, monotonic generation/version, audited CAS guard disarm, audit insertion, and rollback-as-reverse-CAS.
 - [ ] Run RED:
 
   ```bash
   cd apps/backend-rag
   source .venv/bin/activate
-  PYTHONPATH=. pytest backend/tests/db/test_migration_247_worker_plane_ownership.py backend/tests/worker_plane/test_repository.py -q
+  PYTHONPATH=. pytest backend/tests/db/test_migration_248_worker_plane_ownership.py backend/tests/worker_plane/test_repository.py -q
   ```
 
-  Expected: migration/model/repository tests fail because schema 247 and repository symbols do not exist.
+  Expected: migration/model/repository tests fail because schema 248 and repository symbols do not exist.
 
-- [ ] Implement migration 247 with the exact per-table annotation blocks, idempotent DDL, fixed explicit workload seed rows matching `WORKLOAD_CATALOG`, indexes on `(workload_name, lease_expires_at)`, `(build_epoch, lease_expires_at)`, and active expected-instance lookup, plus a non-destructive `SELECT 1;` rollback block. Add tests that fail when a SQL workload seed, candidate set, writer binding, operation mode, or declared interface drifts from the catalog.
+- [ ] Implement migration 248 with the exact per-table annotation blocks, idempotent DDL, fixed explicit workload seed rows matching `WORKLOAD_CATALOG`, indexes on `(workload_name, lease_expires_at)`, `(build_epoch, lease_expires_at)`, and active expected-instance lookup, plus a non-destructive `SELECT 1;` rollback block. Add tests that fail when a SQL workload seed, candidate set, writer binding, operation mode, or declared interface drifts from the catalog.
 - [ ] Implement strict row-to-model mapping and repository operations using asyncpg transactions. CAS updates must use `WHERE version = expected_version`, increment generation and version, insert the audit row in the same transaction, and raise a typed `OwnershipConflict` when no row updates.
 - [ ] Ensure logs contain workload/owner/generation/build epoch but never claim payloads or secrets.
 - [ ] Run GREEN:
@@ -284,7 +287,7 @@ async def disarm_guard(
   ```bash
   cd apps/backend-rag
   source .venv/bin/activate
-  PYTHONPATH=. pytest backend/tests/db/test_migration_247_worker_plane_ownership.py backend/tests/worker_plane/test_repository.py backend/tests/db/test_migration_uniqueness.py -q
+  PYTHONPATH=. pytest backend/tests/db/test_migration_248_worker_plane_ownership.py backend/tests/worker_plane/test_repository.py backend/tests/db/test_migration_uniqueness.py -q
   PYTHONPATH=. python ../../scripts/lint_migration_numbers.py
   PYTHONPATH=. python ../../scripts/lint_migration_rollback.py
   ```
@@ -294,7 +297,7 @@ async def disarm_guard(
 - [ ] Commit:
 
   ```bash
-  git add apps/backend-rag/backend/db/migrations_v2/247_worker_plane_ownership.sql apps/backend-rag/backend/tests/db/test_migration_247_worker_plane_ownership.py apps/backend-rag/backend/worker_plane/models.py apps/backend-rag/backend/worker_plane/repository.py apps/backend-rag/backend/tests/worker_plane/test_repository.py
+  git add apps/backend-rag/backend/db/migrations_v2/248_worker_plane_ownership.sql apps/backend-rag/backend/tests/db/test_migration_248_worker_plane_ownership.py apps/backend-rag/backend/worker_plane/models.py apps/backend-rag/backend/worker_plane/repository.py apps/backend-rag/backend/tests/worker_plane/test_repository.py docs/architecture/worker-plane-migration-allocation.md
   git commit -m "feat(worker-plane): add ownership and heartbeat schema" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
   ```
 
@@ -457,8 +460,8 @@ Workflow checks the exact `workflow_jobs` binding inside `_dequeue_one`, `_ack_j
 
 **Files:**
 
-- Modify: `apps/backend-rag/backend/db/migrations_v2/247_worker_plane_ownership.sql`
-- Modify: `apps/backend-rag/backend/tests/db/test_migration_247_worker_plane_ownership.py`
+- Modify: `apps/backend-rag/backend/db/migrations_v2/248_worker_plane_ownership.sql`
+- Modify: `apps/backend-rag/backend/tests/db/test_migration_248_worker_plane_ownership.py`
 - Modify: `apps/backend-rag/backend/architecture/catalogs/data/table_ownership.json`
 - Modify: `apps/backend-rag/backend/worker_plane/repository.py`
 - Modify: `apps/backend-rag/backend/worker_plane/ownership_service.py`
@@ -466,7 +469,7 @@ Workflow checks the exact `workflow_jobs` binding inside `_dequeue_one`, `_ack_j
 - Create: `apps/backend-rag/scripts/worker_plane_guard.py`
 - Create: `apps/backend-rag/scripts/tests/test_worker_plane_guard.py`
 
-Migration 247 defines these SQL callables:
+Migration 248 defines these SQL callables:
 
 ```sql
 worker_assert_claim_allowed(
@@ -540,7 +543,7 @@ worker_advance_ownership(
 
 Every rejection raises SQLSTATE `55000`. `worker_build_floor_ready` locks/reads the current grant and compares the complete non-retired expected-instance set with fresh matching heartbeats; an empty census, missing expected instance, fresh unexpected instance, old build, stale lease, or owner/generation mismatch is false. Expected-instance registration and retirement are audited; retirement requires the row's expected version. `worker_arm_claim_guard` and `worker_disarm_claim_guard` lock the grant, require `p_expected_version`, change `guard_armed` only from the expected state, increment grant version, and insert the matching audit event in the same transaction. A stale version, already-armed arm, already-disarmed disarm, or audit failure leaves state unchanged.
 
-Adding these callables also extends, in the same patch, migration 247's existing control-table annotation blocks and the matching catalog bindings with the exact `sql:public.<function>` interfaces listed in Task 2. It does not create new binding IDs or operation keys. A dedicated least-privilege management role receives only `EXECUTE` on those functions; direct `INSERT|UPDATE|DELETE|COPY` on the grant, census, and audit tables is revoked from the guard CLI role. The heartbeat callable remains constrained by the heartbeat-evidence binding and expected-instance check. Missing role setup, callable/catalog drift, or a direct control-table write fails migration tests and the shared ownership checker.
+Adding these callables also extends, in the same patch, migration 248's existing control-table annotation blocks and the matching catalog bindings with the exact `sql:public.<function>` interfaces listed in Task 2. It does not create new binding IDs or operation keys. A dedicated least-privilege management role receives only `EXECUTE` on those functions; direct `INSERT|UPDATE|DELETE|COPY` on the grant, census, and audit tables is revoked from the guard CLI role. The heartbeat callable remains constrained by the heartbeat-evidence binding and expected-instance check. Missing role setup, callable/catalog drift, or a direct control-table write fails migration tests and the shared ownership checker.
 
 `worker_enforce_claim_transition() RETURNS trigger` reads the workload/transition kind from `TG_ARGV` and enforces only when that workload's `guard_armed` is true. Trigger transitions are: workflow `pending -> in_progress`; legal a new claim token or non-terminal `visibility_at` advance; notification a new claim token; WA `pending -> claimed`. This specifically causes pre-compatible SQL lacking owner/generation/build/token to fail after arming rather than bypass the application service.
 
@@ -552,7 +555,7 @@ Adding these callables also extends, in the same patch, migration 247's existing
   ```bash
   cd apps/backend-rag
   source .venv/bin/activate
-  PYTHONPATH=. pytest backend/tests/db/test_migration_247_worker_plane_ownership.py backend/tests/worker_plane/test_database_claim_guard.py scripts/tests/test_worker_plane_guard.py -q
+  PYTHONPATH=. pytest backend/tests/db/test_migration_248_worker_plane_ownership.py backend/tests/worker_plane/test_database_claim_guard.py scripts/tests/test_worker_plane_guard.py -q
   ```
 
   Expected: SQL functions/triggers/CLI are absent; pre-compatible SQL is still accepted after simulated arming.
@@ -565,7 +568,7 @@ Adding these callables also extends, in the same patch, migration 247's existing
   ```bash
   cd apps/backend-rag
   source .venv/bin/activate
-  PYTHONPATH=. pytest backend/tests/db/test_migration_247_worker_plane_ownership.py backend/tests/worker_plane/test_database_claim_guard.py scripts/tests/test_worker_plane_guard.py -q
+  PYTHONPATH=. pytest backend/tests/db/test_migration_248_worker_plane_ownership.py backend/tests/worker_plane/test_database_claim_guard.py scripts/tests/test_worker_plane_guard.py -q
   PYTHONPATH=. python ../../scripts/lint_migration_numbers.py
   PYTHONPATH=. python ../../scripts/lint_migration_rollback.py
   ```
@@ -575,7 +578,7 @@ Adding these callables also extends, in the same patch, migration 247's existing
 - [ ] Commit:
 
   ```bash
-  git add apps/backend-rag/backend/db/migrations_v2/247_worker_plane_ownership.sql apps/backend-rag/backend/tests/db/test_migration_247_worker_plane_ownership.py apps/backend-rag/backend/architecture/catalogs/data/table_ownership.json apps/backend-rag/backend/worker_plane/repository.py apps/backend-rag/backend/worker_plane/ownership_service.py apps/backend-rag/backend/tests/worker_plane/test_database_claim_guard.py apps/backend-rag/scripts/worker_plane_guard.py apps/backend-rag/scripts/tests/test_worker_plane_guard.py
+  git add apps/backend-rag/backend/db/migrations_v2/248_worker_plane_ownership.sql apps/backend-rag/backend/tests/db/test_migration_248_worker_plane_ownership.py apps/backend-rag/backend/architecture/catalogs/data/table_ownership.json apps/backend-rag/backend/worker_plane/repository.py apps/backend-rag/backend/worker_plane/ownership_service.py apps/backend-rag/backend/tests/worker_plane/test_database_claim_guard.py apps/backend-rag/scripts/worker_plane_guard.py apps/backend-rag/scripts/tests/test_worker_plane_guard.py
   git commit -m "feat(worker-plane): guard claims after compatible build floor" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
   ```
 
@@ -640,7 +643,7 @@ For any durable transport using one global `consumed_at`/`consumer_id`, `EventPo
 
 Every table-creating or ownership-affecting migration must carry the exact per-table block grammar defined in Task 2. `TableOwnership` contains one `business_context` and a complete, non-overlapping tuple of tagged writer bindings; it has no singular `write_runtime_owner`. An ordinary table has one static binding. A migrated queue/state table may retain explicitly named static producer/admin operations, but every claim, schedule, late-effect, and reconciliation transition is assigned to a grant-fenced binding with an exact catalog workload, bounded candidate set, allowed-mode map, and exact operation-to-interface map. `operation_modes` and `operation_interfaces` have identical keys, preventing a binding from granting the Cartesian product of unrelated operations and symbols. `worker_workload_ownership`, `worker_expected_instances`, and `worker_ownership_audit` remain static protected bootstrap authority to avoid self-authorizing their own grant. `worker_owner_heartbeats` has only a heartbeat-evidence binding: exact expected candidates can publish self telemetry, never work or control-plane mutations.
 
-Extend the single checker created in Phase 0; do not create a second migration-only ownership engine. It applies migrations through 247 to disposable PostgreSQL, introspects `pg_catalog`, compares that live set with the refreshed sorted schema fixture, parses every ownership-affecting migration block, resolves the catalog interfaces, and requires exact parity with `table_ownership.json` and `WORKLOAD_CATALOG`. A dated legacy exception contains `table_name`, `business_context`, `binding_id`, `operation`, `write_interface`, `reason`, `approved_by`, and `expires_on`. It may temporarily account for a known legacy source path already inside a valid finite binding; it can never create a wildcard candidate, waive workload/candidate parity, authorize `off|shadow`, bypass live owner/generation/mode checks, or exempt a control-plane mutation.
+Extend the single checker created in Phase 0; do not create a second migration-only ownership engine. It applies migrations through 248 to disposable PostgreSQL, introspects `pg_catalog`, compares that live set with the refreshed sorted schema fixture, parses every ownership-affecting migration block, resolves the catalog interfaces, and requires exact parity with `table_ownership.json` and `WORKLOAD_CATALOG`. A dated legacy exception contains `table_name`, `business_context`, `binding_id`, `operation`, `write_interface`, `reason`, `approved_by`, and `expires_on`. It may temporarily account for a known legacy source path already inside a valid finite binding; it can never create a wildcard candidate, waive workload/candidate parity, authorize `off|shadow`, bypass live owner/generation/mode checks, or exempt a control-plane mutation.
 
 - [ ] Write checker tests where 998 fails for no annotation/assignment and 999 passes with a matching per-table block and catalog entry containing a static `enqueue` binding plus grant-fenced `claim|late-effect` binding. Add a shared-table innocence fixture with two exact workload bindings and distinct workload-specific mutation wrappers. Independently test mismatched business context, missing/duplicate table assignment, missing/duplicate/unsorted binding ID, mixed binding-kind fields, static zero/two-owner cardinality, unknown/empty/duplicate/unsorted/wildcard candidates, candidate drift from `WorkloadSpec`, unknown workload, unequal mode/interface operation keys, overlapping or uncovered operation/interface pairs, reuse of one generic mutation interface across bindings even under renamed operations, a caller-selected workload passed to a generic writer, claim modes other than exactly `active`, late-effect modes outside `active,draining`, absent/unresolvable interface, a heartbeat binding with any operation beyond `heartbeat-upsert`, immutable view/reference innocence, and rejection of the legacy singular `write-runtime-owner` annotation. An expired/under-specified exception fails at an injected clock. Explicit `--schema-file <path> --refresh-schema-file` writes the sorted live disposable-PostgreSQL table set without reading row data.
 - [ ] Add a source test that imports/resolves every Python interface and maps repository SQL writes (`INSERT`, `UPDATE`, `DELETE`, `COPY`, and mutating stored-procedure calls) to the exact table, operation, and enclosing declared symbol. Reject a write outside its binding, an operation/interface claimed by two bindings, a caller literal that differs from its enclosing symbol, cross-business-context direct writes, and any grant-fenced interface missing `assert_table_write_allowed(table, workload, operation, enclosing_interface, claim)` before its mutation. Prove a static producer can enqueue while the current consumer grant belongs to another runtime, and prove both old and target candidate consumers are denied unless each exactly matches the live grant's runtime owner, generation, and mode. Extend the same ratchet to reject `write_runtime_owner`, `write-runtime-owner`, `OwnerContext`, `owner_context`, and `owner-context` in architecture, worker-plane, catalog, and migration sources apart from the test's explicit deny strings; only `business_context`, `runtime_owner`, and `writer_bindings` are valid concepts.
@@ -655,8 +658,8 @@ Extend the single checker created in Phase 0; do not create a second migration-o
   Expected: the existing checker lacks Phase 1 per-table binding annotations, source-write coverage, workload candidate parity, and live-schema parity; unassigned migration 998 is not yet rejected by that extension.
 
 - [ ] Extend the shared checker with per-table annotation parsing, strict tagged-binding validation, exact workload candidate parity, forbidden legacy-ownership source ratchet, exact operation-to-interface source-write coverage, live disposable-schema comparison, narrow exception validation, and symbol resolution. Deterministic errors report table, migration, binding ID/kind, operation, declared/catalog business context, candidate delta, interface, and reason without inspecting row data; `check_architecture_catalogs.py` continues delegating to this same engine.
-- [ ] Verify migration 247's Task 2 annotations for its four new control tables and four claim-column mutations, then update the executable catalog with the same bindings. The control-plane rows must show static protected grant/census/audit bindings and heartbeat-evidence-only telemetry; the four migrated tables must retain every cataloged producer operation and add exactly the table/workload/candidate/mode/interface bindings listed in Task 2. With a nonempty `TEST_DATABASE_URL` pointing only to disposable PostgreSQL after the canonical runner applies through 247, run the checker's explicit `--schema-file backend/tests/fixtures/schema_tables.txt --refresh-schema-file` mode, review the sorted diff, and commit that regenerated fixture. A mocked, parsed-DDL, or empty database URL cannot regenerate or satisfy G16.
-- [ ] Add CI that creates disposable PostgreSQL, applies the canonical runner through 247, and runs the shared checker against all `migrations_v2` files, the canonical schema fixture, the live database, and the catalog. Text-only DDL extraction is a supplemental signal, never G16 proof.
+- [ ] Verify migration 248's Task 2 annotations for its four new control tables and four claim-column mutations, then update the executable catalog with the same bindings. The control-plane rows must show static protected grant/census/audit bindings and heartbeat-evidence-only telemetry; the four migrated tables must retain every cataloged producer operation and add exactly the table/workload/candidate/mode/interface bindings listed in Task 2. With a nonempty `TEST_DATABASE_URL` pointing only to disposable PostgreSQL after the canonical runner applies through 248, run the checker's explicit `--schema-file backend/tests/fixtures/schema_tables.txt --refresh-schema-file` mode, review the sorted diff, and commit that regenerated fixture. A mocked, parsed-DDL, or empty database URL cannot regenerate or satisfy G16.
+- [ ] Add CI that creates disposable PostgreSQL, applies the canonical runner through 248, and runs the shared checker against all `migrations_v2` files, the canonical schema fixture, the live database, and the catalog. Text-only DDL extraction is a supplemental signal, never G16 proof.
 - [ ] Run GREEN:
 
   ```bash
@@ -673,7 +676,7 @@ Extend the single checker created in Phase 0; do not create a second migration-o
 - [ ] Commit:
 
   ```bash
-  git add apps/backend-rag/backend/architecture/catalogs/tables.py apps/backend-rag/backend/architecture/catalogs/data/table_ownership.json apps/backend-rag/scripts/check_table_ownership.py apps/backend-rag/scripts/tests/test_check_table_ownership.py apps/backend-rag/backend/tests/fixtures/schema_tables.txt apps/backend-rag/backend/tests/fixtures/migrations .github/workflows/table-ownership.yml apps/backend-rag/backend/db/migrations_v2/247_worker_plane_ownership.sql
+  git add apps/backend-rag/backend/architecture/catalogs/tables.py apps/backend-rag/backend/architecture/catalogs/data/table_ownership.json apps/backend-rag/scripts/check_table_ownership.py apps/backend-rag/scripts/tests/test_check_table_ownership.py apps/backend-rag/backend/tests/fixtures/schema_tables.txt apps/backend-rag/backend/tests/fixtures/migrations .github/workflows/table-ownership.yml apps/backend-rag/backend/db/migrations_v2/248_worker_plane_ownership.sql
   git commit -m "ci(architecture): enforce table ownership contracts" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
   ```
 
@@ -688,7 +691,7 @@ Extend the single checker created in Phase 0; do not create a second migration-o
 - Modify: `apps/backend-rag/backend/worker_plane/liveness.py`
 - Modify: `apps/backend-rag/backend/app/routers/health.py`
 
-The acceptance scenario uses a disposable PostgreSQL database and real migration 247. It seeds a workload at generation N with the current `runtime_owner` and an audited expected-instance census, starts two simulated runtime instances, and exercises real legacy claim SQL. The stale instance must be blocked at startup/config validation, enqueue/claim, and a late irreversible-effect checkpoint. A pre-compatible SQL statement without claim metadata must be rejected by a guard armed only inside this disposable scenario. A missing expected heartbeat, unexpected instance, or heartbeat below the build floor must make guard arming fail. The scenario then proves audited CAS disarm, performs a reverse CAS, and proves the returned prior `runtime_owner` has generation N+2 and can claim while the former target `runtime_owner` is stale.
+The acceptance scenario uses a disposable PostgreSQL database and real migration 248. It seeds a workload at generation N with the current `runtime_owner` and an audited expected-instance census, starts two simulated runtime instances, and exercises real legacy claim SQL. The stale instance must be blocked at startup/config validation, enqueue/claim, and a late irreversible-effect checkpoint. A pre-compatible SQL statement without claim metadata must be rejected by a guard armed only inside this disposable scenario. A missing expected heartbeat, unexpected instance, or heartbeat below the build floor must make guard arming fail. The scenario then proves audited CAS disarm, performs a reverse CAS, and proves the returned prior `runtime_owner` has generation N+2 and can claim while the former target `runtime_owner` is stale.
 
 - [ ] Write integration tests for: duplicate active configuration fails before task creation; same-owner internal concurrency succeeds; incomplete expected-instance census blocks arm; stale owner cannot claim; stale generation cannot claim; old build cannot promote/arm; pre-compatible SQL cannot claim after disposable arming; ownership changes between claim and effect block the effect; missing ownership store blocks irreversible effect; audited CAS disarm is reversible and stale-version-safe; and reverse cutover restores service with a new generation.
 - [ ] Add liveness assertions for zero owner, two declared active owners, stale heartbeat, old build, queue SLO breach, and healthy single owner. `/health/workloads` must expose reason codes and HTTP 503 for every invalid ownership state.
@@ -735,7 +738,7 @@ This task proves release mechanics before merge; it is not a live deployment. Th
 
 - [ ] Record the candidate commit, build ID, monotonic build epoch, disposable fixture grants, authoritative expected-instance fixture source, workload concurrency, kill-switch state, and audited rollback/disarm commands in the compatibility document.
 - [ ] Run the complete local/CI verifier and obtain normal PR review. Stop if Phase 0 regresses or any route/behavior snapshot changes.
-- [ ] Provision only disposable PostgreSQL, apply migrations through 247, and import its authoritative expected-instance inventory from a checked synthetic deployment/process-manifest fixture through audited `register-instance`/`retire-instance` operations. Runtime self-registration is not census evidence.
+- [ ] Provision only disposable PostgreSQL, apply migrations through 248, and import its authoritative expected-instance inventory from a checked synthetic deployment/process-manifest fixture through audited `register-instance`/`retire-instance` operations. Runtime self-registration is not census evidence.
 - [ ] Run the disposable heartbeat harness for at least one full lease plus one complete polling/scheduling interval for every cataloged durable loop. For scheduled notification work, prove registration and heartbeat without sending any notification.
 - [ ] Collect aggregate, non-PII disposable evidence: expected and fresh fixture-instance sets are equal; all instances have the candidate `build_id/build_epoch`; owner/generation match; no duplicate active context; synthetic queue oldest age/depth stays within SLO; pilot claim metadata appears only on synthetic jobs; route snapshot is unchanged; guards begin false.
 - [ ] Exercise each pilot kill switch on synthetic disposable work and prove claims stop before effects and resume after a valid dynamic grant refresh. Never use a live client message or document as the canary.
@@ -790,13 +793,13 @@ This task proves release mechanics before merge; it is not a live deployment. Th
 
 The review directory follows the master plan convention and uses its canonical Git-object projection, length-framed packet, content-addressed store, single-buffer stdin launcher, empty cwd, and no-tool routes without variation. Each normalized file records `input_manifest_sha256`, external `packet_sha256`, required `launcher_invocation_uuid`, nullable provider fields, executable/config/argv/raw hashes, and the unedited exact six-heading body.
 
-- [ ] Add CI running Phase 0 verifier, route mutation/parity, migration 247, ownership service, four compatibility paths, DB claim guards, fanout guard, G2 integration, G16 ownership, migration linters, Ruff, and placeholder scan.
+- [ ] Add CI running Phase 0 verifier, route mutation/parity, migration 248, ownership service, four compatibility paths, DB claim guards, fanout guard, G2 integration, G16 ownership, migration linters, Ruff, and placeholder scan.
 - [ ] Run the complete local gate:
 
   ```bash
   cd apps/backend-rag
   source .venv/bin/activate
-  PYTHONPATH=. pytest backend/tests/setup backend/tests/worker_plane backend/tests/integration/worker_plane backend/tests/services/workflow/test_queue.py backend/tests/unit/services/ingestion/test_legal_full_ingestion_worker.py backend/tests/unit/app/modules/notifications/test_scheduler_fencing.py backend/tests/unit/services/test_wa_outbox_worker.py backend/tests/services/events/test_event_fanout_guard.py backend/tests/db/test_migration_247_worker_plane_ownership.py -q
+  PYTHONPATH=. pytest backend/tests/setup backend/tests/worker_plane backend/tests/integration/worker_plane backend/tests/services/workflow/test_queue.py backend/tests/unit/services/ingestion/test_legal_full_ingestion_worker.py backend/tests/unit/app/modules/notifications/test_scheduler_fencing.py backend/tests/unit/services/test_wa_outbox_worker.py backend/tests/services/events/test_event_fanout_guard.py backend/tests/db/test_migration_248_worker_plane_ownership.py -q
   pytest scripts/tests/test_worker_plane_guard.py scripts/tests/test_check_event_fanout.py scripts/tests/test_check_table_ownership.py scripts/tests/test_verify_worker_plane_phase1.py ../../scripts/tests/test_check_worker_plane_review.py -q
   PYTHONPATH=. python scripts/check_router_asyncpg_ratchet.py
   PYTHONPATH=. python scripts/check_event_fanout.py
@@ -890,14 +893,14 @@ The review directory follows the master plan convention and uses its canonical G
 Phase 1 is complete only when all statements below are proven:
 
 - [ ] One `RouterEntry` mutation changes both mounting and RAG proxy behavior; public route snapshots remain unchanged; no manual heavy-prefix/second manifest exists.
-- [ ] Workload ownership, authoritative expected-instance census, heartbeat, and audit tables plus additive claim columns exist from migration 247; rollback remains additive/non-destructive through the recovery window.
+- [ ] Workload ownership, authoritative expected-instance census, heartbeat, and audit tables plus additive claim columns exist from migration 248; rollback remains additive/non-destructive through the recovery window.
 - [ ] Runtime grants refresh before every claim and late irreversible effect; startup-only ownership caches are absent.
 - [ ] Every durable loop classified in Phase 0 has startup ownership validation, heartbeat, and liveness wiring across `app_factory.py`, `main_api.py`, `service_initializer.py`, and `drive_poll_worker.py`; only workflow, legal, notification, and WA are claim/effect-fencing pilots and all retain current placement.
 - [ ] Database claim triggers remain inert in every live environment; disposable proof shows they can arm only when the complete authoritative expected-instance set equals fresh compatible heartbeats, reject pre-compatible SQL, and disarm through audited expected-version CAS.
 - [ ] G2 proves dual-active configuration fails before claim, stale owner/generation/old build fail at all checkpoints, storage outage fails closed for irreversible effects, and reverse cutover increments generation and restores claim ability.
 - [ ] Durable global-ack events accept only one consumer at catalog, subscribe, runtime-startup, and CI gates.
-- [ ] G16 applies migrations through 247 to disposable PostgreSQL and proves live schema/fixture/catalog/annotation parity while rejecting unassigned/duplicate/expired ownership and unresolved write-interface symbols.
+- [ ] G16 applies migrations through 248 to disposable PostgreSQL and proves live schema/fixture/catalog/annotation parity while rejecting unassigned/duplicate/expired ownership and unresolved write-interface symbols.
 - [ ] Phase 0 G6/G7/G11/G17 remain green and no workload has moved to the future worker process.
 - [ ] The compatibility candidate has been exercised only in disposable PostgreSQL for a full synthetic workload interval; simulated arm/disarm was single-workload and audited; all live staging/production deploy, observation, and arming remain deferred to the final rollout after protected merge.
 - [ ] Fable 5, Gemini 3.1 Pro High, and GLM 5.2 independently reviewed the immutable packet; every Blocking and Important finding was fixed, every covered/instructions projection change reran all three seats, and attestation-only changes with equal projection received integrity revalidation only.
-- [ ] No migration after `247_worker_plane_ownership.sql` was consumed in this phase; 248 remains the next free migration number.
+- [ ] No migration after `248_worker_plane_ownership.sql` was consumed in this phase; 249 remains the next free migration number.

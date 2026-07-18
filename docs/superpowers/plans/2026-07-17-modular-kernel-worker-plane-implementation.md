@@ -10,21 +10,22 @@
 
 ## Global Constraints
 
-- Work only in `/Users/balizero/nuzantara/.worktrees/backend-rag-modular-worker-plane-impl` on branch `agent/air-m5/backend-rag/modular-worker-plane-impl` until the PR merge workflow begins.
+- Work only in `/Users/nuzantara/nuzantara/.worktrees/backend-rag-modular-worker-plane-pro` on branch `agent/nuzantara/backend-rag/modular-worker-plane-pro` until the PR merge workflow begins.
 - Treat `docs/superpowers/specs/2026-07-17-backend-modular-kernel-worker-plane-design.md` as the design authority. A phase plan may refine implementation details but may not weaken invariants I1-I7 or gates G1-G17.
 - Use the repository virtual environment for every Python command: either activate `apps/backend-rag/.venv` first or invoke `apps/backend-rag/.venv/bin/python` explicitly, always with `PYTHONPATH=.` where package imports require it. Never use system Python.
 - Follow strict RED-GREEN-REFACTOR: add one behavioral test, run it and record the intended failure, implement the minimum production change, rerun the focused test, then run the phase regression set.
 - Use async I/O, full type annotations, absolute imports, structured logging, environment-backed configuration, and no client PII in prompts, logs, reviews, fixtures, or evidence.
 - Do not change the frozen embedding model `text-embedding-3-small` or its 1,536 dimensions.
+- Migration `246_clients_wa_intake_autocreate.sql` is owned by intake-v2-entry PR #2669. The worker-plane block `247_event_quarantine.sql` through `251_event_subscription_receipts.sql` is reserved as one contiguous leased allocation, but no initial packet freeze or migration implementation may begin until the branch is rebased onto an `origin/main` that contains the authoritative `246` source. If PR #2669 does not merge unchanged at `246`, rerun allocation, acquire a fresh full-block lease, update every covered document consistently, and rerun the initial panel.
 - Do not promise generic exactly-once delivery. Irreversible effects must declare `provider-idempotent`, `reconcilable`, or `non-reconcilable`; ambiguity must persist as `outcome_unknown`.
 - A schedule run key is generation-independent: `(workload_name, scheduled_for)`. An effect key is derived from stable business identity and effect purpose, never a queue attempt or ownership generation.
 - Database guards remain disarmed until every live owner heartbeat satisfies the compatibility build floor. Static environment flags never override the PostgreSQL grant.
 - Before protected merge, every phase is code-only: repository tests, CI, deterministic simulations, and disposable PostgreSQL are allowed; live staging/production deployment, migration, secret or grant mutation, guard arm/disarm, ownership cutover, and observation are forbidden. Any phase-plan wording about a staging rehearsal is implemented pre-merge as a disposable/CI simulation only; the first live staging mutation occurs in rollout Task 2 from the protected-merged digest.
-- Active goal/task `019f6f94-4863-7f62-acc7-16bc5a706f74` authorizes the in-scope implementation, protected Release-A compatibility and Release-B receipt-activation merges, live staging drills, receipt activation, ordered production cutovers, rollback-window observation, later deletion release, and protected evidence PRs in these plans. Every live mutation records that immutable reference and fails closed on any change of workload scope, target environment/app, merged digest, subscriber/provider capability, destructive migration behavior, or rollback policy.
+- Active goal/task `019f734c-8e0c-7562-a448-14e73ac2e43d`, which continues archived source task `019f6f94-4863-7f62-acc7-16bc5a706f74`, authorizes the in-scope implementation, protected Release-A compatibility and Release-B receipt-activation merges, live staging drills, receipt activation, ordered production cutovers, rollback-window observation, later deletion release, and protected evidence PRs in these plans. Every live mutation records the active immutable reference and fails closed on any change of workload scope, target environment/app, merged digest, subscriber/provider capability, destructive migration behavior, or rollback policy.
 - Run only one implementation worker at a time. The worker writes a review package; a fresh reviewer returns both spec-compliance and code-quality verdicts. Resolve every Blocking and Important finding before the next task.
 - After each phase, run independent reviews with the actual `claude-fable-5`, `Gemini 3.1 Pro (High)`, and `glm-5.2` model routes. Save prompts, raw model proof, verdicts, synthesis, fixes, and rerun evidence under `docs/superpowers/reviews/2026-07-17-modular-worker-plane-phase-N/`.
 - Commit each coherent task atomically with an English Conventional Commit and `Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>`. Never bypass hooks and never amend a pushed commit.
-- Air-M5 performs only light local work. Fly deployment, Docker builds, PostgreSQL/Qdrant integration, resource measurement, and heavy production tests run through GitHub Actions or the Pro via `ssh pro`; never install those services on Air-M5.
+- Execution has transferred completely to Pro. Run local implementation and eligible heavy checks on Pro, use GitHub Actions for protected CI/deploy gates, and do not dispatch this task or persist its worktree/artifacts on Air-M5.
 - Keep `.husky/_` and `.superpowers/` out of commits. Update `.superpowers/sdd/progress.md` after every task and review gate.
 
 ---
@@ -61,7 +62,7 @@ git branch --show-current
 git log --oneline -3
 ```
 
-Expected: branch `agent/air-m5/backend-rag/modular-worker-plane-impl`; historical spec commit `af1621b16f` is present but is not treated as approval of the amended spec bytes; no tracked edits outside the implementation plan set.
+Expected: branch `agent/nuzantara/backend-rag/modular-worker-plane-pro`; historical spec commit `af1621b16f` is present but is not treated as approval of the amended spec bytes; no tracked edits outside the implementation plan set.
 
 - [ ] **Step 2: Commit the complete draft authority before rebasing**
 
@@ -70,7 +71,14 @@ Run after `git diff --check` and a path audit prove the draft contains only the 
 ```bash
 git add \
   docs/superpowers/specs/2026-07-17-backend-modular-kernel-worker-plane-design.md \
-  docs/superpowers/plans \
+  docs/superpowers/plans/2026-07-17-modular-kernel-worker-plane-implementation.md \
+  docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-0.md \
+  docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-1.md \
+  docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-2.md \
+  docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-3.md \
+  docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-4.md \
+  docs/superpowers/plans/2026-07-17-modular-worker-plane-phase-5.md \
+  docs/superpowers/plans/2026-07-17-modular-worker-plane-production-rollout.md \
   docs/superpowers/reviews/2026-07-17-modular-worker-plane-implementation-plan/00-review-brief.md
 git commit -m "docs(architecture): draft modular worker plane delivery" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
 git status --short
@@ -145,6 +153,51 @@ git commit -m "test(review): bootstrap immutable worker plane panel" -m "Co-Auth
 
 Expected: the commit contains exactly those seven paths; all clients remain uninvoked by the guilt suite; `git status --porcelain --untracked-files=no` is empty afterward. Record the commit OID and source/blob hashes in the first freeze receipt. Any later change to bootstrap tooling requires its own tested commit before a new `H0` is selected.
 
+- [ ] **Step 4b: Prove the upstream-246 anchor and leased 247–251 block before the initial plan packet**
+
+The Phase 0 allocation checker is intentionally a reviewed implementation
+artifact and does not exist yet. The initial plan-authority packet therefore
+uses this smaller Git-object/lease preflight. It proves current admission only;
+Phase 0 Task 7 must still create the recorded allocation document, checker,
+and guilt tests before writing migration bytes or freezing the Phase 0 packet.
+
+After the Step 3 fetch/rebase, run from the repository root with the protected
+Redis environment loaded without printing values:
+
+```bash
+UPSTREAM="$(git rev-parse 'origin/main^{commit}')"
+UPSTREAM_246='apps/backend-rag/backend/db/migrations_v2/246_clients_wa_intake_autocreate.sql'
+test "$(git ls-tree -r --name-only "$UPSTREAM" -- "$UPSTREAM_246")" = "$UPSTREAM_246"
+git rev-parse "$UPSTREAM:$UPSTREAM_246"
+test -z "$(git ls-tree -r --name-only "$UPSTREAM" -- apps/backend-rag/backend/db/migrations_v2 | awk -F/ '$NF ~ /^(247|248|249|250|251)_/ {print}')"
+cd apps/backend-rag
+PYTHONPATH=. .venv/bin/python ../../scripts/lint_migration_numbers.py
+cd ../..
+set -a
+source "${HOME}/.nuzantara-secrets.env" >/dev/null 2>&1
+set +a
+LEASES_JSON="$(apps/backend-rag/.venv/bin/python scripts/agent_lease.py list --json)"
+for RESOURCE in \
+  apps/backend-rag/backend/db/migrations_v2/247_event_quarantine.sql \
+  apps/backend-rag/backend/db/migrations_v2/248_worker_plane_ownership.sql \
+  apps/backend-rag/backend/db/migrations_v2/249_worker_effect_ledger.sql \
+  apps/backend-rag/backend/db/migrations_v2/250_notification_schedule_runs.sql \
+  apps/backend-rag/backend/db/migrations_v2/251_event_subscription_receipts.sql
+do
+  jq -e --arg resource "$RESOURCE" --arg task '019f734c-8e0c-7562-a448-14e73ac2e43d' \
+    'any(.[]; .resource == $resource and .task_id == $task and .ttl_remaining_s > 0)' \
+    <<<"$LEASES_JSON" >/dev/null
+done
+unset LEASES_JSON
+```
+
+Expected: the printed upstream-246 blob OID is recorded in the external freeze
+evidence, the migration linter exits 0, no `247`–`251` path exists on fetched
+`origin/main`, and every exact target-path lease is live under the active task.
+Do not persist Redis configuration or token values. Any failure stops before
+packet freeze; a number collision requires full-block reallocation and covered
+document amendments, which in turn require a new initial panel.
+
 - [ ] **Step 5: Freeze one content-addressed plan packet and run all three reviewers**
 
 Use this canonical packet/launcher contract for this plan review and every later phase or release panel; phase plans may add covered code/evidence entries but may not weaken it.
@@ -154,7 +207,7 @@ Use this canonical packet/launcher contract for this plan review and every later
 3. Build `packet.bin` only from the already buffered Git-object bytes, with exact framing `NUZANTARA-REVIEW-PACKET-V1\n`, then `MANIFEST <decimal-byte-length>\n<canonical-manifest-bytes>`, then for each manifest entry in order `ENTRY <role-byte-length> <path-byte-length> <content-byte-length>\n<role-bytes><path-bytes><content-bytes>`, then `END\n`. Do not interpolate delimiters into content. Parse the completed bytes back to EOF and prove every length, path, role, SHA-256, Git blob OID, and manifest entry; trailing or missing bytes fail closed.
 4. Compute `packet_sha256` only after packet construction. It is an external transport-integrity value recorded in the freeze/invocation receipts and must never be embedded in the packet or requested from the reviewer. Move immutable objects to `<external-review-store>/sha256/<packet_sha256>/` with exact stored names `packet.bin`, `input-manifest.json`, `freeze-receipt.json`, and `glm-5.2-v1.json`; verify every stored hash after the move, make the directory and files read-only, and retain its inode/device plus the Git-object validation result. The launcher materializes the verified packet into the review output directory as `00-review-packet.bin`; no launcher may reread a mutable worktree path.
 5. A single launcher process reads that content-addressed packet once into a byte buffer, recomputes `packet_sha256`, and supplies the identical `input=packet_bytes` over stdin to all three subprocesses from a newly created empty `0700` cwd. Every invocation receives a newly generated, previously nonexistent `.../attempts/<uuid>/` output directory; never reuse a phase root or earlier attempt directory. Never use `-p "$(cat ...)"`, a prompt argument, shell command substitution, or one file reopen per seat: those lose trailing newlines and create argv/TOCTOU exposure. The launcher writes stdout and stderr bytes verbatim, hashes them, and never exposes one seat's output to another before all return. It also produces the three normalized Markdown reviews and invocation receipts atomically; no separate/manual normalization step is permitted.
-6. Invoke Fable with absolute binary `/Users/balizero/.local/share/mise/installs/node/22/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe` and exact argv `--print --model claude-fable-5 --effort xhigh --output-format json --no-session-persistence --safe-mode --permission-mode plan --tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`. Invoke GLM with the same absolute Claude binary and exact argv `--print --model glm-5.2 --effort high --output-format json --no-session-persistence --safe-mode --permission-mode plan --tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`. The inline MCP argument is exactly the ASCII bytes `{"mcpServers":{}}`, with no newline; this prevents inherited MCP servers. The launcher UUID is receipt identity, not a provider session argument. Remove `ANTHROPIC_API_KEY` from Fable's environment. Invoke Gemini with absolute binary `/Users/balizero/.local/bin/agy` and exact argv `--mode plan --sandbox --print-timeout 15m --model "Gemini 3.1 Pro (High)"`; do **not** pass `-p`, `-p -`, or any prompt argument. With `agy` 1.1.2+ (live route verified at 1.1.3), piped stdin enters headless mode; its cwd is the same empty sandbox directory and an older client fails closed. GLM additionally uses committed route config `scripts/review_routes/glm-5.2-v1.json`. Its exact canonical UTF-8 bytes, including final newline, are `{"api_timeout_ms":"3000000","base_url":"https://api.z.ai/api/anthropic","model_map":{"haiku":"glm-4.7","opus":"glm-5.2","sonnet":"glm-5.2"},"schema_version":1}\n`. The freezer copies those Git-object bytes into the content-addressed review directory and records their SHA-256; the launcher rejects any other bytes, then maps the fields to `API_TIMEOUT_MS`, `ANTHROPIC_BASE_URL`, and the three `ANTHROPIC_DEFAULT_*_MODEL` variables. Load the GLM token at invocation from absolute executable `/usr/bin/security` with argv `find-generic-password -s glm-coding-plan-token -w`; pass it only as `ANTHROPIC_AUTH_TOKEN`, clear `ANTHROPIC_API_KEY` and `CLAUDE_CODE_OAUTH_TOKEN`, and never persist the value. Do not use `zsh -ic`, `.zshrc`, a shell function, or a shim. The narrower configuration claim is that mutable user/project configuration is never accepted as route proof or as the GLM route source; Fable and Gemini still run through their supported safe client modes, and any client behavior that contradicts the pinned argv, empty-tool/MCP contract, requested route, or receipt proof fails closed.
+6. Invoke Fable with absolute binary `/Users/nuzantara/.local/share/claude/versions/2.1.214` and exact argv `--print --model claude-fable-5 --effort xhigh --output-format json --no-session-persistence --safe-mode --permission-mode plan --tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`. Invoke GLM with the same absolute Claude binary and exact argv `--print --model glm-5.2 --effort high --output-format json --no-session-persistence --safe-mode --permission-mode plan --tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`. The inline MCP argument is exactly the ASCII bytes `{"mcpServers":{}}`, with no newline; this prevents inherited MCP servers. The launcher UUID is receipt identity, not a provider session argument. Remove `ANTHROPIC_API_KEY` from Fable's environment. Invoke Gemini with absolute binary `/Users/nuzantara/.local/bin/agy` and exact argv `--mode plan --sandbox --print-timeout 15m --model "Gemini 3.1 Pro (High)"`; do **not** pass `-p`, `-p -`, or any prompt argument. With `agy` 1.1.2+ (live route verified at 1.1.3), piped stdin enters headless mode; its cwd is the same empty sandbox directory and an older client fails closed. GLM additionally uses committed route config `scripts/review_routes/glm-5.2-v1.json`. Its exact canonical UTF-8 bytes, including final newline, are `{"api_timeout_ms":"3000000","base_url":"https://api.z.ai/api/anthropic","model_map":{"haiku":"glm-4.7","opus":"glm-5.2","sonnet":"glm-5.2"},"schema_version":1}\n`. The freezer copies those Git-object bytes into the content-addressed review directory and records their SHA-256; the launcher rejects any other bytes, then maps the fields to `API_TIMEOUT_MS`, `ANTHROPIC_BASE_URL`, and the three `ANTHROPIC_DEFAULT_*_MODEL` variables. Load the GLM token at invocation from absolute executable `/usr/bin/security` with argv `find-generic-password -s glm-coding-plan-token -w`; pass it only as `ANTHROPIC_AUTH_TOKEN`, clear `ANTHROPIC_API_KEY` and `CLAUDE_CODE_OAUTH_TOKEN`, and never persist the value. Do not use `zsh -ic`, `.zshrc`, a shell function, or a shim. The narrower configuration claim is that mutable user/project configuration is never accepted as route proof or as the GLM route source; Fable and Gemini still run through their supported safe client modes, and any client behavior that contradicts the pinned argv, empty-tool/MCP contract, requested route, or receipt proof fails closed.
 7. For every seat, generate `launcher_invocation_uuid` before launch and write an immutable receipt containing requested route, absolute executable and SHA-256, client version, exact argv array and hash, route-config hash, UTC start/end, cwd proof, common `input_manifest_sha256`, external `packet_sha256`, exit status, stdout SHA-256, and stderr SHA-256. `provider_session_id` and `reported_model` are nullable and are validated only when the provider emits them. A requested route is never presented as a provider declaration. Reviewers repeat only `input_manifest_sha256`; the external validator checks `packet_sha256` from receipts.
 8. Reviewers have no Read/Glob/Grep/Bash/MCP tools and no mutable checkout access. If corroboration is necessary, export selected recorded-`H0` Git objects into a separate read-only archive, hash it in the external receipt, and add the needed bytes to a regenerated covered projection/packet; never grant live-worktree reads.
 9. Commit the exact launcher output set and completed disposition from one attempt directory before setting `H1`: validator inputs, three normalized reviews, three raw stdout companions, three `.stderr.bin` companions, three invocation receipts, and `99-disposition.md`. Only then regenerate the projection from `git show "$H1:<covered-path>"` and gate on `projection(H1) == projection(H0)`. The deterministic checker receives `--repo`, `--h0`, `--h1`, the same `--covered-set`/`--instructions`, and only paths whose mutable bytes equal regular Git blobs at `H1`; it revalidates projection equality before review/disposition checks. A changed covered entry, role, path, or byte requires a new manifest/packet and all three reruns. An output/disposition-only change with equal projection requires packet/raw/stderr/receipt/disposition integrity revalidation, not a recursive rerun.

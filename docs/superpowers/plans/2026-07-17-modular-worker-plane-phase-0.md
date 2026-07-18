@@ -23,7 +23,7 @@
 - Every test is written first and must fail for the stated reason before production code is added.
 - Every implementation task ends in one atomic conventional commit. Never use `--no-verify`, `--amend`, force push, or direct push to `main`.
 - Historical workflow migrations 039 and 041 must reproduce the committed legacy DDL exactly in their forward blocks; their rollback blocks are non-destructive `SELECT 1;` markers because production may already own data created by the legacy runner.
-- Migration sequence is fixed: Phase 0 owns `246_event_quarantine.sql`; Phase 1 starts at `247_worker_plane_ownership.sql`.
+- Migration `246_clients_wa_intake_autocreate.sql` is owned by intake-v2-entry PR #2669. Phase 0 owns `247_event_quarantine.sql` and Phase 1 starts at `248_worker_plane_ownership.sql` only after this feature branch is rebased onto an `origin/main` that contains that authoritative `246` source and the complete leased `247`–`251` block is still collision-free. If PR #2669 is unmerged, renumbered, or changed at that boundary, Phase 0 stops before creating migration source/test bytes; rerun allocation, acquire a fresh full-block lease, update all covered documents, and rerun the initial panel.
 - `BusinessContext` names bounded business/data ownership and never contains `api`, `rag`, `worker`, or `drive`. `RuntimeOwner` names the executing process and never substitutes for table or domain ownership.
 - Ruff is run only on Python files added or modified by this feature relative to the recorded merge base; broad baseline-red directories are not used as a Phase 0 quality signal.
 - A phase may not exit with `TODO`, `TBD`, `FIXME`, `NotImplementedError`, placeholder review text, expired ownership exceptions, or a skipped required gate.
@@ -176,7 +176,7 @@ class PiiClass(str, Enum):
 
 No additional top-level or variant field is accepted. A real table contains only the binding instances needed to cover its write surface; the three variants above describe the union, not three mandatory bindings per table. `legacy_exception`, when non-null, contains exactly `table_name`, `business_context`, `binding_id`, `operation`, `write_interface`, `reason`, `approved_by`, and `expires_on` and cannot expand candidates, modes, operations, or control-plane authority.
 
-Ordinary tables use one singleton `static` binding. In Phase 1, migrated workload state tables give claim/effect transitions to `grant-fenced` bindings while retaining explicitly cataloged static producer operations such as enqueue where required; the bootstrap grant/census/audit tables stay behind static protected CAS/register/retire interfaces to avoid recursive self-authorization, and the heartbeat table uses only `heartbeat-evidence` so a target can prove build compatibility before cutover without receiving work authority. Views and immutable reference tables are represented with a non-mutating interface. The final live table catalog and schema fixture are intentionally generated in Task 8, after Tasks 4 and 7 have added migrations 039, 041, and 246.
+Ordinary tables use one singleton `static` binding. In Phase 1, migrated workload state tables give claim/effect transitions to `grant-fenced` bindings while retaining explicitly cataloged static producer operations such as enqueue where required; the bootstrap grant/census/audit tables stay behind static protected CAS/register/retire interfaces to avoid recursive self-authorization, and the heartbeat table uses only `heartbeat-evidence` so a target can prove build compatibility before cutover without receiving work authority. Views and immutable reference tables are represented with a non-mutating interface. The final live table catalog and schema fixture are intentionally generated in Task 8, after Tasks 4 and 7 have added migrations 039, 041, and 247.
 
 - [ ] Write catalog tests for exact enum serialization, required workload entries, unique workload/event/effect keys, valid business contexts and runtime owners, non-empty/sorted/duplicate-free candidate sets containing the current runtime, sorted/unique symbolic-only `provider_secret_symbols`, and guilt cases for a value, assignment, URI, whitespace, duplicate, or undeclared injected symbol. Require exact `notification_scheduler=("EFFECT_KEY_HMAC_SECRET_V1", "SENDGRID_API_KEY")`, exact `wa_outbox=("WHATSAPP_API_TOKEN", "WHATSAPP_PHONE_NUMBER_ID")`, and exact `notification_scheduler/email=non-reconcilable`; prove the HMAC supplies neither provider idempotency nor reconciliation. Add a source dependency-closure test over every selected workload adapter and transitive provider factory: every `os.getenv`/settings dependency installed through the protected provider-runtime path must appear in that workload's exact symbol set, every cataloged symbol must be consumed by the selected adapter, notification worker mode must construct SendGrid explicitly without SMTP/auto-detect, and outbound WA must not require `WHATSAPP_APP_SECRET`. Add a guilt case where `api|rag|worker|drive` is used as a business context, a guilt case where a domain is used as a runtime owner, positive leases/SLOs, and the rule that every irreversible effect declares a fence checkpoint and exactly one canonical delivery semantic. Require a concrete store for `provider-idempotent`/`reconcilable`; permit a missing store only for `non-reconcilable`, while emitting a machine-readable activation blocker. Add a guilt test rejecting `best_effort`, `at_least_once`, `effectively_once`, and underscore variants as delivery-semantics values.
 - [ ] Add a source census test that scans `app_factory.py`, `main_api.py`, `service_initializer.py`, and `workers/drive_poll_worker.py` for perpetual loops, durable `create_task`, scheduler, listener, and `.start()` call sites. Maintain a checked classification fixture mapping every hit to a catalog workload or a reasoned `request-scoped|best-effort|startup-only` class; an unclassified hit or a durable hit absent from `WORKLOAD_CATALOG` fails.
@@ -193,7 +193,7 @@ Ordinary tables use one singleton `static` binding. In Phase 1, migrated workloa
   Expected: catalog/checker imports fail and router manifest tests report the missing split metadata/hash behavior.
 
 - [ ] Extend the Task 1 model module with the remaining typed contracts and implement `WORKLOAD_CATALOG`, `EVENT_CATALOG`, `SIDE_EFFECT_CATALOG`, `get_workload_spec(name)`, `get_event_policy(event_type)`, `get_side_effect_capability(workload_name, effect_name)`, `load_table_ownership_catalog()`, and `validate_table_ownership(schema_tables, catalog, workload_catalog, now)`. Implement `StaticWriterBinding`, `GrantFencedWriterBinding`, `HeartbeatEvidenceWriterBinding`, and one `TableOwnership` wrapper containing a strict tuple of those discriminated bindings; retain the already-tested distinct `BusinessContext` and `RuntimeOwner` types.
-- [ ] Implement `introspect_schema_tables(conn) -> tuple[str, ...]` without reading rows and `check_table_ownership.py` as the single table-ownership engine with `--schema-file`, `--catalog`, and optional live `--database-url` modes, injected-clock exception validation, and exact schema/catalog parity. Implement `check_architecture_catalogs.py` for workload/event/effect validation and have it call the shared table engine rather than reimplementing G16. Unit tests use only synthetic fixtures here; Task 8 performs the canonical empty-DB bootstrap, migration-through-246, fixture refresh, and live parity proof. Exit 1 on any missing/duplicate/expired assignment, unknown workload, invalid irreversible declaration, activation blocker misreported as ready, or live/fixture/catalog drift.
+- [ ] Implement `introspect_schema_tables(conn) -> tuple[str, ...]` without reading rows and `check_table_ownership.py` as the single table-ownership engine with `--schema-file`, `--catalog`, and optional live `--database-url` modes, injected-clock exception validation, and exact schema/catalog parity. Implement `check_architecture_catalogs.py` for workload/event/effect validation and have it call the shared table engine rather than reimplementing G16. Unit tests use only synthetic fixtures here; Task 8 performs the canonical empty-DB bootstrap, migration-through-247, fixture refresh, and live parity proof. Exit 1 on any missing/duplicate/expired assignment, unknown workload, invalid irreversible declaration, activation blocker misreported as ready, or live/fixture/catalog drift.
 - [ ] Run GREEN:
 
   ```bash
@@ -437,23 +437,48 @@ The three real daemon constructors use distinct groups derived from `meta-dispat
 
 **Files:**
 
-- Create: `apps/backend-rag/backend/db/migrations_v2/246_event_quarantine.sql`
+- Create: `apps/backend-rag/backend/db/migrations_v2/247_event_quarantine.sql`
 - Create: `apps/backend-rag/backend/services/events/quarantine.py`
 - Modify: `apps/backend-rag/backend/services/events/__init__.py`
 - Modify: `apps/backend-rag/backend/services/events/outbox.py`
 - Modify: `apps/backend-rag/backend/services/events/event_bus.py`
 - Modify: `apps/backend-rag/backend/services/federation_alerts/daemon.py`
 - Modify: `apps/backend-rag/backend/app/routers/health.py`
-- Create: `apps/backend-rag/backend/tests/db/test_migration_246_event_quarantine.py`
+- Create: `apps/backend-rag/backend/tests/db/test_migration_247_event_quarantine.py`
 - Create: `apps/backend-rag/backend/tests/services/events/test_outbox_quarantine.py`
+- Create: `docs/architecture/worker-plane-migration-allocation.md`
+- Create: `scripts/check_worker_plane_migration_allocation.py`
+- Create: `scripts/tests/test_worker_plane_migration_allocation.py`
 - Modify: `apps/backend-rag/backend/tests/services/events/test_outbox.py`
 - Modify: `apps/backend-rag/backend/tests/services/events/test_outbox_stale_ttl.py`
 - Modify: `apps/backend-rag/backend/tests/services/events/test_event_bus_replay.py`
 - Modify: `apps/backend-rag/backend/tests/services/federation_alerts/test_daemon.py`
 
-Migration 246 adds nullable `quarantined_at TIMESTAMPTZ`, `quarantine_reason TEXT`, and `quarantined_by TEXT` to `events_outbox`, plus a partial index on unconsumed/unquarantined rows and a partial index on quarantined rows. It does not duplicate payloads or delete/ack rows. Its rollback drops only the new indexes/columns and is allowed only before quarantine data exists; the plan's operational exit keeps it additive through the rollback window.
+Migration 247 adds nullable `quarantined_at TIMESTAMPTZ`, `quarantine_reason TEXT`, and `quarantined_by TEXT` to `events_outbox`, plus a partial index on unconsumed/unquarantined rows and a partial index on quarantined rows. It does not duplicate payloads or delete/ack rows. Its rollback drops only the new indexes/columns and is allowed only before quarantine data exists; the plan's operational exit keeps it additive through the rollback window.
 
-Because migration 246 changes an existing mutable table, it also carries the
+Before the first migration test or source byte is created, fetch
+`origin/main` and create the allocation record. It stores the exact base commit,
+the Git blob OID for upstream
+`246_clients_wa_intake_autocreate.sql`, the task-owned Redis lease identity,
+and the exact phase mapping `247`–`251`. A repository-root
+`check_worker_plane_migration_allocation.py` invocation reads the record and a
+selected Git base without network access, proves globally unique numeric
+prefixes, proves upstream 246 has the recorded basename/blob identity, proves
+all five worker-plane target basenames are absent from that base, rejects each
+pre-reallocation target basename in every covered authority document, and
+fails if another path occupies any leased number. Beginning with the Phase 0
+packet, the checker is rerun after every `git fetch origin`, immediately before
+creating each later migration, before every immutable packet freeze, and before
+protected merge. The earlier initial plan-authority packet instead uses the
+smaller Git-object/lease preflight in master-plan Step 4b because this checker
+is itself a reviewed Phase 0 artifact. Any mismatch
+invalidates the complete block and requires a fresh five-file allocation,
+fresh leases, consistent covered-document edits, and a new panel.
+
+- [ ] Write `scripts/tests/test_worker_plane_migration_allocation.py` first. Cover the exact upstream 246 basename/blob OID; exact Phase 0/1/3/4/5 mapping to 247/248/249/250/251; global prefix uniqueness; all five targets absent on the base; rejection of an upstream collision on any leased number; rejection of an unexpected 246 identity; and anti-regression scans for each of the five pre-reallocation target basenames. Exercise every valid `--next-number` state in temporary Git repositories so later phases rerun this same generic checker/test without modifying either. The test uses fake lease metadata and never contacts Redis or the network.
+- [ ] Run that test RED; expected failure: the checker and allocation record do not exist. Implement the typed checker with deterministic JSON/error codes and no shell-string execution. Its exact repository-root CLI is `apps/backend-rag/.venv/bin/python scripts/check_worker_plane_migration_allocation.py --base-ref origin/main --feature-ref HEAD --record docs/architecture/worker-plane-migration-allocation.md --next-number 247`. Then run `git fetch origin`, acquire/heartbeat all five target-path leases with task ID `019f734c-8e0c-7562-a448-14e73ac2e43d`, create `docs/architecture/worker-plane-migration-allocation.md` with `origin/main` commit, upstream-246 blob OID, exact mapping, and sanitized lease/collision proof, and run that command GREEN against the fetched base. Stop before any migration source/test if a lease or proof fails.
+
+Because migration 247 changes an existing mutable table, it also carries the
 ownership grammar from its first RED test rather than waiting for Phase 1. The
 block immediately precedes the first ownership-affecting `ALTER TABLE` and is
 line-oriented and exact:
@@ -462,7 +487,7 @@ line-oriented and exact:
 -- table-ownership-begin: public.events_outbox
 -- business-context: platform
 -- writer-binding: <the complete sorted repeatable writer binding from table_ownership.json>
--- migration-source: backend/db/migrations_v2/246_event_quarantine.sql
+-- migration-source: backend/db/migrations_v2/247_event_quarantine.sql
 -- table-ownership-end
 ```
 
@@ -479,7 +504,7 @@ the exact canonical interfaces
 current SQL-trigger or legacy direct writer found by the deterministic census.
 Each direct writer must be routed through one of those cataloged operations or
 named by an exact, dated, non-wildcard legacy exception; an unaccounted writer
-blocks Phase 0. Migration 246 may be amended only before its Phase 0 immutable
+blocks Phase 0. Migration 247 may be amended only before its Phase 0 immutable
 packet and protected merge; after either boundary a new migration number is
 required.
 
@@ -495,12 +520,12 @@ required.
   ```bash
   cd apps/backend-rag
   source .venv/bin/activate
-  PYTHONPATH=. pytest backend/tests/db/test_migration_246_event_quarantine.py backend/tests/services/events/test_outbox.py backend/tests/services/events/test_outbox_quarantine.py backend/tests/services/events/test_outbox_stale_ttl.py backend/tests/services/events/test_event_bus_replay.py backend/tests/services/federation_alerts/test_daemon.py -q
+  PYTHONPATH=. pytest backend/tests/db/test_migration_247_event_quarantine.py backend/tests/services/events/test_outbox.py backend/tests/services/events/test_outbox_quarantine.py backend/tests/services/events/test_outbox_stale_ttl.py backend/tests/services/events/test_event_bus_replay.py backend/tests/services/federation_alerts/test_daemon.py -q
   ```
 
   Expected: migration/module tests fail; the durable stale-event assertion shows the current silent acknowledgement.
 
-- [ ] Implement migration 246 and `quarantine.py`. Send an `AlertService` critical alert through an injected callback after the transaction commits; alert failure must not undo quarantine and must be reflected in structured logs/metrics.
+- [ ] Implement migration 247 and `quarantine.py`. Send an `AlertService` critical alert through an injected callback after the transaction commits; alert failure must not undo quarantine and must be reflected in structured logs/metrics.
 - [ ] Implement `replay_unconsumed_summary` to include all unconsumed/unquarantined candidates in deterministic ID order, classify row age and payload age through `EventPolicy`, and return `ReplaySummary(dispatched, acknowledged_best_effort, quarantined, failed)`. Keep `replay_unconsumed` as the stable integer wrapper with its existing positional/keyword signature and update the package exports explicitly.
 - [ ] Update EventBus reconnect replay to call the summary API, pass exact event policy/channel context, log summary fields, and never use a global stale skip for durable events. Audit and test every current consumer: `backend/tests/services/events/test_outbox.py`, `backend/services/events/event_bus.py`, `backend/services/federation_alerts/daemon.py`, and `backend/tests/services/federation_alerts/test_daemon.py`; no caller may accidentally receive `ReplaySummary` where it expects `int`.
 - [ ] Add quarantine count/oldest age to `/health/workloads`; nonzero newly quarantined durable events are degraded and an increasing/old threshold is unhealthy per catalog SLO.
@@ -509,7 +534,7 @@ required.
   ```bash
   cd apps/backend-rag
   source .venv/bin/activate
-  PYTHONPATH=. pytest backend/tests/db/test_migration_246_event_quarantine.py backend/tests/services/events/test_outbox.py backend/tests/services/events/test_outbox_quarantine.py backend/tests/services/events/test_outbox_stale_ttl.py backend/tests/services/events/test_event_bus_replay.py backend/tests/services/federation_alerts/test_daemon.py -q
+  PYTHONPATH=. pytest backend/tests/db/test_migration_247_event_quarantine.py backend/tests/services/events/test_outbox.py backend/tests/services/events/test_outbox_quarantine.py backend/tests/services/events/test_outbox_stale_ttl.py backend/tests/services/events/test_event_bus_replay.py backend/tests/services/federation_alerts/test_daemon.py -q
   PYTHONPATH=. python ../../scripts/lint_migration_numbers.py
   PYTHONPATH=. python ../../scripts/lint_migration_rollback.py
   ```
@@ -519,7 +544,7 @@ required.
 - [ ] Commit:
 
   ```bash
-  git add apps/backend-rag/backend/db/migrations_v2/246_event_quarantine.sql apps/backend-rag/backend/services/events/__init__.py apps/backend-rag/backend/services/events/quarantine.py apps/backend-rag/backend/services/events/outbox.py apps/backend-rag/backend/services/events/event_bus.py apps/backend-rag/backend/services/federation_alerts/daemon.py apps/backend-rag/backend/app/routers/health.py apps/backend-rag/backend/tests/db/test_migration_246_event_quarantine.py apps/backend-rag/backend/tests/services/events/test_outbox.py apps/backend-rag/backend/tests/services/events/test_outbox_quarantine.py apps/backend-rag/backend/tests/services/events/test_outbox_stale_ttl.py apps/backend-rag/backend/tests/services/events/test_event_bus_replay.py apps/backend-rag/backend/tests/services/federation_alerts/test_daemon.py
+  git add apps/backend-rag/backend/db/migrations_v2/247_event_quarantine.sql apps/backend-rag/backend/services/events/__init__.py apps/backend-rag/backend/services/events/quarantine.py apps/backend-rag/backend/services/events/outbox.py apps/backend-rag/backend/services/events/event_bus.py apps/backend-rag/backend/services/federation_alerts/daemon.py apps/backend-rag/backend/app/routers/health.py apps/backend-rag/backend/tests/db/test_migration_247_event_quarantine.py apps/backend-rag/backend/tests/services/events/test_outbox.py apps/backend-rag/backend/tests/services/events/test_outbox_quarantine.py apps/backend-rag/backend/tests/services/events/test_outbox_stale_ttl.py apps/backend-rag/backend/tests/services/events/test_event_bus_replay.py apps/backend-rag/backend/tests/services/federation_alerts/test_daemon.py docs/architecture/worker-plane-migration-allocation.md scripts/check_worker_plane_migration_allocation.py scripts/tests/test_worker_plane_migration_allocation.py
   git commit -m "fix(events): quarantine stale durable outbox rows" -m "Co-Authored-By: Codex Opus 4.8 (1M context) <noreply@anthropic.com>"
   ```
 
@@ -558,8 +583,8 @@ The verifier runs named checks and emits machine-readable JSON with `gate`, `sta
   Expected: tests fail because the verifier does not exist.
 
 - [ ] Implement the verifier as a typed subprocess orchestrator with fixed command allowlist and timeouts; it must not shell-expand user input.
-- [ ] Write `test_capture_schema_tables.py` first. Cover `--assert-empty`, sorted qualified non-system tables, newline termination, no row reads, expected latest migration 246, and refusal when the target is not the disposable test database. Implement the capture CLI by importing the same `introspect_schema_tables` engine used by `check_table_ownership.py`.
-- [ ] After migrations 039, 041, and 246 exist, create a brand-new disposable PostgreSQL database and prove it is empty. From `apps/backend-rag`, run `PYTHONPATH=.:../crm-cell python scripts/ci_bootstrap_schema.py` before the canonical `PYTHONPATH=. python -m backend.db.migrate apply-all`; the bootstrap is mandatory because SQLModel/legacy tables are not all created by v2 migrations. Assert the migration ledger's latest entry is exactly 246, then refresh `schema_tables.txt` from live `pg_catalog`, populate `table_ownership.json`, run the deterministic source-write census, and rewrite migration 246's `events_outbox` block to the same complete sorted policy before freezing any Phase 0 review input. The shared checker must prove live DB + fixture + catalog + migration-block + source-interface parity and reject every unaccounted trigger/direct writer. Do not reuse a Task 2 fixture or claim parity from migration text.
+- [ ] Write `test_capture_schema_tables.py` first. Cover `--assert-empty`, sorted qualified non-system tables, newline termination, no row reads, expected latest migration 247, and refusal when the target is not the disposable test database. Implement the capture CLI by importing the same `introspect_schema_tables` engine used by `check_table_ownership.py`.
+- [ ] After migrations 039, 041, and 247 exist, create a brand-new disposable PostgreSQL database and prove it is empty. From `apps/backend-rag`, run `PYTHONPATH=.:../crm-cell python scripts/ci_bootstrap_schema.py` before the canonical `PYTHONPATH=. python -m backend.db.migrate apply-all`; the bootstrap is mandatory because SQLModel/legacy tables are not all created by v2 migrations. Assert the migration ledger's latest entry is exactly 247, then refresh `schema_tables.txt` from live `pg_catalog`, populate `table_ownership.json`, run the deterministic source-write census, and rewrite migration 247's `events_outbox` block to the same complete sorted policy before freezing any Phase 0 review input. The shared checker must prove live DB + fixture + catalog + migration-block + source-interface parity and reject every unaccounted trigger/direct writer. Do not reuse a Task 2 fixture or claim parity from migration text.
 - [ ] Re-run `scripts/tests/test_worker_plane_review_packet.py` against the committed pre-panel bootstrap before modifying it. Add a RED guilt fixture for every Phase 0-discovered gap before changing implementation. Coverage remains: committed-Git-object reads only; clean tracked status; exact `ensure_ascii=False` canonical JSON and raw-UTF-8 `(role,path)` ordering; duplicate/unknown-role/non-normalized-path rejection; non-circular fields; deterministic length framing; embedded delimiter/newline/NUL bytes; truncated, extra, reordered, wrong-hash, wrong-size, wrong-blob, and trailing-byte rejection; content-addressed read-only placement; a general packet with one or more covered entries plus exactly one instructions entry; the initial implementation-plan preset's exact nine covered paths plus its sole instructions brief; and `projection(H1) == projection(H0)` when H1 adds only excluded attestations. A covered byte/role/path change must change the projection.
 - [ ] Implement `scripts/freeze_worker_plane_review.py` exactly to the master-plan canonical contract. It accepts repository, source commit, upstream commit, base commit, one or more repeated `--covered`, exactly one `--instructions`, and an absolute external output store; only the named initial implementation-plan preset enforces its exact nine covered paths. It reads bytes only through Git objects; emits canonical manifest, length-framed packet, and external freeze receipt; round-trips to EOF; validates every blob/hash/length; installs exact files `packet.bin`, `input-manifest.json`, `freeze-receipt.json`, and `glm-5.2-v1.json` by packet SHA-256 under a read-only content-addressed directory; copies and hash-validates the committed canonical route-config bytes into that directory; and provides `compare-projection --repo <repository> --left <commit> --right <commit> --covered ... --instructions <path>` that ignores excluded attestation outputs but fails on any covered input delta.
 - [ ] Re-run `scripts/tests/test_launch_worker_plane_review_panel.py` against the committed pre-panel bootstrap, then add RED guilt fixtures before any Phase 0-driven change. Fake stdin-consuming clients must continue to prove one packet-file read and one in-memory buffer feed three times byte-identically, including trailing newlines and NUL; verified read-only materialization of `00-review-packet.bin`, `input-manifest.json`, and `freeze-receipt.json` in the output directory; empty `0700` cwd; no prompt bytes in argv; absolute binaries only; exact Fable/GLM `--safe-mode --permission-mode plan --tools "" --disable-slash-commands --strict-mcp-config --mcp-config '{"mcpServers":{}}'`; exact Gemini `--mode plan --sandbox` with **no** `-p`/prompt argument and minimum version 1.1.2; no provider `--session-id`; no `zsh -ic`/shim/shell/worktree access; required unique receipt-only `launcher_invocation_uuid`; nullable `provider_session_id`/`reported_model`; sanitized GLM keychain injection; immutable executable/config/argv/stdout/stderr hashes; and independent output visibility.
@@ -574,7 +599,7 @@ The verifier runs named checks and emits machine-readable JSON with `gate`, `sta
   ```bash
   cd apps/backend-rag
   source .venv/bin/activate
-  PYTHONPATH=. pytest backend/tests/architecture backend/tests/worker_plane backend/tests/setup backend/tests/db/test_workflow_migration_provenance.py backend/tests/db/test_migration_246_event_quarantine.py backend/tests/services/events backend/tests/services/federation_alerts/test_daemon.py -q
+  PYTHONPATH=. pytest backend/tests/architecture backend/tests/worker_plane backend/tests/setup backend/tests/db/test_workflow_migration_provenance.py backend/tests/db/test_migration_247_event_quarantine.py backend/tests/services/events backend/tests/services/federation_alerts/test_daemon.py -q
   PYTHONPATH=.:../.. pytest ../../infra/eventbus/tests -q
   pytest scripts/tests/test_check_router_asyncpg_ratchet.py scripts/tests/test_verify_worker_plane_phase0.py scripts/tests/test_capture_schema_tables.py -q
   pytest ../../scripts/tests/test_worker_plane_review_packet.py ../../scripts/tests/test_launch_worker_plane_review_panel.py ../../scripts/tests/test_check_worker_plane_review.py -q
@@ -583,9 +608,9 @@ The verifier runs named checks and emits machine-readable JSON with `gate`, `sta
   PYTHONPATH=. python scripts/capture_schema_tables.py --database-url "$TEST_DATABASE_URL" --assert-empty
   DATABASE_URL="$TEST_DATABASE_URL" PYTHONPATH=.:../crm-cell python scripts/ci_bootstrap_schema.py
   DATABASE_URL="$TEST_DATABASE_URL" PYTHONPATH=. python -m backend.db.migrate apply-all
-  PYTHONPATH=. python scripts/capture_schema_tables.py --database-url "$TEST_DATABASE_URL" --expected-latest-migration 246 --output backend/tests/fixtures/schema_tables.txt
+  PYTHONPATH=. python scripts/capture_schema_tables.py --database-url "$TEST_DATABASE_URL" --expected-latest-migration 247 --output backend/tests/fixtures/schema_tables.txt
   PYTHONPATH=. python scripts/check_architecture_catalogs.py --schema-file backend/tests/fixtures/schema_tables.txt
-  PYTHONPATH=. python scripts/check_table_ownership.py --schema-file backend/tests/fixtures/schema_tables.txt --database-url "$TEST_DATABASE_URL" --catalog backend/architecture/catalogs/data/table_ownership.json --expected-latest-migration 246
+  PYTHONPATH=. python scripts/check_table_ownership.py --schema-file backend/tests/fixtures/schema_tables.txt --database-url "$TEST_DATABASE_URL" --catalog backend/architecture/catalogs/data/table_ownership.json --expected-latest-migration 247
   test "${CI:-}" = "true" || test "$(hostname)" = "Nuzantara"
   test -n "${PHASE0_DATABASE_URL:-}" && test -n "${PHASE0_REDIS_URL:-}" && test -n "${PHASE0_METRICS_URL:-}"
   PYTHONPATH=. python scripts/capture_worker_plane_baseline.py --protocol backend/architecture/baselines/phase0_probe_protocol.json --database-url "$PHASE0_DATABASE_URL" --redis-url "$PHASE0_REDIS_URL" --metrics-url "$PHASE0_METRICS_URL" --require-complete-g9 --output backend/architecture/baselines/phase0_snapshot.json
@@ -596,7 +621,7 @@ The verifier runs named checks and emits machine-readable JSON with `gate`, `sta
   git diff --check
   ```
 
-  Expected: all commands exit 0; the freshly bootstrapped schema has exact migration/catalog parity through 246; Ruff sees only feature-touched Python files; the final checked G9 baseline comes from the fixed live Pro/CI protocol with complete numeric API/RAG measurements and its protocol hash verifies; the verifier JSON contains every Phase 0-required gate with `status="pass"` and labels full G11 as deferred rather than passed.
+  Expected: all commands exit 0; the freshly bootstrapped schema has exact migration/catalog parity through 247; Ruff sees only feature-touched Python files; the final checked G9 baseline comes from the fixed live Pro/CI protocol with complete numeric API/RAG measurements and its protocol hash verifies; the verifier JSON contains every Phase 0-required gate with `status="pass"` and labels full G11 as deferred rather than passed.
 
 - [ ] Commit:
 
@@ -716,7 +741,7 @@ Phase 0 is complete only when all statements below are proven by the checked-in 
 - [ ] Notification Scheduler starts exactly once in the intended API lifespan, stops before the API DB pool closes, and cannot start from the RAG/full lifespan; the API kill switch still suppresses it.
 - [ ] Every mutable table has exactly one checked business/data owner and one complete, non-overlapping set of tagged `writer_bindings`. Ordinary static authority is a singleton; migrated static producer operations are distinct from grant-fenced consumer transitions; grant-fenced and heartbeat-evidence candidates are finite and catalog-bound; no mixed binding, uncovered/bypassing write path, expired exception, or unassigned migration is accepted.
 - [ ] The canonical sorted route-catalog hash implementation existed before the first Phase 0 route snapshot was captured, and the checked-in snapshot records that hash.
-- [ ] G16 was proven on a brand-new disposable PostgreSQL database by first running `scripts/ci_bootstrap_schema.py`, then the canonical v2 runner through newly present 039, 041, and 246, refreshing the fixture only after that sequence, and comparing live `pg_catalog`, the checked fixture, and the single ownership catalog through one shared checker.
+- [ ] G16 was proven on a brand-new disposable PostgreSQL database by first running `scripts/ci_bootstrap_schema.py`, then the canonical v2 runner through newly present 039, 041, and 247, refreshing the fixture only after that sequence, and comparing live `pg_catalog`, the checked fixture, and the single ownership catalog through one shared checker.
 - [ ] The checked-in direct-router asyncpg baseline contains exactly 67 paths with the pinned hash; the current measured set contains no path outside that baseline, while legitimate removals may make the current set smaller without weakening the ratchet.
 - [ ] The checked G9 baseline was captured on Pro/self-hosted CI with protocol `phase0-api-rag-pro-ci-v1`, exact protocol digest/topology/owner set, five-minute warm-up, one fixed sample window, and numeric API/RAG values for process startup, steady-state RSS, aggregate DB connections, and HTTP 5xx rate; no offline/unavailable value is present. The deterministic comparator rejects protocol drift, any later value above `1.10x`, missing evidence, and invalid/expired owner exceptions.
 - [ ] The process-local liveness precursor proves a stopped local owner cannot remain green while files/config/catalog remain. Full G11 is explicitly not claimed in Phase 0 and remains gated on Phase 2's separate staging-worker stop, PostgreSQL heartbeat, oldest-job, and alert proof.
@@ -725,5 +750,5 @@ Phase 0 is complete only when all statements below are proven by the checked-in 
 - [ ] Stale durable PostgreSQL events are queryable in quarantine, unacknowledged, excluded from normal replay, and alerted; only explicitly cataloged best-effort events may expire.
 - [ ] `replay_unconsumed(...) -> int` retains its exact existing caller contract, while `replay_unconsumed_summary(...) -> ReplaySummary` is the explicit richer API and every current caller/test has been audited.
 - [ ] Fresh database migration order includes exact historical workflow migrations 039 and 041, while production rollback remains non-destructive.
-- [ ] No workload has moved process, no Phase 1 ownership guard has been armed, migration 247 remains unapplied/unwritten, and Phase 0 has not been merged or deployed independently.
+- [ ] No workload has moved process, no Phase 1 ownership guard has been armed, migration 248 remains unapplied/unwritten, and Phase 0 has not been merged or deployed independently.
 - [ ] Fable 5, Gemini 3.1 Pro High, and GLM 5.2 have independently reviewed the same immutable packet with launcher UUID/version/command/output-hash proof; every covered/instructions projection change regenerated the packet and reran all three, while attestation-only changes with equal projection received integrity revalidation only; every Blocking and Important finding is fixed and rereviewed.
