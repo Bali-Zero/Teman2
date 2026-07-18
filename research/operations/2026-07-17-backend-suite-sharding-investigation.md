@@ -2,6 +2,7 @@
 date: 2026-07-17
 domain: infra
 client_case: none
+adversarial_review: codex
 sources:
   - apps/backend-rag/pytest.ini
   - apps/backend-rag/backend/tests/conftest.py
@@ -14,9 +15,14 @@ sources:
   - apps/backend-rag/backend/services/crm/practice_state_machine.py
   - apps/backend-rag/backend/tests/services/intake/test_intake_writer.py
   - apps/backend-rag/backend/tests/routers/test_intake_review.py
+  - apps/backend-rag/backend/tests/services/crm/partners/conftest.py
   - .husky/pre-push
   - .github/workflows/tests.yml
-  - scratchpad/spec-push-pipeline-optimization-v2.md (M1)
+  - orchestrator mandate M1 (session-relayed, not a repo-tracked file — the
+    scratchpad it originally lived in is gitignored/ephemeral by design; see
+    §M1 restated verbatim in the opening paragraph below)
+  - "adversarial review: gpt-5.6-sol via codex CLI, high effort, read-only
+    sandbox, 2026-07-18 — full raw verdict in §8"
 ---
 
 # M1 — Backend suite sharding investigation (pytest-xdist + per-worker DB isolation)
@@ -26,23 +32,46 @@ Mandate: `scratchpad/spec-push-pipeline-optimization-v2.md` §M1 ("Suite shardin
 remaining full run cheapens"). This is an **investigation**, not an adoption PR — `.husky/pre-push`
 is untouched (a separate lane owns P1/that file). Worktree: `.worktrees/research-m1-sharding-0717a`.
 
-## 0. TL;DR verdict — COMPLETE (2026-07-18)
+## 0. TL;DR verdict — COMPLETE (2026-07-18, revised post-adversarial-review — see §8)
 
-**CONDITIONAL GO.** Per-worker Postgres isolation for pytest-xdist is proven safe at both small
-scale (360 real-DB tests, 3 configs, 0 failures) and large scale (~4100 tests, `-n8` on Pro, every
-targeted hazard clean). Naive `-n auto`/`-n8` with no isolation and no prerequisite fixes does **not**
-just flake — it hard-aborts at collection (§2.2-H, unrelated to DB isolation, one-line fix). One real
-new flake was found at scale and root-caused to a coverage gap, not a design flaw (§2.2-D2, two files,
-small fix). Timing: 147s serial → 127s isolated `-n8` on the representative subset — real but modest,
-not yet the full-suite `-n auto` number the pre-registered threshold needs (§5). Two small fixes
-(§6) are hard prerequisites before ANY `-n>1` adoption; full-suite timing is a fast follow-up once
-they land (PENDING-ARMS line, §5).
+**GO TO HARDENED PILOT — not "safe and ready," a promising design with two proof gaps and a
+prototype that is not yet crash-safe.** An earlier draft of this doc called this "CONDITIONAL GO...
+proven safe." A real adversarial review (§8, gpt-5.6-sol/Codex, read-only, REJECT verdict) correctly
+caught that the evidence supports a narrower claim, on two fronts: (1) the single highest-risk hazard
+this investigation set out to prove safe — §2.2-A's owner_cashout DELETE-race — was **never actually
+exercised as a live pass/fail at either scale**, because `owner_weekly_cashout_rows`/`_weeks` are
+absent from the test-DB template on *both* M5 and Pro (verified freshly against Pro's `nuzantara_test`
+during the revision: `to_regclass('public.owner_weekly_cashout_rows')` → NULL); what's actually proven
+is the isolation *mechanism* (§3's synthetic proof + the D2/H hazards it did catch live), not that
+specific hazard under real concurrency. (2) The §3 hook is a working prototype, not hardened code —
+it has real, enumerated gaps (§3 "Known gaps," expanded post-review) including no protection against
+two concurrent pytest invocations colliding on the same `<db>_gwN` name, fail-open behavior if
+`CREATE DATABASE` actually fails, incomplete cleanup coverage, and no crash/SIGKILL handling.
 
-- Per-worker DB isolation (§3) is proven correct on a subset that actually touches Postgres
-  (`backend/tests/db/` + `backend/tests/services/hr/`, 360 collected items): 0 real test failures
-  across 3 configurations (serial / naive `-n4` / isolated `-n4`), clean teardown verified after
-  each run (zero orphan `nuzantara_test_gw*` databases) — **and again at ~4100-test scale on Pro**
-  (§4.2), where it also caught 2 real hazards static analysis alone had missed.
+Per-worker Postgres isolation for pytest-xdist **is proven to work as a mechanism** at both small
+scale (360 real-DB tests, 3 configs, 0 failures) and large scale (~4100 tests, `-n8` on Pro) — every
+hazard it *did* get to exercise (§2.2-B/D2/H) came back clean or was root-caused to a scoped, fixable
+gap, not a flaw in the core approach. Naive `-n auto`/`-n8` with no isolation and no prerequisite
+fixes does **not** just flake — it hard-aborts at collection (§2.2-H, unrelated to DB isolation,
+one-line fix). One real new flake was found at scale and root-caused to a coverage gap, not a design
+flaw (§2.2-D2, two files, small fix — though see §8 on how rigorously "root-caused" should be read
+here). Timing: 147s serial → 127s isolated `-n8` on the representative subset (~1.16×, ~13.6%
+reduction) — real, but this does **not** extrapolate to the pre-registered full-suite threshold: naively
+applying the same ~13.6% reduction to today's 11–32 min baseline gives ~9.5–27.6 min, which does **not**
+clear the <8 min bar (§5 corrects an earlier version of this doc that read the subset's absolute wall
+time, 147s, against the 8-minute threshold as if that were informative — it isn't, the subset is ~24%
+of the suite by test count, of course it finishes under 8 minutes). Several small fixes (§6, expanded
+in §8) are hard prerequisites before ANY `-n>1` adoption; a hardened re-run — full suite, `-n auto`,
+2 consecutive green runs, on an idle machine, with raw logs kept — is the fast follow-up that actually
+scores against the pre-registered threshold (PENDING-ARMS line, §5).
+
+- Per-worker DB isolation (§3) is proven correct **as a mechanism** on a subset that actually touches
+  Postgres (`backend/tests/db/` + `backend/tests/services/hr/`, 360 collected items): 0 real test
+  failures across 3 configurations (serial / naive `-n4` / isolated `-n4`), clean teardown verified
+  after each run (zero orphan `nuzantara_test_gw*` databases) — **and again at ~4100-test scale on
+  Pro** (§4.2), where it also caught 2 real hazards static analysis alone had missed. It was **not**
+  proven against the specific DELETE-race hazard (§2.2-A) it was originally built to fix, because
+  that hazard's tests self-skip on both machines used (missing template tables) — see above and §4.1.
 - Phase 2 (the full representative-subset timed comparison) **did run**, on Pro rather than M5 — the
   investigation was redirected mid-flight when M5 turned out to be under severe memory pressure from
   Zero's own live interactive session (96% swap, GUI apps active), not from sibling pytest lanes.
@@ -199,19 +228,54 @@ and unrelated to the §3 DB-isolation design entirely. Swept the rest of the sui
 signature (`parametrize.*list(.*frozenset|set(`) — exactly one other hit,
 `backend/tests/unit/test_business_rules_i18n.py:15`, which already uses `sorted(...)` and is safe.
 This is an isolated, one-line-fix case (`sorted(ALL_STATES)` instead of `list(ALL_STATES)`), not a
-pattern — but it is a **hard prerequisite** for xdist adoption: any `-n>1` run against this suite
-today aborts before running a single test, every time, regardless of DB isolation. Workaround used to
-get past it for measurement purposes in §4.3: `PYTHONHASHSEED=0` (pins the hash seed so all workers
-agree) — a standard, well-known mitigation, applied here only to unblock measurement, not proposed as
-the adoption fix (sorting the source is the real fix; §6).
+pattern — and it is a **hard prerequisite** for xdist adoption. Workaround used to get past it for
+measurement purposes in §4.3: `PYTHONHASHSEED=0` (pins the hash seed so all workers agree) — a
+standard, well-known mitigation, applied here only to unblock measurement, not proposed as the
+adoption fix (sorting the source is the real fix; §6).
 
-**Net read**: the entire hazard surface for this suite is Postgres, concentrated in ~4-6 files with
+**Precision correction (§8 revision)**: earlier drafts of this section said "every run"/"100%" —
+overstated for what was actually verified. What's confirmed: (a) the mechanism (CPython's
+per-process hash-randomization of `frozenset` iteration order, PEP 456, is standard documented
+behavior, not a hypothesis) and (b) one live, directly-observed collection abort at Phase 2 scale.
+What's *not* confirmed: repeated runs across multiple distinct `PYTHONHASHSEED` values to show the
+failure rate really is ~100% rather than merely likely (two different seeds can coincidentally
+produce the same iteration order for a small `frozenset`, so "100% of runs" is an inference from the
+mechanism, not an N-trial measurement). The fix (`sorted(...)`) is correct regardless of the exact
+failure rate. Separately, `PYTHONHASHSEED=0` unblocks *this* case but does not prove no *other*
+non-deterministic parametrize source exists elsewhere in the 17,384-test suite — §2.2's own sweep
+for the same signature covered only the `parametrize.*list(.*frozenset|set(` pattern textually, which
+is a grep, not an exhaustive semantic check.
+
+**I. FOUND POST-REVIEW — a fixed-name, function-scoped DDL hazard missed by the original recon
+(§8 caught this; the original §2.2 grep pass didn't cover this file's pattern).**
+`backend/tests/services/crm/partners/conftest.py:359-386` — the `db_conn` fixture is
+**function-scoped** (`@pytest_asyncio.fixture(scope="function")`) and on **every single test** that
+uses it runs `_TEARDOWN_SQL` (`DROP TABLE IF EXISTS partner_email_outbox/partner_audit_log/
+partner_commissions/partner_referrals/partners` — lines 333-338) then `_SCHEMA_SQL`
+(`CREATE TABLE IF NOT EXISTS` the same 5 tables — lines 176-312) at setup, and `_TEARDOWN_SQL` again
+at teardown (line 375) — resolving its DB target from `TEST_DATABASE_URL` with a fallback to
+`nuzantara_dev` (line 122-125, same convention as §2.2-C). This is a **higher-frequency** version of
+the §2.2-B hazard shape (ACCESS EXCLUSIVE lock on `DROP`/`CREATE TABLE`): B's migration tests DDL
+once per test *file*; this one DDLs on every test *function* that touches `backend/tests/services/crm/
+partners/`. Under the §3 isolation hook this is fixed for free (each worker gets its own DB, so the
+DROP/CREATE churn no longer touches a database any other worker can see) — it does not change the
+verdict, but it is a real gap in §2.2's original inventory, found by the adversarial reviewer reading
+files this investigation's grep patterns didn't surface, not by re-running anything. Not exercised as
+a live collision in either Phase (single-worker in Phase 1's scope, and Phase 2's isolated `-n8` run
+means it never got the chance to collide against another worker) — flagged here as an inventory
+correction, not a new observed failure.
+
+**Net read**: the entire hazard surface for this suite is Postgres, concentrated in ~5-7 files with
 un-namespaced writes to shared tables (2 of which, §D2, were missed by static grep and only found by
-actually running Phase 2), plus one collection-order hard-blocker (§H) that must be fixed before ANY
+actually running Phase 2; one more, §I, was missed by grep and only found by the adversarial review
+reading source directly), plus one collection-order hard-blocker (§H) that must be fixed before ANY
 `-n>1` run can even start, plus a structural pattern (single `TEST_DATABASE_URL` for
 the whole `-n auto` invocation) that would make even the "safe" 56/69 direct-connect files and the
 4 `db_tx` conftests collide under naive parallelization even though none of them are individually
-buggy — they were only ever exercised one-at-a-time.
+buggy — they were only ever exercised one-at-a-time. Given §I turned up from a single reviewer's
+read-through rather than an exhaustive repo-wide `CREATE TABLE`/`DROP TABLE` grep, treat this
+inventory as **probably still incomplete**, not closed — §6/§8 add a pre-adoption exhaustive DDL
+sweep as a new hard step for exactly this reason.
 
 ## 3. Per-worker DB isolation — prototype fixture (built + proven, not shipped)
 
@@ -299,6 +363,48 @@ Known gaps not covered by this prototype (flagged, not solved, here):
   (xdist's model), so this is not a residual risk — noted only so a future reader doesn't assume
   per-test isolation was attempted and missed.
 
+**Additional gaps surfaced by adversarial review (§8) — real, concrete, verified against the code
+block above, not yet fixed. These are why §0/§5 read "hardened pilot," not "ready":**
+
+- **No protection against two concurrent pytest invocations.** Worker DB names are only
+  `<dbname>_<worker>` (e.g. `nuzantara_test_gw0`) — no run-scoped identifier. Two separate `pytest
+  -n N` invocations running at the same time (two developers, two CI jobs, two agent lanes) will both
+  try to own `nuzantara_test_gw0` and can destroy each other's data mid-run. `.husky/pre-push`'s own
+  existing single-clone mechanism already solved exactly this problem for the *serial* case
+  (`CLONE_DB="nuzantara_test_run_$$"`, PID-scoped); this prototype's per-worker layer needs the same
+  run-scoping, not just worker-scoping, before it can sit on top of concurrent invocations safely.
+- **Double-`CREATE DATABASE` is silently swallowed, and that hides real failures.** When
+  `DATABASE_URL` and `TEST_DATABASE_URL` point at the same database (the common case), the loop
+  processes both env vars, so the second `CREATE DATABASE` always errors (already exists) — masked by
+  `ON_ERROR_STOP=0` and no `check=True`. That's cosmetically harmless *when the first CREATE
+  succeeded*, but it means a *real* clone failure on the first pass is swallowed identically, and the
+  env var still gets rewritten to point at a database that was never actually created — fail-open,
+  not fail-closed.
+- **`pytest_unconfigure` only ever drops the `TEST_DATABASE_URL`-derived database.** If
+  `DATABASE_URL` and `TEST_DATABASE_URL` resolve to two different worker DBs (or `TEST_DATABASE_URL`
+  is unset), the `DATABASE_URL` worker DB is never dropped — an orphan-DB leak the §4.1/§4.2
+  "zero rows after teardown" check didn't catch only because both env vars happened to be identical
+  in every run actually performed here.
+- **DSN query parameters are dropped**, not round-tripped: `dbname.split("?", 1)[0]` strips
+  `?sslmode=...`-style params and the rewritten URL never restores them. Harmless for this
+  investigation's local trust-auth Postgres; a real gap if adopted against any DSN carrying connection
+  params.
+- **No crash/interruption handling.** `pytest_unconfigure` only runs on a normal session end.
+  `SIGKILL`, a controller crash, or a killed machine leaves the worker DB orphaned — needs either a
+  periodic sweep (`DROP DATABASE ... WHERE datname LIKE '%_gw%' AND age > N`) or a run-id registry,
+  neither of which exists yet.
+- **Postgres identifier length (63 chars, `NAMEDATALEN`) and connection/disk ceilings are unchecked.**
+  Low-probability at this repo's current naming lengths, but a real hardening gap for a `<base>_run_
+  <pid>_<worker>`-style name once run-scoping (above) is added.
+- **Owner/role is not explicitly preserved** on the cloned database, unlike `.husky/pre-push`'s
+  existing clone step, which does handle this deliberately.
+
+None of this invalidates the core mechanism (§4 still shows it working correctly for the concurrency
+shape actually tested: one invocation, N workers, one machine) — it means the reference block above is
+accurately described as a **prototype that proved the concept**, not adoption-ready code, and §6's
+"move it into `conftest.py` for real" step needs these gaps closed first, not just the two hazard
+fixes originally listed.
+
 ## 4. Timed experiment
 
 ### 4.1 Phase 1 — safety/mechanism proof (DONE, real numbers, small footprint)
@@ -333,6 +439,15 @@ unconditional DELETE, no per-test namespace) is the actual basis for classifying
 not this one run. A follow-up worth doing before full adoption: provision `owner_cashout` tables
 into the local template and/or run the naive-control config N>1 times or at higher worker count to
 raise collision probability and get a directly-observed failure, not just the mechanism proof.
+**Checked, not assumed, during the §8 revision**: this gap is not M5-specific. Freshly queried against
+Pro's `nuzantara_test` (the DB Phase 2, §4.2, actually ran against): `SELECT to_regclass('public.
+owner_weekly_cashout_rows')` and the `_weeks` sibling both return NULL — the tables are absent there
+too. This means §2.2-A, the hazard with the strongest file:line case for "will actually flake," was
+**never exercised as a live pass/fail at either scale of this investigation** — only the synthetic
+proof in §3 (a throwaway test explicitly designed to prove the isolation *mechanism*, not this
+specific hazard) stands in for it. This is the single largest gap between what §0/§5 originally
+claimed ("proven safe... every targeted hazard clean") and what was actually shown, and is the main
+reason the verdict reads "hardened pilot" rather than "safe to adopt" after review (§8).
 Wall-time itself is **inconclusive** at this scale/under this noise: naive `-n4` (41s) was slower
 than serial (28s) — consistent with per-worker interpreter/import startup cost dominating at only
 360 tests, especially under 96% swap — while isolated `-n4` (16s) was fastest, plausibly warm-cache
@@ -343,7 +458,11 @@ Orphan-DB check after all 3 runs: `SELECT datname FROM pg_database WHERE datname
 'nuzantara_test_gw%'` → zero rows. Teardown is clean under real (not just synthetic) test content
 too, not only the throwaway proof test from §3.
 
-### 4.2 Phase 2 — full ~3.9k-subset timed comparison (design, not yet executed)
+### 4.2 Phase 2 — full ~3.9k-subset timed comparison (DONE, executed on Pro — see §4.2.1)
+
+> Corrected in §8 revision: this heading previously still read "design, not yet executed," left
+> over from the draft written before Phase 2 ran and never updated once §4.2.1's real numbers landed
+> below — a genuine editing bug, caught by the adversarial reviewer, not a re-run.
 
 Representative subset (~3.9k test-function definitions, ~4.0-4.2k collected items after
 parametrization — grep-based defs undercount collected items by the same ~4-5% ratio observed
@@ -383,9 +502,17 @@ across both runs, unlike M5's thrashing 96%/375MB free).
 
 `-n auto` (14 workers) was deliberately not attempted: 8 was chosen as a conservative ceiling given
 Pro's pre-existing 88% swap utilization from its normal daemon load, to avoid destabilizing a shared
-production-adjacent machine for a research measurement. The serial number (147s) already sits well
-under the mandate's 8-minute full-suite threshold for a ~24% subset — see §5 for what that
-does and doesn't imply about the full 17,384-test suite.
+production-adjacent machine for a research measurement.
+
+**Correction (§8 revision): the serial number (147s) being "under 8 minutes" is not informative and
+an earlier draft of this section implied otherwise.** 147s is the wall time for ~24% of the suite by
+test count, not the full 17,384 — of course a quarter of the suite finishes inside the full-suite
+budget; that comparison proves nothing about whether the *full* suite will. The number that actually
+matters is the *reduction ratio* (147s→127s, ~13.6%) extrapolated onto the real 11–32 min serial
+baseline: **~9.5–27.6 min, which does not clear the pre-registered <8 min bar.** This is a naive
+linear extrapolation (parallel efficiency measured here was only ~14.5% at `-n8` — see §8 — so even
+this extrapolation is likely optimistic, not pessimistic), presented not as a prediction but as the
+honest reason §5's verdict does not claim the threshold is met. See §5 for the full accounting.
 
 #### 4.2.2 New-flake count (the decision-making number) — MEASURED: 1 real, root-caused, both causes external to the isolation design
 
@@ -399,15 +526,26 @@ isolation design itself**:
    originally hunting for, found only because Phase 2 ran at real scale.
 2. **Isolated `-n8` produced exactly 1 new failure vs. serial**: `test_intake_writer.py::
    test_blocked_plan_no_write_even_with_flag_on` — `AssertionError: blocked plan wrote to CRM despite
-   being blocked`. Root-caused (§D2), not guessed: this file's `pool` fixture resolves its DSN from
-   `INTAKE_TEST_DSN`, an env var the §3 hook never rewrites (it only targets `DATABASE_URL`/
-   `TEST_DATABASE_URL`), defaulting to the shared, un-namespaced `nuzantara_dev` — so under `-n8`, up
-   to 8 workers could concurrently touch the exact same physical tables this test snapshots
-   before/after. This is **not a flaw in the isolation mechanism** (§3's env-var-rewrite approach is
-   proven correct for everything using the `DATABASE_URL`/`TEST_DATABASE_URL` convention, including
-   the harder DDL/DELETE cases in §2.2-A/B) — it's a **coverage gap**: one more env var name needed
-   in the rewrite list, or these 2 files renamed onto the standard convention. Fix is small and
-   scoped (§6, tracked in PENDING-ARMS).
+   being blocked`. Explained at the source-code level, not guessed from symptoms: this file's `pool`
+   fixture resolves its DSN from `INTAKE_TEST_DSN`, an env var the §3 hook never rewrites (it only
+   targets `DATABASE_URL`/`TEST_DATABASE_URL`), defaulting to the shared, un-namespaced
+   `nuzantara_dev` — so under `-n8`, up to 8 workers could concurrently touch the exact same physical
+   tables this test snapshots before/after. **Precision correction (§8 revision)**: "root-caused" is
+   accurate for the *code-level* explanation (the env-var mismatch is real and directly readable in
+   both files, not inferred) but the *evidence tying it to this specific failure* is a full-table
+   `COUNT` comparison plus a contamination check (below), not a controlled A/B replication (same test,
+   run twice, once with `INTAKE_TEST_DSN` isolated and once not, to directly observe the failure
+   appear/disappear). Other explanations — a different concurrent worker on the same shared DB, an
+   external process, incomplete cleanup from a prior run — were not individually excluded by
+   experiment, only made implausible by the code-level match (the exact env-var name the test reads is
+   provably un-rewritten, which is a strong but not airtight case). This is **not a flaw in the
+   isolation mechanism** (§3's env-var-rewrite approach is proven correct for everything using the
+   `DATABASE_URL`/`TEST_DATABASE_URL` convention, including the harder DDL/DELETE cases in §2.2-B) —
+   it's a **coverage gap**: one more env var name needed in the rewrite list, or these 2 files renamed
+   onto the standard convention (§6/§8 recommend the rename over adding a third alias, since a third
+   alias just moves the same footgun). Fix is small and scoped (§6, tracked in PENDING-ARMS); the A/B
+   replication is worth doing when that fix lands, both to close this gap and to double as the
+   regression test for it.
 
 Verified no contamination: `SELECT count(*) FROM clients WHERE full_name LIKE '5btest-%' AND
 created_at::date = CURRENT_DATE` on Pro's `nuzantara_dev` → **0** — the failing test's own fixture
@@ -464,42 +602,75 @@ measurement to the machine built for it, not by waiting for a human's foreground
 
 ## 5. Verdict
 
-**CONDITIONAL GO — safe and worth adopting, but not as a drop-in `-n auto` today. Two small, scoped
-fixes are hard prerequisites (§6), not "would be nice."**
+**GO TO HARDENED PILOT — not a plain GO, and not a REJECT of the approach either.** (Revised in the
+§8 post-adversarial-review pass — an earlier draft of this section called this "CONDITIONAL GO...
+safe and worth adopting." A real red-team review, §8, REJECTed that framing as exceeding the evidence,
+and on re-reading its 5 points against the doc's own data, most of them are correct. This section now
+says what the evidence actually supports.)
 
 Pre-registered threshold (mandate step 3): GO if full-suite `-n auto` completes in < 8 min with 0 new
-flakes across 2 runs. What actually happened doesn't map onto that threshold cleanly, and the honest
-read is more useful than forcing a binary fit:
+flakes across 2 runs. **That threshold was not met, and was not close to being tested** — the honest
+accounting:
 
-- **The core design (§3) is proven correct**, not just on a small subset (§4.1, 360 real-DB tests,
-  3 configs, 0 failures) but at real scale under real concurrency (§4.2, ~4100 tests, `-n8` on Pro):
-  every hazard the isolation hook was built to fix (§2.2-A/B, DELETE-race + DDL-lock) produced **zero
-  failures** once isolated. It requires zero changes to the 4 conftest.py files or the ~56
-  direct-connect files that already use the standard `DATABASE_URL`/`TEST_DATABASE_URL` convention.
+- **The core design (§3) is proven correct as a mechanism**, not just on a small subset (§4.1, 360
+  real-DB tests, 3 configs, 0 failures) but at real scale under real concurrency (§4.2, ~4100 tests,
+  `-n8` on Pro): every hazard it actually got to exercise (§2.2-B DDL-lock, §2.2-D2, §2.2-H) came back
+  either clean or root-caused to a small, scoped, external-to-the-design gap. It requires zero changes
+  to the 4 conftest.py files or the ~56 direct-connect files that already use the standard
+  `DATABASE_URL`/`TEST_DATABASE_URL` convention. **It was not proven against §2.2-A specifically** —
+  the DELETE-race hazard with the strongest file:line case in the whole doc — because
+  `owner_weekly_cashout_rows`/`_weeks` are absent from the test-DB template on both M5 and Pro
+  (verified fresh against Pro during this revision), so those tests self-skip everywhere this
+  investigation ran. The synthetic proof in §3 shows the isolation *mechanism* works; it does not
+  substitute for actually watching this specific hazard fail-then-not-fail.
+- **The §3 prototype itself has real, unfixed hardening gaps** (expanded list in §3): no protection
+  against two concurrent pytest invocations colliding on the same worker-DB name, fail-open behavior
+  if `CREATE DATABASE` actually fails, incomplete `pytest_unconfigure` coverage (only drops the
+  `TEST_DATABASE_URL`-derived DB), dropped DSN query parameters, no crash/SIGKILL cleanup. None of
+  these were exercised by anything this investigation actually ran (single invocation, no crashes,
+  identical `DATABASE_URL`/`TEST_DATABASE_URL` in every test) — they are real gaps between "proven to
+  work in the shape tested" and "safe to adopt."
 - **Naive `-n auto`/`-n8` today is worse than "might flake" — it doesn't run at all.** §2.2-H is a
-  100%-reproducible hard collection-abort, unrelated to DB isolation, that must be fixed first
-  (one-line: `sorted(ALL_STATES)`). This is arguably the most important finding of the whole
-  investigation: it means "just add `-n auto`" as a naive first step would have looked like total
-  breakage with zero diagnosis in the commit history, not a flaky-test problem — exactly the kind of
-  failure mode that would get xdist adoption reverted by whoever hit it first, for the wrong reason.
-- **One real new flake was found, root-caused, and it's a coverage gap, not a design flaw** (§2.2-D2):
-  2 files (`test_intake_writer.py`, `test_intake_review.py`) resolve their DB target from
-  `INTAKE_TEST_DSN`, a name the isolation hook doesn't yet rewrite. Small, scoped, one extra env-var
-  name to add.
-- **Timing is real but modest, and doesn't extrapolate to a scored verdict on its own**: 147s → 127s
-  (~14% faster) on a ~24%-by-count subset at `-n8` on a machine already carrying 88% swap from its own
-  background load — encouraging directionally (serial time for this subset is already well inside the
-  8-minute full-suite bar), but this is not the full 17,384-test suite, not `-n auto`, and not on an
-  otherwise-idle machine, so it should not be read as "the suite will hit ~5 min." A clean full-suite
-  `-n auto` run, once §6's two fixes land and on either an idle M5 or a lower-background-load Pro
-  window, is the number that actually scores against the pre-registered threshold.
+  reproducible hard collection-abort, unrelated to DB isolation, that must be fixed first (one-line:
+  `sorted(ALL_STATES)`) — confirmed mechanism + one live reproduction, not confirmed as literally
+  100% of runs across multiple hash seeds (§2.2-H precision correction). This is arguably the most
+  important finding of the whole investigation regardless of the exact failure rate: "just add
+  `-n auto`" as a naive first step would have looked like total breakage with zero diagnosis in the
+  commit history, not a flaky-test problem — exactly the kind of failure mode that gets xdist adoption
+  reverted by whoever hits it first, for the wrong reason.
+- **One real new flake was found and explained at the code level** (§2.2-D2): 2 files
+  (`test_intake_writer.py`, `test_intake_review.py`) resolve their DB target from `INTAKE_TEST_DSN`, a
+  name the isolation hook doesn't yet rewrite — the explanation is a direct code-read, not a
+  controlled A/B replication (§4.2.2 precision correction). Small, scoped fix either way.
+- **A newly found DDL hazard (§2.2-I) was never exercised as a collision** — `partners/conftest.py`'s
+  function-scoped `DROP`/`CREATE TABLE` churn, found by the adversarial reviewer reading source, not
+  by re-running anything. It's covered "for free" by the isolation design if adopted, but its
+  existence means §2.2's inventory is probably still incomplete — see §6's new sweep step.
+- **Timing does not clear the threshold, even optimistically.** 147s → 127s (~1.16×, ~13.6%
+  reduction) on a ~24%-by-count subset at `-n8` on a machine already carrying 88% swap from its own
+  background load. Naively extrapolating that same reduction onto the real 11–32 min serial baseline
+  gives **~9.5–27.6 min — not under 8 min.** Measured parallel efficiency at `-n8` was only ~14.5%
+  (recalculated independently by the adversarial reviewer, matching this doc's own arithmetic), meaning
+  most of the theoretical 8× from 8 workers was eaten by isolation overhead and Pro's own background
+  load — a real, unfavorable signal for how much headroom this design has on a busy shared machine, not
+  just a footnote. Single sample per configuration, non-randomized run order (second run could carry
+  warm-cache advantage), no `n4`/`-n auto` comparison, no repeated trials for variance — all real
+  limitations on how much this timing number should be trusted (§8).
 
-**Recommendation**: land §6's two fixes (both small, both outside `.husky/pre-push`, both safe for
-any lane to pick up independently of the pre-push P1 work), then re-run the full-suite `-n auto`
-timing as a fast follow-up — at that point the pre-registered threshold becomes directly measurable
-for the first time. Tracked as a PENDING-ARMS line (below) rather than re-opening this investigation.
-The structural verdict — **is per-worker DB isolation the right shape for this problem** — is
-answered: yes, proven on both a small deliberately-adversarial subset and a large realistic one.
+**Recommendation**: this is not "ship it" and not "abandon it" — it's "the concept is validated, the
+implementation and the proof are both one tier short of adoption-ready." Before any `-n>1` change to
+`.husky/pre-push` (a separate lane's decision to make): (1) land §6/§8's prerequisite fixes — the
+2 original ones (§2.2-H sort, §2.2-D2 env var) plus the concurrency/crash-safety hardening §3 now
+lists explicitly; (2) provision `owner_cashout` tables into the test-DB template (or otherwise force
+§2.2-A to actually run) so the hazard with the strongest case gets a real pass/fail, not a skip; (3) do
+an exhaustive DDL/DML shared-state sweep, not another single-reviewer read, given §2.2-I was found by
+one person reading source and probably isn't the last one; (4) re-run full-suite `-n auto`, 2
+consecutive green runs, on an idle machine, with raw logs/JUnit output committed or archived so the
+result is auditable — that is the number that actually scores against the pre-registered threshold,
+and it does not exist yet. Tracked as a PENDING-ARMS line (below) rather than re-opening this
+investigation now. The structural question — **is per-worker DB isolation the right shape for this
+problem** — reads as yes, the mechanism works cleanly everywhere it was actually exercised; the
+adoption question — **is this specific prototype, on this evidence, safe to ship** — is not yet.
 
 ## 6. Design recommendation for pre-push adoption (if GO)
 
@@ -512,13 +683,27 @@ integration):**
 
 0a. **Fix §2.2-H**: `backend/tests/services/crm/test_practice_state_machine.py:118` —
     `@pytest.mark.parametrize("state", list(ALL_STATES))` → `sorted(ALL_STATES)`. Without this, `-n>1`
-    aborts at collection every time (100% reproducible, not a flake) the moment
-    `services/crm/` is in scope. One line.
+    reproducibly aborts at collection the moment `services/crm/` is in scope. One line.
 0b. **Fix §2.2-D2**: add `INTAKE_TEST_DSN` to the set of env vars the §3 hook rewrites (or simpler:
     rename the two call sites — `test_intake_writer.py:33`, `test_intake_review.py:32` — onto the
     standard `TEST_DATABASE_URL` convention, matching every other file in the suite and removing the
     special-cased fallback to `nuzantara_dev`, which the rest of the suite already treats as a guarded
-    footgun — `backend/tests/conftest.py:31-34`). Two files, one env-var name.
+    footgun — `backend/tests/conftest.py:31-34`). Two files, one env-var name. Prefer the rename over
+    adding a third alias — a third alias just relocates the same footgun (§8).
+0c. **NEW (§8): harden §3's prototype before it moves into real `conftest.py`** — run-scoped (not just
+    worker-scoped) database names to survive concurrent invocations, `check=True`/explicit
+    post-creation verification instead of `ON_ERROR_STOP=0`-and-ignore, `pytest_unconfigure` coverage
+    for both `DATABASE_URL`- and `TEST_DATABASE_URL`-derived DBs independently, DSN query-parameter
+    preservation, and either a crash-sweep cron or a run-id registry for orphan cleanup after
+    SIGKILL/crash. Full list in §3's "Additional gaps" block.
+0d. **NEW (§8): provision `owner_weekly_cashout_rows`/`_weeks` into the test-DB template** (or
+    otherwise force §2.2-A's tests to actually run instead of self-skip) before claiming this design
+    is proven against the DELETE-race hazard it was originally built to fix — it has not yet been
+    exercised as a live pass/fail anywhere.
+0e. **NEW (§8): run one more exhaustive DDL/shared-state sweep** (grep for `CREATE TABLE`/`DROP TABLE`
+    /`TRUNCATE` repo-wide against `backend/tests/`, not file-by-file inspection) before treating §2.2's
+    inventory as closed — §2.2-I (`partners/conftest.py`) was found by one adversarial reviewer reading
+    source, not by this investigation's own recon, which is a signal the inventory undercounts.
 
 **The isolation design itself (proven, §3-§4):**
 
@@ -543,10 +728,18 @@ integration):**
 6. Guilt+innocence tests for the new hook itself, per W81/guard-conformance convention: guilt =
    two workers MUST land on different `current_database()` under `-n 2`; innocence = a `-n 0`
    (single-process, no xdist) run MUST be a complete no-op (env vars unchanged) — both cases
-   verified manually in §3 above, should become a permanent regression test if adopted.
+   verified manually in §3 above, should become a permanent regression test if adopted. **NEW (§8):
+   add a third, negative case** — inject a `CREATE DATABASE` failure (e.g. point `admin_url` at a
+   role without `CREATEDB`) and assert the *session aborts*, not "silently falls through to the
+   original shared DB and runs anyway." This is the direct regression test for the fail-open gap in
+   §3's "Additional gaps."
 7. A collection-determinism guard is worth adding independent of §0a's fix landing: a cheap
    pre-flight (`pytest --collect-only -q` run twice with different `PYTHONHASHSEED`, diffed) would
    have caught §2.2-H's class of bug before it ever reached a real `-n auto` run.
+8. **NEW (§8): keep raw evidence.** This investigation's Phase 1/2 numbers are reported as summary
+   pass/fail/wall-time only — no JUnit XML, no raw pytest output, no per-worker test distribution was
+   archived. A hardened pilot run should commit or archive these (e.g. `--junitxml`) so the eventual
+   full-suite `-n auto` result is independently auditable from the repo, not just asserted in prose.
 
 ## 7. Risks and residual concerns
 
@@ -578,3 +771,59 @@ integration):**
   investigations on this fleet: check what KIND of "busy" a machine is (fleet contention vs.
   interactive human use) before choosing whether to wait it out or move the work to a dedicated
   workhorse — the two require opposite responses.
+
+## Adversarial review (§8)
+
+**Reviewer**: `gpt-5.6-sol` via the `codex` CLI, `model_reasoning_effort=high`, `--sandbox read-only`,
+2026-07-18. Dispatched as a genuine red-team pass on the finished draft (the version that still said
+"CONDITIONAL GO... proven safe") — the reviewer read the doc directly off disk (not fed a summary) and
+was asked for a structured critique across 5 attack surfaces plus a one-line verdict: CONCUR /
+CONCUR-WITH-CAVEATS / REJECT.
+
+**Verdict returned: REJECT** — of the *verdict framing*, not of the underlying design. The reviewer's
+own summary line: *"Il verdetto `CONDITIONAL GO` non supera il red-team gate. L'indagine giustifica un
+'GO a un pilot più rigoroso', non l'adozione della soluzione come sicura."*
+
+### What it found, and what changed in response
+
+1. **`CONDITIONAL GO` exceeds the evidence.** The owner_cashout tests (§2.2-A, the strongest
+   file:line case in the doc) were skipped, not run, at the only scale where they mattered; the
+   pre-registered full-suite/`-n auto`/2-runs/0-flakes criterion was never attempted; the §3 synthetic
+   proof shows nominal DSN separation, not safety under concurrent invocations, creation failures, or
+   interruption. **Accepted in full.** Verdict retitled "GO TO HARDENED PILOT" (§0/§5); the
+   owner_cashout skip-on-both-machines gap is now stated explicitly and verified fresh against Pro
+   during this revision (`to_regclass('public.owner_weekly_cashout_rows')` → NULL).
+2. **The DB design has concrete holes**: no run-scoping (only worker-scoping) so concurrent
+   invocations can collide; double-`CREATE DATABASE` fail-open when `DATABASE_URL`==`TEST_DATABASE_URL`;
+   `pytest_unconfigure` only ever drops the `TEST_DATABASE_URL`-derived DB; dropped DSN query params;
+   no owner preservation; no crash/SIGKILL cleanup; unchecked 63-char identifier ceiling. **Accepted in
+   full** — every point checked directly against the §3 code block and confirmed real, not just
+   plausible. Written up as "Additional gaps surfaced by adversarial review" in §3, promoted to hard
+   prerequisites 0c-0e in §6.
+3. **The two root causes have different evidence strength.** Frozenset/hash-seed (§2.2-H): mechanism
+   correct, but "every run"/"100%" wasn't shown across multiple seeds, only inferred from one
+   reproduction + the documented PEP 456 mechanism. `INTAKE_TEST_DSN` (§2.2-D2): a plausible,
+   code-level explanation, not a controlled A/B replication — full-table counts don't rule out other
+   writers. **Accepted, precision-corrected** in §2.2-H and §4.2.2 without discarding either finding
+   (the fixes recommended for both are unaffected by this correction).
+4. **`147s → 127s` was doing too much rhetorical work.** Single sample per configuration, non-random
+   order, degraded machine (load 7-11, 88% swap), only ~14.5% parallel efficiency at `-n8`, a non-green
+   parallel run, only 24% of the suite, no `n4`/`-n auto` comparison — and reading "subset serial time
+   is already under 8 minutes" as reassuring is actually irrelevant (of course a 24%-by-count subset
+   is fast); a naive extrapolation of the observed ~13.6% reduction onto the real 11-32 min baseline
+   lands at ~9.5-27.6 min, **not** under the 8-minute bar. **Accepted in full** — this is the most
+   consequential single correction in this revision; §4.2.1/§5 now state the extrapolation explicitly
+   and the verdict no longer implies the threshold is close to being met.
+5. **Other gaps**: `partners/conftest.py`'s function-scoped DDL churn wasn't inventoried in §2.2 —
+   confirmed real by direct inspection during this revision, added as §2.2-I. No raw logs/JUnit/exact
+   commands were archived — acknowledged as a real reproducibility gap (§6 point 8, new), not backfilled
+   after the fact (fabricating logs post-hoc would be worse than admitting they weren't kept).
+   §4.2's own heading still read "not yet executed" after Phase 2 had already run — a real leftover
+   editing bug, fixed. `pytest-xdist` pinning: already flagged as an investigation-only, non-pinned
+   install in §2.1 before this review, not a new gap. A negative test (DB-creation-failure must abort
+   the session, not silently continue) was missing from §6's guilt+innocence list — added as a third
+   case.
+
+### Where this doc did not simply defer to the reviewer
+
+The reviewer's own numerical spot-check (independently recomputed from the same 147s/127s pair: `speedup=1.1575x reduction=13.61% parallel_efficiency_at_8=14.47%`) matches this doc's arithmetic, which is why point 4 was accepted outright rather than argued. Point 3's push on evidentiary rigor was accepted as a *precision correction* to the wording, not a retraction of either finding — the frozenset mechanism and the INTAKE_TEST_DSN env-var mismatch are both still correct as stated in the source code; what changed is not overstating how many independent trials confirm them. No point in the reviewer's critique was rejected outright — on review, all 5 were substantively fair reads of the doc as it stood before this pass. That is itself worth stating plainly: the R1 gate's purpose is a real check, not a formality, and it worked as designed here.
