@@ -12,9 +12,11 @@ real ~/nuzantara checkout or its worktrees — W96 discipline), to prove the
 2026-07-18 fixes empirically: dir-removal of an unpushed-but-clean
 named-branch worktree preserves the branch ref (W88 cure, round-1), and
 dir-removal of a clean detached-HEAD worktree preserves its commit via a
-durable ref (BLOCKER B cure, round-2).
+durable ref (BLOCKER B cure, round-2). ``TestHeartbeat`` and
+``TestMainHeartbeatWiring`` exercise the G2_heartbeat gene (round-3).
 """
 import importlib.util
+import json
 import os
 import shutil
 import subprocess
@@ -30,6 +32,19 @@ SPEC_PATH = SCRIPT_DIR / "worktree_gc_universal.py"
 _spec = importlib.util.spec_from_file_location("worktree_gc_universal", SPEC_PATH)
 gc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(gc)
+
+
+@pytest.fixture(autouse=True)
+def _heartbeat_sidecar_isolation(tmp_path, monkeypatch):
+    """W96: no test in this module may EVER write to the real
+    ~/.organism/last_seen/ — autouse means every test gets an isolated
+    sidecar dir by default, whether or not it deliberately exercises the
+    heartbeat path (defense in depth: a future test that calls main() or
+    _heartbeat() without remembering to patch the env var still lands in
+    tmp_path). A test that wants to verify ORGANISM_LAST_SEEN_DIR honoring
+    specifically can still override this via its own monkeypatch.setenv
+    (function-scoped monkeypatch — last call wins within the same test)."""
+    monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(tmp_path / "organism-last-seen"))
 
 
 class _FakeProc:
@@ -553,3 +568,125 @@ class TestGcIntegration:
         mod.gc(apply=False, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
 
         assert wt.exists()
+
+
+# ---------------------------------------------------------------------------
+# _heartbeat (G2_heartbeat gene, round-3, 2026-07-18) — direct unit tests.
+# The autouse _heartbeat_sidecar_isolation fixture above already redirects
+# ORGANISM_LAST_SEEN_DIR to tmp_path for every test in this module; these
+# tests exercise the function's own contract on top of that isolation.
+# ---------------------------------------------------------------------------
+
+
+class TestHeartbeat:
+    def test_honors_organism_last_seen_dir_env(self, tmp_path, monkeypatch):
+        """(d) sidecar path honors ORGANISM_LAST_SEEN_DIR."""
+        custom_dir = tmp_path / "custom-sidecar-dir"
+        monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(custom_dir))
+
+        gc._heartbeat("ok", "test detail")
+
+        sidecar = custom_dir / f"{gc.ORGAN_ID}.json"
+        assert sidecar.exists()
+        payload = json.loads(sidecar.read_text())
+        assert payload["organ"] == gc.ORGAN_ID
+        assert payload["status"] == "ok"
+        assert payload["detail"] == "test detail"
+        assert payload["ts"].endswith("Z")  # UTC ISO marker
+
+    def test_write_failure_never_raises(self, tmp_path, monkeypatch):
+        """(c) heartbeat write failure (mkdir raises) never escapes as an
+        exception — the GC's exit code must never depend on liveness-proof
+        succeeding."""
+        sidecar_dir = tmp_path / "unwritable"
+        monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(sidecar_dir))
+
+        def _raise_mkdir(*a, **k):
+            raise OSError("simulated disk full")
+
+        monkeypatch.setattr(gc.Path, "mkdir", _raise_mkdir)
+
+        gc._heartbeat("ok", "should be swallowed, not raised")  # must not raise
+
+        # Prove the failure was genuinely swallowed, not silently no-op'd
+        # into "success anyway": mkdir never ran, so no sidecar dir exists.
+        assert not sidecar_dir.exists()
+
+
+# ---------------------------------------------------------------------------
+# main() heartbeat wiring (G2_heartbeat gene, round-3, 2026-07-18) —
+# end-to-end: real gc_repo, real main() call (sys.argv monkeypatched),
+# real sidecar file read back.
+# ---------------------------------------------------------------------------
+
+
+class TestMainHeartbeatWiring:
+    def test_apply_run_writes_ok_sidecar_with_reap_counters(
+        self, gc_repo, monkeypatch, tmp_path,
+    ):
+        """(a) --apply run -> sidecar written with status ok and detail
+        carrying the real reap counters (the anti-blindness payload)."""
+        mod, repo, env = gc_repo
+        sidecar_dir = tmp_path / "sidecar-main-ok"
+        monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(sidecar_dir))
+
+        wt = mod.WORKTREES_DIR / "feature-heartbeat"
+        wt.parent.mkdir(parents=True, exist_ok=True)
+        _add_worktree(repo, wt, "feature/heartbeat", env)
+        (wt / "new.txt").write_text("unpushed work\n")
+        _git(["add", "new.txt"], cwd=wt, env=env)
+        _git(["commit", "-m", "unpushed commit"], cwd=wt, env=env)
+        _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+
+        monkeypatch.setattr(
+            sys, "argv",
+            ["worktree_gc_universal.py", "--apply",
+             "--max-age-hours", str(mod.DEFAULT_MAX_AGE_HOURS)],
+        )
+        rc = mod.main()
+        assert rc == 0
+        assert not wt.exists()  # sanity: the reap actually happened
+
+        sidecar = sidecar_dir / f"{mod.ORGAN_ID}.json"
+        assert sidecar.exists()
+        payload = json.loads(sidecar.read_text())
+        assert payload["organ"] == mod.ORGAN_ID
+        assert payload["status"] == "ok"
+        assert "removed=" in payload["detail"]
+        assert "removed=0" not in payload["detail"]  # something was actually reaped
+
+    def test_kill_switch_writes_disabled_sidecar(self, gc_repo, monkeypatch, tmp_path):
+        """(b) kill-switch set -> status disabled."""
+        mod, repo, env = gc_repo
+        sidecar_dir = tmp_path / "sidecar-main-disabled"
+        monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(sidecar_dir))
+        monkeypatch.setenv("WORKTREE_GC_ENABLED", "false")
+        monkeypatch.setattr(sys, "argv", ["worktree_gc_universal.py"])
+
+        rc = mod.main()
+        assert rc == 0
+
+        sidecar = sidecar_dir / f"{mod.ORGAN_ID}.json"
+        assert sidecar.exists()
+        payload = json.loads(sidecar.read_text())
+        assert payload["status"] == "disabled"
+
+    def test_heartbeat_failure_does_not_break_main_exit_code(
+        self, gc_repo, monkeypatch, tmp_path,
+    ):
+        """(c, end-to-end) even with the heartbeat write itself broken
+        (mkdir raises), main() still returns its normal exit code and no
+        exception escapes — liveness-proof failure must never mask (or
+        cause) a GC failure."""
+        mod, repo, env = gc_repo
+        monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(tmp_path / "broken"))
+        monkeypatch.setenv("WORKTREE_GC_ENABLED", "false")
+        monkeypatch.setattr(sys, "argv", ["worktree_gc_universal.py"])
+
+        def _raise_mkdir(*a, **k):
+            raise OSError("simulated failure")
+
+        monkeypatch.setattr(mod.Path, "mkdir", _raise_mkdir)
+
+        rc = mod.main()  # must not raise
+        assert rc == 0

@@ -67,6 +67,16 @@ scope. For each candidate it applies the panel's safety model:
      worktrees deleted on reboot (Pattern 7).
   7. dry-run by DEFAULT; --apply required to remove.
   8. Loop-bug alarm: WARN if it would remove > MAX_REMOVE_ALARM in one run.
+  9. G2_heartbeat (organ-conformance gene, round-3, 2026-07-18): every run
+     writes a JSON sidecar to ~/.organism/last_seen/<ORGAN_ID>.json (env
+     ORGANISM_LAST_SEEN_DIR overridable) via _heartbeat(), wired at the
+     single try/except/finally point in main() — status ok (with the real
+     removed/quarantined/reclaimed_unpushed/kept_active/phantom counters),
+     disabled (kill-switch), or error (exception summary). This is the
+     anti-blindness fix for the exact failure class this file's own history
+     is made of: the daily cron reaped 0 for days with zero external signal.
+     Registry entry: apps/organism/organism/organs_registry.yaml
+     id=pro.worktree_gc_universal.
 
 Kill switch: WORKTREE_GC_ENABLED=false → no-op exit 0.
 Run: python scripts/worktree_gc_universal.py [--apply] [--quiet]
@@ -74,13 +84,16 @@ Run: python scripts/worktree_gc_universal.py [--apply] [--quiet]
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import shutil
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger("worktree_gc_universal")
 
@@ -88,6 +101,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKTREES_DIR = REPO_ROOT / ".worktrees"
 STATE_FILENAME = ".agent-task.json"
 KILL_SWITCH_ENV = "WORKTREE_GC_ENABLED"
+
+# G2_heartbeat (organ-conformance gene, round-3 2026-07-18): the SAME string
+# as this organ's launchd Label (plist Label + registry recovery_params.label
+# + this ID — one string, three consumers, never three separately-maintained
+# copies). registry entry: apps/organism/organism/organs_registry.yaml
+# id=pro.worktree_gc_universal.
+ORGAN_ID = "com.nuzantara.worktree-gc-universal.daily"
 
 MIN_AGE_MIN = 15          # skip worktrees touched in the last 15 min (active)
 DEFAULT_MAX_AGE_HOURS = 24
@@ -101,6 +121,42 @@ ALLOWLIST_PATHS = {
     str(Path.home() / "Desktop" / "nuzantara-deploy"),
     str(Path.home() / "Desktop" / "nuzantara-crm-guardian-drive"),
 }
+
+
+def _heartbeat(status: str, detail: str = "") -> None:
+    """G2_heartbeat (organ-conformance gene, round-3 2026-07-18): proves this
+    organ ran — this exact blindness ("reaped 0 for days", nobody noticed) IS
+    the disease the round-1/2 fixes cured; this gene makes the NEXT such
+    blindness visible instead of silent (superscar #2, Esiste≠Armato).
+
+    Writes a JSON sidecar to <ORGANISM_LAST_SEEN_DIR or ~/.organism/last_seen>
+    /<ORGAN_ID>.json with {organ, status, ts, detail}. `status` is one of
+    ok|error|disabled. `detail` carries the real reap counters on success —
+    the anti-blindness payload a healer/receptor can actually read, not
+    regex-bait for a conformance gate.
+
+    Best-effort ONLY: any failure (permission, disk full, missing HOME, ...)
+    is swallowed here. A heartbeat write must NEVER crash the GC or change
+    its exit code — the GC's job is reaping worktrees, not proving liveness;
+    liveness is a side effect it must survive losing.
+    """
+    try:
+        sidecar_dir = Path(
+            os.environ.get("ORGANISM_LAST_SEEN_DIR")
+            or os.path.expanduser("~/.organism/last_seen")
+        )
+        sidecar_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "organ": ORGAN_ID,
+            "status": status,
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "detail": detail,
+        }
+        (sidecar_dir / f"{ORGAN_ID}.json").write_text(
+            json.dumps(payload), encoding="utf-8",
+        )
+    except Exception as exc:  # noqa: BLE001 — heartbeat is best-effort, never fatal
+        logger.debug("heartbeat write failed (non-fatal): %s", exc)
 
 
 def _run_git(args, *, cwd=None, check=True):
@@ -461,10 +517,17 @@ def _slug(path: str) -> str:
     return path.rstrip("/").replace("/", "_").lstrip("_")[:80]
 
 
-def gc(*, apply: bool, max_age_hours: float) -> int:
+def gc(*, apply: bool, max_age_hours: float) -> dict[str, Any]:
+    """Run one GC pass. Returns a report dict — NOT a bare exit code — so
+    main() can wire a real G2 heartbeat from the actual counters (round-3,
+    2026-07-18) instead of a content-free "it ran" ping. Keys:
+    disabled (bool) — kill-switch short-circuit, all other keys absent;
+    otherwise removed/quarantined/reclaimed_unpushed/kept_active/phantom
+    (int) + apply (bool).
+    """
     if _kill_switch_active():
         logger.info("%s=false — GC disabled, no-op", KILL_SWITCH_ENV)
-        return 0
+        return {"disabled": True}
 
     entries = _list_worktrees()
     # Collected ONCE for the whole run — see _collect_live_cwds() docstring
@@ -573,7 +636,15 @@ def gc(*, apply: bool, max_age_hours: float) -> int:
         "phantom=%d apply=%s",
         removed, quarantined, reclaimed_unpushed, kept_active, pruned_phantom, apply,
     )
-    return 0
+    return {
+        "disabled": False,
+        "removed": removed,
+        "quarantined": quarantined,
+        "reclaimed_unpushed": reclaimed_unpushed,
+        "kept_active": kept_active,
+        "phantom": pruned_phantom,
+        "apply": apply,
+    }
 
 
 def main() -> int:
@@ -591,7 +662,32 @@ def main() -> int:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
         stream=sys.stdout,
     )
-    return gc(apply=args.apply, max_age_hours=args.max_age_hours)
+
+    # G2_heartbeat single wiring point (round-3, 2026-07-18): every exit path
+    # — disabled, ok, error — writes exactly one sidecar via this try/except/
+    # finally, never sprinkled per-callsite. `report` stays None only if
+    # gc() raised before returning, which is exactly the "error" case the
+    # except-block already handles; the finally-block's ok/disabled branch
+    # is then correctly skipped (no double-write).
+    report: dict[str, Any] | None = None
+    try:
+        report = gc(apply=args.apply, max_age_hours=args.max_age_hours)
+        return 0
+    except Exception as exc:  # noqa: BLE001 — heartbeat first, then re-raise visibly
+        _heartbeat("error", f"{type(exc).__name__}: {exc}")
+        raise
+    finally:
+        if report is not None:
+            if report.get("disabled"):
+                _heartbeat("disabled", "kill switch")
+            else:
+                detail = (
+                    f"removed={report['removed']} quarantined={report['quarantined']} "
+                    f"reclaimed_unpushed={report['reclaimed_unpushed']} "
+                    f"kept_active={report['kept_active']} phantom={report['phantom']} "
+                    f"apply={report['apply']}"
+                )
+                _heartbeat("ok", detail)
 
 
 if __name__ == "__main__":
