@@ -304,27 +304,55 @@ def test_kbli2020_only_codes_still_absent_as_2025_records(code: str):
 
 
 # ---------------------------------------------------------------------------
-# 5. INNOCENCE — the 13 Lot-2 detaches (shipped via the twin's PR #2761, now
-#    on origin/main) must remain untouched by this cure.
+# 5. INNOCENCE — the STRONGEST form (generalized 2026-07-19, cycle 4, so this
+#    stays correct across FUTURE twin lots too, not just #2761's 13 codes):
+#    the canonical's record-level diff against origin/main must be EXACTLY
+#    {56101}. A hardcoded per-lot code list decays every time another twin
+#    lot lands on main (Lot 3/#2769 already proved this once); a whole-dataset
+#    diff-vs-main does not. Gracefully skipped (not failed) if `origin/main`
+#    is not a resolvable ref in this checkout (shallow/fork CI environments)
+#    — this IS an env-coupled check by nature (needs the remote-tracking
+#    branch), same class as the compilers' own HEAD-fencing.
 # ---------------------------------------------------------------------------
 
-TWIN_LOT2_DETACH_CODES = [
-    "42999", "47771", "49233", "49296", "50113", "52103", "52105", "52211",
-    "52219", "52232", "52239", "52299", "59131",
-]
-
-
-@pytest.mark.parametrize("code", TWIN_LOT2_DETACH_CODES)
-def test_twin_lot2_detaches_untouched_by_56101_cure(code: str):
-    canonical = REPO_ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
-    rec = _load_record(canonical, code)
-    assert rec.get("per_skala") == [], (
-        f"{code}: expected still-detached per_skala==[] (shipped via #2761) "
-        f"— the 56101 metadata cure must not disturb it."
+def _origin_main_canonical_by_code() -> dict[str, dict[str, Any]] | None:
+    result = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "show",
+         "origin/main:data/source_documents/KBLI_2025_FINAL_CLEAN.json"],
+        capture_output=True,
+        text=True,
+        check=False,
     )
-    assert DISPUTED_KEY in rec, (
-        f"{code}: lost its {DISPUTED_KEY!r} audit block — the 56101 metadata "
-        "cure must not disturb prior lots' cures."
+    if result.returncode != 0:
+        return None
+    data = json.loads(result.stdout)
+    return {r["kode_kbli_2025"]: r for r in data["data"] if "kode_kbli_2025" in r}
+
+
+def test_canonical_diff_vs_origin_main_is_exactly_56101():
+    """GUILT+INNOCENCE in one strongest-form assertion: the ONLY KBLI-2025
+    record whose content differs between this branch's canonical and
+    `origin/main`'s is 56101. Subsumes (and replaces) a hardcoded per-lot
+    detach-code list — future twin lots on main will not stale this test."""
+    main_by_code = _origin_main_canonical_by_code()
+    if main_by_code is None:
+        pytest.skip("origin/main not resolvable in this checkout — env-coupled check")
+
+    canonical = REPO_ROOT / "data/source_documents/KBLI_2025_FINAL_CLEAN.json"
+    cur_by_code = _load_by_code(canonical)
+
+    assert set(cur_by_code) == set(main_by_code), (
+        "the KBLI-2025 record SET differs from origin/main (codes added or "
+        "removed) — the 56101 metadata cure must never add/remove records."
+    )
+    changed = sorted(
+        code for code, rec in cur_by_code.items() if rec != main_by_code[code]
+    )
+    assert changed == ["56101"], (
+        f"canonical diff vs origin/main touches {changed!r}, expected exactly "
+        "['56101'] — the 56101 metadata cure must not disturb any other "
+        "record (prior lots' detaches, 49213's restore, or anything else on "
+        f"main). Got {len(changed)} changed code(s): {changed!r}"
     )
 
 
