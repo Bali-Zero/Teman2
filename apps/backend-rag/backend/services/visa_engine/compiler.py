@@ -79,8 +79,10 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
+from datetime import date
+from types import MappingProxyType
 
 from backend.services.visa_engine import ast as ast_module
 from backend.services.visa_engine.enums import FactValueKind, RuleEffectType, RuleStage
@@ -109,6 +111,43 @@ _PRESENCE_ONLY_OPERATORS = frozenset({"known", "unknown"})
 #: `Field` constraint (bypass-proof re-check, see module docstring).
 _MAX_RULES = 4096
 _MAX_PRODUCTS = 256
+
+#: PR1b item 2 (semantic STAGE_ORDER, arbitrated 2026-07-18 comparative
+#: review of the now-closed reference tree PR #2718): matches
+#: ``enums.RuleStage``'s OWN declaration order — spec (research/visa/2026-
+#: 07-17-visa-oracle-v2-round2-codex-engine-concretization.md §1 ``enums.py``
+#: lines 93-97, mirrored by the JSON Schema enum) — which is also §5.3's
+#: evaluation order: HARD_FILTER -> ELIGIBILITY -> HUMAN_REVIEW -> RANKING.
+#: Deliberately NOT the reference tree's own inverted HARD_FILTER ->
+#: HUMAN_REVIEW -> ELIGIBILITY -> RANKING sequence (rejected by the
+#: arbitrated port-list gate as non-spec-grounded). Used to sort rules
+#: before every per-rule check below runs, so ``CompilationReport.errors``
+#: is deterministic and stage-semantic within any single check — independent
+#: of a RulePack author's arbitrary ``rules`` array declaration order.
+#: ``MappingProxyType`` (not a plain ``dict``), matching this module's other
+#: engine-wide invariant tables (``models.STAGE_EFFECT_TYPE``) — a shared
+#: mutable dict would be a runtime footgun for any caller holding a reference.
+STAGE_ORDER: Mapping[RuleStage, int] = MappingProxyType(
+    {
+        RuleStage.HARD_FILTER: 0,
+        RuleStage.ELIGIBILITY: 1,
+        RuleStage.HUMAN_REVIEW: 2,
+        RuleStage.RANKING: 3,
+    }
+)
+
+
+def _stage_sort_key(rule: Rule) -> tuple[int, str]:
+    """``STAGE_ORDER`` first, ``rule_id`` second — full determinism even
+    when two rules share a stage (a RulePack's ``rules`` array declaration
+    order is not a stable tiebreaker to depend on)."""
+    return (STAGE_ORDER[rule.stage], rule.rule_id)
+
+
+def _sorted_rules_by_stage(rules: Iterable[Rule]) -> tuple[Rule, ...]:
+    """Sort ``rules`` by ``_stage_sort_key`` for deterministic, stage-
+    semantic traversal by every per-rule check in ``compile_rule_pack``."""
+    return tuple(sorted(rules, key=_stage_sort_key))
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,19 +235,31 @@ def compile_rule_pack(
     # check can be handed a `model_construct`-smuggled structure.
     pack = revalidated
     payload = pack.payload
+    # PR1b item 2: every check below that emits a rule_id-attributed error
+    # iterates the STAGE_ORDER-sorted `stage_sorted_rules`, not `payload.rules`
+    # directly — see STAGE_ORDER's docstring. This includes product/source
+    # reference integrity and SUPPORT-purpose coverage (Codex xhigh
+    # independent review residual: these three were originally missed —
+    # they read `payload.rules` for their OWN products/source_records
+    # iteration too, but their RULE-side loop needs the same sort as every
+    # other per-rule check). Genuinely rule-order-independent checks (ID
+    # uniqueness, UTC/NFC over the signed payload, size limits) correctly
+    # keep reading `payload` unsorted — those never attribute an error to a
+    # specific `rule_id` position.
+    stage_sorted_rules = _sorted_rules_by_stage(payload.rules)
 
     _check_header_environment(pack, errors)
-    _check_ast_limits(payload.rules, errors)
-    _check_required_facts_match_condition(payload.rules, errors)
-    _check_required_facts_in_registry(payload.rules, fact_registry, errors)
-    _check_no_commercial_facts_in_legal_stages(payload.rules, fact_registry, errors)
-    _check_ranking_facts_commercial_only(payload.rules, fact_registry, errors)
-    _check_eligibility_not_presence_only(payload.rules, errors)
-    _check_stage_effect_compatibility(payload.rules, errors)
-    _check_fact_literal_kind(payload.rules, fact_registry, errors)
-    _check_product_reference_integrity(payload, errors)
-    _check_source_reference_integrity(payload, errors)
-    _check_support_purposes_on_product(payload, errors)
+    _check_ast_limits(stage_sorted_rules, errors)
+    _check_required_facts_match_condition(stage_sorted_rules, errors)
+    _check_required_facts_in_registry(stage_sorted_rules, fact_registry, errors)
+    _check_no_commercial_facts_in_legal_stages(stage_sorted_rules, fact_registry, errors)
+    _check_ranking_facts_commercial_only(stage_sorted_rules, fact_registry, errors)
+    _check_eligibility_not_presence_only(stage_sorted_rules, errors)
+    _check_stage_effect_compatibility(stage_sorted_rules, errors)
+    _check_fact_literal_kind(stage_sorted_rules, fact_registry, errors)
+    _check_product_reference_integrity(payload, stage_sorted_rules, errors)
+    _check_source_reference_integrity(payload, stage_sorted_rules, errors)
+    _check_support_purposes_on_product(payload, stage_sorted_rules, errors)
     _check_unique_ids(payload, errors)
     _check_utc_and_nfc(payload, errors)
     _check_pack_size_limits(payload, errors)
@@ -554,6 +605,23 @@ _ORDERING_OPS = frozenset({"lt", "lte", "gt", "gte"})
 #: shape, never a single literal's shape).
 _SCALAR_FACT_KINDS = frozenset({FactValueKind.BOOLEAN, FactValueKind.INTEGER, FactValueKind.STRING})
 
+#: PR1b item 1 (ported from the reference tree's comparative review, adapted
+#: to this tree's structure — see ``_is_date_typed``'s docstring for why
+#: ``FactSpec.kind`` alone cannot make this distinction): a date-typed
+#: fact's literal must be a canonical ISO-8601 calendar-date string
+#: (``YYYY-MM-DD``). ``date.fromisoformat`` (Python 3.11) ALSO accepts
+#: compact (``YYYYMMDD``) and ISO week-date (``YYYY-Www-D``) forms, which
+#: then compare LEXICOGRAPHICALLY WRONG against the canonical
+#: ``YYYY-MM-DD`` strings a real fact snapshot stores (PR3's evaluator), so
+#: the shape must be checked in addition to calendar validity. Uses
+#: ``[0-9]`` (not ``\d``, which also matches non-ASCII Unicode decimal
+#: digits under Python's default ``re.UNICODE`` mode) checked via
+#: ``fullmatch`` (not ``^...$``, where ``$`` also matches just before a
+#: trailing newline) — Codex xhigh independent review exactness suggestion:
+#: the regex alone should express the full contract rather than relying on
+#: ``date.fromisoformat`` to reject what a looser pattern would let through.
+_CANONICAL_ISO_DATE_RE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
 
 def _literal_kind(value: bool | int | str) -> FactValueKind:
     # `bool` before `int` — `bool` is an `int` subclass in Python.
@@ -562,6 +630,56 @@ def _literal_kind(value: bool | int | str) -> FactValueKind:
     if isinstance(value, int):
         return FactValueKind.INTEGER
     return FactValueKind.STRING
+
+
+def _is_date_typed(spec: FactSpec) -> bool:
+    """PR1b item 1: distinguishes a date-typed fact from a generic STRING
+    fact. ``FactSpec.kind`` alone cannot — both are ``FactValueKind.STRING``
+    by design (``enums.FactValueKind``'s own docstring: "``STRING`` also
+    covers ISO-8601 dates ... no separate ``DATE`` kind is needed for
+    structural (non-evaluating) validation"). ``FactSpec.value_type`` is the
+    free-text label ``fact_registry.py`` seeds with ``"date"`` for every
+    date-shaped path — that label is what this compiler-only invariant
+    hooks into.
+    """
+    return spec.value_type == "date"
+
+
+def _check_date_literal_format(
+    value: str, spec: FactSpec, op: str, rule: Rule, errors: list[CompilationError]
+) -> None:
+    """PR1b item 1: reject a date-typed fact's literal unless it is BOTH
+    shaped like ``YYYY-MM-DD`` (see ``_CANONICAL_ISO_DATE_RE``'s docstring)
+    AND a calendar-valid date."""
+    if _CANONICAL_ISO_DATE_RE.fullmatch(value) is None:
+        errors.append(
+            CompilationError(
+                code="INVALID_DATE_LITERAL_FORMAT",
+                message=(
+                    f"operator {op!r} literal {value!r} against date-typed fact "
+                    f"{spec.path.value!r} must be a canonical ISO-8601 date string "
+                    "(YYYY-MM-DD) — compact (YYYYMMDD) and week-date (YYYY-Www-D) "
+                    "forms are rejected even though `date.fromisoformat` accepts "
+                    "them, because they compare lexicographically wrong against "
+                    "canonical snapshot values"
+                ),
+                rule_id=rule.rule_id,
+            )
+        )
+        return
+    try:
+        date.fromisoformat(value)
+    except ValueError as exc:
+        errors.append(
+            CompilationError(
+                code="INVALID_DATE_LITERAL_FORMAT",
+                message=(
+                    f"operator {op!r} literal {value!r} against date-typed fact "
+                    f"{spec.path.value!r} is not a valid calendar date: {exc}"
+                ),
+                rule_id=rule.rule_id,
+            )
+        )
 
 
 def _check_single_literal_against_kind(
@@ -576,7 +694,18 @@ def _check_single_literal_against_kind(
     Python-level kind must match ``expected_kind`` (catches ``age == "30"``
     — a STRING literal against an INTEGER fact); (2) if the fact declares a
     closed ``allowed_values`` set, the literal must be a member of it
-    (catches ``marital_status == "NOT_A_STATUS"``).
+    (catches ``marital_status == "NOT_A_STATUS"``). PR1b item 1 adds a third:
+    a date-typed fact's STRING literal must additionally be a canonical
+    ISO-8601 date (see ``_check_date_literal_format``) — checked IN ADDITION
+    TO, never instead of, the ``allowed_values`` membership check below.
+    ``FactRegistry`` explicitly supports custom/alternate registries (see
+    that class's own docstring), so a ``value_type="date"`` spec CAN declare
+    ``allowed_values`` even though no entry in this package's default
+    registry currently does (Codex xhigh independent review counterexample:
+    a custom registry allowing only ``"2026-01-01"`` must still reject the
+    canonical-but-not-allowed literal ``"2026-02-01"`` with
+    ``FACT_LITERAL_NOT_ALLOWED`` — a bare ``return`` right after a
+    successful date-format check would silently skip that).
     """
     literal_kind = _literal_kind(value)
     if literal_kind is not expected_kind:
@@ -591,6 +720,17 @@ def _check_single_literal_against_kind(
             )
         )
         return
+    if _is_date_typed(spec) and isinstance(value, str):
+        errors_before = len(errors)
+        _check_date_literal_format(value, spec, op, rule, errors)
+        if len(errors) > errors_before:
+            # Malformed/invalid date already reported — checking
+            # allowed_values membership on a value we just rejected as not
+            # even a valid date would be redundant noise, not a second
+            # legitimate defect.
+            return
+        # Valid canonical date: fall through to the allowed_values check
+        # below, exactly like any other STRING-kind fact.
     if spec.allowed_values is not None and value not in spec.allowed_values:
         errors.append(
             CompilationError(
@@ -640,6 +780,19 @@ def _check_between_bounds(
             )
         )
         return
+    if _is_date_typed(spec) and isinstance(lower, str) and isinstance(upper, str):
+        # PR1b item 1: both bounds must be canonical ISO-8601 dates before
+        # the lexical `lower > upper` ordering check below means anything —
+        # a malformed (e.g. compact) bound can compare lexicographically
+        # "in order" while still being the wrong shape entirely. If either
+        # bound fails the format check, skip the (now-meaningless) ordering
+        # check rather than emit a confusing/misleading BETWEEN_BOUNDS_
+        # INVERTED alongside it.
+        errors_before = len(errors)
+        _check_date_literal_format(lower, spec, "between", rule, errors)
+        _check_date_literal_format(upper, spec, "between", rule, errors)
+        if len(errors) > errors_before:
+            return
     if lower > upper:
         errors.append(
             CompilationError(
@@ -734,14 +887,21 @@ def _known_product_ids(payload: RulePackPayload) -> frozenset:
 
 
 def _check_product_reference_integrity(
-    payload: RulePackPayload, errors: list[CompilationError]
+    payload: RulePackPayload, rules: tuple[Rule, ...], errors: list[CompilationError]
 ) -> None:
     """Spec §2 compiler-only invariant: "Source-reference and product-reference
     integrity" (product half) — a PRODUCTS-scope rule may only reference
     ``product_version_id``s that exist in ``payload.products``.
+
+    PR1b item 2 residual (Codex xhigh independent review): ``rules`` is the
+    STAGE_ORDER-sorted tuple, not ``payload.rules`` — this emits rule_id-
+    attributed ``UNKNOWN_PRODUCT_REFERENCE`` errors, so it must sort the same
+    as every other per-rule check for a deterministic report (proven live:
+    swapping two rules' declaration order previously inverted this
+    function's error order too).
     """
     known_products = _known_product_ids(payload)
-    for rule in payload.rules:
+    for rule in rules:
         if rule.product_version_ids is None:
             continue
         unknown = frozenset(rule.product_version_ids) - known_products
@@ -756,14 +916,21 @@ def _check_product_reference_integrity(
 
 
 def _check_source_reference_integrity(
-    payload: RulePackPayload, errors: list[CompilationError]
+    payload: RulePackPayload, rules: tuple[Rule, ...], errors: list[CompilationError]
 ) -> None:
     """Spec §2 compiler-only invariant: "Source-reference and product-reference
     integrity" (source half) — every rule/product ``source_refs`` entry must
     exist in ``payload.source_records``.
+
+    PR1b item 2 residual: the rule-attributed half below uses the
+    STAGE_ORDER-sorted ``rules`` (same rationale as
+    ``_check_product_reference_integrity``); the product-attributed half
+    stays on ``payload.products`` unchanged — products have no
+    ``RuleStage``, so payload declaration order is the only meaningful
+    order for them.
     """
     known_sources = frozenset(record.source_record_id for record in payload.source_records)
-    for rule in payload.rules:
+    for rule in rules:
         unknown = frozenset(rule.source_refs) - known_sources
         if unknown:
             errors.append(
@@ -791,7 +958,7 @@ def _check_source_reference_integrity(
 
 
 def _check_support_purposes_on_product(
-    payload: RulePackPayload, errors: list[CompilationError]
+    payload: RulePackPayload, rules: tuple[Rule, ...], errors: list[CompilationError]
 ) -> None:
     """Spec §2 compiler-only invariant: "requested_purposes subset-of
     covered_purposes" — this is the STATIC, structural half PR1 can actually
@@ -799,6 +966,11 @@ def _check_support_purposes_on_product(
     ``requested_purposes`` must be a subset of the union of every TRUE
     SUPPORT rule's ``covered_purposes`` for the winning candidate) needs the
     evaluator (PR3) and is *not* claimed here.
+
+    PR1b item 2 residual: ``rules`` is the STAGE_ORDER-sorted tuple (same
+    rationale as ``_check_product_reference_integrity``) — every error this
+    function emits carries a ``rule_id``, so it is a per-rule check for
+    ordering purposes even though its name reads product-centric.
 
     What this function guarantees, structurally, at compile time:
 
@@ -832,7 +1004,7 @@ def _check_support_purposes_on_product(
         else frozenset()
     )
 
-    for rule in payload.rules:
+    for rule in rules:
         if rule.effect.type != "SUPPORT":
             continue
         claimed = frozenset(rule.effect.covered_purposes)

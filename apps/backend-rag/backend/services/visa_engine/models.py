@@ -250,7 +250,11 @@ class StayPolicy(BaseModel):
 class ExtensionPolicy(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    allowed: bool
+    # PR1b item 3 (ported from the reference-tree comparative review):
+    # Field(strict=True) — matching this module's own int-field convention
+    # (e.g. `maximum_extensions` below) — rejects `1`/`0`/`1.0` so a
+    # malformed wire payload can never silently coerce into a bool.
+    allowed: Annotated[bool, Field(strict=True)]
     maximum_extensions: Annotated[int, Field(ge=0, le=100, strict=True)]
     days_per_extension: Annotated[int, Field(ge=1, le=3650, strict=True)] | None
 
@@ -267,7 +271,8 @@ class ClockCheckpointSpec(BaseModel):
 class ClockPolicy(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    available: bool
+    # PR1b item 3: see ExtensionPolicy.allowed's comment above.
+    available: Annotated[bool, Field(strict=True)]
     anchor: ClockAnchor
     checkpoints: tuple[ClockCheckpointSpec, ...] = Field(..., max_length=64)
 
@@ -301,7 +306,8 @@ class VisaProductVersion(BaseModel):
     clock_policy: ClockPolicy
     pricing_key: PricingKey | None
     source_refs: tuple[uuid.UUID, ...] = Field(..., min_length=1)
-    public_catalog: bool
+    # PR1b item 3: see ExtensionPolicy.allowed's comment above.
+    public_catalog: Annotated[bool, Field(strict=True)]
 
     @field_validator("legacy_codes", "legacy_slugs", "covered_purposes", "source_refs")
     @classmethod
@@ -415,7 +421,8 @@ class Rule(BaseModel):
     required_facts: tuple[FactPath, ...] = Field(..., max_length=128)
     source_refs: tuple[uuid.UUID, ...] = Field(..., min_length=1, max_length=32)
     explanation_key: Identifier
-    safety_critical: bool
+    # PR1b item 3: see ExtensionPolicy.allowed's comment above.
+    safety_critical: Annotated[bool, Field(strict=True)]
 
     @field_validator("product_version_ids", "source_refs")
     @classmethod
@@ -1036,7 +1043,8 @@ class Outage(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     code: ReasonCode
-    retryable: bool
+    # PR1b item 3: see ExtensionPolicy.allowed's comment above.
+    retryable: Annotated[bool, Field(strict=True)]
 
 
 class Decision(BaseModel):

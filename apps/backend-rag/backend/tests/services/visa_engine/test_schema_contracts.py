@@ -353,7 +353,7 @@ class TestSchemaExportInvariants:
         schemas = SE.build_schemas()
         condition_schema = schemas["condition.schema.json"]
         rendered = str(condition_schema)
-        for op in ConditionOperator:
+        for op in list(ConditionOperator):
             assert op.value in rendered, f"operator {op.value!r} missing from exported schema"
 
     def test_export_schemas_writes_files_to_disk(self, tmp_path: Path) -> None:
@@ -388,13 +388,13 @@ class TestSchemaExportInvariants:
     def test_decision_state_present_in_contract(self) -> None:
         schemas = SE.build_schemas()
         rendered = str(schemas["contract.schema.json"])
-        for state in DecisionState:
+        for state in list(DecisionState):
             assert state.value in rendered
 
     def test_unknown_reason_present_in_contract(self) -> None:
         schemas = SE.build_schemas()
         rendered = str(schemas["contract.schema.json"])
-        for reason in UnknownReason:
+        for reason in list(UnknownReason):
             assert reason.value in rendered
 
 
@@ -1043,6 +1043,105 @@ class TestStrictIntFields:
     def test_effect_add_score_points_rejects_float(self) -> None:
         with pytest.raises(ValidationError):
             M.EffectAddScore(type="ADD_SCORE", reason_code="X", points=1.0)  # type: ignore[arg-type]
+
+
+class TestStrictBoolFields:
+    """PR1b item 3 (ported from the reference-tree comparative review): every
+    wire-level boolean field must reject ``1``/``0``/``1.0`` — Pydantic's
+    non-strict ``bool`` coerces truthy/falsy ints and int-valued floats
+    silently, which would let a malformed RulePack payload (e.g. hand-edited
+    JSON, or a producer that serializes booleans as 0/1) construct a valid
+    model with the wrong semantic type on the wire. One guilt (``1`` ->
+    rejected) + one innocence (``True`` -> accepted) pair per field, matching
+    this module's existing ``Field(strict=True)`` convention for int fields
+    (see e.g. ``Rule.priority``) rather than importing a separate
+    ``StrictBool`` alias.
+    """
+
+    def test_extension_policy_allowed_rejects_int(self) -> None:
+        with pytest.raises(ValidationError):
+            M.ExtensionPolicy(allowed=1, maximum_extensions=1, days_per_extension=30)  # type: ignore[arg-type]
+
+    def test_extension_policy_allowed_accepts_bool(self) -> None:
+        policy = M.ExtensionPolicy(allowed=True, maximum_extensions=1, days_per_extension=30)
+        assert policy.allowed is True
+
+    def test_clock_policy_available_rejects_int(self) -> None:
+        with pytest.raises(ValidationError):
+            M.ClockPolicy(available=0, anchor="ENTRY_DATE", checkpoints=[])  # type: ignore[arg-type]
+
+    def test_clock_policy_available_accepts_bool(self) -> None:
+        policy = M.ClockPolicy(available=True, anchor="ENTRY_DATE", checkpoints=[])
+        assert policy.available is True
+
+    def test_visa_product_version_public_catalog_rejects_int(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        dumped = minimal_valid_pack.payload.products[0].model_dump(mode="json", by_alias=True)
+        dumped["public_catalog"] = 1
+        with pytest.raises(ValidationError):
+            M.VisaProductVersion.model_validate(dumped)
+
+    def test_visa_product_version_public_catalog_accepts_bool(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        product = minimal_valid_pack.payload.products[0]
+        assert product.public_catalog is True
+
+    def test_rule_safety_critical_rejects_int(self, minimal_valid_pack: M.RulePack) -> None:
+        dumped = minimal_valid_pack.payload.rules[0].model_dump(mode="json", by_alias=True)
+        dumped["safety_critical"] = 0
+        with pytest.raises(ValidationError):
+            M.Rule.model_validate(dumped)
+
+    def test_rule_safety_critical_accepts_bool(self, minimal_valid_pack: M.RulePack) -> None:
+        rule = minimal_valid_pack.payload.rules[0].model_copy(update={"safety_critical": True})
+        assert rule.safety_critical is True
+
+    def test_outage_retryable_rejects_int(self) -> None:
+        with pytest.raises(ValidationError):
+            M.Outage(code="X", retryable=1)  # type: ignore[arg-type]
+
+    def test_outage_retryable_rejects_float(self) -> None:
+        # 1.0 is the exact "looks like a bool, isn't" case the reference
+        # tree's task brief calls out explicitly.
+        with pytest.raises(ValidationError):
+            M.Outage(code="X", retryable=1.0)  # type: ignore[arg-type]
+
+    def test_outage_retryable_accepts_bool(self) -> None:
+        outage = M.Outage(code="X", retryable=True)
+        assert outage.retryable is True
+
+
+class TestIntegerParityDivergencePinned:
+    """PR1b item 5: JSON Schema 2020-12's ``"type": "integer"`` accepts a
+    JSON number with a zero fractional part (``2.0``) — the spec's own
+    definition of "integer" is "a number without a fraction or exponent
+    part", not "encoded without a decimal point". ``StrictInt``/
+    ``Field(strict=True)`` on the Pydantic side is narrower: it rejects
+    ``2.0`` outright, float-typed or not. This divergence is
+    inexpressible in pure JSON Schema (there is no ``"integer, strictly
+    encoded"`` keyword) and is therefore a KNOWN, one-directional,
+    intentional gap between the exported contract and the model that
+    actually gates writes — see the comment at schema_export.py's
+    integer-emitting site. This test pins the direction so the gap stays
+    visible and intentional rather than being rediscovered as a "bug".
+    """
+
+    def test_exported_schema_accepts_float_valued_integer_for_priority(self) -> None:
+        contract = SE.build_schemas()["contract.schema.json"]
+        priority_schema = contract["$defs"]["Rule"]["properties"]["priority"]
+        assert priority_schema["type"] == "integer"
+        validator = Draft202012Validator(priority_schema)
+        assert validator.is_valid(2.0)
+
+    def test_model_rejects_the_same_float_valued_integer_for_priority(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        dumped = minimal_valid_pack.payload.rules[0].model_dump(mode="json", by_alias=True)
+        dumped["priority"] = 2.0
+        with pytest.raises(ValidationError):
+            M.Rule.model_validate(dumped)
 
 
 def _snapshot_dir() -> Path:

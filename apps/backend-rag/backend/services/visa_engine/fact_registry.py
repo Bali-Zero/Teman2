@@ -52,9 +52,16 @@ class FactSpec:
     for structural literal-type checking — see module docstring) and
     ``pii_class`` (the task's explicit "PII class" requirement, not itself
     named in the spec text; see ``enums.PiiClass``'s docstring for the
-    resolution). ``value_type`` stays as a free-text human label (e.g.
-    ``"date"``, ``"money_idr"``, ``"country_code"``) purely for
-    documentation/tooling — ``kind`` is what compiler.py actually branches on.
+    resolution). ``value_type`` is a free-text human label (e.g. ``"date"``,
+    ``"money_idr"``, ``"country_code"``) mostly for documentation/tooling —
+    ``kind`` is what ``compiler.py`` branches on for the general fact/literal-
+    kind matrix. **PR1b exception**: ``compiler.py``'s
+    ``_is_date_typed``/``_check_date_literal_format`` DO branch on
+    ``value_type == "date"`` specifically — ``kind`` alone cannot distinguish
+    a date-typed fact from a generic STRING fact (both are
+    ``FactValueKind.STRING`` by design, see ``enums.FactValueKind``'s own
+    docstring), so this one label is load-bearing for canonical-ISO-8601
+    literal validation, not purely decorative.
     """
 
     path: FactPath

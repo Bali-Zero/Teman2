@@ -230,6 +230,22 @@ _ALLOF_INJECTIONS: dict[str, list[dict[str, Any]]] = {
             "if": {"properties": {"status": {"const": "AVAILABLE"}}},
             "then": {
                 "properties": {
+                    # PR1b item 5 (integer parity, known one-directional
+                    # divergence — NEVER "fix" this by hand-tightening the
+                    # JSON Schema, it cannot be tightened): JSON Schema
+                    # 2020-12's `"type": "integer"` means "a JSON number with
+                    # a zero fractional part" per the spec itself, so `2.0`
+                    # legally satisfies it — there is no JSON Schema keyword
+                    # for "integer, not merely integer-valued". Every
+                    # `Annotated[int, Field(strict=True)]` field in
+                    # models.py (this `amount`, `Rule.priority`, etc.) is
+                    # narrower: Pydantic's strict mode rejects `2.0`
+                    # outright. This gap is inexpressible in pure JSON
+                    # Schema and is intentional, not a bug — Pydantic is the
+                    # authoritative gate on every write path; the exported
+                    # schema is advisory/interop only. Pinned by
+                    # test_schema_contracts.py::TestIntegerParityDivergencePinned
+                    # so it stays visible rather than being rediscovered.
                     "amount": {"type": "integer", "minimum": 0},
                     "catalog_version": {"type": "string"},
                     "catalog_sha256": _SHA256_HEX_INLINE,

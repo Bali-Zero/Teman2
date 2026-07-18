@@ -23,6 +23,7 @@ import uuid
 from backend.services.visa_engine import ast as A
 from backend.services.visa_engine import compiler as C
 from backend.services.visa_engine import models as M
+from backend.services.visa_engine.enums import RuleStage
 from backend.tests.services.visa_engine.conftest import (
     GOLD_EFFECTIVE_AT,
     make_product,
@@ -1024,7 +1025,9 @@ class TestGlobalSupportPurposeIntersectionSemantics:
             rules=(global_rule,),
         )
         errors: list[C.CompilationError] = []
-        C._check_support_purposes_on_product(empty_products_payload, errors)  # must not raise
+        C._check_support_purposes_on_product(
+            empty_products_payload, empty_products_payload.rules, errors
+        )  # must not raise
         assert any(e.code == "SUPPORT_RULE_PURPOSE_NOT_ON_ANY_PRODUCT" for e in errors)
 
 
@@ -1256,3 +1259,482 @@ class TestUtcDetectionAnchoredFullMatch:
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
         assert any(e.code == "NON_UTC_DATETIME" for e in report.errors)
+
+
+# ---------------------------------------------------------------------------
+# PR1b item 1 — canonical YYYY-MM-DD literal validation for date-typed facts
+# (ported from the reference tree's comparative review, adapted to this
+# tree's structure: FactSpec.kind alone cannot distinguish a date fact from a
+# generic STRING fact — enums.FactValueKind's own docstring says so — so the
+# hook is FactSpec.value_type == "date", the free-text label fact_registry.py
+# already seeds for every date-shaped path.)
+# ---------------------------------------------------------------------------
+
+
+class TestDateTypedFactLiteralCanonicalFormat:
+    def test_compact_date_literal_rejected(self, source_record: M.SourceRecord) -> None:
+        # date.fromisoformat("20260718") parses fine (Python 3.11+) but
+        # compares lexicographically wrong against canonical "YYYY-MM-DD"
+        # snapshot values — must be rejected at compile time regardless.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.compact",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.birth_date", "value": "20260718"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "INVALID_DATE_LITERAL_FORMAT" for e in report.errors)
+
+    def test_week_date_literal_rejected(self, source_record: M.SourceRecord) -> None:
+        # date.fromisoformat also accepts ISO week-dates ("2026-W29-2") —
+        # same lexicographic-comparison hazard as the compact form.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.week",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.birth_date", "value": "2026-W29-2"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "INVALID_DATE_LITERAL_FORMAT" for e in report.errors)
+
+    def test_non_iso_garbage_literal_rejected(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.garbage",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.birth_date", "value": "not-a-date"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "INVALID_DATE_LITERAL_FORMAT" for e in report.errors)
+
+    def test_canonical_date_literal_is_innocent(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.valid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.birth_date", "value": "2026-07-18"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code == "INVALID_DATE_LITERAL_FORMAT" for e in report.errors)
+
+    def test_between_bounds_malformed_date_rejected(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.between.malformed",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "person.birth_date",
+                "lower": "20260101",
+                "upper": "2026-12-31",
+            },
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "INVALID_DATE_LITERAL_FORMAT" for e in report.errors)
+
+    def test_between_bounds_valid_dates_ordering_still_checked(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Both bounds are canonical (so no format error), but inverted —
+        # BETWEEN_BOUNDS_INVERTED must still fire; the date-format guard must
+        # not swallow the pre-existing ordering check for well-formed dates.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.between.inverted",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "person.birth_date",
+                "lower": "2026-12-31",
+                "upper": "2026-01-01",
+            },
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "BETWEEN_BOUNDS_INVERTED" for e in report.errors)
+        assert not any(e.code == "INVALID_DATE_LITERAL_FORMAT" for e in report.errors)
+
+    def test_generic_string_fact_not_subject_to_date_check(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # intent.requested_product_code is STRING-kind with value_type=
+        # "product_code" (no "date" hint, no allowed_values) — a
+        # date-shaped-looking literal must NOT trigger date-format
+        # validation, proving the guard is scoped to value_type=="date", not
+        # any string that merely looks date-shaped.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.not.a.date.fact",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "intent.requested_product_code", "value": "20260718"},
+            required_facts=("intent.requested_product_code",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code == "INVALID_DATE_LITERAL_FORMAT" for e in report.errors)
+
+    def test_canonical_form_invalid_calendar_date_rejected(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # 2026 is not a leap year (2026 % 4 != 0) — "2026-02-29" is
+        # canonically SHAPED (matches YYYY-MM-DD) but not a real calendar
+        # date; `date.fromisoformat` raises ValueError on it. Closes the
+        # Codex xhigh independent review test gap: the ValueError branch of
+        # _check_date_literal_format was implemented but never pinned.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.invalid.calendar",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.birth_date", "value": "2026-02-29"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "INVALID_DATE_LITERAL_FORMAT" for e in report.errors)
+
+    def test_between_bounds_malformed_upper_bound_rejected(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Mirror of test_between_bounds_malformed_date_rejected but with the
+        # malformed literal on the UPPER bound instead of the lower one —
+        # closes the Codex xhigh independent review test gap (only the lower
+        # bound was previously exercised).
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.between.malformed.upper",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "person.birth_date",
+                "lower": "2026-01-01",
+                "upper": "20261231",
+            },
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "INVALID_DATE_LITERAL_FORMAT" for e in report.errors)
+
+    def test_valid_date_still_checked_against_custom_registry_allowed_values(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Codex xhigh independent review MEDIUM finding, cured: a custom
+        # FactRegistry (FactRegistry.__init__ explicitly supports a caller-
+        # supplied spec list — see that class's docstring) CAN combine
+        # value_type="date" with allowed_values, even though no entry in
+        # this package's own DEFAULT registry currently does. A literal that
+        # is canonical AND calendar-valid but simply not a member of the
+        # declared allowed_values must still be rejected — a bare `return`
+        # right after a successful date-format check silently skipped this
+        # (Codex's exact counterexample: a registry allowing only
+        # "2026-01-01" accepted the canonical, unrelated "2026-02-01" with
+        # zero errors).
+        from backend.services.visa_engine.enums import FactPath, FactValueKind
+        from backend.services.visa_engine.fact_registry import FactRegistry, FactSpec
+
+        narrow_registry = FactRegistry(
+            [
+                FactSpec(
+                    path=FactPath.PERSON_BIRTH_DATE,
+                    kind=FactValueKind.STRING,
+                    value_type="date",
+                    derived=False,
+                    allowed_values=frozenset({"2026-01-01"}),
+                )
+            ]
+        )
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = M.Rule(
+            rule_id="rule.date.allowed.values.custom.registry",
+            stage="HARD_FILTER",
+            scope="GLOBAL",
+            product_version_ids=None,
+            priority=10,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "eq", "fact": "person.birth_date", "value": "2026-02-01"},
+            effect={"type": "EXCLUDE", "reason_code": "X"},
+            on_unknown="NO_EFFECT",
+            required_facts=["person.birth_date"],
+            source_refs=[source_record.source_record_id],
+            explanation_key="explain.date.allowed.custom",
+            safety_critical=True,
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload), fact_registry=narrow_registry)
+        assert any(e.code == "FACT_LITERAL_NOT_ALLOWED" for e in report.errors)
+        assert not any(e.code == "INVALID_DATE_LITERAL_FORMAT" for e in report.errors)
+
+    def test_allowed_date_literal_against_custom_registry_is_innocent(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Innocence half of the test above: the literal that IS in
+        # allowed_values must compile clean.
+        from backend.services.visa_engine.enums import FactPath, FactValueKind
+        from backend.services.visa_engine.fact_registry import FactRegistry, FactSpec
+
+        narrow_registry = FactRegistry(
+            [
+                FactSpec(
+                    path=FactPath.PERSON_BIRTH_DATE,
+                    kind=FactValueKind.STRING,
+                    value_type="date",
+                    derived=False,
+                    allowed_values=frozenset({"2026-01-01"}),
+                )
+            ]
+        )
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = M.Rule(
+            rule_id="rule.date.allowed.values.custom.registry.valid",
+            stage="HARD_FILTER",
+            scope="GLOBAL",
+            product_version_ids=None,
+            priority=10,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "eq", "fact": "person.birth_date", "value": "2026-01-01"},
+            effect={"type": "EXCLUDE", "reason_code": "X"},
+            on_unknown="NO_EFFECT",
+            required_facts=["person.birth_date"],
+            source_refs=[source_record.source_record_id],
+            explanation_key="explain.date.allowed.custom.valid",
+            safety_critical=True,
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload), fact_registry=narrow_registry)
+        assert not any(
+            e.code in ("FACT_LITERAL_NOT_ALLOWED", "INVALID_DATE_LITERAL_FORMAT")
+            for e in report.errors
+        )
+
+
+# ---------------------------------------------------------------------------
+# PR1b item 2 — semantic STAGE_ORDER used to sort rules before every
+# per-rule check runs, so CompilationReport.errors is deterministic and
+# stage-semantic within any single check, independent of a RulePack
+# author's arbitrary `rules` array declaration order.
+#
+# ARBITRATED SEQUENCE (final gate, spec-grounded): HARD_FILTER -> ELIGIBILITY
+# -> HUMAN_REVIEW -> RANKING — the enum's OWN declaration order (research/
+# visa/2026-07-17-visa-oracle-v2-round2-codex-engine-concretization.md §1
+# enums.py lines 93-97, mirrored by the JSON Schema enum), which is also
+# spec §5.3's evaluation order. Deliberately NOT the reference tree's
+# inverted HARD_FILTER -> HUMAN_REVIEW -> ELIGIBILITY -> RANKING sequence.
+# ---------------------------------------------------------------------------
+
+
+class TestStageOrderDeterministicSorting:
+    def test_stage_order_mapping_values(self) -> None:
+        assert C.STAGE_ORDER[RuleStage.HARD_FILTER] == 0
+        assert C.STAGE_ORDER[RuleStage.ELIGIBILITY] == 1
+        assert C.STAGE_ORDER[RuleStage.HUMAN_REVIEW] == 2
+        assert C.STAGE_ORDER[RuleStage.RANKING] == 3
+
+    def test_commercial_fact_errors_ordered_by_stage_not_declaration_order(
+        self, minimal_valid_pack: M.RulePack, source_record: M.SourceRecord
+    ) -> None:
+        def _legal_stage_rule(rule_id: str, stage: str, effect: dict) -> M.Rule:
+            return M.Rule(
+                rule_id=rule_id,
+                stage=stage,
+                scope="GLOBAL",
+                product_version_ids=None,
+                priority=10,
+                valid_period=_OPEN_PERIOD,
+                when={"op": "known", "fact": "commercial.wants_quote"},
+                effect=effect,
+                on_unknown="NO_EFFECT",
+                required_facts=["commercial.wants_quote"],
+                source_refs=[source_record.source_record_id],
+                explanation_key="explain.stage.order",
+                safety_critical=stage == "HARD_FILTER",
+            )
+
+        # Declared out of BOTH stage order and alphabetical rule_id order
+        # ("human_review" < "hard_filter" is false alphabetically), so a
+        # correct assertion below rules out an accidental id-sort as well as
+        # declaration-order passthrough.
+        human_review_rule = _legal_stage_rule(
+            "rule.stage.order.human_review",
+            "HUMAN_REVIEW",
+            {"type": "REQUIRE_REVIEW", "reason_code": "NEEDS_REVIEW"},
+        )
+        hard_filter_rule = _legal_stage_rule(
+            "rule.stage.order.hard_filter",
+            "HARD_FILTER",
+            {"type": "EXCLUDE", "reason_code": "X"},
+        )
+        eligibility_rule = _legal_stage_rule(
+            "rule.stage.order.eligibility",
+            "ELIGIBILITY",
+            {"type": "SUPPORT", "reason_code": "X", "covered_purposes": ["TOURISM"]},
+        )
+        rules = [
+            *minimal_valid_pack.payload.rules,
+            human_review_rule,
+            hard_filter_rule,
+            eligibility_rule,
+        ]
+        payload = make_rule_pack_payload(
+            rules=rules,
+            products=minimal_valid_pack.payload.products,
+            source_records=minimal_valid_pack.payload.source_records,
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+
+        ordered_ids = [
+            e.rule_id for e in report.errors if e.code == "COMMERCIAL_FACT_IN_LEGAL_STAGE"
+        ]
+        assert ordered_ids == [
+            "rule.stage.order.hard_filter",
+            "rule.stage.order.eligibility",
+            "rule.stage.order.human_review",
+        ]
+
+    def _bogus_source_ref_rules(
+        self, product_id: uuid.UUID
+    ) -> tuple[M.Rule, M.Rule]:
+        """Two GLOBAL rules, each with a `source_refs` UUID that exists
+        nowhere in `payload.source_records` — both trigger
+        UNKNOWN_SOURCE_REFERENCE, one per stage, so the test below can pin
+        the order those two errors come out in."""
+        eligibility_rule = M.Rule(
+            rule_id="rule.stage.order.src.eligibility",
+            stage="ELIGIBILITY",
+            scope="GLOBAL",
+            product_version_ids=None,
+            priority=10,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "intersects", "fact": "intent.purposes", "values": ["TOURISM"]},
+            effect={"type": "SUPPORT", "reason_code": "X", "covered_purposes": ["TOURISM"]},
+            on_unknown="NEEDS_INPUT",
+            required_facts=["intent.purposes"],
+            source_refs=[uuid.uuid4()],  # unknown — not in payload.source_records
+            explanation_key="explain.stage.order.src.eligibility",
+            safety_critical=False,
+        )
+        hard_filter_rule = M.Rule(
+            rule_id="rule.stage.order.src.hard_filter",
+            stage="HARD_FILTER",
+            scope="GLOBAL",
+            product_version_ids=None,
+            priority=10,
+            valid_period=_OPEN_PERIOD,
+            when={"op": "gt", "fact": "immigration.overstay_days", "value": 60},
+            effect={"type": "EXCLUDE", "reason_code": "X"},
+            on_unknown="NO_EFFECT",
+            required_facts=["immigration.overstay_days"],
+            source_refs=[uuid.uuid4()],  # unknown — not in payload.source_records
+            explanation_key="explain.stage.order.src.hard_filter",
+            safety_critical=True,
+        )
+        return eligibility_rule, hard_filter_rule
+
+    def test_source_reference_errors_ordered_by_stage_regardless_of_declaration_order(
+        self, minimal_valid_pack: M.RulePack
+    ) -> None:
+        # PR1b item 2 residual (Codex xhigh independent review MEDIUM
+        # finding, cured): _check_source_reference_integrity previously read
+        # `payload.rules` directly, so its UNKNOWN_SOURCE_REFERENCE errors
+        # came out in payload declaration order, not stage order — Codex's
+        # exact counterexample: declaring [ELIGIBILITY, HARD_FILTER] and
+        # [HARD_FILTER, ELIGIBILITY] produced two DIFFERENT error orders.
+        # This test drives both declaration orders and asserts BOTH produce
+        # the SAME stage-sorted result (HARD_FILTER's error before
+        # ELIGIBILITY's) — proving the fix, not just one lucky order.
+        eligibility_rule, hard_filter_rule = self._bogus_source_ref_rules(
+            minimal_valid_pack.payload.products[0].product_version_id
+        )
+        expected_order = [
+            "rule.stage.order.src.hard_filter",
+            "rule.stage.order.src.eligibility",
+        ]
+
+        for declared_rules in (
+            [*minimal_valid_pack.payload.rules, eligibility_rule, hard_filter_rule],
+            [*minimal_valid_pack.payload.rules, hard_filter_rule, eligibility_rule],
+        ):
+            payload = make_rule_pack_payload(
+                rules=declared_rules,
+                products=minimal_valid_pack.payload.products,
+                source_records=minimal_valid_pack.payload.source_records,
+            )
+            report = C.compile_rule_pack(make_rule_pack(payload))
+            ordered_ids = [
+                e.rule_id for e in report.errors if e.code == "UNKNOWN_SOURCE_REFERENCE"
+            ]
+            assert ordered_ids == expected_order
