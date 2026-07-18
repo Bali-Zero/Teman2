@@ -2306,6 +2306,8 @@ def launch_panel(
             glm_token="",
         )
         gemini_version_environment["HOME"] = str(gemini_version_home)
+        for name in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME"):
+            gemini_version_environment[name] = str(gemini_version_home)
         security_environment = _route_environment(
             SEATS[1],
             source=os.environ,
@@ -2394,6 +2396,8 @@ def launch_panel(
                 for seat in SEATS
             }
             environments["gemini"]["HOME"] = str(gemini_review_home)
+            for name in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME"):
+                environments["gemini"][name] = str(gemini_review_home)
             invocation_uuids = {seat.name: str(uuid.uuid4()) for seat in SEATS}
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=len(SEATS)
