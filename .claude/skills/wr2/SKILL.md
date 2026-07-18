@@ -57,14 +57,27 @@ delta); REFUSE left a queue-published `rendered` draft (4ca7b22b) byte-identical
 mutation. LIMITATION ledgered: the fact-extractor/checker lane takes no `lease_owner` CAS (unlike
 render/image), so `--rebrief`'s lease guard cannot exclude a concurrent fact-lane run — low-risk
 (rebrief resets upstream of the fact lane, extractor re-runs idempotently) but structurally
-asymmetric**.
+asymmetric** ·
+**enrichment passthrough SHIPPED + PROVEN-LIVE (#2691, growth-loop) — killed `brief_json.enrichment={}`**:
+the enricher's structured object (`the_facts`/`bali_zero_take`/`faq`/`thirty_second_brief`) was silently
+dropped scraper→staging→drafts (scar family #9). Fix = 4-hop contract: `ScraperSubmission.enrichment`
+field + `submit_from_scraper` persist + `list_pending_items` **opt-in** projection
+(`include_enrichment=true`, never on archived — round-2 payload-fan-out fix) + `build_staging_payload`.
+3 implementer rounds, 2 independent graders: Codex round-1 found 3 MUST-FIX (opt-in projection,
+legacy-dirty-JSON `isinstance(dict)` type-guard, dedup enrichment-heal); a fresh-context Sonnet refuter
+found the round-3 MUST-FIX (`_has_usable_source` unguarded `.get()` crash on a truthy non-dict) + a NICE
+(dedup-heal status-gate) — used because Codex/agy/DeepSeek ALL failed the round-2 re-gate (Codex 30-min
+hang, agy timeout, DeepSeek HTTP 402 balance-dead). PROVE-LIVE 2026-07-18 prod entity-match: submitted
+`enrichment.the_facts` marker → `/pending?include_enrichment=true` returned it exactly, default
+`/pending` omitted it, item cleaned. Fly deploy stalled ~90 min on GitHub-Actions runner starvation.
+LIMITATION ledgered: dedup-heal is a lockless read-modify-write (pre-existing class, low risk).
 
 **In queue awaiting Zero (Legge 5):** deportation carousel remake (`drafted`, 2026-07-17, tells
 the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari reply.
 
 **Open wounds / next targets:**
 
-- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof NOT yet landed (checked 2026-07-18 05:29 WITA): every topic-selector run 07-07→07-18 logs "live pool empty"; today's top-ranked items — incl. breaking-shaped "Bali Deports Three Foreigners" — all carry `live=0/0.0`. Whether this is expected timing (fresh enricher scores land next scraper cycle post-deploy) or a residual break (enricher not emitting non-zero, or fresh items not carrying fields) is NOT yet distinguished — staging is file-based (not Postgres-queryable) so it needs a dedicated probe. Watch the REAL app log `~/logs/wr2_topic_selector.log` — NOT `.launchd.out.log`, which is empty because the daemon logs via Python logging, not stdout (watching the wrong file = blind receptor, scar #2). Related open item (ledgered): enrichment silent-drop — build_staging_payload sends brief/faq/slug/tags/seo/featured but ScraperSubmission has no such fields → `enrichment: {}` on drafts.
+- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof NOT yet landed (checked 2026-07-18 05:29 WITA): every topic-selector run 07-07→07-18 logs "live pool empty"; today's top-ranked items — incl. breaking-shaped "Bali Deports Three Foreigners" — all carry `live=0/0.0`. Whether this is expected timing (fresh enricher scores land next scraper cycle post-deploy) or a residual break (enricher not emitting non-zero, or fresh items not carrying fields) is NOT yet distinguished — staging is file-based (not Postgres-queryable) so it needs a dedicated probe. Watch the REAL app log `~/logs/wr2_topic_selector.log` — NOT `.launchd.out.log`, which is empty because the daemon logs via Python logging, not stdout (watching the wrong file = blind receptor, scar #2). Related item — enrichment silent-drop **CLOSED + PROVEN-LIVE (#2691, 2026-07-18)**: the enricher's structured object now reaches WR2 drafts via the 4-hop opt-in contract; prod entity-match confirmed (`/pending?include_enrichment=true` carries it, default omits it).
 - **~~13 unknown_intent + 3 render_incomplete~~ → RESOLVED, verified 2026-07-18 (growth-loop B).**
   The live queue (Pro SSOT + M5 mirror, both fresh) has **0 render_incomplete, 0 unknown_intent** —
   cleared by the daily reconciler + the #2563 `slides_dir`-resolution fix (`unknown_intent` was a
