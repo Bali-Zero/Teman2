@@ -2,7 +2,8 @@
 date: 2026-07-18
 domain: operations
 client_case: none (GARUDA-FILIERA Batch A — LANE-E1 Lot 1 completion)
-adversarial_review: none (D5 blind refutation in-pipeline; conductor D6 gate pending)
+adversarial_review: codex
+adversarial_review_detail: "superseded 2026-07-18: conductor D6 gate COMPLETE — codex 3 refuter passes + full-report red-team (gpt-5.6-sol xhigh) + glm-5.2 blind second extractor; see 2026-07-18-kbli-batch-a-lot1-conductor-gate.md (PR #2721). Original: none (D5 blind refutation in-pipeline; conductor D6 gate pending)"
 sources:
   - "plan: research/operations/2026-07-18-kbli-batch-a-plan.md (§8 A-2 lot-shape rule)"
   - "calibration: data/kbli-filiera/batch-reports/batchA-calibration.md (m1-m5, SIGNED f5892d39)"
