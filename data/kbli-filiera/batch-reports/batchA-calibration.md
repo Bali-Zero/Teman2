@@ -10,9 +10,9 @@
 
 | Artifact | Pin |
 | --- | --- |
-| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `764fc25e117d128e6c3f29e83e1c85b528621ee2` |
+| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `45bbc1f42a0c74d12c3021f56a54565a747a01c7` |
 | vault manifest (`data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json`) | sha256 `e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d` |
-| membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `556315dbe62c7900ef8e08dd60bb1ac0e579393b10d1c46a85e5a5e64689f3b4` |
+| membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `aa0a0a6980117d57321e625fdad4e1a89f19f5b34125614d8d9921fb50f60497` |
 
 ## Pilot A1 measurements (conductor-set baseline)
 

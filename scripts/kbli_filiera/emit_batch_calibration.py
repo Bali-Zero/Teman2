@@ -15,8 +15,11 @@ Inputs (all pinned, no network):
   - manifest:    data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json
                  (sha256 of the file AS COMMITTED = `manifest_digest`)
   - membership:  data/kbli-filiera/membership/batch-a-members.json
-                 (its own canonical_revision must point at the SAME canonical
-                 BLOB as our fenced HEAD — see `_validate_membership_pin`)
+                 (its own canonical_sha256 must equal sha256 of the canonical
+                 on disk — content-addressed, zero git; see
+                 `_validate_membership_pin`. Legacy artifacts without that
+                 field fall back to resolving canonical_revision via git,
+                 which is environment-fragile under a shallow CI checkout.)
   - pilot A1 measurements: PINNED LITERAL below, source
     research/operations/2026-07-17-kbli-pilot-a1-results.md (conductor-set).
 
@@ -153,14 +156,35 @@ def _canonical_revision() -> str:
 
 def _validate_membership_pin(membership: dict[str, Any], fenced_blob: str) -> None:
     """Content-aware pin check (scar W88 — verify by CONTENT, never by a
-    commit-SHA/ancestor proxy). membership.json pins the canonical git
+    commit-SHA/ancestor/git proxy). membership.json pins the canonical git
     REVISION it was emitted against; that commit and our fenced HEAD can
     legitimately differ (unrelated commits land between the two artifacts)
-    while the canonical FILE content stays byte-identical. We therefore
-    compare canonical BLOB hashes at the two revisions, never the revision
-    strings themselves — a literal SHA-string compare would spuriously abort
-    every time an unrelated commit landed after membership.json was emitted,
-    which is exactly the proxy-that-lies failure mode W88 documents."""
+    while the canonical FILE content stays byte-identical.
+
+    PRIMARY path — content-addressed, zero git: membership carries
+    `canonical_sha256` (sha256 of the canonical file bytes, added
+    2026-07-18). We compare that directly against sha256 of the canonical
+    on disk. No git call at all, so this works in a SHALLOW CI checkout
+    (depth=1), which does not have historical commit objects for arbitrary
+    `canonical_revision` SHAs — resolving those via git 128'd in CI (see
+    the fallback path below, which is what broke).
+
+    FALLBACK path — legacy membership artifacts emitted before
+    `canonical_sha256` existed: resolve `canonical_revision:<path>` via git
+    and compare blob hashes. This still works locally (full clone) but is
+    the environment-fragile path; any CalledProcessError here is wrapped
+    with a clear "re-emit membership" pointer rather than a bare git 128."""
+    pinned_sha256 = membership.get("canonical_sha256")
+    if pinned_sha256:
+        current_sha256 = _sha256_file(CANONICAL)
+        if pinned_sha256 != current_sha256:
+            raise CalibrationError(
+                "membership artifact's canonical_sha256 does NOT match the canonical on disk "
+                f"(membership={pinned_sha256[:12]} current={current_sha256[:12]}) "
+                "— membership was built against different data; re-emit it before calibrating."
+            )
+        return
+
     pinned_rev = membership.get("canonical_revision")
     if not pinned_rev:
         raise CalibrationError("membership artifact missing canonical_revision")
@@ -168,7 +192,10 @@ def _validate_membership_pin(membership: dict[str, Any], fenced_blob: str) -> No
         pinned_blob = _git("rev-parse", f"{pinned_rev}:{CANONICAL_REL}")
     except subprocess.CalledProcessError as e:
         raise CalibrationError(
-            f"membership's pinned canonical_revision {pinned_rev!r} is not resolvable: {e}"
+            f"membership's pinned canonical_revision {pinned_rev!r} is not resolvable "
+            "(shallow clone? historical commit objects are absent in a depth=1 checkout) "
+            "— re-emit membership to get content-addressed pinning (canonical_sha256 field) "
+            f"instead of relying on git history: {e}"
         ) from e
     if pinned_blob != fenced_blob:
         raise CalibrationError(

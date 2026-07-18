@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -210,6 +211,7 @@ def test_fencing_aborts_on_mutated_canonical(tmp_path, monkeypatch):
 
 
 def test_validate_membership_pin_rejects_mismatched_blob():
+    # legacy shape: no canonical_sha256 -> exercises the git-blob FALLBACK path
     with pytest.raises(c.CalibrationError):
         c._validate_membership_pin({"canonical_revision": "deadbeef" * 5}, fenced_blob="x" * 40)
 
@@ -217,6 +219,88 @@ def test_validate_membership_pin_rejects_mismatched_blob():
 def test_validate_membership_pin_requires_canonical_revision_field():
     with pytest.raises(c.CalibrationError):
         c._validate_membership_pin({}, fenced_blob="x" * 40)
+
+
+# --- content-addressed pin (shallow-clone-safe, zero git) ------------------
+#
+# CI runs on a SHALLOW checkout (depth=1): historical commit objects for an
+# arbitrary `canonical_revision` SHA are absent, so resolving them via git
+# 128's (observed live: PR #2665 FAIL 1). The content-addressed path below
+# must never invoke git at all when `canonical_sha256` is present.
+
+
+def test_validate_membership_pin_content_path_never_calls_git(monkeypatch):
+    real_sha256 = c._sha256_file(c.CANONICAL)
+    membership = {"canonical_sha256": real_sha256, "canonical_revision": "irrelevant-in-content-path"}
+    git_calls: list[tuple] = []
+
+    def _boom(*args, **kwargs):
+        git_calls.append(args)
+        raise AssertionError("content-addressed path must not call git")
+
+    monkeypatch.setattr(c, "_git", _boom)
+    c._validate_membership_pin(membership, fenced_blob="unused")  # must not raise
+    assert git_calls == [], f"content-addressed path called git: {git_calls}"
+
+
+def test_validate_membership_pin_content_path_mismatch_never_calls_git(monkeypatch):
+    membership = {"canonical_sha256": "0" * 64, "canonical_revision": "irrelevant-in-content-path"}
+
+    def _boom(*args, **kwargs):
+        raise AssertionError("content-addressed path must not call git")
+
+    monkeypatch.setattr(c, "_git", _boom)
+    with pytest.raises(c.CalibrationError):
+        c._validate_membership_pin(membership, fenced_blob="unused")
+
+
+def test_validate_membership_pin_fallback_wraps_shallow_clone_128(monkeypatch):
+    """Legacy membership (no canonical_sha256): simulates the exact CI
+    failure — resolving an arbitrary historical commit's tree entry 128's
+    under a shallow checkout. The error must be wrapped with a clear
+    're-emit membership' pointer, never a bare git CalledProcessError."""
+    membership = {"canonical_revision": "4328b1bbd604a0934680be9d0a416075fd8d5c44"}
+
+    def _boom(*args, **kwargs):
+        raise subprocess.CalledProcessError(
+            128, ["git", "rev-parse"], output="", stderr="fatal: Not a valid object name"
+        )
+
+    monkeypatch.setattr(c, "_git", _boom)
+    with pytest.raises(c.CalibrationError, match="shallow"):
+        c._validate_membership_pin(membership, fenced_blob="unused")
+
+
+def test_membership_artifact_carries_content_addressed_pin():
+    """The real, committed membership artifact must carry canonical_sha256
+    (re-emitted alongside this fix) — this is what makes the content path
+    the PRIMARY path rather than dead code."""
+    membership = c._load_membership()
+    assert "canonical_sha256" in membership
+    assert re.match(r"^[0-9a-f]{64}$", membership["canonical_sha256"])
+    assert membership["canonical_sha256"] == c._sha256_file(c.CANONICAL)
+
+
+def test_end_to_end_membership_pin_survives_shallow_clone_simulation(monkeypatch):
+    """The full main()-shaped flow (fence canonical -> load membership ->
+    validate pin) must succeed even when git cannot resolve ANY historical
+    revision — the exact shallow-CI shape that broke PR #2665. `_git` is
+    only allowed to answer HEAD-relative queries (which a depth=1 checkout
+    CAN resolve); anything else 128's, matching real shallow-clone behavior."""
+    real_git = c._git
+
+    def _shallow_git(*args: str) -> str:
+        joined = " ".join(args)
+        if "HEAD" in joined and "4328b1bb" not in joined:
+            return real_git(*args)
+        raise subprocess.CalledProcessError(128, ["git", *args], output="", stderr="fatal: shallow")
+
+    monkeypatch.setattr(c, "_git", _shallow_git)
+    canonical_revision = c._canonical_revision()
+    assert len(canonical_revision) == 40
+    fenced_blob = c._fenced_canonical_blob()
+    membership = c._load_membership()
+    c._validate_membership_pin(membership, fenced_blob)  # must not raise: content path, zero git
 
 
 # --- integration: real repo inputs -----------------------------------------
