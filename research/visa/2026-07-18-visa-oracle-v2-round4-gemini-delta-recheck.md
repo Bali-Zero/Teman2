@@ -128,3 +128,32 @@ effective dates.
   arbitration.
 - FASE 2 content: BVK nationality answers CANNOT ship until the Macau/Morocco arbitration closes
   (zero-wrong-answers bar).
+
+## Adversarial review
+
+**Generator:** gemini-3.1-pro (High) via agy — the round-4 regulatory delta lane.
+**Grader (≠ generator):** an independent web-grounded + NotebookLM arbitration lane (Sonnet with live
+WebSearch/WebFetch against primary sources — imigrasi.go.id, kemenimipas.go.id, JDIH, SSEK/ABNR — plus
+NB-2 and NB-INTEL-Immigration as ground-truth cross-checks). Seat recorded as `notebooklm` (the
+allowlisted ground-truth authority that participated).
+
+**Objections raised: 2. Surviving after arbitration: 0 (both resolved against primary sources).**
+
+1. **Kepmen M.IP-08/2025 effective date** — the generator's baseline lineage carried `2026-06-02`.
+   Refuted: the decree's own dictum KELIMA ("+30 hari from ditetapkan 02 Mei 2025") plus SSEK + ABNR
+   law-firm consensus and June-2025 Indonesian press fix the effective date at **2025-06-02**. The
+   grader corrected the generator; the engine `valid_from` uses the corrected value. (Residual 1-day
+   tension 1-vs-2 June recorded as an authoring caveat, not a surviving objection.)
+2. **BVK +6 states "MO" ambiguity** — the generator's shorthand `MO` was ambiguous (Macau vs Morocco).
+   Resolved: the official imigrasi.go.id 19-entry list + Kompas verbatim confirm **Macau**, and mark
+   **Morocco FALSE**. No surviving objection.
+
+**Coverage gap surfaced (not an objection to the content, a finding about the pipeline):**
+NB-INTEL-Immigration had NO source on Permenimipas 10/2026 one week post-signing — filed for nb-curator
+(PENDING NB-INTEL-GAP in the visaoracle corner). This does not weaken the two verdicts above (both
+closed on primary web sources), but is logged so the ground-truth authority's own staleness is visible
+(W90 discipline: the ground truth ages too).
+
+**Verdict: SURVIVES — both load-bearing claims confirmed against primary sources; the only open item
+(B211*→C-series Lampiran mapping) is explicitly marked UNRESOLVED and gates FASE 2 content, not the
+engine PRs.**
