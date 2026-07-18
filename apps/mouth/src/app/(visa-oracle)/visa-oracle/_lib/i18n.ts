@@ -137,6 +137,7 @@ const en = {
   "restart.button": "Start over",
   "verdict.edit_answers": "Edit answers",
 
+  "tree.edit_aria": "Edit answer: {{question}}",
   "tree.framing": "Start",
   "tree.in_indonesia": "Where you are",
   "tree.permit_expiry": "Permit window",
@@ -216,6 +217,12 @@ const en = {
   "outcome.next_steps.default.2": "Gather the documents listed above",
   "outcome.next_steps.default.3": "Confirm your timeline before booking travel",
   "outcome.whatsapp_cta": "Continue on WhatsApp",
+  "outcome.qr_aria":
+    "QR code — scan to continue this summary on WhatsApp on your phone",
+  "outcome.print_cta": "Print / save as PDF",
+  "outcome.copy_cta": "Copy summary",
+  "outcome.copy_confirmed": "Copied to clipboard",
+  "outcome.copy_failed": "Couldn't copy — try selecting the text manually",
   "outcome.assumptions_receipt_title": "Assumptions & caveats, dated",
   "outcome.assumptions_receipt_empty":
     "No assumptions were needed — every answer was given directly.",
@@ -414,6 +421,7 @@ const id: Record<Keys, string> = {
   "restart.button": "Mulai ulang",
   "verdict.edit_answers": "Ubah jawaban",
 
+  "tree.edit_aria": "Ubah jawaban: {{question}}",
   "tree.framing": "Mulai",
   "tree.in_indonesia": "Posisi Anda",
   "tree.permit_expiry": "Jendela izin tinggal",
@@ -486,6 +494,12 @@ const id: Record<Keys, string> = {
   "outcome.next_steps.default.3":
     "Pastikan linimasa Anda sebelum memesan perjalanan",
   "outcome.whatsapp_cta": "Lanjutkan di WhatsApp",
+  "outcome.qr_aria":
+    "Kode QR — pindai untuk melanjutkan ringkasan ini di WhatsApp lewat ponsel Anda",
+  "outcome.print_cta": "Cetak / simpan sebagai PDF",
+  "outcome.copy_cta": "Salin ringkasan",
+  "outcome.copy_confirmed": "Disalin ke papan klip",
+  "outcome.copy_failed": "Gagal menyalin — coba pilih teksnya secara manual",
   "outcome.assumptions_receipt_title": "Asumsi & catatan, bertanggal",
   "outcome.assumptions_receipt_empty":
     "Tidak ada asumsi yang diperlukan — semua jawaban diberikan langsung.",

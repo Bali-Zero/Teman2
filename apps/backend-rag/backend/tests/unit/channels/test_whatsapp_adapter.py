@@ -184,13 +184,16 @@ class TestWhatsAppFormatter:
         assert "S5" not in result
 
     def test_format_source_without_url(self) -> None:
+        """Sources without a public url look internal and are dropped entirely."""
         response = ChannelResponse(
             text="A",
             sources=[{"title": "Offline Doc"}],
             metadata={},
         )
         result = WhatsAppMessageFormatter.format_response(response)
-        assert "1. Offline Doc" in result
+        assert result == "A"
+        assert "Offline Doc" not in result
+        assert "Fonti" not in result
 
     def test_format_with_workflow(self, response_with_workflow: ChannelResponse) -> None:
         result = WhatsAppMessageFormatter.format_response(response_with_workflow)
@@ -307,7 +310,7 @@ class TestWhatsAppAdapter:
         self,
         adapter: WhatsAppChannelAdapter,
     ) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(AttributeError):
             await adapter.receive_message({"entry": "bad"})
 
     async def test_send_response_success(

@@ -66,11 +66,15 @@ class TestVerificationStage:
 
         assert result["verification_score"] == 1.0
         assert result["verification_status"] == "skipped"
+        assert result["verdict_available"] is True
         mock_svc.verify_response.assert_not_called()
 
     async def test_verification_service_raise_yields_error_status_and_half_score(self):
         """VerificationStage error path: verify_response raises ValueError →
-        score=0.5, status='error'. No unhandled raise escapes.
+        score=0.5, status='error', verdict_available=False (defense-in-depth
+        net — verification_service itself never raises, but if it did, the
+        placeholder score must never be mistaken for a real verdict).
+        No unhandled raise escapes.
         """
         stage = VerificationStage(min_response_length=50)
         data = {
@@ -88,8 +92,78 @@ class TestVerificationStage:
         # Error path
         assert result["verification_score"] == 0.5
         assert result["verification_status"] == "error"
+        assert result["verdict_available"] is False
         # No `verification` dict populated (the happy-path-only field)
         assert "verification" not in result
+
+    async def test_verification_propagates_verdict_unavailable_from_service(self):
+        """2026-07-18 fix: when verification_service returns a real
+        VerificationResult with verdict_available=False (e.g. the verifier
+        LLM returned an empty response), the pipeline must propagate that
+        flag verbatim into `data["verdict_available"]` — this is what
+        reasoning.py reads to skip self-correction.
+        """
+        from backend.services.rag.verification_service import (
+            VerificationResult,
+            VerificationStatus,
+        )
+
+        stage = VerificationStage(min_response_length=50)
+        data = {
+            "response": "a" * 100,
+            "query": "q",
+            "context_chunks": ["some context chunk"],
+        }
+
+        fake_result = VerificationResult(
+            is_valid=True,
+            status=VerificationStatus.PARTIALLY_VERIFIED,
+            score=0.5,
+            reasoning="Verifier LLM returned an empty response. Verdict unavailable.",
+            verdict_available=False,
+        )
+        with patch(
+            "backend.services.rag.agentic.pipeline.verification_service",
+        ) as mock_svc:
+            mock_svc.verify_response = AsyncMock(return_value=fake_result)
+            result = await stage.process(data)
+
+        assert result["verification_score"] == 0.5
+        assert result["verdict_available"] is False
+        assert result["verification"]["verdict_available"] is False
+
+    async def test_verification_propagates_verdict_available_on_normal_response(self):
+        """Innocence: a normal, successfully-parsed verdict propagates
+        verdict_available=True (byte-identical score/status/is_valid
+        behavior, plus the new flag)."""
+        from backend.services.rag.verification_service import (
+            VerificationResult,
+            VerificationStatus,
+        )
+
+        stage = VerificationStage(min_response_length=50)
+        data = {
+            "response": "a" * 100,
+            "query": "q",
+            "context_chunks": ["some context chunk"],
+        }
+
+        fake_result = VerificationResult(
+            is_valid=True,
+            status=VerificationStatus.VERIFIED,
+            score=0.95,
+            reasoning="All claims supported",
+        )
+        with patch(
+            "backend.services.rag.agentic.pipeline.verification_service",
+        ) as mock_svc:
+            mock_svc.verify_response = AsyncMock(return_value=fake_result)
+            result = await stage.process(data)
+
+        assert result["verification_score"] == 0.95
+        assert result["verification_status"] == "verified"
+        assert result["verdict_available"] is True
+        assert result["verification"]["verdict_available"] is True
 
 
 # ============================================================================

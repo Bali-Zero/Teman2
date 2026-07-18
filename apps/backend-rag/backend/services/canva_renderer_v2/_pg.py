@@ -10,6 +10,8 @@ Functions:
 - release_lease_permanent(conn, ..., status=...) — set terminal status
 - reset_stale_leases(conn, stale_after_minutes) — watchdog recovery
 - requeue_draft_for_rerender(conn, draft_id) — official re-render verb (DB leg)
+- rebrief_draft(conn, draft_id) — official remake-hygiene verb: reset to 'briefed'
+  + atomically clear fact-check trio + render leg
 """
 
 from __future__ import annotations
@@ -21,6 +23,26 @@ from uuid import UUID
 import asyncpg
 
 logger = logging.getLogger(__name__)
+
+# Status whitelist for rebrief_draft below — single-sourced here (not just embedded
+# in the SQL string) so the CLI dry-run preview (scripts/wr2_daily_reconciler.py)
+# can classify eligibility with the EXACT same set, never a hand-copied duplicate
+# (cicatrix #9 schema-drift: one list on each side of a contract always rots).
+# Every literal validated against the `war_room_drafts_status_check` CHECK
+# constraint in migrations_v2/245_war_room_drafts_parked_status.sql (the SSOT).
+REBRIEF_STATUS_WHITELIST: tuple[str, ...] = (
+    "drafts",
+    "drafts_checked",
+    "drafts_imaged",
+    "drafts_imaged_facted",
+    "drafts_imaged_checked",
+    "rendering",
+    "rendered",
+    "render_failed",
+    "fact_check_failed",
+    "image_failed",
+)
+_REBRIEF_STATUS_IN_CLAUSE = ", ".join(f"'{s}'" for s in REBRIEF_STATUS_WHITELIST)
 
 
 async def is_kill_switch_enabled(conn: asyncpg.Connection) -> bool:
@@ -107,6 +129,107 @@ async def requeue_draft_for_rerender(conn: asyncpg.Connection, draft_id: UUID | 
         )
         return False
     logger.info("requeue_draft_for_rerender: draft %s back in HTML lane", draft_id)
+    return True
+
+
+async def rebrief_draft(conn: asyncpg.Connection, draft_id: UUID | str) -> bool:
+    """Official remake-hygiene verb: reset a COMPOSED draft back to 'briefed' so it
+    recomposes cleanly from its existing brief_json, atomically clearing every
+    downstream field a stale draft would otherwise leave dangling. Same W82
+    exist-not-content shape as `requeue_draft_for_rerender` above: the row EXISTS
+    at a later pipeline stage but its content is now stale relative to the fresh
+    recompose the operator wants — the gates below decide who re-runs on it.
+
+    Why each field is cleared (every one gates a downstream worker's fetch):
+    - status = 'briefed': the draft-generator fetches on this status — the draft
+      recomposes from brief_json instead of dragging forward the old slides.
+    - fact_check_json/status/at = NULL: the fact-EXTRACTOR gates on
+      `fact_check_json IS NULL` to decide whether to run. A stale (non-NULL) JSON
+      from the PREVIOUS compose makes it skip — the checker then runs against
+      facts that no longer describe the recomposed content.
+    - drive_url = NULL: the HTML lane's fetch gates on `drive_url IS NULL` — a
+      stale url from a PREVIOUS render starves re-entry forever (identical W82
+      shape to the one `requeue_draft_for_rerender` cures for the render-only leg).
+    - html_render_attempts = 0: a rebrief is a NEW retry budget — carrying a
+      previously-burned attempts counter forward would let the first transient
+      error of the new cycle go terminal (same reasoning as the sibling fn).
+    - canva_design_id/edit_url/view_url/applied_at = NULL (Codex red-team B5
+      round): the legacy Canva lane's fetch (`fetch_pending_draft_ids` above)
+      filters on `canva_edit_url IS NULL` — a stale edit_url from the PREVIOUS
+      generation would make a remade draft look already-designed, and the
+      recomposed content would carry the OLD generation's Canva design forward
+      silently. Same W82 exist-not-content shape as drive_url.
+
+    Guards:
+    - CAS on `lease_owner IS NULL`: a draft mid-lane (fact-check/image/render) is
+      never yanked from under its worker.
+    - status whitelist: only drafts that already reached compose-or-later may be
+      rebriefed — a pre-compose draft ('briefed'/'briefed_facted'/'researched'/
+      'concept') is a no-op, it's already at/before this state — and only
+      mid-pipeline or failure-retry states, NEVER a deliberate human/terminal
+      state ('rejected'/'parked'/'published'/'approved'/'pending_review'/
+      'missed'). See module-level `REBRIEF_STATUS_WHITELIST` (single-sourced
+      for the CLI dry-run preview too) — every literal validated against the
+      `war_room_drafts_status_check` CHECK constraint in
+      migrations_v2/245_war_room_drafts_parked_status.sql — the SSOT — NOT the
+      ORM DraftStatus enum, which is a strict subset (omits drafts_imaged*,
+      drafts_checked, fact_check_failed, image_failed).
+    - CALLER MUST also check the review QUEUE before calling this (Codex
+      red-team B5 BLOCKER): `published`/`rejected` are queue-only states —
+      Damar's mark_published/mark_rejected write ONLY the queue JSON, never
+      war_room_drafts.status — so a draft can carry DB status='rendered' while
+      the queue already says 'published'. This DB-only whitelist cannot see
+      that and WOULD let it through. `scripts/wr2_daily_reconciler.py::
+      _cmd_rebrief` calls `wr2_rerender_requeue.check_queue_state()` first and
+      refuses on a published queue entry — this function stays pure DB (no
+      filesystem/queue access) and trusts its caller for that guard, exactly
+      like `wr2_rerender_requeue.py`'s own `_run()` does for the sibling verb.
+
+    LIMITATION (Codex red-team B5, not fixed here — ledgered): the
+    fact-extractor (wr2_fact_extractor.py) and fact-checker (wr2_fact_checker.py)
+    lanes are lease-blind by EXISTING design — they fetch drafts without a
+    lease and persist unconditionally (`UPDATE ... WHERE id=$1`, no status/lease
+    guard). A rebrief run concurrently with an in-flight fact-worker on the SAME
+    draft can be silently undone: the worker writes stale facts + advances
+    status, clobbering the reset after the fact. This is the fact lanes'
+    pre-existing lease-blindness, not something rebrief introduces — re-run
+    rebrief if the draft doesn't end up reset. A deeper fix (status-guard the
+    fact-worker persist, same CAS discipline as the render/image leases) is
+    out of scope for this verb and belongs in a follow-up on those two workers.
+
+    Out of scope: hero-image fields / image lease. Recomposition regenerates
+    slides and the image lane re-runs on the new slides — if a hero-image field
+    also goes stale, that's a follow-up, not this verb's job.
+
+    Returns True when the draft was reset, False (leased, wrong status, or not
+    found) otherwise.
+    """
+    row = await conn.fetchrow(
+        f"""
+        UPDATE war_room_drafts
+           SET status = 'briefed',
+               fact_check_json = NULL,
+               fact_check_status = NULL,
+               fact_check_at = NULL,
+               drive_url = NULL,
+               html_render_attempts = 0,
+               canva_design_id = NULL,
+               canva_edit_url = NULL,
+               canva_view_url = NULL,
+               canva_applied_at = NULL
+         WHERE id = $1
+           AND lease_owner IS NULL
+           AND status IN ({_REBRIEF_STATUS_IN_CLAUSE})
+        RETURNING id
+        """,
+        draft_id,
+    )
+    if row is None:
+        logger.warning(
+            "rebrief_draft: draft %s NOT rebriefed (leased or wrong status)", draft_id
+        )
+        return False
+    logger.info("rebrief_draft: draft %s reset to briefed (remake hygiene)", draft_id)
     return True
 
 

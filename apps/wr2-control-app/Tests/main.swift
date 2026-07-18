@@ -363,6 +363,133 @@ func test_reviewQueueJoin() {
     T.check(match(5) == nil, "'other' does not join 2026-07-08-other-topic-deadbeef (suffix not hex id)")
 }
 
+// MARK: - review queue tolerant decode (one malformed entry must not blank the rest)
+
+func test_queueTolerantDecode_skipsOneMalformed() {
+    T.suite("review queue tolerant decode — skips one malformed entry (GUILT)")
+    let json = """
+    [
+      {"item_id":"ok-1","topic":"Valid one","state":"pass"},
+      "garbage",
+      {"item_id":"ok-2","topic":"Valid two","state":"soft_fail"}
+    ]
+    """
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    T.check(fm.fileExists(atPath: url.path), "fixture written to disk")
+    defer { try? fm.removeItem(at: url) }
+
+    let items = WarRoom.readQueue(queueFile: url)
+    T.eq(items.count, 2, "1 malformed (non-object) entry skipped, 2 valid entries recovered — not a stale/empty fallback")
+    T.check(items.contains { $0.item_id == "ok-1" }, "valid entry #1 (ok-1) present")
+    T.check(items.contains { $0.item_id == "ok-2" }, "valid entry #2 (ok-2) present")
+}
+
+func test_queueTolerantDecode_skipsWrongTypedObject() {
+    T.suite("review queue tolerant decode — skips a wrong-typed OBJECT entry (GUILT, realistic corruption)")
+    // Middle entry IS an object (unlike the "garbage" string case) but item_id is a NUMBER,
+    // not a String — throws typeMismatch inside dec.decode(ReviewItem.self, ...), exercising
+    // the per-element decode-failure branch (WarRoom.swift readQueue), not the non-object branch.
+    let json = """
+    [
+      {"item_id":"ok-a","topic":"A","state":"pass"},
+      {"item_id":42},
+      {"item_id":"ok-b","topic":"B","state":"pass"}
+    ]
+    """
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    T.check(fm.fileExists(atPath: url.path), "fixture written to disk")
+    defer { try? fm.removeItem(at: url) }
+
+    let items = WarRoom.readQueue(queueFile: url)
+    T.eq(items.count, 2, "wrong-typed object (item_id as number) skipped, 2 valid entries recovered")
+    T.eq(items.map { $0.item_id ?? "?" }, ["ok-a", "ok-b"], "recovered ids are exactly ok-a and ok-b, in order")
+}
+
+func test_queueTolerantDecode_allValidUnchanged() {
+    T.suite("review queue tolerant decode — all-valid array unchanged (INNOCENCE 1, fast path)")
+    let json = """
+    [
+      {"item_id":"v1","topic":"One","state":"pass"},
+      {"item_id":"v2","topic":"Two","state":"soft_fail"},
+      {"item_id":"v3","topic":"Three","state":"drafted"}
+    ]
+    """
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    T.check(fm.fileExists(atPath: url.path), "fixture written to disk")
+    defer { try? fm.removeItem(at: url) }
+
+    let items = WarRoom.readQueue(queueFile: url)
+    T.eq(items.count, 3, "fully-valid N-entry array still returns all N — fast path unchanged")
+}
+
+func test_queueTolerantDecode_truncatedKeepsLastGood() {
+    T.suite("review queue tolerant decode — truncated write keeps M3 last-good (INNOCENCE 2)")
+
+    // Establish a KNOWN lastGoodQueue first — static state is shared across tests.
+    let goodJSON = """
+    [
+      {"item_id":"g1","topic":"Good one","state":"pass"},
+      {"item_id":"g2","topic":"Good two","state":"soft_fail"}
+    ]
+    """
+    let goodURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? goodJSON.data(using: .utf8)!.write(to: goodURL)
+    T.check(fm.fileExists(atPath: goodURL.path), "setup fixture written to disk")
+    defer { try? fm.removeItem(at: goodURL) }
+    let goodItems = WarRoom.readQueue(queueFile: goodURL)
+    T.eq(goodItems.count, 2, "setup: valid queue establishes lastGoodQueue")
+
+    // Truncated mid-write: not valid JSON of ANY shape (not even a complete array).
+    let truncatedContent = "[{\"item_id\":\"g1\",\"topic\":\"Good one\",\"stat"
+    let truncatedURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? truncatedContent.data(using: .utf8)!.write(to: truncatedURL)
+    // Prove readQueue actually SAW a bad file, not an absent one (Codex: a silently-failed
+    // write would make Data(contentsOf:) fail too, returning lastGoodQueue for the WRONG
+    // reason and passing this test without ever exercising the tolerant-decode path).
+    T.check(fm.fileExists(atPath: truncatedURL.path), "truncated fixture written to disk")
+    T.check((try? Data(contentsOf: truncatedURL))?.isEmpty == false, "truncated fixture is non-empty on disk")
+    defer { try? fm.removeItem(at: truncatedURL) }
+
+    let items = WarRoom.readQueue(queueFile: truncatedURL)
+    T.eq(items.count, 2, "M3 preserved: truncated file keeps the previous 2 items, not 0, not partial")
+    T.eq(items.map { $0.item_id ?? "?" }, ["g1", "g2"], "returned items are EXACTLY the prior lastGoodQueue (g1, g2), not some other N-count")
+}
+
+func test_queueTolerantDecode_allMalformedKeepsLastGood() {
+    T.suite("review queue tolerant decode — every entry malformed keeps last-good (INNOCENCE 3, anti-blank)")
+
+    // Establish a KNOWN lastGoodQueue first — static state is shared across tests.
+    let goodJSON = """
+    [
+      {"item_id":"h1","topic":"Held one","state":"pass"},
+      {"item_id":"h2","topic":"Held two","state":"soft_fail"},
+      {"item_id":"h3","topic":"Held three","state":"drafted"}
+    ]
+    """
+    let goodURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? goodJSON.data(using: .utf8)!.write(to: goodURL)
+    T.check(fm.fileExists(atPath: goodURL.path), "setup fixture written to disk")
+    defer { try? fm.removeItem(at: goodURL) }
+    let goodItems = WarRoom.readQueue(queueFile: goodURL)
+    T.eq(goodItems.count, 3, "setup: valid queue establishes lastGoodQueue")
+
+    // Valid, COMPLETE JSON array — but every single entry is malformed (not an object).
+    let allBadJSON = #"["garbage", "more garbage", 42]"#
+    let badURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? allBadJSON.data(using: .utf8)!.write(to: badURL)
+    // Prove readQueue actually SAW the all-bad file, not an absent/unwritten one.
+    T.check(fm.fileExists(atPath: badURL.path), "all-malformed fixture written to disk")
+    T.check((try? Data(contentsOf: badURL))?.isEmpty == false, "all-malformed fixture is non-empty on disk")
+    defer { try? fm.removeItem(at: badURL) }
+
+    let items = WarRoom.readQueue(queueFile: badURL)
+    T.eq(items.count, 3, "all-malformed array does NOT blank to 0 — keeps the prior 3 (systemic failure, not per-entry)")
+    T.eq(items.map { $0.item_id ?? "?" }, ["h1", "h2", "h3"], "returned items are EXACTLY the prior lastGoodQueue (h1, h2, h3), not some other N-count")
+}
+
 // MARK: - A2 complete-or-nothing gate (2026-07-16 mandate)
 
 func test_completeOrNothingGate() {
@@ -1103,6 +1230,121 @@ func test_externalManualCompletenessGateGuiltInnocence() {
     T.eq(external?.slideCount, 0, "INNOCENCE: slideCount reflects the declared 0")
 }
 
+// MARK: - Gate-exclusion delta-emission (2026-07-18 wound: ~29 lines re-emitted to
+// wr2control.err on EVERY scanCarousels refresh, ~30MB/day). Swaps WarRoom.exclusionEmit
+// (the injectable test seam) for an array-recorder so the stderr WRITE is assertable
+// deterministically, distinct from excludedIncompleteCount (the UI count), which must
+// NEVER be affected by delta-emission dedup.
+
+func test_gateExclusionDeltaEmission() {
+    T.suite("gate-exclusion delta-emission — stderr write deduped across scans, count never deduped (2026-07-18)")
+
+    let originalEmit = WarRoom.exclusionEmit
+    defer { WarRoom.exclusionEmit = originalEmit }
+    var emitted: [String] = []
+    WarRoom.exclusionEmit = { emitted.append($0) }
+
+    // --- GUILT (dedup) + INNOCENCE (count unchanged) ---------------------------------
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        _ = makeCarousel(in: root, slug: "delta-dedup-guilt", slides: ["1.png", "2.png"], declareSlides: .absent)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "GUILT scan 1: steady-state exclusion is emitted exactly once")
+        T.eq(WarRoom.excludedIncompleteCount, 1, "INNOCENCE scan 1: count reflects the 1 excluded dir")
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 0, "GUILT scan 2: the SAME steady-state exclusion emits ZERO lines on the next scan")
+        T.eq(WarRoom.excludedIncompleteCount, 1,
+             "INNOCENCE scan 2: excludedIncompleteCount STILL counts it — delta-emission dedupes the WRITE, never the count")
+    }
+
+    // --- NEW mid-run: excluded on scan 2 but not scan 1 -------------------------------
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        _ = makeCarousel(in: root, slug: "delta-new-midrun", slides: (1...3).map { "\($0).png" })   // complete N-of-N
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 0, "NEW scan 1: complete carousel excludes nothing yet")
+
+        // simulate a mid-render dir losing a slide between the two scans (declared count
+        // stays 3 in the already-written slides.json — only the disk count drops to 2).
+        let slidesDir = croot.appendingPathComponent("delta-new-midrun/slides", isDirectory: true)
+        try? fm.removeItem(at: slidesDir.appendingPathComponent("3.png"))
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "NEW scan 2: an exclusion appearing for the FIRST time is emitted once")
+    }
+
+    // --- REAPPEAR: excluded scan 1, absent scan 2, excluded scan 3 -------------------
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        let dir = makeCarousel(in: root, slug: "delta-reappear", slides: ["1.png"], declareSlides: .objectSlides(3))
+        // declared=3, disk=1 → excluded (mismatch reason)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "REAPPEAR scan 1: initial exclusion emits once")
+
+        // scan 2: the dir is gone entirely — nothing to exclude, and this ALSO drops the
+        // key from the delta memory (scanCarousels' final-return commit is a scan-scoped
+        // REPLACE of lastLoggedExclusions, not a running union).
+        try? fm.removeItem(at: dir)
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 0, "REAPPEAR scan 2: the dir is absent — nothing excluded, nothing emitted")
+
+        // scan 3: the SAME slug+reason exclusion reappears — since scan 2 dropped it from
+        // memory, it must be treated as new again and logged once more.
+        _ = makeCarousel(in: root, slug: "delta-reappear", slides: ["1.png"], declareSlides: .objectSlides(3))
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "REAPPEAR scan 3: a re-appearing exclusion (absent in between) is logged again")
+    }
+
+    // --- FAILURE-PATH memory: an early-return scan must not wipe the dedup memory ----
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        _ = makeCarousel(in: root, slug: "delta-failure-path-x", slides: ["1.png"], declareSlides: .absent)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "FAILURE-PATH scan A (good): first-time exclusion X emits once")
+
+        // scan B hits the early `guard let entries = ... else { return [] }` failure path —
+        // a nonexistent root can never be listed by contentsOfDirectory.
+        let badRoot = root.appendingPathComponent("does-not-exist-\(UUID().uuidString)", isDirectory: true)
+        emitted.removeAll()
+        let failedScan = WarRoom.scanCarousels(carouselRoot: badRoot, queue: [])
+        T.eq(failedScan.count, 0, "FAILURE-PATH scan B: unreadable root returns an empty carousel list")
+        T.eq(emitted.count, 0, "FAILURE-PATH scan B: the early-return path itself emits nothing (no dirs were scanned)")
+
+        // scan C is a GOOD scan again, on the ORIGINAL root, with a genuinely NEW exclusion
+        // Z added alongside the still-present X.
+        _ = makeCarousel(in: root, slug: "delta-failure-path-z", slides: ["1.png", "2.png"], declareSlides: .absent)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "FAILURE-PATH scan C: emits ONLY the genuinely-new exclusion Z (does NOT go silent)")
+        T.check(emitted.first?.contains("delta-failure-path-z") == true,
+                "FAILURE-PATH scan C: the one emitted line is Z, not a re-storm of X")
+        T.check(emitted.contains { $0.contains("delta-failure-path-x") } == false,
+                "FAILURE-PATH scan C: X stays silent — the failed scan B did NOT wipe its memory (no re-storm)")
+    }
+}
+
 // MARK: - main
 
 let suites: [() -> Void] = [
@@ -1115,6 +1357,11 @@ let suites: [() -> Void] = [
     test_topicPrompt,
     test_adversarialFixes,
     test_reviewQueueJoin,
+    test_queueTolerantDecode_skipsOneMalformed,
+    test_queueTolerantDecode_skipsWrongTypedObject,
+    test_queueTolerantDecode_allValidUnchanged,
+    test_queueTolerantDecode_truncatedKeepsLastGood,
+    test_queueTolerantDecode_allMalformedKeepsLastGood,
     test_completeOrNothingGate,
     test_matchCarouselPrecedenceOrder,
     test_completeOrNothingGateHardening,
@@ -1135,6 +1382,7 @@ let suites: [() -> Void] = [
     test_matchesAnyPhysicalInstagramURL,
     test_scanCarouselsDedupesVirtualEntrySharingURL,
     test_externalManualCompletenessGateGuiltInnocence,
+    test_gateExclusionDeltaEmission,
 ]
 for s in suites { s() }
 exit(T.report())

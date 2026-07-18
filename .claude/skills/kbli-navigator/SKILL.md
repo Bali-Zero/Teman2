@@ -59,6 +59,7 @@ false-friends **49213, 51103, 51203, 20111, 50115, 60312, 64310**:
   other 5 are not in gold. → after this lands + Vercel rebuild, the 8-code pilot is fully honest on
   every consuming surface.
 - **KG dedup partial cure** #2528 landed (scoped); root fix is Fase 2 (below).
+- **TRACK-P product/UI layer PROVEN-LIVE** (2026-07-18, PR #2632 + badge-fix PR #2643, both merged, `apps/mouth` only — data-plane untouched): every `/kbli/<code>` page now RENDERS the honesty contract. A **provenance badge** (verified 1,336 / crosswalk-pending 215 / not-classifiable 8) derived in `apps/mouth/src/lib/kbli-provenance.ts` from structured markers ONLY (`_l2_source` EXACT-match `OSS_RBA_resiko_2025`, `_l2_status`, `per_skala_disputed_*` keys — never prose; disputed wins precedence over a stale OSS marker on 49213/20111; unknown marker → `unverified_source`, no invented vintage). A **"Sources & Verification"** per-layer panel (source + KBLI vintage + verdict; PMA disclosed as Perpres 10/49 vintage-2020 audit-pending). A **"Regulatory Divergence"** section on the 8 cured codes (verbatim `_data_note` + detached rows as audit trail + citation chips conditional on markers). FAQ (visible + FAQPage JSON-LD), Article JSON-LD, both key-facts grids and every RiskBadge carry the crosswalk-pending qualifier; not-classifiable codes no longer claim "special/sectoral regime". Wording rule F12 enforced (404 = "not retrievable via OSS API", never "not published"; detach copy speaks only about OUR verification, never asserts regulatory absence). Codex GPT-5.6 adversarial gate, 7 rounds (2 BLOCKER + 6 MAJOR cured) → SHIP. Also fixed the `TransitionBadge` (Direct Match/Renumbered/Aggregated/New-in-2025) from hardcoded light-mode Tailwind to `--kbli-*` dark-theme tokens (PR #2643). **BOUNDARY (recorded so nobody re-investigates):** `kbli-explorer` (the AI-chat inspect surface) canNOT show this provenance client-side — it consumes `/api/v1/kbli-notebook/inspect/<code>` returning `KBLIDetail`, which carries NO markers (`risk_profile`/`licensing_status` only). Aligning it is a BACKEND payload change (expose the verification state in `inspect_kbli`), NOT an apps/mouth task. Cured codes already degrade correctly there via the #2596/#2597 backend cure. **Follow-ups still open (owner/lane-gated, not apps/mouth):** F12-conformant rewrite of the verbatim `_data_note` texts (data-plane, filiera compilers); PMA verdict re-label on PMABadge/hero across all 1,559 pages (FATAL-2 axis, Zero decision — Legge 5).
 
 **What is NOT done (the actual remaining program):** ~213 no-scope codes un-adjudicated · the
 `pma_status` cross-vintage audit across the catalog · the KG 68% disease at the root · the 63
@@ -75,6 +76,42 @@ vs census). **Open quarantines (proposed in PR #2622, NOT resolved):** BPS Vol.1
 probe after 2026-07-19T18:10Z · stray mirror copy in `nuzantara-warroom-images/kbli-vault/`
 (pre-fix run) to delete. **EXTRACTION GATE — collapsed to ONE precondition (updated 2026-07-18):** the gate is now just **P0 membership** (#2640 LANDING; the Detect Secrets git-SHA false-positive on `canonical_revision` was fixed via a durable auto-triage rule for `data/kbli-filiera/membership/`, proven end-to-end; auto-merge armed SQUASH). Two prior "gates" dissolved: (a) **renders are NOT a bulk pre-build** — the PP28 300-dpi renders are produced **on-demand per-code at D2** from the sha256-pinned PP28 PDFs (`pdftoppm -r 300`, deterministic, offline); (b) the **OSS endpoint inventory is DONE** (6,236/6,236 pairs, in the manifest). **P1-v2 addendum HELD until AFTER Pilota A1** — Zero ruling 2026-07-18 (_"aspetti dopo il Pilota A1 così misuriamo prima su vault-core pulito"_): Perpres 10/49 + Bali/Kepmenaker + per-instrument status snapshots come as a SECOND vault wave; `pma_status`/`l4_bali`/TKA facets **abstain fail-safe** (A1/A5/A6) this pass and are lifted later — never published wrong. **⇒ Pilota A1 starts on the OSS+PP28+BPS core the moment P0 is on main.** Genuinely-deferred (NOT gates): BPS Vol.1 (Turnstile → browser lane), absence-window one probe after 2026-07-19T18:10Z, stray warroom mirror copy to delete.
 
+**Batch-A Lot 1 conductor gate SIGNED, second signing post-red-team (2026-07-18, MANDATO S2
+session):** final verdict **13/13 quarantine, 0 certified** on the first A-serving lot (a
+contiguous taxonomy-ordered segment, divisions 01→39 — NOT a random sample; no extrapolation to
+the full ~221 class claimed, but fail-safe: every no-scope code is a SUSPECT until proven). The
+lane (same-family Sonnet D1/D5) had certified 8 clean; 7 were FALSE-clean on content evidence
+(Codex refuter 2: 02402, 38222 · blind-GLM-with-vision 5: 05200, 01287, 02201, 08920, 36003) and
+the 8th (19206) was quarantined under the plan's preregistered divergence rule (A-6(a): two
+cross-family seats vs the conductor's own picked clean — caught by the mandated full-report
+red-team, Codex sol FIX-FIRST 4 BLOCKER/4 MAJOR/4 MINOR, all cured not argued down). Disease
+categories censused: **payload_cross_contamination** (licensing payload whose content belongs to
+another activity), **unresolvable_source_pointer** (pp28_sources row not retrievable from the
+pinned corpus as hunted — NOT asserted nonexistent; earned ABSENT needs the image-grade scan),
+**mapping_metadata_false**, **split-generic-payload** (19206). Meta-pattern: _same-family blind
+agreement measures transcription fidelity, not truth; a provenance pointer is not a content
+check_ → cross-family IMAGE-GROUNDED blind D5 + D4 content-vs-scope check are now LANE protocol
+(GO package §10). Calibration: FOUR declared breaches — m1 ❌ 0.385 (cross-family extractor IAA;
+the lane's blindness measured), m2 ❌ 0.000, m3 ⚠️ new-category pause, m5 ❌ NEG 7/8 (49213
+miss) — via plan amendments A-4/A-5/A-6; never silently resumed. **m5 HALT LIFTED (A-6(b)
+RESOLVED, same session):** the 49213 NEG miss was adjudicated per-ancestor on image-grade renders
+(49213-2025 = merge of {49214, 49219, 49413}-2020; all 3 PP28 regimes verified BY EYE identical —
+NIB+SS, Bupati/Wali Kota — the unique case where a merge's ancestors converge, vs 01700 where they
+diverge) → the miss is a certifiable-restore case, not a silent gap; restore of 49213 is a
+scheduled data-plane cure (dedicated PR, `pp28_sources=['49214','49219','49413']`). Artifacts:
+report `research/operations/2026-07-18-kbli-batch-a-lot1-conductor-gate.md` (signed, §12
+receipts) · cure spec `scripts/kbli_filiera/cure_specs/batch_a_lot1.json` (13 codes, detach-only,
+no substitute values, PMA/l4/TKA still abstain) · registry test
+`scripts/tests/test_kbli_batch_a_lot1_registry.py` (module-gated on `_cure_applied()`) · Qdrant
+clear tool `apps/backend-rag/backend/scripts/kbli_qdrant_risk_clear.py` (dry-run default,
+`--codes` required). None of the 13 in gold (verified vs all 428); KG has 147 live REQUIRES edges
+across the 13 (counted on prod) → detach via `kg_kbli_license_fix.py` post-apply. **GO GRANTED
+(Zero, 2026-07-18, Legge 5): explicit "go" on the Batch-A remainder + EXTENDED GO ("quando
+finisce lot 2 procedi con gli altri lot senza fermarti") — continuous lot-by-lot execution of the
+whole remainder (~101 in-scope codes, lots 2→~9) under the amended lane protocol, no per-lot GO
+needed; Zero is notified at Lot 2 kickoff. A-6(c) precondition (calibration registry v2
+re-emission on the cured canonical) ships in the governance PR before the Lot 2 lane starts.**
+
 **Governance flags:**
 
 - **Filiera methodology**: panel CONCLUDED. Doc `research/operations/2026-07-16-kbli-filiera-methodology.md`
@@ -83,6 +120,15 @@ probe after 2026-07-19T18:10Z · stray mirror copy in `nuzantara-warroom-images/
   measured pilot report is the basis for the batch-A-remainder GO.
 - **BKPM discrepancy findings stay INTERNAL** (Zero, 2026-07-16): the 68112 surat klarifikasi stays
   drafted in the drawer, not sent, without a fresh Zero GO.
+- **PMA primary-verdict labeling — RULED (Zero, 2026-07-18, Legge 5):** the headline PMA verdict
+  (hero PMABadge + verdict banner + Foreign-Ownership key-facts cells + OG status chip) STAYS a clean
+  OPEN/RESTRICTED/CLOSED. The Perpres-10/49 vintage-2020 + crosswalk-pending status (FATAL-2 axis) is
+  disclosed ONLY in the TRACK-P "Sources & Verification" panel (already live), NOT stamped on the
+  headline verdict. Rationale: the PMA values are the in-force investment-list annexes (not the
+  per_skala silent-fill disease), largely correct; the FATAL-2 per-code crosswalk refines the
+  underlying values later. → the "PMA re-label" follow-up is CLOSED (ruled), not open — do not
+  re-open without a fresh Zero GO.
+
 - **data-plane guard LIVE** (#2550): only `scripts/kbli_filiera/` compilers may write the canonical
   KBLI dataset + `data/kbli-filiera/**`; interactive hand-edits BLOCKED. Registry
   `infra/claude-hooks/data-plane-registry.json` is the extension point. Kill switch

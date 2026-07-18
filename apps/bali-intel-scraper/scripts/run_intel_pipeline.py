@@ -147,6 +147,16 @@ def build_staging_payload(art: dict) -> dict:
         _tier = enr.get("liveness_tier")
         payload["liveness_tier"] = _tier if _tier else _derive_tier_from_score(enr["live_news_score"])
         payload["live_news_reasons"] = (enr.get("live_news_reasons") or [])[:3]
+    # WR2 enrichment passthrough (scar family #9, state-schema mutation
+    # drift): the full structured enricher object above was FLATTENED into
+    # content/brief/faq/slug/tags — never sent as a nested object — so
+    # wr2_topic_selector.py's `top_item.get("enrichment") or {}` always saw
+    # {} (verified 2026-06-24: {} on 12/12 drafts). Additive only: does NOT
+    # remove the flattened fields above (other surfaces may still read
+    # them). Only set when non-empty so a partial deploy degrades
+    # gracefully (today's behavior either direction).
+    if enr:
+        payload["enrichment"] = enr
     return payload
 
 
