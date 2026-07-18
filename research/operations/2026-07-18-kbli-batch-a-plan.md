@@ -208,6 +208,27 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
   historically accurate; this amendment governs its interpretation). Emit fencing (§4) shall
   compare the canonical BLOB at emit time against `3cfe8134d`, re-basing if it moved.
 
+- **A-4 (2026-07-18, conductor) — m2 control-limit BREACH on Lot 1: acknowledged, adjudicated,
+  root-caused (conductor-signed resume note per calibration §5).** Final conductor-adjudicated
+  certification rate for Lot 1 is **1/13 = 0.077**, below the m2 floor 0.20. Root cause is
+  **population disease, not seat drift**: the cross-family tightening (blind GLM-5.2 second
+  extraction with vision + Codex refuter passes) exposed that 12 of 13 A-serving codes carry
+  uncertifiable per_skala — 7 with payload content belonging to OTHER activities (seed-certification
+  blobs on 02402/02201, a salt-extraction marine regime on peat 08920, a mining-concession regime on
+  beneficiation 05102, generic-B3 on radioactive 38122/38222, generic agriculture on narcotic-crop
+  01287) and 5 with phantom/unverifiable PP28 source pointers or non-inheritable ancestry (05200,
+  36003 ABSENT-as-hunted; 01700 6-way merge; 02409 many-to-many; 39001 storage/marine rows on a
+  capture code). Every flip was conductor-verified BY EYE on the canonical payloads and vault
+  records — the seats' claims were re-grounded, never trusted (W65). The m2 floor 0.20 was
+  calibrated on the pilot (0.417), whose sample was ENRICHED with known collisions and,
+  counter-intuitively, therefore OVERSTATED the health of the un-enriched A-serving population:
+  Batch A's in-scope codes are BY CONSTRUCTION the silent-fill class — the July disease at ~92%
+  prevalence in this first true-random slice. Decision: NO silent resume — Lot 2 was already
+  firebreak-gated on Zero's GO; with the GO package this amendment proposes m2 for A-serving lots
+  be re-registered as **advisory-floor 0.0 / hard-ceiling 0.85** (a floor breach on a population
+  whose measured baseline disease rate is ~92% carries no drift signal; the ceiling keeps catching
+  rubber-stamp drift). m1 (blind concordance) stays as-is and PASSED (conductor-gate report §6-§7).
+
 ## Adversarial review
 
 Codex GPT-5.6-sol (high effort, read-only, 2026-07-18) attacked v1 of this plan against the
