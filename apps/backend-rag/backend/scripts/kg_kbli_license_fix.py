@@ -2,8 +2,10 @@
 kg_kbli_license_fix.py — remove collision/contaminated licensing (REQUIRES
 edges) from the Postgres knowledge graph for KBLI codes whose CANONICAL
 dataset record says there is no per-code licensing to show
-(`per_skala == []`), and re-sync the node's description/uraian off the same
-canonical record.
+(`per_skala == []`), re-sync the node's description/uraian off the same
+canonical record, AND mark `properties.licensing_status =
+"PENDING_REGULATION"` so the router stops defaulting a freshly-declared
+honest gap to "REGULATED".
 
 WHY (2026-07-16/17, PENDING-ARMS follow-up to #2508, extended for
 GARUDA-FILIERA Fase 1): `inspect_kbli 68112` returned REQUIRES-linked
@@ -45,6 +47,23 @@ trail that can go stale or get lost. Idempotent: a re-run that finds the
 edges already gone (current REQUIRES targets = []) does not touch — and
 does not blank — a `_disputed_requires` archive written by an earlier run.
 
+CLASS DEFECT FIXED THIS VERSION (2026-07-18, Lot 1 discovery): this script
+detached/archived the disputed REQUIRES edges and re-synced
+description/uraian, but never wrote `properties.licensing_status` — so a
+cured node has NO explicit key, and the router (`kbli_notebook.py`
+`props.get("licensing_status", "REGULATED")`) falls back to the default
+"REGULATED", presenting a freshly-declared honest gap as if it were still
+regulated. For the pilot's 8 codes and Lot 1's 13 codes this was patched
+with a one-shot ad-hoc write directly in prod, never versioned. This
+version closes that class of bug: every `per_skala_empty` cure ALSO sets
+`properties.licensing_status = "PENDING_REGULATION"` in the SAME UPDATE —
+idempotent, a re-run that finds it already `"PENDING_REGULATION"` is a
+declared no-op, same discipline as the `_disputed_requires` archive above.
+A code that is NOT a cure (`per_skala` non-empty/absent, `delete_all_requires
+= False`) never has this field touched — whatever `licensing_status` it
+already carries (or lacks) survives untouched, same as every other field
+outside the licensing-cure decision.
+
 WHAT IT DOES per `--only` code:
   1. Load the canonical record — see `--dataset` below for local-file vs
      URL.
@@ -65,7 +84,11 @@ WHAT IT DOES per `--only` code:
         where `properties.uraian` — which the router prefers over
         `description`, see `kbli_notebook.py` `props.get("uraian",
         node["description"])` — was never re-synced).
-     d. If the canonical record carries a `_data_note`, mirror it into
+     d. Set `properties.licensing_status = "PENDING_REGULATION"` in the
+        SAME UPDATE (idempotent: a value already `"PENDING_REGULATION"` is
+        a declared no-op) — the class-cure this version adds, see the
+        "CLASS DEFECT FIXED THIS VERSION" paragraph above.
+     e. If the canonical record carries a `_data_note`, mirror it into
         `properties._data_note` (never fabricated — only copied verbatim).
   Orphaned target nodes (0 remaining edges after the delete) are left in
   place, not deleted — conservative default, they are inert once nothing
@@ -129,6 +152,7 @@ class LicenseFixPlan:
     new_properties: dict | None = None
     update_node: bool = False
     skip_reason: str | None = None
+    licensing_status_note: str | None = None  # human-readable transition, set only for cures
 
 
 def plan_fix(
@@ -200,6 +224,24 @@ def plan_fix(
         # own per_skala_disputed_pp28_collision pattern (never silent-delete).
         new_props["_disputed_requires"] = disputed
 
+    licensing_status_note: str | None = None
+    if delete_all_requires:
+        # Class-cure (2026-07-18, Lot 1 discovery): a per_skala_empty gap is
+        # an honest "no licensing defined" verdict, but the router
+        # (`kbli_notebook.py` `props.get("licensing_status", "REGULATED")`)
+        # falls back to "REGULATED" whenever the key is absent — so every
+        # cured code needs its own explicit marker, not just detached edges.
+        # Idempotent: writing the same value again is a declared no-op (the
+        # note says so; the actual props dict ends up unchanged either way).
+        old_licensing_status = old_props.get("licensing_status")
+        if old_licensing_status == "PENDING_REGULATION":
+            licensing_status_note = "licensing_status already PENDING_REGULATION (no-op)"
+        else:
+            licensing_status_note = (
+                f"licensing_status: {old_licensing_status or 'missing'} -> PENDING_REGULATION"
+            )
+        new_props["licensing_status"] = "PENDING_REGULATION"
+
     old_description = kg_row["description"]
     description_stale = bool(uraian) and old_description != uraian
     props_stale = new_props != old_props
@@ -221,6 +263,7 @@ def plan_fix(
         new_properties=new_props if update_node else None,
         update_node=update_node,
         skip_reason=None if per_skala_empty else "per_skala non-empty (or absent) — no generic derivation path",
+        licensing_status_note=licensing_status_note,
     )
 
 
@@ -325,11 +368,12 @@ async def main() -> None:
 
             if plan.update_node:
                 logger.info(
-                    "  %s: would update description/properties.uraian (%d chars)%s%s",
+                    "  %s: would update description/properties.uraian (%d chars)%s%s%s",
                     code,
                     len(plan.new_description or ""),
                     " + _data_note" if plan.new_properties and plan.new_properties.get("_data_note") else "",
                     f" + _disputed_requires({len(plan.disputed_requires)})" if plan.disputed_requires else "",
+                    f" + {plan.licensing_status_note}" if plan.licensing_status_note else "",
                 )
                 if args.apply:
                     # W89 jsonb double-encoding class-guard: bind the pre-serialized
@@ -344,6 +388,12 @@ async def main() -> None:
                         plan.new_description,
                         json.dumps(plan.new_properties, ensure_ascii=False),
                     )
+            elif plan.licensing_status_note:
+                # delete_all_requires True but nothing at all changed this
+                # run (edges already gone, uraian/data_note already synced,
+                # licensing_status already PENDING_REGULATION) — declare the
+                # no-op explicitly rather than staying silent about it.
+                logger.info("  %s: %s (no other changes)", code, plan.licensing_status_note)
     finally:
         await conn.close()
 
