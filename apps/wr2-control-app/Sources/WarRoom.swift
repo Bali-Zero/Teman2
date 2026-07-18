@@ -639,6 +639,43 @@ enum WarRoom {
             lastGoodQueue = items
             return items
         }
-        return lastGoodQueue   // decode failed (partial write) → keep last known good
+        // Whole-array decode failed. One malformed entry must not blank the other N-1
+        // valid ones (they'd otherwise fall all the way back to the stale M3 cache).
+        // First confirm the file is a COMPLETE, well-formed JSON array at all — a
+        // mid-write truncation is still not valid JSON of ANY shape, and must keep
+        // hitting the M3 last-good fallback exactly as before.
+        guard let jsonObject = try? JSONSerialization.jsonObject(with: data),
+              let elements = jsonObject as? [Any] else {
+            return lastGoodQueue   // not a complete JSON array → partial write, keep last good
+        }
+        // (an empty [] array is already handled by the fast-path decode above)
+        var recovered: [ReviewItem] = []
+        var skipped = 0
+        for element in elements {
+            guard let dict = element as? [String: Any],
+                  let elementData = try? JSONSerialization.data(withJSONObject: dict),
+                  let item = try? dec.decode(ReviewItem.self, from: elementData) else {
+                skipped += 1
+                continue
+            }
+            recovered.append(item)
+        }
+        guard recovered.isEmpty == false else {
+            // Every entry failed — a systemic/schema break, not per-entry corruption.
+            // Don't blank the gallery (M3 anti-blank spirit extends here too) — but stay
+            // observable (scar #2, esiste≠armato): a totally-incompatible new schema must
+            // be visible in the log, not a silent stale-cache hold forever.
+            FileHandle.standardError.write(
+                "wr2-queue: all \(elements.count) entries failed to decode — keeping \(lastGoodQueue.count) last-good (possible schema break)\n"
+                    .data(using: .utf8)!)
+            return lastGoodQueue
+        }
+        lastGoodQueue = recovered
+        if skipped > 0 {
+            FileHandle.standardError.write(
+                "wr2-queue: recovered \(recovered.count)/\(elements.count) entries, skipped \(skipped) malformed\n"
+                    .data(using: .utf8)!)
+        }
+        return recovered
     }
 }

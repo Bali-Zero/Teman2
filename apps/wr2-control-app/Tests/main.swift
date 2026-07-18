@@ -363,6 +363,133 @@ func test_reviewQueueJoin() {
     T.check(match(5) == nil, "'other' does not join 2026-07-08-other-topic-deadbeef (suffix not hex id)")
 }
 
+// MARK: - review queue tolerant decode (one malformed entry must not blank the rest)
+
+func test_queueTolerantDecode_skipsOneMalformed() {
+    T.suite("review queue tolerant decode — skips one malformed entry (GUILT)")
+    let json = """
+    [
+      {"item_id":"ok-1","topic":"Valid one","state":"pass"},
+      "garbage",
+      {"item_id":"ok-2","topic":"Valid two","state":"soft_fail"}
+    ]
+    """
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    T.check(fm.fileExists(atPath: url.path), "fixture written to disk")
+    defer { try? fm.removeItem(at: url) }
+
+    let items = WarRoom.readQueue(queueFile: url)
+    T.eq(items.count, 2, "1 malformed (non-object) entry skipped, 2 valid entries recovered — not a stale/empty fallback")
+    T.check(items.contains { $0.item_id == "ok-1" }, "valid entry #1 (ok-1) present")
+    T.check(items.contains { $0.item_id == "ok-2" }, "valid entry #2 (ok-2) present")
+}
+
+func test_queueTolerantDecode_skipsWrongTypedObject() {
+    T.suite("review queue tolerant decode — skips a wrong-typed OBJECT entry (GUILT, realistic corruption)")
+    // Middle entry IS an object (unlike the "garbage" string case) but item_id is a NUMBER,
+    // not a String — throws typeMismatch inside dec.decode(ReviewItem.self, ...), exercising
+    // the per-element decode-failure branch (WarRoom.swift readQueue), not the non-object branch.
+    let json = """
+    [
+      {"item_id":"ok-a","topic":"A","state":"pass"},
+      {"item_id":42},
+      {"item_id":"ok-b","topic":"B","state":"pass"}
+    ]
+    """
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    T.check(fm.fileExists(atPath: url.path), "fixture written to disk")
+    defer { try? fm.removeItem(at: url) }
+
+    let items = WarRoom.readQueue(queueFile: url)
+    T.eq(items.count, 2, "wrong-typed object (item_id as number) skipped, 2 valid entries recovered")
+    T.eq(items.map { $0.item_id ?? "?" }, ["ok-a", "ok-b"], "recovered ids are exactly ok-a and ok-b, in order")
+}
+
+func test_queueTolerantDecode_allValidUnchanged() {
+    T.suite("review queue tolerant decode — all-valid array unchanged (INNOCENCE 1, fast path)")
+    let json = """
+    [
+      {"item_id":"v1","topic":"One","state":"pass"},
+      {"item_id":"v2","topic":"Two","state":"soft_fail"},
+      {"item_id":"v3","topic":"Three","state":"drafted"}
+    ]
+    """
+    let url = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? json.data(using: .utf8)!.write(to: url)
+    T.check(fm.fileExists(atPath: url.path), "fixture written to disk")
+    defer { try? fm.removeItem(at: url) }
+
+    let items = WarRoom.readQueue(queueFile: url)
+    T.eq(items.count, 3, "fully-valid N-entry array still returns all N — fast path unchanged")
+}
+
+func test_queueTolerantDecode_truncatedKeepsLastGood() {
+    T.suite("review queue tolerant decode — truncated write keeps M3 last-good (INNOCENCE 2)")
+
+    // Establish a KNOWN lastGoodQueue first — static state is shared across tests.
+    let goodJSON = """
+    [
+      {"item_id":"g1","topic":"Good one","state":"pass"},
+      {"item_id":"g2","topic":"Good two","state":"soft_fail"}
+    ]
+    """
+    let goodURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? goodJSON.data(using: .utf8)!.write(to: goodURL)
+    T.check(fm.fileExists(atPath: goodURL.path), "setup fixture written to disk")
+    defer { try? fm.removeItem(at: goodURL) }
+    let goodItems = WarRoom.readQueue(queueFile: goodURL)
+    T.eq(goodItems.count, 2, "setup: valid queue establishes lastGoodQueue")
+
+    // Truncated mid-write: not valid JSON of ANY shape (not even a complete array).
+    let truncatedContent = "[{\"item_id\":\"g1\",\"topic\":\"Good one\",\"stat"
+    let truncatedURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? truncatedContent.data(using: .utf8)!.write(to: truncatedURL)
+    // Prove readQueue actually SAW a bad file, not an absent one (Codex: a silently-failed
+    // write would make Data(contentsOf:) fail too, returning lastGoodQueue for the WRONG
+    // reason and passing this test without ever exercising the tolerant-decode path).
+    T.check(fm.fileExists(atPath: truncatedURL.path), "truncated fixture written to disk")
+    T.check((try? Data(contentsOf: truncatedURL))?.isEmpty == false, "truncated fixture is non-empty on disk")
+    defer { try? fm.removeItem(at: truncatedURL) }
+
+    let items = WarRoom.readQueue(queueFile: truncatedURL)
+    T.eq(items.count, 2, "M3 preserved: truncated file keeps the previous 2 items, not 0, not partial")
+    T.eq(items.map { $0.item_id ?? "?" }, ["g1", "g2"], "returned items are EXACTLY the prior lastGoodQueue (g1, g2), not some other N-count")
+}
+
+func test_queueTolerantDecode_allMalformedKeepsLastGood() {
+    T.suite("review queue tolerant decode — every entry malformed keeps last-good (INNOCENCE 3, anti-blank)")
+
+    // Establish a KNOWN lastGoodQueue first — static state is shared across tests.
+    let goodJSON = """
+    [
+      {"item_id":"h1","topic":"Held one","state":"pass"},
+      {"item_id":"h2","topic":"Held two","state":"soft_fail"},
+      {"item_id":"h3","topic":"Held three","state":"drafted"}
+    ]
+    """
+    let goodURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? goodJSON.data(using: .utf8)!.write(to: goodURL)
+    T.check(fm.fileExists(atPath: goodURL.path), "setup fixture written to disk")
+    defer { try? fm.removeItem(at: goodURL) }
+    let goodItems = WarRoom.readQueue(queueFile: goodURL)
+    T.eq(goodItems.count, 3, "setup: valid queue establishes lastGoodQueue")
+
+    // Valid, COMPLETE JSON array — but every single entry is malformed (not an object).
+    let allBadJSON = #"["garbage", "more garbage", 42]"#
+    let badURL = fm.temporaryDirectory.appendingPathComponent("q-\(UUID()).json")
+    try? allBadJSON.data(using: .utf8)!.write(to: badURL)
+    // Prove readQueue actually SAW the all-bad file, not an absent/unwritten one.
+    T.check(fm.fileExists(atPath: badURL.path), "all-malformed fixture written to disk")
+    T.check((try? Data(contentsOf: badURL))?.isEmpty == false, "all-malformed fixture is non-empty on disk")
+    defer { try? fm.removeItem(at: badURL) }
+
+    let items = WarRoom.readQueue(queueFile: badURL)
+    T.eq(items.count, 3, "all-malformed array does NOT blank to 0 — keeps the prior 3 (systemic failure, not per-entry)")
+    T.eq(items.map { $0.item_id ?? "?" }, ["h1", "h2", "h3"], "returned items are EXACTLY the prior lastGoodQueue (h1, h2, h3), not some other N-count")
+}
+
 // MARK: - A2 complete-or-nothing gate (2026-07-16 mandate)
 
 func test_completeOrNothingGate() {
@@ -1230,6 +1357,11 @@ let suites: [() -> Void] = [
     test_topicPrompt,
     test_adversarialFixes,
     test_reviewQueueJoin,
+    test_queueTolerantDecode_skipsOneMalformed,
+    test_queueTolerantDecode_skipsWrongTypedObject,
+    test_queueTolerantDecode_allValidUnchanged,
+    test_queueTolerantDecode_truncatedKeepsLastGood,
+    test_queueTolerantDecode_allMalformedKeepsLastGood,
     test_completeOrNothingGate,
     test_matchCarouselPrecedenceOrder,
     test_completeOrNothingGateHardening,

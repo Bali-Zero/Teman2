@@ -129,7 +129,7 @@ forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.p
   TBD (needs the rendered HTML / a faithful Pro-side repro) + must non-regress all photo statement-bombs.
   **Fix is already BENCHED** (`_external-bench-2026-06.md:57`, translucent-caption-pill): an antracite ~75% translucent scrim/pill behind the `.statement` text over the full-bleed photo — closes the May "poor-contrast text-over-image" gap and is explicitly NOT an Art 15 violation (the ban targets color-coded kicker pills, not legibility scrims — document that for wr2-critic). So this is a BUILD of a benched device, not new research (though it touches brand rendering = Zero-gated). Ledgered (PENDING-ARMS 2026-07-18) · memory `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18`.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
-  M5 queue shared-lock protocol · Swift tolerant decode · plist validator red on main ·
+  M5 queue shared-lock protocol · plist validator red on main ·
   19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).
 
 ## 2. Anatomy — the hot files (verified 2026-07-17)
