@@ -3,11 +3,17 @@ import { existsSync } from "node:fs";
 import test from "node:test";
 
 import { runWithMagazineBindings } from "../lib/server/runtime-bindings.ts";
+import { readStoryDetail } from "../lib/server/magazine-read-model.ts";
 import {
   MemoryR2Bucket,
+  MALFORMED_JPEG,
+  MALFORMED_PNG,
+  MALFORMED_WEBP,
   SqliteD1Database,
+  VALID_JPEG,
   VALID_PNG,
   VALID_PNG_VARIANT,
+  VALID_WEBP,
   breakingPacket,
   collectorRun,
   editionPacket,
@@ -368,6 +374,175 @@ test(
       metadata,
     });
     assert.equal((await invoke(routes.asset, replay, bindings)).status, 200);
+
+    const story = storyVersion({
+      suffix: "asset-provenance",
+      assetDigest: metadata.sha256,
+    });
+    const publication = await signedMachineRequest({
+      path: "/api/machine/publications/breaking",
+      body: JSON.stringify(breakingPacket(story)),
+    });
+    assert.equal(
+      (await invoke(routes.breaking, publication, bindings)).status,
+      201,
+    );
+    const detail = await runWithMagazineBindings(bindings, () =>
+      readStoryDetail(story.slug),
+    );
+    assert.deepEqual(detail?.imageProvenance, {
+      altText: metadata.alt_text,
+      source: metadata.source,
+      sourceUrl: metadata.source_url,
+      rightsBasis: metadata.rights_basis,
+      rightsStatus: metadata.rights_status,
+      usageStatus: metadata.usage_status,
+      dlpStatus: metadata.dlp_status,
+      sanitizationStatus: metadata.sanitization_status,
+      perceptualDedupStatus: metadata.perceptual_dedup_status,
+      createdAt: row.created_at,
+    });
+  },
+);
+
+test(
+  "asset upload decodes JPEG, PNG, and WebP and rejects malformed compressed payloads",
+  { skip: !routesExist },
+  async () => {
+    const routes = await loadRoutes();
+    const fixtures = [
+      { mime: "image/jpeg", valid: VALID_JPEG, malformed: MALFORMED_JPEG },
+      { mime: "image/png", valid: VALID_PNG, malformed: MALFORMED_PNG },
+      { mime: "image/webp", valid: VALID_WEBP, malformed: MALFORMED_WEBP },
+    ];
+    for (const [index, fixture] of fixtures.entries()) {
+      const validDb = new SqliteD1Database();
+      const validMetadata = await validAssetMetadata(
+        {
+          asset_id: `asset-valid-format-${index}`,
+          mime_type: fixture.mime,
+        },
+        fixture.valid,
+      );
+      const validRequest = await signedMachineRequest({
+        path: "/api/machine/assets",
+        body: fixture.valid,
+        contentType: fixture.mime,
+        metadata: validMetadata,
+      });
+      assert.equal(
+        (await invoke(routes.asset, validRequest, runtimeBindings(validDb)))
+          .status,
+        201,
+        `${fixture.mime} valid fixture`,
+      );
+
+      const malformedDb = new SqliteD1Database();
+      const malformedMetadata = await validAssetMetadata(
+        {
+          asset_id: `asset-malformed-format-${index}`,
+          mime_type: fixture.mime,
+        },
+        fixture.malformed,
+      );
+      const malformedRequest = await signedMachineRequest({
+        path: "/api/machine/assets",
+        body: fixture.malformed,
+        contentType: fixture.mime,
+        metadata: malformedMetadata,
+      });
+      assert.equal(
+        (
+          await invoke(
+            routes.asset,
+            malformedRequest,
+            runtimeBindings(malformedDb),
+          )
+        ).status,
+        400,
+        `${fixture.mime} malformed fixture`,
+      );
+      assert.equal(
+        malformedDb.get("SELECT count(*) AS count FROM assets").count,
+        0,
+      );
+    }
+  },
+);
+
+test(
+  "content-addressed upload never overwrites an existing R2 object",
+  { skip: !routesExist },
+  async () => {
+    const routes = await loadRoutes();
+    const metadata = await validAssetMetadata();
+    const key = `assets/sha256/${metadata.sha256}.png`;
+
+    const identicalDb = new SqliteD1Database();
+    const identicalR2 = new MemoryR2Bucket();
+    await identicalR2.put(key, VALID_PNG, {
+      httpMetadata: { contentType: metadata.mime_type },
+      customMetadata: {
+        sha256: metadata.sha256,
+        byteCount: String(metadata.byte_count),
+        width: String(metadata.width),
+        height: String(metadata.height),
+      },
+    });
+    identicalR2.putCalls.length = 0;
+    const identicalRequest = await signedMachineRequest({
+      path: "/api/machine/assets",
+      body: VALID_PNG,
+      contentType: metadata.mime_type,
+      metadata,
+    });
+    assert.equal(
+      (
+        await invoke(
+          routes.asset,
+          identicalRequest,
+          runtimeBindings(identicalDb, identicalR2),
+        )
+      ).status,
+      201,
+    );
+    assert.deepEqual(identicalR2.putCalls, []);
+
+    const inconsistentDb = new SqliteD1Database();
+    const inconsistentR2 = new MemoryR2Bucket();
+    inconsistentR2.objects.set(key, {
+      bytes: Uint8Array.of(1, 2, 3),
+      httpMetadata: { contentType: metadata.mime_type },
+      customMetadata: {
+        sha256: metadata.sha256,
+        byteCount: String(metadata.byte_count),
+        width: String(metadata.width),
+        height: String(metadata.height),
+      },
+    });
+    const before = Uint8Array.from(inconsistentR2.objects.get(key).bytes);
+    const inconsistentRequest = await signedMachineRequest({
+      path: "/api/machine/assets",
+      body: VALID_PNG,
+      contentType: metadata.mime_type,
+      metadata,
+    });
+    assert.equal(
+      (
+        await invoke(
+          routes.asset,
+          inconsistentRequest,
+          runtimeBindings(inconsistentDb, inconsistentR2),
+        )
+      ).status,
+      409,
+    );
+    assert.deepEqual(inconsistentR2.putCalls, []);
+    assert.deepEqual(inconsistentR2.objects.get(key).bytes, before);
+    assert.equal(
+      inconsistentDb.get("SELECT count(*) AS count FROM assets").count,
+      0,
+    );
   },
 );
 

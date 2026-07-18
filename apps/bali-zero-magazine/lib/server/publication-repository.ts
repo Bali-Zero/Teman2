@@ -279,6 +279,12 @@ function graphGuardStatement(
            WHERE sar.packet_id = publication_packets.packet_id
              AND (
                asset.sha256 IS NULL
+               OR asset.usage_status <> 'approved'
+               OR asset.dlp_status <> 'passed'
+               OR asset.sanitization_status <> 'passed'
+               OR asset.perceptual_dedup_status NOT IN ('unique', 'intentional-reuse')
+               OR length(trim(asset.alt_text)) = 0
+               OR length(trim(asset.source)) = 0
                OR (
                  NOT EXISTS (
                    SELECT 1 FROM asset_status_events status_event
@@ -632,7 +638,9 @@ export function createPublicationRepository(
       db
         .prepare(
           `SELECT asset_id, packet_id, sha256, r2_key, mime_type, byte_count,
-                  width, height, captured_at, rights_status, status
+                  width, height, captured_at, alt_text, source, source_url,
+                  rights_basis, rights_status, usage_status, dlp_status,
+                  sanitization_status, perceptual_dedup_status, status
            FROM assets WHERE asset_id = ? OR sha256 = ? OR r2_key = ? LIMIT 1`,
         )
         .bind(asset.asset_id, asset.sha256, r2Key)
@@ -648,7 +656,15 @@ export function createPublicationRepository(
       row.width === asset.width &&
       row.height === asset.height &&
       row.captured_at === asset.captured_at &&
+      row.alt_text === asset.alt_text &&
+      row.source === asset.source &&
+      row.source_url === asset.source_url &&
+      row.rights_basis === asset.rights_basis &&
       row.rights_status === asset.rights_status &&
+      row.usage_status === asset.usage_status &&
+      row.dlp_status === asset.dlp_status &&
+      row.sanitization_status === asset.sanitization_status &&
+      row.perceptual_dedup_status === asset.perceptual_dedup_status &&
       row.status === "verified";
     const existing = await findExisting();
     if (existing !== null) {
@@ -660,9 +676,11 @@ export function createPublicationRepository(
         .prepare(
           `INSERT INTO assets(
              asset_id, packet_id, sha256, r2_key, mime_type, byte_count,
-             width, height, alt_text, source, rights_status, status, captured_at
+             width, height, alt_text, source, source_url, rights_basis,
+             rights_status, usage_status, dlp_status, sanitization_status,
+             perceptual_dedup_status, status, captured_at
            )
-           SELECT ?, ?, ?, ?, ?, ?, ?, ?, '', '', ?, 'verified', ?
+           SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'verified', ?
            WHERE (SELECT count(*) FROM assets WHERE packet_id = ?) < 20`,
         )
         .bind(
@@ -674,7 +692,15 @@ export function createPublicationRepository(
           asset.byte_count,
           asset.width,
           asset.height,
+          asset.alt_text,
+          asset.source,
+          asset.source_url,
+          asset.rights_basis,
           asset.rights_status,
+          asset.usage_status,
+          asset.dlp_status,
+          asset.sanitization_status,
+          asset.perceptual_dedup_status,
           asset.captured_at,
           asset.packet_id,
         )

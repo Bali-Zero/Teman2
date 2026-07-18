@@ -1,5 +1,4 @@
 // Node's type-stripping test runner executes the TypeScript source directly.
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { constantTimeEqualHex, hmacSha256Hex, sha256Hex } from "./security.ts";
 
 export const MACHINE_SIGNATURE_HEADERS = {

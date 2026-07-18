@@ -8,6 +8,13 @@
       "when": 1784392182776,
       "tag": "0000_magazine_core",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1784394605994,
+      "tag": "0001_thick_virginia_dare",
+      "breakpoints": true
     }
   ]
 }

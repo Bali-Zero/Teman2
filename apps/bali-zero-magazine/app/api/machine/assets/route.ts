@@ -1,19 +1,14 @@
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { parseAssetUploadMetadata } from "../../../../lib/contracts/collector.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import {
   authenticateMachineRequest,
   machineFailure,
   machineResult,
 } from "../../../../lib/server/machine-ingress.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import {
   storeVerifiedAsset,
   validateImageAsset,
 } from "../../../../lib/server/media.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { createPublicationRepository } from "../../../../lib/server/publication-repository.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { getMagazineBindings } from "../../../../lib/server/runtime-bindings.ts";
 
 const METADATA_HEADER = "x-magazine-asset-metadata";

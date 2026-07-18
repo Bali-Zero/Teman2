@@ -1,20 +1,20 @@
-import { headers } from "next/headers";
+import { headers } from "next/headers.js";
 
 import type {
   ClaimKind,
   EditionPlacementV1,
   StoryVersionV1,
-} from "../contracts/publication";
-import type { RoleAllowlist, Viewer } from "./authorization";
-import { authorize } from "./authorization";
-import { requireViewer } from "./identity";
+} from "../contracts/publication.ts";
+import type { RoleAllowlist, Viewer } from "./authorization.ts";
+import { authorize } from "./authorization.ts";
+import { requireViewer } from "./identity.ts";
 import type {
   D1DatabaseLike,
   PublishedEdition,
   PublishedStory,
-} from "./publication-repository";
-import { createPublicationRepository } from "./publication-repository";
-import { getMagazineBindings } from "./runtime-bindings";
+} from "./publication-repository.ts";
+import { createPublicationRepository } from "./publication-repository.ts";
+import { getMagazineBindings } from "./runtime-bindings.ts";
 
 export const DOMAIN_SECTIONS = [
   { key: "immigration", label: "Immigration" },
@@ -96,6 +96,13 @@ export type ClaimView = Readonly<{
 export type ImageProvenanceView = Readonly<{
   altText: string;
   source: string;
+  sourceUrl: string | null;
+  rightsBasis: string;
+  rightsStatus: "approved";
+  usageStatus: "approved";
+  dlpStatus: "passed";
+  sanitizationStatus: "passed";
+  perceptualDedupStatus: "unique" | "intentional-reuse";
   createdAt: string;
 }>;
 
@@ -151,6 +158,12 @@ type EvidenceRow = Readonly<{
 type AssetRow = Readonly<{
   alt_text: string;
   source: string;
+  source_url: string | null;
+  rights_basis: string;
+  usage_status: string;
+  dlp_status: string;
+  sanitization_status: string;
+  perceptual_dedup_status: string;
   created_at: string;
   status: string;
   rights_status: string;
@@ -253,7 +266,10 @@ async function readApprovedAsset(
   const result = await db
     .prepare(
       `/* magazine:story-assets */
-       SELECT asset.alt_text, asset.source, asset.created_at,
+       SELECT asset.alt_text, asset.source, asset.source_url,
+              asset.rights_basis, asset.usage_status, asset.dlp_status,
+              asset.sanitization_status, asset.perceptual_dedup_status,
+              asset.created_at,
               COALESCE((SELECT status.status
                 FROM asset_status_events status
                 WHERE status.asset_id = asset.asset_id
@@ -272,13 +288,27 @@ async function readApprovedAsset(
     .all<AssetRow>();
   const safe = (result.results ?? []).find(
     (asset) =>
-      asset.status === "verified" && asset.rights_status === "approved",
+      asset.status === "verified" &&
+      asset.rights_status === "approved" &&
+      asset.usage_status === "approved" &&
+      asset.dlp_status === "passed" &&
+      asset.sanitization_status === "passed" &&
+      ["unique", "intentional-reuse"].includes(asset.perceptual_dedup_status),
   );
   return safe === undefined
     ? null
     : {
         altText: safe.alt_text,
         source: safe.source,
+        sourceUrl: safe.source_url,
+        rightsBasis: safe.rights_basis,
+        rightsStatus: "approved",
+        usageStatus: "approved",
+        dlpStatus: "passed",
+        sanitizationStatus: "passed",
+        perceptualDedupStatus: safe.perceptual_dedup_status as
+          | "unique"
+          | "intentional-reuse",
         createdAt: safe.created_at,
       };
 }
@@ -305,7 +335,7 @@ async function composeFrontPage(
   const sourceSystems = await readSourceStatus(db);
   if (edition === null) return emptyFrontPage(sourceSystems, false);
 
-  const sectionOrder = new Map(
+  const sectionOrder = new Map<string, number>(
     DOMAIN_SECTIONS.map((section, index) => [section.key, index]),
   );
   const orderedEntries = [...edition.entries].sort(

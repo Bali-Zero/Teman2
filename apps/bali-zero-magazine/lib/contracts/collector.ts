@@ -1,5 +1,4 @@
 // Node's type-stripping test runner executes the TypeScript source directly.
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import {
   requireClosedRecord,
   requireEnum,
@@ -36,8 +35,43 @@ export type AssetUploadMetadataV1 = Readonly<{
   width: number;
   height: number;
   captured_at: string;
+  alt_text: string;
+  source: string;
+  source_url: string | null;
+  rights_basis:
+    | "internal-owned"
+    | "licensed"
+    | "public-domain"
+    | "official-use"
+    | "generated";
   rights_status: "approved";
+  usage_status: "approved";
+  dlp_status: "passed";
+  sanitization_status: "passed";
+  perceptual_dedup_status: "unique" | "intentional-reuse";
 }>;
+
+function requireSourceUrl(value: unknown): string | null {
+  if (value === null) return null;
+  const sourceUrl = requireString(value, "asset upload metadata.source_url");
+  let parsed: URL;
+  try {
+    parsed = new URL(sourceUrl);
+  } catch {
+    throw new TypeError("asset upload metadata.source_url must be a URL");
+  }
+  if (
+    !["http:", "https:"].includes(parsed.protocol) ||
+    parsed.username !== "" ||
+    parsed.password !== "" ||
+    parsed.hash !== ""
+  ) {
+    throw new TypeError(
+      "asset upload metadata.source_url must be a public HTTP URL",
+    );
+  }
+  return sourceUrl;
+}
 
 export function parseCollectorRunProjection(
   raw: unknown,
@@ -131,7 +165,15 @@ export function parseAssetUploadMetadata(raw: unknown): AssetUploadMetadataV1 {
     "width",
     "height",
     "captured_at",
+    "alt_text",
+    "source",
+    "source_url",
+    "rights_basis",
     "rights_status",
+    "usage_status",
+    "dlp_status",
+    "sanitization_status",
+    "perceptual_dedup_status",
   ]);
   if (asset.schema_version !== "asset-upload.v1") {
     throw new TypeError(
@@ -175,10 +217,44 @@ export function parseAssetUploadMetadata(raw: unknown): AssetUploadMetadataV1 {
       asset.captured_at,
       "asset upload metadata.captured_at",
     ),
+    alt_text: requireString(asset.alt_text, "asset upload metadata.alt_text"),
+    source: requireString(asset.source, "asset upload metadata.source"),
+    source_url: requireSourceUrl(asset.source_url),
+    rights_basis: requireEnum(
+      asset.rights_basis,
+      "asset upload metadata.rights_basis",
+      [
+        "internal-owned",
+        "licensed",
+        "public-domain",
+        "official-use",
+        "generated",
+      ] as const,
+    ),
     rights_status: requireEnum(
       asset.rights_status,
       "asset upload metadata.rights_status",
       ["approved"] as const,
+    ),
+    usage_status: requireEnum(
+      asset.usage_status,
+      "asset upload metadata.usage_status",
+      ["approved"] as const,
+    ),
+    dlp_status: requireEnum(
+      asset.dlp_status,
+      "asset upload metadata.dlp_status",
+      ["passed"] as const,
+    ),
+    sanitization_status: requireEnum(
+      asset.sanitization_status,
+      "asset upload metadata.sanitization_status",
+      ["passed"] as const,
+    ),
+    perceptual_dedup_status: requireEnum(
+      asset.perceptual_dedup_status,
+      "asset upload metadata.perceptual_dedup_status",
+      ["unique", "intentional-reuse"] as const,
     ),
   };
 }

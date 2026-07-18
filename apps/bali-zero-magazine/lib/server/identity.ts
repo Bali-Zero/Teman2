@@ -1,12 +1,10 @@
 // Node's type-stripping test runner executes the TypeScript source directly.
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import {
   effectiveRole,
   validateRoleAllowlist,
   type RoleAllowlist,
   type Viewer,
 } from "./authorization.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { hmacSha256Hex } from "./security.ts";
 
 export type IdentityConfig = Readonly<{

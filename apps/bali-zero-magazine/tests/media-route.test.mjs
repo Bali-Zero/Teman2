@@ -51,8 +51,10 @@ async function publishVisibleAsset({
   db.execute(
     `INSERT INTO assets(
        asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
-       height, alt_text, source, rights_status, status, captured_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       height, alt_text, source, source_url, rights_basis, rights_status,
+       usage_status, dlp_status, sanitization_status, perceptual_dedup_status,
+       status, captured_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     metadata.asset_id,
     metadata.packet_id,
     metadata.sha256,
@@ -63,7 +65,13 @@ async function publishVisibleAsset({
     metadata.height,
     "Task 5 editorial image",
     "Bali Zero editorial desk",
+    metadata.source_url,
+    metadata.rights_basis,
     rightsStatus,
+    metadata.usage_status,
+    metadata.dlp_status,
+    metadata.sanitization_status,
+    metadata.perceptual_dedup_status,
     status,
     metadata.captured_at,
   );
@@ -245,6 +253,27 @@ test(
     );
 
     stored.customMetadata.sha256 = fixture.metadata.sha256;
+    const canonicalKey = `assets/sha256/${fixture.metadata.sha256}.png`;
+    const driftedKey = `assets/sha256/${fixture.metadata.sha256}-drift.png`;
+    fixture.media.objects.set(
+      driftedKey,
+      fixture.media.objects.get(canonicalKey),
+    );
+    fixture.db.execute(
+      "UPDATE assets SET r2_key = ? WHERE asset_id = ?",
+      driftedKey,
+      fixture.metadata.asset_id,
+    );
+    assert.equal(
+      (await getMedia(handler, fixture.metadata.sha256, bindings)).status,
+      404,
+    );
+
+    fixture.db.execute(
+      "UPDATE assets SET r2_key = ? WHERE asset_id = ?",
+      canonicalKey,
+      fixture.metadata.asset_id,
+    );
     fixture.media.corruptReadBack = true;
     assert.equal(
       (await getMedia(handler, fixture.metadata.sha256, bindings)).status,

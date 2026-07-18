@@ -1,14 +1,11 @@
 // Node's type-stripping test runner executes the TypeScript source directly.
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { verifyMachineRequest } from "./hmac.ts";
 import type {
   MachineHmacKey,
   MachineNonceStore,
   VerifiedMachineRequest,
 } from "./hmac.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { getMagazineBindings } from "./runtime-bindings.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { privateNoStoreHeaders } from "./security.ts";
 
 function requireAdmissionContext(headers: Headers): void {

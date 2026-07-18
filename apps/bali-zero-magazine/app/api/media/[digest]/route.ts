@@ -1,15 +1,10 @@
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import {
   authorize,
   type RoleAllowlist,
 } from "../../../../lib/server/authorization.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { requireViewer } from "../../../../lib/server/identity.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { resolvePublishedMedia } from "../../../../lib/server/media.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { getMagazineBindings } from "../../../../lib/server/runtime-bindings.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { mediaSecurityHeaders } from "../../../../lib/server/security.ts";
 
 function roleAllowlist(raw: string | undefined): RoleAllowlist {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
@@ -369,9 +369,15 @@ function createFixtureDb({ quiet = false, empty = false } = {}) {
             alt_text:
               "A reviewed immigration dossier arranged beside a verification checklist",
             source: "Bali Zero editorial desk",
+            source_url: null,
+            rights_basis: "internal-owned",
             created_at: "2026-07-18T00:45:00.000Z",
             status: "verified",
             rights_status: "approved",
+            usage_status: "approved",
+            dlp_status: "passed",
+            sanitization_status: "passed",
+            perceptual_dedup_status: "unique",
           },
         ];
       }
@@ -429,11 +435,16 @@ class SqliteD1Database {
   constructor() {
     this.sqlite = new DatabaseSync(":memory:");
     this.sqlite.exec("PRAGMA foreign_keys = ON");
-    const migration = readFileSync(
-      new URL("../drizzle/0000_magazine_core.sql", import.meta.url),
-      "utf8",
-    ).replaceAll("--> statement-breakpoint", "");
-    this.sqlite.exec(migration);
+    const migrationDirectory = new URL("../drizzle/", import.meta.url);
+    for (const filename of readdirSync(migrationDirectory)
+      .filter((name) => /^\d+.*\.sql$/.test(name))
+      .sort()) {
+      const migration = readFileSync(
+        new URL(filename, migrationDirectory),
+        "utf8",
+      ).replaceAll("--> statement-breakpoint", "");
+      this.sqlite.exec(migration);
+    }
   }
 
   prepare(sql) {
@@ -578,8 +589,9 @@ async function createIntegrationDb() {
   db.execute(
     `INSERT INTO assets(
        asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
-       height, alt_text, source, rights_status, status
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       height, alt_text, source, rights_basis, rights_status, usage_status,
+       dlp_status, sanitization_status, perceptual_dedup_status, status
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     "asset-render-integration",
     "asset-packet-render-integration",
     RAW_DIGEST,
@@ -590,7 +602,12 @@ async function createIntegrationDb() {
     800,
     "A compliance publication under editorial review",
     "Bali Zero editorial desk",
+    "internal-owned",
     "approved",
+    "approved",
+    "passed",
+    "passed",
+    "unique",
     "verified",
   );
   const repository = createPublicationRepository(db, {

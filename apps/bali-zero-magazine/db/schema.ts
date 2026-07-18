@@ -546,7 +546,17 @@ export const assets = sqliteTable(
     height: integer("height").notNull(),
     altText: text("alt_text").notNull(),
     source: text("source").notNull(),
+    sourceUrl: text("source_url"),
+    rightsBasis: text("rights_basis").notNull().default("unknown"),
     rightsStatus: text("rights_status").notNull(),
+    usageStatus: text("usage_status").notNull().default("unknown"),
+    dlpStatus: text("dlp_status").notNull().default("pending"),
+    sanitizationStatus: text("sanitization_status")
+      .notNull()
+      .default("pending"),
+    perceptualDedupStatus: text("perceptual_dedup_status")
+      .notNull()
+      .default("unreviewed"),
     status: text("status").notNull(),
     capturedAt: text("captured_at")
       .notNull()
@@ -562,6 +572,26 @@ export const assets = sqliteTable(
     check(
       "assets_rights_status_check",
       sql`${table.rightsStatus} in ('approved', 'denied', 'unknown')`,
+    ),
+    check(
+      "assets_rights_basis_check",
+      sql`${table.rightsBasis} in ('internal-owned', 'licensed', 'public-domain', 'official-use', 'generated', 'unknown')`,
+    ),
+    check(
+      "assets_usage_status_check",
+      sql`${table.usageStatus} in ('approved', 'denied', 'unknown')`,
+    ),
+    check(
+      "assets_dlp_status_check",
+      sql`${table.dlpStatus} in ('pending', 'passed', 'failed')`,
+    ),
+    check(
+      "assets_sanitization_status_check",
+      sql`${table.sanitizationStatus} in ('pending', 'passed', 'failed')`,
+    ),
+    check(
+      "assets_perceptual_dedup_status_check",
+      sql`${table.perceptualDedupStatus} in ('unreviewed', 'unique', 'intentional-reuse')`,
     ),
     check(
       "assets_dimensions_check",

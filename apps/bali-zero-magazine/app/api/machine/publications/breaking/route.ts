@@ -1,15 +1,11 @@
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { parseStoryPacket } from "../../../../../lib/contracts/publication.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import {
   authenticateMachineRequest,
   machineFailure,
   machineResult,
   parseJsonBody,
 } from "../../../../../lib/server/machine-ingress.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { createPublicationRepository } from "../../../../../lib/server/publication-repository.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { getMagazineBindings } from "../../../../../lib/server/runtime-bindings.ts";
 
 export async function POST(request: Request): Promise<Response> {

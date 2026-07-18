@@ -472,11 +472,25 @@ test("contract collector and asset projections reject unknown fields", () => {
     width: 800,
     height: 600,
     captured_at: "2026-07-18T00:00:00Z",
+    alt_text: "A verified editorial image",
+    source: "Bali Zero editorial desk",
+    source_url: "https://www.balizero.com/editorial",
+    rights_basis: "internal-owned",
     rights_status: "approved",
+    usage_status: "approved",
+    dlp_status: "passed",
+    sanitization_status: "passed",
+    perceptual_dedup_status: "unique",
   };
   assert.deepEqual(parseAssetUploadMetadata(asset), asset);
   assert.throws(
     () => parseAssetUploadMetadata({ ...asset, filename: "secret.png" }),
     /unknown field filename/,
   );
+  for (const field of ["alt_text", "source", "rights_basis"]) {
+    assert.throws(
+      () => parseAssetUploadMetadata({ ...asset, [field]: "" }),
+      new RegExp(field),
+    );
+  }
 });

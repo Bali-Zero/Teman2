@@ -93,15 +93,20 @@ function cloneMetadata(metadata) {
 export class MemoryR2Bucket {
   constructor() {
     this.objects = new Map();
+    this.putCalls = [];
     this.corruptReadBack = false;
   }
 
   async put(key, value, options = {}) {
+    if (options.onlyIf?.etagDoesNotMatch === "*" && this.objects.has(key)) {
+      return null;
+    }
     const bytes = new Uint8Array(
       value instanceof ArrayBuffer
         ? value
         : await new Response(value).arrayBuffer(),
     );
+    this.putCalls.push(key);
     this.objects.set(key, {
       bytes: Uint8Array.from(bytes),
       httpMetadata: cloneMetadata(options.httpMetadata),
@@ -208,6 +213,17 @@ export const VALID_PNG = Uint8Array.from(
   ),
 );
 
+export const VALID_JPEG = Uint8Array.from(
+  Buffer.from(
+    "/9j/4AAQSkZJRgABAQAASABIAAD/4QBMRXhpZgAATU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAAB//8AAKACAAQAAAABAAAAAaADAAQAAAABAAAAAQAAAAD/7QA4UGhvdG9zaG9wIDMuMAA4QklNBAQAAAAAAAA4QklNBCUAAAAAABDUHYzZjwCyBOmACZjs+EJ+/8AACwgAAQABAQERAP/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/bAEMAAgICAgICAwICAwUDAwMFBgUFBQUGCAYGBgYGCAoICAgICAgKCgoKCgoKCgwMDAwMDA4ODg4ODw8PDw8PDw8PD//dAAQAAf/aAAgBAQAAPwD8A6//2Q==",
+    "base64",
+  ),
+);
+
+export const VALID_WEBP = Uint8Array.from(
+  Buffer.from("UklGRhoAAABXRUJQVlA4TA4AAAAvAAAAEM1VICIC0f+IBA==", "base64"),
+);
+
 function pngCrc32(bytes) {
   let crc = 0xffffffff;
   for (const byte of bytes) {
@@ -242,18 +258,63 @@ function pngVariant(bytes) {
 
 export const VALID_PNG_VARIANT = pngVariant(VALID_PNG);
 
-export async function validAssetMetadata(overrides = {}) {
+function corruptPngCompressedPayload(bytes) {
+  const corrupted = Uint8Array.from(bytes);
+  let offset = 8;
+  while (offset < corrupted.byteLength) {
+    const view = new DataView(
+      corrupted.buffer,
+      corrupted.byteOffset,
+      corrupted.byteLength,
+    );
+    const length = view.getUint32(offset);
+    const type = new TextDecoder().decode(
+      corrupted.subarray(offset + 4, offset + 8),
+    );
+    if (type === "IDAT") {
+      corrupted[offset + 8] ^= 0xff;
+      view.setUint32(
+        offset + 8 + length,
+        pngCrc32(corrupted.subarray(offset + 4, offset + 8 + length)),
+      );
+      return corrupted;
+    }
+    offset += 12 + length;
+  }
+  throw new Error("PNG fixture has no IDAT chunk");
+}
+
+export const MALFORMED_PNG = corruptPngCompressedPayload(VALID_PNG);
+export const MALFORMED_JPEG = Uint8Array.from([
+  0xff, 0xd8, 0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01,
+  0x11, 0x00, 0xff, 0xd9,
+]);
+export const MALFORMED_WEBP = (() => {
+  const corrupted = Uint8Array.from(VALID_WEBP);
+  corrupted[25] ^= 0xff;
+  return corrupted;
+})();
+
+export async function validAssetMetadata(overrides = {}, bytes = VALID_PNG) {
   return {
     schema_version: "asset-upload.v1",
     packet_id: "asset-packet-task-5",
     asset_id: "asset-task-5",
-    sha256: await sha256Hex(VALID_PNG),
-    byte_count: VALID_PNG.byteLength,
+    sha256: await sha256Hex(bytes),
+    byte_count: bytes.byteLength,
     mime_type: "image/png",
     width: 1,
     height: 1,
     captured_at: "2026-07-18T01:00:00Z",
+    alt_text: "A verified editorial image",
+    source: "Bali Zero editorial desk",
+    source_url: null,
+    rights_basis: "internal-owned",
     rights_status: "approved",
+    usage_status: "approved",
+    dlp_status: "passed",
+    sanitization_status: "passed",
+    perceptual_dedup_status: "unique",
     ...overrides,
   };
 }

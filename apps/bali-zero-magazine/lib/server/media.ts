@@ -1,7 +1,7 @@
 // Node's type-stripping test runner executes the TypeScript source directly.
+import { PhotonImage } from "@cf-wasm/photon";
 import type { AssetUploadMetadataV1 } from "../contracts/collector.ts";
 import type { D1DatabaseLike } from "./publication-repository.ts";
-// @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import { sha256Hex } from "./security.ts";
 
 export const MAX_MEDIA_BYTES = 12 * 1024 * 1024;
@@ -25,6 +25,7 @@ export interface R2BucketLike {
     key: string,
     value: Uint8Array | ArrayBuffer,
     options?: Readonly<{
+      onlyIf?: Readonly<{ etagDoesNotMatch?: string }>;
       httpMetadata?: R2Metadata;
       customMetadata?: Readonly<Record<string, string>>;
     }>,
@@ -291,6 +292,20 @@ function requireSafeDimensions(width: number, height: number): void {
   }
 }
 
+function decodeImage(
+  bytes: Uint8Array,
+): Readonly<{ width: number; height: number }> {
+  let decoded: PhotonImage | undefined;
+  try {
+    decoded = PhotonImage.new_from_byteslice(bytes);
+    return { width: decoded.get_width(), height: decoded.get_height() };
+  } catch {
+    throw new TypeError("asset compressed payload is not decodable");
+  } finally {
+    decoded?.free();
+  }
+}
+
 export async function validateImageAsset(
   bytes: Uint8Array,
   contentType: string,
@@ -308,6 +323,14 @@ export async function validateImageAsset(
   else if (contentType === "image/webp") dimensions = parseWebp(bytes);
   else throw new TypeError("unsupported asset MIME type");
   requireSafeDimensions(dimensions.width, dimensions.height);
+  const decodedDimensions = decodeImage(bytes);
+  requireSafeDimensions(decodedDimensions.width, decodedDimensions.height);
+  if (
+    decodedDimensions.width !== dimensions.width ||
+    decodedDimensions.height !== dimensions.height
+  ) {
+    throw new TypeError("asset container and decoded dimensions disagree");
+  }
   const digest = await sha256Hex(bytes);
   if (
     digest !== metadata.sha256 ||
@@ -352,6 +375,8 @@ async function verifiedObjectBytes(
   }
   const expected = expectedMetadata(metadata);
   if (
+    Object.keys(object.customMetadata ?? {}).length !==
+      Object.keys(expected).length ||
     Object.entries(expected).some(
       ([name, value]) => object.customMetadata?.[name] !== value,
     )
@@ -375,16 +400,21 @@ export async function storeVerifiedAsset(
   image: ValidatedImage,
 ): Promise<string> {
   const key = `assets/sha256/${metadata.sha256}.${image.extension}`;
-  await bucket.put(key, bytes, {
+  const existing = await bucket.get(key);
+  if (existing !== null) {
+    await verifiedObjectBytes(bucket, key, metadata);
+    return key;
+  }
+  const created = await bucket.put(key, bytes, {
+    onlyIf: { etagDoesNotMatch: "*" },
     httpMetadata: { contentType: metadata.mime_type },
     customMetadata: expectedMetadata(metadata),
   });
-  try {
+  if (created === null) {
     await verifiedObjectBytes(bucket, key, metadata);
-  } catch (error) {
-    await bucket.delete?.(key);
-    throw error;
+    return key;
   }
+  await verifiedObjectBytes(bucket, key, metadata);
   return key;
 }
 
@@ -398,7 +428,15 @@ type EligibleAssetRow = Readonly<{
   width: number;
   height: number;
   captured_at: string;
+  alt_text: string;
+  source: string;
+  source_url: string | null;
+  rights_basis: AssetUploadMetadataV1["rights_basis"];
   rights_status: "approved";
+  usage_status: "approved";
+  dlp_status: "passed";
+  sanitization_status: "passed";
+  perceptual_dedup_status: AssetUploadMetadataV1["perceptual_dedup_status"];
 }>;
 
 export async function resolvePublishedMedia(
@@ -410,7 +448,10 @@ export async function resolvePublishedMedia(
   const row = await db
     .prepare(
       `SELECT a.asset_id, a.packet_id, a.sha256, a.r2_key, a.mime_type,
-              a.byte_count, a.width, a.height, a.captured_at, a.rights_status
+              a.byte_count, a.width, a.height, a.captured_at, a.alt_text,
+              a.source, a.source_url, a.rights_basis, a.rights_status,
+              a.usage_status, a.dlp_status, a.sanitization_status,
+              a.perceptual_dedup_status
        FROM assets a
        JOIN story_asset_references sar ON sar.asset_sha256 = a.sha256
        JOIN story_versions sv
@@ -430,6 +471,9 @@ export async function resolvePublishedMedia(
            WHERE ase.asset_id = a.asset_id
            ORDER BY ase.status_seq DESC LIMIT 1
          ), a.rights_status) = 'approved'
+         AND a.usage_status = 'approved'
+         AND a.dlp_status = 'passed'
+         AND a.sanitization_status = 'passed'
          AND NOT EXISTS (
            SELECT 1 FROM story_visibility_events visibility
            WHERE visibility.story_id = sv.story_id
@@ -445,6 +489,10 @@ export async function resolvePublishedMedia(
     .bind(digest)
     .first<EligibleAssetRow>();
   if (row === null || row.sha256 !== digest) return null;
+  const extension = MIME_EXTENSION[row.mime_type];
+  if (extension === undefined) return null;
+  const canonicalKey = `assets/sha256/${digest}.${extension}`;
+  if (row.r2_key !== canonicalKey) return null;
   try {
     const bytes = await verifiedObjectBytes(bucket, row.r2_key, {
       schema_version: "asset-upload.v1",
@@ -456,7 +504,15 @@ export async function resolvePublishedMedia(
       width: row.width,
       height: row.height,
       captured_at: row.captured_at,
+      alt_text: row.alt_text,
+      source: row.source,
+      source_url: row.source_url,
+      rights_basis: row.rights_basis,
       rights_status: row.rights_status,
+      usage_status: row.usage_status,
+      dlp_status: row.dlp_status,
+      sanitization_status: row.sanitization_status,
+      perceptual_dedup_status: row.perceptual_dedup_status,
     });
     return { bytes, mimeType: row.mime_type };
   } catch {

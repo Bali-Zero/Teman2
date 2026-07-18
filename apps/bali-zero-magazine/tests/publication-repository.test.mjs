@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
@@ -157,11 +157,16 @@ class SqliteD1Database {
   constructor() {
     this.sqlite = new DatabaseSync(":memory:");
     this.sqlite.exec("PRAGMA foreign_keys = ON");
-    const migration = readFileSync(
-      new URL("../drizzle/0000_magazine_core.sql", import.meta.url),
-      "utf8",
-    ).replaceAll("--> statement-breakpoint", "");
-    this.sqlite.exec(migration);
+    const migrationDirectory = new URL("../drizzle/", import.meta.url);
+    for (const filename of readdirSync(migrationDirectory)
+      .filter((name) => /^\d+.*\.sql$/.test(name))
+      .sort()) {
+      const migration = readFileSync(
+        new URL(filename, migrationDirectory),
+        "utf8",
+      ).replaceAll("--> statement-breakpoint", "");
+      this.sqlite.exec(migration);
+    }
     this.beforeFirst = null;
     this.failBatchAfterIndex = null;
   }
@@ -322,8 +327,9 @@ function seedAsset(db, { assetId = "asset-1", digest = HASH_A } = {}) {
   db.execute(
     `INSERT INTO assets(
        asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
-       height, alt_text, source, rights_status, status
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       height, alt_text, source, rights_basis, rights_status, usage_status,
+       dlp_status, sanitization_status, perceptual_dedup_status, status
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     assetId,
     "asset-packet-1",
     digest,
@@ -334,7 +340,12 @@ function seedAsset(db, { assetId = "asset-1", digest = HASH_A } = {}) {
     800,
     "Editorial image",
     "editorial",
+    "internal-owned",
     "approved",
+    "approved",
+    "passed",
+    "passed",
+    "unique",
     "verified",
   );
 }
