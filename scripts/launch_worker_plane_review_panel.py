@@ -1960,20 +1960,6 @@ def _sandbox(
     return path, proof
 
 
-def _stage_gemini_auth(sandbox: Path, source_home: Path) -> None:
-    """Stage only the OAuth databases required by headless Gemini."""
-    source = source_home / ".gemini"
-    target = sandbox
-    target.mkdir(mode=0o700, exist_ok=True)
-    for name in ("oauth_creds.json", "google_accounts.json"):
-        source_path = source / name
-        if not source_path.is_file():
-            raise LauncherError(f"Gemini OAuth file is missing: {name}")
-        target_path = target / name
-        shutil.copyfile(source_path, target_path)
-        os.chmod(target_path, 0o600)
-
-
 def _remove_sandbox(path: Path) -> None:
     try:
         metadata = path.lstat()
@@ -2284,11 +2270,6 @@ def launch_panel(
             prefix="worker-plane-review-version-gemini."
         )
         temporary_sandboxes["version-gemini"] = gemini_version_cwd
-        gemini_version_home, _ = _sandbox(
-            prefix="worker-plane-review-gemini-auth-version."
-        )
-        temporary_sandboxes["gemini-auth-version"] = gemini_version_home
-        _stage_gemini_auth(gemini_version_home / ".gemini", Path.home())
         security_cwd, _ = _sandbox(prefix="worker-plane-review-security.")
         temporary_sandboxes["security"] = security_cwd
         claude_version_environment = _route_environment(
@@ -2305,9 +2286,10 @@ def launch_panel(
             route_config={},
             glm_token="",
         )
-        gemini_version_environment["HOME"] = str(gemini_version_home)
-        for name in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME"):
-            gemini_version_environment[name] = str(gemini_version_home)
+        if clients == PRODUCTION_CLIENTS:
+            gemini_version_environment["HOME"] = os.environ.get(
+                "HOME", gemini_version_environment["HOME"]
+            )
         security_environment = _route_environment(
             SEATS[1],
             source=os.environ,
@@ -2363,11 +2345,6 @@ def launch_panel(
         shared_review_cwd, shared_review_proof = _sandbox(
             prefix="worker-plane-review-cwd."
         )
-        gemini_review_home, _ = _sandbox(
-            prefix="worker-plane-review-gemini-auth."
-        )
-        temporary_sandboxes["gemini-auth-review"] = gemini_review_home
-        _stage_gemini_auth(gemini_review_home / ".gemini", Path.home())
         sandbox_proofs: dict[str, SandboxProof] = {
             seat.name: shared_review_proof for seat in SEATS
         }
@@ -2395,9 +2372,10 @@ def launch_panel(
                 )
                 for seat in SEATS
             }
-            environments["gemini"]["HOME"] = str(gemini_review_home)
-            for name in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME"):
-                environments["gemini"][name] = str(gemini_review_home)
+            if clients == PRODUCTION_CLIENTS:
+                environments["gemini"]["HOME"] = os.environ.get(
+                    "HOME", environments["gemini"]["HOME"]
+                )
             invocation_uuids = {seat.name: str(uuid.uuid4()) for seat in SEATS}
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=len(SEATS)
