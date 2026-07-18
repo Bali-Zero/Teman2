@@ -73,7 +73,15 @@ hang, agy timeout, DeepSeek HTTP 402 balance-dead). PROVE-LIVE 2026-07-18 prod e
 LIMITATION ledgered: dedup-heal is a lockless read-modify-write (pre-existing class, low risk).
 
 **In queue awaiting Zero (Legge 5):** deportation carousel remake (`drafted`, 2026-07-17, tells
-the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari reply.
+the real event) · **PMK 37/2025 "1 August" carousel now FULL-BAHASA, final-rendered 2026-07-18
+(draft a80130df)** — native review Subhi+Ari complete (thread "[Review Bahasa]" 2026-07-17, 6/8
+GO), Zero-delegated decisions: cover "PAJAKNYA SAMA. KASIRNYA GANTI." + closer accent word
+"PERNYATAANMU"; reviewer amendments applied (slide-2 Ari rewrite, months spelled in full, slide-7
+tail). Applied file-only via compose_carousel() on the Pro (same mechanism as the 2026-07-16 C2
+apply; DB/queue untouched, queue `drafted`); EN version preserved in
+`slides.bak-pre-bahasa-20260718/`. At publish, the IG caption MUST carry "Dikecualikan bukan
+berarti bebas pajak — karena dipajaki di aturan lain" (not renderable on the slide, see template
+findings below) + the sumber+kontak pattern.
 
 **Open wounds / next targets:**
 
@@ -149,6 +157,17 @@ forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.p
     grid factor. Blast radius 83% of covers → brand call + render QA on a real deck. Capture
     `research/marketing/2026-07-18-wr2-cover-headline-thumbnail-illegibility-root-cause.md` · memory
     `discovery_wr2_cover_headline_thumbnail_illegibility_root_cause_2026_07_18`.
+- **Statement-bomb template ignores `yellow_accent`** (found 2026-07-18 on a80130df): the template
+  unconditionally wraps the LAST word of `statement` in the accent span (composer.py ~line 1600),
+  so the accent lands on whatever word ends the sentence — the EN deck had it on "INVOICE." instead
+  of "DECLARATION". Workaround used: clause order chosen so the intended word is last. Fix = honor
+  `yellow_accent` when present; behavior change ⇒ needs guilt+innocence tests across all
+  statement-bomb decks (scar #3).
+- **`dark-status-list` renders only heading + list_items** (found 2026-07-18): `body` and
+  `subheading` are silently dropped by the skeleton — slide-7-class closing messages stored in
+  `body` never appear on the PNG (true for the EN deck too). Fix options: add an optional
+  closing-line slot to the skeleton, or route such copy to a rendered field at compose time; until
+  then closing lines must ride the last list row and the IG caption.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
   M5 queue shared-lock protocol · plist validator red on main ·
   19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).
