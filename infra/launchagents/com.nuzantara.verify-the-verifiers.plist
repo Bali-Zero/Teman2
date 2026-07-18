@@ -13,13 +13,11 @@
     </dict>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/nuzantara/nuzantara-deploy/apps/backend-rag/.venv/bin/python</string>
+        <string>/opt/homebrew/bin/python3</string>
         <string>/Users/nuzantara/nuzantara-deploy/scripts/verify_the_verifiers.py</string>
         <string>--scope</string>
         <string>all</string>
     </array>
-    <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/nuzantara-deploy</string>
     <key>StartInterval</key>
     <integer>600</integer>
     <key>RunAtLoad</key>
