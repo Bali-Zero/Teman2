@@ -52,19 +52,54 @@ class DecisionState(str, Enum):
 
 
 class RuleStage(str, Enum):
-    """The four rule stages, evaluated in this strict order (spec §5.3).
+    """The four rule stages (spec §5.3).
 
     HARD_FILTER: any TRUE excludes the product outright.
     ELIGIBILITY: SUPPORT rules whose ``covered_purposes`` union must cover
         every declared purpose (``COVER_ALL_DECLARED_PURPOSES``).
     HUMAN_REVIEW: any TRUE forces HUMAN_REVIEW_REQUIRED, no candidate emitted.
     RANKING: only runs on already-SUPPORTED products; integer score deltas.
+
+    Declaration order above matches the spec's public API listing — it is
+    NOT the semantic processing/evaluation order (PR3 correction: an earlier
+    draft of this docstring claimed "evaluated in this strict order" for the
+    declaration order itself, which contradicts spec §4.2's own
+    ``evaluate_product`` algorithm — HARD_FILTER excludes first, then
+    HUMAN_REVIEW is checked BEFORE ELIGIBILITY runs, then RANKING last, only
+    over already-SUPPORTED products). For the true processing order use
+    :data:`STAGE_ORDER` (or the :attr:`order` property below).
     """
 
     HARD_FILTER = "HARD_FILTER"
     ELIGIBILITY = "ELIGIBILITY"
     HUMAN_REVIEW = "HUMAN_REVIEW"
     RANKING = "RANKING"
+
+    @property
+    def order(self) -> int:
+        """Semantic processing order per spec §4.2 (``evaluate_product``)/
+        §4.5 (trace ordering): ``HARD_FILTER`` runs first, then
+        ``HUMAN_REVIEW``, then ``ELIGIBILITY``, then (globally, only on
+        already-``SUPPORTED`` products) ``RANKING``. Deliberately NOT the
+        same as declaration order or alphabetical ``.value`` order — sorting
+        by ``.value`` would put ``ELIGIBILITY`` before ``HARD_FILTER``,
+        which is wrong.
+        """
+
+        return STAGE_ORDER[self]
+
+
+#: Semantic processing order for ``CompiledRulePack.rules_for()`` (PR3,
+#: ``compiler.py``) — the actual runtime sequence per spec §4.2, not
+#: ``RuleStage``'s declaration order (see that class's docstring for the
+#: correction). Module-level (not a class body dict comprehension) so
+#: ``RuleStage.order`` can reference it after the class is fully defined.
+STAGE_ORDER: dict[RuleStage, int] = {
+    RuleStage.HARD_FILTER: 0,
+    RuleStage.HUMAN_REVIEW: 1,
+    RuleStage.ELIGIBILITY: 2,
+    RuleStage.RANKING: 3,
+}
 
 
 class EngineMode(str, Enum):
