@@ -764,11 +764,36 @@ def _check_fact_literal_kind(
                 continue
 
             if op in _ORDERING_OPS or op == "between":
-                if spec.kind is FactValueKind.BOOLEAN:
+                # Hotfix (2026-07-18, Gap B): ordering (`lt`/`lte`/`gt`/
+                # `gte`/`between`) is only legally meaningful against a
+                # numeric fact (INTEGER) or a fact with a well-defined total
+                # order encoded as ISO-8601 (`value_format="date"`, sorts
+                # correctly lexicographically). It used to be rejected only
+                # against BOOLEAN — a plain enum-ish STRING fact (e.g.
+                # `marital_status`) compiled clean under lexicographic
+                # ordering, which is not a legally meaningful comparison for
+                # a closed, unordered vocabulary. Fail-closed by design: a
+                # free-text STRING fact without `value_format="date"` is
+                # rejected too, even though lexicographic ordering on it is
+                # not inherently unsafe — a legal decision engine defaults
+                # to rejecting semantically ambiguous comparisons and can
+                # relax this later if a real use case needs it.
+                ordering_allowed = spec.kind is FactValueKind.INTEGER or (
+                    spec.kind is FactValueKind.STRING and spec.value_format == "date"
+                )
+                if not ordering_allowed:
                     errors.append(
                         CompilationError(
                             code="FACT_LITERAL_KIND_MISMATCH",
-                            message=f"ordering operator {op!r} not valid against boolean fact {fact.value!r}",
+                            message=(
+                                f"ordering operator {op!r} not valid against fact "
+                                f"{fact.value!r} of kind {spec.kind.value}"
+                                + (
+                                    f" (value_format={spec.value_format!r})"
+                                    if spec.value_format is not None
+                                    else ""
+                                )
+                            ),
                             rule_id=rule.rule_id,
                         )
                     )

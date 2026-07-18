@@ -1390,3 +1390,69 @@ class TestFactLiteralDateShape:
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
         assert not any(e.code.startswith(("FACT_LITERAL", "BETWEEN")) for e in report.errors)
+
+
+class TestOrderingOpsRestrictedToNumericOrDate:
+    """Gap B: ``lt``/``lte``/``gt``/``gte``/``between`` were rejected only
+    against BOOLEAN-kind facts — a plain enum-ish STRING fact (e.g.
+    ``marital_status``) compiled clean under lexicographic ordering, which
+    is not a legally meaningful comparison.
+    """
+
+    def test_ordering_against_plain_string_enum_fact_guilty(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.ordering.enum.string",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "lt", "fact": "person.marital_status", "value": "MARRIED"},
+            required_facts=("person.marital_status",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_KIND_MISMATCH" for e in report.errors)
+
+    def test_ordering_against_integer_fact_is_innocent(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.ordering.integer.valid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "lt", "fact": "immigration.overstay_days", "value": 10},
+            required_facts=("immigration.overstay_days",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+
+    def test_ordering_against_date_fact_is_innocent(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.ordering.date.valid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "gte", "fact": "person.birth_date", "value": "2000-01-01"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
