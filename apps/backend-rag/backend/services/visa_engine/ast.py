@@ -486,6 +486,25 @@ class KnownFact:
     derive()``: dates are ISO-8601 strings (so ``lt``/``lte``/``gt``/``gte``
     work as plain string comparison), ``STRING_SET``-kind facts are
     ``frozenset[str]``, everything else is the bare ``bool``/``int``/``str``.
+
+    TYPING CONTRACT (F5, 2-seat review 2026-07-18): ``value`` MUST originate
+    from ``FactRegistry.derive()``, which produces compiler-validated kinds
+    (every fact's shape already proved against ``fact_registry.FactSpec.kind``
+    by ``compiler.py``'s ``FACT_LITERAL_KIND_MISMATCH`` check). The scalar
+    comparison operators in ``evaluate_condition`` below (``EqCondition`` etc.)
+    TRUST these types and do NOT re-validate them — a hand-built
+    ``FactSnapshot`` carrying a mistyped ``KnownFact`` (e.g. ``KnownFact(1)``
+    where a BOOLEAN fact is expected) can produce a wrong DEFINITE truth
+    (Python's ``1 == True`` is ``True``), the same class of defect the set
+    operators (``intersects``/``contains_all``) guard against explicitly with
+    their own "unreachable for a compiler-validated RulePack" ``TypeError``
+    (see ``evaluate_condition``'s docstring) — scalar operators have no
+    equivalent guard. On the sanctioned path (``FactRegistry.derive()`` +
+    a ``compiler.py``-validated ``RulePack``) this is unreachable. Hardening
+    the public evaluator boundary (validating a snapshot against the fact
+    registry before it ever reaches ``evaluate_condition``) is deferred to
+    the ``evaluate_product`` / snapshot-construction PR — this note pins the
+    known gap so that deferral cannot become a silent trap.
     """
 
     value: object
@@ -504,6 +523,12 @@ class FactSnapshot:
     evaluation, keyed by :class:`~backend.services.visa_engine.enums.FactPath`
     (a ``str`` subclass — a plain dotted string key also matches, since
     ``FactPath`` members compare/hash equal to their own string value).
+
+    See ``KnownFact``'s "TYPING CONTRACT" note (F5, 2-seat review
+    2026-07-18): a snapshot assembled by anything other than
+    ``FactRegistry.derive()`` is not guaranteed to carry compiler-validated
+    value kinds, and ``evaluate_condition``'s scalar operators do not
+    re-check that guarantee themselves.
     """
 
     values: Mapping[FactPath, KnownFact | UnknownFact]
