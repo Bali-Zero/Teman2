@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, TreePine } from "lucide-react";
-import { getTreeSteps, type OracleNode } from "../_lib/flow";
+import {
+  getTreeSteps,
+  isEditableTreeStep,
+  type OracleNode,
+} from "../_lib/flow";
 import type { Language } from "../_lib/flow";
 import type { OracleFacts } from "../_lib/tree";
 import { translate, type I18nKey } from "../_lib/i18n";
@@ -12,6 +16,12 @@ export interface LivingTreeProps {
   language: Language;
   current: OracleNode;
   facts: OracleFacts;
+  /** Tree tap-to-edit (design doc §3 interaction #6): dispatches the
+   * existing `EDIT` action (flow.ts) to jump back to a completed
+   * question — same history-truncation + fact-pruning mechanism the
+   * confirmation card's own Edit buttons already use. Only ever called
+   * for a step `isEditableTreeStep` accepts. */
+  onEditQuestion: (questionId: string) => void;
 }
 
 /**
@@ -24,7 +34,12 @@ export interface LivingTreeProps {
  * additionally gates its own JS-driven prune animation via
  * `useReducedMotion()` so both paths honor the setting.
  */
-export function LivingTree({ language, current, facts }: LivingTreeProps) {
+export function LivingTree({
+  language,
+  current,
+  facts,
+  onEditQuestion,
+}: LivingTreeProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const reducedMotion = useReducedMotion();
   const { trunk, categoryLeaves } = getTreeSteps(current, facts);
@@ -93,6 +108,7 @@ export function LivingTree({ language, current, facts }: LivingTreeProps) {
               trunk={trunk}
               categoryLeaves={categoryLeaves}
               reducedMotion={!!reducedMotion}
+              onEditQuestion={onEditQuestion}
             />
           </motion.div>
         )}
@@ -104,6 +120,7 @@ export function LivingTree({ language, current, facts }: LivingTreeProps) {
           trunk={trunk}
           categoryLeaves={categoryLeaves}
           reducedMotion={!!reducedMotion}
+          onEditQuestion={onEditQuestion}
         />
       </div>
     </>
@@ -115,29 +132,69 @@ function TreePanel({
   trunk,
   categoryLeaves,
   reducedMotion,
+  onEditQuestion,
 }: {
   language: Language;
   trunk: ReturnType<typeof getTreeSteps>["trunk"];
   categoryLeaves: ReturnType<typeof getTreeSteps>["categoryLeaves"];
   reducedMotion: boolean;
+  onEditQuestion: (questionId: string) => void;
 }) {
   return (
-    <div className="oracle-tree" aria-hidden="true">
+    <div className="oracle-tree">
       <div className="oracle-tree__trunk">
-        {trunk.map((step) => (
-          <div
-            key={step.id}
-            className="oracle-tree__step"
-            data-status={step.status}
-          >
-            <span className="oracle-tree__dot" />
-            <span>{translate(language, step.labelI18nKey as I18nKey)}</span>
-          </div>
-        ))}
+        {trunk.map((step) => {
+          const label = translate(language, step.labelI18nKey as I18nKey);
+          // "Oracle deals your card" morph (design doc §3 interaction #4):
+          // the "verdict" trunk row carries the shared view-transition-name
+          // right up until it becomes the current step — at that point the
+          // hero card in VerdictReveal takes over the name instead (never
+          // both at once, since the two conditions are mutually exclusive
+          // on the same `current` state). Harmless no-op CSS property in
+          // browsers without View Transitions support or when
+          // `prefers-reduced-motion` disables the JS-driven transition call
+          // (OracleShell never invokes `document.startViewTransition` in
+          // that case, so this name never gets used for anything).
+          const morphStyle =
+            step.id === "verdict" && step.status !== "current"
+              ? ({ viewTransitionName: "oracle-verdict-morph" } as const)
+              : undefined;
+
+          if (isEditableTreeStep(step)) {
+            return (
+              <button
+                key={step.id}
+                type="button"
+                className="oracle-tree__step oracle-tree__step--editable"
+                data-status={step.status}
+                onClick={() => onEditQuestion(step.id)}
+                aria-label={translate(language, "tree.edit_aria" as I18nKey, {
+                  question: label,
+                })}
+              >
+                <span className="oracle-tree__dot" aria-hidden="true" />
+                <span aria-hidden="true">{label}</span>
+              </button>
+            );
+          }
+
+          return (
+            <div
+              key={step.id}
+              className="oracle-tree__step"
+              data-status={step.status}
+              aria-hidden="true"
+              style={morphStyle}
+            >
+              <span className="oracle-tree__dot" />
+              <span>{label}</span>
+            </div>
+          );
+        })}
       </div>
 
       {categoryLeaves && (
-        <div className="oracle-tree__leaves">
+        <div className="oracle-tree__leaves" aria-hidden="true">
           <AnimatePresence initial={false}>
             {categoryLeaves
               .filter(
