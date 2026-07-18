@@ -264,6 +264,155 @@ class TestFlushLayoutBatch:
         assert title.startswith("chore(homepage): hero rotation ")
 
 
+# ── git_commit_and_push_translations (translations batch-branch/PR flow) ───
+#
+# Regression coverage: the poller used to `git add` + `git commit --no-verify`
+# + `git push --no-verify origin main` directly on the main checkout. Branch
+# protection rejects that push every time, but the commit had already landed
+# locally — leaving an orphan commit that blocks every subsequent tick's
+# `git pull --ff-only` until rescued by hand (live incident 2026-07-18:
+# commits e2c3951c/be43e312d, both rescued manually the same day). The fix
+# routes translations through the same batch-branch/PR mechanism as
+# image/seo/layout — never touching local git state at all.
+
+
+def _write_translation_file(tmp_path, slug, lang, category="business", content="---\nfoo\n---\nbody"):
+    articles_dir = tmp_path / "apps" / "mouth" / "src" / "content" / "articles" / category
+    articles_dir.mkdir(parents=True, exist_ok=True)
+    f = articles_dir / f"{slug}.{lang}.mdx"
+    f.write_text(content, encoding="utf-8")
+    return f
+
+
+def _fake_repo_root(tmp_path, monkeypatch):
+    """Point ppp.SCRIPT_DIR at tmp_path/apps/bali-intel-scraper/scripts so
+    SCRIPT_DIR.parent.parent.parent (repo_root inside the function) resolves
+    to tmp_path — lets us stage real files without touching the real repo."""
+    fake_script_dir = tmp_path / "apps" / "bali-intel-scraper" / "scripts"
+    fake_script_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(ppp, "SCRIPT_DIR", fake_script_dir)
+
+
+class TestGitCommitAndPushTranslations:
+    def test_never_invokes_git_push_or_commit_to_main(self, tmp_path, monkeypatch):
+        """GUILT: the translations flow must never shell out to git at all —
+        no `git add`, no `git commit`, no `git push ... main`. Everything goes
+        through the gh-api batch-branch/PR mechanism instead."""
+        _fake_repo_root(tmp_path, monkeypatch)
+        _write_translation_file(tmp_path, "test-slug", "fr")
+
+        calls = []
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=_happy_path_fake_run(calls)):
+            ok = ppp.git_commit_and_push_translations(["test-slug"])
+
+        assert ok is True
+        git_calls = [c for c in calls if c["cmd"] and c["cmd"][0] == "git"]
+        assert git_calls == []  # zero direct git subprocess invocations
+        push_main_calls = [c for c in calls if "push" in c["cmd"] and "main" in c["cmd"]]
+        assert push_main_calls == []
+
+    def test_uses_translations_branch_prefix_and_gh_pr_create(self, tmp_path, monkeypatch):
+        """INNOCENCE: expected behavior is the same batch-branch/PR mechanism
+        as image/seo/layout — branch prefix bot/articles-translations, one
+        gh api PUT per staged file, gh pr create + --auto --squash arm."""
+        _fake_repo_root(tmp_path, monkeypatch)
+        _write_translation_file(tmp_path, "test-slug", "fr")
+        _write_translation_file(tmp_path, "test-slug", "ru")
+
+        calls = []
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=_happy_path_fake_run(calls)):
+            ok = ppp.git_commit_and_push_translations(["test-slug"])
+
+        assert ok is True
+        assert ppp._PENDING_COMMITS == []  # drained by the flush
+
+        import json as _json
+
+        create_ref_calls = [
+            c for c in calls
+            if c["cmd"][:2] == ["gh", "api"] and c["cmd"][2].endswith("/git/refs") and "POST" in c["cmd"]
+        ]
+        assert len(create_ref_calls) == 1
+        ref_payload = _json.loads(create_ref_calls[0]["kwargs"]["input"])
+        assert ref_payload["ref"].startswith("refs/heads/bot/articles-translations-")
+
+        pr_create_calls = [c for c in calls if c["cmd"][:3] == ["gh", "pr", "create"]]
+        pr_merge_calls = [c for c in calls if c["cmd"][:3] == ["gh", "pr", "merge"]]
+        assert len(pr_create_calls) == 1
+        assert len(pr_merge_calls) == 1
+        assert "--auto" in pr_merge_calls[0]["cmd"]
+        assert "--squash" in pr_merge_calls[0]["cmd"]
+
+        title = pr_create_calls[0]["cmd"][pr_create_calls[0]["cmd"].index("--title") + 1]
+        assert title.startswith("feat(articles): add translations ")
+
+        put_calls = [c for c in calls if "/contents/" in c["cmd"][2] and "PUT" in c["cmd"]]
+        assert len(put_calls) == 2  # both translation files staged+committed
+        for pc in put_calls:
+            payload = _json.loads(pc["kwargs"]["input"])
+            assert payload["message"].startswith("feat(articles): add translations for test-slug")
+            assert payload["branch"].startswith("bot/articles-translations-")
+
+    def test_no_files_found_is_noop_returns_true(self, tmp_path, monkeypatch, _silence_log):
+        _fake_repo_root(tmp_path, monkeypatch)
+
+        calls = []
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=_happy_path_fake_run(calls)):
+            ok = ppp.git_commit_and_push_translations(["nonexistent-slug"])
+
+        assert ok is True
+        assert calls == []
+        assert any("No translation files to commit" in m for m in _silence_log)
+
+    def test_flush_failure_returns_false_and_never_touches_local_git_state(self, tmp_path, monkeypatch, _silence_log):
+        """On a flush failure the function must return False and the .mdx file
+        must remain untouched on disk — no git add/commit ever ran, so the
+        next tick's rglob picks it right back up and re-stages it."""
+        _fake_repo_root(tmp_path, monkeypatch)
+        f = _write_translation_file(tmp_path, "test-slug", "fr")
+
+        def fake_run(cmd, **kwargs):
+            s = " ".join(cmd)
+            if "git/refs/heads/main" in s:
+                return _res(stdout="deadbeef\n")
+            if s.endswith("git/refs --method POST --input -"):
+                return _res(returncode=1, stderr="422 Reference already exists")
+            return _res(returncode=0)
+
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=fake_run):
+            ok = ppp.git_commit_and_push_translations(["test-slug"])
+
+        assert ok is False
+        assert f.exists()
+        assert f.read_text(encoding="utf-8") == "---\nfoo\n---\nbody"  # untouched
+        assert any("Reference already exists" in m for m in _silence_log)
+
+
+class TestFlushTranslationBatch:
+    def test_uses_distinct_branch_prefix_and_title(self):
+        ppp._stage_commit(
+            "translation", "apps/mouth/src/content/articles/business/foo.fr.mdx", b"---\n---\nbody",
+            "feat(articles): add translations for foo",
+        )
+        calls = []
+        with patch("scripts.post_publish_poller.subprocess.run", side_effect=_happy_path_fake_run(calls)):
+            ok = ppp.flush_translation_batch()
+
+        assert ok is True
+        create_ref_calls = [
+            c for c in calls
+            if c["cmd"][:2] == ["gh", "api"] and c["cmd"][2].endswith("/git/refs") and "POST" in c["cmd"]
+        ]
+        import json as _json
+
+        ref_payload = _json.loads(create_ref_calls[0]["kwargs"]["input"])
+        assert ref_payload["ref"].startswith("refs/heads/bot/articles-translations-")
+
+        pr_create_calls = [c for c in calls if c["cmd"][:3] == ["gh", "pr", "create"]]
+        title = pr_create_calls[0]["cmd"][pr_create_calls[0]["cmd"].index("--title") + 1]
+        assert title.startswith("feat(articles): add translations ")
+
+
 # ── rotate_hero (homepage-layout.json write path) ──────────────────────────
 #
 # Regression coverage: rotate_hero() used to PUT apps/mouth/src/content/
