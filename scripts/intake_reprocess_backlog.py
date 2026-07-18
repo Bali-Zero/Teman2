@@ -297,11 +297,18 @@ UPDATE document_routing_proposal
 RETURNING id, queue_id
 """
 
+# Sibling sweep is bounded to ids OLDER than the confirmed selected proposal
+# (id < pid): a proposal born between SELECT and sweep is never touched. An
+# older sibling that got review_claimed in the gap is skipped by the status
+# filter and stays with its reviewer — the writer's own FOR-UPDATE
+# revalidation guards the eventual commit against the fresh proposal.
 REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL = """
-UPDATE document_routing_proposal
+UPDATE document_routing_proposal p
    SET status = 'superseded'
- WHERE queue_id = ANY($1::bigint[])
-   AND status = 'review_pending'
+  FROM (SELECT unnest($1::bigint[]) AS qid, unnest($2::bigint[]) AS pid) sel
+ WHERE p.queue_id = sel.qid
+   AND p.id < sel.pid
+   AND p.status = 'review_pending'
 """
 
 REROUTE_DRIVE_FOLDER_RESET_SQL = """
@@ -2053,11 +2060,15 @@ async def _run_route_only_reroute(
             superseded_qids = sorted({r["queue_id"] for r in confirmed})
             counts["claim_skipped"] = len(eligible) - len(superseded_qids)
 
-            # Sweep OLDER review_pending siblings only on confirmed rows, so
-            # the review feed doesn't keep stale duplicates of what the
-            # worker is about to re-propose.
+            # Sweep OLDER review_pending siblings only on confirmed rows
+            # (id-bounded below each confirmed proposal), so the review feed
+            # doesn't keep stale duplicates of what the worker re-proposes.
+            confirmed_pids = [r["id"] for r in confirmed]
+            confirmed_qids_arr = [r["queue_id"] for r in confirmed]
             sibling_swept = await conn.execute(
-                REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL, superseded_qids
+                REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL,
+                confirmed_qids_arr,
+                confirmed_pids,
             )
             reset = await conn.execute(
                 REROUTE_DRIVE_FOLDER_RESET_SQL, superseded_qids, pipeline_version

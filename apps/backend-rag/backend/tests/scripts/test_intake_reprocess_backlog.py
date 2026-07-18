@@ -1090,8 +1090,11 @@ def test_reroute_drive_folder_supersede_only_review_pending() -> None:
     irb = _load()
     sql = irb.REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL
     assert "SET status = 'superseded'" in sql
-    assert "status = 'review_pending'" in sql
-    assert "queue_id = ANY($1::bigint[])" in sql
+    assert "p.status = 'review_pending'" in sql
+    # Codex round-4: the sibling sweep is id-bounded BELOW each confirmed
+    # proposal — a proposal born after the SELECT is never touched.
+    assert "p.id < sel.pid" in sql
+    assert "p.queue_id = sel.qid" in sql
 
 
 def test_reroute_selected_supersede_is_proposal_scoped_and_confirms() -> None:
@@ -1161,7 +1164,7 @@ def test_reroute_reset_only_actually_superseded_rows() -> None:
 
     src = inspect.getsource(irb._run_route_only_reroute)
     assert "REROUTE_SUPERSEDE_SELECTED_SQL, selected_pids" in src
-    assert "REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL, superseded_qids" in src
+    assert "confirmed_qids_arr" in src and "confirmed_pids" in src
     assert "REROUTE_DRIVE_FOLDER_RESET_SQL, superseded_qids" in src
 
 
