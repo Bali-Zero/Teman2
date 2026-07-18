@@ -27,6 +27,16 @@ already corrected once). This file is HOME-fork-scoped by nature (paths are
 per-machine under /Users/nuzantara/); install/update it on each machine's
 own ~/Library/LaunchAgents/ via `scripts/lint_home_fork.py` declared-pairs
 discipline, do not assume this tracked copy is symlinked live.
+
+ROUND-2 FIX 2026-07-18 (BLOCKER A): PATH below gained a trailing
+`:/usr/sbin` — on both M5 and Pro, `lsof` (used by the script's live-cwd
+guard) lives ONLY at /usr/sbin/lsof, which this PATH did not previously
+include, so a bare `lsof` invocation raised FileNotFoundError under this
+exact cron every run and the guard was silently inert (scar #2). The
+PRIMARY fix is in the script (_resolve_lsof_path() resolves an absolute
+path independent of PATH); this PATH edit is defense-in-depth only. The
+INSTALLED copy on Pro's ~/Library/LaunchAgents/ needs this same edit
+applied at deploy time — this tracked copy alone does not update it live.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -60,7 +70,7 @@ discipline, do not assume this tracked copy is symlinked live.
 		<key>WORKTREE_GC_MAX_AGE_HOURS</key>
 		<string>24</string>
 		<key>PATH</key>
-		<string>/opt/homebrew/bin:/usr/bin:/bin</string>
+		<string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin</string>
 	</dict>
 
 	<key>StandardOutPath</key>

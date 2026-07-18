@@ -6,14 +6,17 @@ a script (not an importable package member), so it is loaded by path via
 helper returns a ``subprocess.CompletedProcess`` whose ``.stdout`` callers read,
 so the fakes return a small stand-in with a ``stdout`` attribute.
 
-``TestGcIntegration`` and ``TestHasLiveCwd`` are the exception: they exercise
-``gc()`` end-to-end against REAL git repos + REAL ``git worktree`` under
-``tmp_path`` (never the real ~/nuzantara checkout or its worktrees — W96
-discipline), to prove the 2026-07-18 W88 cure empirically: dir-removal of an
-unpushed-but-clean named-branch worktree preserves the branch ref.
+``TestGcIntegration`` is the exception: it exercises ``gc()`` end-to-end
+against REAL git repos + REAL ``git worktree`` under ``tmp_path`` (never the
+real ~/nuzantara checkout or its worktrees — W96 discipline), to prove the
+2026-07-18 fixes empirically: dir-removal of an unpushed-but-clean
+named-branch worktree preserves the branch ref (W88 cure, round-1), and
+dir-removal of a clean detached-HEAD worktree preserves its commit via a
+durable ref (BLOCKER B cure, round-2).
 """
 import importlib.util
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -245,47 +248,111 @@ class TestUnpushedCommits:
 
 
 # ---------------------------------------------------------------------------
-# _has_live_cwd (added 2026-07-18)
+# _resolve_lsof_path (round-2, 2026-07-18 — BLOCKER A)
+#
+# The daily cron's plist PATH is /opt/homebrew/bin:/usr/bin:/bin, which does
+# NOT contain lsof on either M5 or Pro (it lives at /usr/sbin/lsof — verified
+# empirically 2026-07-18: `env -i PATH=/opt/homebrew/bin:/usr/bin:/bin which
+# lsof` -> rc=1 on M5). A bare ["lsof", ...] subprocess call under that PATH
+# raised FileNotFoundError every single cron run, silently disabling the
+# live-cwd guard (scar #2, green-but-not-working).
+# ---------------------------------------------------------------------------
+
+
+class TestResolveLsofPath:
+    def test_absolute_fallback_when_path_excludes_lsof(self, monkeypatch):
+        # Reproduce the EXACT cron bug on THIS machine, unmocked: set PATH
+        # to the cron's real value, confirm shutil.which alone genuinely
+        # fails (proving the bug is real, not assumed), then confirm the
+        # absolute-path fallback probe (which stats the filesystem directly,
+        # ignoring PATH) still resolves lsof.
+        monkeypatch.setenv("PATH", "/opt/homebrew/bin:/usr/bin:/bin")
+        assert shutil.which("lsof") is None, (
+            "PATH must genuinely exclude lsof for this test to be meaningful "
+            "— if this fails, the cron bug premise no longer holds on this "
+            "machine and the test should be revisited"
+        )
+        resolved = gc._resolve_lsof_path()
+        assert resolved is not None
+        assert Path(resolved).exists()
+
+    def test_shutil_which_preferred_when_available(self, monkeypatch, tmp_path):
+        fake_lsof = tmp_path / "lsof"
+        fake_lsof.write_text("#!/bin/sh\necho fake\n")
+        fake_lsof.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{tmp_path}:/usr/bin:/bin")
+        assert gc._resolve_lsof_path() == str(fake_lsof)
+
+    def test_returns_none_when_truly_absent(self, monkeypatch):
+        monkeypatch.setattr(gc.shutil, "which", lambda name: None)
+        monkeypatch.setattr(gc.Path, "exists", lambda self: False)
+        assert gc._resolve_lsof_path() is None
+
+
+# ---------------------------------------------------------------------------
+# _collect_live_cwds (round-2, 2026-07-18)
+# ---------------------------------------------------------------------------
+
+
+class TestCollectLiveCwds:
+    def test_lsof_missing_returns_empty_set_and_warns_visibly(self, monkeypatch, caplog):
+        monkeypatch.setattr(gc, "_resolve_lsof_path", lambda: None)
+        with caplog.at_level("WARNING"):
+            result = gc._collect_live_cwds()
+        assert result == set()
+        assert any("DEGRADED" in r.message for r in caplog.records)
+
+    def test_parses_cwd_lines_from_lsof_output(self, monkeypatch):
+        monkeypatch.setattr(gc, "_resolve_lsof_path", lambda: "/usr/sbin/lsof")
+
+        def fake_run(cmd, **k):
+            assert cmd[0] == "/usr/sbin/lsof"
+            assert cmd[1:] == ["-a", "-d", "cwd", "-Fn"]
+            return _FakeProcRC("p123\nfcwd\nn/some/path\np456\nfcwd\nn/other/path\n")
+
+        monkeypatch.setattr(gc.subprocess, "run", fake_run)
+        assert gc._collect_live_cwds() == {"/some/path", "/other/path"}
+
+    def test_invocation_error_returns_empty_set_and_warns(self, monkeypatch, caplog):
+        monkeypatch.setattr(gc, "_resolve_lsof_path", lambda: "/usr/sbin/lsof")
+
+        def _raise(*a, **k):
+            raise subprocess.TimeoutExpired(cmd="lsof", timeout=20)
+
+        monkeypatch.setattr(gc.subprocess, "run", _raise)
+        with caplog.at_level("WARNING"):
+            result = gc._collect_live_cwds()
+        assert result == set()
+        assert any("DEGRADED" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# _has_live_cwd (round-2, 2026-07-18 — now a pure in-Python prefix-match
+# against a pre-collected set; no subprocess call of its own, see
+# _collect_live_cwds above for the single system-wide lsof call per gc() run)
 # ---------------------------------------------------------------------------
 
 
 class TestHasLiveCwd:
-    def test_no_process_cwd_inside_returns_false(self, tmp_path):
-        # Nothing has this fresh tmp_path as its cwd -> False. (The positive
-        # case — a real process cwd'd inside — was verified manually on
-        # macOS with a backgrounded `sleep` + `lsof -a -d cwd -Fn`; see the
-        # function docstring for the empirical note.)
-        target = tmp_path / "nobody-here"
-        target.mkdir()
-        assert gc._has_live_cwd(target) is False
+    def test_exact_match(self):
+        assert gc._has_live_cwd(Path("/a/b/c"), {"/a/b/c"}) is True
 
-    def test_lsof_missing_returns_false_never_raises(self, tmp_path, monkeypatch):
-        def _raise(*a, **k):
-            raise FileNotFoundError("lsof not installed")
+    def test_subdirectory_match(self):
+        # This is the case the naive `lsof -d cwd -- <dir>` exact-match form
+        # misses (empirically verified 2026-07-18) — a shell cd'd into a
+        # SUBDIRECTORY of the worktree must still count as active.
+        assert gc._has_live_cwd(Path("/a/b"), {"/a/b/deep/sub"}) is True
 
-        monkeypatch.setattr(gc.subprocess, "run", _raise)
-        assert gc._has_live_cwd(tmp_path) is False
+    def test_unrelated_path_does_not_match(self):
+        assert gc._has_live_cwd(Path("/a/b"), {"/some/other/place"}) is False
 
-    def test_subdirectory_cwd_matches_via_prefix(self, tmp_path, monkeypatch):
-        # Simulate lsof reporting a process whose cwd is a SUBDIRECTORY of
-        # the worktree — this is the case the naive `lsof -d cwd -- <dir>`
-        # exact-match form misses (empirically verified); our prefix-match
-        # in Python must catch it.
-        sub = tmp_path / "apps" / "backend-rag"
+    def test_empty_set_never_matches(self):
+        assert gc._has_live_cwd(Path("/a/b"), set()) is False
 
-        def fake_run(cmd, **k):
-            assert cmd[:4] == ["lsof", "-a", "-d", "cwd"]
-            return _FakeProcRC(f"p123\nfcwd\nn{sub}\n")
-
-        monkeypatch.setattr(gc.subprocess, "run", fake_run)
-        assert gc._has_live_cwd(tmp_path) is True
-
-    def test_unrelated_cwd_does_not_match(self, tmp_path, monkeypatch):
-        def fake_run(cmd, **k):
-            return _FakeProcRC("p123\nfcwd\nn/some/other/place\n")
-
-        monkeypatch.setattr(gc.subprocess, "run", fake_run)
-        assert gc._has_live_cwd(tmp_path) is False
+    def test_similar_prefix_without_separator_does_not_match(self):
+        # /a/bc must NOT match target /a/b — the prefix check requires a
+        # trailing separator, not a bare string prefix.
+        assert gc._has_live_cwd(Path("/a/b"), {"/a/bc"}) is False
 
 
 # ---------------------------------------------------------------------------
@@ -394,6 +461,36 @@ class TestGcIntegration:
         rev = _git(["rev-parse", "feature/foo"], cwd=repo, env=env, check=False)
         assert rev.returncode == 0, "branch ref must survive dir removal"
         assert rev.stdout.strip()
+
+    def test_detached_head_clean_worktree_removed_commit_preserved_via_ref(
+        self, gc_repo,
+    ):
+        """BLOCKER B anti-orphan proof (round-2, 2026-07-18): a CLEAN
+        detached-HEAD worktree with 1 unique commit is REMOVED, but the
+        commit is preserved via a refs/agent-quarantine/<slug>-head ref —
+        never orphaned. Before the fix, `git stash create` (the only
+        preservation mechanism) is EMPTY on a clean tree, so this exact case
+        sailed through un-quarantined and the commit became dangling."""
+        mod, repo, env = gc_repo
+        wt = mod.WORKTREES_DIR / "detached-lane"
+        wt.parent.mkdir(parents=True, exist_ok=True)
+        # --detach: HEAD is a raw commit, no branch ref anywhere for it.
+        _git(["worktree", "add", "--detach", str(wt), "main"], cwd=repo, env=env)
+        (wt / "unique.txt").write_text("only reachable from detached HEAD\n")
+        _git(["add", "unique.txt"], cwd=wt, env=env)
+        _git(["commit", "-m", "unique detached commit"], cwd=wt, env=env)
+        commit_sha = _git(["rev-parse", "HEAD"], cwd=wt, env=env).stdout.strip()
+
+        _age_path(wt, mod.DEFAULT_MAX_AGE_HOURS + 1)
+
+        mod.gc(apply=True, max_age_hours=mod.DEFAULT_MAX_AGE_HOURS)
+
+        assert not wt.exists()
+        slug = mod._slug(str(wt))
+        ref = f"{mod.QUARANTINE_REF_PREFIX}/{slug}-head"
+        resolved = _git(["rev-parse", "--verify", ref], cwd=repo, env=env, check=False)
+        assert resolved.returncode == 0, "detached HEAD commit must be preserved"
+        assert resolved.stdout.strip() == commit_sha
 
     def test_recent_worktree_kept_active_not_removed(self, gc_repo):
         """(b) A worktree touched within MIN_AGE_MIN is kept (active session)."""
