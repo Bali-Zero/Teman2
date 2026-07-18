@@ -111,8 +111,7 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   receptor on Zero's next app launch (the app was OFF at ship — err last grew 2026-07-17). Adjacent
   PRE-EXISTING finding (a readable-empty `slides/` dir excluded without count/log) + 2 NICEs
   (`@MainActor`, multi-root key) ledgered in PENDING-ARMS, not fixed (intent decision).
-- **4 accessibility amendments** in conflict with the constitution await Zero's reconciliation
-  (`~/.claude/skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md`).
+- **Accessibility/legibility SOTA is in the external benches, NOT a separate amendments file.** Verified 2026-07-18 (M5 + Pro): `_proposed-amendments/2026-07-16-accessibility-discipline.md` does NOT exist on either machine and no "4 accessibility amendments" content is in the brand skill — the prior reference was phantom (scar #6). The real, still-UN-shipped accessibility work is grounded in `_external-bench-2026-06.md`: **Art 14.7 AI-disclosure label** (Meta AI-label + EU AI Act pressure; constitution silent, Art 5.4 covers faces only) + **translucent-caption-pill** legibility scrim. Grounding these into constitution articles is the real (Zero-gated brand judgment) work — there is no lost amendments file to reconcile.
 - **Slide-7 closer micro-text** — ⚠️ corner-note was WRONG, corrected 2026-07-18 (growth-loop B): the
   deportation-remake closer is NOT elegant-close. DB `slides_json`: `slide_type=cta`, `layout_family`
   empty → `composer._pick_layout` routes it to **statement-bomb** (Art 9.5 hard rule) with a hero photo
@@ -121,7 +120,7 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   refuted by `claude_vision.py` (secondary text is judged at full size). Real fix surface = the
   photo-backed statement-bomb `.statement` sizing, NOT elegant-close CSS; exact tiny-rendering mechanism
   TBD (needs the rendered HTML / a faithful Pro-side repro) + must non-regress all photo statement-bombs.
-  Ledgered (PENDING-ARMS 2026-07-18) · memory `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18`.
+  **Fix is already BENCHED** (`_external-bench-2026-06.md:57`, translucent-caption-pill): an antracite ~75% translucent scrim/pill behind the `.statement` text over the full-bleed photo — closes the May "poor-contrast text-over-image" gap and is explicitly NOT an Art 15 violation (the ban targets color-coded kicker pills, not legibility scrims — document that for wr2-critic). So this is a BUILD of a benched device, not new research (though it touches brand rendering = Zero-gated). Ledgered (PENDING-ARMS 2026-07-18) · memory `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18`.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
   M5 queue shared-lock protocol · Swift tolerant decode · plist validator red on main ·
   19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).
