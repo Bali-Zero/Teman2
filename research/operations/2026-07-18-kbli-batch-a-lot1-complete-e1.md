@@ -72,3 +72,13 @@ verified; compiler-mediated writes only; leases per code; grounded on pinned can
 2. **5 quarantines** — honest-gap cures (canonical writes are the conductor's at emit).
 3. **Canonical pin W88** (`45bbc1f4` unreachable from main) — re-pin before emit.
 4. **Next**: Lot 2 = next contiguous ≥10-code segment (div 42→64 region). Lane ready on gate/go.
+
+## Adversarial review
+
+Seat: **Codex GPT-5.6 (family-independent)** — applied at the CONDUCTOR gate that post-dates this
+lane report (see `2026-07-18-kbli-batch-a-lot1-conductor-gate.md`, PR #2721): 3 refuter passes +
+full-report red-team + verify pass, plus a blind GLM-5.2 second extraction with vision. Surviving
+objections: none against the dossier evidence itself; however the gate OVERTURNED this report's
+clean-count conclusions — final adjudication is **13/13 quarantine, 0 certified** (the lane's
+"clean" set contained 7 substantively false-clean codes + 1 divergence-rule flip). The dossiers
+remain the immutable evidence trail; the conductor-gate report is the authoritative verdict layer.
