@@ -155,6 +155,102 @@ class TestValueFormat:
         assert spec.value_format == "country_code"
 
 
+class TestValueFormatKindConsistency:
+    """PR1b item 5: ``value_format`` used to be a purely static hint — a
+    future ``FactSpec(kind=INTEGER, value_format="date")`` would silently
+    disable ``compiler.py``'s date-shape check instead of failing loud at
+    construction, the one place the mismatch is actually introduced.
+    """
+
+    def test_date_format_on_integer_kind_rejected(self) -> None:
+        with pytest.raises(ValueError, match="value_format='date'"):
+            FactSpec(
+                path=FactPath.INTENT_STAY_DAYS,
+                kind=FactValueKind.INTEGER,
+                value_type="date",
+                derived=False,
+                value_format="date",
+            )
+
+    def test_date_format_on_string_set_kind_rejected(self) -> None:
+        with pytest.raises(ValueError, match="value_format='date'"):
+            FactSpec(
+                path=FactPath.INTENT_PURPOSES,
+                kind=FactValueKind.STRING_SET,
+                value_type="date_set",
+                derived=False,
+                value_format="date",
+            )
+
+    def test_country_code_format_on_boolean_kind_rejected(self) -> None:
+        with pytest.raises(ValueError, match="value_format='country_code'"):
+            FactSpec(
+                path=FactPath.WORK_EMPLOYER_IS_INDONESIAN_ENTITY,
+                kind=FactValueKind.BOOLEAN,
+                value_type="boolean",
+                derived=False,
+                value_format="country_code",
+            )
+
+    def test_country_code_format_on_integer_kind_rejected(self) -> None:
+        with pytest.raises(ValueError, match="value_format='country_code'"):
+            FactSpec(
+                path=FactPath.INTENT_STAY_DAYS,
+                kind=FactValueKind.INTEGER,
+                value_type="non_negative_integer",
+                derived=False,
+                value_format="country_code",
+            )
+
+    def test_date_format_on_string_kind_is_innocent(self) -> None:
+        spec = FactSpec(
+            path=FactPath.PERSON_BIRTH_DATE,
+            kind=FactValueKind.STRING,
+            value_type="date",
+            derived=False,
+            value_format="date",
+        )
+        assert spec.value_format == "date"
+
+    def test_country_code_format_on_string_kind_is_innocent(self) -> None:
+        spec = FactSpec(
+            path=FactPath.WORK_EMPLOYER_COUNTRY_CODE,
+            kind=FactValueKind.STRING,
+            value_type="country_code",
+            derived=False,
+            value_format="country_code",
+        )
+        assert spec.value_format == "country_code"
+
+    def test_country_code_format_on_string_set_kind_is_innocent(self) -> None:
+        spec = FactSpec(
+            path=FactPath.PERSON_NATIONALITIES,
+            kind=FactValueKind.STRING_SET,
+            value_type="country_code_set",
+            derived=False,
+            value_format="country_code",
+        )
+        assert spec.value_format == "country_code"
+
+    def test_none_format_always_accepted_regardless_of_kind(self) -> None:
+        for kind in FactValueKind:
+            spec = FactSpec(
+                path=FactPath.PERSON_MARITAL_STATUS,
+                kind=kind,
+                value_type="whatever",
+                derived=False,
+                value_format=None,
+            )
+            assert spec.value_format is None
+
+    def test_default_registry_specs_all_construct_cleanly(self) -> None:
+        # Every entry in the real catalog satisfies its own invariant — the
+        # hotfix's __post_init__ addition must not retroactively break
+        # _DEFAULT_SPECS (module import already proves this at collection
+        # time; this is the explicit, readable assertion of it).
+        assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 38
+
+
 class TestRegistryConstruction:
     def test_duplicate_spec_path_rejected(self) -> None:
         spec_a = FactSpec(
