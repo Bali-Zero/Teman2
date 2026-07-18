@@ -7,6 +7,7 @@ sources:
   - https://kemenimipas.go.id (Permen Imipas 10/2026 BVK; Permen Imipas 5/2025 penjamin)
   - https://kompas.com (BVK +6 states coverage)
 lane: gemini-3.1-pro-high via agy v1.1.3 (15m, 2026-07-18)
+adversarial_review: sonnet-web-nb-arbitration-lane 2026-07-18 (generator=gemini-3.1-pro ≠ grader; both discrepancies refuted-or-confirmed against primary sources — see Arbitration outcome)
 status: RESOLVED 2026-07-18 (same day) — both discrepancies arbitrated with primary sources by a dedicated web+NB lane; see "Arbitration outcome" section. Lampiran B211*→C-series mapping stays UNRESOLVED (OCR follow-up needed).
 ---
 
