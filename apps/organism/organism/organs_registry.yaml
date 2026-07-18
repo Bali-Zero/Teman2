@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 25af0bde5e40fa20e626d78169f64e940301becabd6729e6a7936e2985c8468c
+checksum: cf2a710add0066991f19e42041d7a2186f60a4e0c4288db9ff4979312b3ae763
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -1912,6 +1912,27 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.wr2_worktree_gc.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.worktree_gc_universal
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 129600
+  owner_module: scripts/worktree_gc_universal.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.worktree-gc-universal.daily
+  severity_on_silence: warning
+  notes: Reaps stale git worktrees across the whole fleet (not just WR2/broker lanes)
+    to free disk. Unpushed-commit gate no longer blocks removal (W88 cure, dir-only
+    reclaim, branch ref preserved) — registered manually as part of the G1/G2 gene
+    retrofit 2026-07-18, not organ_birth.py-generated.
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/com.nuzantara.worktree-gc-universal.daily.json
     timestamp_field: ts
     status_field: status
 - id: mini.fleet_watch
