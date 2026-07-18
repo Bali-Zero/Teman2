@@ -76,6 +76,28 @@ vs census). **Open quarantines (proposed in PR #2622, NOT resolved):** BPS Vol.1
 probe after 2026-07-19T18:10Z · stray mirror copy in `nuzantara-warroom-images/kbli-vault/`
 (pre-fix run) to delete. **EXTRACTION GATE — collapsed to ONE precondition (updated 2026-07-18):** the gate is now just **P0 membership** (#2640 LANDING; the Detect Secrets git-SHA false-positive on `canonical_revision` was fixed via a durable auto-triage rule for `data/kbli-filiera/membership/`, proven end-to-end; auto-merge armed SQUASH). Two prior "gates" dissolved: (a) **renders are NOT a bulk pre-build** — the PP28 300-dpi renders are produced **on-demand per-code at D2** from the sha256-pinned PP28 PDFs (`pdftoppm -r 300`, deterministic, offline); (b) the **OSS endpoint inventory is DONE** (6,236/6,236 pairs, in the manifest). **P1-v2 addendum HELD until AFTER Pilota A1** — Zero ruling 2026-07-18 (_"aspetti dopo il Pilota A1 così misuriamo prima su vault-core pulito"_): Perpres 10/49 + Bali/Kepmenaker + per-instrument status snapshots come as a SECOND vault wave; `pma_status`/`l4_bali`/TKA facets **abstain fail-safe** (A1/A5/A6) this pass and are lifted later — never published wrong. **⇒ Pilota A1 starts on the OSS+PP28+BPS core the moment P0 is on main.** Genuinely-deferred (NOT gates): BPS Vol.1 (Turnstile → browser lane), absence-window one probe after 2026-07-19T18:10Z, stray warroom mirror copy to delete.
 
+**Batch-A Lot 1 conductor gate SIGNED (2026-07-18, MANDATO S2 session):** verdict **12 quarantine /
+1 clean (19206)** on the first true-random A-serving slice of 13 — measured disease prevalence
+**≈92%**, so the ~221 no-scope class is presumed near-totally contaminated until each code proves
+otherwise. The lane (same-family Sonnet D1/D5) had certified 8 clean; 7 were FALSE-clean, caught
+only by cross-family seats (Codex refuter 2: 02402, 38222 · blind-GLM-with-vision 5: 05200, 01287,
+02201, 08920, 36003). New disease categories censused: **payload_cross_contamination** (licensing
+payload whose content belongs to another activity), **phantom_source_pointer** (pp28_sources
+naming a source that does not exist in the corpus), **mapping_metadata_false**. Meta-pattern:
+_same-family blind agreement measures transcription fidelity, not truth; a provenance pointer is
+not a content check_ → cross-family D5 + D4 content-vs-scope check are now LANE protocol (GO
+package §10 of the report). Calibration: m2 BREACH + m3 new-category pause DECLARED via plan
+amendments A-4/A-5 (never silently resumed); gold controls NEG 8/8 + POS 8/8-substance; IAA
+blind-GLM 0.923 vs final adjudication. Artifacts: report
+`research/operations/2026-07-18-kbli-batch-a-lot1-conductor-gate.md` (signed) · cure spec
+`scripts/kbli_filiera/cure_specs/batch_a_lot1.json` (12 codes, detach-only, no substitute values,
+PMA/l4/TKA still abstain) · registry test `scripts/tests/test_kbli_batch_a_lot1_registry.py`
+(module-gated on `_cure_applied()`) · Qdrant clear tool
+`apps/backend-rag/backend/scripts/kbli_qdrant_risk_clear.py` (dry-run default, `--codes`
+required). None of the 12 in gold (verified vs all 428); KG has 142 live REQUIRES edges across
+the 12 (counted on prod) → detach via `kg_kbli_license_fix.py` post-apply. **FIREBREAK: the GO
+package is a recommendation — NO lot beyond Lot 1 without Zero's explicit GO (Legge 5).**
+
 **Governance flags:**
 
 - **Filiera methodology**: panel CONCLUDED. Doc `research/operations/2026-07-16-kbli-filiera-methodology.md`
