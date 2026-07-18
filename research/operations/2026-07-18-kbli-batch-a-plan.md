@@ -312,8 +312,24 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
   first, not to start Lot 2.
 
 - **A-7 (2026-07-18, conductor) — Lot 2 (42999→59131) conductor-signed D6 verdict + control
-  limits + m5 deviation declared.**
-  **Verdict table — 13 quarantined, 0 certified:**
+  limits + m5 deviation declared. TWO INDEPENDENT LANES, CONVERGENT VERDICT.**
+
+  Two independent conductor lanes ran Lot 2 in parallel: M5 session f5892d39 (workflow
+  `wf_1ce36fab-e85`, innocence controls 47111/56101, cross-family seat Codex gpt-5.6
+  image-grounded) and a Pro lane per the second-signed gate doc
+  `research/operations/2026-07-18-kbli-batch-a-lot2-conductor-gate.md` / PR #2753 (innocence
+  controls 46100/52101, cross-family seat GLM-vision). **Both converged on the SAME verdict:
+  13/13 quarantined, 0 certified** — independent-lane convergence is itself evidence the
+  disease call is real, not an artifact of either lane's specific extraction path.
+
+  **Innocence-layer finding CONFIRMED ACROSS BOTH LANES independently:** M5's 56101 AND Pro's
+  46100/52101 innocence controls ALL carry crosswalk-metadata disease (56101's provenance
+  pointer falsely credited 56103/56104; 46100 and 52101 are merge-undercounts caught only on
+  the REVERSE BPS table). The "presumed healthy" stratum is diseased at the metadata layer too
+  — supports PR #2753's FATAL-4 candidate (a crosswalk-metadata contamination axis separate
+  from the per_skala/licensing-payload axis this program has measured so far).
+
+  **This lane's (M5) verdict table — 13 quarantined, 0 certified:**
 
   | Category | Codes | Count |
   |---|---|---|
@@ -349,17 +365,34 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
     `unresolvable_source_pointer`/`source_absent_in_vault` naming, `mapping_metadata_false`) — all
     13 Lot 2 findings classify cleanly into the existing closed-7 registry.
   - **m4** ≈197k tokens/dossier average, **PASS** (≤400k ceiling).
-  - **m5 NOT MEASURED — declared deviation, not a silent skip.** The digest-salted gold sets
-    (negative/positive controls per emit_batch_calibration_v2) were not embedded into this lot's
-    conductor-eye adjudication process; instead the conductor served a hand-picked innocence pair
-    (47111 — clean, untouched by any finding; 56101 — a TRUE POSITIVE at the *metadata* layer, not
-    the per_skala layer) as the innocence check. This means the innocence set ITSELF carries the
-    July-disease pattern (a record can be simultaneously "per_skala clean" and "metadata
-    contaminated") — a finding worth recording in its own right, not just a control-limit
-    shortfall. **Disposition:** Lot 3 embeds the v2-salted gold selection for m5 measurement; this
-    deviation and its innocence-violation finding are recorded here so no future reader mistakes
-    Lot 2's m5 silence for a clean PASS.
-  - **Disposition:** SIGNED — Fable conductor session f5892d39, 2026-07-18.
+  - **m5 NOT MEASURED IN THIS LANE — declared deviation, not a silent skip.** The digest-salted
+    gold sets (negative/positive controls per emit_batch_calibration_v2) were not embedded into
+    this lane's conductor-eye adjudication process; instead the conductor served a hand-picked
+    innocence pair (47111 — clean, untouched by any finding; 56101 — a TRUE POSITIVE at the
+    *metadata* layer, not the per_skala layer) as the innocence check. This means the innocence
+    set ITSELF carries the July-disease pattern (a record can be simultaneously "per_skala clean"
+    and "metadata contaminated") — a finding worth recording in its own right, not just a
+    control-limit shortfall. **The Pro lane's Appendix A (PR #2753) independently measured its
+    own m5 = 1.00 on valid controls** (4/4 after disqualifying one contaminated control, same
+    disease pattern as this lane's 56101 finding) — so the program-level m5 gap this lane
+    declares is closed by the sibling lane, not by this one. **Disposition:** this M5 lane's own
+    deviation is recorded here for audit honesty; no future reader should mistake THIS lane's m5
+    silence for a clean PASS, even though the sibling lane's measurement covers the gap.
+
+  **SCOPE BOUNDARY (read before treating Lot 2 as closed):** this PR ships ONLY the original
+  13-code detach + the 56101 metadata cure described above. It does **NOT** satisfy PR #2753's
+  fuller "Lot 2 cure shipped" bar — that report additionally requires (1) an upgraded disposition
+  for 47771 (`mapping_metadata_false` primary: detach, already done here, PLUS a metadata
+  correction — status_mapping → MERGE-aware, the 4 BPS parents 47892/47919/47996/47771 recorded
+  as crosswalk ancestors, explicitly NOT as pp28_sources — NOT done here) and (2) three standalone
+  metadata-fix cures outside this lot's 13-code scope: 46100 (2-parent merge, Lampiran 10 p.356),
+  52101 (5-parent merge, Lampiran 10 p.389), and 10433 (Appendix A finding — pp28_sources
+  wrongly associates 10490 with the wrong child, Lampiran 10 p.326). These four items are a
+  **follow-up PR, gated before Lot 3**, owned by the conductor lane (re-pull evidence via
+  dossier_pull + image-verify citations directly — not delegated to an apply-only session, per
+  the same-digit/image-verify discipline this program runs on).
+  - **Disposition:** SIGNED — Fable conductor session f5892d39, 2026-07-18 (M5 lane); convergent
+    with the Pro lane's second signing, PR #2753.
 
 ## Adversarial review
 
