@@ -294,6 +294,49 @@ def test_guilt_d2_self_confirm_failure_retro_demotes_certified(js_source: str) -
     assert '"unresolvable_source_pointer"' in js_source
 
 
+def test_guilt_innocence_prompt_never_announces_expected_verdict(js_source: str) -> None:
+    """GUILT: the innocence-control prompt must never announce the expected verdict to the seat
+    (Lot 4 conductor gate FILED this runner defect: 'the dossier MUST come out boring', 'Verify that
+    NOTHING needs changing') nor assert a false claim about the evidence ('no pp28_sources' — both
+    59140 and 59201 canonicals carry the field, verified 2026-07-19). A control the seat is told must
+    be boring is not a blind specificity measure — the gate downgraded the Lot 3/4 innocence
+    certifications from 'true-clean validation' to 'anchored non-blind regression fixtures' because of
+    exactly this defect. Checked against the innocencePrompt body only (not the whole file), so it
+    does not collide with the legitimate 'boring_as_expected' normalization comment tested above."""
+    _params, body = _function_signature_and_body(js_source, "innocencePrompt")
+    lowered = body.lower()
+    # Note: "verify that nothing needs changing" (the imperative INSTRUCTION that tells the seat
+    # what to conclude) is the marker, not the bare fragment "nothing needs changing" — the fixed
+    # prompt legitimately uses that fragment in a neutral, conditional sense ("verdict=certified if
+    # the evidence shows nothing needs changing"), which is not an announced expectation.
+    for marker in ("boring", "verify that nothing needs changing", "must come out clean", "no pp28_sources"):
+        assert marker not in lowered, (
+            f"innocencePrompt body still announces the expected verdict or a false claim "
+            f"(marker {marker!r} found) — the Lot 4 gate's non-blind-controls defect has regressed"
+        )
+    assert "innocence control" not in lowered, (
+        "innocencePrompt body still labels the code as a control — the fix requires never "
+        "revealing that this code is a control, not just removing the boring/clean bias"
+    )
+
+
+def test_innocence_neutral_symmetric_prompt_exists(js_source: str) -> None:
+    """INNOCENCE: the fix must not just delete the defect — a neutral, symmetric-blind treatment
+    must exist in its place, reading the SAME evidence surfaces as before (proving this is a
+    treatment swap, not a gutted no-op), using the wording the fix sanctioned ('adjudicate this
+    dossier exactly as any other')."""
+    _params, body = _function_signature_and_body(js_source, "innocencePrompt")
+    assert "exactly as any other" in body, (
+        "innocencePrompt does not contain the sanctioned neutral-adjudication wording"
+    )
+    assert "canonical.json" in body and "crosswalk" in body and "pp28" in body, (
+        "innocencePrompt must still read the same evidence surfaces as the pre-fix version"
+    )
+    assert "OUT_OF_SCOPE_NOTICE" in body, (
+        "innocencePrompt must still interpolate the shared out-of-scope notice (test 3 above)"
+    )
+
+
 def test_innocence_successful_d2_keeps_certified_verdict(js_source: str) -> None:
     """INNOCENCE: a SUCCESSFUL D2 extraction (self-confirmed, non-empty rows) must NOT be
     downgraded, and a code that never triggers D2 at all must be unaffected — proves the
