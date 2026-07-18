@@ -287,7 +287,17 @@ class StaticTrustStore:
                 f"environment variable {env_var!r} must decode to a JSON array, "
                 f"got {type(entries).__name__!r}"
             )
-        return cls(_trusted_key_from_env_entry(entry) for entry in entries)
+        try:
+            return cls(_trusted_key_from_env_entry(entry) for entry in entries)
+        except ValueError as exc:
+            # StaticTrustStore.__init__ raises a bare ValueError on a
+            # duplicate key_id (3-seat verify FIX-NOW #8) — this method's
+            # own contract (see docstring) promises RulePackVerificationError
+            # for every malformed-input case, so re-wrap it here rather than
+            # letting the constructor's plain ValueError escape.
+            raise RulePackVerificationError(
+                f"trust store built from {env_var!r} is invalid: {exc}"
+            ) from exc
 
 
 def _trusted_key_from_env_entry(entry: object) -> TrustedSigningKey:
@@ -303,6 +313,17 @@ def _trusted_key_from_env_entry(entry: object) -> TrustedSigningKey:
         environment = entry["environment"]
     except KeyError as exc:
         raise RulePackVerificationError(f"trust store entry missing required key: {exc}") from exc
+
+    # kid type guard (3-seat verify FIX-NOW #8): `kid` becomes a dict key in
+    # `StaticTrustStore.__init__` (`if key.key_id in by_id`) — an unhashable
+    # `kid` (e.g. a JSON array/object smuggled in where a string is
+    # expected) would otherwise surface as a bare, unwrapped `TypeError`
+    # there, breaking this module's "always RulePackVerificationError"
+    # contract. Reject it here, at the point of ingestion, instead.
+    if not isinstance(kid, str):
+        raise RulePackVerificationError(
+            f"trust store entry 'kid' must be a string, got {type(kid).__name__}: {kid!r}"
+        )
 
     valid_to_raw = entry.get("valid_to")
     revoked_at_raw = entry.get("revoked_at")

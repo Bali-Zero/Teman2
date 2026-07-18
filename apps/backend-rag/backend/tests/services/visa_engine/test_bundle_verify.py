@@ -10,6 +10,7 @@ of scope by design — see ``bundle.py``'s module docstring).
 from __future__ import annotations
 
 import copy
+import json
 from datetime import datetime, timezone
 
 import pytest
@@ -733,3 +734,65 @@ class TestBase64urlAlphabetHardening:
 
         with pytest.raises(RulePackVerificationError):
             StaticTrustStore.from_env()
+
+
+class TestFromEnvTypedErrorContract:
+    """3-seat verify FIX-NOW #8: ``from_env`` promises (its own docstring)
+    to always raise :class:`RulePackVerificationError` for malformed
+    input — never a bare, unwrapped exception from the plumbing
+    underneath it."""
+
+    def _entry(self, *, kid, public_key_b64url: str) -> dict:
+        return {
+            "kid": kid,
+            "public_key": public_key_b64url,
+            "valid_from": "2026-01-01T00:00:00Z",
+            "valid_to": None,
+            "revoked_at": None,
+            "environment": "TEST",
+        }
+
+    def test_duplicate_kid_raises_typed_error_not_bare_value_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, public_key_1 = ephemeral_ed25519_keypair()
+        _, public_key_2 = ephemeral_ed25519_keypair()
+        entries = [
+            self._entry(kid="dup-key", public_key_b64url=ed25519_public_key_b64url(public_key_1)),
+            self._entry(kid="dup-key", public_key_b64url=ed25519_public_key_b64url(public_key_2)),
+        ]
+        monkeypatch.setenv("VISA_ENGINE_TRUST_STORE_KEYS_JSON", json.dumps(entries))
+
+        # StaticTrustStore.__init__ raises a bare ValueError on a duplicate
+        # key_id — from_env must re-wrap it, never let it escape as-is.
+        with pytest.raises(RulePackVerificationError, match="dup-key"):
+            StaticTrustStore.from_env()
+
+    def test_non_string_kid_raises_typed_error_not_bare_type_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, public_key = ephemeral_ed25519_keypair()
+        entries = [
+            self._entry(kid=["not", "a", "string"], public_key_b64url=ed25519_public_key_b64url(public_key)),
+        ]
+        monkeypatch.setenv("VISA_ENGINE_TRUST_STORE_KEYS_JSON", json.dumps(entries))
+
+        # An unhashable kid would otherwise surface as a bare TypeError
+        # inside StaticTrustStore.__init__'s `if key.key_id in by_id` check.
+        with pytest.raises(RulePackVerificationError, match="kid"):
+            StaticTrustStore.from_env()
+
+    def test_well_formed_distinct_kids_still_accepted(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, public_key_1 = ephemeral_ed25519_keypair()
+        _, public_key_2 = ephemeral_ed25519_keypair()
+        entries = [
+            self._entry(kid="key-a", public_key_b64url=ed25519_public_key_b64url(public_key_1)),
+            self._entry(kid="key-b", public_key_b64url=ed25519_public_key_b64url(public_key_2)),
+        ]
+        monkeypatch.setenv("VISA_ENGINE_TRUST_STORE_KEYS_JSON", json.dumps(entries))
+
+        trust_store = StaticTrustStore.from_env()
+
+        assert isinstance(trust_store, StaticTrustStore)
