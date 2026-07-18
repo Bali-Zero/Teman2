@@ -488,6 +488,53 @@ class TestSubmitFromScraper:
         mock_stg.save_staging_item.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_duplicate_skips_backfill_when_existing_is_published(self) -> None:
+        """INNOCENCE (round-3 NICE fix, scar family #9): a duplicate hit
+        against an existing staging item that is already `status: published`
+        must NOT be healed even when it lacks enrichment and the new
+        submission carries one. Published items still live in the staging
+        root (the Telegram-quorum publish path never archives them), so an
+        unconditional heal would write to a closed/live record. No
+        downstream reader depends on this today (topic-selector filters
+        status=="pending"), but the write itself must not happen."""
+        from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
+
+        with (
+            patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_articles_duplicates") as mock_dup,
+            patch("backend.app.routers.intel_scraper.intel_scraper_latency") as mock_latency,
+        ):
+            mock_cls.classify_intel_type.return_value = "news"
+            mock_stg.generate_item_id.return_value = "news-2026-dup4"
+            mock_stg.check_duplicate.return_value = {
+                "item_id": "news-2026-existing4",
+                "enrichment": {},
+                "status": "published",
+            }
+            mock_dup.labels.return_value.inc = MagicMock()
+            mock_latency.labels.return_value.observe = MagicMock()
+
+            submission = ScraperSubmission(
+                title="Duplicate against published item",
+                content="Content",
+                source_url="https://example.com/dup4",
+                source_name="scraper",
+                category="news",
+                relevance_score=50,
+                extraction_method="auto",
+                tier="tier1",
+                enrichment={"the_facts": "New but must not land on a published item."},
+            )
+            result = await submit_from_scraper(submission=submission, _api_key_verified=None)
+
+        assert result["duplicate"] is True
+        assert "enrichment_backfilled" not in result
+        mock_stg.load_staging_item.assert_not_called()
+        mock_stg.save_staging_item.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_duplicate_backfill_failure_does_not_break_dedup_response(self) -> None:
         """Heal-attempt failures must never turn a successful dedup into a
         500 — log and fall through to the unchanged response shape."""

@@ -431,6 +431,7 @@ async def submit_from_scraper(
                 and new_enrichment
                 and not (isinstance(existing_enrichment, dict) and existing_enrichment)
                 and dup_item_id
+                and duplicate.get("status") in (None, "pending")
             ):
                 try:
                     existing_full = staging_service.load_staging_item(intel_type, dup_item_id)

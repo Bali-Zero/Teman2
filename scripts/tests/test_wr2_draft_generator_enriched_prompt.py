@@ -770,3 +770,63 @@ async def test_process_one_composes_when_facts_citations_only_but_enrichment_ric
     persist_calls = [c for c in conn.execute.call_args_list if "status" in c.args[0]]
     assert any("'drafts'" in c.args[0] for c in persist_calls)
     assert not any("parked" in c.args[0] for c in persist_calls)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Round-3 red-team MUST-FIX: a truthy non-dict enrichment (e.g. a list) must
+# not crash _has_usable_source / _process_one with AttributeError. This is
+# the same bug class as test_enriched_brief_coerces_non_dict_enrichment_
+# instead_of_raising above, at a 4th site the round-2 fix missed:
+# _has_usable_source's `if not enrichment: return False` guard only catches
+# FALSY non-dicts — a truthy one (`["bad"]`) sailed past it straight into
+# the unguarded `enrichment.get("the_facts")`.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+def test_has_usable_source_false_and_no_raise_when_enrichment_is_non_dict_truthy() -> None:
+    """GUILT (round-3 MUST-FIX): `_has_usable_source('', ['bad'])` pre-fix
+    raised `AttributeError: 'list' object has no attribute 'get'` because a
+    truthy non-dict list is not caught by the `if not enrichment` falsy
+    guard. Post-fix (coercion moved to the _process_one boundary) the
+    _process_one caller never hands _has_usable_source a non-dict — but
+    _has_usable_source itself must still degrade gracefully (never raise)
+    for any other caller that isn't as disciplined."""
+    result = _has_usable_source("", ["bad"])
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_process_one_parks_gracefully_when_enrichment_is_non_dict_list(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Integration GUILT (round-3 MUST-FIX): a news-shaped brief_json whose
+    `enrichment` field is a truthy non-dict (hand-edited/legacy staging
+    record, e.g. a list) must park cleanly instead of raising AttributeError
+    out of `_has_usable_source` before B2's park backstop can act. Confirms
+    the `_process_one` boundary coercion (line ~1384: non-dict -> None)
+    covers this class end-to-end, not just the `_build_enriched_brief`
+    entry guard."""
+    draft_id = uuid.uuid4()
+    row = {
+        "id": draft_id,
+        "topic": "Some News Event",
+        "brief_json": {
+            "article_summary": "",
+            "enrichment": ["bad"],
+            "staging_type": "news",
+            "liveness_tier": None,
+        },
+    }
+    conn = MagicMock()
+    conn.execute = AsyncMock()
+    compose_mock = AsyncMock()
+    monkeypatch.setattr(dg, "claude_compose_slides", compose_mock)
+
+    outcome = await dg._process_one(conn, row)
+
+    assert outcome == "parked"
+    compose_mock.assert_not_called()
+    conn.execute.assert_awaited_once()
+    args, _kwargs = conn.execute.call_args
+    assert "parked" in args[0]
+    assert args[1] == draft_id
