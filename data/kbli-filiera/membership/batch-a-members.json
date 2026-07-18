@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "45bbc1f42a0c74d12c3021f56a54565a747a01c7",
-  "canonical_sha256": "659dc7a71b360e16fbdb7bac5cbc0fe1831f33a994785185b56fe66e73fb04b5",
+  "canonical_revision": "75faf8a0e25b04b4b828f314a03f566334e708d7",
+  "canonical_sha256": "e5acc547b051e8c3a626c1d283e96bcd2290455784b6c47f8f08d786b52711a1",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
@@ -10,17 +10,17 @@
     "A-empty/gap": "_l2_status == 'no_oss_risk' AND per_skala == []"
   },
   "census": {
-    "A-serving/pp28": 113,
-    "A-empty/gap": 107,
+    "A-empty/gap": 120,
+    "A-serving/pp28": 100,
     "A-serving/orphan": 1,
-    "_in_scope_total": 114,
+    "_in_scope_total": 101,
     "_total": 221
   },
   "members": [
     {
       "kode_kbli_2025": "01287",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.B",
       "judul": "Pertanian Tanaman Narkotika dan Tanaman Obat Terlarang",
       "pp28_sources": [
@@ -29,8 +29,8 @@
     },
     {
       "kode_kbli_2025": "01700",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.B",
       "judul": "Perburuan, Penangkapan, dan Kegiatan Jasa Terkait",
       "pp28_sources": [
@@ -39,8 +39,8 @@
     },
     {
       "kode_kbli_2025": "02201",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.C",
       "judul": "Pemanenan Kayu",
       "pp28_sources": [
@@ -49,8 +49,8 @@
     },
     {
       "kode_kbli_2025": "02402",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.C",
       "judul": "Jasa Penggunaan Kawasan Kehutanan ?",
       "pp28_sources": [
@@ -59,8 +59,8 @@
     },
     {
       "kode_kbli_2025": "02409",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.C",
       "judul": "Jasa Penunjang Kehutanan Lainnya",
       "pp28_sources": [
@@ -69,8 +69,8 @@
     },
     {
       "kode_kbli_2025": "05102",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.D",
       "judul": "Benefisiasi atau Peningkatan Kualitas Batu Bara",
       "pp28_sources": [
@@ -79,8 +79,8 @@
     },
     {
       "kode_kbli_2025": "05200",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.D",
       "judul": "Pertambangan Lignit",
       "pp28_sources": [
@@ -89,8 +89,8 @@
     },
     {
       "kode_kbli_2025": "08920",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.A",
       "judul": "Ekstraksi Tanah Gambut (Peat)",
       "pp28_sources": [
@@ -99,8 +99,8 @@
     },
     {
       "kode_kbli_2025": "19206",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.F.c",
       "judul": "Industri Produk dari Pencampuran Hasil Kilang Minyak Bumi dengan Biofuel",
       "pp28_sources": [
@@ -109,8 +109,8 @@
     },
     {
       "kode_kbli_2025": "36003",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.H",
       "judul": "Aktivitas Penunjang Penyediaan Air",
       "pp28_sources": [
@@ -119,8 +119,8 @@
     },
     {
       "kode_kbli_2025": "38122",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Pengumpulan Limbah Radioaktif",
       "pp28_sources": [
@@ -129,8 +129,8 @@
     },
     {
       "kode_kbli_2025": "38222",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Pengolahan dan Pembuangan Limbah Radioaktif",
       "pp28_sources": [
@@ -139,8 +139,8 @@
     },
     {
       "kode_kbli_2025": "39001",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.D",
       "judul": "Aktivitas Penangkapan Karbon",
       "pp28_sources": [

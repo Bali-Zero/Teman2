@@ -33,6 +33,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
+from typing import Literal
 
 from backend.services.visa_engine.enums import (
     COMMERCIAL_FACT_PATHS,
@@ -65,6 +66,17 @@ class FactSpec:
     commercial_only: bool = False
     pii_class: PiiClass = PiiClass.NONE
     allowed_values: frozenset[str] | None = None
+    #: Hotfix (2026-07-18, Gap A/D): a structural shape ``compiler.py`` can
+    #: check a condition literal against, independent of ``kind``/
+    #: ``allowed_values``. ``kind`` alone cannot distinguish a free-form
+    #: STRING fact from a date-shaped one (``person.birth_date``) or a
+    #: country-code-shaped one (``work.employer_country_code``) — both are
+    #: ``FactValueKind.STRING`` (or, for a set of country codes,
+    #: ``STRING_SET``), so a bare kind check let ``"20260101"`` or ``"USA"``
+    #: (3 letters) compile clean. ``None`` means "no extra shape check"
+    #: (e.g. free-form/enum-ish strings already covered by
+    #: ``allowed_values``, or facts of other kinds).
+    value_format: Literal["date", "country_code"] | None = None
 
 
 def _spec(
@@ -76,6 +88,7 @@ def _spec(
     dependencies: frozenset[FactPath] = frozenset(),
     pii_class: PiiClass = PiiClass.PERSONAL,
     allowed_values: frozenset[str] | None = None,
+    value_format: Literal["date", "country_code"] | None = None,
 ) -> FactSpec:
     return FactSpec(
         path=path,
@@ -86,6 +99,7 @@ def _spec(
         commercial_only=path in COMMERCIAL_FACT_PATHS,
         pii_class=pii_class,
         allowed_values=allowed_values,
+        value_format=value_format,
     )
 
 
@@ -98,8 +112,13 @@ def _spec(
 #: (operational metadata or computed, not raw personal data); everything
 #: else defaults to PERSONAL.
 _DEFAULT_SPECS: tuple[FactSpec, ...] = (
-    _spec(FactPath.PERSON_BIRTH_DATE, FactValueKind.STRING, "date"),
-    _spec(FactPath.PERSON_NATIONALITIES, FactValueKind.STRING_SET, "country_code_set"),
+    _spec(FactPath.PERSON_BIRTH_DATE, FactValueKind.STRING, "date", value_format="date"),
+    _spec(
+        FactPath.PERSON_NATIONALITIES,
+        FactValueKind.STRING_SET,
+        "country_code_set",
+        value_format="country_code",
+    ),
     _spec(
         FactPath.PERSON_MARITAL_STATUS,
         FactValueKind.STRING,
@@ -123,12 +142,14 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
         FactValueKind.STRING,
         "date",
         pii_class=PiiClass.SENSITIVE,
+        value_format="date",
     ),
     _spec(
         FactPath.IMMIGRATION_LAST_ENTRY_DATE,
         FactValueKind.STRING,
         "date",
         pii_class=PiiClass.SENSITIVE,
+        value_format="date",
     ),
     _spec(
         FactPath.IMMIGRATION_OVERSTAY_DAYS,
@@ -167,7 +188,9 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
         ),
     ),
     _spec(FactPath.INTENT_STAY_DAYS, FactValueKind.INTEGER, "non_negative_integer"),
-    _spec(FactPath.INTENT_DESIRED_ENTRY_DATE, FactValueKind.STRING, "date"),
+    _spec(
+        FactPath.INTENT_DESIRED_ENTRY_DATE, FactValueKind.STRING, "date", value_format="date"
+    ),
     _spec(
         FactPath.INTENT_ENTRY_PATTERN,
         FactValueKind.STRING,
@@ -175,7 +198,12 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
         allowed_values=frozenset({"SINGLE", "MULTIPLE"}),
     ),
     _spec(FactPath.INTENT_REQUESTED_PRODUCT_CODE, FactValueKind.STRING, "product_code"),
-    _spec(FactPath.WORK_EMPLOYER_COUNTRY_CODE, FactValueKind.STRING, "country_code"),
+    _spec(
+        FactPath.WORK_EMPLOYER_COUNTRY_CODE,
+        FactValueKind.STRING,
+        "country_code",
+        value_format="country_code",
+    ),
     _spec(FactPath.WORK_EMPLOYER_IS_INDONESIAN_ENTITY, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.WORK_SERVES_INDONESIAN_CLIENTS, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.WORK_INDONESIA_SOURCE_COMPENSATION, FactValueKind.BOOLEAN, "boolean"),
@@ -213,7 +241,12 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
         "relation_enum",
         allowed_values=frozenset({"SPOUSE", "CHILD", "PARENT", "DEPENDENT", "OTHER"}),
     ),
-    _spec(FactPath.FAMILY_SPONSOR_NATIONALITIES, FactValueKind.STRING_SET, "country_code_set"),
+    _spec(
+        FactPath.FAMILY_SPONSOR_NATIONALITIES,
+        FactValueKind.STRING_SET,
+        "country_code_set",
+        value_format="country_code",
+    ),
     _spec(FactPath.FAMILY_SPONSOR_STATUS_CODE, FactValueKind.STRING, "product_code"),
     _spec(FactPath.FAMILY_MARRIAGE_REGISTERED, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.FAMILY_SPONSOR_CONFIRMED, FactValueKind.BOOLEAN, "boolean"),

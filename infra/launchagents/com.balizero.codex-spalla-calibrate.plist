@@ -8,7 +8,7 @@
     <array>
         <string>/bin/zsh</string>
         <string>-lc</string>
-        <string>/Users/nuzantara/scripts/codex-spalla-calibrate.sh &gt;&gt; /Users/nuzantara/logs/codex-spalla-calibration.cron.log 2&gt;&amp;1</string>
+        <string>/Users/nuzantara/scripts/codex/spalla-calibrate.sh &gt;&gt; /Users/nuzantara/logs/codex-spalla-calibration.cron.log 2&gt;&amp;1</string>
     </array>
     <!-- Sunday 06:00 Asia/Makassar (WITA, UTC+8) = Saturday 22:00 UTC.
          launchd interprets Hour/Minute in LOCAL time, so we encode the

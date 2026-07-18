@@ -114,6 +114,21 @@ as `2026-07-17-visa-oracle-v2-round<N>-<lane>.md`.
 - 2026-07-18: TRACK C SHIPPED — PR #2617 (C2, consolidated living-tree experience) merged 00:21 WITA and proven live: `https://www.balizero.com/visa-oracle` (200, noindex meta present) is now the single Track C foundation; `/visa-v2` 308-redirects there and C1 artifacts were removed in the consolidation. Experience is mock-only (5-state RecommendState, 12-card catalog, EN/ID, WCAG AA); real engine wiring stays gated on PR1 engine contracts landing on main. Worktree `mouth-visa-experience` intentionally kept alive for the sibling session's post-merge follow-up (widening CI e2e coverage back to the 4 interactive tests).
 - 2026-07-18: PR #2602 (bonifica) MERGED 2026-07-17T15:51Z — FASE 2 gate OPEN. PR #2607 had gone DIRTY after the night's LIVE-STATE merges (#2602/#2606/#2627/#2628 touch the same skill files); resolved the legal way (merge of origin/main into the branch, LIVE STATE lines reconciled, no force-push), automerge still armed.
 - 2026-07-18: TRACK A PR1 foundations pushed (M5) — merge commits against origin/main resolved by regenerating docs_sync markers (README/AI_ONBOARDING quick-numbers) rather than picking a side; PR #2654 open, automerge armed.
+- 2026-07-18: TRACK A PR1 MERGED — dual-PR1 collision (M5 #2654 vs sibling S3 #2718, same
+  visa_engine foundations scope) adjudicated ADOPT_A via independent cross-family comparative
+  review (Codex sol xhigh; verdict with file:line evidence posted on #2718, now closed as
+  superseded). #2654 merged to main, merge commit f73cbb4a7b. Branch
+  `agent/nuzantara/mouth/visa-engine-pr1-0718` (the S3 tree) intentionally preserved, not deleted —
+  its strong-Kleene evaluator + truth-table tests are the PR3 seed.
+- 2026-07-18: TRACK A next — PR1b port-list BEFORE PR2: (1) canonical YYYY-MM-DD literal
+  validation, (2) semantic STAGE_ORDER (WARNING: the two trees disagree on ELIGIBILITY vs
+  HUMAN_REVIEW precedence — arbitrate against
+  research/visa/2026-07-17-visa-oracle-v2-round2-codex-engine-concretization.md before porting),
+  (3) StrictBool on wire-level booleans, (4) common residual: JSON Schema `integer` accepts 2.0
+  while StrictInt rejects (schema-valid/model-invalid gap). Then PR2 signing (Ed25519, RFC8785,
+  anti-rollback). CodeQL note: iterate enums via `list(Enum)` in tests —
+  py/non-iterable-in-for-loop is a required-check failure class (S3 cured it on their tree in
+  commit 1a4360dc1b; A-tree tests should adopt the same pattern in PR1b).
 
 ## TRACKS — parallel work groups (multi-session coordination)
 

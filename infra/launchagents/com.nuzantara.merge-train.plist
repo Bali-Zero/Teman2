@@ -11,7 +11,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/nuzantara/nuzantara/scripts/merge_train_run.sh</string>
+        <string>/Users/nuzantara/nuzantara-deploy/scripts/merge_train_run.sh</string>
     </array>
     <key>StartInterval</key>
     <integer>180</integer>
@@ -24,7 +24,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>MERGE_TRAIN_REPO_ROOT</key>
-        <string>/Users/nuzantara/nuzantara</string>
+        <string>/Users/nuzantara/nuzantara-deploy</string>
     </dict>
 </dict>
 </plist>

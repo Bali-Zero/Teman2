@@ -92,17 +92,25 @@ pinned corpus as hunted — NOT asserted nonexistent; earned ABSENT needs the im
 agreement measures transcription fidelity, not truth; a provenance pointer is not a content
 check_ → cross-family IMAGE-GROUNDED blind D5 + D4 content-vs-scope check are now LANE protocol
 (GO package §10). Calibration: FOUR declared breaches — m1 ❌ 0.385 (cross-family extractor IAA;
-the lane's blindness measured), m2 ❌ 0.000, m3 ⚠️ new-category pause, **m5 ❌ NEG 7/8 (49213
-miss) → HALT IN EFFECT** — via plan amendments A-4/A-5/A-6; never silently resumed. Artifacts:
+the lane's blindness measured), m2 ❌ 0.000, m3 ⚠️ new-category pause, m5 ❌ NEG 7/8 (49213
+miss) — via plan amendments A-4/A-5/A-6; never silently resumed. **m5 HALT LIFTED (A-6(b)
+RESOLVED, same session):** the 49213 NEG miss was adjudicated per-ancestor on image-grade renders
+(49213-2025 = merge of {49214, 49219, 49413}-2020; all 3 PP28 regimes verified BY EYE identical —
+NIB+SS, Bupati/Wali Kota — the unique case where a merge's ancestors converge, vs 01700 where they
+diverge) → the miss is a certifiable-restore case, not a silent gap; restore of 49213 is a
+scheduled data-plane cure (dedicated PR, `pp28_sources=['49214','49219','49413']`). Artifacts:
 report `research/operations/2026-07-18-kbli-batch-a-lot1-conductor-gate.md` (signed, §12
 receipts) · cure spec `scripts/kbli_filiera/cure_specs/batch_a_lot1.json` (13 codes, detach-only,
 no substitute values, PMA/l4/TKA still abstain) · registry test
 `scripts/tests/test_kbli_batch_a_lot1_registry.py` (module-gated on `_cure_applied()`) · Qdrant
 clear tool `apps/backend-rag/backend/scripts/kbli_qdrant_risk_clear.py` (dry-run default,
 `--codes` required). None of the 13 in gold (verified vs all 428); KG has 147 live REQUIRES edges
-across the 13 (counted on prod) → detach via `kg_kbli_license_fix.py` post-apply. **FIREBREAK: the
-GO package is a recommendation with A-6 PRECONDITIONS (registry re-emission + m5-49213
-resolution) — NO lot beyond Lot 1 without Zero's explicit GO (Legge 5).**
+across the 13 (counted on prod) → detach via `kg_kbli_license_fix.py` post-apply. **GO GRANTED
+(Zero, 2026-07-18, Legge 5): explicit "go" on the Batch-A remainder + EXTENDED GO ("quando
+finisce lot 2 procedi con gli altri lot senza fermarti") — continuous lot-by-lot execution of the
+whole remainder (~101 in-scope codes, lots 2→~9) under the amended lane protocol, no per-lot GO
+needed; Zero is notified at Lot 2 kickoff. A-6(c) precondition (calibration registry v2
+re-emission on the cured canonical) ships in the governance PR before the Lot 2 lane starts.**
 
 **Governance flags:**
 

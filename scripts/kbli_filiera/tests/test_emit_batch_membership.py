@@ -58,13 +58,17 @@ def test_serving_code_with_l2_source_is_not_serving():
 
 
 def test_census_and_in_scope_on_real_canonical():
+    # Census AFTER the Lot 1 cure (PR #2725): the 13 quarantined codes were
+    # detached (per_skala -> []), migrating A-serving/pp28 -> A-empty/gap.
+    # Pre-cure baseline was 113/1/107 (in-scope 114); 113-13=100, 107+13=120,
+    # 114-13=101. Total population is invariant at 221.
     records = _load_real()
     members = m.build_members(records)
     cen = m.census(members)
-    assert cen["A-serving/pp28"] == 113
+    assert cen["A-serving/pp28"] == 100
     assert cen["A-serving/orphan"] == 1
-    assert cen["A-empty/gap"] == 107
-    assert cen["_in_scope_total"] == 114
+    assert cen["A-empty/gap"] == 120
+    assert cen["_in_scope_total"] == 101
     assert cen["_total"] == 221
     by = {x["kode_kbli_2025"]: x for x in members}
     # the two OSS-sourced cured codes are absent
@@ -75,6 +79,12 @@ def test_census_and_in_scope_on_real_canonical():
     # a no-scope cured pilot code is present but OUT of scope (watchlist)
     assert by["51103"]["reason_code"] == m.REASON_EMPTY_GAP
     assert by["51103"]["in_scope"] is False
+    # every Lot 1 cured code migrated to the gap watchlist (out of scope)
+    lot1 = ["01287", "01700", "02201", "02402", "02409", "05102", "05200",
+            "08920", "19206", "36003", "38122", "38222", "39001"]
+    for code in lot1:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
 
 
 def test_members_sorted_deterministic():
