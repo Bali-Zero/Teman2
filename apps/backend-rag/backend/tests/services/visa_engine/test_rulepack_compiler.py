@@ -266,7 +266,10 @@ class TestFactLiteralKindMismatch:
             rules=[rule], products=[product], source_records=[source_record]
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
-        assert any(e.code == "FACT_LITERAL_KIND_MISMATCH" for e in report.errors)
+        # PR1b item 7: the operator is unsupported for this fact's kind, not
+        # a literal/fact kind mismatch — dedicated FACT_ORDERING_UNSUPPORTED
+        # code (was FACT_LITERAL_KIND_MISMATCH pre-PR1b).
+        assert any(e.code == "FACT_ORDERING_UNSUPPORTED" for e in report.errors)
 
 
 class TestUnknownProductReference:
@@ -1258,6 +1261,36 @@ class TestUtcDetectionAnchoredFullMatch:
         assert any(e.code == "NON_UTC_DATETIME" for e in report.errors)
 
 
+class TestDatetimeShapeAsciiOnly:
+    """PR1b item 9 (GLM adversarial review, item-8 consistency): a direct
+    unit test on ``_DATETIME_SHAPE``/``_looks_like_datetime`` itself —
+    Python's ``re`` module treats bare ``\\d`` as Unicode-aware, so an
+    Arabic-Indic-digit string used to match this pattern's shape just like
+    ``_DATE_LITERAL_SHAPE`` (item 8) did. ``[0-9]`` (ASCII-only) closes the
+    same gap in the last active regex in this package that still had it —
+    every other remaining ``\\d`` in ``compiler.py`` is inside a docstring,
+    never a compiled pattern.
+    """
+
+    def test_valid_ascii_utc_datetime_matches(self) -> None:
+        assert C._looks_like_datetime("2026-07-17T00:00:00Z") is True
+
+    def test_valid_ascii_offset_datetime_matches(self) -> None:
+        assert C._looks_like_datetime("2026-07-17T00:00:00+08:00") is True
+
+    def test_valid_ascii_datetime_with_fractional_seconds_matches(self) -> None:
+        assert C._looks_like_datetime("2026-07-17T00:00:00.456789Z") is True
+
+    def test_arabic_indic_digit_datetime_does_not_match(self) -> None:
+        # Same "2026-07-17T00:00:00Z" spelled with Arabic-Indic digits
+        # (٠-٩) — Unicode decimal digits `\d` used to accept, `[0-9]` (ASCII
+        # class) correctly rejects.
+        assert C._looks_like_datetime("٢٠٢٦-٠٧-١٧T٠٠:٠٠:٠٠Z") is False
+
+    def test_non_datetime_string_does_not_match(self) -> None:
+        assert C._looks_like_datetime("not-a-datetime-at-all") is False
+
+
 # ---------------------------------------------------------------------------
 # Hotfix round (2026-07-18) — correctness gaps found by a comparative
 # analysis against the concretization spec.
@@ -1345,6 +1378,30 @@ class TestFactLiteralDateShape:
         report = C.compile_rule_pack(make_rule_pack(payload))
         assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
 
+    def test_arabic_indic_digits_shape_guilty(self, source_record: M.SourceRecord) -> None:
+        # PR1b item 8: Python's `re` module treats bare `\d` as Unicode-
+        # aware — an Arabic-Indic-digit string ("2026-07-17" spelled with
+        # ٠-٩) used to match `_DATE_LITERAL_SHAPE`'s old `\d` pattern and
+        # only fail downstream at `date.fromisoformat`, mis-classified as a
+        # calendar-validity defect rather than a shape one. `[0-9]` (ASCII-
+        # only) now catches it at the shape check itself.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.arabic_indic_digits",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.birth_date", "value": "٢٠٢٦-٠٧-١٧"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_INVALID_DATE" for e in report.errors)
+
     def test_between_bounds_invalid_date_guilty(self, source_record: M.SourceRecord) -> None:
         product_id = uuid.uuid4()
         product = make_product(
@@ -1392,6 +1449,76 @@ class TestFactLiteralDateShape:
         assert not any(e.code.startswith(("FACT_LITERAL", "BETWEEN")) for e in report.errors)
 
 
+class TestBetweenBoundsInvertedSuppressedOnInvalidDate:
+    """PR1b item 6 (Codex nit on hotfix #2739): a ``between`` bound that
+    already fails date validation is not a meaningful basis for the
+    lower>upper ordering comparison — comparing an invalid string
+    lexicographically produced a SECOND, confusing ``BETWEEN_BOUNDS_INVERTED``
+    error on top of the real ``FACT_LITERAL_INVALID_DATE`` one, for what is
+    really a single defect. The task brief's exact counterexample:
+    ``["2026-99-99", "2026-01-01"]`` — the invalid lower bound sorts
+    lexicographically greater than the valid upper bound.
+    """
+
+    def test_invalid_lower_bound_suppresses_inverted_error(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.between.invalid_lower_suppresses_inverted",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "person.birth_date",
+                "lower": "2026-99-99",
+                "upper": "2026-01-01",
+            },
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        codes = [e.code for e in report.errors]
+        assert "FACT_LITERAL_INVALID_DATE" in codes
+        assert "BETWEEN_BOUNDS_INVERTED" not in codes
+
+    def test_valid_bounds_still_report_inverted_when_actually_inverted(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        # Innocence-of-the-suppression: two SHAPE/CALENDAR-valid bounds that
+        # are genuinely inverted must still be caught — the fix only
+        # suppresses the ordering check when a bound is invalid, it must
+        # never suppress a real BETWEEN_BOUNDS_INVERTED defect.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.between.genuinely_inverted",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "between",
+                "fact": "person.birth_date",
+                "lower": "2026-12-31",
+                "upper": "2026-01-01",
+            },
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        codes = [e.code for e in report.errors]
+        assert "BETWEEN_BOUNDS_INVERTED" in codes
+        assert "FACT_LITERAL_INVALID_DATE" not in codes
+
+
 class TestOrderingOpsRestrictedToNumericOrDate:
     """Gap B: ``lt``/``lte``/``gt``/``gte``/``between`` were rejected only
     against BOOLEAN-kind facts — a plain enum-ish STRING fact (e.g.
@@ -1417,7 +1544,9 @@ class TestOrderingOpsRestrictedToNumericOrDate:
             rules=[rule], products=[product], source_records=[source_record]
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
-        assert any(e.code == "FACT_LITERAL_KIND_MISMATCH" for e in report.errors)
+        # PR1b item 7: the literal's OWN kind is correct (STRING against a
+        # STRING-kind fact) — the operator is what's unsupported here.
+        assert any(e.code == "FACT_ORDERING_UNSUPPORTED" for e in report.errors)
 
     def test_ordering_against_integer_fact_is_innocent(
         self, source_record: M.SourceRecord
@@ -1437,7 +1566,10 @@ class TestOrderingOpsRestrictedToNumericOrDate:
             rules=[rule], products=[product], source_records=[source_record]
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
-        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+        assert not any(
+            e.code in ("FACT_LITERAL_KIND_MISMATCH", "FACT_ORDERING_UNSUPPORTED")
+            for e in report.errors
+        )
 
     def test_ordering_against_date_fact_is_innocent(self, source_record: M.SourceRecord) -> None:
         product_id = uuid.uuid4()
@@ -1455,7 +1587,10 @@ class TestOrderingOpsRestrictedToNumericOrDate:
             rules=[rule], products=[product], source_records=[source_record]
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
-        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+        assert not any(
+            e.code in ("FACT_LITERAL_KIND_MISMATCH", "FACT_ORDERING_UNSUPPORTED")
+            for e in report.errors
+        )
 
 
 class TestCountryCodeShape:

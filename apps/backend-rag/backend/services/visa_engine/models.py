@@ -148,9 +148,18 @@ class TimeRange(BaseModel):
     its *value* may legally be ``null`` — a Python ``= None`` default would
     let ``TimeRange(from=...)`` silently omit the key, which for a field
     inside a signed payload changes what gets canonicalized/hashed.
+
+    ``populate_by_name=False`` (PR1b item 4): the wire name is the alias
+    ``"from"`` — ``from_`` is only a Python-safe attribute name (``from`` is
+    a keyword). Allowing the Python name to *also* construct the model
+    (``populate_by_name=True``) means a caller could smuggle
+    ``TimeRange(from_=...)`` past a boundary that only ever validates
+    alias-keyed wire payloads (dicts/JSON), which never carries a
+    ``from_`` key — alias-only construction is the correct contract for a
+    field that exists solely to route around a Python keyword clash.
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     from_: UtcDateTime = Field(..., alias="from")
     to: UtcDateTime | None
@@ -250,7 +259,13 @@ class StayPolicy(BaseModel):
 class ExtensionPolicy(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    allowed: bool
+    # StrictBool (PR1b item 3): a bare `bool` field accepts `1`/`0`/"true"/
+    # "yes" via Pydantic's lax-mode coercion — the same class of gap the
+    # int fields in this module already closed with `strict=True` (see
+    # e.g. `maximum_extensions` right below). Field(strict=True) does not
+    # change the exported JSON schema (verified empirically: `{"type":
+    # "boolean"}` either way), so no contract regeneration is needed.
+    allowed: Annotated[bool, Field(strict=True)]
     maximum_extensions: Annotated[int, Field(ge=0, le=100, strict=True)]
     days_per_extension: Annotated[int, Field(ge=1, le=3650, strict=True)] | None
 
@@ -267,7 +282,8 @@ class ClockCheckpointSpec(BaseModel):
 class ClockPolicy(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    available: bool
+    # StrictBool (PR1b item 3) — see ExtensionPolicy.allowed's comment.
+    available: Annotated[bool, Field(strict=True)]
     anchor: ClockAnchor
     checkpoints: tuple[ClockCheckpointSpec, ...] = Field(..., max_length=64)
 
@@ -301,7 +317,8 @@ class VisaProductVersion(BaseModel):
     clock_policy: ClockPolicy
     pricing_key: PricingKey | None
     source_refs: tuple[uuid.UUID, ...] = Field(..., min_length=1)
-    public_catalog: bool
+    # StrictBool (PR1b item 3) — see ExtensionPolicy.allowed's comment.
+    public_catalog: Annotated[bool, Field(strict=True)]
 
     @field_validator("legacy_codes", "legacy_slugs", "covered_purposes", "source_refs")
     @classmethod
@@ -415,7 +432,11 @@ class Rule(BaseModel):
     required_facts: tuple[FactPath, ...] = Field(..., max_length=128)
     source_refs: tuple[uuid.UUID, ...] = Field(..., min_length=1, max_length=32)
     explanation_key: Identifier
-    safety_critical: bool
+    # StrictBool (PR1b item 3) — see ExtensionPolicy.allowed's comment.
+    # `safety_critical` is the highest-stakes bool in this package (gates
+    # human-review escalation for legally-sensitive rules), so this is the
+    # field the task brief calls out as P1 rather than P2.
+    safety_critical: Annotated[bool, Field(strict=True)]
 
     @field_validator("product_version_ids", "source_refs")
     @classmethod
@@ -608,7 +629,21 @@ CountryCode = Annotated[str, Field(pattern=COUNTRY_CODE_PATTERN)]
 
 #: ``$defs/KnownDate`` — JSON Schema ``format: "date"`` (calendar date, no
 #: time-of-day component — deliberately distinct from ``UtcDateTime``).
-ISO_DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
+#:
+#: PR1b item 8: ``[0-9]``, never bare ``\d`` (same rationale as
+#: ``compiler.py``'s ``_DATE_LITERAL_SHAPE`` — see that constant's
+#: docstring). This pattern is exported verbatim into the JSON Schema
+#: contract (``schema_export.py`` -> ``contracts/*.schema.json``), where an
+#: EXTERNAL grader (e.g. the ``jsonschema`` library's ``Draft202012Validator``
+#: used in ``test_schema_contracts.py``, or any other JSON-Schema-compliant
+#: consumer) evaluates ``pattern`` using its own regex engine — for a Python
+#: `jsonschema` grader specifically, that is Python's own Unicode-aware
+#: ``re`` module, the exact engine whose ``\d`` behavior this hotfix works
+#: around. ``[0-9]`` keeps the exported contract's guarantee as strict as
+#: pydantic-core's (Rust regex, already ASCII-only for `\d` in practice) —
+#: writing the ASCII class explicitly removes any ambiguity for whichever
+#: engine ends up evaluating it.
+ISO_DATE_PATTERN = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
 IsoDate = Annotated[str, Field(pattern=ISO_DATE_PATTERN)]
 
 #: ``$defs/PublicDecisionId`` inline pattern (spec §2 ``Decision.public_id``).
@@ -812,9 +847,19 @@ class ApplicantFactsData(BaseModel):
     with all 35 keys required. Field order mirrors ``enums.FactPath``'s
     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
     ``family.*``/``study.*``/``process.*``/``commercial.*`` grouping.
+
+    ``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted
+    ``FactPath`` string (e.g. ``"person.birth_date"``) that cannot be a
+    Python attribute name, so each field carries a Python-safe name
+    (``person_birth_date``) purely to exist in the class body, with the
+    dotted string as its ``alias``. Allowing the Python name to *also*
+    populate the model would let a caller construct
+    ``ApplicantFactsData(person_birth_date=...)`` directly — a name that
+    never appears on the wire (every real payload is alias-keyed JSON/dict),
+    so accepting it is pure smuggling surface with no legitimate caller.
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     person_birth_date: Annotated[DateFact, Field(alias="person.birth_date")]
     person_nationalities: Annotated[CountrySetFact, Field(alias="person.nationalities")]
@@ -1050,7 +1095,8 @@ class Outage(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     code: ReasonCode
-    retryable: bool
+    # StrictBool (PR1b item 3) — see ExtensionPolicy.allowed's comment.
+    retryable: Annotated[bool, Field(strict=True)]
 
 
 class Decision(BaseModel):
@@ -1158,4 +1204,55 @@ class Decision(BaseModel):
             if self.outage is None:
                 raise ValueError("state=TEMPORARILY_UNAVAILABLE requires a non-null outage")
 
+        return self
+
+    @model_validator(mode="after")
+    def _check_quotes_reference_candidates(self) -> Decision:
+        """PR1b port from design B (F6 — quote<->candidate integrity).
+
+        Every ``PriceQuote`` in ``self.quotes`` must reference a real
+        ``Candidate`` in ``self.candidates``: membership by
+        ``product_version_id`` AND a matching ``product_code``. Without this,
+        a quote could silently drift onto the wrong product (same
+        ``product_version_id`` typo'd into a different candidate's slot, or a
+        ``product_code`` that disagrees with the candidate it claims to
+        price) and nothing downstream would ever notice — ``quotes`` and
+        ``candidates`` are two independently-constructed arrays with no
+        structural link enforced elsewhere.
+
+        A no-op for every state other than ``SUPPORTED_CANDIDATES``:
+        ``_check_state_conditionals`` above already forces
+        ``quotes == ()`` for all of them, so this loop never iterates.
+
+        PR1b item 10 (GLM adversarial review): ``candidates`` itself must
+        have unique ``product_version_id``s BEFORE the lookup dict below is
+        built — ``{c.product_version_id: c for c in self.candidates}``
+        silently clobbers any duplicate (last-one-wins), so a Decision with
+        two candidates for the same product would let the *survivor*
+        arbitrarily decide the quote-match outcome instead of failing loud
+        on the real defect (two candidates for one product is itself
+        malformed — ``rank``/``score``/``support_rule_ids`` would all be
+        ambiguous for that product_version_id).
+        """
+        candidate_ids = [c.product_version_id for c in self.candidates]
+        if len(set(candidate_ids)) != len(candidate_ids):
+            duplicates = sorted({str(pv) for pv in candidate_ids if candidate_ids.count(pv) > 1})
+            raise ValueError(
+                f"candidates must have unique product_version_id, duplicate(s): {duplicates}"
+            )
+
+        candidates_by_id = {c.product_version_id: c for c in self.candidates}
+        for quote in self.quotes:
+            candidate = candidates_by_id.get(quote.product_version_id)
+            if candidate is None:
+                raise ValueError(
+                    f"quote {quote.quote_id} references product_version_id "
+                    f"{quote.product_version_id} with no matching candidate"
+                )
+            if candidate.product_code != quote.product_code:
+                raise ValueError(
+                    f"quote {quote.quote_id} product_code {quote.product_code!r} does not "
+                    f"match candidate product_code {candidate.product_code!r} for "
+                    f"product_version_id {quote.product_version_id}"
+                )
         return self

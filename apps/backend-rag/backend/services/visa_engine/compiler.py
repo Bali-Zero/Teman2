@@ -256,10 +256,22 @@ def _revalidate_structurally(pack: RulePack, errors: list[CompilationError]) -> 
     ``AllCondition(args=())``, a self-referential/cyclic tree, a naive or
     non-UTC datetime, ...) bypasses every ``model_validator``/
     ``field_validator`` this package defines. Round-tripping through
-    ``model_dump(mode="json")`` -> ``RulePack.model_validate(...)`` forces it
-    back through full validation, so a malformed pack surfaces as one
-    ordinary ``CompilationError`` instead of crashing ``compile_rule_pack``
+    ``model_dump(mode="json", by_alias=True)`` -> ``RulePack.model_validate(...)``
+    forces it back through full validation, so a malformed pack surfaces as
+    one ordinary ``CompilationError`` instead of crashing ``compile_rule_pack``
     (or, worse, a caller three layers up) with an unrelated exception.
+
+    ``by_alias=True`` is load-bearing (PR1b item 4 follow-on): ``model_dump``
+    defaults to Python field names, not aliases (e.g. ``TimeRange.from_``,
+    never the wire name ``"from"``). That was harmless while
+    ``TimeRange``/``ApplicantFactsData`` had ``populate_by_name=True``
+    (``model_validate`` happily accepted the Python-named dump right back)
+    but is a hard failure now that both are alias-only — every pack contains
+    a ``TimeRange`` somewhere, so an unaliased dump made this round-trip fail
+    for literally every pack, valid or not. Dumping by alias is also the more
+    correct contract regardless: this function's whole job is proving the
+    pack round-trips through its *wire* representation, which is
+    alias-keyed by definition.
 
     Returns the freshly-validated pack on success. On failure (round 3:
     fail-stop, see ``compile_rule_pack``), returns ``None`` and appends one
@@ -270,15 +282,16 @@ def _revalidate_structurally(pack: RulePack, errors: list[CompilationError]) -> 
     successfully-revalidated pack is guaranteed to hold.
     """
     try:
-        serialized = pack.model_dump(mode="json")
+        serialized = pack.model_dump(mode="json", by_alias=True)
         return RulePack.model_validate(serialized)
     except Exception as exc:
         errors.append(
             CompilationError(
                 code="PACK_FAILS_STRUCTURAL_REVALIDATION",
                 message=(
-                    "pack does not round-trip through model_dump(mode='json') -> "
-                    f"model_validate(): {exc}"
+                    "pack does not round-trip through "
+                    "model_dump(mode='json', by_alias=True) -> model_validate(): "
+                    f"{exc}"
                 ),
             )
         )
@@ -561,12 +574,31 @@ _SCALAR_FACT_KINDS = frozenset({FactValueKind.BOOLEAN, FactValueKind.INTEGER, Fa
 #: ``"2026-1-1"`` (wrong shape) and ``"2026-02-30"`` (right shape, no such
 #: calendar day). The regex catches shape; ``date.fromisoformat`` catches
 #: calendar validity (leap years, day-of-month bounds, month range).
-_DATE_LITERAL_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+#:
+#: PR1b item 8 (nit Codex): ``[0-9]``, never bare ``\d`` — Python's ``re``
+#: module makes ``\d`` Unicode-aware by default, so it matches any Unicode
+#: decimal digit (e.g. Arabic-Indic ٠-٩), not just ASCII 0-9. A literal like
+#: ``"٢٠٢٦-٠٧-١٧"`` passed this shape check under ``\d`` and only failed
+#: later at ``date.fromisoformat`` — a real defect, but mis-classified: the
+#: reported message said "is not a valid calendar date" when the actual
+#: problem is "wrong digit script/shape" entirely. ``[0-9]`` is
+#: ASCII-only (matching ECMA-262/JSON-Schema's own ``\d`` semantics,
+#: which — unlike Python's — IS ASCII-only), so this now fails at the
+#: shape check with the correct message.
+_DATE_LITERAL_SHAPE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 
 
 def _check_date_literal_shape(
     value: str, spec: FactSpec, op: str, rule: Rule, errors: list[CompilationError]
-) -> None:
+) -> bool:
+    """Returns ``True`` iff ``value`` is a valid ISO-8601 calendar-date
+    literal (shape AND calendar validity), ``False`` otherwise — in the
+    ``False`` case, one ``FACT_LITERAL_INVALID_DATE`` has already been
+    appended to ``errors``. PR1b item 6: the caller (``_check_between_bounds``)
+    uses this return value to skip its own ``lower > upper`` ordering check
+    when a bound already failed here, so one invalid-date defect is never
+    reported twice under two different, confusing codes.
+    """
     if not _DATE_LITERAL_SHAPE.fullmatch(value):
         errors.append(
             CompilationError(
@@ -578,7 +610,7 @@ def _check_date_literal_shape(
                 rule_id=rule.rule_id,
             )
         )
-        return
+        return False
     try:
         date.fromisoformat(value)
     except ValueError as exc:
@@ -592,6 +624,8 @@ def _check_date_literal_shape(
                 rule_id=rule.rule_id,
             )
         )
+        return False
+    return True
 
 
 #: Hotfix (2026-07-18, Gap D): a fact marked ``value_format="country_code"``
@@ -717,8 +751,18 @@ def _check_between_bounds(
     # `_check_single_literal_against_kind` entirely, so without this a
     # `between` on a date fact with e.g. lower="2026-02-30" compiled clean.
     if spec.value_format == "date" and isinstance(lower, str) and isinstance(upper, str):
-        _check_date_literal_shape(lower, spec, "between", rule, errors)
-        _check_date_literal_shape(upper, spec, "between", rule, errors)
+        lower_is_valid_date = _check_date_literal_shape(lower, spec, "between", rule, errors)
+        upper_is_valid_date = _check_date_literal_shape(upper, spec, "between", rule, errors)
+        if not (lower_is_valid_date and upper_is_valid_date):
+            # PR1b item 6 (Codex nit on hotfix #2739): a bound that already
+            # failed date validation is not a meaningful basis for an
+            # ordering comparison — e.g. `["2026-99-99", "2026-01-01"]`
+            # would otherwise ALSO report BETWEEN_BOUNDS_INVERTED (the
+            # invalid string sorts lexicographically greater than the valid
+            # one) on top of FACT_LITERAL_INVALID_DATE, two codes for what
+            # is really one defect. Skip the lower>upper check entirely once
+            # either bound is already reported invalid.
+            return
     if lower > upper:
         errors.append(
             CompilationError(
@@ -808,9 +852,19 @@ def _check_fact_literal_kind(
                     spec.kind is FactValueKind.STRING and spec.value_format == "date"
                 )
                 if not ordering_allowed:
+                    # PR1b item 7 (nit Codex on hotfix #2739): this is NOT a
+                    # literal/fact kind mismatch — the literal's own Python
+                    # kind is correct (e.g. `marital_status < "MARRIED"` is a
+                    # STRING literal against a genuinely STRING-kind fact).
+                    # The defect is the OPERATOR: ordering has no legally
+                    # meaningful semantics for this fact's kind/value_format.
+                    # Dedicated code so a rule author isn't misled into
+                    # "fixing" the literal's type when the literal was never
+                    # wrong. Pre-SHADOW (no external consumer of error codes
+                    # yet), so renaming/splitting a code here is safe.
                     errors.append(
                         CompilationError(
-                            code="FACT_LITERAL_KIND_MISMATCH",
+                            code="FACT_ORDERING_UNSUPPORTED",
                             message=(
                                 f"ordering operator {op!r} not valid against fact "
                                 f"{fact.value!r} of kind {spec.kind.value}"
@@ -1043,7 +1097,20 @@ def _is_nfc(text: str) -> bool:
 #: shape (via ``fullmatch``) fixes this without narrowing true-positive
 #: detection: no real datetime field's serialized value ever has trailing
 #: characters after its offset suffix.
-_DATETIME_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$")
+#:
+#: PR1b item 9 (GLM adversarial review, item-8 consistency): ``[0-9]``, never
+#: bare ``\d`` — same rationale as ``_DATE_LITERAL_SHAPE`` above. This was
+#: the last ``\d`` left in this package's ACTIVE regex patterns (every other
+#: remaining ``\d`` in the file is inside a docstring, not a compiled
+#: pattern). This check is fail-open defense-in-depth (``NON_UTC_DATETIME``
+#: on a string that merely *looks* like a non-UTC datetime, per
+#: ``_check_utc_and_nfc``'s docstring — every real ``UtcDateTime`` field is
+#: already forced UTC-aware at ``models.py`` construction time), so a
+#: Unicode-decimal-digit false-negative here would silently skip that
+#: defense-in-depth layer rather than corrupt a report.
+_DATETIME_SHAPE = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+)
 
 
 def _looks_like_datetime(value: str) -> bool:

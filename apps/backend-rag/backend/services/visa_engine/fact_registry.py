@@ -78,6 +78,40 @@ class FactSpec:
     #: ``allowed_values``, or facts of other kinds).
     value_format: Literal["date", "country_code"] | None = None
 
+    def __post_init__(self) -> None:
+        """PR1b item 5 (Codex finding on hotfix #2739): ``value_format`` was
+        purely a static hint with nothing enforcing it agrees with ``kind`` —
+        a future registry entry with e.g. ``kind=INTEGER,
+        value_format="date"`` would silently disable
+        ``compiler.py``'s date-shape check (``_check_date_literal_shape`` is
+        only reached for a ``str`` literal, per
+        ``_check_single_literal_against_kind``'s ``isinstance(value, str)``
+        guard) instead of failing loud at the one place — ``FactSpec``
+        construction — where the mismatch is actually introduced.
+
+        ``"date"`` requires ``kind=STRING`` (a date is always a single
+        string value, never a set). ``"country_code"`` requires
+        ``kind=STRING`` (a lone country code, e.g.
+        ``work.employer_country_code``) or ``kind=STRING_SET`` (a set of
+        them, e.g. ``person.nationalities``) — both shapes are legitimate in
+        the default catalog. ``None`` is always fine, regardless of
+        ``kind``: it means "no extra shape check", never a claim about what
+        the kind *should* be.
+        """
+        if self.value_format == "date" and self.kind is not FactValueKind.STRING:
+            raise ValueError(
+                f"fact {self.path!r}: value_format='date' requires kind=STRING, "
+                f"got kind={self.kind.value}"
+            )
+        if self.value_format == "country_code" and self.kind not in (
+            FactValueKind.STRING,
+            FactValueKind.STRING_SET,
+        ):
+            raise ValueError(
+                f"fact {self.path!r}: value_format='country_code' requires "
+                f"kind=STRING or kind=STRING_SET, got kind={self.kind.value}"
+            )
+
 
 def _spec(
     path: FactPath,
