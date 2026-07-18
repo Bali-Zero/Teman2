@@ -87,7 +87,14 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   (a different, lower-urgency backlog — DB `war_room_drafts.status`):** `render_failed`=20
   (slow-accumulating since 2026-06-09, ~4/wk, 1 in last 3d — not acute), `missed`=17 (one-time
   2026-06-23), `rendered_shadow`=7 (2026-06-13 test batch). A render-failure sweep, if wanted, is
-  a fresh item — not the (now-closed) queue-stuck one.
+  a fresh item — not the (now-closed) queue-stuck one. **GROUND 2026-07-18 (growth-loop B):** the 19
+  render_failed are CONTENT/QUALITY failures, NOT render-infra — #4b279125 = `Article 7 hard fail:
+forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.py:1269`), others =
+  weak-slide non-convergence (max_iters). A blind requeue is FUTILE (identical content → identical
+  fail). The 8 `attempts=0` rows are a stale 06-08→06-13 batch (leave — stale news). **Systematic
+  sub-bug (ledgered):** the render lane's generic `except Exception` (`wr2_html_render_apply.py:1415`)
+  mislabels the deterministic Article-7 reject as 'transient' and burns all 3 retries — should
+  fail-fast. Deeper root cause: composer should never emit forbidden phrases.
 - **fact_check_status "degraded" pipeline-wide** — ROOT-CAUSED 2026-07-18 (growth-loop B4,
   `research/marketing/2026-07-18-wr2-fact-check-degraded-root-cause.md`, Codex-CADE-sharpened):
   NOT a bug — correct fail-closed. The checker verifies each draft against `brief_json`, the
