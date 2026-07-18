@@ -148,13 +148,19 @@ def test_boring_as_expected_never_emitted_as_a_verdict(js_source: str) -> None:
 
 def test_verdict_enums_use_only_frozen_taxonomy(js_source: str) -> None:
     """Every `enum: [...]` block that includes a verdict-shaped token set must be exactly the
-    frozen three (order-independent) — catches a schema silently regaining a 4th state."""
+    frozen three (order-independent) — catches a schema silently regaining a 4th state.
+
+    UPDATE (2026-07-19, Lot 5 schema-neutralization v2): the ONLY schema that ever validated a
+    seat-emitted `verdict` enum was INNOCENCE_SCHEMA, now retired (section 7 below) — D1_SCHEMA/
+    D5_SCHEMA/D2_SCHEMA never had a verdict field; every result's verdict is 100% deterministic JS
+    (diffD1D5() / d2SelfConfirmFailed ternary), never itself a seat-validated enum. Zero qualifying
+    enum blocks is therefore the CORRECT, stronger post-fix state (no seat can emit a verdict at
+    all, let alone a 4th token) — this test tolerates that explicitly rather than requiring one."""
     enum_blocks = re.findall(r"enum:\s*\[([^\]]*)\]", js_source)
     verdict_like = [
         blk for blk in enum_blocks
         if any(tok in blk for tok in FROZEN_TAXONOMY)
     ]
-    assert verdict_like, "expected at least one verdict enum block in the lot runner"
     for blk in verdict_like:
         tokens = {t.strip().strip('"').strip("'") for t in blk.split(",") if t.strip()}
         assert tokens == set(FROZEN_TAXONOMY), f"verdict enum block drifted from frozen taxonomy: {tokens}"
@@ -171,7 +177,10 @@ def test_abstain_classes_marked_out_of_scope(js_source: str) -> None:
     # and it must be reachable from the shared out-of-scope notice actually interpolated into
     # every seat prompt function, not just mentioned in a header comment
     assert "OUT_OF_SCOPE_NOTICE" in js_source
-    for fn in ("d1Prompt", "d5Prompt", "d2Prompt", "innocencePrompt"):
+    # innocencePrompt is deliberately NOT in this list (2026-07-19, Lot 5 schema-neutralization v2):
+    # it no longer exists — a control now reads d1Prompt/d5Prompt/d2Prompt via adjudicateCode(),
+    # already covered here.
+    for fn in ("d1Prompt", "d5Prompt", "d2Prompt"):
         fn_match = re.search(rf"function {fn}\([^)]*\)\s*{{(.*?)\n}}", js_source, re.DOTALL)
         assert fn_match, f"could not locate {fn} in lot runner"
         assert "OUT_OF_SCOPE_NOTICE" in fn_match.group(1), f"{fn} does not interpolate the out-of-scope notice"
@@ -294,47 +303,19 @@ def test_guilt_d2_self_confirm_failure_retro_demotes_certified(js_source: str) -
     assert '"unresolvable_source_pointer"' in js_source
 
 
-def test_guilt_innocence_prompt_never_announces_expected_verdict(js_source: str) -> None:
-    """GUILT: the innocence-control prompt must never announce the expected verdict to the seat
-    (Lot 4 conductor gate FILED this runner defect: 'the dossier MUST come out boring', 'Verify that
-    NOTHING needs changing') nor assert a false claim about the evidence ('no pp28_sources' — both
-    59140 and 59201 canonicals carry the field, verified 2026-07-19). A control the seat is told must
-    be boring is not a blind specificity measure — the gate downgraded the Lot 3/4 innocence
-    certifications from 'true-clean validation' to 'anchored non-blind regression fixtures' because of
-    exactly this defect. Checked against the innocencePrompt body only (not the whole file), so it
-    does not collide with the legitimate 'boring_as_expected' normalization comment tested above."""
-    _params, body = _function_signature_and_body(js_source, "innocencePrompt")
-    lowered = body.lower()
-    # Note: "verify that nothing needs changing" (the imperative INSTRUCTION that tells the seat
-    # what to conclude) is the marker, not the bare fragment "nothing needs changing" — the fixed
-    # prompt legitimately uses that fragment in a neutral, conditional sense ("verdict=certified if
-    # the evidence shows nothing needs changing"), which is not an announced expectation.
-    for marker in ("boring", "verify that nothing needs changing", "must come out clean", "no pp28_sources"):
-        assert marker not in lowered, (
-            f"innocencePrompt body still announces the expected verdict or a false claim "
-            f"(marker {marker!r} found) — the Lot 4 gate's non-blind-controls defect has regressed"
-        )
-    assert "innocence control" not in lowered, (
-        "innocencePrompt body still labels the code as a control — the fix requires never "
-        "revealing that this code is a control, not just removing the boring/clean bias"
-    )
-
-
-def test_innocence_neutral_symmetric_prompt_exists(js_source: str) -> None:
-    """INNOCENCE: the fix must not just delete the defect — a neutral, symmetric-blind treatment
-    must exist in its place, reading the SAME evidence surfaces as before (proving this is a
-    treatment swap, not a gutted no-op), using the wording the fix sanctioned ('adjudicate this
-    dossier exactly as any other')."""
-    _params, body = _function_signature_and_body(js_source, "innocencePrompt")
-    assert "exactly as any other" in body, (
-        "innocencePrompt does not contain the sanctioned neutral-adjudication wording"
-    )
-    assert "canonical.json" in body and "crosswalk" in body and "pp28" in body, (
-        "innocencePrompt must still read the same evidence surfaces as the pre-fix version"
-    )
-    assert "OUT_OF_SCOPE_NOTICE" in body, (
-        "innocencePrompt must still interpolate the shared out-of-scope notice (test 3 above)"
-    )
+# NOTE (2026-07-19, Lot 5 conductor gate SECOND SIGNING, §1 BLOCKER): the two guilt/innocence tests
+# that used to live here (test_guilt_innocence_prompt_never_announces_expected_verdict,
+# test_innocence_neutral_symmetric_prompt_exists) guarded innocencePrompt()'s WORDING — but the red-
+# team proved the Lot 4 prompt-only fix begat a twin bug on a DIFFERENT channel: INNOCENCE_SCHEMA's
+# field descriptions leaked the control's nature and expected outcome even with a neutral prompt in
+# place (both control seats' own notes self-identified as "innocence control"). The durable fix
+# retires innocencePrompt()/INNOCENCE_SCHEMA entirely — a control now shares the EXACT D1/D5/D2
+# schema+prompt a member code gets (see adjudicateInnocence() delegating to adjudicateCode() in the
+# lot runner) — so there is no longer a standalone prompt to word-check; those two tests are
+# SUPERSEDED by the schema-neutralization-v2 section below (section 7), which scans every seat-
+# visible channel (prompt body AND schema property descriptions AND the label/phase/model literals
+# passed to agent()) at once, per the gate report §6 lesson: a guilt test that only re-checks the
+# channel that bit last time invites the next twin bug on yet another channel.
 
 
 def test_innocence_successful_d2_keeps_certified_verdict(js_source: str) -> None:
@@ -349,4 +330,105 @@ def test_innocence_successful_d2_keeps_certified_verdict(js_source: str) -> None
     assert re.search(r"d2SelfConfirmFailed\s*=\s*\n?\s*d2\s*!==\s*null\s*&&", js_source), (
         "d2SelfConfirmFailed is not gated on d2 !== null — a code that never ran D2 could be "
         "wrongly demoted"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 7. INNOCENCE_SCHEMA neutralization v2 (Lot 5 conductor gate second signing, §1 BLOCKER /
+#    §6 meta-pattern): the schema-shaped twin of the Lot-4 prompt fix. A control must now share the
+#    EXACT D1/D5/D2 schema+prompt a member code gets — scanned across every seat-visible channel at
+#    once (prompt body, schema property descriptions, and the label/phase/model literals passed to
+#    agent()), not just the one channel ("boring"/"innocence control" prompt wording) that bit last
+#    time (gate report §6: "the guard-fix-begets-twin-bug shape now has a THIRD instance").
+# ---------------------------------------------------------------------------
+
+
+def test_guilt_innocence_schema_and_prompt_are_retired(js_source: str) -> None:
+    """GUILT: INNOCENCE_SCHEMA and innocencePrompt() must no longer be declared anywhere in the
+    runner — their mere existence, even unused, is exactly the kind of residue that regrows a
+    seat-visible surface later. Controls must have NO schema or prompt of their own left to leak
+    from, under any name."""
+    assert not re.search(r"\bconst\s+INNOCENCE_SCHEMA\b", js_source), (
+        "INNOCENCE_SCHEMA is still declared — this is the exact schema-channel leak the Lot 5 "
+        "gate's BLOCKER identified (field descriptions revealed control nature + expected outcome); "
+        "controls must share D1_SCHEMA/D5_SCHEMA/D2_SCHEMA, never their own schema"
+    )
+    assert not re.search(r"\bfunction\s+innocencePrompt\b", js_source), (
+        "innocencePrompt() is still declared — controls must share d1Prompt/d5Prompt/d2Prompt, "
+        "never their own prompt, so there is nothing schema- or prompt-shaped left to leak from"
+    )
+
+
+def test_guilt_adjudicate_innocence_delegates_to_adjudicate_code(js_source: str) -> None:
+    """GUILT: adjudicateInnocence must dispatch through adjudicateCode(code) — the EXACT function
+    member codes use (same d1Prompt/D1_SCHEMA, d5Prompt/D5_SCHEMA, d2Prompt/D2_SCHEMA, same
+    label/phase/model shape passed to agent(), same diffD1D5() compiler diff) — and must NOT call
+    agent() directly itself. A direct agent() call here would mean a bespoke seat-visible surface
+    still exists for controls, exactly the defect this fix eliminates."""
+    _params, body = _function_signature_and_body(js_source, "adjudicateInnocence")
+    assert re.search(r"\badjudicateCode\s*\(\s*code\s*\)", body), (
+        "adjudicateInnocence does not call adjudicateCode(code) — it must delegate to the shared "
+        "member pipeline rather than build any schema/prompt/label of its own"
+    )
+    assert "agent(" not in body, (
+        "adjudicateInnocence still calls agent() directly — all seat dispatch for a control must "
+        "happen exclusively inside adjudicateCode(), never in a separate call here"
+    )
+
+
+def test_innocence_shared_pipeline_body_carries_no_control_identifying_marker(js_source: str) -> None:
+    """INNOCENCE (scans EVERY seat-visible channel at once — prompt bodies AND schema property
+    descriptions — since adjudicateCode is now the SOLE dispatch path for both members and
+    controls): d1Prompt/d5Prompt/d2Prompt bodies AND the D1_SCHEMA/D5_SCHEMA/D2_SCHEMA object
+    literals must never mention 'innocence'/'control'/'boring' in any form — proves the actual text
+    an agent() call sends to the model is genuinely agnostic to which kind of code invoked it.
+
+    adjudicateCode's OWN runner-side bookkeeping (e.g. the `innocenceControl: false` field on its
+    RETURN object) is intentionally OUT of scope here: that field is a value this JS computes AFTER
+    the seat has already answered, never part of the prompt string or schema object handed to
+    agent() — same distinction the gate report draws between 'seat-visible' and 'runner-side'.
+
+    Word-boundary matching (scar-family #3 antidote, guard over-match): a bare substring check for
+    'boring' false-positives inside 'NEIGHBORING'/'neighboring_codes' (both legitimate, in d2Prompt's
+    body and D2_SCHEMA's own field name) — matched here with \\b so the marker can only fire on the
+    real word (or a suffixed form, e.g. 'controls'/'controlled'), never a substring of an unrelated
+    word."""
+    marker_res = {
+        "innocence": re.compile(r"\binnocence\w*\b"),
+        "control": re.compile(r"\bcontrol\w*\b"),
+        "boring": re.compile(r"\bboring\b"),
+    }
+    for fn in ("d1Prompt", "d5Prompt", "d2Prompt"):
+        _params, body = _function_signature_and_body(js_source, fn)
+        lowered = body.lower()
+        for marker, pattern in marker_res.items():
+            assert not pattern.search(lowered), (
+                f"{fn} body contains {marker!r} — this prompt is sent VERBATIM to the seat for "
+                "both members and controls; it must carry zero control-identifying text"
+            )
+    for schema_name in ("D1_SCHEMA", "D5_SCHEMA", "D2_SCHEMA"):
+        m = re.search(rf"const {schema_name} = {{(.*?)\n}};", js_source, re.DOTALL)
+        assert m, f"could not locate {schema_name} in lot runner"
+        lowered = m.group(1).lower()
+        for marker, pattern in marker_res.items():
+            assert not pattern.search(lowered), (
+                f"{schema_name} contains {marker!r} in a property description — this schema is "
+                "handed VERBATIM to agent() for both members and controls; it must carry zero "
+                "control-identifying text (this is exactly the channel the Lot 5 gate's BLOCKER "
+                "found leaking on the retired INNOCENCE_SCHEMA)"
+            )
+
+
+def test_innocence_result_shape_still_reports_verdict_taxonomy(js_source: str) -> None:
+    """INNOCENCE: the fix must not just delete the old defect — a runner-side (deterministic JS,
+    executed AFTER the seat-blind adjudicateCode() call returns, never seen or executed by any seat)
+    normalization must still tag the result innocenceControl/innocence, proving this is a delegate-
+    then-relabel treatment swap, not a gutted no-op that silently drops the control marker."""
+    _params, body = _function_signature_and_body(js_source, "adjudicateInnocence")
+    assert "innocenceControl: true" in body
+    assert "innocence: true" in body
+    # the relabeling must happen strictly AFTER adjudicateCode's own (await-ed) result is in hand —
+    # never interpolated into anything passed TO the seat call.
+    assert re.search(r"await\s+adjudicateCode\s*\(\s*code\s*\)", body), (
+        "adjudicateInnocence must await adjudicateCode(code) before doing any runner-side relabeling"
     )
