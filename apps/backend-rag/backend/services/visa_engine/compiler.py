@@ -1097,7 +1097,20 @@ def _is_nfc(text: str) -> bool:
 #: shape (via ``fullmatch``) fixes this without narrowing true-positive
 #: detection: no real datetime field's serialized value ever has trailing
 #: characters after its offset suffix.
-_DATETIME_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$")
+#:
+#: PR1b item 9 (GLM adversarial review, item-8 consistency): ``[0-9]``, never
+#: bare ``\d`` — same rationale as ``_DATE_LITERAL_SHAPE`` above. This was
+#: the last ``\d`` left in this package's ACTIVE regex patterns (every other
+#: remaining ``\d`` in the file is inside a docstring, not a compiled
+#: pattern). This check is fail-open defense-in-depth (``NON_UTC_DATETIME``
+#: on a string that merely *looks* like a non-UTC datetime, per
+#: ``_check_utc_and_nfc``'s docstring — every real ``UtcDateTime`` field is
+#: already forced UTC-aware at ``models.py`` construction time), so a
+#: Unicode-decimal-digit false-negative here would silently skip that
+#: defense-in-depth layer rather than corrupt a report.
+_DATETIME_SHAPE = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+)
 
 
 def _looks_like_datetime(value: str) -> bool:

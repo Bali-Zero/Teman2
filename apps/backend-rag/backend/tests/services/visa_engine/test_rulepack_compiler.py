@@ -1261,6 +1261,36 @@ class TestUtcDetectionAnchoredFullMatch:
         assert any(e.code == "NON_UTC_DATETIME" for e in report.errors)
 
 
+class TestDatetimeShapeAsciiOnly:
+    """PR1b item 9 (GLM adversarial review, item-8 consistency): a direct
+    unit test on ``_DATETIME_SHAPE``/``_looks_like_datetime`` itself —
+    Python's ``re`` module treats bare ``\\d`` as Unicode-aware, so an
+    Arabic-Indic-digit string used to match this pattern's shape just like
+    ``_DATE_LITERAL_SHAPE`` (item 8) did. ``[0-9]`` (ASCII-only) closes the
+    same gap in the last active regex in this package that still had it —
+    every other remaining ``\\d`` in ``compiler.py`` is inside a docstring,
+    never a compiled pattern.
+    """
+
+    def test_valid_ascii_utc_datetime_matches(self) -> None:
+        assert C._looks_like_datetime("2026-07-17T00:00:00Z") is True
+
+    def test_valid_ascii_offset_datetime_matches(self) -> None:
+        assert C._looks_like_datetime("2026-07-17T00:00:00+08:00") is True
+
+    def test_valid_ascii_datetime_with_fractional_seconds_matches(self) -> None:
+        assert C._looks_like_datetime("2026-07-17T00:00:00.456789Z") is True
+
+    def test_arabic_indic_digit_datetime_does_not_match(self) -> None:
+        # Same "2026-07-17T00:00:00Z" spelled with Arabic-Indic digits
+        # (٠-٩) — Unicode decimal digits `\d` used to accept, `[0-9]` (ASCII
+        # class) correctly rejects.
+        assert C._looks_like_datetime("٢٠٢٦-٠٧-١٧T٠٠:٠٠:٠٠Z") is False
+
+    def test_non_datetime_string_does_not_match(self) -> None:
+        assert C._looks_like_datetime("not-a-datetime-at-all") is False
+
+
 # ---------------------------------------------------------------------------
 # Hotfix round (2026-07-18) — correctness gaps found by a comparative
 # analysis against the concretization spec.
