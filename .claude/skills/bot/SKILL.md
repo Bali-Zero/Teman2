@@ -47,8 +47,20 @@ LANGFUSE_ENABLED` or set back to `true`) is an operator action AFTER this PR mer
   not done yet as of this update.
 - **Corner PR #2612 MERGED** (prior §1 refresh, superseded by this update).
 - **F2 (team check-in) NOT started** — begins after F1 ships. F3 (member profiles) after F2.
-- **Prompt v4 lane OPEN** (audit done, 7 findings — see §5). **Full-domain cache lane OPEN**
-  (design pending). Both tracked in the main session's task list.
+- **Prompt v4 lane SHIPPED, PR #<PR_NUMBER_PENDING> — unified versioned prompt door + v4
+  template (split-brain cure) — auto-merge armed.** `zantara_core_v4.py` (deadline-neutral KBLI
+  guidance, phantom KBLI codes fixed 55130/55194→55203/55901/55400, `{today_wita}` date
+  injection) + `prompt_builder.py` now imports `ZANTARA_MASTER_TEMPLATE` from
+  `prompt_manager` (the versioned door) instead of hardcoding v1 — `ZANTARA_PROMPT_VERSION`
+  finally reaches the WA bot. **Prod stays on v3 (unchanged) until an operator/session flips
+  the env var** — this PR ships the capability, does not flip it. **P0 caught in verification**:
+  v3's (and v4's) `WORKED_EXAMPLES` embed illustrative JSON (`{"price_idr": ...}`) that crashed
+  `.format()` — dormant only because the split-brain kept prompt_builder.py on v1; would have
+  hard-crashed all 4 channels the moment this PR's own fix reached prod (prod's
+  `ZANTARA_PROMPT_VERSION` Fly secret is confirmed SET to v3 today). Fixed via
+  `_safe_template_fill()` (substring replace, not `str.format()`) — see design doc §9. Full
+  detail: `research/operations/2026-07-17-zantara-prompt-v4-design.md`.
+- **Full-domain cache lane OPEN** (design pending). Tracked in the main session's task list.
 
 ## 2. ESTABLISHED TRUTH (verified — do not re-litigate, do not re-derive)
 

@@ -86,11 +86,11 @@ the 8th (19206) was quarantined under the plan's preregistered divergence rule (
 cross-family seats vs the conductor's own picked clean — caught by the mandated full-report
 red-team, Codex sol FIX-FIRST 4 BLOCKER/4 MAJOR/4 MINOR, all cured not argued down). Disease
 categories censused: **payload_cross_contamination** (licensing payload whose content belongs to
-another activity), **unresolvable_source_pointer** (pp28_sources row not retrievable from the
+another activity), **unresolvable_source_pointer** (pp28*sources row not retrievable from the
 pinned corpus as hunted — NOT asserted nonexistent; earned ABSENT needs the image-grade scan),
-**mapping_metadata_false**, **split-generic-payload** (19206). Meta-pattern: _same-family blind
+**mapping_metadata_false**, **split-generic-payload** (19206). Meta-pattern: \_same-family blind
 agreement measures transcription fidelity, not truth; a provenance pointer is not a content
-check_ → cross-family IMAGE-GROUNDED blind D5 + D4 content-vs-scope check are now LANE protocol
+check* → cross-family IMAGE-GROUNDED blind D5 + D4 content-vs-scope check are now LANE protocol
 (GO package §10). Calibration: FOUR declared breaches — m1 ❌ 0.385 (cross-family extractor IAA;
 the lane's blindness measured), m2 ❌ 0.000, m3 ⚠️ new-category pause, m5 ❌ NEG 7/8 (49213
 miss) — via plan amendments A-4/A-5/A-6; never silently resumed. **m5 HALT LIFTED (A-6(b)
