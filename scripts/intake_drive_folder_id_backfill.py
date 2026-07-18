@@ -430,50 +430,67 @@ def _live_guard_decision(live_value: str | None, folder_id: str) -> tuple[str, s
     return None
 
 
+async def _live_screen(
+    plans: list[ClientPlan], client: httpx.AsyncClient
+) -> dict[str, int]:
+    """GET each pending client's live prod state. Marks dead/already-served
+    plans and returns the LIVE folder->client ownership map.
+
+    This MUST run BEFORE bijectivity: the CRM has duplicate client records
+    (same person, two ids) whose shared folder would otherwise count as a
+    multi-claimant conflict even when prod has already deleted one twin.
+    """
+    live_owner: dict[str, int] = {}
+    for plan in plans:
+        if plan.decision != "pending" or not plan.folder_id:
+            continue
+        await asyncio.sleep(API_SLEEP_SECONDS)
+        url = f"/api/crm/clients/{plan.client_id}/profile"
+        try:
+            resp = await client.get(url)
+        except httpx.HTTPError as exc:
+            plan.decision, plan.detail = "error", f"get_{type(exc).__name__}"
+            continue
+        if resp.status_code == 404:
+            plan.decision, plan.detail = "skip", "not_found_prod"
+            continue
+        if resp.status_code != 200:
+            plan.decision, plan.detail = "error", f"get_http_{resp.status_code}"
+            continue
+        live_value = (resp.json().get("client") or {}).get("google_drive_folder_id")
+        if live_value:
+            live_owner[live_value] = plan.client_id
+        guard = _live_guard_decision(live_value, plan.folder_id)
+        if guard:
+            plan.decision, plan.detail = guard
+    return live_owner
+
+
 async def _apply_via_api(
-    plans: list[ClientPlan], base_url: str, token: str, apply: bool
+    plans: list[ClientPlan], client: httpx.AsyncClient, apply: bool
 ) -> None:
-    headers = {"Authorization": f"Bearer {token}"}
-    async with httpx.AsyncClient(base_url=base_url, headers=headers, timeout=30.0) as client:
-        for plan in plans:
-            if plan.decision != "pending" or not plan.folder_id:
-                continue
-            await asyncio.sleep(API_SLEEP_SECONDS)
-            url = f"/api/crm/clients/{plan.client_id}/profile"
-            try:
-                resp = await client.get(url)
-            except httpx.HTTPError as exc:
-                plan.decision, plan.detail = "error", f"get_{type(exc).__name__}"
-                continue
-            if resp.status_code == 404:
-                plan.decision, plan.detail = "skip", "not_found_prod"
-                continue
-            if resp.status_code != 200:
-                plan.decision, plan.detail = "error", f"get_http_{resp.status_code}"
-                continue
-            payload = resp.json()
-            live_value = (payload.get("client") or {}).get("google_drive_folder_id")
-            guard = _live_guard_decision(live_value, plan.folder_id)
-            if guard:
-                plan.decision, plan.detail = guard
-                continue
-            if not apply:
-                plan.decision, plan.detail = "would_apply", ""
-                continue
-            patch = await client.patch(url, json={"google_drive_folder_id": plan.folder_id})
-            if patch.status_code != 200:
-                plan.decision, plan.detail = "error", f"patch_http_{patch.status_code}"
-                continue
-            verify = await client.get(url)
-            verified = (
-                verify.status_code == 200
-                and (verify.json().get("client") or {}).get("google_drive_folder_id")
-                == plan.folder_id
-            )
-            if verified:
-                plan.decision, plan.detail = "applied", "verified"
-            else:
-                plan.decision, plan.detail = "error", "applied_but_verify_mismatch"
+    for plan in plans:
+        if plan.decision != "pending" or not plan.folder_id:
+            continue
+        if not apply:
+            plan.decision, plan.detail = "would_apply", ""
+            continue
+        await asyncio.sleep(API_SLEEP_SECONDS)
+        url = f"/api/crm/clients/{plan.client_id}/profile"
+        patch = await client.patch(url, json={"google_drive_folder_id": plan.folder_id})
+        if patch.status_code != 200:
+            plan.decision, plan.detail = "error", f"patch_http_{patch.status_code}"
+            continue
+        verify = await client.get(url)
+        verified = (
+            verify.status_code == 200
+            and (verify.json().get("client") or {}).get("google_drive_folder_id")
+            == plan.folder_id
+        )
+        if verified:
+            plan.decision, plan.detail = "applied", "verified"
+        else:
+            plan.decision, plan.detail = "error", "applied_but_verify_mismatch"
 
 
 async def main() -> int:
@@ -498,10 +515,26 @@ async def main() -> int:
 
     logger.info("resolving Drive folder ids (read-only metadata walk)...")
     _resolve_drive_folders(plans, args.sa_file, args.scope_folder_id)
-    _enforce_bijectivity(plans, folder_owner_snapshot)
 
     token = _mint_admin_jwt(_read_jwt_secret(args.jwt_env_file))
-    await _apply_via_api(plans, args.base_url, token, apply=args.apply)
+    headers = {"Authorization": f"Bearer {token}"}
+    async with httpx.AsyncClient(
+        base_url=args.base_url, headers=headers, timeout=30.0
+    ) as http_client:
+        # Live screen FIRST (dead twins / already-served drop out), then
+        # bijectivity on the survivors with live ownership taking precedence
+        # over the (staler) local snapshot.
+        live_owner = await _live_screen(plans, http_client)
+        # Snapshot claims by clients PROVEN dead on prod (404) decay — the
+        # surviving duplicate-twin must not stay blocked by a ghost owner.
+        dead_ids = {p.client_id for p in plans if p.detail == "not_found_prod"}
+        effective_snapshot = {
+            folder: cid
+            for folder, cid in folder_owner_snapshot.items()
+            if cid not in dead_ids
+        }
+        _enforce_bijectivity(plans, {**effective_snapshot, **live_owner})
+        await _apply_via_api(plans, http_client, apply=args.apply)
 
     audit_dir = Path(args.audit_dir)
     audit_dir.mkdir(parents=True, exist_ok=True)
