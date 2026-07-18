@@ -307,6 +307,19 @@ read-only, RC=0 each:
    whitespace-only reformatting by repo tooling changes the file digest, in which case the binding
    receipt is `codes/unique = 13/13` + the entry contents pinned by the registry test.)
 
+## Adversarial review
+
+Seat: **Codex GPT-5.6-sol (xhigh, read-only, family-independent)** — three refuter passes during the
+gate (§4), then a FULL-REPORT red-team on the first signing (**FIX-FIRST: 4 BLOCKER / 4 MAJOR /
+4 MINOR**) and a verify pass on the second signing (**10 CURED / 2 PARTIALLY-CURED / 0 NOT-CURED +
+6 new consistency findings**), plus an independent cross-section consistency sweep (fresh-context
+Sonnet). Every finding was re-grounded on the raw artifacts before curing (W65). **Surviving
+objections: none — 18 findings raised across the two passes, 18 cured in-document** (the two
+PARTIALLY-CURED items — residual source-nonexistence phrasing and non-reproducible receipts — were
+closed in the final revision; the cures are enumerated in the Sign-off). The material outcomes the
+review forced: the 19206 flip (13/13), the m1/m5 breach declarations, the halt, the sampling-claim
+correction, and the A-6 preconditions.
+
 ## Sign-off
 
 Conductor gate: **SIGNED — Fable conductor session (MANDATO S2), 2026-07-18 (second signing).**
