@@ -684,6 +684,7 @@ class SearchService:
                 raw_results,
                 collection_name,
                 primary_collection=None,
+                query=query,
             )
 
             # Record query for health monitoring
@@ -864,6 +865,7 @@ class SearchService:
             raw_results,
             collection_name,
             primary_collection=None,
+            query=query,
         )
         return {
             "query": query,
@@ -1116,6 +1118,7 @@ class SearchService:
                 raw_results,
                 collection_name,
                 primary_collection=None,
+                query=query,
             )
 
             # Record query for health monitoring
@@ -1374,6 +1377,7 @@ class SearchService:
                     raw_results,
                     collection_name,
                     primary_collection=primary_collection,
+                    query=query,
                 )
 
                 return collection_name, formatted_results
@@ -1559,6 +1563,7 @@ class SearchService:
                 raw_results,
                 collection_name,
                 primary_collection=None,
+                query=query,
             )
 
             return {"query": query, "results": formatted_results, "collection": collection_name}
