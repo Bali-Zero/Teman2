@@ -8,7 +8,7 @@
 
 | Machine    | User        | Hostname    | Role                                                              |
 | ---------- | ----------- | ----------- | ----------------------------------------------------------------- |
-| **Pro**    | `nuzantara` | `Nuzantara` | Workhorse — dev, DB, Qdrant, Ollama, 169 daemon, deploy (48GB)    |
+| **Pro**    | `nuzantara` | `Nuzantara` | Workhorse — dev, DB, Qdrant, Ollama, 224 daemon, deploy (48GB)    |
 | **Mini**   | `nuzantara` | `Mini-Pro2` | Server H24 — Ollama dedicato, cron pesanti (24GB)                 |
 | **Air-M5** | `balizero`  | `Air-M5`    | **THIN-CLIENT dev** — editing + agenti; pesante → `ssh pro`       |
 
@@ -41,7 +41,7 @@ See `docs/PRO_AIR_CONNECTION.md` for full details.
 
 ## 0.1. Air-M5 Thin-Client Routing Map (READ if `hostname=Air-M5`)
 
-**Air-M5 is a THIN-CLIENT.** You edit code, run agents, commit, and do light research **locally** on M5. Everything heavy — inference, vector DB, SQL, rendering, deploy, the 169 daemon — **lives on the Pro** and is reached via `ssh pro` (or `ssh mini`). M5 deliberately does **not** have Ollama, Postgres, Qdrant, `fly`, or the daemon stack.
+**Air-M5 is a THIN-CLIENT.** You edit code, run agents, commit, and do light research **locally** on M5. Everything heavy — inference, vector DB, SQL, rendering, deploy, the 224-daemon fleet — **lives on the Pro** and is reached via `ssh pro` (or `ssh mini`). M5 deliberately does **not** have Ollama, Postgres, Qdrant, `fly`, or the daemon stack.
 
 ### HARD RULE R1 — Heavy tools are NEVER installed on M5
 
@@ -109,10 +109,10 @@ On M5 the local `~/.claude/memory.db` is a **0-byte decoy**. The real DB is on t
 - Save: `mem save <type> "<text>" <importance>` (lands in the Pro's DB).
 - Never read the local `memory.db` directly, never write memory to a local `.codex/memories/` note, and **never present recalled context as if you ran a query** (anti-hallucination, CLAUDE.md §6).
 
-### HARD RULE R7 — Heavy render / NB studio / 169 daemon → Pro
+### HARD RULE R7 — Heavy render / NB studio / daemon fleet → Pro
 
 - WR2 hero images (FlowKit/Veo), WR3 video episodes, NotebookLM studio audio/video → **`ssh pro`** (the render pipelines and FlowKit live on the Pro). M5 dispatches and pulls results; it does not render locally.
-- The 169 `com.{nuzantara,balizero,cell}.*` LaunchAgents are **production daemons** — they run on Pro/Mini only. Never load/install them on M5.
+- The 212 `com.{nuzantara,balizero,cell,matagaruda}.*` LaunchAgents (224 jobs incl. cron, snapshot 2026-07-13 per `docs/AUTOMATIONS_REFERENCE.md`) are **production daemons** — they run on Pro/Mini only. Never load/install them on M5.
 
 ### MCP servers from M5
 
@@ -213,17 +213,16 @@ Use only for emergency / hotfix / cicatrix-fix.
 - `apps/kbli-voice/` - KBLI voice interface
 - `apps/evaluator/` - Quality assurance
 - `apps/zantara-media/` - Editorial content system
-- `packages/kb/` - Knowledge base
 - `packages/core/` - Core libraries
 
 ### Tech Stack
 
-- **Backend:** Python 3.11+, FastAPI, 90 routers, 253 services, 419 test files
+- **Backend:** Python 3.11+, FastAPI, 327 router mounts (156 router files), 746 service files, 1,449 test files
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
 - **Knowledge Graph:** 108,068 nodes, 242,827 edges
-- **Vector Collections:** 10 live on Fly.io (93,283 documents), 20 defined in code (after orphan cleanup)
+- **Vector Collections:** 11 canonical logical collections (`backend/core/collection_registry.py`), 104,154 documents
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
 
 ## 2. Codex Behavior Rules (IMPORTANT)
@@ -277,10 +276,10 @@ mypy backend/
 ruff check backend/
 ruff format backend/
 
-# Database migrations
-alembic revision --autogenerate -m "description"
-alembic upgrade head
-alembic downgrade -1
+# Database migrations (custom SQL system — NOT Alembic)
+# Create: backend/db/migrations_v2/NNN_name.sql with mandatory `-- === ROLLBACK ===` marker
+PYTHONPATH=. python -m backend.db.migrate apply-all
+PYTHONPATH=. python -m backend.db.schema_audit
 ```
 
 ### Frontend (Next.js)
@@ -312,18 +311,18 @@ vercel --prod
 apps/backend-rag/
 ├── backend/
 │   ├── app/              # FastAPI app
-│   │   ├── routers/      # API endpoints (90 routers)
+│   │   ├── routers/      # API endpoints (156 router files, 327 mounts)
 │   │   ├── services/     # App-level services (CRM, auth, metrics)
 │   │   ├── setup/        # app_factory, router_registration, service_initializer
 │   │   ├── dependencies.py  # ⚠️ Imported by ALL routers — test before deploy
 │   │   └── main.py       # Entrypoint (alias for main_cloud.py)
-│   ├── services/         # Core business logic (253 services)
+│   ├── services/         # Core business logic (746 service files)
 │   ├── core/             # Config, security, logging
 │   ├── prompts/          # ⭐ Prompt Single Source of Truth (see below)
 │   ├── channels/         # 7 channels (whatsapp, telegram, instagram, etc.)
 │   ├── llm/              # LLM clients (Gemini, Ollama, OpenRouter)
-│   └── migrations/       # Alembic (up to 060)
-├── tests/                # 419 test files
+│   └── migrations/       # custom SQL (legacy 001→124 py; live v2 092→246 sql in backend/db/migrations_v2/)
+├── tests/                # 1,449 test files (276 tests/ + 1,173 backend/tests/)
 ├── .venv/                # ⚠️ ALWAYS .venv on Pro and Mini
 └── fly.toml
 ```
@@ -413,7 +412,7 @@ Classification confidence thresholds:
 
 **Model:** `text-embedding-3-small` (OpenAI)  
 **Dimensions:** 1536  
-**CRITICAL:** This model is FROZEN. Changing it would invalidate 93,283 existing vectors.  
+**CRITICAL:** This model is FROZEN. Changing it would invalidate 104,154 existing vectors.  
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.
 
 ## 6. MCP Servers
@@ -562,7 +561,7 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 | "aggiungi paginazione clienti" | Cursor-based pagination on `GET /clients`, follow existing router patterns, async SQLAlchemy, add tests |
 | "fixa il bug del login" | Search recent auth-related errors in routers/auth, identify root cause, fix with proper error handling |
 | "rendi più veloce la ricerca" | Profile the search endpoint, identify bottleneck (N+1, missing index, no cache), fix the actual cause |
-| "aggiungi un campo alla tabella" | Alembic migration + model update + schema update + router update, in order |
+| "aggiungi un campo alla tabella" | SQL migration in `migrations_v2/` (with ROLLBACK marker) + model update + schema update + router update, in order |
 
 **Never** ask for clarification on standard dev tasks. Explore first, then act.
 
@@ -587,7 +586,7 @@ The user writes in **colloquial Italian**. You must automatically translate inte
 | Route             | Description                             |
 | ----------------- | --------------------------------------- |
 | `/kbli`           | KBLI 2025 Navigator homepage (Next.js)  |
-| `/kbli/[code]`    | KBLI code detail page (1,563 SSG pages) |
+| `/kbli/[code]`    | KBLI code detail page (1,559 SSG pages) |
 | `/kbli-navigator` | **Redirect** → `/kbli` (permanent 301)  |
 | `/kbli-explorer`  | AI chat explorer (complementary)        |
 
