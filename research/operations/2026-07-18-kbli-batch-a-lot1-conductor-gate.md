@@ -2,9 +2,9 @@
 date: 2026-07-18
 domain: operations
 client_case: none (GARUDA-FILIERA Batch A — Lot 1 conductor gate + GO package)
-adversarial_review: codex (3 passes, family-independent) + GLM-5.2 blind second extractor
+adversarial_review: codex (3 refuter passes + 1 full-report red-team pass gpt-5.6-sol xhigh, family-independent) + GLM-5.2 blind second extractor
 sources:
-  - "plan: research/operations/2026-07-18-kbli-batch-a-plan.md (§8 A-1..A-3)"
+  - "plan: research/operations/2026-07-18-kbli-batch-a-plan.md (§8 A-1..A-6; the signed conclusion depends centrally on A-4/A-5/A-6)"
   - "calibration: data/kbli-filiera/batch-reports/batchA-calibration.md (SIGNED f5892d39; pin interpretation per A-3)"
   - "lane report: research/operations/2026-07-18-kbli-batch-a-lot1-complete-e1.md (PR #2695)"
   - "dossiers: data/kbli-filiera/dossiers/*.jsonl (13 codes, hash-chained D0→D5, PR #2695)"
@@ -22,31 +22,37 @@ sources:
 
 ## 1. Verdict
 
-**Lot 1 PASSES the conductor gate, with the conductor FLIPPING SEVEN lane verdicts (all
-clean→quarantine) on cross-family evidence — every flip verified by eye on the canonical payloads
-and vault records before adjudication.**
+**Lot 1 PASSES the conductor gate, with the conductor FLIPPING EIGHT lane verdicts (all
+clean→quarantine): seven on cross-family content evidence — each verified by eye on the canonical
+payloads and vault records before adjudication — and one (19206) under the plan's preregistered
+divergence rule after the post-signing red-team showed the conductor's own "clean" was a picked
+verdict in a two-seat divergence (plan §8 A-6).**
 
 | Outcome | Codes |
 | --- | --- |
-| **QUARANTINE → honest-gap cure (12)** | 01700, 02409, 05102, 38122, 39001 (lane-proposed, conductor-confirmed at D6) + **02402, 38222** (Codex-refuter flips) + **05200, 01287, 02201, 08920, 36003** (blind-GLM flips) |
-| **CERTIFIED CLEAN (1)** | 19206 |
+| **QUARANTINE → honest-gap cure (13)** | 01700, 02409, 05102, 38122, 39001 (lane-proposed, conductor-confirmed at D6) + **02402, 38222** (Codex-refuter flips) + **05200, 01287, 02201, 08920, 36003** (blind-GLM flips) + **19206** (divergence-rule flip, A-6(a)) |
+| **CERTIFIED CLEAN (0)** | — |
 
-Final conductor-adjudicated certification rate: **1/13 = 0.077** — an m2 floor BREACH, acknowledged
-and root-caused in plan §8 **A-4** (population disease ~92%, not seat drift; the A-serving class IS
-the July silent-fill disease by construction). A new refutation category (payload cross-
-contamination) triggered the m3 pause — triaged in-gate, registry extension proposed (plan §8
-**A-5**). The cure spec for the 12 is `scripts/kbli_filiera/cure_specs/batch_a_lot1.json`
-(compiler dry-run: 12 to cure, 0 problems); the data apply lands in its own PR with the A6
-per-surface release checklist.
+Final conductor-adjudicated certification rate: **0/13 = 0.000** — an m2 floor BREACH, and the
+preregistered cross-family m1 (GLM-blind vs lane D1: 0.385) is ALSO a floor breach; both are
+acknowledged and root-caused in plan §8 **A-4** (population disease + lane content-blindness, not
+seat drift; the A-serving class IS the July silent-fill disease by construction — and no
+extrapolation beyond this taxonomy-ordered segment is claimed). New refutation categories
+(payload cross-contamination, unresolvable source pointer) triggered the m3 pause — triaged
+in-gate, registry extension proposed (plan §8 **A-5**). The m5 NEG control 49213 is a formal miss
+→ BREACH + declared halt (plan §8 **A-6(b)**). The cure spec for the 13 is
+`scripts/kbli_filiera/cure_specs/batch_a_lot1.json` (compiler dry-run: 13 to cure, 0 problems;
+receipts in §12); the data apply lands in its own PR with the A6 per-surface release checklist.
 
-**Disease census of the 12 (each conductor-verified by eye):**
+**Disease census of the 13 (each conductor-verified by eye):**
 
 | Flavor | Codes | What was actually served |
 | --- | --- | --- |
 | payload cross-contamination | 02402, 02201 (seed-certification blob), 08920 (salt-extraction marine regime: 'fasilitas pengambilan air laut', ≤12/>12-mil jurisdiction), 01287 (generic agriculture on narcotic-crop code) | licensing rows whose CONTENT belongs to a different activity |
 | regime mismatch across split | 05102 (mining-concession IUP on beneficiation), 38122/38222 (generic hazardous-B3 on the radioactive class), 39001 (storage-exploration + marine-pollution rows on capture) | a real PP28 row that does not substantively cover the 2025 activity |
 | non-inheritable ancestry | 01700 (6-way merge, single-ancestor inherit), 02409 (many-to-many) | structure that cannot single-inherit |
-| phantom source pointer | 05200, 36003 (+ the absence half of 01287/02201/08920) | pp28_sources cites a row ABSENT from the pinned corpus as hunted (11,208 pages) |
+| unresolvable source pointer | 05200, 36003 (+ the absence half of 01287/02201/08920) | pp28_sources cites a row not retrievable from the pinned corpus as hunted (11,208-page text-hunt; nonexistence NOT asserted — an earned ABSENT needs the plan-A5 image-grade scan) |
+| split-generic-payload + false mapping metadata | 19206 (generic pre-split 19291 basket payload; Besar row not on the pinned page; status_mapping 'CODICE_RINUMERATO' vs image-verified 3-way split) | a 'Seluruh'-scoped generic row inherited across a split, quarantined under the divergence rule (A-6(a)) |
 
 ## 2. Seat map as actually run (degradations DECLARED)
 
@@ -56,7 +62,7 @@ per-surface release checklist.
 | Extractor #2, BLIND | GLM 5.2 | **GLM 5.2, WITH vision** (probe: read code 05100/row 24 off the 300-dpi render) | zero visibility of Sonnet output; 29 codes = 13 lot + 16 gold, deterministic shuffle |
 | Refuter of verdicts | Gemini 3.1 Pro (agy) | **Codex GPT-5.6 (sol xhigh / terra high)** | **agy seat DEAD** (3 probes hung >20min, CONTEXT_AUTH per arsenal report) → declared cascade to the other non-extractor family. Family-independence preserved: OpenAI ≠ Anthropic(Sonnet) ≠ Zhipu(GLM). PENDING-ARMS line filed for the agy seat. |
 | Vision locator | qwen2.5vl (Mini) | not needed | GLM read renders directly; conductor read by eye |
-| Final gate | Fable 5 (this session) | Fable 5 (this session) | non-delegable, 10 dossiers by eye |
+| Final gate | Fable 5 (this session) | Fable 5 (this session) | non-delegable; initial D6 sample = 10 dossiers by eye (§3), then EVERY cross-family flip re-verified by eye at flip time (canonical payload + cited renders) → final by-eye coverage 13/13 |
 
 ## 3. Conductor D6 — raw-evidence gate (100% quarantines + 5 deterministic random)
 
@@ -71,7 +77,7 @@ Random rule: 5 lowest sha256(code|"d6-random") among the 8 lane-clean codes → 
 | 39001 (Q) | p.170: 39000 → {39001 capture, 39002 storage, 39009 remediation}; PP28 I.D.1022 row 68 = carbon-INJECTION-zone exploration (storage-side, 'Wilayah Izin Penyimpanan Karbon'); PP28 I.I.406 row 88 = marine pollution response. Neither is capture | CONFIRMED |
 | 08920 (R) | p.145: 08920 Ekstraksi Tanah Gemuk→Gambut (Peat), 1:1 terminology fix | CONFIRMED clean |
 | 02201 (R) | p.135: 02201 Pemanenan Kayu → 02201, clean 1:1 | CONFIRMED clean |
-| 19206 (R) | p.154: 19291 → {19205, 19206 biofuel-blending, 19209}; PP28 I.F.1925 row 187 = 19291 'Seluruh' generic industry regime (Sertifikat Standar, Menengah Rendah) — substantively covers the blending leg | CONFIRMED clean |
+| 19206 (R) | p.154: 19291 → {19205, 19206 biofuel-blending, 19209}; PP28 I.F.1925 row 187 = 19291 'Seluruh' generic industry regime (Sertifikat Standar, Menengah Rendah) — read at the time as substantively covering the blending leg | initial CONFIRMED clean — **SUPERSEDED by the A-6 divergence-rule flip** (two cross-family seats dissented; plan §3 forbids picking in divergence; the p.525 render also carries ONLY the Kecil/Menengah block, so the served Besar row was never certifiable). Kept in the table as the honest historical record of the conductor's own miss |
 | 05200 (R) | p.144: 05200 Pertambangan Lignit → 05200, 1:1 | CONFIRMED clean |
 | 36003 (R) | p.170: 36003 → 36003, 1:1 | CONFIRMED clean |
 
@@ -103,10 +109,14 @@ R1 = 5 quarantined (sol, xhigh) · R2 = 8 clean (terra, high) · R3 = 2 MUTATED 
     disease as 38122. (The refuter's specific "render_ref contradiction" claim was NOT in the dossier
     — a W65 partial hallucination; the flip stands on the conductor-verified payload evidence, not on
     that claim. The dossier's D2 self-confirm was nonetheless protocol-weak: `neighboring_codes: []`.)
-  - **19206 DISSENT REJECTED** — the refuter wants a categorical no-inheritance-across-splits rule;
-    the pre-registered criterion (A2) requires ADJUDICATION, not prohibition. The 19291 PP28 row is
-    'Seluruh'-scoped and generic-industrial; it substantively covers the blending leg (pilot precedent
-    43216/43223). 19206 stays clean, dissent recorded.
+  - **19206 DISSENT — initially rejected, then UPHELD via A-6.** The conductor first rejected the
+    dissent on A2 semantic grounds (the 19291 row is 'Seluruh'-scoped; pilot precedent 43216/43223).
+    The blind-GLM census (§6) then independently quarantined 19206 too — making it a TWO-seat
+    cross-family divergence against the conductor's clean, and plan §3 is binding: "Divergence →
+    QUARANTINE, never averaged or picked." The initial rejection was itself a picked verdict (the
+    full-report red-team caught this); the p.525 render also carries only the Kecil/Menengah block,
+    so the served Besar row was never certifiable, and status_mapping 'CODICE_RINUMERATO' is
+    contradicted by the image-verified 3-way split. **19206 QUARANTINED (A-6(a)).**
 - **R3 (mutations): 2/2 CAUGHT** — both injected packs (fields-vs-narrative contradiction on 08920;
   ONE_TO_ONE fields with split narrative on 02201) refuted with exact diagnoses.
 - Additional accepted refuter finding: 01700's PP28 ABSENT hunt covers ancestor 01711 only (verified
@@ -133,21 +143,29 @@ R1 = 5 quarantined (sol, xhigh) · R2 = 8 clean (terra, high) · R3 = 2 MUTATED 
   failure: the lane's 8 "clean" contained 7 false-negatives that the same-family D5 could not see.
   The lane-internal m1 (Sonnet-D1 vs Sonnet-D5) measured 0.923 on the same dossiers — same-family
   agreement OVERSTATES truth by construction (§8).
-- GLM-blind vs **final conductor adjudication**: **12/13 = 0.923** — the blind cross-family
-  extractor and the conductor's eye-verified adjudication converge; the single dissent is 19206
-  (GLM quarantines on strictness the pre-registered A2 criterion does not require; the 19291 PP28
-  row is 'Seluruh'-scoped and image-verified matching — 19206 stays clean, dissent recorded).
+- GLM-blind vs **final conductor adjudication**: **13/13 = 1.000 after the A-6 flip** (12/13 =
+  0.923 pre-flip, the sole dissent being 19206 — resolved by quarantining it under the divergence
+  rule, not by picking the conductor's reading). Caveat, per the red-team: this figure is
+  INFORMATIONAL, not an independence measure — the GLM findings informed the final adjudication,
+  so it cannot serve as the preregistered m1 (see §7).
 - Mapping-structure agreement (all seats, all 13): 13/13 — crosswalk structure is never where the
   disease lives; content is.
 
 **Gold reveal (post-lot, per calibration §5 reveal rule):**
 
 - NEGATIVE plaintext: 68112, 49213, 51103, 51203, 20111, 50115, 60312, 64310 (digests verified ==
-  signed calibration). **8/8 SURVIVED**: no control re-certified its refuted licensing. 49213
-  adjudication note: GLM refuses the refuted OLD-49213/AKDP source AND identifies the
-  crosswalk-correct predecessor 49413 (PP28 I.I p.65, Wali Kota, image-read digits) as certifiable
-  — this is the completion the fase-1 cure explicitly deferred ('pending a D2 image-extraction of
-  49413's rows'), recorded as a candidate for a provenance-backed restore, not a gap violation.
+  signed calibration). **7/8 formal survival — the 49213 miss is an m5 BREACH (A-6(b)).** GLM's raw
+  verdict on 49213 is `gap_confirmed=false` / `licensing_inherits=true`: it refuses the refuted
+  OLD-49213/AKDP source but holds the crosswalk-correct predecessor path 49413 (PP28 I.I p.65,
+  Wali Kota, image-read digits) licensable — under the preregistered §5 rule ("honest-gap must
+  survive; any miss halts") that is a formal NEG contradiction, and the halt is DECLARED AND IN
+  EFFECT (no Lot 2 until the 49213 finding is resolved by image-grade adjudication or ruling —
+  plan A-6(b)). The evidence-backed nuance stays on the record — this is the completion the fase-1
+  cure explicitly deferred ('pending a D2 image-extraction of 49413's rows'), so it is a candidate
+  for a provenance-backed restore — but the first signing of this report scored it "8/8, not a gap
+  violation", which the red-team correctly rejected: the preregistered rule does not admit in-gate
+  reinterpretation, and any fill-vs-evidenced-completion distinction must enter the registry by
+  amendment first.
 - POSITIVE plaintext: 47401, 32902, 46737, 28262, 36002, 47732, 50121, 46204 (digests verified ==
   signed calibration). **8/8 on the registered substance** (no control's OSS-native per_skala was
   refuted; licensing_inherits=true wherever asserted). Three controls raised TRUE collateral
@@ -155,20 +173,21 @@ R1 = 5 quarantined (sol, xhigh) · R2 = 8 clean (terra, high) · R3 = 2 MUTATED 
   says MATCH_LANGSUNG but the crosswalk is a 4→1 MERGE (47732+47875+47919+47999); 28262 is a
   RENUMBERING from 28263 (same-digit 2020-28262 is a different activity → collision class) yet
   claims 'code and scope unchanged'; 36002 OSS seawater-scope rows (36002-03-02/04-03) may require
-  ALSE permits the canonical row omits. **m5 halt clause evaluated and NOT triggered** — no control
-  was contradicted in its registered substance; the three metadata/completeness flags are logged to
-  the watchlist and the POS-hit definition is re-registered more precisely for the remainder (§10).
+  ALSE permits the canonical row omits. No POSITIVE control was contradicted in its registered
+  substance; the three metadata/completeness flags are logged to the watchlist. (The overall m5
+  verdict is nonetheless ❌ BREACH via the NEG 49213 miss above — the POS side does not offset it.)
 
 ## 7. Calibration m1–m5 (final, over the A-2 lot)
 
 | # | Metric | Lot 1 final | Limit | Status |
 | --- | --- | --- | --- | --- |
-| m1 | blind concordance — lane-internal (D1 vs D5, same family) | 0.923 | floor 0.75 | ✅ formally; see §8 — it measured fidelity, not truth |
-| m1-x | blind concordance — cross-family (GLM vs final adjudication) | 0.923 (12/13) | (not yet registered) | proposed as the REAL m1 for the remainder |
-| m2 | certification rate (conductor-adjudicated) | **0.077 (1/13)** | [0.20, 0.85] | ❌ **floor BREACH → plan §8 A-4 resume note** (population disease ~92%, not drift; advisory-floor 0.0 proposed for A-serving lots) |
-| m3 | refutation categories | + `payload_cross_contamination`, `mapping_metadata_false` | closed list | ⚠️ **new-category pause → triaged in-gate, plan §8 A-5** (registry extension proposed) |
+| m1 | blind concordance — the preregistered measure is between the two INDEPENDENT extractors (lane D1 vs blind cross-family GLM) | **0.385 (5/13)** | floor 0.75 | ❌ **BREACH → plan §8 A-4** (the breach measures the lane's content-blindness — the alarm working, not seat drift; the first signing of this report mislabeled m1 as PASSED using non-preregistered figures, a red-team BLOCKER now corrected) |
+| (info) | lane-internal D1-vs-D5 agreement (same family) | 0.923 | — | informational only — measures transcription fidelity, not truth (§8); NOT an m1 reading |
+| (info) | GLM vs final adjudication | 1.000 (13/13) post-A-6 | — | informational only — NOT independent (GLM informed the adjudication); NOT an m1 reading |
+| m2 | certification rate (conductor-adjudicated) | **0.000 (0/13)** after the A-6 flip (0.077 pre-flip) | [0.20, 0.85] | ❌ **floor BREACH → plan §8 A-4** (population disease in this taxonomy-ordered segment; declared-BREACH state kept — the earlier advisory-floor-0.0 re-registration is WITHDRAWN; per-lot explicit adjudication required) |
+| m3 | refutation categories | + `payload_cross_contamination`, `unresolvable_source_pointer`, `mapping_metadata_false` | closed list | ⚠️ **new-category pause → triaged in-gate, plan §8 A-5** (registry extension is a Lot-2 PRECONDITION per A-6(c)) |
 | m4 | tokens/dossier (lane) | ~208k avg | ceiling 400k | ✅ |
-| m5 | gold-set hit rate | NEG 8/8 · POS 8/8 registered-substance (3 true collaterals logged) | 1.00, any miss halts | ✅ halt clause evaluated, not triggered — adjudication in §6, wording tightened for the remainder |
+| m5 | gold-set hit rate | NEG **7/8 formal** (49213 miss) · POS 8/8 registered-substance (3 true collaterals logged) | 1.00, any miss halts | ❌ **BREACH → HALT declared and in effect (plan §8 A-6(b))** — no Lot 2 until the 49213 finding is resolved by image-grade adjudication or ruling |
 
 ## 8. §Meta-pattern (the disease-of-diseases this lot exposes)
 
@@ -181,13 +200,18 @@ verified structure (crosswalk); truth lives in content (payload semantics vs act
 source existence in the corpus). Same-family seats share the same blind spot; the conductor's own
 first D6 pass shared it too (it re-read the evidence the lane CITED, not the claims the lane never
 examined) — caught only because two independent cross-family seats attacked the same dossiers with
-different priors: Codex found 2 (02402, 38222), blind-GLM found 4 more (05200, 01287, 02201,
-08920/36003) plus independent confirmation of every lane quarantine. The chain of upstream
-defective beliefs is now three deep: *"the code number is a stable key across vintages"* (pilot) →
-*"a provenance pointer is a content check"* (this lot) → *"agreement between same-family seats is
-evidence of truth"* (this lot, the process-level corollary the GO package §10.1 kills). Measured
-disease prevalence in the first true-random A-serving slice: **12/13 ≈ 92%** — the ~221-code
-no-scope class must be presumed near-totally contaminated until each code proves otherwise.
+different priors: Codex found 2 (02402, 38222), blind-GLM found 5 more (05200, 01287, 02201,
+08920, 36003) plus independent confirmation of every lane quarantine — and an eighth flip (19206)
+followed from the divergence rule itself once the red-team showed the conductor's clean was a
+picked verdict in a two-seat divergence (A-6(a)). The chain of upstream defective beliefs is now
+three deep: *"the code number is a stable key across vintages"* (pilot) → *"a provenance pointer
+is a content check"* (this lot) → *"agreement between same-family seats is evidence of truth"*
+(this lot, the process-level corollary the GO package §10.1 kills). Measured disease prevalence:
+**13/13 in this lot — which is a contiguous taxonomy-ordered segment (divisions 01→39), NOT a
+random sample (red-team correction: the first signing called it "true-random", contradicting the
+plan's own lot rule). No extrapolation to the full ~221-code class is claimed; the remainder lots
+measure it. The fail-safe posture stands regardless: every no-scope code is a SUSPECT until it
+proves otherwise.**
 
 ## 9. §Solo-operatore
 
@@ -199,14 +223,24 @@ no-scope class must be presumed near-totally contaminated until each code proves
 
 ## 10. GO package — Batch A remainder (101 codes: 114 − 13)
 
-**Recommendation: GO, with the lane protocol AMENDED as below (all fixes are cheap, all were
-measured to pay this lot).**
+**Recommendation: GO, CONDITIONED on the A-6 preconditions in point 0, with the lane protocol
+AMENDED as below (all fixes are cheap, all were measured to pay this lot).**
 
-1. **Cross-family refutation becomes part of the LANE protocol, not a conductor tightening.** The
-   D5 seat on every dossier must be a different FAMILY from D1 (GLM 5.2 blind with vision, or Codex
-   on text-packs), not a second Sonnet. Measured yield this lot: 7/13 false-clean caught by
-   cross-family passes (2 Codex refuter + 5 GLM blind-with-vision) that same-family D5 missed;
-   cost ≈ flat-subscription tokens, ~2–13 min/code wall on GLM.
+0. **PRECONDITIONS (plan §8 A-6 — Zero's GO is only actionable after BOTH):** (a) the calibration
+   registry re-emission (A-6(c): m3 category extensions, m1 formalized as cross-family
+   extractor-vs-extractor IAA, m1/m2 declared-BREACH state + per-lot adjudication rule, m5 NEG
+   wording ruling) is merged; (b) the m5 NEG halt on 49213 (A-6(b)) is resolved — image-grade
+   adjudication of the 49413→49213 licensing path as a data-plane cure, or a ruling re-affirming
+   the honest-gap. A GO issued before these is a GO to close them first, not to start Lot 2.
+1. **Cross-family, image-grounded blind D5 becomes part of the LANE protocol, not a conductor
+   tightening.** The D5 seat on every dossier must be (i) a different FAMILY from D1 and (ii) a
+   BLIND RE-EXTRACTION from render + code (GLM 5.2 with vision, or an equivalent image-capable
+   seat) — never a review of the extractor's answer. Codex text-pack refutation is an ADDITIONAL
+   adversarial layer, NOT a D5 substitute (red-team correction: text-packs contain D1/D5 claims,
+   so by construction they cannot serve as the blind re-extraction the plan requires). Measured
+   yield this lot: 8/13 flips (2 via Codex refuter + 5 via GLM blind-with-vision + 1 via the
+   divergence rule those seats triggered) that same-family D5 missed; cost ≈ flat-subscription
+   tokens, ~2–13 min/code wall on GLM.
 2. **D4 gains a content-vs-scope check**: compare per_skala persyaratan/kewajiban SEMANTICS against
    the code's uraian scope; any cross-activity vocabulary (e.g. seed-certification terms on an
    area-use code) → automatic quarantine proposal. This closes the exact false-negative shape.
@@ -225,25 +259,55 @@ measured to pay this lot).**
 
 ## 11. Ship plan for this lot (session-owned)
 
-- PR-A (this report + plan A-3 + cure spec) — docs-only, auto-merge on green.
+- PR-A (this report + plan A-3..A-6 + cure spec) — docs-only, auto-merge on green.
 - PR-B (data): compiler `--apply` → canonical vNext + 4-copy sync + sidecar bump + registry test
-  `test_kbli_batch_a_lot1_registry.py` + A6 per-surface release checklist:
-  canonical ✓ · mouth SSR (Vercel rebuild + curl probe) · gold N/A (none of the 12 in gold,
-  verified this session against all 428 gold records) · KG: 12 nodes with live REQUIRES edges,
-  142 total (01700:12, 02402:2, 02409:34, 05102:2, 38122:17, 38222:2, 39001:26, 05200:2, 01287:15,
-  02201:2, 08920:9, 36003:19 — all counted on prod this session) → `kg_kbli_license_fix.py` detach
-  (#2596 pattern) · Qdrant `kategori_risiko` clear (#2597 pattern) · `inspect_kbli` cache bust ·
-  native kbli-navigator rebuild (fleet align).
+  `test_kbli_batch_a_lot1_registry.py` (runs FULL post-apply — module is gated on `_cure_applied()`
+  pre-cure) + A6 per-surface release checklist:
+  canonical ✓ · mouth SSR (Vercel rebuild + curl probe) · gold N/A (none of the 13 in gold,
+  verified against all 428 gold records — receipt §12) · KG: 13 nodes with live REQUIRES edges,
+  147 total (01700:12, 02402:2, 02409:34, 05102:2, 38122:17, 38222:2, 39001:26, 05200:2, 01287:15,
+  02201:2, 08920:9, 36003:19, 19206:5 — all counted on prod, receipt §12) →
+  `kg_kbli_license_fix.py` detach (#2596 pattern) · Qdrant `kategori_risiko` clear via
+  `kbli_qdrant_risk_clear.py` (#2597 pattern; dry-run default, `--codes` mandatory, 6/6 mocked
+  tests) · `inspect_kbli` cache bust · native kbli-navigator rebuild (fleet align).
 - PR #2695 (LANE-E1 dossiers): conductor gate PASSED → undraft + merge (dossiers are the immutable
   evidence trail; lot-report statements it contains that this gate superseded — the 8-clean count —
   are corrected by THIS report, which post-dates it).
 
+## 12. Evidence receipts (red-team MAJOR: assertions → auditable evidence)
+
+All four re-executed by an INDEPENDENT verifier subagent (Sonnet, fresh context) on 2026-07-18,
+read-only, RC=0 each:
+
+1. **Compiler dry-run** — `python3 scripts/kbli_filiera/cure_canonical_collisions.py --spec
+   scripts/kbli_filiera/cure_specs/batch_a_lot1.json` → `summary: 13 to cure, 0 skipped/missing,
+   0 problem(s) · DRY RUN — no files written.`
+2. **Gold membership** — python over `apps/mouth/data/kbli-gold-all.json`: `gold records: 428 ·
+   hits: NONE` (all 13 lot codes checked).
+3. **KG REQUIRES edges (prod, read-only `scripts/pg.sh`)** — `SELECT … FROM kg_edges WHERE
+   relationship_type='REQUIRES' AND source_entity_id IN (13 kbli:<code>) GROUP BY 1`: 01287:15,
+   01700:12, 02201:2, 02402:2, 02409:34, 05102:2, 05200:2, 08920:9, 19206:5, 36003:19, 38122:17,
+   38222:2, 39001:26 — **total 147**.
+4. **Cure-spec integrity** — `codes: 13 · unique: 13 · sha256:
+   14d9411e0584945fbdffed0611ecd6cb58459dce58d1b7db20a1c5556bfe3211`.
+   (Note: this digest identifies the spec revision the receipts were taken against; later
+   whitespace-only reformatting by repo tooling changes the file digest, in which case the binding
+   receipt is `codes/unique = 13/13` + the entry contents pinned by the registry test.)
+
 ## Sign-off
 
-Conductor gate: **SIGNED — Fable conductor session (MANDATO S2), 2026-07-18.**
-Re-affirmed after the §6 blind census and §7 calibration table landed: the 12-quarantine / 1-clean
-verdict incorporates every seat's evidence (lane D1/D5, Codex refuter, GLM blind census, conductor
-D6 on raw canonical + vault renders); the two calibration breaches (m2, m3) are DECLARED with
-amendments A-4/A-5 filed in the plan, not silently absorbed. Lot 1 cure spec is emit-ready;
-GO-recommendation for the Batch-A remainder stands as §10 — execution remains behind Zero's
-explicit GO (Legge 5).
+Conductor gate: **SIGNED — Fable conductor session (MANDATO S2), 2026-07-18 (second signing).**
+The FIRST signing (12-quarantine / 1-clean, m1/m5 reported as PASS) was submitted to the mandated
+full-report red-team (Codex gpt-5.6-sol, xhigh, read-only) and returned **FIX-FIRST: 4 BLOCKER /
+4 MAJOR / 4 MINOR**. Every finding was re-grounded on the raw artifacts (W65 — three of the four
+BLOCKERs were confirmed against the GLM raw extracts and the plan's own preregistered text) and
+cured, not argued down: 19206 flipped under the divergence rule (A-6(a), → **13/13 quarantine,
+0 certified**), m1 re-scored against the preregistered cross-family measure (**0.385 ❌ BREACH**),
+the m5 NEG miss on 49213 declared with its halt (**A-6(b), in effect**), the sampling claim
+corrected (taxonomy-ordered segment, NOT random — no population extrapolation), the
+advisory-floor-0.0 proposal withdrawn, D5 substitution tightened to image-grounded-only, the
+phantom→unresolvable taxonomy softened to what text-hunt evidence supports, and all operational
+claims backed by independently re-executed receipts (§12). Four calibration breaches are DECLARED
+(m1, m2, m3 pause, m5 halt) via plan amendments A-4/A-5/A-6 — none silently absorbed. Lot 1 cure
+spec (13 codes) is emit-ready; the GO-recommendation for the Batch-A remainder stands as §10 with
+its A-6 preconditions — execution remains behind Zero's explicit GO (Legge 5).

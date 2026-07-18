@@ -208,26 +208,87 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
   historically accurate; this amendment governs its interpretation). Emit fencing (§4) shall
   compare the canonical BLOB at emit time against `3cfe8134d`, re-basing if it moved.
 
-- **A-4 (2026-07-18, conductor) — m2 control-limit BREACH on Lot 1: acknowledged, adjudicated,
-  root-caused (conductor-signed resume note per calibration §5).** Final conductor-adjudicated
-  certification rate for Lot 1 is **1/13 = 0.077**, below the m2 floor 0.20. Root cause is
-  **population disease, not seat drift**: the cross-family tightening (blind GLM-5.2 second
-  extraction with vision + Codex refuter passes) exposed that 12 of 13 A-serving codes carry
-  uncertifiable per_skala — 7 with payload content belonging to OTHER activities (seed-certification
-  blobs on 02402/02201, a salt-extraction marine regime on peat 08920, a mining-concession regime on
-  beneficiation 05102, generic-B3 on radioactive 38122/38222, generic agriculture on narcotic-crop
-  01287) and 5 with phantom/unverifiable PP28 source pointers or non-inheritable ancestry (05200,
-  36003 ABSENT-as-hunted; 01700 6-way merge; 02409 many-to-many; 39001 storage/marine rows on a
-  capture code). Every flip was conductor-verified BY EYE on the canonical payloads and vault
-  records — the seats' claims were re-grounded, never trusted (W65). The m2 floor 0.20 was
-  calibrated on the pilot (0.417), whose sample was ENRICHED with known collisions and,
-  counter-intuitively, therefore OVERSTATED the health of the un-enriched A-serving population:
-  Batch A's in-scope codes are BY CONSTRUCTION the silent-fill class — the July disease at ~92%
-  prevalence in this first true-random slice. Decision: NO silent resume — Lot 2 was already
-  firebreak-gated on Zero's GO; with the GO package this amendment proposes m2 for A-serving lots
-  be re-registered as **advisory-floor 0.0 / hard-ceiling 0.85** (a floor breach on a population
-  whose measured baseline disease rate is ~92% carries no drift signal; the ceiling keeps catching
-  rubber-stamp drift). m1 (blind concordance) stays as-is and PASSED (conductor-gate report §6-§7).
+- **A-4 (2026-07-18, conductor; REVISED same day after the Codex sol red-team of the conductor-gate
+  report — the first version of this amendment mislabeled m1 as PASSED, called the lot "true-random",
+  and proposed a post-hoc floor re-registration; all three were red-team findings and are corrected
+  here, not papered over) — m1 AND m2 control-limit BREACHES on Lot 1: acknowledged, adjudicated,
+  root-caused (conductor-signed note per calibration §5).**
+  **m1 BREACH:** the preregistered m1 measure is the IAA between the two INDEPENDENT extractors
+  (lane D1 vs blind cross-family GLM). Measured: **5/13 = 0.385 < floor 0.75**. The first draft of
+  this amendment reported 0.923 as m1 "PASSED" — that figure is GLM vs the FINAL adjudication, which
+  is neither the preregistered comparison nor independent (the GLM findings informed that
+  adjudication). Declared verdict: **m1 ❌ BREACH**. Root cause is the same driver as m2: the lane's
+  same-family D1/D5 pair was systematically blind to content-level disease (it verified crosswalk
+  STRUCTURE, never payload CONTENT or source existence), so the blind cross-family extractor
+  legitimately disagreed on 8/13 codes — the breach measures the lane's blindness, not seat drift,
+  and is exactly the alarm m1 exists to raise. It fires the same protocol consequence: no silent
+  resume, lane protocol upgraded (GO package: cross-family image-grounded D5 becomes part of the
+  lane itself).
+  **m2 BREACH:** final conductor-adjudicated certification rate for Lot 1 is **0/13 = 0.000** (after
+  the A-6 divergence-rule flip of 19206; 1/13 = 0.077 pre-flip), below the m2 floor 0.20. Root
+  cause is **population disease, not seat drift**: the cross-family tightening exposed that all 13
+  codes carry uncertifiable per_skala — 7 with payload content belonging to OTHER activities
+  (seed-certification blobs on 02402/02201, a salt-extraction marine regime on peat 08920, a
+  mining-concession regime on beneficiation 05102, generic-B3 on radioactive 38122/38222, generic
+  agriculture on narcotic-crop 01287), 5 with unresolvable PP28 source pointers or non-inheritable
+  ancestry (05200, 36003 not-retrievable-as-hunted; 01700 6-way merge; 02409 many-to-many; 39001
+  storage/marine rows on a capture code), and 1 with a generic pre-split basket payload plus false
+  mapping metadata (19206, A-6). Every flip was conductor-verified BY EYE on the canonical payloads
+  and vault records — the seats' claims were re-grounded, never trusted (W65).
+  **Sampling scope (corrected):** Lot 1 is a **contiguous taxonomy-ordered segment (divisions
+  01→39)** per this plan's own lot rule — NOT a random sample. 13/13 measures prevalence in THIS
+  segment only; divisions 01→39 may over-represent agriculture/forestry/extraction contamination,
+  and no extrapolation to the full ~221-code class is claimed — the remainder lots measure it.
+  **Disposition (no floor re-registration):** the earlier proposal to re-register m2 as
+  advisory-floor 0.0 is WITHDRAWN — it would disarm the very drift alarm m2 provides, on the
+  strength of a non-random sample. m1 and m2 remain in **declared-BREACH state**: every subsequent
+  lot's conductor gate must explicitly adjudicate its own m1/m2 readings against the original
+  limits and sign the resume note; the limits themselves change only via a registry amendment
+  (A-6) that Zero's GO explicitly covers. No silent resume in any form.
+
+- **A-5 (2026-07-18, conductor) — m3 new-category pause: acknowledged, triaged, registry extension
+  proposed.** Lot 1's conductor adjudication surfaced refutation shapes not in the m3 closed list:
+  **`payload_cross_contamination`** — a per_skala whose CONTENT belongs to a different activity
+  (seed-certification on 02402/02201, salt-extraction marine regime on 08920, generic agriculture on
+  01287), behind a structurally-plausible pointer — and **`unresolvable_source_pointer`** — a
+  pp28_sources locator whose cited row is not retrievable from the pinned corpus as hunted (05200,
+  36003). Terminology note (red-team finding): the earlier label "phantom_source_pointer" implied
+  source NONEXISTENCE, which text-hunt evidence (11,208-page scan) cannot establish under this
+  plan's own A5 image-grade rule — "unresolvable ... as hunted" is what the evidence supports;
+  upgrading an instance to an earned ABSENT verdict requires the A5 image-grade scan of the relevant
+  annexes. Per calibration m3 this is an automatic pause + conductor triage: the triage happened
+  in-gate (every instance conductor-verified by eye on the canonical payloads; see the conductor-gate
+  report). Proposal for the remainder: add `payload_cross_contamination`,
+  `unresolvable_source_pointer` and the metadata flavor `mapping_metadata_false` (status_mapping /
+  intel.whatChanged contradicting the adjudicated crosswalk, seen on 47732/28262 gold collaterals
+  and Lot-1 05102/02409/19206) to the m3 registry. No silent resume: Lot 2 is firebreak-gated on
+  Zero's GO **and on A-6's registry precondition**.
+
+- **A-6 (2026-07-18, conductor; post-red-team) — divergence-rule flip of 19206 + calibration
+  registry closure as a Lot-2 PRECONDITION + m5 NEG halt.**
+  **(a) 19206 flip:** this plan's §3 rule is binding — "Divergence → QUARANTINE, never averaged or
+  picked." Two independent cross-family seats flagged 19206 against the conductor's initial clean
+  (Codex refuter dissent; blind GLM `needs_quarantine=true`, licensing payload = generic pre-split
+  19291 basket, Besar row not on the pinned page, status_mapping 'CODICE_RINUMERATO' contradicted
+  by the image-verified 3-way split). The conductor's initial clean was itself a "picked" verdict
+  in divergence — exactly what §3 forbids. 19206 is QUARANTINED (cure spec entry 13); Lot 1 final:
+  **13/13 quarantine, 0 certified**.
+  **(b) m5 NEG breach + HALT:** blind-GLM on NEG control 49213 returned `gap_confirmed=false` /
+  `licensing_inherits=true` (it holds the predecessor path 49413 licensable) — a formal NEG miss
+  under §5's any-miss-halts rule, so **m5 is ❌ BREACH (7/8 formal NEG survival), and the halt is
+  DECLARED AND IN EFFECT**: no Lot 2 until the 49213 finding is resolved (either an image-grade
+  adjudication that certifies the 49413→49213 licensing path as a data-plane cure, or a ruling that
+  re-affirms the honest-gap; conductor + Zero). The earlier report framing ("a candidate, not a gap
+  violation") understated this: the preregistered rule does not distinguish evidenced completion
+  paths from fills, and the distinction — if wanted — must enter the registry by amendment, not by
+  in-gate interpretation.
+  **(c) Registry closure precondition:** before ANY Lot 2 work, the calibration registry
+  (`data/kbli-filiera/batch-reports/batchA-calibration.json` successor artifact) must be re-emitted
+  to carry: the m3 category extensions (A-5), the m1 measure formalized as cross-family
+  extractor-vs-extractor IAA, the m1/m2 declared-BREACH state + per-lot explicit adjudication rule
+  (A-4), and the m5 NEG wording ruling from (b). Zero's GO for the remainder is only actionable
+  AFTER this registry re-emission is merged — a GO issued before it is a GO to close the registry
+  first, not to start Lot 2.
 
 ## Adversarial review
 
