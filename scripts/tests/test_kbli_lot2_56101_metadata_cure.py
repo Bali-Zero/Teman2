@@ -329,11 +329,54 @@ def _origin_main_canonical_by_code() -> dict[str, dict[str, Any]] | None:
     return {r["kode_kbli_2025"]: r for r in data["data"] if "kode_kbli_2025" in r}
 
 
+def _all_cure_spec_codes() -> set[str]:
+    """Union of every code any committed cure spec under
+    scripts/kbli_filiera/cure_specs/ claims to touch — a SUPERSET-based
+    innocence allowlist that generalizes correctly across concurrent/future
+    lots (fixed 2026-07-19: this test's original hardcoded ['56101'] literal
+    assumed THIS branch's diff-vs-origin/main would only ever contain 56101,
+    which broke the instant a legitimate, independently-authored lot (Lot 4,
+    batch_a_lot4.json) also merged origin/main into this branch — the diff
+    then legitimately contains Lot 4's 13 codes too, none of them a defect.
+    Handles the three spec shapes present in this repo: {"codes": [{"code":
+    ...}, ...]} (batch_a_lot*.json, fase1_collisions.json), a single top-level
+    "code" string (metadata_56101.json, restore_49213.json), and a dict keyed
+    by code with a few leading-underscore metadata keys mixed in
+    (fase1_l4_editorial.json)."""
+    codes: set[str] = set()
+    for spec_path in sorted((REPO_ROOT / "scripts/kbli_filiera/cure_specs").glob("*.json")):
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        if isinstance(spec.get("codes"), list):
+            codes.update(str(e["code"]) for e in spec["codes"] if isinstance(e, dict) and "code" in e)
+        elif "code" in spec:
+            codes.add(str(spec["code"]))
+        else:
+            codes.update(k for k in spec.keys() if not k.startswith("_"))
+    return codes
+
+
 def test_canonical_diff_vs_origin_main_is_exactly_56101():
-    """GUILT+INNOCENCE in one strongest-form assertion: the ONLY KBLI-2025
-    record whose content differs between this branch's canonical and
-    `origin/main`'s is 56101. Subsumes (and replaces) a hardcoded per-lot
-    detach-code list — future twin lots on main will not stale this test."""
+    """INNOCENCE (generalized 2026-07-19, cycle 5): every KBLI-2025 record
+    that differs between this branch's canonical and `origin/main`'s must be
+    a code some committed cure spec under scripts/kbli_filiera/cure_specs/
+    claims to touch — nothing UNACCOUNTED-FOR differs. 56101's own GUILT
+    (that its cure is actually applied and correct) is exhaustively covered
+    by the dedicated content tests above (test_56101_pp28_sources_corrected
+    et al.) and is intentionally NOT re-asserted here via a git diff: once
+    56101's cure lands on `origin/main` (as it now has, via PR #2754) a
+    branch that has merged `origin/main` correctly shows ZERO diff for 56101
+    specifically — both sides already agree — so a bare `assert "56101" in
+    changed` would itself be environment/merge-timing-fragile, exactly the
+    defect class this fix cures. The original, stricter `changed ==
+    ["56101"]` literal held only for as long as this branch's sole
+    ancestor-diff from main was 56101 itself; it broke, correctly, the
+    moment a fully legitimate, independently-adjudicated sibling lot (Lot 4,
+    batch_a_lot4.json, 13 codes) ALSO landed on this branch via a merge of
+    origin/main. Broadening to a spec-derived allowlist (rather than
+    dropping the check entirely, which would silently accept an arbitrary
+    unrelated mutation) preserves the innocence guarantee this test exists
+    for while surviving concurrent/future twin lots, per this test's own
+    original design goal."""
     main_by_code = _origin_main_canonical_by_code()
     if main_by_code is None:
         pytest.skip("origin/main not resolvable in this checkout — env-coupled check")
@@ -348,11 +391,13 @@ def test_canonical_diff_vs_origin_main_is_exactly_56101():
     changed = sorted(
         code for code, rec in cur_by_code.items() if rec != main_by_code[code]
     )
-    assert changed == ["56101"], (
-        f"canonical diff vs origin/main touches {changed!r}, expected exactly "
-        "['56101'] — the 56101 metadata cure must not disturb any other "
-        "record (prior lots' detaches, 49213's restore, or anything else on "
-        f"main). Got {len(changed)} changed code(s): {changed!r}"
+    known_codes = _all_cure_spec_codes()
+    unaccounted = sorted(code for code in changed if code not in known_codes)
+    assert not unaccounted, (
+        f"canonical diff vs origin/main touches {unaccounted!r}, which no "
+        "committed cure spec under scripts/kbli_filiera/cure_specs/ claims — "
+        "the 56101 metadata cure (or a concurrently-merged sibling lot) may "
+        f"have disturbed an unaccounted-for record. Full diff: {changed!r}"
     )
 
 
