@@ -71,7 +71,7 @@ import os
 import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Protocol, TypeAlias
@@ -97,6 +97,14 @@ _SCHEMA_VERSION = "1.0.0"
 _PRODUCTION_ENVIRONMENT = "PRODUCTION"
 _UNSIGNED_DEV_KID = "UNSIGNED-DEV"
 _UNSIGNED_DEV_SIGNATURE = "0" * 86  # matches Identifier-shaped signature pattern, never verified
+
+#: Clock-skew allowance for `verify_rule_pack`'s future-dating guard
+#: (3-seat verify FIX-NOW #3): a `signed_at` more than this far ahead of
+#: `observed_at` is rejected. Small and fixed (not configurable) — this is
+#: a defense against a pack whose declared signing instant is implausibly
+#: in the future (clock skew between the signer and this process should
+#: never legitimately exceed a few minutes), not a business-tunable knob.
+_SIGNED_AT_FUTURE_TOLERANCE = timedelta(minutes=5)
 
 ALLOW_UNSIGNED_ENV_VAR = "VISA_ENGINE_ALLOW_UNSIGNED_PACKS"
 TRUST_STORE_KEYS_ENV_VAR = "VISA_ENGINE_TRUST_STORE_KEYS_JSON"
@@ -552,6 +560,19 @@ def verify_rule_pack(
     own PRODUCTION-unsigned guard because this function never lets one
     through.
 
+    FUTURE-SKEW GUARD (3-seat verify FIX-NOW #3, signed path only): a
+    ``signed_at`` more than :data:`_SIGNED_AT_FUTURE_TOLERANCE` ahead of
+    ``observed_at`` is refused — this is a PARTIAL, stateless mitigation
+    against a backdated/future-dated signature, checked after
+    ``trust_store.resolve()`` so a key that is independently invalid at
+    ``signed_at`` (not-yet-valid/expired/revoked) is still reported as
+    that, not shadowed by this check. TODO (later PR): this does NOT solve
+    revocation-at-activation-time against a key that is compromised AND
+    whose signature is backdated to before the compromise/revocation was
+    known — that needs an authoritative clock plus persistence (looking up
+    what was already active), which is out of a pure, I/O-free verification
+    function's reach.
+
     ANTI-TOCTOU SNAPSHOT (3-seat verify FIX-NOW #2): ``raw_envelope`` is
     read exactly once, right here, via :func:`_snapshot_envelope` — every
     check below (schema validation, canonicalization, hashing, key
@@ -609,6 +630,25 @@ def verify_rule_pack(
         signed_at=signed_at,
         environment=protected_environment,
     )
+
+    # Future-skew guard (3-seat verify FIX-NOW #3): `observed_at` was
+    # accepted as a parameter but never actually used on the signed path —
+    # a pack signed_at any arbitrary point in the future relative to
+    # observed_at sailed through untouched (a partial backdating/
+    # future-dating defense gap). Checked AFTER trust_store.resolve()
+    # succeeds so a key already invalid/expired/revoked/not-yet-valid at
+    # signed_at is still reported as exactly that, not shadowed by this
+    # check. NOT a fix for revocation-at-activation-time against a
+    # compromised+backdated key — that needs an authoritative clock plus
+    # persistence (current_sequence/current_payload_sha256 lookups), which
+    # is `validate_activation`'s caller's job in a later PR; this is only
+    # the partial, stateless mitigation available at verify-on-load time.
+    if signed_at > observed_at + _SIGNED_AT_FUTURE_TOLERANCE:
+        raise RulePackVerificationError(
+            f"signed_at {signed_at.isoformat()!r} is in the future relative "
+            f"to observed_at {observed_at.isoformat()!r} beyond the "
+            f"{_SIGNED_AT_FUTURE_TOLERANCE} tolerance"
+        )
 
     raw_signature = envelope.get("signature")
     signature_bytes = _decode_signature(raw_signature)

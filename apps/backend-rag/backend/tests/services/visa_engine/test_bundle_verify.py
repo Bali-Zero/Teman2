@@ -292,6 +292,34 @@ class TestPayloadShaMismatchRejected:
             verify_rule_pack(broken, trust_store=trust_store, observed_at=_OBSERVED_AT)
 
 
+class TestFutureSkewGuard:
+    """3-seat verify FIX-NOW #3: `observed_at` was accepted as a parameter
+    but never actually consulted on the signed path — a pack `signed_at`
+    arbitrarily far in the future relative to `observed_at` sailed through
+    untouched (a partial backdating/future-dating defense gap). NOT a fix
+    for revocation-at-activation-time against a compromised+backdated key —
+    that needs an authoritative clock + persistence, deferred (see the
+    inline TODO in `verify_rule_pack`)."""
+
+    def test_signed_at_one_hour_in_the_future_rejected(self) -> None:
+        # _OBSERVED_AT is exactly 2026-07-18T00:00:00Z; 1h ahead is far
+        # beyond the 5-minute tolerance.
+        envelope, public_key = _signed_envelope(signed_at="2026-07-18T01:00:00Z")
+        trust_store = _trust_store_with(public_key=public_key)
+
+        with pytest.raises(RulePackVerificationError, match="future"):
+            verify_rule_pack(envelope, trust_store=trust_store, observed_at=_OBSERVED_AT)
+
+    def test_signed_at_within_tolerance_accepted(self) -> None:
+        # 4 minutes ahead of _OBSERVED_AT — inside the 5-minute tolerance.
+        envelope, public_key = _signed_envelope(signed_at="2026-07-18T00:04:00Z")
+        trust_store = _trust_store_with(public_key=public_key)
+
+        result = verify_rule_pack(envelope, trust_store=trust_store, observed_at=_OBSERVED_AT)
+
+        assert result.unsigned_dev is False
+
+
 class TestUnsignedDevFirebreak:
     def test_unsigned_without_flag_rejected(self) -> None:
         payload = minimal_valid_envelope()["payload"]
