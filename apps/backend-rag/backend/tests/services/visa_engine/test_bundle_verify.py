@@ -47,6 +47,7 @@ def _trust_store_with(
     valid_from: datetime = datetime(2026, 1, 1, tzinfo=timezone.utc),
     valid_to: datetime | None = None,
     revoked_at: datetime | None = None,
+    environment: str = "TEST",  # matches minimal_valid_envelope()'s default payload environment
 ) -> StaticTrustStore:
     if public_key is None:
         _, public_key = ephemeral_ed25519_keypair()
@@ -58,6 +59,7 @@ def _trust_store_with(
                 valid_from=valid_from,
                 valid_to=valid_to,
                 revoked_at=revoked_at,
+                environment=environment,
             )
         ]
     )
@@ -318,6 +320,47 @@ class TestFutureSkewGuard:
         result = verify_rule_pack(envelope, trust_store=trust_store, observed_at=_OBSERVED_AT)
 
         assert result.unsigned_dev is False
+
+
+class TestEnvironmentScopedTrustStoreKeys:
+    """3-seat verify FIX-NOW #4: a trust-store key is now bound to a single
+    `environment` at construction. A key registered for STAGING must never
+    be trusted to sign a PRODUCTION rule pack — even though the signature
+    is cryptographically valid AND `protected.environment ==
+    payload.environment` (the check covered separately by
+    `TestProtectedPayloadEnvironmentCrossCheck`). This is a DISTINCT trust
+    boundary: cross-environment KEY reuse, not cross-field tampering
+    within one envelope. Not a FIREBREAK violation — `environment` is a
+    trust-store schema field, not signing-key material."""
+
+    def test_staging_key_signing_production_pack_rejected(self) -> None:
+        private_key, public_key = ephemeral_ed25519_keypair()
+        payload = minimal_valid_envelope()["payload"]
+        payload["environment"] = "PRODUCTION"
+        payload["sequence"] = 1
+        payload["previous_payload_sha256"] = None
+        envelope = sign_rule_pack_envelope(payload, private_key=private_key)
+
+        # The key is real and registered — but scoped to STAGING, not the
+        # PRODUCTION environment it actually signed for.
+        trust_store = _trust_store_with(public_key=public_key, environment="STAGING")
+
+        with pytest.raises(RulePackVerificationError, match="scoped to environment"):
+            verify_rule_pack(envelope, trust_store=trust_store, observed_at=_OBSERVED_AT)
+
+    def test_matching_environment_key_still_accepted(self) -> None:
+        private_key, public_key = ephemeral_ed25519_keypair()
+        payload = minimal_valid_envelope()["payload"]
+        payload["environment"] = "PRODUCTION"
+        payload["sequence"] = 1
+        payload["previous_payload_sha256"] = None
+        envelope = sign_rule_pack_envelope(payload, private_key=private_key)
+
+        trust_store = _trust_store_with(public_key=public_key, environment="PRODUCTION")
+
+        result = verify_rule_pack(envelope, trust_store=trust_store, observed_at=_OBSERVED_AT)
+
+        assert result.pack.payload.environment == "PRODUCTION"
 
 
 class TestUnsignedDevFirebreak:
@@ -648,7 +691,8 @@ class TestBase64urlAlphabetHardening:
             '{"kid": "op-key-1", '
             f'"public_key": "{corrupted}", '
             '"valid_from": "2026-01-01T00:00:00Z", '
-            '"valid_to": null, "revoked_at": null}'
+            '"valid_to": null, "revoked_at": null, '
+            '"environment": "TEST"}'
             "]"
         )
         monkeypatch.setenv("VISA_ENGINE_TRUST_STORE_KEYS_JSON", entries_json)

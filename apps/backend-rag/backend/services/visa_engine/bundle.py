@@ -133,20 +133,34 @@ gets silently pinned, with no error)."""
 
 @dataclass(frozen=True)
 class TrustedSigningKey:
-    """One pinned Ed25519 public key entry in a :class:`TrustStore`."""
+    """One pinned Ed25519 public key entry in a :class:`TrustStore`.
+
+    ``environment`` (3-seat verify FIX-NOW #4): the single environment this
+    key is trusted to sign for (``"TEST"``/``"STAGING"``/``"PRODUCTION"``).
+    NOT part of the FIREBREAK's "no key generation/registration" boundary —
+    that firebreak is about never generating or auto-registering key
+    MATERIAL; scoping a trust-store ENTRY (metadata about an already-issued
+    key) to one environment is ordinary trust-store schema, the operator's
+    own choice when pinning the key. Without this, a STAGING key that leaks
+    or is reused could sign a PRODUCTION pack and `resolve()` would have no
+    way to refuse it — the protected/payload environment cross-check in
+    `verify_rule_pack` only proves internal consistency of the pack, never
+    that THIS key is allowed to speak for THAT environment.
+    """
 
     key_id: str
     public_key: Ed25519PublicKey
     valid_from: datetime
     valid_to: datetime | None
     revoked_at: datetime | None
+    environment: str
 
 
 class TrustStore(Protocol):
     """Resolves a ``(key_id, signed_at, environment)`` triple to a
     :class:`TrustedSigningKey`, or raises :class:`RulePackVerificationError`
-    if the key is unknown, not yet valid, expired, or revoked at
-    ``signed_at``."""
+    if the key is unknown, not scoped to ``environment``, not yet valid,
+    expired, or revoked at ``signed_at``."""
 
     def resolve(
         self,
@@ -192,16 +206,23 @@ class StaticTrustStore:
         signed_at: datetime,
         environment: str,
     ) -> TrustedSigningKey:
-        # Not used to discriminate keys in this simple store — env-scoped key
-        # pinning (a distinct TrustedSigningKey per environment for the SAME
-        # key_id) is deferred to a later hardening wave; already mitigated
-        # downstream by verify_rule_pack's own protected/payload environment
-        # cross-check.
-        del environment
         try:
             key = self._keys[key_id]
         except KeyError as exc:
             raise RulePackVerificationError(f"unknown signing key_id: {key_id!r}") from exc
+
+        # Environment-scoped keys (3-seat verify FIX-NOW #4): a key pinned
+        # for one environment must never be accepted as trusted for
+        # another — this is independent of, and does not depend on,
+        # verify_rule_pack's own protected/payload environment cross-check
+        # (that check only proves the PACK is internally consistent about
+        # which environment it claims; it says nothing about whether THIS
+        # key is allowed to speak for that environment).
+        if key.environment != environment:
+            raise RulePackVerificationError(
+                f"key {key_id!r} is scoped to environment {key.environment!r}, "
+                f"cannot be trusted to sign for environment {environment!r}"
+            )
 
         if signed_at < key.valid_from:
             raise RulePackVerificationError(
@@ -231,10 +252,17 @@ class StaticTrustStore:
             {
               "kid": "2026-07-prod-1",
               "public_key": "<43-char base64url raw Ed25519 public key, no padding>",
+              "environment": "PRODUCTION",
               "valid_from": "2026-07-01T00:00:00Z",
               "valid_to": null,
               "revoked_at": null
             }
+
+        ``environment`` (3-seat verify FIX-NOW #4) is REQUIRED on every
+        entry — a key is pinned to speak for exactly one environment
+        (``"TEST"``/``"STAGING"``/``"PRODUCTION"``); see
+        :class:`TrustedSigningKey`'s docstring for why this is not a
+        FIREBREAK violation.
 
         Raises :class:`RulePackVerificationError` if the variable is unset,
         not valid JSON, not a JSON array, or any entry is malformed. This
@@ -270,6 +298,9 @@ def _trusted_key_from_env_entry(entry: object) -> TrustedSigningKey:
         kid = entry["kid"]
         public_key_b64url = entry["public_key"]
         valid_from_raw = entry["valid_from"]
+        # environment (3-seat verify FIX-NOW #4): required on every entry —
+        # see TrustedSigningKey's and from_env's docstrings.
+        environment = entry["environment"]
     except KeyError as exc:
         raise RulePackVerificationError(f"trust store entry missing required key: {exc}") from exc
 
@@ -290,6 +321,7 @@ def _trusted_key_from_env_entry(entry: object) -> TrustedSigningKey:
         valid_from=_parse_utc_datetime(valid_from_raw),
         valid_to=_parse_utc_datetime(valid_to_raw) if valid_to_raw is not None else None,
         revoked_at=_parse_utc_datetime(revoked_at_raw) if revoked_at_raw is not None else None,
+        environment=environment,
     )
 
 

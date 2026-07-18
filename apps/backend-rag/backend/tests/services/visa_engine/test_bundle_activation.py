@@ -45,6 +45,7 @@ def _verified(payload_overrides: dict | None = None) -> VerifiedRulePack:
                 valid_from=datetime(2026, 1, 1, tzinfo=timezone.utc),
                 valid_to=None,
                 revoked_at=None,
+                environment="TEST",  # matches minimal_valid_envelope()'s payload environment
             )
         ]
     )
