@@ -135,12 +135,12 @@
     "max_tokens_per_code": 357453
   },
   "pinned_revisions": {
-    "canonical_git_revision": "ca8e3ee35226a0ce8c82faf62d521b67364ab0a2",
+    "canonical_git_revision": "04c9999411a1212626afda27e8826ffd4bf26347",
     "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
     "manifest_path": "data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json",
     "manifest_sha256": "e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d",
     "membership_path": "data/kbli-filiera/membership/batch-a-members.json",
-    "membership_sha256": "b9537a34e277dd1df352ec07a66e9f9bb2da8761d9b434f8746f82c6b9d3c92f"
+    "membership_sha256": "84c7f73a68163d367fb62ae44f939e7fe02030761f71f93893a007bfc27ab4ff"
   },
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
   "precondition": "plan §8 A-6(c) — this re-emission is a precondition for ANY Lot 2+ work; Zero's GO for the remainder is only actionable AFTER this registry re-emission is merged.",
