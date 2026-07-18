@@ -16,11 +16,13 @@ from datetime import datetime, timezone
 import pytest
 import rfc8785
 
+import backend.services.visa_engine.bundle as bundle_module
 from backend.services.visa_engine.bundle import (
     StaticTrustStore,
     TrustedSigningKey,
     VerifiedRulePack,
     _decode_base64url_no_padding,
+    _rule_pack_validator,
     _snapshot_envelope,
     canonicalize_json,
     resolve_allow_unsigned_default,
@@ -452,6 +454,74 @@ class TestUnsignedDevFirebreak:
             allow_unsigned=True,
         )
         assert result.unsigned_dev is True
+
+
+class TestUnsignedDevSynthesizedModelErrorsWrapped:
+    """3-seat verify FIX-NOW #9: the unsigned-dev path synthesizes its own
+    ProtectedHeader/RulePack (there is no real signed envelope to
+    `.model_validate()` wholesale) — today's constants
+    (`_UNSIGNED_DEV_KID`, `_SCHEMA_VERSION`, ...) always happen to be
+    valid, but a FUTURE regression to one of them must still surface as
+    `RulePackVerificationError`, never a bare `pydantic.ValidationError`.
+    Reproduced by genuinely corrupting the `_UNSIGNED_DEV_KID` module
+    constant (empty string violates `Identifier`'s `min_length=1` AND its
+    must-start-with-a-letter pattern) rather than mocking the wrap logic
+    itself."""
+
+    def test_corrupted_unsigned_dev_kid_constant_is_wrapped(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(bundle_module, "_UNSIGNED_DEV_KID", "")
+
+        payload = minimal_valid_envelope()["payload"]
+        envelope = {"payload": payload}
+
+        with pytest.raises(RulePackVerificationError, match="failed to synthesize"):
+            verify_rule_pack(
+                envelope,
+                trust_store=_trust_store_with(),
+                observed_at=_OBSERVED_AT,
+                allow_unsigned=True,
+            )
+
+    def test_unmodified_constant_still_synthesizes_successfully(self) -> None:
+        payload = minimal_valid_envelope()["payload"]
+        envelope = {"payload": payload}
+
+        result = verify_rule_pack(
+            envelope,
+            trust_store=_trust_store_with(),
+            observed_at=_OBSERVED_AT,
+            allow_unsigned=True,
+        )
+        assert result.unsigned_dev is True
+
+
+class TestSchemaFileReadWrapped:
+    """3-seat verify FIX-NOW #9: reading the contract schema file must
+    never let a bare OSError/json.JSONDecodeError/KeyError escape —
+    ``_rule_pack_validator`` is ``@lru_cache``d, so the cache is cleared
+    before AND after this test to avoid poisoning other tests with either
+    a stale broken build or a stale good one built against a monkeypatched
+    path."""
+
+    def test_missing_schema_file_raises_typed_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _rule_pack_validator.cache_clear()
+        try:
+            monkeypatch.setattr(
+                bundle_module,
+                "_CONTRACT_SCHEMA_PATH",
+                bundle_module._CONTRACT_SCHEMA_PATH.parent / "does-not-exist.schema.json",
+            )
+            with pytest.raises(RulePackVerificationError, match="could not load"):
+                _rule_pack_validator()
+        finally:
+            _rule_pack_validator.cache_clear()
+
+    def test_real_schema_file_still_loads_after_cache_clear(self) -> None:
+        _rule_pack_validator.cache_clear()
+        validator = _rule_pack_validator()
+        assert validator is not None
 
 
 class _StatefulEnvironmentDict(dict):

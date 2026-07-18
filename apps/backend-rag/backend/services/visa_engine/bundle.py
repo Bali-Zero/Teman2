@@ -481,13 +481,23 @@ def _rule_pack_validator() -> Draft202012Validator:
     pointing straight at ``contract.schema.json``'s own ``$defs``.
     """
 
-    contract = json.loads(_CONTRACT_SCHEMA_PATH.read_text())
-    schema = {
-        "$schema": contract["$schema"],
-        "$id": contract["$id"],
-        "$defs": contract["$defs"],
-        "$ref": "#/$defs/RulePack",
-    }
+    # Explicit encoding + wrapped IO/parse errors (3-seat verify FIX-NOW #9):
+    # this module's contract is "always RulePackVerificationError" — a
+    # missing/unreadable/corrupt schema file must not surface as a bare
+    # OSError/json.JSONDecodeError/KeyError.
+    try:
+        contract = json.loads(_CONTRACT_SCHEMA_PATH.read_text(encoding="utf-8"))
+        schema = {
+            "$schema": contract["$schema"],
+            "$id": contract["$id"],
+            "$defs": contract["$defs"],
+            "$ref": "#/$defs/RulePack",
+        }
+    except (OSError, json.JSONDecodeError, KeyError) as exc:
+        raise RulePackVerificationError(
+            f"could not load rule pack contract schema from "
+            f"{_CONTRACT_SCHEMA_PATH!r}: {exc}"
+        ) from exc
     return Draft202012Validator(schema, format_checker=FormatChecker())
 
 
@@ -814,24 +824,33 @@ def _verify_unsigned_dev(
     payload_bytes = _canonicalize_wire_object(raw_payload, label="payload")
     payload_sha256 = hashlib.sha256(payload_bytes).digest()
 
-    protected = ProtectedHeader.model_validate(
-        {
-            "domain": "balizero.visa-rulepack.v1",
-            "alg": "Ed25519",
-            "kid": _UNSIGNED_DEV_KID,
-            "signed_at": _format_utc_datetime(observed_at),
-            "schema_version": _SCHEMA_VERSION,
-            "environment": payload.environment,
-        }
-    )
-
-    pack = RulePack(
-        canonicalization="RFC8785",
-        protected=protected,
-        payload=payload,
-        payload_sha256=payload_sha256.hex(),
-        signature=_UNSIGNED_DEV_SIGNATURE,
-    )
+    # Wrap bare Pydantic construction errors (3-seat verify FIX-NOW #9): this
+    # module's contract is "always RulePackVerificationError, never a bare
+    # pydantic/IO exception" — the signed path already honors this for its
+    # own RulePack.model_validate(envelope) call above; the unsigned-dev
+    # path's synthesized ProtectedHeader/RulePack construction must too.
+    try:
+        protected = ProtectedHeader.model_validate(
+            {
+                "domain": "balizero.visa-rulepack.v1",
+                "alg": "Ed25519",
+                "kid": _UNSIGNED_DEV_KID,
+                "signed_at": _format_utc_datetime(observed_at),
+                "schema_version": _SCHEMA_VERSION,
+                "environment": payload.environment,
+            }
+        )
+        pack = RulePack(
+            canonicalization="RFC8785",
+            protected=protected,
+            payload=payload,
+            payload_sha256=payload_sha256.hex(),
+            signature=_UNSIGNED_DEV_SIGNATURE,
+        )
+    except PydanticValidationError as exc:
+        raise RulePackVerificationError(
+            f"unsigned dev rule pack failed to synthesize a valid RulePack model: {exc}"
+        ) from exc
 
     logger.warning(
         "UNSIGNED-DEV rule pack accepted (environment=%s, rule_pack_id=%s) — "
