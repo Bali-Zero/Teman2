@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "04c9999411a1212626afda27e8826ffd4bf26347",
-  "canonical_sha256": "ad3f6e63232a39e6c221dab3591eed4605605d6260a3cbd1f9cdbda5af2425e7",
+  "canonical_revision": "0a8988fc7455a49ccc10c72a7ca603cf04f87ae0",
+  "canonical_sha256": "7daeb90cf51227ec0e5e607a593034608669332b07587dc14e9155d3ff1343b8",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
@@ -10,10 +10,10 @@
     "A-empty/gap": "_l2_status == 'no_oss_risk' AND per_skala == []"
   },
   "census": {
-    "A-empty/gap": 146,
-    "A-serving/pp28": 74,
+    "A-empty/gap": 159,
+    "A-serving/pp28": 61,
     "A-serving/orphan": 1,
-    "_in_scope_total": 75,
+    "_in_scope_total": 62,
     "_total": 221
   },
   "members": [
@@ -463,8 +463,8 @@
     },
     {
       "kode_kbli_2025": "64955",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Pengelolaan Tabungan Perumahan Rakyat",
       "pp28_sources": [
@@ -481,8 +481,8 @@
     },
     {
       "kode_kbli_2025": "64996",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Perbankan Bulion Konvensional",
       "pp28_sources": [
@@ -491,8 +491,8 @@
     },
     {
       "kode_kbli_2025": "64997",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Perbankan Bulion Syariah",
       "pp28_sources": [
@@ -509,8 +509,8 @@
     },
     {
       "kode_kbli_2025": "66113",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Penyelenggaraan Bursa Aset Keuangan Digital",
       "pp28_sources": [
@@ -519,8 +519,8 @@
     },
     {
       "kode_kbli_2025": "66116",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Pengawasan Jasa Keuangan Selain Asuransi dan Dana Pensiun",
       "pp28_sources": [
@@ -529,8 +529,8 @@
     },
     {
       "kode_kbli_2025": "66123",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Kepialangan Aset Keuangan Digital",
       "pp28_sources": [
@@ -539,8 +539,8 @@
     },
     {
       "kode_kbli_2025": "66124",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Kepialangan Pasar Uang dan Pasar Valuta Asing",
       "pp28_sources": [
@@ -549,8 +549,8 @@
     },
     {
       "kode_kbli_2025": "66129",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Kepialangan Efek dan Kontrak Komoditas Lainnya",
       "pp28_sources": [
@@ -559,8 +559,8 @@
     },
     {
       "kode_kbli_2025": "66131",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Kliring dan Setelmen Transaksi di Pasar Keuangan",
       "pp28_sources": [
@@ -569,8 +569,8 @@
     },
     {
       "kode_kbli_2025": "66132",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Penyimpanan Aset Keuangan dan Kontrak Komoditas Berjangka",
       "pp28_sources": [
@@ -579,8 +579,8 @@
     },
     {
       "kode_kbli_2025": "66149",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Penyelenggaraan Transaksi Keuangan dan Pengelolaan Uang Rupiah Lainnya selain Pasar Keuangan",
       "pp28_sources": [
@@ -589,8 +589,8 @@
     },
     {
       "kode_kbli_2025": "66153",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Advisori Syariah Pasar Modal",
       "pp28_sources": [
@@ -599,8 +599,8 @@
     },
     {
       "kode_kbli_2025": "66159",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Advisori Pasar Keuangan Lainnya",
       "pp28_sources": [
