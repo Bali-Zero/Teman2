@@ -118,3 +118,44 @@ class TestMainHostGuard:
         assert rc == 0
         written = {p.name for p in last_seen.iterdir()}
         assert "infra.qdrant_pro.json" in written
+
+
+class TestPostPublishPollerDaemonReceipt:
+    """post-publish-poller must be bridged by pid-liveness, not exit code.
+
+    2026-07-18: with daemon=False the receipt read launchctl's sticky
+    "last exit code" column (=1 after any past restart) and reported
+    status=failed while ps proved the poller alive and opening PRs.
+    Guilt+innocence per cicatrix family #3.
+    """
+
+    def _spec(self, bridge):
+        specs = [s for s in bridge.BRIDGED_LABELS
+                 if s.label == "com.balizero.post-publish-poller"]
+        assert len(specs) == 1
+        return specs[0]
+
+    def test_flag_is_daemon(self, bridge):
+        assert self._spec(bridge).daemon is True
+
+    def test_alive_with_sticky_exit_is_ok(self, bridge):
+        """Innocence: live pid + stale exit 1 → ok (the 2026-07-18 case)."""
+        spec = self._spec(bridge)
+        receipt = bridge.build_receipt(
+            spec,
+            {spec.label: {"pid": 61606, "exit_code": 1}},
+            now=1_700_000_000,
+            host="pro",
+        )
+        assert receipt["status"] == "ok"
+
+    def test_dead_daemon_is_failed(self, bridge):
+        """Guilt: no pid → failed, even with exit_code 0."""
+        spec = self._spec(bridge)
+        receipt = bridge.build_receipt(
+            spec,
+            {spec.label: {"pid": None, "exit_code": 0}},
+            now=1_700_000_000,
+            host="pro",
+        )
+        assert receipt["status"] == "failed"
