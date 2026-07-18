@@ -1,6 +1,6 @@
 """Contract tests for infra/workflows/kbli-batch-a-lot.js — the JS Workflow script itself has no
-Python test runner, so these tests parse it as TEXT (regex over the source) and assert three
-things that are load-bearing per research/operations/2026-07-18-kbli-batch-a-plan.md §5 and the
+Python test runner, so these tests parse it as TEXT (regex over the source) and assert things that
+are load-bearing per research/operations/2026-07-18-kbli-batch-a-plan.md §3/A4 + §5 and the
 pilot-report criterion-#6 fix:
 
 1. The pinned m1/m2/m4 calibration numeric literals in the .js match
@@ -13,6 +13,11 @@ pilot-report criterion-#6 fix:
    as a live enum/string literal a seat could emit.
 3. The three plan §8 amendment A-1 out-of-scope facets (pma_status, l4_bali, TKA) are named in the
    seat prompts as out-of-scope this pass.
+4. D5 is a TRULY BLIND refuter (plan §3/A4, red-team F5): d5Prompt takes ONLY `code` and its body
+   never references D1's output — a conductor-verification finding (2026-07-18) caught the first
+   draft embedding `JSON.stringify(d1Result)` directly in the refuter's prompt (anchoring theater,
+   copied verbatim from kbli-pilot-a1.js, which has the identical unfixed defect). This test is
+   the regression guard for that exact class of bug.
 
 The calibration artifact (data/kbli-filiera/batch-reports/batchA-calibration.json) ships on a
 separate PR (agent/air-m5/kbli/batcha-calibration) — test 1 SKIPS (not fails) if that file is not
@@ -149,3 +154,43 @@ def test_abstain_classes_marked_out_of_scope(js_source: str) -> None:
         fn_match = re.search(rf"function {fn}\([^)]*\)\s*{{(.*?)\n}}", js_source, re.DOTALL)
         assert fn_match, f"could not locate {fn} in lot runner"
         assert "OUT_OF_SCOPE_NOTICE" in fn_match.group(1), f"{fn} does not interpolate the out-of-scope notice"
+
+
+# ---------------------------------------------------------------------------
+# 4. D5 is a TRULY BLIND refuter — guilt (leak absent) + innocence (extraction sound)
+# ---------------------------------------------------------------------------
+
+def _function_signature_and_body(source: str, fn: str) -> tuple[str, str]:
+    sig_match = re.search(rf"function {fn}\(([^)]*)\)\s*{{", source)
+    assert sig_match, f"could not locate {fn}'s signature in lot runner"
+    body_match = re.search(rf"function {fn}\([^)]*\)\s*{{(.*?)\n}}", source, re.DOTALL)
+    assert body_match, f"could not locate {fn}'s body in lot runner"
+    return sig_match.group(1), body_match.group(1)
+
+
+def test_guilt_d5_prompt_never_receives_or_references_d1(js_source: str) -> None:
+    """GUILT: d5Prompt must take ONLY `code` — no second parameter that could carry D1's proposal
+    — and its body must never reference a d1/proposal value. This is the direct regression guard
+    for the 2026-07-18 conductor finding (anchoring theater: JSON.stringify(d1Result) embedded in
+    the refuter's own prompt, copied verbatim from kbli-pilot-a1.js's identical unfixed defect)."""
+    params, body = _function_signature_and_body(js_source, "d5Prompt")
+    param_names = [p.strip() for p in params.split(",") if p.strip()]
+    assert param_names == ["code"], (
+        f"d5Prompt must take ONLY (code) — found params {param_names!r}; a second parameter is "
+        "exactly how the D1 proposal leaked into the refuter's prompt before"
+    )
+    assert "d1Result" not in body, "d5Prompt body still references d1Result — blindness leak reintroduced"
+    assert "JSON.stringify" not in body, "d5Prompt body stringifies something — a proposal leak by another name"
+    assert not re.search(r"\bd1\b", body), (
+        "d5Prompt body references a bare `d1` identifier — D5 must never see D1's output, directly "
+        "or indirectly"
+    )
+
+
+def test_innocence_d1_prompt_may_reference_evidence(js_source: str) -> None:
+    """INNOCENCE: d1Prompt (the EXTRACTOR, not the refuter) legitimately reads the evidence dir —
+    proves the extraction/assertion machinery above is discriminating on the real leak (d1Result
+    interpolated into ANOTHER seat's prompt), not just flagging any mention of evidence paths."""
+    _params, body = _function_signature_and_body(js_source, "d1Prompt")
+    assert "canonical.json" in body, "d1Prompt should legitimately reference the evidence dir"
+    assert "crosswalk" in body and "pp28" in body

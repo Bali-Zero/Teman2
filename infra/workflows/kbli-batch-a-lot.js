@@ -50,17 +50,41 @@
 // by `scripts/kbli_filiera/dossier_pull.py --out <evidenceRoot>` for every code in this lot.
 //
 // VERDICT TAXONOMY (NEW vs the pilot — closes pilot-report criterion #6's documented deviation):
-// every seat, INCLUDING the innocence-control branch, emits ONLY the frozen three tokens
+// every code, INCLUDING the innocence-control branch, resolves to ONLY the frozen three tokens
 // certified | quarantined | abstained. The pilot's innocence branch emitted a 4th vocabulary
 // (`boring_as_expected` / `unexpected_finding`) — that vocabulary is NOT used anywhere below
 // except in this normalization comment: boring_as_expected -> certified (innocence:true),
 // unexpected_finding -> quarantined (an unexpected proposed change on an innocence control is
 // itself a finding of over-extraction, same bar as the pilot held it to).
 //
+// D5 BLIND-REFUTATION FIX (2026-07-18, conductor verification — BLOCKING finding, fixed before
+// merge): the first draft of this script copied kbli-pilot-a1.js's d5Prompt(code, d1Result)
+// VERBATIM, which embeds `JSON.stringify(d1Result)` directly in the refuter's prompt — the model
+// sees D1's answer from token one, so the "re-derive BEFORE reading the proposal" instruction is
+// anchoring theater, not a blind refutation (plan §3/A4, red-team F5: "the D5 refuter re-extracts
+// blind (render + code, NEVER the extractor's answer); the COMPILER diffs the two extractions —
+// only a match certifies"). NOTE: the merged pilot itself has this identical defect
+// (kbli-pilot-a1.js:246-257) — out of scope to fix here, flagged separately. Fixed here: D5
+// (d5Prompt(code) below) receives ONLY the code + evidence dir + out-of-scope notice, NEVER any
+// other seat's output, and returns its OWN independent structured conclusion (D5_SCHEMA:
+// mapping_type, licensing_inherits, problem_found, problem_category, rationale,
+// evidence_locators — no "verdict" field: D5 does not decide certified/quarantined, it only
+// reports what IT independently found). The verdict is computed by `diffD1D5()`, pure
+// deterministic JS, never a seat: fields agree + no problem -> certified; fields agree + both
+// flag a problem -> quarantined (category = D5's, `category_mismatch` flagged if D1's own
+// category differs); ANY divergence on mapping_type/licensing_inherits/problem_found ->
+// quarantined + `divergent:true`, category taken from whichever side actually flagged a problem
+// — never averaged, never code-picked beyond this one rule.
+//
 // ABSTAIN-CLASS SCOPE (plan §8 amendment A-1): `pma_status`, `l4_bali` and `TKA` facets depend on
 // the deferred P1-v2 vault wave (Perpres 10/49, Bali Gubernur overlay, Kepmenaker 228/2019) and
-// are OUT OF SCOPE for every seat in this pass — a seat that would need one of those classes to
-// decide MUST verdict `abstained` (pending-evidence), never guess.
+// are OUT OF SCOPE for every seat in this pass. D1 and D5 each carry an independent, optional
+// `abstain: {needed, facet}` field (ADDITION beyond the conductor's literal D5-diff spec, kept to
+// preserve this plan §8 A-1 requirement, which the diff rule above does not otherwise cover) —
+// either seat flagging `abstain.needed=true` forces the code's final verdict to `abstained`,
+// overriding the diff result (a scope-boundary claim is stronger than "the visible facts agree").
+// The innocence branch is unaffected by any of the above (single-seat, no D1/D5 split) and keeps
+// its own `verdict` enum with `abstained` directly.
 //
 // HOW TO RUN:
 //   Workflow({ scriptPath: "infra/workflows/kbli-batch-a-lot.js", args: {
@@ -88,7 +112,7 @@ export const meta = {
     {
       title: "Adjudicate",
       detail:
-        "per code, in parallel: lease-guard WARN -> D1 propose -> D5 blind-refute -> D2 (conditional) extract; innocence controls get a single short verification prompt, all emitting the frozen certified|quarantined|abstained taxonomy",
+        "per code, in parallel: lease-guard WARN -> D1 propose -> D5 independently re-derive (blind — never shown D1's proposal) -> compiler diffD1D5() decides certified|quarantined -> D2 (conditional) extract; innocence controls get a single short verification prompt, all resolving to the frozen certified|quarantined|abstained taxonomy",
     },
     {
       title: "Report",
@@ -197,9 +221,10 @@ function leaseGuardWarn(code) {
 
 // ----- schemas — every non-deterministic proposal is FORCED into a structured shape a downstream
 // compiler (dossier_assemble.py) can validate against evidence pointers before it ever lands as a
-// fact (Garuda law, workflow doc §1). Identical to the pilot's D1/D2 shape; D5 gains
-// `refutation_category` (closed registry, plan §5 m3) and the innocence branch is rewritten onto
-// the frozen 3-token taxonomy (see header note). --------------------------------------------
+// fact (Garuda law, workflow doc §1). D1/D2 keep the pilot's shape (D1 gains an optional
+// problem_category + abstain field); D5 is REWRITTEN into an independent-conclusion shape with no
+// "verdict" field (see the D5 BLIND-REFUTATION FIX header note — the compiler decides the verdict,
+// never the seat); the innocence branch stays on the frozen 3-token taxonomy. ------------------
 
 const RENDER_REF = {
   type: "object",
@@ -213,6 +238,17 @@ const RENDER_REF = {
     row: { type: "string" },
   },
 };
+
+// closed refutation/problem-category registry (plan §5 m3) — shared by D1's optional
+// problem_category and D5's own, so the compiler diff (diffD1D5(), per-code adjudication section
+// below) can compare them directly. Declared before both schemas: referenced by both.
+const REFUTATION_CATEGORIES = [
+  "code_collision",
+  "illegitimate_inheritance",
+  "wrong_authority_level",
+  "phantom_source_pointer",
+  "source_absent_in_vault",
+];
 
 const D1_SCHEMA = {
   type: "object",
@@ -251,39 +287,86 @@ const D1_SCHEMA = {
       description:
         "true if this code's licensing facts are inherited from a KBLI-2020-vintage PP28 source and D2 extraction is needed",
     },
+    problem_category: {
+      type: "string",
+      enum: [...REFUTATION_CATEGORIES, "OTHER_NEW_CATEGORY"],
+      description:
+        "REQUIRED when needs_quarantine=true — classify into the plan §5 CLOSED registry (mirrors " +
+        "D5's own problem_category so the compiler can diff them). Literal sentinel " +
+        "OTHER_NEW_CATEGORY if genuinely none fit — never invent a new label.",
+    },
+    abstain: {
+      type: "object",
+      description:
+        "set ONLY if this code's determination genuinely requires an OUT-OF-SCOPE facet " +
+        "(pma_status/l4_bali/TKA, plan §8 A-1) — never guess, flag instead.",
+      properties: {
+        needed: { type: "boolean" },
+        facet: { type: "string" },
+      },
+    },
     notes: { type: "string" },
   },
 };
 
+// D5 — the BLIND refuter (plan §3/A4, red-team F5). Receives ONLY code + evidence dir (see
+// d5Prompt below) and reports its OWN independent conclusion: no "verdict" field here — D5 never
+// decides certified/quarantined itself, that is the deterministic compiler diff's job
+// (diffD1D5(), per-code adjudication section below), never a seat's.
 const D5_SCHEMA = {
   type: "object",
-  required: ["refuted", "reasons", "verdict"],
+  required: [
+    "mapping_type",
+    "licensing_inherits",
+    "problem_found",
+    "rationale",
+  ],
   properties: {
-    refuted: {
+    mapping_type: {
+      type: "string",
+      enum: ["ONE_TO_ONE", "SPLIT", "MERGE", "COLLISION", "NO_MAPPING"],
+      description:
+        "your OWN independently-derived crosswalk classification for this code — you have not " +
+        "seen and will never be shown any other seat's proposal for this code",
+    },
+    licensing_inherits: {
       type: "boolean",
       description:
-        "default true when uncertain — blind re-derivation must independently agree, not just fail to object",
+        "your OWN independent conclusion on whether this code's licensing facts inherit from a " +
+        "KBLI-2020-vintage PP28 source",
     },
-    reasons: { type: "array", items: { type: "string" } },
-    verdict: {
-      type: "string",
-      enum: ["certified", "quarantined", "abstained"],
-    },
-    refutation_category: {
-      type: "string",
-      enum: [
-        "code_collision",
-        "illegitimate_inheritance",
-        "wrong_authority_level",
-        "phantom_source_pointer",
-        "source_absent_in_vault",
-        "OTHER_NEW_CATEGORY",
-      ],
+    problem_found: {
+      type: "boolean",
       description:
-        "REQUIRED when refuted=true — classify into the plan §5 CLOSED registry. If none of the " +
-        "5 named categories fit, use the literal sentinel OTHER_NEW_CATEGORY — never invent a new " +
-        "label; a genuinely new category is itself a program-level finding (automatic lot pause, " +
-        "plan §5), not a place to be creative with taxonomy.",
+        "true if YOUR OWN independent read surfaces an issue serious enough for conductor triage " +
+        "(ambiguous mapping, thin evidence, wrong-mode source, absent source, wrong authority " +
+        "level, etc.). Default true when uncertain — a refuter that rubber-stamps because it " +
+        "cannot be bothered to re-derive is worse than no refuter at all.",
+    },
+    problem_category: {
+      type: "string",
+      enum: [...REFUTATION_CATEGORIES, "OTHER_NEW_CATEGORY"],
+      description:
+        "REQUIRED when problem_found=true — classify into the plan §5 CLOSED registry. If none of " +
+        "the 5 named categories fit, use the literal sentinel OTHER_NEW_CATEGORY — never invent a " +
+        "new label; a genuinely new category is itself a program-level finding (automatic lot " +
+        "pause, plan §5), not a place to be creative with taxonomy.",
+    },
+    rationale: {
+      type: "string",
+      description:
+        "uraian-level semantic rationale for your independent conclusion",
+    },
+    evidence_locators: { type: "array", items: RENDER_REF },
+    abstain: {
+      type: "object",
+      description:
+        "set ONLY if this code's determination genuinely requires an OUT-OF-SCOPE facet " +
+        "(pma_status/l4_bali/TKA, plan §8 A-1) — never guess, flag instead.",
+      properties: {
+        needed: { type: "boolean" },
+        facet: { type: "string" },
+      },
     },
   },
 };
@@ -349,7 +432,7 @@ const INNOCENCE_SCHEMA = {
 const OUT_OF_SCOPE_NOTICE =
   "OUT OF SCOPE THIS PASS (plan §8 amendment A-1 — the P1-v2 vault wave is deferred): " +
   "pma_status, l4_bali, and TKA facets. If this code's determination would require one of those " +
-  "three, do NOT guess — verdict abstained (pending-evidence) and say which facet blocked you.";
+  "three, do NOT guess.";
 
 function evidenceDirFor(code) {
   return `${evidenceRoot}/${code}`;
@@ -384,27 +467,39 @@ function d1Prompt(code) {
     `render is evidence only because you looked at the IMAGE, never because pdftotext said so (OCR ` +
     `trap: "68112" can render as "681t2"). Set needs_quarantine=true if the mapping is ambiguous or the ` +
     `evidence is thin. Set licensing_inherits=true only if this code's licensing facts visibly come ` +
-    `from a KBLI-2020-vintage PP28 source that would need image-verified row extraction (D2).`
+    `from a KBLI-2020-vintage PP28 source that would need image-verified row extraction (D2). If one ` +
+    `of the three out-of-scope facets above blocks your determination, set abstain={needed:true, ` +
+    `facet:"<name>"} instead of guessing. If needs_quarantine=true, also set problem_category to the ` +
+    `ONE closed-registry label (code_collision / illegitimate_inheritance / wrong_authority_level / ` +
+    `phantom_source_pointer / source_absent_in_vault) that best fits your reason — or the literal ` +
+    `sentinel OTHER_NEW_CATEGORY if genuinely none fit (never invent a new label).`
   );
 }
 
-function d5Prompt(code, d1Result) {
+function d5Prompt(code) {
   const dir = evidenceDirFor(code);
   return (
-    `D5 independent verification — KBLI-2025 code ${code} (GARUDA-FILIERA Batch A lot ${lotId}, ` +
-    `workflow doc §3 D5, "blind re-extraction... agreement certifies, divergence quarantines"). ` +
-    `${OUT_OF_SCOPE_NOTICE} You are the REFUTER, not the author — you did not write the proposal below ` +
-    `and are not grading your own work. Read the SAME evidence D1 had access to (${dir}/canonical.json, ` +
-    `${dir}/crosswalk/*.png, ${dir}/pp28/*.png, or their ABSENT/NOT_APPLICABLE verdicts) and ` +
-    `independently re-derive the crosswalk mapping and licensing-inheritance conclusion BEFORE reading ` +
-    `the proposal. Only after you have your own answer, compare it against the proposal: does your ` +
-    `independent read AGREE, or does it REFUTE? Default refuted=true when uncertain — a refuter that ` +
-    `rubber-stamps because it cannot be bothered to re-derive is worse than no refuter at all. If ` +
-    `refuted=true, you MUST also set refutation_category to the ONE closed-registry label ` +
-    `(code_collision / illegitimate_inheritance / wrong_authority_level / phantom_source_pointer / ` +
-    `source_absent_in_vault) that best fits your reason — or the literal sentinel OTHER_NEW_CATEGORY ` +
-    `if genuinely none fit (never invent a new label).\n\n` +
-    `D1 PROPOSAL TO VERIFY:\n${JSON.stringify(d1Result, null, 2)}`
+    `D5 independent verification — KBLI-2025 code ${code} (GARUDA-FILIERA Batch A lot ${lotId}, plan ` +
+    `§3/A4: "the D5 refuter re-extracts blind — render + code, NEVER the extractor's answer; the ` +
+    `COMPILER diffs the two extractions, only a match certifies"). ${OUT_OF_SCOPE_NOTICE} You are a ` +
+    `SEPARATE, BLIND, independent adjudicator for this code — you have NOT been shown, and will never ` +
+    `be shown, any other seat's proposal or conclusion for this code, before or after your own answer. ` +
+    `Read ${dir}/canonical.json for the code's own record (pp28_sources, sektor_id, per_skala), then ` +
+    `every PNG under ${dir}/crosswalk/*.png (BPS Vol.2 Lampiran 5/10 rendered page hits) and ` +
+    `${dir}/pp28/*.png (PP28 lampiran rendered page hits) — or their ABSENT/NOT_APPLICABLE verdicts. ` +
+    `Independently derive your OWN crosswalk mapping_type and licensing_inherits conclusion, exactly as ` +
+    `if you were the first and only adjudicator ever assigned this code. Title-similarity alone is ` +
+    `FORBIDDEN (kbli-navigator SKILL.md §4.2, "il contesto batte il titolo"). Every digit you cite from ` +
+    `a render is evidence only because you looked at the IMAGE, never because pdftotext said so (OCR ` +
+    `trap: "68112" can render as "681t2"). Set problem_found=true (default when uncertain) if the ` +
+    `mapping is ambiguous, the evidence is thin, or you find any of: same-digit cross-vintage collision, ` +
+    `illegitimate licensing inheritance, wrong authority level, a phantom/wrong source pointer, or a ` +
+    `source absent from the vault — a refuter that rubber-stamps because it cannot be bothered to ` +
+    `re-derive is worse than no refuter at all. If problem_found=true, set problem_category to the ONE ` +
+    `closed-registry label that best fits, or the literal sentinel OTHER_NEW_CATEGORY if genuinely none ` +
+    `fit (never invent a new label). If one of the three out-of-scope facets above blocks your ` +
+    `determination, set abstain={needed:true, facet:"<name>"} instead of guessing. The WORKFLOW, not ` +
+    `you, compares your conclusion against D1's — that comparison happens entirely outside your context.`
   );
 }
 
@@ -451,6 +546,90 @@ async function adjudicateInnocence(code) {
   };
 }
 
+// ----- D1/D5 compiler diff (plan §3/A4) — DETERMINISTIC, pure JS, never a seat: "the COMPILER
+// diffs the two extractions — only a match certifies". Neither derive function receives the
+// OTHER seat's raw output; each reduces ITS OWN seat's schema down to the four substantive fields
+// the diff compares, so the diff itself never has to know each schema's original shape. ---------
+
+function deriveD1Comparable(d1) {
+  const mappingTypes = Array.isArray(d1 && d1.mappings)
+    ? Array.from(
+        new Set(d1.mappings.map((m) => m && m.mapping_type).filter(Boolean)),
+      )
+    : [];
+  // a code's overall crosswalk shape is one label even when D1 proposed multiple mapping rows
+  // (a SPLIT/MERGE still has ONE mapping_type describing the code's own relationship); if D1's
+  // own rows disagree on the label that is itself worth surfacing, not silently resolved here.
+  const mapping_type =
+    mappingTypes.length === 1
+      ? mappingTypes[0]
+      : mappingTypes.length > 1
+        ? "MIXED"
+        : null;
+  return {
+    mapping_type,
+    licensing_inherits: d1 ? d1.licensing_inherits === true : null,
+    problem_found: d1 ? Boolean(d1.needs_quarantine) : true,
+    problem_category: (d1 && d1.problem_category) || null,
+  };
+}
+
+function deriveD5Comparable(d5) {
+  return {
+    mapping_type: d5 ? d5.mapping_type || null : null,
+    licensing_inherits: d5 ? d5.licensing_inherits === true : null,
+    problem_found: d5 ? Boolean(d5.problem_found) : true,
+    problem_category: (d5 && d5.problem_category) || null,
+  };
+}
+
+function diffD1D5(d1c, d5c) {
+  const fieldsAgree =
+    d1c.mapping_type === d5c.mapping_type &&
+    d1c.licensing_inherits === d5c.licensing_inherits &&
+    d1c.problem_found === d5c.problem_found;
+
+  if (fieldsAgree && !d1c.problem_found) {
+    return {
+      verdict: "certified",
+      category: null,
+      divergent: false,
+      category_mismatch: false,
+      concordant: true,
+    };
+  }
+  if (fieldsAgree && d1c.problem_found) {
+    const category_mismatch = Boolean(
+      d1c.problem_category &&
+      d5c.problem_category &&
+      d1c.problem_category !== d5c.problem_category,
+    );
+    return {
+      verdict: "quarantined",
+      category: d5c.problem_category || d1c.problem_category || null,
+      divergent: false,
+      category_mismatch,
+      concordant: true,
+    };
+  }
+  // ANY divergence (mapping_type/licensing_inherits/problem_found not all equal) -> quarantined,
+  // never averaged, never code-picked beyond this rule (plan §3/A4). Category comes from
+  // whichever side actually flagged a problem — if both diverge without either flagging, category
+  // stays null (an honest "shapes disagree but neither called it a problem" state).
+  const category = d5c.problem_found
+    ? d5c.problem_category
+    : d1c.problem_found
+      ? d1c.problem_category
+      : null;
+  return {
+    verdict: "quarantined",
+    category: category || null,
+    divergent: true,
+    category_mismatch: false,
+    concordant: false,
+  };
+}
+
 async function adjudicateCode(code) {
   leaseGuardWarn(code);
 
@@ -461,30 +640,27 @@ async function adjudicateCode(code) {
     model: "sonnet",
   });
 
-  const d5 = await agent(d5Prompt(code, d1), {
+  // D5 is a SEPARATE, blind adjudicator — receives ONLY code+evidence, NEVER d1's proposal (plan
+  // §3/A4, red-team F5; see the D5 BLIND-REFUTATION FIX header note).
+  const d5 = await agent(d5Prompt(code), {
     label: `D5:${code}`,
     phase: "Adjudicate",
     schema: D5_SCHEMA,
     model: "sonnet",
   });
 
-  const quarantined = Boolean(
-    (d1 && d1.needs_quarantine) || (d5 && d5.refuted),
-  );
-  // concordance (m1): D1's own caution flag and D5's independent refutation point the SAME way.
-  // Operational definition for THIS runner (documented, not a re-derivation of the pilot's
-  // undocumented arithmetic — the pilot's "11/12" was a conductor's own read, not computed by
-  // any script): concordant iff d1.needs_quarantine === d5.refuted.
-  const concordant = Boolean(d1 && d5 && d1.needs_quarantine === d5.refuted);
-  const abstained = Boolean(!quarantined && d5 && d5.verdict === "abstained");
-  const verdict = quarantined
-    ? "quarantined"
-    : abstained
-      ? "abstained"
-      : "certified";
+  const diff = diffD1D5(deriveD1Comparable(d1), deriveD5Comparable(d5));
+
+  const abstainNeeded =
+    Boolean(d1 && d1.abstain && d1.abstain.needed) ||
+    Boolean(d5 && d5.abstain && d5.abstain.needed);
+  // an out-of-scope-facet claim from EITHER seat overrides the diff outright — "the visible facts
+  // agree" is a weaker claim than "this needs evidence we don't have this pass" (plan §8 A-1).
+  const verdict = abstainNeeded ? "abstained" : diff.verdict;
+  const quarantined = verdict === "quarantined";
 
   let d2 = null;
-  if (!quarantined && !abstained && d1 && d1.licensing_inherits === true) {
+  if (verdict === "certified" && d1 && d1.licensing_inherits === true) {
     d2 = await agent(d2Prompt(code), {
       label: `D2:${code}`,
       phase: "Adjudicate",
@@ -501,8 +677,11 @@ async function adjudicateCode(code) {
     d5,
     d2,
     quarantined,
-    concordant,
+    concordant: diff.concordant,
     verdict,
+    category: verdict === "quarantined" ? diff.category : null,
+    divergent: diff.divergent,
+    category_mismatch: diff.category_mismatch,
     seatInvocations: d2 ? 3 : 2,
   };
 }
@@ -539,14 +718,20 @@ const m1Value = adjudicated.length
   : null;
 const m2Value = adjudicated.length ? certifiedCount / adjudicated.length : null;
 
-const refutedWithCategory = adjudicated.filter((r) => r.d5 && r.d5.refuted);
-const categoriesSeen = Array.from(
-  new Set(
-    refutedWithCategory.map((r) => r.d5.refutation_category).filter(Boolean),
-  ),
+const quarantinedResults = adjudicated.filter(
+  (r) => r.verdict === "quarantined",
 );
-const missingCategory = refutedWithCategory
-  .filter((r) => !r.d5.refutation_category)
+const categoriesSeen = Array.from(
+  new Set(quarantinedResults.map((r) => r.category).filter(Boolean)),
+);
+const missingCategory = quarantinedResults
+  .filter((r) => !r.category)
+  .map((r) => r.code);
+const categoryMismatches = adjudicated
+  .filter((r) => r.category_mismatch)
+  .map((r) => r.code);
+const divergentCodes = adjudicated
+  .filter((r) => r.divergent)
   .map((r) => r.code);
 const newCategorySeen =
   categoriesSeen.includes("OTHER_NEW_CATEGORY") ||
@@ -574,7 +759,8 @@ if (newCategorySeen) {
 }
 if (missingCategory.length) {
   limitsBreached.push(
-    `m3 data-gap: refuted dossier(s) missing refutation_category: ${missingCategory.join(", ")}`,
+    `m3 data-gap: quarantined dossier(s) with no problem_category from either seat (divergent on ` +
+      `mapping_type/licensing_inherits without either flagging a problem): ${missingCategory.join(", ")}`,
   );
 }
 // m4 (tokens/dossier) is INTENTIONALLY absent from limitsBreached: per-seat token accounting is a
@@ -609,6 +795,8 @@ const lotReport = {
     seen: categoriesSeen,
     closed_registry: CALIBRATION.m3_refutation_categories,
     missing_category_codes: missingCategory,
+    category_mismatch_codes: categoryMismatches,
+    divergent_codes: divergentCodes,
     breach: newCategorySeen,
   },
   m4_tokens_per_dossier: {
