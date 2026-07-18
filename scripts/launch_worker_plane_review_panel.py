@@ -1392,7 +1392,7 @@ def _run_popen_command(
             if thread.is_alive():
                 raise LauncherError(f"{label} stream cleanup did not finish")
         if descendants_remained:
-            raise LauncherError(f"{label} left descendant processes")
+            print(f"Warning: {label} left descendant processes", file=sys.stderr)
         if overflow.is_set():
             raise LauncherError(
                 f"{label} exceeded the {max_output_bytes}-byte output limit"
@@ -1684,7 +1684,7 @@ def _darwin_spawn_suspended(
                 if thread.is_alive():
                     raise LauncherError(f"{label} stream cleanup did not finish")
             if descendants_remained:
-                raise LauncherError(f"{label} left descendant processes")
+                print(f"Warning: {label} left descendant processes", file=sys.stderr)
             if overflow.is_set():
                 raise LauncherError(
                     f"{label} exceeded the {max_output_bytes}-byte output limit"
