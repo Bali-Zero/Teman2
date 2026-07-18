@@ -98,6 +98,25 @@ class ScraperSubmission(BaseModel):
     )
     liveness_tier: Literal["breaking", "developing", "evergreen"] | None = None
     live_news_reasons: list[str] | None = Field(None, max_length=3)
+    # WR2 enrichment passthrough (scar family #9, state-schema mutation
+    # drift): the intel enricher produces a full structured object
+    # (the_facts/bali_zero_take/in_practice/next_steps/faq/
+    # thirty_second_brief/metadata, ~1400-2000 words) but it was lost
+    # before reaching WR2 drafts — wr2_topic_selector wrote enrichment: {}
+    # into every draft's brief_json (verified 2026-06-24: {} on 12/12
+    # drafts). Carried through so the topic selector gets structured
+    # ground truth, not just truncated content. Optional: legacy
+    # callers/scrapers that don't send it keep working unchanged.
+    enrichment: dict | None = Field(
+        None,
+        description=(
+            "Full structured enricher object (the_facts/bali_zero_take/"
+            "in_practice/next_steps/faq/thirty_second_brief/metadata) — "
+            "carried through so wr2_topic_selector gets structured ground "
+            "truth, not just truncated content. Optional: legacy callers "
+            "unaffected (scar #9)."
+        ),
+    )
 
 
 class ApprovalRequest(BaseModel):

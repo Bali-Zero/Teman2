@@ -471,6 +471,105 @@ async def test_submit_scraper_trusts_explicit_tier_over_score_derivation(
     assert staging_data["liveness_tier"] == "breaking"
 
 
+# ---------------------------------------------------------------------------
+# Tests: submit_from_scraper — enrichment passthrough (scar family #9,
+# state-schema mutation drift). The intel enricher produces a full
+# structured object (the_facts/bali_zero_take/in_practice/next_steps/faq/
+# thirty_second_brief/metadata) but ScraperSubmission had no field to
+# receive it — wr2_topic_selector wrote enrichment: {} into every draft's
+# brief_json (verified 2026-06-24: {} on 12/12 drafts).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_enrichment_persisted(client_no_auth):
+    """GUILT: a submitted `enrichment` object round-trips verbatim into
+    staging_data over the HTTP contract (not just at the Pydantic-model
+    level)."""
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-2026-enrich-http"
+    mock_staging_svc.check_duplicate.return_value = None
+    mock_staging_svc.save_staging_item.return_value = (
+        "/tmp/intel_pending/news/news-2026-enrich-http.json"
+    )
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    enrichment_obj = {
+        "the_facts": "Facts here.",
+        "bali_zero_take": "Our take.",
+        "thirty_second_brief": "Brief.",
+        "faq": [{"q": "Q1", "a": "A1"}],
+        "metadata": {"suggested_slug": "slug", "tags": ["tag1"]},
+    }
+    payload = {**SCRAPER_PAYLOAD, "enrichment": enrichment_obj}
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    mock_staging_svc.save_staging_item.assert_called_once()
+    staging_data = mock_staging_svc.save_staging_item.call_args[0][2]
+    assert staging_data["enrichment"] == enrichment_obj
+
+
+@pytest.mark.asyncio
+async def test_submit_scraper_enrichment_absent_still_validates(client_no_auth):
+    """INNOCENCE (backward-compat): a legacy payload WITHOUT `enrichment`
+    still validates (200, not 422) and defaults to {} in staging_data —
+    the additive/optional field must never break existing scraper
+    callers."""
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-2026-no-enrich"
+    mock_staging_svc.check_duplicate.return_value = None
+    mock_staging_svc.save_staging_item.return_value = (
+        "/tmp/intel_pending/news/news-2026-no-enrich.json"
+    )
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=SCRAPER_PAYLOAD,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    staging_data = mock_staging_svc.save_staging_item.call_args[0][2]
+    assert staging_data["enrichment"] == {}
+
+
 @pytest.mark.asyncio
 async def test_submit_scraper_missing_api_key(client_no_auth):
     """Missing API key → 401."""

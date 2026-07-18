@@ -191,6 +191,85 @@ def test_list_pending_items_projects_tier_and_live_news_fields(tmp_path: Path) -
     assert archived["live_news_reasons"] == ["price hike confirmed"]
 
 
+def test_list_pending_items_projects_enrichment_object(tmp_path: Path) -> None:
+    """GUILT (WR2 enrichment passthrough, scar family #9): a non-empty
+    `enrichment` persisted in staging JSON must be projected verbatim in
+    BOTH the staging-root branch AND the archived/approved branch —
+    wr2_topic_selector.py reads `top_item.get("enrichment")` straight off
+    the pending item served by this method (via GET
+    /api/intel/staging/pending), not from the raw JSON file directly, so
+    omitting it here would silently drop it even after a correct write-side
+    fix."""
+    service = _service(tmp_path)
+    now = datetime.now(timezone.utc).isoformat()
+    enrichment_obj = {
+        "the_facts": "Facts here.",
+        "bali_zero_take": "Our take.",
+        "thirty_second_brief": "Brief.",
+        "faq": [{"q": "Q1", "a": "A1"}],
+        "metadata": {"suggested_slug": "slug", "tags": ["tag1"]},
+    }
+    service.save_staging_item(
+        "visa",
+        "visa-enriched",
+        {
+            "title": "Enriched update",
+            "source_url": "https://example.com/enriched",
+            "detected_at": now,
+            "content": "content",
+            "enrichment": enrichment_obj,
+        },
+    )
+
+    archived_dir = tmp_path / "news" / "archived" / "approved"
+    archived_dir.mkdir(parents=True)
+    (archived_dir / "news-enriched.json").write_text(
+        json.dumps(
+            {
+                "title": "Archived enriched update",
+                "source_url": "https://example.com/archived-enriched",
+                "detected_at": now,
+                "content": "content",
+                "enrichment": enrichment_obj,
+            },
+        ),
+    )
+
+    result = service.list_pending_items()
+
+    items_by_id = {item["id"]: item for item in result["items"]}
+    assert items_by_id["visa-enriched"]["enrichment"] == enrichment_obj
+    assert items_by_id["news-enriched"]["enrichment"] == enrichment_obj
+
+
+def test_list_pending_items_defaults_enrichment_to_empty_dict_for_legacy_items(
+    tmp_path: Path,
+) -> None:
+    """INNOCENCE: legacy staging JSON written before the enrichment
+    passthrough fix has no `enrichment` key at all — projection must
+    default to {} uniformly, never KeyError or bare None (mirrors the
+    live_news_* trio's legacy-default contract)."""
+    service = _service(tmp_path)
+    now = datetime.now(timezone.utc).isoformat()
+    service.save_staging_item(
+        "news",
+        "news-legacy-enrichment",
+        {
+            "title": "Legacy item",
+            "source_url": "https://example.com/legacy",
+            "detected_at": now,
+            "content": "content",
+        },
+    )
+
+    result = service.list_pending_items()
+
+    legacy = next(
+        item for item in result["items"] if item["id"] == "news-legacy-enrichment"
+    )
+    assert legacy["enrichment"] == {}
+
+
 def test_list_pending_items_defaults_legacy_items_without_live_news_fields(
     tmp_path: Path,
 ) -> None:

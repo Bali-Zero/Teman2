@@ -343,6 +343,16 @@ class IntelStagingService:
                                 "published_at": data.get("published_at"),
                                 "relevance_score": data.get("relevance_score"),
                                 "category": data.get("category"),
+                                # WR2 enrichment passthrough (scar family #9,
+                                # state-schema mutation drift): the full
+                                # structured enricher object was persisted in
+                                # staging JSON (write side, submit_from_scraper)
+                                # but this projection is what wr2_topic_selector
+                                # actually consumes via GET /api/intel/staging/
+                                # pending — omitting it here would silently
+                                # drop it again even after the write-side fix.
+                                # Default {} for legacy items without the key.
+                                "enrichment": data.get("enrichment") or {},
                                 **_normalize_live_news_projection(data),
                             },
                         )
@@ -382,6 +392,9 @@ class IntelStagingService:
                                     "published_at": data.get("published_at"),
                                     "relevance_score": data.get("relevance_score"),
                                     "category": data.get("category"),
+                                    # WR2 enrichment passthrough (scar family
+                                    # #9) — mirror the staging-root branch above.
+                                    "enrichment": data.get("enrichment") or {},
                                     **_normalize_live_news_projection(data),
                                 },
                             )

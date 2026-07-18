@@ -457,6 +457,12 @@ async def submit_from_scraper(
             "live_news_reasons": [
                 r.strip()[:200] for r in (submission.live_news_reasons or [])
             ][:3],
+            # WR2 enrichment passthrough (scar family #9): carry the full
+            # structured enricher object into staging so it survives to
+            # wr2_topic_selector via list_pending_items' projection. Default
+            # {} preserves today's behavior for legacy/partial-deploy
+            # scrapers that don't send it yet.
+            "enrichment": submission.enrichment or {},
         }
 
         if submission.cover_image:

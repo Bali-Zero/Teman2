@@ -412,6 +412,90 @@ class TestSubmitFromScraper:
             assert exc_info.value.status_code == 500
 
     @pytest.mark.asyncio
+    async def test_enrichment_persisted(self) -> None:
+        """GUILT (WR2 enrichment passthrough, scar family #9): a
+        ScraperSubmission carrying a full structured `enrichment` object
+        must round-trip it verbatim into staging_data."""
+        from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
+
+        with (
+            patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_articles_submitted") as mock_metric,
+            patch("backend.app.routers.intel_scraper.intel_scraper_latency") as mock_latency,
+        ):
+            mock_cls.classify_intel_type.return_value = "news"
+            mock_stg.generate_item_id.return_value = "news-2026-enriched"
+            mock_stg.check_duplicate.return_value = None
+            mock_stg.save_staging_item.return_value = "/tmp/staging/news/news-2026-enriched.json"
+            mock_stg.update_staging_queue_metrics = MagicMock()
+            mock_metric.labels.return_value.inc = MagicMock()
+            mock_latency.labels.return_value.observe = MagicMock()
+
+            enrichment_obj = {
+                "the_facts": "Facts here.",
+                "bali_zero_take": "Our take.",
+                "thirty_second_brief": "Brief.",
+                "faq": [{"q": "Q1", "a": "A1"}],
+            }
+            submission = ScraperSubmission(
+                title="Enriched article",
+                content="Content",
+                source_url="https://example.com/enriched",
+                source_name="test-scraper",
+                category="news",
+                relevance_score=70,
+                extraction_method="auto",
+                tier="tier1",
+                enrichment=enrichment_obj,
+            )
+            result = await submit_from_scraper(submission=submission, _api_key_verified=None)
+
+        assert result["success"] is True
+        mock_stg.save_staging_item.assert_called_once()
+        staging_data = mock_stg.save_staging_item.call_args[0][2]
+        assert staging_data["enrichment"] == enrichment_obj
+
+    @pytest.mark.asyncio
+    async def test_enrichment_defaults_to_empty_dict_when_absent(self) -> None:
+        """INNOCENCE: a legacy submission WITHOUT `enrichment` must still
+        validate (backward-compat) and default to {} in staging_data — not
+        crash, not omit the key entirely."""
+        from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
+
+        with (
+            patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
+            patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
+            patch("backend.app.routers.intel_scraper.intel_articles_submitted") as mock_metric,
+            patch("backend.app.routers.intel_scraper.intel_scraper_latency") as mock_latency,
+        ):
+            mock_cls.classify_intel_type.return_value = "news"
+            mock_stg.generate_item_id.return_value = "news-2026-legacy"
+            mock_stg.check_duplicate.return_value = None
+            mock_stg.save_staging_item.return_value = "/tmp/staging/news/news-2026-legacy.json"
+            mock_stg.update_staging_queue_metrics = MagicMock()
+            mock_metric.labels.return_value.inc = MagicMock()
+            mock_latency.labels.return_value.observe = MagicMock()
+
+            submission = ScraperSubmission(
+                title="Legacy article",
+                content="Content",
+                source_url="https://example.com/legacy",
+                source_name="test-scraper",
+                category="news",
+                relevance_score=50,
+                extraction_method="auto",
+                tier="tier1",
+            )
+            result = await submit_from_scraper(submission=submission, _api_key_verified=None)
+
+        assert result["success"] is True
+        staging_data = mock_stg.save_staging_item.call_args[0][2]
+        assert staging_data["enrichment"] == {}
+
+    @pytest.mark.asyncio
     async def test_with_cover_image(self) -> None:
         from backend.app.routers.intel import ScraperSubmission
         from backend.app.routers.intel_scraper import submit_from_scraper
