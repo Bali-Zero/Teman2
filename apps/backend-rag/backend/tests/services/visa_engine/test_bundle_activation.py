@@ -31,6 +31,25 @@ from ._builders import (
 _OBSERVED_AT = datetime(2026, 7, 18, tzinfo=timezone.utc)
 
 
+def _verified_unsigned(payload_overrides: dict | None = None) -> VerifiedRulePack:
+    """An unsigned_dev=True candidate, built via the real dev-firebreak path
+    (never persisted, ephemeral) — used only to prove `validate_activation`
+    independently refuses to activate it into PRODUCTION (3-seat verify
+    FIX-NOW #5), regardless of what `verify_rule_pack` itself already
+    guarantees."""
+
+    payload = minimal_valid_envelope()["payload"]
+    if payload_overrides:
+        payload.update(payload_overrides)
+    envelope = {"payload": payload}  # no "signature" key — unsigned-dev path
+    return verify_rule_pack(
+        envelope,
+        trust_store=StaticTrustStore([]),
+        observed_at=_OBSERVED_AT,
+        allow_unsigned=True,
+    )
+
+
 def _verified(payload_overrides: dict | None = None) -> VerifiedRulePack:
     private_key, public_key = ephemeral_ed25519_keypair()
     payload = minimal_valid_envelope()["payload"]
@@ -201,3 +220,39 @@ class TestEngineVersionCompatibility:
                 environment="TEST",
                 engine_version="2.0.1",
             )
+
+
+class TestUnsignedDevIntoProductionRejected:
+    """3-seat verify FIX-NOW #5: defense in depth. `verify_rule_pack`
+    already refuses to produce an `unsigned_dev=True` candidate for
+    environment=PRODUCTION — but `validate_activation` must not TRUST that
+    wrapper's guarantee. It re-checks `candidate.unsigned_dev` against the
+    activation `environment` on its own terms."""
+
+    def test_unsigned_candidate_rejected_when_activation_environment_is_production(
+        self,
+    ) -> None:
+        verified = _verified_unsigned({"sequence": 1, "previous_payload_sha256": None})
+        assert verified.unsigned_dev is True
+
+        with pytest.raises(RulePackVerificationError, match="unsigned_dev"):
+            validate_activation(
+                verified,
+                current_sequence=0,
+                current_payload_sha256=None,
+                environment="PRODUCTION",
+                engine_version="1.0.0",
+            )
+
+    def test_unsigned_candidate_still_accepted_into_non_production(self) -> None:
+        verified = _verified_unsigned({"sequence": 1, "previous_payload_sha256": None})
+        assert verified.unsigned_dev is True
+
+        result = validate_activation(
+            verified,
+            current_sequence=0,
+            current_payload_sha256=None,
+            environment="TEST",  # matches minimal_valid_envelope()'s payload environment
+            engine_version="1.0.0",
+        )
+        assert result is None

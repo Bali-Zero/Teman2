@@ -843,12 +843,28 @@ def validate_activation(
     — and minus legal-period/jurisdiction/domain, see module docstring).
 
     Raises :class:`RulePackVerificationError` on the first violation found,
-    in this order: sequence regression, broken ``previous_payload_sha256``
-    chain, environment mismatch, incompatible engine version. Never touches
-    a database or the filesystem — persistence (looking up
+    in this order: unsigned-dev-into-PRODUCTION, sequence regression,
+    broken ``previous_payload_sha256`` chain, environment mismatch,
+    incompatible engine version. Never touches a database or the
+    filesystem — persistence (looking up
     ``current_sequence``/``current_payload_sha256`` for real) is a later
     PR's job; this function only compares values its caller already holds.
     """
+
+    # Defense in depth (3-seat verify FIX-NOW #5): verify_rule_pack already
+    # refuses to produce an unsigned_dev=True candidate for
+    # environment=PRODUCTION (both at the pre-validation dict-read gate and,
+    # per FIX-NOW #1, again on the validated model) — but activation must
+    # never TRUST that wrapper's guarantee. A candidate is checked against
+    # ITS OWN unsigned_dev flag and the environment it is being activated
+    # into, independent of how it got here.
+    if candidate.unsigned_dev and environment == _PRODUCTION_ENVIRONMENT:
+        raise RulePackVerificationError(
+            "refusing to activate an unsigned_dev rule pack into "
+            f"environment={_PRODUCTION_ENVIRONMENT!r} — PRODUCTION must "
+            "always be a cryptographically verified candidate, regardless "
+            "of how the candidate was constructed"
+        )
 
     payload = candidate.pack.payload
 
