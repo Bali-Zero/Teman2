@@ -135,7 +135,13 @@ class TelegramAliasAdapter:
 
     async def send_message(self, chat: str | int, text: str) -> Any:
         resolved = self._resolve(chat)
-        return await self._bot.send_message(chat_id=resolved, text=text)
+        # Compliance alert text is PLAIN (built by AlertDispatcher._telegram_text
+        # as "🔔 SEVERITY · category · client=… · due …"). It carries no markup,
+        # but category slugs like ``document_expiry`` / ``visa_expiry`` contain
+        # underscores that TelegramBotService's default ``parse_mode="Markdown"``
+        # treats as an unclosed italic entity → HTTP 400 "can't parse entities"
+        # → every compliance alert silently fails to deliver. Send as plain text.
+        return await self._bot.send_message(chat_id=resolved, text=text, parse_mode=None)
 
 
 class _KeyOnlyRule:

@@ -46,7 +46,9 @@ async def test_owner_alias_resolves_to_real_chat_id_from_env(monkeypatch) -> Non
 
     await adapter.send_message(chat="owner", text="hello")
 
-    fake_bot.send_message.assert_awaited_once_with(chat_id="1125336968", text="hello")
+    fake_bot.send_message.assert_awaited_once_with(
+        chat_id="1125336968", text="hello", parse_mode=None
+    )
 
 
 @pytest.mark.asyncio
@@ -72,7 +74,9 @@ async def test_team_alias_falls_back_to_owner_when_team_env_unset(monkeypatch) -
 
     # No dedicated team chat configured -> falls back to the owner chat,
     # never silently dropped.
-    fake_bot.send_message.assert_awaited_once_with(chat_id="1125336968", text="urgent renewal")
+    fake_bot.send_message.assert_awaited_once_with(
+        chat_id="1125336968", text="urgent renewal", parse_mode=None
+    )
 
 
 @pytest.mark.asyncio
@@ -84,7 +88,34 @@ async def test_team_alias_uses_dedicated_env_when_configured(monkeypatch) -> Non
 
     await adapter.send_message(chat="team", text="urgent renewal")
 
-    fake_bot.send_message.assert_awaited_once_with(chat_id="-100987654321", text="urgent renewal")
+    fake_bot.send_message.assert_awaited_once_with(
+        chat_id="-100987654321", text="urgent renewal", parse_mode=None
+    )
+
+
+@pytest.mark.asyncio
+async def test_underscore_category_sent_as_plain_text_not_markdown(monkeypatch) -> None:
+    """Regression: compliance alert text contains category slugs like
+    ``document_expiry`` whose underscores Telegram's default Markdown parser
+    rejects as an unclosed italic entity (HTTP 400 "can't parse entities"),
+    silently dropping EVERY compliance alert. The adapter must send plain text
+    (parse_mode=None) so the underscores are literal. Proven live 2026-07-18:
+    125 alerts persisted, 0 delivered, all failing with byte-offset parse error.
+    """
+    monkeypatch.setenv("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+    monkeypatch.delenv("TELEGRAM_TEAM_CHAT_ID", raising=False)
+    fake_bot = AsyncMock()
+    adapter = TelegramAliasAdapter(bot=fake_bot)
+
+    text = "🔔 CRITICAL · document_expiry · client=8961 · due 2026-07-18"
+    await adapter.send_message(chat="owner", text=text)
+
+    _, kwargs = fake_bot.send_message.await_args
+    assert kwargs["parse_mode"] is None, (
+        "compliance alert must be sent plain — Markdown mode 400s on the "
+        "underscore in category slugs like document_expiry"
+    )
+    assert kwargs["text"] == text  # unescaped, literal underscores preserved
 
 
 @pytest.mark.asyncio
@@ -108,7 +139,9 @@ async def test_literal_chat_id_passes_through_unresolved(monkeypatch) -> None:
 
     await adapter.send_message(chat=555111222, text="direct")
 
-    fake_bot.send_message.assert_awaited_once_with(chat_id=555111222, text="direct")
+    fake_bot.send_message.assert_awaited_once_with(
+        chat_id=555111222, text="direct", parse_mode=None
+    )
 
 
 # ---------------------------------------------------------------------------
