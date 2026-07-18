@@ -130,14 +130,61 @@ async def test_npwp_fragment_never_strong_matches(pool, seeded):
     assert [c for c in entity["candidates"] if c["method"] == "npwp"] == []
 
 
-async def test_company_npwp_still_resolves_company_first(pool, seeded):
-    """The same digits exist as a client npwp AND a company npwp_company:
-    resolve_entity must keep the company-first ordering — the person fallback
-    only fires when the company side found nothing."""
+async def test_cross_table_npwp_collision_degrades_to_ambiguous(pool, seeded):
+    """The same digits exist as a client npwp AND a company npwp_company —
+    a data error (one tax number cannot belong to both books). Company-first
+    must NOT silently crown the company: both hits surface and the matrix
+    degrades to AMBIGUOUS (Codex round-2 on the m248 diff)."""
+    entity = await resolve_entity(
+        {"npwp_number": NPWP_COMPANY_DIGITS}, "npwp", pool
+    )
+    tables = {c["table"] for c in entity["candidates"]}
+    assert tables == {"companies", "clients"}
+    assert entity["decision"] == "AMBIGUOUS"
+    assert entity["subject_kind"] == "unknown"
+
+
+async def test_company_only_npwp_still_resolves_company(pool, seeded):
+    """No person collision: a company-held npwp resolves the company alone
+    (the person probe finds nothing, ordering unchanged)."""
+    async with pool.acquire() as c:
+        await c.execute(
+            "UPDATE clients SET npwp = NULL WHERE notes = $1 AND npwp = $2",
+            TAG,
+            NPWP_COMPANY_DIGITS,
+        )
     entity = await resolve_entity(
         {"npwp_number": NPWP_COMPANY_DIGITS}, "npwp", pool
     )
     assert entity["subject_kind"] == "company"
-    tables = {c["table"] for c in entity["candidates"]}
-    assert "companies" in tables
-    assert "clients" not in tables
+    assert {c["table"] for c in entity["candidates"]} == {"companies"}
+
+
+async def test_company_npwp_fragment_never_matches(pool, seeded):
+    """An 11-digit doc value must not strong-match, even when a company row
+    stores exactly that 11-digit npwp_company (same >=15 gate as the person
+    side — 14 live companies carry 11-14-digit values)."""
+    short_digits = "11223344556"
+    async with pool.acquire() as c:
+        await c.execute(
+            "INSERT INTO companies (company_name, npwp_company) VALUES ($1,$2)",
+            f"{TAG} PT Frammento",
+            short_digits,
+        )
+    entity = await resolve_entity({"npwp_number": short_digits}, "npwp", pool)
+    assert [c for c in entity["candidates"] if c["score"] >= 0.99] == []
+
+
+async def test_unknown_doc_with_company_id_probes_company_book(pool, seeded):
+    """dt='unknown' must not be person-only: a doc carrying a company
+    strong-id (npwp matching a company) finds the company book too."""
+    async with pool.acquire() as c:
+        await c.execute(
+            "UPDATE clients SET npwp = NULL WHERE notes = $1 AND npwp = $2",
+            TAG,
+            NPWP_COMPANY_DIGITS,
+        )
+    entity = await resolve_entity(
+        {"npwp_number": NPWP_COMPANY_DIGITS}, "unknown", pool
+    )
+    assert {c["table"] for c in entity["candidates"]} == {"companies"}

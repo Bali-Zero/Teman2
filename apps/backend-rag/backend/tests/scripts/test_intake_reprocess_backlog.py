@@ -1058,7 +1058,11 @@ def test_reroute_drive_folder_sql_targets_drive_zero_candidate_bucket() -> None:
     assert "SELECT DISTINCT ON (q.id)" in sql
     assert "q.source = 'drive'" in sql
     assert "q.source_path IS NOT NULL" in sql
-    assert "p.status = 'review_pending'" in sql
+    # Codex round-2 (m248): pick the LATEST proposal per queue row FIRST, and
+    # only then require it to be review_pending — filtering inside the CTE
+    # would resurrect rows whose newest proposal is already routed.
+    assert "proposal_status = 'review_pending'" in sql
+    assert "p.status = 'review_pending'" not in sql
     assert "'NO_MATCH'" in sql
     assert "jsonb_array_length" in sql
     assert "LIMIT $1" in sql
@@ -1098,7 +1102,7 @@ def test_reroute_npwp_sql_targets_full_npwp_review_pending() -> None:
     irb = _load()
     sql = irb.REROUTE_NPWP_SELECT_SQL
     assert "SELECT DISTINCT ON (q.id)" in sql
-    assert "p.status = 'review_pending'" in sql
+    assert "proposal_status = 'review_pending'" in sql
     assert "npwp_number" in sql
     assert ">= 15" in sql
     assert "LIMIT $1" in sql
@@ -1108,17 +1112,29 @@ def test_reroute_npwp_sql_targets_full_npwp_review_pending() -> None:
 
 
 def test_reroute_npwp_reuses_route_only_reset_contract() -> None:
-    # The npwp mode reuses the folder-mode reset/supersede SQL — the
-    # stage_output-preservation invariant is inherited, and this test pins
-    # that the mode has NO reset SQL of its own that could drift.
+    # Both modes go through the ONE shared engine — the stage_output
+    # preservation invariant is inherited, and neither mode can grow reset
+    # SQL of its own that could drift.
     irb = _load()
     assert not hasattr(irb, "REROUTE_NPWP_RESET_SQL")
     assert not hasattr(irb, "REROUTE_NPWP_SUPERSEDE_SQL")
     import inspect
 
-    src = inspect.getsource(irb.run_reroute_npwp)
-    assert "REROUTE_DRIVE_FOLDER_RESET_SQL" in src
-    assert "REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL" in src
+    engine_src = inspect.getsource(irb._run_route_only_reroute)
+    assert "REROUTE_DRIVE_FOLDER_RESET_SQL" in engine_src
+    assert "REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL" in engine_src
+    assert "REROUTE_ELIGIBLE_LOCK_SQL" in engine_src
+    for fn in (irb.run_reroute_npwp, irb.run_reroute_drive_folder):
+        assert "_run_route_only_reroute" in inspect.getsource(fn)
+
+
+def test_reroute_eligible_lock_never_yanks_active_lease() -> None:
+    # Codex round-2: the reset must skip rows the worker is actively
+    # processing, inside one transaction, safe under concurrent invocations.
+    irb = _load()
+    sql = irb.REROUTE_ELIGIBLE_LOCK_SQL
+    assert "lease_owner IS NULL OR lease_expires_at <= now()" in sql
+    assert "FOR UPDATE SKIP LOCKED" in sql
 
 
 def test_reroute_pipeline_version_defaults_per_mode() -> None:

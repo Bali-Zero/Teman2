@@ -9,4 +9,7 @@
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS npwp TEXT;
 
 -- === ROLLBACK ===
-ALTER TABLE clients DROP COLUMN IF EXISTS npwp;
+-- Intentionally a no-op: the column PRE-EXISTS this migration on prod (with
+-- live personal-NPWP data). Dropping it would not restore the pre-migration
+-- state — it would destroy data the migration never created.
+SELECT 1;

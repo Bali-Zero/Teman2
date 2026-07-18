@@ -252,21 +252,34 @@ UPDATE intake_queue
 REROUTE_DRIVE_FOLDER_SELECT_SQL = """
 WITH latest AS (
     SELECT DISTINCT ON (q.id)
-           p.id AS proposal_id, q.id AS queue_id
+           p.id AS proposal_id, q.id AS queue_id, p.status AS proposal_status,
+           p.entity_resolution AS entity_resolution
       FROM intake_queue q
       JOIN document_routing_proposal p ON p.queue_id = q.id
      WHERE q.source = 'drive'
        AND q.source_path IS NOT NULL
-       AND p.status = 'review_pending'
-       AND (p.entity_resolution->>'decision') = 'NO_MATCH'
-       AND jsonb_array_length(
-             COALESCE(p.entity_resolution->'candidates', '[]'::jsonb)) = 0
      ORDER BY q.id, p.id DESC
 )
 SELECT proposal_id, queue_id
   FROM latest
+ WHERE proposal_status = 'review_pending'
+   AND (entity_resolution->>'decision') = 'NO_MATCH'
+   AND jsonb_array_length(
+         COALESCE(entity_resolution->'candidates', '[]'::jsonb)) = 0
  ORDER BY queue_id
  LIMIT $1
+"""
+
+# Reset-eligibility lock (Codex round-2, m248): a queue row actively LEASED by
+# the worker must never be yanked mid-flight, and the whole
+# select→supersede→reset must be one transaction. FOR UPDATE SKIP LOCKED makes
+# concurrent reroute invocations safe too.
+REROUTE_ELIGIBLE_LOCK_SQL = """
+SELECT id
+  FROM intake_queue
+ WHERE id = ANY($1::bigint[])
+   AND (lease_owner IS NULL OR lease_expires_at <= now())
+ FOR UPDATE SKIP LOCKED
 """
 
 REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL = """
@@ -301,7 +314,7 @@ UPDATE intake_queue
 REROUTE_NPWP_SELECT_SQL = """
 WITH latest AS (
     SELECT DISTINCT ON (q.id)
-           p.id AS proposal_id, q.id AS queue_id,
+           p.id AS proposal_id, q.id AS queue_id, p.status AS proposal_status,
            COALESCE(
              p.routing->'fields'->'npwp_number'->>'value',
              p.routing->'fields'->>'npwp_number',
@@ -310,12 +323,12 @@ WITH latest AS (
            ) AS npwp_raw
       FROM intake_queue q
       JOIN document_routing_proposal p ON p.queue_id = q.id
-     WHERE p.status = 'review_pending'
      ORDER BY q.id, p.id DESC
 )
 SELECT proposal_id, queue_id
   FROM latest
- WHERE npwp_raw IS NOT NULL
+ WHERE proposal_status = 'review_pending'
+   AND npwp_raw IS NOT NULL
    AND length(regexp_replace(npwp_raw, '[^0-9]', '', 'g')) >= 15
  ORDER BY queue_id
  LIMIT $1
@@ -1975,6 +1988,61 @@ async def run_reprocess(pool: asyncpg.Pool, pipeline_version: str, apply: bool) 
     return counts
 
 
+async def _run_route_only_reroute(
+    pool: asyncpg.Pool,
+    *,
+    mode: str,
+    select_sql: str,
+    pipeline_version: str,
+    limit: int,
+    apply: bool,
+) -> dict[str, int]:
+    """Shared route-only reroute engine (m227 folder / m248 npwp).
+
+    One transaction end-to-end (Codex round-2): the SELECT, the
+    lease-eligibility lock (FOR UPDATE SKIP LOCKED — a row the worker is
+    actively processing is skipped, never yanked), the proposal supersede and
+    the queue reset all commit or roll back together. stage_output is NEVER
+    touched (locked by contract test).
+    """
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            rows = await conn.fetch(select_sql, limit)
+            queue_ids = sorted({r["queue_id"] for r in rows})
+
+            counts = {"proposals": len(rows), "queue_rows": len(queue_ids)}
+            if not apply:
+                logger.info(
+                    "[%s][DRY-RUN] would supersede %d proposals and resume %d "
+                    "queue rows at route (pipeline_version=%s, limit=%d) "
+                    "(pass --apply to execute)",
+                    mode, counts["proposals"], counts["queue_rows"],
+                    pipeline_version, limit,
+                )
+                return counts
+
+            eligible_rows = await conn.fetch(REROUTE_ELIGIBLE_LOCK_SQL, queue_ids)
+            eligible = sorted(r["id"] for r in eligible_rows)
+            counts["lease_skipped"] = len(queue_ids) - len(eligible)
+
+            superseded = await conn.execute(
+                REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL, eligible
+            )
+            reset = await conn.execute(
+                REROUTE_DRIVE_FOLDER_RESET_SQL, eligible, pipeline_version
+            )
+        counts["superseded"] = int(superseded.split()[-1]) if superseded else 0
+        counts["reset"] = int(reset.split()[-1]) if reset else 0
+
+    logger.info(
+        "[%s] superseded=%d proposals, resumed=%d queue rows at route "
+        "(pipeline_version=%s, lease_skipped=%d)",
+        mode, counts.get("superseded", 0), counts.get("reset", 0),
+        pipeline_version, counts.get("lease_skipped", 0),
+    )
+    return counts
+
+
 async def run_reroute_drive_folder(
     pool: asyncpg.Pool, pipeline_version: str, limit: int, apply: bool
 ) -> dict[str, int]:
@@ -1984,40 +2052,17 @@ async def run_reroute_drive_folder(
     OCR/extract fields are the only copy left after blob retention). Supersedes
     the stale NO_MATCH proposals and lets the live worker re-run fase-4
     resolve_entity with source_path, so client folders at any depth (PR #2664)
-    produce LINK_CANDIDATE/AMBIGUOUS proposals. Never attaches — candidates
-    feed the normal review/panel tier.
+    produce LINK_CANDIDATE/AMBIGUOUS proposals. Candidates feed the normal
+    review tier; any auto-attach still requires the concordance gates.
     """
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(REROUTE_DRIVE_FOLDER_SELECT_SQL, limit)
-        queue_ids = sorted({r["queue_id"] for r in rows})
-
-        counts = {"proposals": len(rows), "queue_rows": len(queue_ids)}
-        if not apply:
-            logger.info(
-                "[reroute-drive-folder][DRY-RUN] would supersede %d proposals and "
-                "resume %d queue rows at route (pipeline_version=%s, limit=%d) "
-                "(pass --apply to execute)",
-                counts["proposals"], counts["queue_rows"], pipeline_version, limit,
-            )
-            return counts
-
-        async with conn.transaction():
-            superseded = await conn.execute(
-                REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL, queue_ids
-            )
-            reset = await conn.execute(
-                REROUTE_DRIVE_FOLDER_RESET_SQL, queue_ids, pipeline_version
-            )
-        counts["superseded"] = int(superseded.split()[-1]) if superseded else 0
-        counts["reset"] = int(reset.split()[-1]) if reset else 0
-
-    logger.info(
-        "[reroute-drive-folder] superseded=%d proposals, resumed=%d queue rows at "
-        "route (pipeline_version=%s) — the intake worker re-routes them with the "
-        "m227 multi-segment folder matcher",
-        counts.get("superseded", 0), counts.get("reset", 0), pipeline_version,
+    return await _run_route_only_reroute(
+        pool,
+        mode="reroute-drive-folder",
+        select_sql=REROUTE_DRIVE_FOLDER_SELECT_SQL,
+        pipeline_version=pipeline_version,
+        limit=limit,
+        apply=apply,
     )
-    return counts
 
 
 async def run_reroute_npwp(
@@ -2027,41 +2072,21 @@ async def run_reroute_npwp(
 
     Route-only resume, identical contract to --reroute-drive-folder
     (stage_output PRESERVED, supersede stale proposals, worker re-runs fase-4
-    where _match_person_strong now consults clients.npwp). Never attaches —
-    a unique npwp hit adds a CONF_STRONG_EXACT candidate to the review tier;
-    duplicate-npwp hits degrade to AMBIGUOUS downstream.
+    where _match_person_strong now consults clients.npwp). A unique npwp hit
+    adds a CONF_STRONG_EXACT candidate; duplicate-npwp and person/company
+    npwp collisions degrade to AMBIGUOUS downstream. NOTE: the live worker
+    runs with the auto-attach killswitches ON — an AUTO_ATTACH decision plus
+    phone/subject-name concordance CAN commit (reversible via
+    intake_commit_audit + rollback_commit).
     """
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(REROUTE_NPWP_SELECT_SQL, limit)
-        queue_ids = sorted({r["queue_id"] for r in rows})
-
-        counts = {"proposals": len(rows), "queue_rows": len(queue_ids)}
-        if not apply:
-            logger.info(
-                "[reroute-npwp][DRY-RUN] would supersede %d proposals and "
-                "resume %d queue rows at route (pipeline_version=%s, limit=%d) "
-                "(pass --apply to execute)",
-                counts["proposals"], counts["queue_rows"], pipeline_version, limit,
-            )
-            return counts
-
-        async with conn.transaction():
-            superseded = await conn.execute(
-                REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL, queue_ids
-            )
-            reset = await conn.execute(
-                REROUTE_DRIVE_FOLDER_RESET_SQL, queue_ids, pipeline_version
-            )
-        counts["superseded"] = int(superseded.split()[-1]) if superseded else 0
-        counts["reset"] = int(reset.split()[-1]) if reset else 0
-
-    logger.info(
-        "[reroute-npwp] superseded=%d proposals, resumed=%d queue rows at "
-        "route (pipeline_version=%s) — the intake worker re-routes them with "
-        "the m248 person-npwp matcher",
-        counts.get("superseded", 0), counts.get("reset", 0), pipeline_version,
+    return await _run_route_only_reroute(
+        pool,
+        mode="reroute-npwp",
+        select_sql=REROUTE_NPWP_SELECT_SQL,
+        pipeline_version=pipeline_version,
+        limit=limit,
+        apply=apply,
     )
-    return counts
 
 
 async def run_revive_stub(
