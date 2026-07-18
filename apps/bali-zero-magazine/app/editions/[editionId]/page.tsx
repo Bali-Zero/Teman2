@@ -1,16 +1,22 @@
+import { notFound } from "next/navigation";
+
 import { FrontPage } from "@/components/front-page";
 import {
   MagazineShell,
   WorkspaceAccessRequired,
 } from "@/components/magazine-shell";
 import {
-  readCurrentFrontPage,
+  readArchivedEdition,
   requireMagazineViewer,
 } from "@/lib/server/magazine-read-model";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+type EditionPageProps = Readonly<{
+  params: Promise<{ editionId: string }>;
+}>;
+
+export default async function EditionPage({ params }: EditionPageProps) {
   const viewer = await requireMagazineViewer();
   if (viewer === null) {
     return (
@@ -20,10 +26,13 @@ export default async function Home() {
     );
   }
 
-  const page = await readCurrentFrontPage();
+  const { editionId } = await params;
+  const page = await readArchivedEdition(editionId);
+  if (page === null) notFound();
+
   return (
-    <MagazineShell>
-      <FrontPage page={page} />
+    <MagazineShell eyebrow="Publication archive">
+      <FrontPage page={page} archive />
     </MagazineShell>
   );
 }

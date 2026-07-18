@@ -6,9 +6,14 @@ import {
 } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 
+import { runWithMagazineBindings } from "../lib/server/runtime-bindings";
+import { secureProtectedHtmlResponse } from "./response-security";
+
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  ACTOR_KEY_SECRET?: string;
+  ROLE_ALLOWLIST_JSON?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -58,7 +63,10 @@ const worker = {
       );
     }
 
-    return handler.fetch(request, env, ctx);
+    return runWithMagazineBindings(env, async () => {
+      const response = await handler.fetch(request, env, ctx);
+      return secureProtectedHtmlResponse(request, response);
+    });
   },
 };
 
