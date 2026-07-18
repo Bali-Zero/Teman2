@@ -907,9 +907,28 @@ Make it feel natural and helpful, not forced.
                     # Run through pipeline
                     processed = await self.response_pipeline.process(pipeline_data)
                     set_span_attribute("verification_score", processed.get("verification_score", 0))
+                    verdict_available = processed.get("verdict_available", True)
+                    verification_score = processed.get("verification_score", 1.0)
+                    set_span_attribute("verdict_available", verdict_available)
 
-                    # Handle verification failure (self-correction)
-                    if processed.get("verification_score", 1.0) < 0.7 and state.context_gathered:
+                    # Handle verification failure (self-correction) — ONLY when
+                    # the verifier actually produced a verdict. An empty/
+                    # unparseable verifier response (verdict_available=False)
+                    # must never trigger self-correction: the placeholder
+                    # score=0.5 is not a real judgment, and rephrasing on top
+                    # of it wastes a full rephrase+re-verify round-trip
+                    # (~23s — the verifier hits the same empty-response bug on
+                    # retry, so the loop "corrects" an answer that was never
+                    # actually rejected). See verification_service.py.
+                    if not verdict_available:
+                        if verification_score < 0.7 and state.context_gathered:
+                            logger.info(
+                                "🛡️ [Pipeline] Verifier unavailable — skipping "
+                                "self-correction (placeholder score=%.2f is not a "
+                                "real verdict).",
+                                verification_score,
+                            )
+                    elif verification_score < 0.7 and state.context_gathered:
                         verification = processed.get("verification", {})
                         logger.warning(
                             f"🛡️ [Pipeline] REJECTED draft (Score: {verification.get('score', 0)}). "
