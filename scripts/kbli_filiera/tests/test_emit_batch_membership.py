@@ -58,21 +58,20 @@ def test_serving_code_with_l2_source_is_not_serving():
 
 
 def test_census_and_in_scope_on_real_canonical():
-    # Census AFTER the Lot 2 cure (kbli/lot2-data-apply, post the merged 49213
-    # per-ancestor restore #2744): the 13 Lot 2 quarantined codes were
-    # detached (per_skala -> []), migrating A-serving/pp28 -> A-empty/gap.
-    # Post-Lot-1 baseline was 100/1/120 (in-scope 101); the 49213 restore
-    # (#2744) did NOT change this baseline (49213 is OSS-native, carries
-    # _l2_source, never a no-scope/Batch-A member) — verified via dry-run
-    # showing identical counts before this lot's --apply. 100-13=87,
-    # 120+13=133, 101-13=88. Total population is invariant at 221.
+    # Census AFTER the Lot 3 cure (kbli/lot3-data-apply): the 13 Lot 3
+    # quarantined codes were detached (per_skala -> []), migrating
+    # A-serving/pp28 -> A-empty/gap. Post-Lot-2 baseline was 87/1/133
+    # (in-scope 88, per test_kbli_batch_a_lot2_registry.py's own history);
+    # this lot's --apply does not touch any OSS-sourced code, so the
+    # migration is a clean 13-code shift. 87-13=74, 133+13=146, 88-13=75.
+    # Total population is invariant at 221.
     records = _load_real()
     members = m.build_members(records)
     cen = m.census(members)
-    assert cen["A-serving/pp28"] == 87
+    assert cen["A-serving/pp28"] == 74
     assert cen["A-serving/orphan"] == 1
-    assert cen["A-empty/gap"] == 133
-    assert cen["_in_scope_total"] == 88
+    assert cen["A-empty/gap"] == 146
+    assert cen["_in_scope_total"] == 75
     assert cen["_total"] == 221
     by = {x["kode_kbli_2025"]: x for x in members}
     # the two OSS-sourced cured codes are absent
@@ -93,6 +92,12 @@ def test_census_and_in_scope_on_real_canonical():
     lot2 = ["42999", "47771", "49233", "49296", "50113", "52103", "52105",
             "52211", "52219", "52232", "52239", "52299", "59131"]
     for code in lot2:
+        assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
+        assert by[code]["in_scope"] is False, code
+    # every Lot 3 cured code migrated to the gap watchlist (out of scope)
+    lot3 = ["60101", "60103", "60201", "60203", "60311", "61905", "61909",
+            "64110", "64220", "64320", "64330", "64920", "64940"]
+    for code in lot3:
         assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
         assert by[code]["in_scope"] is False, code
 
