@@ -22,11 +22,16 @@ sources:
 
 ## 1. Verdict
 
-**Lot 1 PASSES the conductor gate, with the conductor FLIPPING EIGHT lane verdicts (all
+**Lot 1's conductor gate is COMPLETE and SIGNED — outcome: 13/13 quarantine, 0 certified, and the
+program is HALTED (m5 NEG breach, plan A-6(b)).** The conductor FLIPPED EIGHT lane verdicts (all
 clean→quarantine): seven on cross-family content evidence — each verified by eye on the canonical
 payloads and vault records before adjudication — and one (19206) under the plan's preregistered
 divergence rule after the post-signing red-team showed the conductor's own "clean" was a picked
-verdict in a two-seat divergence (plan §8 A-6).**
+verdict in a two-seat divergence (plan §8 A-6). The gate is deliberately NOT labeled "passed": a
+lot whose NEG control missed is halted by the preregistered calibration-§5 rule, and a halted gate cannot
+certify. What DOES proceed is the fail-safe cure of the 13 (detaching an uncertifiable payload is
+protective and requires no certification — rule #4, detach > plausible remap); certification of
+any code and any further lot sit behind the halt resolution, the A-6 preconditions, and Zero's GO.
 
 | Outcome | Codes |
 | --- | --- |
@@ -51,7 +56,7 @@ receipts in §12); the data apply lands in its own PR with the A6 per-surface re
 | payload cross-contamination | 02402, 02201 (seed-certification blob), 08920 (salt-extraction marine regime: 'fasilitas pengambilan air laut', ≤12/>12-mil jurisdiction), 01287 (generic agriculture on narcotic-crop code) | licensing rows whose CONTENT belongs to a different activity |
 | regime mismatch across split | 05102 (mining-concession IUP on beneficiation), 38122/38222 (generic hazardous-B3 on the radioactive class), 39001 (storage-exploration + marine-pollution rows on capture) | a real PP28 row that does not substantively cover the 2025 activity |
 | non-inheritable ancestry | 01700 (6-way merge, single-ancestor inherit), 02409 (many-to-many) | structure that cannot single-inherit |
-| unresolvable source pointer | 05200, 36003 (+ the absence half of 01287/02201/08920) | pp28_sources cites a row not retrievable from the pinned corpus as hunted (11,208-page text-hunt; nonexistence NOT asserted — an earned ABSENT needs the plan-A5 image-grade scan) |
+| unresolvable source pointer | 05200, 36003 (annotative overlap: 01287/02201/08920 above ALSO carry an unresolvable-source half; primary bucket = cross-contamination) | pp28_sources cites a row not retrievable from the pinned corpus as hunted (11,208-page text-hunt; nonexistence NOT asserted — an earned ABSENT needs the plan-A5 image-grade scan) |
 | split-generic-payload + false mapping metadata | 19206 (generic pre-split 19291 basket payload; Besar row not on the pinned page; status_mapping 'CODICE_RINUMERATO' vs image-verified 3-way split) | a 'Seluruh'-scoped generic row inherited across a split, quarantined under the divergence rule (A-6(a)) |
 
 ## 2. Seat map as actually run (degradations DECLARED)
@@ -75,11 +80,11 @@ Random rule: 5 lowest sha256(code|"d6-random") among the 8 lane-clean codes → 
 | 05102 (Q) | PP28 I.D.202 row 24 filed under 05100 (pre-split): IUP Tahap Eksplorasi / RKAB / Studi Kelayakan — mining-concession regime; 05102 uraian excludes mining. Crosswalk split 05100→{05101,05102} seen on p.144 | CONFIRMED |
 | 38122 (Q) | Lampiran 5 p.170: 38120 → {38121 non-radioactive, 38122 radioactive} split real | CONFIRMED |
 | 39001 (Q) | p.170: 39000 → {39001 capture, 39002 storage, 39009 remediation}; PP28 I.D.1022 row 68 = carbon-INJECTION-zone exploration (storage-side, 'Wilayah Izin Penyimpanan Karbon'); PP28 I.I.406 row 88 = marine pollution response. Neither is capture | CONFIRMED |
-| 08920 (R) | p.145: 08920 Ekstraksi Tanah Gemuk→Gambut (Peat), 1:1 terminology fix | CONFIRMED clean |
-| 02201 (R) | p.135: 02201 Pemanenan Kayu → 02201, clean 1:1 | CONFIRMED clean |
+| 08920 (R) | p.145: 08920 Ekstraksi Tanah Gemuk→Gambut (Peat), 1:1 terminology fix | initial CONFIRMED clean — **SUPERSEDED by the blind-GLM content flip** (§6/§8: the crosswalk 1:1 was true, but the payload CONTENT is a salt-extraction marine regime; the D6 random check verified structure only) |
+| 02201 (R) | p.135: 02201 Pemanenan Kayu → 02201, clean 1:1 | initial CONFIRMED clean — **SUPERSEDED by the blind-GLM content flip** (payload is a seed-certification blob; structure-only check) |
 | 19206 (R) | p.154: 19291 → {19205, 19206 biofuel-blending, 19209}; PP28 I.F.1925 row 187 = 19291 'Seluruh' generic industry regime (Sertifikat Standar, Menengah Rendah) — read at the time as substantively covering the blending leg | initial CONFIRMED clean — **SUPERSEDED by the A-6 divergence-rule flip** (two cross-family seats dissented; plan §3 forbids picking in divergence; the p.525 render also carries ONLY the Kecil/Menengah block, so the served Besar row was never certifiable). Kept in the table as the honest historical record of the conductor's own miss |
-| 05200 (R) | p.144: 05200 Pertambangan Lignit → 05200, 1:1 | CONFIRMED clean |
-| 36003 (R) | p.170: 36003 → 36003, 1:1 | CONFIRMED clean |
+| 05200 (R) | p.144: 05200 Pertambangan Lignit → 05200, 1:1 | initial CONFIRMED clean — **SUPERSEDED by the blind-GLM source flip** (the cited pp28 source row is not retrievable from the pinned corpus as hunted; structure-only check) |
+| 36003 (R) | p.170: 36003 → 36003, 1:1 | initial CONFIRMED clean — **SUPERSEDED by the blind-GLM source flip** (same class as 05200; structure-only check) |
 
 **Anti-poisoning probe:** page 202 of PP28 394933 regenerated on Mini from the sha256-pinned PDF
 (`pdftoppm -r 300`; PDF sha256 == manifest `8ad5155a…`) is **byte-identical** to the evidence render
@@ -157,7 +162,7 @@ R1 = 5 quarantined (sol, xhigh) · R2 = 8 clean (terra, high) · R3 = 2 MUTATED 
   signed calibration). **7/8 formal survival — the 49213 miss is an m5 BREACH (A-6(b)).** GLM's raw
   verdict on 49213 is `gap_confirmed=false` / `licensing_inherits=true`: it refuses the refuted
   OLD-49213/AKDP source but holds the crosswalk-correct predecessor path 49413 (PP28 I.I p.65,
-  Wali Kota, image-read digits) licensable — under the preregistered §5 rule ("honest-gap must
+  Wali Kota, image-read digits) licensable — under the preregistered calibration-§5 rule ("honest-gap must
   survive; any miss halts") that is a formal NEG contradiction, and the halt is DECLARED AND IN
   EFFECT (no Lot 2 until the 49213 finding is resolved by image-grade adjudication or ruling —
   plan A-6(b)). The evidence-backed nuance stays on the record — this is the completion the fase-1
@@ -193,9 +198,12 @@ R1 = 5 quarantined (sol, xhigh) · R2 = 8 clean (terra, high) · R3 = 2 MUTATED 
 
 **Same-family blind agreement measures transcription fidelity, not truth.** The Sonnet D1/D5 pair
 reproduced crosswalk structure flawlessly (0 hallucinations at D6 across 10 dossiers, 13/13 mapping
-agreement across all seats) and still shipped **7 false-clean verdicts out of 13 (54%)**. The
+agreement across all seats) and still shipped **7 substantively false-clean verdicts among its 8
+"clean" (54% of the 13-code lot) — and its eighth clean (19206) also fell, on procedural
+divergence rather than proven content falsity (A-6(a))**. The
 false-negatives share ONE shape: **a licensing payload whose CONTENT belongs to another activity or
-whose SOURCE does not exist, sitting behind a structurally-plausible provenance pointer.** The lane
+whose cited SOURCE is not retrievable from the pinned corpus as hunted, sitting behind a
+structurally-plausible provenance pointer.** The lane
 verified structure (crosswalk); truth lives in content (payload semantics vs activity scope,
 source existence in the corpus). Same-family seats share the same blind spot; the conductor's own
 first D6 pass shared it too (it re-read the evidence the lane CITED, not the claims the lane never
@@ -206,12 +214,13 @@ followed from the divergence rule itself once the red-team showed the conductor'
 picked verdict in a two-seat divergence (A-6(a)). The chain of upstream defective beliefs is now
 three deep: *"the code number is a stable key across vintages"* (pilot) → *"a provenance pointer
 is a content check"* (this lot) → *"agreement between same-family seats is evidence of truth"*
-(this lot, the process-level corollary the GO package §10.1 kills). Measured disease prevalence:
+(this lot, the process-level corollary GO package §10 point 1 kills). Measured disease prevalence:
 **13/13 in this lot — which is a contiguous taxonomy-ordered segment (divisions 01→39), NOT a
 random sample (red-team correction: the first signing called it "true-random", contradicting the
 plan's own lot rule). No extrapolation to the full ~221-code class is claimed; the remainder lots
-measure it. The fail-safe posture stands regardless: every no-scope code is a SUSPECT until it
-proves otherwise.**
+measure the A-serving part (Batch A = the 114 A-serving codes; the ~107 A-empty no-scope codes
+are a separate watchlist outside Batch A). The fail-safe posture stands regardless: every no-scope
+code is a SUSPECT until it proves otherwise.**
 
 ## 9. §Solo-operatore
 
@@ -270,7 +279,7 @@ AMENDED as below (all fixes are cheap, all were measured to pay this lot).**
   `kg_kbli_license_fix.py` detach (#2596 pattern) · Qdrant `kategori_risiko` clear via
   `kbli_qdrant_risk_clear.py` (#2597 pattern; dry-run default, `--codes` mandatory, 6/6 mocked
   tests) · `inspect_kbli` cache bust · native kbli-navigator rebuild (fleet align).
-- PR #2695 (LANE-E1 dossiers): conductor gate PASSED → undraft + merge (dossiers are the immutable
+- PR #2695 (LANE-E1 dossiers): conductor gate COMPLETE and signed → undraft + merge (dossiers are the immutable
   evidence trail; lot-report statements it contains that this gate superseded — the 8-clean count —
   are corrected by THIS report, which post-dates it).
 
@@ -282,12 +291,15 @@ read-only, RC=0 each:
 1. **Compiler dry-run** — `python3 scripts/kbli_filiera/cure_canonical_collisions.py --spec
    scripts/kbli_filiera/cure_specs/batch_a_lot1.json` → `summary: 13 to cure, 0 skipped/missing,
    0 problem(s) · DRY RUN — no files written.`
-2. **Gold membership** — python over `apps/mouth/data/kbli-gold-all.json`: `gold records: 428 ·
-   hits: NONE` (all 13 lot codes checked).
-3. **KG REQUIRES edges (prod, read-only `scripts/pg.sh`)** — `SELECT … FROM kg_edges WHERE
-   relationship_type='REQUIRES' AND source_entity_id IN (13 kbli:<code>) GROUP BY 1`: 01287:15,
-   01700:12, 02201:2, 02402:2, 02409:34, 05102:2, 05200:2, 08920:9, 19206:5, 36003:19, 38122:17,
-   38222:2, 39001:26 — **total 147**.
+2. **Gold membership** — full reproducible command:
+   `python3 -c "import json; gold=json.load(open('apps/mouth/data/kbli-gold-all.json')); keys=set(gold.keys()) if isinstance(gold,dict) else {r.get('code') for r in gold}; codes=['01700','02409','05102','38122','39001','02402','38222','05200','01287','02201','08920','36003','19206']; print('gold records:',len(keys)); print('hits:',[c for c in codes if c in keys] or 'NONE')"`
+   → `gold records: 428 · hits: NONE`.
+3. **KG REQUIRES edges (prod, read-only)** — full reproducible query:
+   `./scripts/pg.sh -c "SELECT REPLACE(source_entity_id,'kbli:','') AS code, COUNT(*) AS requires_edges FROM kg_edges WHERE relationship_type='REQUIRES' AND source_entity_id IN ('kbli:01700','kbli:02402','kbli:02409','kbli:05102','kbli:38122','kbli:38222','kbli:39001','kbli:05200','kbli:01287','kbli:02201','kbli:08920','kbli:36003','kbli:19206') GROUP BY 1 ORDER BY 1;"`
+   → 01287:15, 01700:12, 02201:2, 02402:2, 02409:34, 05102:2, 05200:2, 08920:9, 19206:5,
+   36003:19, 38122:17, 38222:2, 39001:26 — **total 147**. (Prod is live state: re-running after
+   the PR-B KG detach will legitimately return different counts; the receipt binds the pre-cure
+   state of 2026-07-18.)
 4. **Cure-spec integrity** — `codes: 13 · unique: 13 · sha256:
    14d9411e0584945fbdffed0611ecd6cb58459dce58d1b7db20a1c5556bfe3211`.
    (Note: this digest identifies the spec revision the receipts were taken against; later
@@ -308,6 +320,13 @@ corrected (taxonomy-ordered segment, NOT random — no population extrapolation)
 advisory-floor-0.0 proposal withdrawn, D5 substitution tightened to image-grounded-only, the
 phantom→unresolvable taxonomy softened to what text-hunt evidence supports, and all operational
 claims backed by independently re-executed receipts (§12). Four calibration breaches are DECLARED
-(m1, m2, m3 pause, m5 halt) via plan amendments A-4/A-5/A-6 — none silently absorbed. Lot 1 cure
-spec (13 codes) is emit-ready; the GO-recommendation for the Batch-A remainder stands as §10 with
-its A-6 preconditions — execution remains behind Zero's explicit GO (Legge 5).
+(m1, m2, m3 pause, m5 halt) via plan amendments A-4/A-5/A-6 — none silently absorbed. A VERIFY
+pass by the same red-team seat on the second signing returned 10 CURED / 2 PARTIALLY-CURED /
+0 NOT-CURED plus 6 new consistency findings; all were cured in this final revision (the gate
+outcome label corrected from "PASSES" to COMPLETE + HALTED — a halted gate cannot certify; the
+stale D6 "CONFIRMED clean" labels annotated as superseded; the cure-spec render claim scoped to
+what was actually image-verified; the last source-nonexistence phrasing softened; the receipts
+made fully reproducible; 39001's bucket and the 114-vs-221 scope aligned between report and
+plan), then swept by an independent cross-section consistency check. Lot 1 cure spec (13 codes)
+is emit-ready; the GO-recommendation for the Batch-A remainder stands as §10 with its A-6
+preconditions — execution remains behind Zero's explicit GO (Legge 5).

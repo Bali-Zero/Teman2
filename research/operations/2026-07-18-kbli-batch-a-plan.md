@@ -227,18 +227,20 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
   **m2 BREACH:** final conductor-adjudicated certification rate for Lot 1 is **0/13 = 0.000** (after
   the A-6 divergence-rule flip of 19206; 1/13 = 0.077 pre-flip), below the m2 floor 0.20. Root
   cause is **population disease, not seat drift**: the cross-family tightening exposed that all 13
-  codes carry uncertifiable per_skala — 7 with payload content belonging to OTHER activities
-  (seed-certification blobs on 02402/02201, a salt-extraction marine regime on peat 08920, a
-  mining-concession regime on beneficiation 05102, generic-B3 on radioactive 38122/38222, generic
-  agriculture on narcotic-crop 01287), 5 with unresolvable PP28 source pointers or non-inheritable
-  ancestry (05200, 36003 not-retrievable-as-hunted; 01700 6-way merge; 02409 many-to-many; 39001
-  storage/marine rows on a capture code), and 1 with a generic pre-split basket payload plus false
-  mapping metadata (19206, A-6). Every flip was conductor-verified BY EYE on the canonical payloads
+  codes carry uncertifiable per_skala — 8 with payload content that does not substantively cover
+  the 2025 activity (seed-certification blobs on 02402/02201, a salt-extraction marine regime on
+  peat 08920, a mining-concession regime on beneficiation 05102, generic-B3 on radioactive
+  38122/38222, generic agriculture on narcotic-crop 01287, storage-exploration + marine-pollution
+  rows on capture code 39001), 4 with unresolvable PP28 source pointers or non-inheritable
+  ancestry (05200, 36003 not-retrievable-as-hunted; 01700 6-way merge; 02409 many-to-many), and 1
+  with a generic pre-split basket payload plus false mapping metadata (19206, A-6). Every flip was conductor-verified BY EYE on the canonical payloads
   and vault records — the seats' claims were re-grounded, never trusted (W65).
   **Sampling scope (corrected):** Lot 1 is a **contiguous taxonomy-ordered segment (divisions
   01→39)** per this plan's own lot rule — NOT a random sample. 13/13 measures prevalence in THIS
   segment only; divisions 01→39 may over-represent agriculture/forestry/extraction contamination,
-  and no extrapolation to the full ~221-code class is claimed — the remainder lots measure it.
+  and no extrapolation beyond it is claimed — the Batch-A remainder lots (101 codes) measure the
+  rest of the 114 A-serving codes; the ~107 A-empty no-scope codes are a separate watchlist
+  OUTSIDE Batch A (§1) and are not measured by this batch at all.
   **Disposition (no floor re-registration):** the earlier proposal to re-register m2 as
   advisory-floor 0.0 is WITHDRAWN — it would disarm the very drift alarm m2 provides, on the
   strength of a non-random sample. m1 and m2 remain in **declared-BREACH state**: every subsequent
