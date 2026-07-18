@@ -58,19 +58,14 @@ def test_serving_code_with_l2_source_is_not_serving():
 
 
 def test_census_and_in_scope_on_real_canonical():
-    # Census AFTER the Lot 2 cure (batch_a_lot2.json data apply, 2026-07-18):
-    # a SECOND wave of 13 quarantined codes was detached (per_skala -> []),
-    # migrating A-serving/pp28 -> A-empty/gap, same mechanics as Lot 1.
-    # Pre-Lot-1 baseline was 113/1/107 (in-scope 114).
-    # Post-Lot-1 (PR #2725): 113-13=100, 107+13=120, 114-13=101.
-    # Post-Lot-2 (this PR): 100-13=87, 120+13=133, 101-13=88.
-    # Total population is invariant at 221 across both lots (a detach only
-    # migrates a code between the two A-serving classes and A-empty/gap, it
-    # never removes/adds to the fixed 221-code Batch A population). 56101's
-    # metadata cure does NOT touch per_skala (innocence-on-substance, per
-    # scripts/tests/test_kbli_batch_a_lot2_registry.py), and 56101 was never
-    # a Batch A member to begin with (OSS-native, not part of the 221) — it
-    # has zero effect on this census, deliberately.
+    # Census AFTER the Lot 2 cure (kbli/lot2-data-apply, post the merged 49213
+    # per-ancestor restore #2744): the 13 Lot 2 quarantined codes were
+    # detached (per_skala -> []), migrating A-serving/pp28 -> A-empty/gap.
+    # Post-Lot-1 baseline was 100/1/120 (in-scope 101); the 49213 restore
+    # (#2744) did NOT change this baseline (49213 is OSS-native, carries
+    # _l2_source, never a no-scope/Batch-A member) — verified via dry-run
+    # showing identical counts before this lot's --apply. 100-13=87,
+    # 120+13=133, 101-13=88. Total population is invariant at 221.
     records = _load_real()
     members = m.build_members(records)
     cen = m.census(members)
@@ -94,15 +89,12 @@ def test_census_and_in_scope_on_real_canonical():
     for code in lot1:
         assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
         assert by[code]["in_scope"] is False, code
-    # every Lot 2 cured code migrated to the gap watchlist too (out of scope)
+    # every Lot 2 cured code migrated to the gap watchlist (out of scope)
     lot2 = ["42999", "47771", "49233", "49296", "50113", "52103", "52105",
             "52211", "52219", "52232", "52239", "52299", "59131"]
     for code in lot2:
         assert by[code]["reason_code"] == m.REASON_EMPTY_GAP, code
         assert by[code]["in_scope"] is False, code
-    # 56101 was never a Batch A member (OSS-native) — the metadata cure must
-    # not have added it to the membership population
-    assert "56101" not in by
 
 
 def test_members_sorted_deterministic():

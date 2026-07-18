@@ -394,6 +394,16 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
   - **Disposition:** SIGNED — Fable conductor session f5892d39, 2026-07-18 (M5 lane); convergent
     with the Pro lane's second signing, PR #2753.
 
+- **A-10 (2026-07-19, M5 conductor):** Third twin-race of the lot — while #2754 fought a
+  dropped-at-open CI event plus two pre-push gate cycles, the Pro lane landed #2761 (same 13-code
+  detach + 47771 metadata fix, codex+GLM gated). M5 concedes the apply on content-equivalence (all
+  13 verified detached on main; 47771 verified cured) and reworks #2754 down to its orthogonal
+  delta: the 56101 metadata cure (the innocence-violation finding of the M5 lane, absent from
+  #2761), its compiler, and the registry reconcile. Category-split divergence between the two
+  signed verdicts (M5: 8 source_absent/4 payload/1 metadata; Pro: 4 source_absent/8 payload/1
+  metadata-on-47771) is recorded as a report-level divergence with identical data-plane action —
+  detach; it does not affect the shipped state.
+
 ## Adversarial review
 
 Codex GPT-5.6-sol (high effort, read-only, 2026-07-18) attacked v1 of this plan against the
