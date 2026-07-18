@@ -5,13 +5,20 @@ entries, 35 applicant + 3 derived); ``spec()``/``missing_paths()`` behavior
 (the PR1 brief's "required_facts subset-of registry" primitive); commercial
 classification exactly matches ``enums.COMMERCIAL_FACT_PATHS``; PII
 classification spot-checks per this module's own documented rationale;
-duplicate-path construction rejected.
+duplicate-path construction rejected. PR3 additions at the bottom:
+``FactRegistry.derive()`` (wire ``ApplicantFacts`` -> runtime
+``FactSnapshot``) and ``canonical_fact_payload()``.
 """
 
 from __future__ import annotations
 
+import uuid
+from datetime import datetime, timezone
+from typing import Any
+
 import pytest
 
+from backend.services.visa_engine.ast import KnownFact, UnknownFact
 from backend.services.visa_engine.enums import (
     COMMERCIAL_FACT_PATHS,
     DERIVED_FACT_PATHS,
@@ -20,7 +27,14 @@ from backend.services.visa_engine.enums import (
     PiiClass,
 )
 from backend.services.visa_engine.errors import FactValidationError
-from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY, FactRegistry, FactSpec
+from backend.services.visa_engine.fact_registry import (
+    DEFAULT_FACT_REGISTRY,
+    FactRegistry,
+    FactSpec,
+    canonical_fact_payload,
+)
+from backend.services.visa_engine.models import ApplicantFacts
+from backend.tests.services.visa_engine.conftest import GOLD_EFFECTIVE_AT
 
 
 class TestDefaultCatalogCompleteness:
@@ -281,3 +295,180 @@ class TestRegistryConstruction:
         )
         assert custom.all_paths() == frozenset({FactPath.PERSON_BIRTH_DATE})
         assert len(DEFAULT_FACT_REGISTRY.all_paths()) == 38
+
+
+_UNKNOWN_WIRE = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
+
+
+def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | None = None) -> ApplicantFacts:
+    """Build an ``ApplicantFacts`` with every one of the 35 paths defaulted
+    to UNKNOWN, then override the given wire keys with KNOWN wire values —
+    the minimal builder ``derive()``'s tests need (distinct from
+    ``conftest.make_applicant_facts``, which is all-UNKNOWN with no override
+    knob)."""
+
+    facts: dict[str, object] = {
+        "person.birth_date": _UNKNOWN_WIRE,
+        "person.nationalities": _UNKNOWN_WIRE,
+        "person.marital_status": _UNKNOWN_WIRE,
+        "immigration.currently_in_indonesia": _UNKNOWN_WIRE,
+        "immigration.current_status_code": _UNKNOWN_WIRE,
+        "immigration.current_status_expiry": _UNKNOWN_WIRE,
+        "immigration.last_entry_date": _UNKNOWN_WIRE,
+        "immigration.overstay_days": _UNKNOWN_WIRE,
+        "immigration.violation_history": _UNKNOWN_WIRE,
+        "intent.purposes": _UNKNOWN_WIRE,
+        "intent.stay_days": _UNKNOWN_WIRE,
+        "intent.desired_entry_date": _UNKNOWN_WIRE,
+        "intent.entry_pattern": _UNKNOWN_WIRE,
+        "intent.requested_product_code": _UNKNOWN_WIRE,
+        "work.employer_country_code": _UNKNOWN_WIRE,
+        "work.employer_is_indonesian_entity": _UNKNOWN_WIRE,
+        "work.serves_indonesian_clients": _UNKNOWN_WIRE,
+        "work.indonesia_source_compensation": _UNKNOWN_WIRE,
+        "work.indonesian_work_sponsor_confirmed": _UNKNOWN_WIRE,
+        "investment.pt_pma_committed": _UNKNOWN_WIRE,
+        "investment.investment_capital_idr": _UNKNOWN_WIRE,
+        "investment.paid_up_capital_idr": _UNKNOWN_WIRE,
+        "investment.proposed_role": _UNKNOWN_WIRE,
+        "family.relation_to_sponsor": _UNKNOWN_WIRE,
+        "family.sponsor_nationalities": _UNKNOWN_WIRE,
+        "family.sponsor_status_code": _UNKNOWN_WIRE,
+        "family.marriage_registered": _UNKNOWN_WIRE,
+        "family.sponsor_confirmed": _UNKNOWN_WIRE,
+        "study.level": _UNKNOWN_WIRE,
+        "study.admission_confirmed": _UNKNOWN_WIRE,
+        "study.sponsor_confirmed": _UNKNOWN_WIRE,
+        "process.application_channel": _UNKNOWN_WIRE,
+        "process.wants_onshore_conversion": _UNKNOWN_WIRE,
+        "commercial.service_fee_budget_idr": _UNKNOWN_WIRE,
+        "commercial.wants_quote": _UNKNOWN_WIRE,
+    }
+    facts.update(overrides)
+    return ApplicantFacts(
+        schema_version="1.0.0",
+        assessment_id=assessment_id or uuid.uuid4(),
+        collected_at=GOLD_EFFECTIVE_AT,
+        facts=facts,
+    )
+
+
+class TestDeriveWireToRuntime:
+    def test_every_one_of_38_paths_present_in_snapshot(self) -> None:
+        snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
+        assert frozenset(snapshot.values) == frozenset(FactPath)
+
+    def test_unknown_wire_fact_becomes_unknown_fact_with_reason(self) -> None:
+        snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
+        stay_days = snapshot.values[FactPath.INTENT_STAY_DAYS]
+        assert isinstance(stay_days, UnknownFact)
+        assert stay_days.reason.value == "NOT_ASKED"
+
+    def test_known_scalar_wire_fact_becomes_known_fact(self) -> None:
+        facts = _applicant_facts({"intent.stay_days": {"status": "KNOWN", "value": 30}})
+        snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=GOLD_EFFECTIVE_AT)
+        assert snapshot.values[FactPath.INTENT_STAY_DAYS] == KnownFact(value=30)
+
+    def test_known_set_valued_wire_fact_becomes_frozenset(self) -> None:
+        facts = _applicant_facts(
+            {"intent.purposes": {"status": "KNOWN", "value": ["TOURISM", "STUDY"]}}
+        )
+        snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=GOLD_EFFECTIVE_AT)
+        purposes = snapshot.values[FactPath.INTENT_PURPOSES]
+        assert isinstance(purposes, KnownFact)
+        assert purposes.value == frozenset({"TOURISM", "STUDY"})
+
+    def test_known_date_wire_fact_stays_iso_string(self) -> None:
+        facts = _applicant_facts({"person.birth_date": {"status": "KNOWN", "value": "2000-07-19"}})
+        snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=GOLD_EFFECTIVE_AT)
+        assert snapshot.values[FactPath.PERSON_BIRTH_DATE] == KnownFact(value="2000-07-19")
+
+
+class TestDeriveAgeYears:
+    def test_age_computed_from_birth_date(self) -> None:
+        facts = _applicant_facts({"person.birth_date": {"status": "KNOWN", "value": "2000-07-19"}})
+        snapshot = DEFAULT_FACT_REGISTRY.derive(
+            facts, effective_at=datetime(2026, 7, 18, tzinfo=timezone.utc)
+        )
+        # Birthday is 2000-07-19; effective_at is one day BEFORE the 2026
+        # birthday, so the applicant has not yet turned 26 -> 25.
+        assert snapshot.values[FactPath.DERIVED_AGE_YEARS] == KnownFact(value=25)
+
+    def test_age_rolls_over_on_birthday(self) -> None:
+        facts = _applicant_facts({"person.birth_date": {"status": "KNOWN", "value": "2000-07-19"}})
+        snapshot = DEFAULT_FACT_REGISTRY.derive(
+            facts, effective_at=datetime(2026, 7, 19, tzinfo=timezone.utc)
+        )
+        assert snapshot.values[FactPath.DERIVED_AGE_YEARS] == KnownFact(value=26)
+
+    def test_age_unknown_when_birth_date_unknown(self) -> None:
+        snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
+        assert isinstance(snapshot.values[FactPath.DERIVED_AGE_YEARS], UnknownFact)
+
+
+class TestDeriveIsMinor:
+    def test_minor_true_under_18(self) -> None:
+        facts = _applicant_facts({"person.birth_date": {"status": "KNOWN", "value": "2015-01-01"}})
+        snapshot = DEFAULT_FACT_REGISTRY.derive(
+            facts, effective_at=datetime(2026, 7, 18, tzinfo=timezone.utc)
+        )
+        assert snapshot.values[FactPath.DERIVED_IS_MINOR] == KnownFact(value=True)
+
+    def test_minor_false_at_18_or_over(self) -> None:
+        facts = _applicant_facts({"person.birth_date": {"status": "KNOWN", "value": "2000-07-19"}})
+        snapshot = DEFAULT_FACT_REGISTRY.derive(
+            facts, effective_at=datetime(2026, 7, 18, tzinfo=timezone.utc)
+        )
+        assert snapshot.values[FactPath.DERIVED_IS_MINOR] == KnownFact(value=False)
+
+    def test_minor_unknown_when_birth_date_unknown(self) -> None:
+        snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
+        assert isinstance(snapshot.values[FactPath.DERIVED_IS_MINOR], UnknownFact)
+
+
+class TestDeriveHasIndonesianCitizenship:
+    def test_true_when_id_in_nationalities(self) -> None:
+        facts = _applicant_facts(
+            {"person.nationalities": {"status": "KNOWN", "value": ["IT", "ID"]}}
+        )
+        snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=GOLD_EFFECTIVE_AT)
+        assert snapshot.values[FactPath.DERIVED_HAS_INDONESIAN_CITIZENSHIP] == KnownFact(value=True)
+
+    def test_false_when_id_absent_from_nationalities(self) -> None:
+        facts = _applicant_facts({"person.nationalities": {"status": "KNOWN", "value": ["IT"]}})
+        snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=GOLD_EFFECTIVE_AT)
+        assert snapshot.values[FactPath.DERIVED_HAS_INDONESIAN_CITIZENSHIP] == KnownFact(
+            value=False
+        )
+
+    def test_unknown_when_nationalities_unknown(self) -> None:
+        snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
+        assert isinstance(
+            snapshot.values[FactPath.DERIVED_HAS_INDONESIAN_CITIZENSHIP], UnknownFact
+        )
+
+
+class TestCanonicalFactPayload:
+    def test_keys_are_sorted(self) -> None:
+        payload = canonical_fact_payload(_applicant_facts({}))
+        assert list(payload.keys()) == sorted(payload.keys())
+
+    def test_covers_all_35_applicant_paths(self) -> None:
+        payload = canonical_fact_payload(_applicant_facts({}))
+        assert len(payload) == 35
+
+    def test_is_json_serializable(self) -> None:
+        import json
+
+        payload = canonical_fact_payload(_applicant_facts({}))
+        serialized = json.dumps(payload)
+        assert json.loads(serialized) == payload
+
+    def test_deterministic_for_same_input(self) -> None:
+        assessment_id = uuid.uuid4()
+        facts = _applicant_facts(
+            {"intent.stay_days": {"status": "KNOWN", "value": 30}}, assessment_id=assessment_id
+        )
+        payload_a = canonical_fact_payload(facts)
+        payload_b = canonical_fact_payload(facts)
+        assert payload_a == payload_b
