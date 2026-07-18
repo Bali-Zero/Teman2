@@ -287,6 +287,7 @@ UPDATE document_routing_proposal
    SET status = 'superseded'
  WHERE queue_id = ANY($1::bigint[])
    AND status = 'review_pending'
+RETURNING queue_id
 """
 
 REROUTE_DRIVE_FOLDER_RESET_SQL = """
@@ -329,7 +330,7 @@ SELECT proposal_id, queue_id
   FROM latest
  WHERE proposal_status = 'review_pending'
    AND npwp_raw IS NOT NULL
-   AND length(regexp_replace(npwp_raw, '[^0-9]', '', 'g')) >= 15
+   AND length(regexp_replace(npwp_raw, '[^0-9]', '', 'g')) IN (15, 16)
  ORDER BY queue_id
  LIMIT $1
 """
@@ -2025,20 +2026,29 @@ async def _run_route_only_reroute(
             eligible = sorted(r["id"] for r in eligible_rows)
             counts["lease_skipped"] = len(queue_ids) - len(eligible)
 
-            superseded = await conn.execute(
+            # Supersede first, RETURNING queue_id — only queue rows whose
+            # proposal was ACTUALLY superseded get reset. A proposal a human
+            # claimed between the SELECT and here (review_pending →
+            # review_claimed) is left alone: no supersede, no reset (Codex
+            # round-2: resetting it would spawn a duplicate proposal under a
+            # reviewer's feet).
+            superseded_rows = await conn.fetch(
                 REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL, eligible
             )
+            superseded_qids = sorted({r["queue_id"] for r in superseded_rows})
+            counts["claim_skipped"] = len(eligible) - len(superseded_qids)
             reset = await conn.execute(
-                REROUTE_DRIVE_FOLDER_RESET_SQL, eligible, pipeline_version
+                REROUTE_DRIVE_FOLDER_RESET_SQL, superseded_qids, pipeline_version
             )
-        counts["superseded"] = int(superseded.split()[-1]) if superseded else 0
+        counts["superseded"] = len(superseded_rows)
         counts["reset"] = int(reset.split()[-1]) if reset else 0
 
     logger.info(
         "[%s] superseded=%d proposals, resumed=%d queue rows at route "
-        "(pipeline_version=%s, lease_skipped=%d)",
+        "(pipeline_version=%s, lease_skipped=%d, claim_skipped=%d)",
         mode, counts.get("superseded", 0), counts.get("reset", 0),
         pipeline_version, counts.get("lease_skipped", 0),
+        counts.get("claim_skipped", 0),
     )
     return counts
 

@@ -1104,7 +1104,9 @@ def test_reroute_npwp_sql_targets_full_npwp_review_pending() -> None:
     assert "SELECT DISTINCT ON (q.id)" in sql
     assert "proposal_status = 'review_pending'" in sql
     assert "npwp_number" in sql
-    assert ">= 15" in sql
+    # exact-length gate: valid NPWP is 15 or 16 digits, never >=17 garble.
+    assert "IN (15, 16)" in sql
+    assert ">= 15" not in sql
     assert "LIMIT $1" in sql
     # innocence: it must NOT copy the folder-mode drive/0-candidate filters.
     assert "q.source = 'drive'" not in sql
@@ -1135,6 +1137,19 @@ def test_reroute_eligible_lock_never_yanks_active_lease() -> None:
     sql = irb.REROUTE_ELIGIBLE_LOCK_SQL
     assert "lease_owner IS NULL OR lease_expires_at <= now()" in sql
     assert "FOR UPDATE SKIP LOCKED" in sql
+
+
+def test_reroute_reset_only_actually_superseded_rows() -> None:
+    # Codex round-3: a proposal a human claims between SELECT and supersede
+    # (review_pending -> review_claimed) must be left alone entirely — the
+    # supersede RETURNs the queue_ids it touched and ONLY those get reset.
+    irb = _load()
+    assert "RETURNING queue_id" in irb.REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL
+    import inspect
+
+    src = inspect.getsource(irb._run_route_only_reroute)
+    assert "superseded_qids" in src
+    assert "REROUTE_DRIVE_FOLDER_RESET_SQL, superseded_qids" in src
 
 
 def test_reroute_pipeline_version_defaults_per_mode() -> None:

@@ -397,11 +397,11 @@ async def _match_person_strong(
     npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
     if npwp:
         norm = _ascii_digits(npwp)
-        # NPWP is 15 (legacy) or 16 (post-2024 NIK-format) digits. Anything
-        # shorter is a partial OCR read — an "exact" match on a fragment is a
-        # false strong-id (clients.npwp already holds duplicate values across
-        # records; ambiguity is degraded downstream, garbage must not enter).
-        if norm and len(norm) >= 15:
+        # NPWP is EXACTLY 15 (legacy) or 16 (post-2024 NIK-format) digits.
+        # Shorter = partial OCR read; longer = concatenated/garbled OCR —
+        # either way an "exact" match on malformed digits is a false strong-id
+        # (malformed CRM data can mirror malformed OCR).
+        if norm and len(norm) in (15, 16):
             rows = await conn.fetch(
                 """
                 SELECT id, full_name
@@ -450,11 +450,12 @@ async def _match_company_strong(
     npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
     if npwp:
         norm = _ascii_digits(npwp)
-        # Same >=15 gate as the person side (m248): 14 live companies carry an
-        # 11-14-digit npwp_company — a partial OCR fragment exact-matching one
-        # of those would become a unique CONF_STRONG_EXACT candidate and, with
-        # the decision matrix being method-agnostic, an AUTO_ATTACH.
-        if norm and len(norm) >= 15:
+        # Same exact-length gate as the person side (m248): NPWP is 15 or 16
+        # digits, period. 14 live companies carry an 11-14-digit npwp_company —
+        # a partial OCR fragment exact-matching one of those would become a
+        # unique CONF_STRONG_EXACT candidate and, with the decision matrix
+        # being method-agnostic, an AUTO_ATTACH.
+        if norm and len(norm) in (15, 16):
             rows = await conn.fetch(
                 """
                 SELECT id, company_name

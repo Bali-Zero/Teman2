@@ -130,6 +130,22 @@ async def test_npwp_fragment_never_strong_matches(pool, seeded):
     assert [c for c in entity["candidates"] if c["method"] == "npwp"] == []
 
 
+async def test_npwp_overlong_garble_never_strong_matches(pool, seeded):
+    """17+ digits = concatenated/garbled OCR, not a valid NPWP (which is
+    exactly 15 or 16 digits) — even when a CRM row stores the same malformed
+    17-digit value, no strong match may form (Codex round-2)."""
+    garble = NPWP_DIGITS + "99"  # 17 digits
+    async with pool.acquire() as c:
+        await c.execute(
+            "INSERT INTO clients (full_name, npwp, notes) VALUES ($1,$2,$3)",
+            f"{TAG} Garble Holder",
+            garble,
+            TAG,
+        )
+    entity = await resolve_entity({"npwp_number": garble}, "npwp", pool)
+    assert [c for c in entity["candidates"] if c["method"] == "npwp"] == []
+
+
 async def test_cross_table_npwp_collision_degrades_to_ambiguous(pool, seeded):
     """The same digits exist as a client npwp AND a company npwp_company —
     a data error (one tax number cannot belong to both books). Company-first
