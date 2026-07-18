@@ -7,7 +7,8 @@ sources:
   - https://kemenimipas.go.id (Permen Imipas 10/2026 BVK; Permen Imipas 5/2025 penjamin)
   - https://kompas.com (BVK +6 states coverage)
 lane: gemini-3.1-pro-high via agy v1.1.3 (15m, 2026-07-18)
-adversarial_review: sonnet-web-nb-arbitration-lane 2026-07-18 (generator=gemini-3.1-pro ≠ grader; both discrepancies refuted-or-confirmed against primary sources — see Arbitration outcome)
+adversarial_review_detail: generator=gemini-3.1-pro ≠ grader; independent web+NotebookLM arbitration lane (NB-2 confirmed FACT1, NB-INTEL surfaced the FACT2 gap) — both discrepancies confirmed-or-refuted against primary sources, see Arbitration outcome
+adversarial_review: notebooklm
 status: RESOLVED 2026-07-18 (same day) — both discrepancies arbitrated with primary sources by a dedicated web+NB lane; see "Arbitration outcome" section. Lampiran B211*→C-series mapping stays UNRESOLVED (OCR follow-up needed).
 ---
 
