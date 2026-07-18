@@ -1099,20 +1099,58 @@ def test_backfill_identity_apply_sql_never_overwrites_existing_hint() -> None:
     assert "client_id_hint IS NULL" in sql
 
 
+def test_backfill_identity_select_sql_excludes_unpolicy_tagged_wa_mirror_rows() -> None:
+    """P0-2 (adversarial review, 2026-07-18): the backlog SELECT previously
+    matched ANY whatsapp row with a sender_phone + no hint — including
+    wa-mirror GROUP rows and staff-forward rows that --scrub-group-phone
+    exists to clean. Now scoped to non-mirror rows OR mirror rows already
+    tagged sender_phone_enabled by --backfill-source-context."""
+    irb = _load()
+    sql = irb.BACKFILL_IDENTITY_SELECT_SQL
+    assert "source_ref NOT LIKE 'wa-mirror:%'" in sql
+    assert "source_context->>'routing_identity_policy' = 'sender_phone_enabled'" in sql
+
+
+def test_main_runs_scrub_and_source_context_before_identity_backfill() -> None:
+    """P0-2 ordering fix: identity-backfill's SELECT scope depends on
+    source_context.routing_identity_policy already being correct — running
+    it before scrub/backfill-source-context in the SAME invocation risked
+    picking up a not-yet-cleaned or not-yet-tagged wa-mirror row."""
+    irb = _load()
+    import inspect
+
+    src = inspect.getsource(irb.main)
+    scrub_pos = src.index("run_scrub_group_phone(")
+    ctx_pos = src.index("run_backfill_source_context(")
+    identity_pos = src.index("run_backfill_identity(")
+    assert scrub_pos < identity_pos
+    assert ctx_pos < identity_pos
+
+
 class _FakeIdentityConn:
     """Minimal asyncpg-shaped fake: fetch() for the candidate SELECT, execute()
     recorded for the apply UPDATE, transaction() a no-op async context."""
 
-    def __init__(self, rows: list[dict], executed: list[tuple]) -> None:
+    def __init__(
+        self,
+        rows: list[dict],
+        executed: list[tuple],
+        update_status_by_id: dict[int, str] | None = None,
+    ) -> None:
         self._rows = rows
         self._executed = executed
+        self._update_status_by_id = update_status_by_id or {}
 
     async def fetch(self, _sql: str, *_args):
         return self._rows
 
     async def execute(self, sql: str, *args):
         self._executed.append((sql, args))
-        return "UPDATE 1"
+        queue_id = args[0] if args else None
+        return self._update_status_by_id.get(queue_id, "UPDATE 1")
+
+    async def fetchval(self, _sql: str, *_args):
+        return 0
 
     def transaction(self):
         return _NoopAsyncCtx()
@@ -1127,8 +1165,13 @@ class _NoopAsyncCtx:
 
 
 class _FakePool:
-    def __init__(self, rows: list[dict], executed: list[tuple]) -> None:
-        self._conn = _FakeIdentityConn(rows, executed)
+    def __init__(
+        self,
+        rows: list[dict],
+        executed: list[tuple],
+        update_status_by_id: dict[int, str] | None = None,
+    ) -> None:
+        self._conn = _FakeIdentityConn(rows, executed, update_status_by_id)
 
     def acquire(self):
         return _AcquireCtx(self._conn)
@@ -1161,7 +1204,10 @@ def test_run_backfill_identity_dry_run_never_writes() -> None:
     executed: list[tuple] = []
     pool = _FakePool(rows, executed)
 
-    async def fake_resolver(_conn, *, sender_phone):
+    resolver_calls: list[bool] = []
+
+    async def fake_resolver(_conn, *, sender_phone, force_no_create=False):
+        resolver_calls.append(force_no_create)
         if sender_phone == "628110000001":
             return _fake_resolution("existing", 555)
         return _fake_resolution("ambiguous", None)
@@ -1176,6 +1222,9 @@ def test_run_backfill_identity_dry_run_never_writes() -> None:
     assert counts["errors"] == 0
     assert counts["max_id_seen"] == 101
     assert executed == []  # dry-run must never call the UPDATE
+    # P0-1 fix: dry-run must force the resolver's CREATE branch unreachable,
+    # independent of INTAKE_AUTOCREATE_CONTACT_ENABLED.
+    assert resolver_calls == [True, True]
 
 
 def test_run_backfill_identity_apply_stamps_only_resolved_rows() -> None:
@@ -1188,7 +1237,10 @@ def test_run_backfill_identity_apply_stamps_only_resolved_rows() -> None:
     executed: list[tuple] = []
     pool = _FakePool(rows, executed)
 
-    async def fake_resolver(_conn, *, sender_phone):
+    resolver_calls: list[bool] = []
+
+    async def fake_resolver(_conn, *, sender_phone, force_no_create=False):
+        resolver_calls.append(force_no_create)
         if sender_phone == "628110000001":
             return _fake_resolution("existing", 555)
         return _fake_resolution("ambiguous", None)
@@ -1202,6 +1254,9 @@ def test_run_backfill_identity_apply_stamps_only_resolved_rows() -> None:
     sql, args = executed[0]
     assert sql is irb.BACKFILL_IDENTITY_APPLY_SQL
     assert args == (100, 555)
+    # --apply must NOT force no-create — the resolver's own kill-switch stays
+    # the sole gate for CREATE, never re-implemented in this caller.
+    assert resolver_calls == [False, False]
 
 
 def test_run_backfill_identity_resolver_error_is_isolated_per_row() -> None:
@@ -1214,7 +1269,7 @@ def test_run_backfill_identity_resolver_error_is_isolated_per_row() -> None:
     executed: list[tuple] = []
     pool = _FakePool(rows, executed)
 
-    async def flaky_resolver(_conn, *, sender_phone):
+    async def flaky_resolver(_conn, *, sender_phone, force_no_create=False):
         if sender_phone == "628110000001":
             raise RuntimeError("boom")
         return _fake_resolution("existing", 777)
@@ -1226,3 +1281,91 @@ def test_run_backfill_identity_resolver_error_is_isolated_per_row() -> None:
     assert counts["errors"] == 1
     assert counts["stamped"] == 1
     assert counts["by_kind"] == {"existing": 1}
+
+
+def test_run_backfill_identity_does_not_count_stamped_on_update_zero() -> None:
+    """P1 (adversarial review): a concurrent writer could race this row to a
+    non-NULL client_id_hint between our SELECT and this UPDATE — the
+    WHERE client_id_hint IS NULL guard then affects zero rows, and
+    "stamped" must not lie about it."""
+    irb = _load()
+
+    rows = [
+        {"id": 100, "sender_phone": "628110000001"},
+        {"id": 101, "sender_phone": "628110000002"},
+    ]
+    executed: list[tuple] = []
+    # Row 100's UPDATE loses the race (already stamped by someone else).
+    pool = _FakePool(rows, executed, update_status_by_id={100: "UPDATE 0"})
+
+    async def fake_resolver(_conn, *, sender_phone, force_no_create=False):
+        if sender_phone == "628110000001":
+            return _fake_resolution("existing", 555)
+        return _fake_resolution("existing", 556)
+
+    irb.resolve_or_create_contact = fake_resolver
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=True))
+
+    assert len(executed) == 2  # both UPDATEs were attempted
+    assert counts["stamped"] == 1  # only row 101's UPDATE actually touched a row
+    assert counts["by_kind"] == {"existing": 2}
+
+
+def test_run_backfill_identity_reports_stale_proposals_for_stamped_rows() -> None:
+    """P0-3(b): stamping client_id_hint alone does not re-route an
+    already-built proposal — surface the count so operators know to run
+    --reprocess, instead of silently claiming the stamp fixed everything."""
+    irb = _load()
+
+    rows = [{"id": 100, "sender_phone": "628110000001"}]
+    executed: list[tuple] = []
+    pool = _FakePool(rows, executed)
+
+    fetchval_calls: list[list[int]] = []
+
+    async def spying_fetchval(sql: str, queue_ids):
+        fetchval_calls.append(list(queue_ids))
+        return 1
+
+    pool._conn.fetchval = spying_fetchval
+
+    async def fake_resolver(_conn, *, sender_phone, force_no_create=False):
+        return _fake_resolution("existing", 555)
+
+    irb.resolve_or_create_contact = fake_resolver
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=True))
+
+    assert counts["stamped"] == 1
+    assert counts["stale_proposals_need_reprocess"] == 1
+    assert fetchval_calls == [[100]]
+
+
+def test_run_backfill_identity_dry_run_skips_stale_proposals_count() -> None:
+    """Dry-run never stamps, so there is nothing to check staleness on —
+    fetchval must not even be called."""
+    irb = _load()
+
+    rows = [{"id": 100, "sender_phone": "628110000001"}]
+    executed: list[tuple] = []
+    pool = _FakePool(rows, executed)
+
+    fetchval_calls: list[list[int]] = []
+
+    async def spying_fetchval(sql: str, queue_ids):
+        fetchval_calls.append(list(queue_ids))
+        return 1
+
+    pool._conn.fetchval = spying_fetchval
+
+    async def fake_resolver(_conn, *, sender_phone, force_no_create=False):
+        return _fake_resolution("existing", 555)
+
+    irb.resolve_or_create_contact = fake_resolver
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=False))
+
+    assert counts["stamped"] == 0
+    assert counts["stale_proposals_need_reprocess"] == 0
+    assert fetchval_calls == []

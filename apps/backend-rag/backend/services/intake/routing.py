@@ -747,6 +747,7 @@ async def resolve_entity(
     *,
     sender_phone: str | None = None,
     source_path: str | None = None,
+    client_id_hint: int | None = None,
 ) -> dict[str, Any]:
     """Resolve the document subject against existing CRM rows (READ-ONLY).
 
@@ -756,6 +757,19 @@ async def resolve_entity(
     ``source_path`` (m227) is the Drive-intake folder path relative to the
     watched root (``<Client Name>/file.pdf``); its first segment is consulted
     only when neither a strong identifier nor the phone resolved (~0.85 hint).
+    ``client_id_hint`` (P0-3 adversarial-review fix, 2026-07-18) is the
+    client_id ``contact_autocreate.resolve_or_create_contact`` already
+    resolved from THIS SAME sender_phone at enqueue time — consulted ONLY
+    when a fresh ``_match_sender_phone`` lookup above found nothing. That
+    happens when the client was created/matched at enqueue time but this
+    document's own route pass runs in a way that can't see it via a plain
+    phone re-lookup (e.g. a just-auto-created contact whose commit races the
+    route pass), or when the hint's origin (contact_autocreate — which ALSO
+    checks the team roster before ever setting a hint) diverges from a fresh
+    phone lookup. Never a substitute for the internal-forward/group
+    suppression sender_phone already goes through: a hint is NEVER stamped
+    for those rows in the first place (contact_autocreate's own roster
+    check), so consulting it here reintroduces no forwarder risk.
 
     Returns a dict::
 
@@ -802,6 +816,28 @@ async def resolve_entity(
             phone = await _match_sender_phone(conn, sender_phone)
             if phone and subject_kind == "unknown":
                 subject_kind = "person"
+
+        # client_id_hint fallback (P0-3, 2026-07-18) — see docstring above.
+        # Only consulted when the fresh sender_phone lookup found NOTHING;
+        # a hint is never stamped for internal/group senders, so this cannot
+        # reintroduce the forwarder ≠ subject risk.
+        if not strong and not phone and client_id_hint is not None:
+            hint_row = await conn.fetchrow(
+                "SELECT id, full_name FROM clients"
+                " WHERE id = $1 AND deleted_at IS NULL",
+                client_id_hint,
+            )
+            if hint_row is not None:
+                phone = [
+                    {
+                        "table": "clients", "id": hint_row["id"],
+                        "name": hint_row["full_name"], "method": "client_id_hint",
+                        "score": CONF_PHONE_MATCH, "matched_value": str(client_id_hint),
+                        "basis": "phone",
+                    }
+                ]
+                if subject_kind == "unknown":
+                    subject_kind = "person"
 
         # Folder-name signal (m227) — Drive intake knows WHICH FOLDER the blob
         # arrived in (Dropbox-Intake/<Client Name>/...). Consulted only when
@@ -965,6 +1001,7 @@ async def build_routing_proposal(
     pipeline_version: str = PIPELINE_VERSION_DEFAULT,
     sender_phone: str | None = None,
     source_path: str | None = None,
+    client_id_hint: int | None = None,
 ) -> dict[str, Any]:
     """Build (but do NOT persist) the routing proposal payload.
 
@@ -975,6 +1012,7 @@ async def build_routing_proposal(
         entity = await resolve_entity(
             extracted, doc_type, conn,
             sender_phone=sender_phone, source_path=source_path,
+            client_id_hint=client_id_hint,
         )
         target = await _resolve_routing_target(conn, entity)
 
@@ -1160,7 +1198,8 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
         # reach _make_routing_key, else the old routing_key collides and
         # ON CONFLICT silently drops the fresh proposal.
         qrow = await conn.fetchrow(
-            "SELECT sender_phone, source_path, pipeline_version, source_context"
+            "SELECT sender_phone, source_path, pipeline_version, source_context,"
+            " client_id_hint"
             " FROM intake_queue WHERE id = $1",
             queue_id,
         )
@@ -1175,12 +1214,22 @@ async def route_stage(job: dict, stage: str, pool: asyncpg.Pool) -> dict:  # noq
             or (qrow["pipeline_version"] if qrow else None)
             or PIPELINE_VERSION_DEFAULT
         )
+        # P0-3 (adversarial review, 2026-07-18): client_id_hint is stamped at
+        # ENQUEUE time by contact_autocreate.resolve_or_create_contact (intake-v2
+        # PR-1/PR-2) but was NEVER read anywhere downstream — dead weight on
+        # every whatsapp doc. Consult it here as a candidate source, same
+        # confidence tier as sender_phone (it IS a sender_phone match, cached at
+        # entry time — see resolve_entity's docstring for exactly when this adds
+        # signal beyond a fresh sender_phone lookup: mainly a just-auto-created
+        # contact whose commit landed in a separate transaction).
+        client_id_hint = job.get("client_id_hint") or (qrow["client_id_hint"] if qrow else None)
 
         proposal = await build_routing_proposal(
             queue_id, fields, doc_type, conn,
             pipeline_version=pipeline_version,
             sender_phone=sender_phone,
             source_path=source_path,
+            client_id_hint=client_id_hint,
         )
 
         # LEVA 1 — noise pre-filter. When the doc is unreadable noise (unknown

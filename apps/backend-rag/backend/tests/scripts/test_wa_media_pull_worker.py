@@ -438,3 +438,142 @@ async def test_poll_aborts_without_token(monkeypatch):
     monkeypatch.setattr(wamp, "_read_access_token", lambda: "")
     rc = await wamp.run_one_poll()
     assert rc == 1
+
+
+# --------------------------------------------------------------------------- #
+# _load_internal_phone_roster — P0-4 adversarial-review fix (2026-07-18):
+# this plist doesn't set BZ_INTERNAL_PHONE_NUMBERS; load it from
+# ~/.wa-mirror.env (the same file the intake-worker plist already sources it
+# from) if the process env doesn't already carry it. Pure, no real DB.
+# --------------------------------------------------------------------------- #
+def test_load_internal_phone_roster_from_env_file(tmp_path, monkeypatch):
+    wamp = _load_worker()
+    monkeypatch.delenv("BZ_INTERNAL_PHONE_NUMBERS", raising=False)
+    env_file = tmp_path / "wa-mirror.env"
+    env_file.write_text(
+        "WA_MIRROR_DATABASE_URL=postgresql://x\n"
+        "BZ_INTERNAL_PHONE_NUMBERS=+628213454721,+628213454722\n"
+    )
+
+    loaded = wamp._load_internal_phone_roster(env_file)
+
+    assert loaded is True
+    assert os.environ["BZ_INTERNAL_PHONE_NUMBERS"] == "+628213454721,+628213454722"
+    monkeypatch.delenv("BZ_INTERNAL_PHONE_NUMBERS", raising=False)
+
+
+def test_load_internal_phone_roster_never_overwrites_existing_env(tmp_path, monkeypatch):
+    wamp = _load_worker()
+    monkeypatch.setenv("BZ_INTERNAL_PHONE_NUMBERS", "+62800000000")
+    env_file = tmp_path / "wa-mirror.env"
+    env_file.write_text("BZ_INTERNAL_PHONE_NUMBERS=+629999999999\n")
+
+    loaded = wamp._load_internal_phone_roster(env_file)
+
+    assert loaded is True
+    assert os.environ["BZ_INTERNAL_PHONE_NUMBERS"] == "+62800000000"  # unchanged
+
+
+def test_load_internal_phone_roster_missing_file_returns_false(tmp_path, monkeypatch):
+    wamp = _load_worker()
+    monkeypatch.delenv("BZ_INTERNAL_PHONE_NUMBERS", raising=False)
+
+    loaded = wamp._load_internal_phone_roster(tmp_path / "does-not-exist.env")
+
+    assert loaded is False
+    assert "BZ_INTERNAL_PHONE_NUMBERS" not in os.environ
+
+
+def test_load_internal_phone_roster_key_absent_in_file_returns_false(tmp_path, monkeypatch):
+    wamp = _load_worker()
+    monkeypatch.delenv("BZ_INTERNAL_PHONE_NUMBERS", raising=False)
+    env_file = tmp_path / "wa-mirror.env"
+    env_file.write_text("WA_MIRROR_DATABASE_URL=postgresql://x\n")
+
+    loaded = wamp._load_internal_phone_roster(env_file)
+
+    assert loaded is False
+    assert "BZ_INTERNAL_PHONE_NUMBERS" not in os.environ
+
+
+# --------------------------------------------------------------------------- #
+# Identity-resolver timeout — P1 adversarial-review fix: a stuck resolver
+# call must not hang the serial poll loop forever; it degrades to no hint.
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_identity_resolver_timeout_degrades_to_no_hint_not_a_hang(
+    monkeypatch, tmp_path, pool, cleanup
+):
+    import asyncio
+    import hashlib
+    import uuid
+
+    wamp = _load_worker()
+    monkeypatch.setattr(wamp, "_IDENTITY_RESOLVE_TIMEOUT_SECONDS", 0.05)
+
+    content = f"PDF-{uuid.uuid4()}".encode()
+    sha = hashlib.sha256(content).hexdigest()
+    cleanup.append(sha)
+
+    pending_payload = {
+        "items": [
+            {
+                "outbox_id": 6001,
+                "media_id": "media-pr2-timeout",
+                "mime_type": "application/pdf",
+                "message_type": "document",
+                "filename": "passport.pdf",
+                "declared_sha256": sha,
+                "wa_message_id": "wamid.PR2TIMEOUT",
+                "from_phone": "628190000001",
+                "phone_number_id": "1104946272705747",
+                "sender_name": "Tester",
+                "created_at": "2026-07-18T00:00:00+00:00",
+            }
+        ],
+        "last_id": 6001,
+    }
+    handler_extra: dict = {}
+    transport = httpx.MockTransport(_mock_pending_and_ack(handler_extra, pending_payload))
+    real_async_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        wamp.httpx, "AsyncClient",
+        lambda *a, **k: real_async_client(transport=transport),
+    )
+
+    from backend.channels.whatsapp.media_download import DownloadedMedia
+
+    async def fake_download(client, *, media_id, access_token, dest_dir, api_version="v18.0"):
+        dest = Path(dest_dir)
+        dest.mkdir(parents=True, exist_ok=True)
+        blob = dest / f"{media_id}.pdf"
+        blob.write_bytes(content)
+        return DownloadedMedia(
+            blob_path=str(blob), mime_type="application/pdf", sha256=sha,
+            byte_size=len(content), media_id=media_id,
+        )
+
+    async def slow_resolver(*_args, **_kwargs):
+        await asyncio.sleep(5)  # far longer than the 0.05s timeout above
+
+    monkeypatch.setattr(wamp, "download_media", fake_download)
+    monkeypatch.setattr(wamp, "resolve_or_create_contact", slow_resolver)
+    monkeypatch.setattr(wamp, "_read_access_token", lambda: "fake-token")
+    monkeypatch.setenv("BRIDGE_API_KEY", "k")
+    monkeypatch.setenv("LOCAL_DATABASE_URL", _DB_URL)
+    monkeypatch.setenv("INTAKE_BLOB_ROOT", str(tmp_path / "blobs"))
+    monkeypatch.setenv("FLY_BRIDGE_URL", "https://fake.local")
+    monkeypatch.setattr(wamp, "_load_since", lambda: 0)
+    monkeypatch.setattr(wamp, "_save_since", lambda v: None)
+
+    rc = await wamp.run_one_poll()
+    assert rc == 0  # a stuck resolver must not fail the whole poll
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT sender_phone, client_id_hint FROM intake_queue WHERE blob_hash = $1",
+            sha,
+        )
+    assert row is not None
+    assert row["sender_phone"] == "628190000001"  # still captured
+    assert row["client_id_hint"] is None  # degraded, never blocked the enqueue

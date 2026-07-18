@@ -42,6 +42,13 @@ class FakeConn:
         self.winner_id = winner_id
         self.fetch_calls: list[tuple[str, tuple[Any, ...]]] = []
         self.fetchrow_calls: list[tuple[str, tuple[Any, ...]]] = []
+        self.execute_calls: list[tuple[str, tuple[Any, ...]]] = []
+
+    async def execute(self, query: str, *args: Any) -> str:
+        # Records the advisory-lock call (pg_advisory_xact_lock) — no-op here,
+        # concurrency itself is modeled explicitly by the race test below.
+        self.execute_calls.append((query, args))
+        return "SELECT"
 
     async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
         self.fetch_calls.append((query, args))
@@ -207,3 +214,99 @@ async def test_conflict_with_no_reselect_hit_abstains_never_guesses(
 
     assert out.kind == ca.KIND_AMBIGUOUS
     assert out.client_id is None
+
+
+# --------------------------------------------------------------------------- #
+# force_no_create — P0-1 adversarial-review fix (2026-07-18): dry-run must
+# NEVER reach the INSERT, regardless of the env killswitch state.
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_force_no_create_blocks_insert_even_when_flag_armed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT: without force_no_create, an armed flag + unknown phone creates.
+    With force_no_create=True, the SAME armed flag must NOT create."""
+    _never_internal(monkeypatch)
+    monkeypatch.setenv(ca.AUTOCREATE_ENABLED_ENV, "1")  # armed — the trap
+
+    conn = FakeConn(existing_matches=[], insert_returns_id=999)
+    out = await ca.resolve_or_create_contact(
+        conn, sender_phone="081234567890", force_no_create=True
+    )
+
+    assert out.kind == ca.KIND_DISABLED
+    assert out.client_id is None
+    # The decisive assertion: the INSERT statement was never issued.
+    assert not any("INSERT INTO clients" in q for q, _args in conn.fetchrow_calls)
+
+
+@pytest.mark.asyncio
+async def test_force_no_create_still_finds_existing_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INNOCENCE: force_no_create must not suppress the read-only existing-match
+    lookup — only the CREATE branch is gated."""
+    _never_internal(monkeypatch)
+    monkeypatch.setenv(ca.AUTOCREATE_ENABLED_ENV, "1")
+
+    conn = FakeConn(existing_matches=[{"id": 42}])
+    out = await ca.resolve_or_create_contact(
+        conn, sender_phone="081234567890", force_no_create=True
+    )
+
+    assert out.kind == ca.KIND_EXISTING
+    assert out.client_id == 42
+
+
+@pytest.mark.asyncio
+async def test_force_no_create_default_false_preserves_existing_behavior(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INNOCENCE: omitting force_no_create (all existing callers) is unchanged."""
+    _never_internal(monkeypatch)
+    monkeypatch.setenv(ca.AUTOCREATE_ENABLED_ENV, "1")
+
+    conn = FakeConn(existing_matches=[], insert_returns_id=555)
+    out = await ca.resolve_or_create_contact(conn, sender_phone="081234567890")
+
+    assert out.kind == ca.KIND_CREATED
+    assert out.client_id == 555
+
+
+# --------------------------------------------------------------------------- #
+# Advisory lock — P1 adversarial-review fix: same lock key as the wa-mirror
+# sweeper's _upsert_client_by_phone (hashtext on the normalized phone).
+# --------------------------------------------------------------------------- #
+@pytest.mark.asyncio
+async def test_advisory_lock_acquired_before_any_match_or_create(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _never_internal(monkeypatch)
+    monkeypatch.setenv(ca.AUTOCREATE_ENABLED_ENV, "1")
+
+    conn = FakeConn(existing_matches=[], insert_returns_id=321)
+    await ca.resolve_or_create_contact(conn, sender_phone="081234567890")
+
+    assert len(conn.execute_calls) == 1
+    lock_query, lock_args = conn.execute_calls[0]
+    assert "pg_advisory_xact_lock" in lock_query
+    assert "hashtext" in lock_query
+    assert lock_args == ("6281234567890",)  # normalized digits, matches the sweeper's key
+
+
+@pytest.mark.asyncio
+async def test_advisory_lock_not_taken_for_internal_or_no_phone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The lock costs a round-trip; skip it on the fast-exit branches that
+    never touch clients at all (no phone / internal forwarder)."""
+    _always_internal(monkeypatch)
+    conn = FakeConn()
+    out = await ca.resolve_or_create_contact(conn, sender_phone="+628213454721")
+    assert out.kind == ca.KIND_INTERNAL_FORWARD
+    assert conn.execute_calls == []
+
+    conn2 = FakeConn()
+    out2 = await ca.resolve_or_create_contact(conn2, sender_phone=None)
+    assert out2.kind == ca.KIND_NO_PHONE
+    assert conn2.execute_calls == []

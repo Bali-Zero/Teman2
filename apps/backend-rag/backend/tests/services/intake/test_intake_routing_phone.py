@@ -150,12 +150,15 @@ class FakeConn:
         kitas_rows: list[dict[str, Any]] | None = None,
         phone_rows: list[dict[str, Any]] | None = None,
         fuzzy_rows: list[dict[str, Any]] | None = None,
+        hint_client_row: dict[str, Any] | None = None,
     ) -> None:
         self.passport_rows = passport_rows or []
         self.kitas_rows = kitas_rows or []
         self.phone_rows = phone_rows or []
         self.fuzzy_rows = fuzzy_rows or []
+        self.hint_client_row = hint_client_row
         self.queries: list[str] = []
+        self.fetchrow_queries: list[tuple[str, tuple[Any, ...]]] = []
 
     async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
         self.queries.append(query)
@@ -168,6 +171,12 @@ class FakeConn:
         if "similarity" in query:
             return self.fuzzy_rows
         return []
+
+    async def fetchrow(self, query: str, *args: Any) -> dict[str, Any] | None:
+        self.fetchrow_queries.append((query, args))
+        if "FROM clients" in query and "id = $1" in query:
+            return self.hint_client_row
+        return None
 
 
 class FakePool:
@@ -250,6 +259,97 @@ async def test_resolve_entity_invalid_phone_is_inert() -> None:
     out = await rt.resolve_entity({}, "unknown", FakePool(conn), sender_phone="abc")
     assert out["decision"] == rt.DECISION_NO_MATCH
     assert not any("phone_normalized" in q for q in conn.queries)
+
+
+# ---------------------------------------------------------------------------
+# client_id_hint fallback (P0-3, adversarial-review fix 2026-07-18) — the
+# identity resolved by contact_autocreate at enqueue time is consulted ONLY
+# when a fresh sender_phone lookup found nothing (guilt+innocence corpus).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_resolve_entity_uses_client_id_hint_when_no_strong_no_phone() -> None:
+    # No sender_phone passed at all -> _match_sender_phone never even runs,
+    # so the hint is the ONLY signal available. Guilt case: it must be used.
+    conn = FakeConn(hint_client_row={"id": 99, "full_name": "Hinted Client"})
+    out = await rt.resolve_entity({}, "unknown", FakePool(conn), client_id_hint=99)
+    assert out["decision"] == rt.DECISION_LINK_CANDIDATE
+    assert out["subject_kind"] == "person"
+    cand = out["candidates"][0]
+    assert (cand["table"], cand["id"], cand["method"]) == ("clients", 99, "client_id_hint")
+    assert cand["score"] == rt.CONF_PHONE_MATCH
+    assert cand["matched_value"] == "99"
+    assert conn.fetchrow_queries and conn.fetchrow_queries[0][1] == (99,)
+
+
+@pytest.mark.asyncio
+async def test_resolve_entity_client_id_hint_soft_deleted_abstains() -> None:
+    # The hint row is gone / soft-deleted (WHERE deleted_at IS NULL excludes
+    # it) -> FakeConn.fetchrow returns None. Must NOT crash, must NOT guess.
+    conn = FakeConn(hint_client_row=None)
+    out = await rt.resolve_entity({}, "unknown", FakePool(conn), client_id_hint=99)
+    assert out["decision"] == rt.DECISION_NO_MATCH
+    assert out["candidates"] == []
+
+
+@pytest.mark.asyncio
+async def test_resolve_entity_strong_id_skips_client_id_hint_query() -> None:
+    # Innocence: a strong document identifier resolved -> the hint must never
+    # even be queried (strong ID names the SUBJECT, hint is a weaker signal).
+    conn = FakeConn(
+        passport_rows=[{"id": 7, "full_name": "Alice Strong"}],
+        hint_client_row={"id": 99, "full_name": "Hinted Client"},
+    )
+    out = await rt.resolve_entity(
+        {"passport_no": {"value": "ZZ9988770"}}, "passport",
+        FakePool(conn), client_id_hint=99,
+    )
+    assert out["decision"] == rt.DECISION_AUTO_ATTACH
+    assert out["candidates"][0]["id"] == 7
+    assert conn.fetchrow_queries == []
+
+
+@pytest.mark.asyncio
+async def test_resolve_entity_fresh_phone_match_skips_client_id_hint_query() -> None:
+    # Innocence: a fresh sender_phone lookup ALREADY found a candidate -> the
+    # hint must never be queried (the doc's own transport signal wins/agrees
+    # with itself; consulting the hint on top would be redundant, not wrong,
+    # but the contract is "hint only fills the gap when phone found nothing").
+    conn = FakeConn(
+        phone_rows=[{"id": 42, "full_name": "Wira Phone"}],
+        hint_client_row={"id": 99, "full_name": "Hinted Client"},
+    )
+    out = await rt.resolve_entity(
+        {}, "unknown", FakePool(conn), sender_phone="08123456789", client_id_hint=99,
+    )
+    assert out["decision"] == rt.DECISION_LINK_CANDIDATE
+    assert out["candidates"][0]["id"] == 42
+    assert out["candidates"][0]["method"] == "sender_phone"
+    assert conn.fetchrow_queries == []
+
+
+@pytest.mark.asyncio
+async def test_resolve_entity_phone_lookup_empty_falls_back_to_client_id_hint() -> None:
+    # Guilt: sender_phone WAS passed but the fresh lookup found nothing
+    # (phone_rows empty) -> the hint fills the gap.
+    conn = FakeConn(phone_rows=[], hint_client_row={"id": 99, "full_name": "Hinted Client"})
+    out = await rt.resolve_entity(
+        {}, "unknown", FakePool(conn), sender_phone="08123456789", client_id_hint=99,
+    )
+    assert out["decision"] == rt.DECISION_LINK_CANDIDATE
+    cand = out["candidates"][0]
+    assert (cand["id"], cand["method"]) == (99, "client_id_hint")
+
+
+@pytest.mark.asyncio
+async def test_resolve_entity_without_client_id_hint_never_queries_it() -> None:
+    # Innocence: no hint passed (the common case, e.g. non-WA channels) ->
+    # zero fetchrow calls, no behavior change for callers that don't pass it.
+    conn = FakeConn()
+    out = await rt.resolve_entity({}, "unknown", FakePool(conn))
+    assert out["decision"] == rt.DECISION_NO_MATCH
+    assert conn.fetchrow_queries == []
 
 
 # ---------------------------------------------------------------------------
