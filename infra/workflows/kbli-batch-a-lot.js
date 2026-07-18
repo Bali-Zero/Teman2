@@ -427,30 +427,19 @@ const D2_SCHEMA = {
   },
 };
 
-// Frozen taxonomy end-to-end (pilot-report criterion #6 fix): the innocence branch emits ONLY
-// certified | quarantined | abstained — never the pilot's 4-token vocabulary.
-const INNOCENCE_SCHEMA = {
-  type: "object",
-  required: ["changes_proposed", "verdict"],
-  properties: {
-    changes_proposed: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "MUST be empty when verdict=certified — any entry here is itself a finding of over-extraction, not a legitimate regulatory discovery",
-    },
-    verdict: {
-      type: "string",
-      enum: ["certified", "quarantined", "abstained"],
-      description:
-        "certified = nothing needs changing (the frozen-taxonomy normalization of a true innocence " +
-        "control); quarantined = an unexpected change is proposed (over-extraction finding, needs " +
-        "conductor triage); abstained = the code turns out to depend on an OUT-OF-SCOPE facet " +
-        "(pma_status/l4_bali/TKA, plan §8 A-1) that cannot be adjudicated this pass",
-    },
-    notes: { type: "string" },
-  },
-};
+// INNOCENCE_SCHEMA + innocencePrompt() are RETIRED (2026-07-19, Lot 5 conductor gate second-signing
+// BLOCKER — see the SYMMETRIC BLIND TREATMENT v2 note above adjudicateInnocence() below). They used
+// to give the control branch its OWN schema and prompt; the schema's field descriptions ("MUST be
+// empty when verdict=certified", "the frozen-taxonomy normalization of a TRUE INNOCENCE CONTROL")
+// told the seat it was grading a control expected to come out boring — the Lot 4 fix neutralized the
+// PROMPT wording, but the SCHEMA still leaked the exact same information on a different channel (the
+// guard-fix-begets-twin-bug shape, scar family #3, THIRD instance in this program). The only durable
+// fix is for a control to receive the IDENTICAL schema+prompt pair (D1_SCHEMA/d1Prompt,
+// D5_SCHEMA/d5Prompt, D2_SCHEMA/d2Prompt) a member code gets — so there is no longer any
+// innocence-specific schema or prompt to leak from. Do not reintroduce either under any name; the
+// contract test (test_lot_runner_contract.py) fails on a re-added seat-visible innocence marker on
+// ANY channel (prompt body, schema property, `label`/`phase`/`model` passed to `agent()`), not just
+// the wording channel that bit last time.
 
 // ----- prompts ---------------------------------------------------------------------------------
 
@@ -461,31 +450,6 @@ const OUT_OF_SCOPE_NOTICE =
 
 function evidenceDirFor(code) {
   return `${evidenceRoot}/${code}`;
-}
-
-// SYMMETRIC BLIND TREATMENT (2026-07-19, Lot 4 conductor gate finding, runner defect FILED at the
-// Lot 4 gate for a Lot 5 fix): the prior version of this prompt announced the expected verdict
-// ("INNOCENCE CONTROL", "the dossier MUST come out boring", "Verify that NOTHING needs changing")
-// and asserted a FALSE claim about the evidence ("no pp28_sources" — both reused controls, 59140
-// and 59201, carry the field). A control the seat is told must be boring is not a blind specificity
-// measure — it only proves the pipeline doesn't manufacture work when told not to. This prompt never
-// reveals that the code is a control, nor the expected outcome: it reads the identical evidence
-// surfaces as before and asks for the SAME neutral adjudication a lane member would get, exactly the
-// wording sanctioned by the fix ("adjudicate this dossier exactly as any other — report what the
-// evidence shows"). See the ADJUDICATE phase docstring in `adjudicateInnocence()` above for how the
-// resulting verdict is normalized into the frozen certified|quarantined|abstained taxonomy.
-function innocencePrompt(code) {
-  const dir = evidenceDirFor(code);
-  return (
-    `KBLI-2025 code ${code} adjudication (GARUDA-FILIERA Batch A lot ${lotId}). ${OUT_OF_SCOPE_NOTICE} ` +
-    `Read ${dir}/canonical.json, ${dir}/evidence-index.json, and every file under ${dir}/oss/, ` +
-    `${dir}/crosswalk/, ${dir}/pp28/ (renders or their ABSENT/NOT_APPLICABLE verdict). Adjudicate this ` +
-    `dossier exactly as any other — report what the evidence shows, neither more nor less. A proposed ` +
-    `change is a legitimate finding if the evidence supports it; an absence of findings is equally ` +
-    `legitimate if the evidence supports that instead. Emit verdict=certified if the evidence shows ` +
-    `nothing needs changing, verdict=quarantined if it shows something does, verdict=abstained only if ` +
-    `an out-of-scope facet above blocks your determination.`
-  );
 }
 
 function d1Prompt(code) {
@@ -557,29 +521,45 @@ function d2Prompt(code) {
 
 // ----- per-code adjudication ---------------------------------------------------------------
 
-function normalizeVerdict(verdict) {
-  return ["certified", "quarantined", "abstained"].includes(verdict)
-    ? verdict
-    : "quarantined"; // fail-closed: an out-of-taxonomy verdict is treated as needing conductor triage
-}
-
+// SYMMETRIC BLIND TREATMENT v2 (2026-07-19, Lot 5 conductor gate SECOND SIGNING — §1 BLOCKER, §6
+// meta-pattern "the guard-fix-begets-twin-bug shape now has a THIRD instance in this program"):
+// Lot 4 neutralized the innocence PROMPT's wording, but INNOCENCE_SCHEMA (now retired, see the note
+// above d1Prompt) still leaked the control's nature and expected outcome on a DIFFERENT seat-visible
+// channel — both control seats' own notes self-identified as "innocence control" even with the
+// neutral prompt in place. The prompt-fix begat its schema-shaped twin, same family as W83->W84 (the
+// noise-strip fix that spawned the cross-line over-match): a blindness fix is only done when the
+// ENTIRE seat-visible surface is symmetric, not just the one channel that bit last time.
+//
+// The fix: an innocence control no longer gets ANY schema or prompt of its own. It is dispatched
+// through adjudicateCode() — the EXACT function a member code uses (same d1Prompt/D1_SCHEMA,
+// d5Prompt/D5_SCHEMA, d2Prompt/D2_SCHEMA, same `label`/`phase`/`model` shape passed to agent(), same
+// diffD1D5() compiler diff) — so there is no separate prompt text, no separate schema property
+// description, and no separate label/meta value left to leak the control's identity on ANY channel.
+// The seat that produces `adjudication` below is never told, directly or indirectully, that this
+// code is a control.
+//
+// Only AFTER the seat-blind adjudication returns does this function do anything innocence-specific,
+// and that work is 100% deterministic JS the seat never executes or sees: it re-tags the identical
+// result as an innocence-control record (innocenceControl/innocence flags) and derives a legacy-
+// shaped `innocence_verdict` summary for conductor readability. Nothing here can leak forward into
+// the NEXT seat call, because there is no next seat call — adjudicateCode() has already finished.
 async function adjudicateInnocence(code) {
-  leaseGuardWarn(code);
-  const raw = await agent(innocencePrompt(code), {
-    label: `innocence:${code}`,
-    phase: "Adjudicate",
-    schema: INNOCENCE_SCHEMA,
-    model: "sonnet",
-  });
-  const verdict = raw ? normalizeVerdict(raw.verdict) : "quarantined";
+  const adjudication = await adjudicateCode(code);
+  const innocence_verdict = {
+    verdict: adjudication.verdict,
+    changes_proposed:
+      adjudication.verdict === "quarantined"
+        ? [adjudication.category || "unresolvable_source_pointer"]
+        : [],
+    notes:
+      `runner-side normalization of the member D1/D5/D2 pipeline (adjudicateCode) result — ` +
+      `concordant=${adjudication.concordant}, divergent=${adjudication.divergent}`,
+  };
   return {
-    code,
+    ...adjudication,
     innocenceControl: true,
     innocence: true,
-    innocence_verdict: raw,
-    verdict,
-    quarantined: verdict === "quarantined",
-    seatInvocations: 1,
+    innocence_verdict,
   };
 }
 
