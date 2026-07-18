@@ -89,7 +89,11 @@ _CURATED_QA_INJECTION_ENABLED = os.getenv("CURATED_QA_INJECTION_ENABLED", "true"
 )
 _CURATED_QA_COLLECTION_NAME = "curated_qa"
 _CURATED_QA_TOP_K = 2
-_CURATED_QA_SCORE_THRESHOLD = 0.90
+# 0.90 raw cosine was calibrated against near-verbatim question matches; real
+# paraphrased visa queries score 0.46-0.74 against the stored questions, so
+# the gate almost never fired in prod. 0.58 is the calibrated within-domain
+# threshold — safe only because injection is now domain-filtered (below).
+_CURATED_QA_SCORE_THRESHOLD = float(os.getenv("CURATED_QA_SCORE_THRESHOLD", "0.58"))
 
 
 class OrchestratorCore:
@@ -336,7 +340,11 @@ class OrchestratorCore:
 
         return None
 
-    async def _inject_curated_qa_grounding(self, query: str) -> str:
+    async def _inject_curated_qa_grounding(
+        self,
+        query: str,
+        extracted_entities: dict[str, Any] | None = None,
+    ) -> str:
         """D3-L2 (SPEC v2, F1b): grounding injection from the curated_qa collection.
 
         This is NOT verbatim serving. On a high-confidence hit (score >=
@@ -347,6 +355,14 @@ class OrchestratorCore:
         method never returns an answer directly and never short-circuits the
         query pipeline.
 
+        Injection is DOMAIN-FILTERED: with the calibrated within-domain
+        threshold (0.58) alone, cosine similarity still overlaps enough
+        across domains that a query in one domain (e.g. "register a PT PMA
+        company") can score above threshold against a curated_qa entry from
+        an unrelated domain (e.g. a visa Q&A) — polluting the answer with
+        irrelevant evidence. Only inject when the query has a concrete,
+        classified domain, and restrict the search itself to that domain.
+
         Defensive by design: any failure (Qdrant down, malformed payload,
         missing retriever) is logged and degrades to "" (no injection) —
         this step must never break the main query path.
@@ -354,13 +370,22 @@ class OrchestratorCore:
         Args:
             query: The user's query (embedded and searched verbatim against
                 the curated_qa collection).
+            extracted_entities: Output of EntityExtractionService.extract_entities()
+                for this query, used to read the classified `domain`.
 
         Returns:
             A formatted evidence-block string ready to append to
-            `system_context_for_prompt`, or "" if disabled/no qualifying hit/
-            error.
+            `system_context_for_prompt`, or "" if disabled/no domain/no
+            qualifying hit/error.
         """
         if not _CURATED_QA_INJECTION_ENABLED or not self.retriever:
+            return ""
+
+        domain = (extracted_entities or {}).get("domain")
+        # Never inject cross-domain: an unclassified/general query has no
+        # curated_qa domain to filter on, and all-domain cosine overlap at
+        # the calibrated threshold would pollute unrelated answers.
+        if not domain or domain == EntityExtractionService.DOMAIN_GENERAL:
             return ""
 
         try:
@@ -368,6 +393,7 @@ class OrchestratorCore:
                 query=query,
                 collection_name=_CURATED_QA_COLLECTION_NAME,
                 limit=_CURATED_QA_TOP_K,
+                filter={"must": [{"key": "domain", "match": {"value": domain}}]},
             )
             if not isinstance(search_result, dict):
                 # Defensive: search_collection's real contract returns a plain
@@ -384,6 +410,13 @@ class OrchestratorCore:
                 if hit.get("score", 0.0) < _CURATED_QA_SCORE_THRESHOLD:
                     continue
                 metadata = hit.get("metadata") or {}
+                # Belt-and-suspenders: the Qdrant `filter` above is the primary
+                # domain gate, but never trust a single signal (scar family #3
+                # guard-over/under-match) — re-check the hit's own domain tag
+                # and skip on mismatch rather than assume the filter held.
+                hit_domain = metadata.get("domain")
+                if hit_domain and hit_domain != domain:
+                    continue
                 answer = metadata.get("answer")
                 if not answer:
                     # Question-only seeds (prewarm/golden) must never reach
@@ -969,7 +1002,7 @@ class OrchestratorCore:
         # through the full ReAct loop + abstain gate below; this only shapes
         # the evidence the LLM reasons over. Defensive by design (see
         # _inject_curated_qa_grounding docstring) — never raises.
-        curated_qa_context = await self._inject_curated_qa_grounding(query)
+        curated_qa_context = await self._inject_curated_qa_grounding(query, extracted_entities)
         if curated_qa_context:
             system_context_for_prompt += curated_qa_context
 
