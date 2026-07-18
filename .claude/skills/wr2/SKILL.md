@@ -136,16 +136,19 @@ forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.p
   OCR pass + full geometry lint (overlap/off-grid/DOM-overflow). Capture
   `research/marketing/2026-07-18-wr2-render-qa-saturated-hero-headline-lever-gap.md` · memory
   `discovery_wr2_render_qa_saturated_hero_headline_lever_gap_2026_07_18`.
-- **Hero-cover headline can't be grown for IG thumbnail — NEXT B** (growth-loop R, 2026-07-18). Live
-  designer-loop logs (07-14/07-16/**07-18 05:37**) accept hero-photo covers as "composition debt" with
-  headlines too small to survive the IG grid thumbnail. Root cause = composer↔critic split: `composer.py:354`
-  HAS a `heading:(100,150)` grow clamp (a test exercises it) but the critic lever menu + prompt
-  (`claude_vision.py:82,158`) exclude `grow_font target=heading` and tell it to ignore thumbnail-scale →
-  **dormant config, not dead capability**. The fix (add heading to the menu/prompt for thumbnail scale) MUST
-  add a fit/overflow guard: the clamp bounds font px, NOT box overflow (`:421` abs px vs `:499` fit-at-84px) —
-  Codex-caught, the naive fix would ship an off-canvas title. 150px isn't a universal thumbnail guarantee
-  (~110px context → ~15px); check copy-length/caption-template as co-cause. Behavior change ⇒ generator≠grader
-  - short/long-hook tests; the unbuilt thumbnail-OCR (line above) is its verifier.
+- **Hero-cover headline thumbnail illegibility — the grow-lever was REFUTED, the real cure is the fit
+  policy (Zero-gated)** (growth-loop B, 2026-07-18, #2750). The `grow_font target=heading` lever was built
+  - hardened over 3 adversarial rounds, then MEASURED against prod (n=113 cover instances) → fires on ~1.8%
+    ⇒ refuted, code reverted, capture only. **Real cause:** `_wrap_headline_sentence_aware` (ALWAYS-ON
+    cover-photo fit) shrinks **83.2% of covers to its 60px floor** to keep every sentence on its own line — at
+    IG-grid downscale ~6-8px = the "caption-sized hook" the designer-loop logs. The lever can't help: the
+    renderer defers ~95% via a silent `continue`, so opening the critic prompt alone = a silent no-op
+    (cicatrix #2). **Real fix (NEXT B, Zero-gated):** re-tune the fit policy — a thumbnail-legible floor as the
+    HARD bound, sentence integrity yields to wrapping; ADD a vertical/max-lines guard (content anchored bottom
+    270px, `overflow:hidden` clips) + an indivisible-token guard; reconcile the composer-150px vs critic-110px
+    grid factor. Blast radius 83% of covers → brand call + render QA on a real deck. Capture
+    `research/marketing/2026-07-18-wr2-cover-headline-thumbnail-illegibility-root-cause.md` · memory
+    `discovery_wr2_cover_headline_thumbnail_illegibility_root_cause_2026_07_18`.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
   M5 queue shared-lock protocol · plist validator red on main ·
   19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).
@@ -156,16 +159,16 @@ forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.p
 `~/.openclaw/bin/wr2/wr2-script-wrapper.sh` → `REPO_ROOT=${WR2_REPO_ROOT:-~/nuzantara-deploy}`
 — deploy = pull BOTH `~/Desktop/nuzantara` AND `~/nuzantara-deploy`, scar #1):**
 
-| Stage | Script | launchd | Notes |
+| Stage         | Script                                                                                            | launchd          | Notes                                                                                                                                                                                                                                                                              |
 | ------------- | ------------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------ |
-| Topic pick | `scripts/wr2_topic_selector.py` | topic-selector | scores staging items, writes `war_room_drafts` (status `briefed`) with brief_json = article_summary[:2000] + enrichment + source_url; RAG grounding via `scripts/wr2_grounding.py` (citation injection + `_grounding_injected_only` marker + `is_citations_only_the_facts()` SSOT) |
-| Compose | `scripts/wr2_draft_generator.py` | draft-generator | **facts-first prompt** (article leads, enriched brief supports); park backstop (news-shaped + no usable source → `parked`, never composed); tri-state outcome `success                                                                                                             | parked | failed`, exit 0 unless real failures |
-| Hero images | `scripts/wr2_image_generator.py` | image-generator | Codex $imagegen primary, FlowKit fallback; CAS lease on `lease_owner`, stale-sweep TTL 40min |
-| Facts | `scripts/wr2_fact_extractor.py` | fact-extractor | gates on `fact_check_json IS NULL` |
-| Check | fact-checker lane | fact-checker | writes `fact_check_status` (currently degraded pipeline-wide) |
-| Render | `scripts/wr2_html_render_apply.py` + `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py` | html-apply | HTML/CSS→PNG Playwright; fetch gates on `drive_url IS NULL` + `lease_owner IS NULL`; official re-render verb: `_pg.requeue_draft_for_rerender` |
-| Orchestration | `scripts/wr2_supervisor.py` + `scripts/wr2_supervisor_watchdog.py` | supervisor | TRANSITIONS maps (from,to)→launchd label; TERMINAL_STATUSES includes `parked` |
-| Reconcile | `scripts/wr2_daily_reconciler.py` | daily-reconciler | slides-dir resolution 3-level, `--repair-false-incomplete`, `--backfill-completeness` |
+| Topic pick    | `scripts/wr2_topic_selector.py`                                                                   | topic-selector   | scores staging items, writes `war_room_drafts` (status `briefed`) with brief_json = article_summary[:2000] + enrichment + source_url; RAG grounding via `scripts/wr2_grounding.py` (citation injection + `_grounding_injected_only` marker + `is_citations_only_the_facts()` SSOT) |
+| Compose       | `scripts/wr2_draft_generator.py`                                                                  | draft-generator  | **facts-first prompt** (article leads, enriched brief supports); park backstop (news-shaped + no usable source → `parked`, never composed); tri-state outcome `success                                                                                                             | parked | failed`, exit 0 unless real failures |
+| Hero images   | `scripts/wr2_image_generator.py`                                                                  | image-generator  | Codex $imagegen primary, FlowKit fallback; CAS lease on `lease_owner`, stale-sweep TTL 40min                                                                                                                                                                                       |
+| Facts         | `scripts/wr2_fact_extractor.py`                                                                   | fact-extractor   | gates on `fact_check_json IS NULL`                                                                                                                                                                                                                                                 |
+| Check         | fact-checker lane                                                                                 | fact-checker     | writes `fact_check_status` (currently degraded pipeline-wide)                                                                                                                                                                                                                      |
+| Render        | `scripts/wr2_html_render_apply.py` + `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py` | html-apply       | HTML/CSS→PNG Playwright; fetch gates on `drive_url IS NULL` + `lease_owner IS NULL`; official re-render verb: `_pg.requeue_draft_for_rerender`                                                                                                                                     |
+| Orchestration | `scripts/wr2_supervisor.py` + `scripts/wr2_supervisor_watchdog.py`                                | supervisor       | TRANSITIONS maps (from,to)→launchd label; TERMINAL_STATUSES includes `parked`                                                                                                                                                                                                      |
+| Reconcile     | `scripts/wr2_daily_reconciler.py`                                                                 | daily-reconciler | slides-dir resolution 3-level, `--repair-false-incomplete`, `--backfill-completeness`                                                                                                                                                                                              |
 
 **DB**: `war_room_drafts` on nuzantara-postgres. Status machine (CHECK constraint, migration 245):
 briefed → drafts → drafts_imaged → drafts_imaged_facted → drafts_imaged_checked → rendering →
