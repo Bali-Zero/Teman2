@@ -353,6 +353,24 @@ def _applicant_facts(overrides: dict[str, Any], *, assessment_id: uuid.UUID | No
     )
 
 
+class TestDeriveRequiresAwareEffectiveAt:
+    """F3 (2-seat review, 2026-07-18): a naive ``effective_at`` is ambiguous
+    (which timezone?) and could silently shift the derived age by up to a
+    day — ``derive()`` now fails loud instead of guessing.
+    """
+
+    def test_naive_effective_at_raises(self) -> None:
+        # Guilt: no tzinfo at all.
+        naive = datetime(2026, 7, 17, 0, 0, 0)
+        with pytest.raises(FactValidationError, match="timezone-aware"):
+            DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=naive)
+
+    def test_aware_utc_effective_at_still_works(self) -> None:
+        # Innocence: an ordinary aware-UTC effective_at is unaffected.
+        snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
+        assert frozenset(snapshot.values) == frozenset(FactPath)
+
+
 class TestDeriveWireToRuntime:
     def test_every_one_of_38_paths_present_in_snapshot(self) -> None:
         snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
@@ -404,6 +422,42 @@ class TestDeriveAgeYears:
     def test_age_unknown_when_birth_date_unknown(self) -> None:
         snapshot = DEFAULT_FACT_REGISTRY.derive(_applicant_facts({}), effective_at=GOLD_EFFECTIVE_AT)
         assert isinstance(snapshot.values[FactPath.DERIVED_AGE_YEARS], UnknownFact)
+
+    def test_future_birth_date_yields_unknown_not_definite_age(self) -> None:
+        # Guilt (F2, 2-seat review 2026-07-18): a birth_date AFTER
+        # effective_at is contradictory evidence — it must never be silently
+        # turned into a definite age/minor boolean (e.g. a negative age
+        # rolling into "not yet 18" -> is_minor=True would be a wrong
+        # DEFINITE answer on a client-facing "zero wrong answers" engine).
+        facts = _applicant_facts(
+            {"person.birth_date": {"status": "KNOWN", "value": "2027-01-01"}}
+        )
+        snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=GOLD_EFFECTIVE_AT)
+        age = snapshot.values[FactPath.DERIVED_AGE_YEARS]
+        is_minor = snapshot.values[FactPath.DERIVED_IS_MINOR]
+        assert isinstance(age, UnknownFact)
+        assert age.reason.value == "CONFLICTING"
+        assert isinstance(is_minor, UnknownFact)
+
+    def test_birth_date_equal_to_reference_date_is_age_zero(self) -> None:
+        # Innocence: born exactly ON effective_at's date is NOT "future" —
+        # must still resolve to a definite age (0), not UNKNOWN.
+        facts = _applicant_facts(
+            {"person.birth_date": {"status": "KNOWN", "value": "2026-07-17"}}
+        )
+        snapshot = DEFAULT_FACT_REGISTRY.derive(facts, effective_at=GOLD_EFFECTIVE_AT)
+        assert snapshot.values[FactPath.DERIVED_AGE_YEARS] == KnownFact(value=0)
+
+    def test_ordinary_past_birth_date_still_derives_correct_age(self) -> None:
+        # Innocence: an unremarkable past birth date is unaffected by the
+        # new future-date guard.
+        facts = _applicant_facts(
+            {"person.birth_date": {"status": "KNOWN", "value": "2000-07-19"}}
+        )
+        snapshot = DEFAULT_FACT_REGISTRY.derive(
+            facts, effective_at=datetime(2026, 7, 18, tzinfo=timezone.utc)
+        )
+        assert snapshot.values[FactPath.DERIVED_AGE_YEARS] == KnownFact(value=25)
 
 
 class TestDeriveIsMinor:

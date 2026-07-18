@@ -432,6 +432,12 @@ class FactRegistry:
         (``age_years``, ``is_minor``, ``has_indonesian_citizenship``).
         """
 
+        if effective_at.tzinfo is None:
+            raise FactValidationError(
+                "effective_at must be timezone-aware (UTC); a naive datetime is "
+                "ambiguous and would silently change the derived age by up to a day."
+            )
+
         raw = facts.facts.model_dump(by_alias=True, mode="json")
         values: dict[FactPath, KnownFact | UnknownFact] = {
             FactPath(path): self._wire_to_runtime(path, wire_fact)
@@ -466,11 +472,12 @@ class FactRegistry:
             return UnknownFact(reason=birth.reason)
 
         birth_date = date.fromisoformat(str(birth.value))
-        reference_date = (
-            effective_at.astimezone(timezone.utc).date()
-            if effective_at.tzinfo is not None
-            else effective_at.date()
-        )
+        reference_date = effective_at.astimezone(timezone.utc).date()
+        if birth_date > reference_date:
+            # A birth date after the evaluation instant is logically impossible;
+            # never turn contradictory evidence into a definite legal age/minor
+            # boolean — fail closed to UNKNOWN (2-seat review F2, 2026-07-18).
+            return UnknownFact(reason=UnknownReason.CONFLICTING)
         years = (
             reference_date.year
             - birth_date.year
