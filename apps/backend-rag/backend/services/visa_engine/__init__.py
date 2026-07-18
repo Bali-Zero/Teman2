@@ -66,6 +66,38 @@ one place.
   No key generation/registration script exists or will (FIREBREAK — the
   Ed25519 signing ceremony is the operator's, offline, never autonomous
   code).
+
+  **3-seat verify hardening round (2026-07-18, GLM/Codex/Gemini
+  FIX-NOW cluster)** closed 11 trust-boundary findings in this same PR
+  (TOCTOU snapshot, environment-scoped trust-store keys, future-skew
+  guard, strict typed-error contract, ASCII-strict semver, a real
+  ``FormatChecker`` date-time check, ...) — see each fix's own inline
+  docstring/comment in ``bundle.py`` for detail. Three items from that
+  round are explicitly **deferred, not fixed**, because they need
+  infrastructure this PR's pure, I/O-free verification functions don't
+  have:
+
+  - **Revocation-at-activation-time** against a key that is compromised
+    AND whose signature is backdated to before the compromise/revocation
+    was known — needs an authoritative clock plus persistence (looking
+    up what was already active). Documented inline in
+    ``verify_rule_pack``'s own docstring (the future-skew guard's TODO).
+  - **Duplicate JSON property names / I-JSON strictness** — this
+    package's loader trusts whatever ``Mapping`` it is handed; a JSON
+    parser that silently keeps the LAST value for a duplicate key (the
+    stdlib default) could hide a tampered field from a naive diff/audit
+    even though the trust-boundary checks above still verify correctly
+    against whichever value won. The fix is a duplicate-rejecting JSON
+    parse at the actual wire-ingestion edge (``object_pairs_hook`` that
+    raises on repeat keys) — that edge does not exist in this PR
+    (``bundle.py`` takes an already-parsed ``Mapping``, never raw bytes).
+    A precondition of PR4's integration wiring, not this PR's scope.
+  - **Atomic read-validate-write persistence** for concurrent activation
+    — ``validate_activation`` is deliberately pure (no DB, no
+    filesystem; see its own docstring) and compares values its caller
+    already holds. Two callers racing to activate concurrently need a
+    CAS/unique-constraint at the actual persistence layer (PR4's
+    ``repository.py``), not a lock inside this pure function.
 - **compiler.py** — done (PR1) for ``CompilationError``,
   ``CompilationReport``, and ``compile_rule_pack(pack: RulePack, *,
   fact_registry) -> CompilationReport`` — spec's own signature takes a
