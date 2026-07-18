@@ -59,6 +59,8 @@ services:
     environment:
       # Password via env (scar family W38/W65: no cleartext credentials in repo).
       # NOTE: the previous literal password was committed in git history — treat as compromised, rotate.
+      # Set POSTGRES_PASSWORD in your shell or local .env before `docker compose up`
+      # (same convention as GRAFANA_PASSWORD above; the `:?` hard-error is intentional).
       - DATA_SOURCE_NAME=postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD not set}@host.docker.internal:5433/bali_intel?sslmode=disable
     networks:
       - monitoring
