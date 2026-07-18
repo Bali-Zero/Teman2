@@ -518,6 +518,21 @@ class ConditionResult:
     ``evaluate_condition``'s docstring), so a trace built from these stays
     complete even when an early child already decided the aggregate truth
     value.
+
+    ABSTENTION CONTRACT (load-bearing for the future ``evaluate_product`` /
+    ``on_unknown`` consumer, PR ladder step after this one): a caller
+    deciding whether to abstain MUST gate on ``truth is TruthValue.UNKNOWN``,
+    **never** on ``bool(unknown_facts)``. ``unknown_facts`` is a
+    *trace/provenance* set, not an "is this result uncertain" flag: a
+    ``PresenceCondition`` (``known``/``unknown``) records the tested fact in
+    ``unknown_facts`` when that fact is absent, yet produces a *definite*
+    truth (``known(missing)`` → definite FALSE, ``unknown(missing)`` →
+    definite TRUE). Gating abstention on ``unknown_facts`` would therefore
+    wrongly abstain on a rule that deliberately tests for a fact's absence.
+    Whether ``PresenceCondition`` should instead emit ``unknown_facts=∅`` is
+    deferred to that consumer PR, where the ``on_unknown`` semantics are
+    defined — the safe behavior is pinned here so the deferral cannot become
+    a silent trap (2-seat review F1, 2026-07-18).
     """
 
     truth: TruthValue
