@@ -113,16 +113,18 @@ type StoryFinalizeRow = Readonly<{
 type CollectorRunRow = Omit<CollectorRunProjectionV1, "schema_version"> &
   Readonly<{ manifest_hash: string }>;
 
-type AssetRow = Omit<AssetUploadMetadataV2, "schema_version"> &
-  Readonly<{
-    sha256: string;
-    r2_key: string;
-    mime_type: "image/png";
-    byte_count: number;
-    width: number;
-    height: number;
-    status: string;
-  }>;
+type CanonicalAssetRow = Readonly<{
+  sha256: string;
+  r2_key: string;
+  mime_type: "image/png";
+  byte_count: number;
+  width: number;
+  height: number;
+}>;
+
+type AssetSourceRow = Omit<AssetUploadMetadataV2, "schema_version"> &
+  CanonicalAssetRow &
+  Readonly<{ canonical_sha256: string; status: string }>;
 
 const SHA256 = /^[a-f0-9]{64}$/;
 
@@ -288,7 +290,11 @@ function graphGuardStatement(
            WHERE sar.packet_id = publication_packets.packet_id
              AND (
                asset.sha256 IS NULL
-               OR NOT (${assetEligibilitySql("asset")})
+               OR NOT EXISTS (
+                 SELECT 1 FROM asset_sources source
+                 WHERE source.canonical_sha256 = asset.sha256
+                   AND ${assetEligibilitySql("source")}
+               )
                OR NOT EXISTS (
                  SELECT 1 FROM json_each(sv.asset_digests_json) expected
                  WHERE expected.value = sar.asset_sha256
@@ -622,23 +628,47 @@ export function createPublicationRepository(
     }>,
     r2Key: string,
   ): Promise<IngestResult> {
-    const findExisting = () =>
+    const findExistingSource = () =>
       db
         .prepare(
-          `SELECT asset_id, packet_id, sha256, source_sha256,
-                  source_byte_count, source_mime_type, source_width,
-                  source_height, r2_key, mime_type, byte_count,
-                  width, height, captured_at, alt_text, source, source_url,
-                  rights_basis, rights_status, usage_status, dlp_status,
-                  sanitization_status, perceptual_dedup_status, status
-           FROM assets WHERE asset_id = ? OR sha256 = ? OR r2_key = ? LIMIT 1`,
+          `SELECT source.asset_id, source.packet_id, source.canonical_sha256,
+                  source.source_sha256, source.source_byte_count,
+                  source.source_mime_type, source.source_width,
+                  source.source_height, source.captured_at, source.alt_text,
+                  source.source, source.source_url, source.rights_basis,
+                  source.rights_status, source.usage_status, source.dlp_status,
+                  source.sanitization_status, source.perceptual_dedup_status,
+                  source.status, canonical.sha256, canonical.r2_key,
+                  canonical.mime_type, canonical.byte_count, canonical.width,
+                  canonical.height
+           FROM asset_sources source
+           JOIN assets canonical
+             ON canonical.sha256 = source.canonical_sha256
+           WHERE source.asset_id = ? OR source.source_sha256 = ? LIMIT 1`,
         )
-        .bind(asset.asset_id, canonical.sha256, r2Key)
-        .first<AssetRow>();
-    const isReplay = (row: AssetRow | null): boolean =>
+        .bind(asset.asset_id, asset.source_sha256)
+        .first<AssetSourceRow>();
+    const findCanonical = () =>
+      db
+        .prepare(
+          `SELECT sha256, r2_key, mime_type, byte_count, width, height
+           FROM assets WHERE sha256 = ? OR r2_key = ? LIMIT 1`,
+        )
+        .bind(canonical.sha256, r2Key)
+        .first<CanonicalAssetRow>();
+    const canonicalMatches = (row: CanonicalAssetRow | null): boolean =>
+      row !== null &&
+      row.sha256 === canonical.sha256 &&
+      row.r2_key === r2Key &&
+      row.mime_type === canonical.mimeType &&
+      row.byte_count === canonical.byteCount &&
+      row.width === canonical.width &&
+      row.height === canonical.height;
+    const isReplay = (row: AssetSourceRow | null): boolean =>
       row !== null &&
       row.asset_id === asset.asset_id &&
       row.packet_id === asset.packet_id &&
+      row.canonical_sha256 === canonical.sha256 &&
       row.sha256 === canonical.sha256 &&
       row.source_sha256 === asset.source_sha256 &&
       row.source_byte_count === asset.source_byte_count &&
@@ -661,58 +691,91 @@ export function createPublicationRepository(
       row.sanitization_status === asset.sanitization_status &&
       row.perceptual_dedup_status === asset.perceptual_dedup_status &&
       row.status === "verified";
-    const existing = await findExisting();
+    const existing = await findExistingSource();
     if (existing !== null) {
       if (isReplay(existing)) return "replay";
       throw new Error("asset conflict");
     }
+    const existingCanonical = await findCanonical();
+    if (existingCanonical !== null && !canonicalMatches(existingCanonical)) {
+      throw new Error("canonical asset conflict");
+    }
     try {
-      const result = await db
-        .prepare(
-          `INSERT INTO assets(
-             asset_id, packet_id, sha256, source_sha256, source_byte_count,
-             source_mime_type, source_width, source_height, r2_key, mime_type,
-             byte_count, width, height, alt_text, source, source_url, rights_basis,
-             rights_status, usage_status, dlp_status, sanitization_status,
-             perceptual_dedup_status, status, captured_at
-           )
-           SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'verified', ?
-           WHERE (SELECT count(*) FROM assets WHERE packet_id = ?) < 20`,
-        )
-        .bind(
-          asset.asset_id,
-          asset.packet_id,
-          canonical.sha256,
-          asset.source_sha256,
-          asset.source_byte_count,
-          asset.source_mime_type,
-          asset.source_width,
-          asset.source_height,
-          r2Key,
-          canonical.mimeType,
-          canonical.byteCount,
-          canonical.width,
-          canonical.height,
-          asset.alt_text,
-          asset.source,
-          asset.source_url,
-          asset.rights_basis,
-          asset.rights_status,
-          asset.usage_status,
-          asset.dlp_status,
-          asset.sanitization_status,
-          asset.perceptual_dedup_status,
-          asset.captured_at,
-          asset.packet_id,
-        )
-        .run();
-      if (changes(result) === 1) return "created";
+      const [canonicalResult, sourceResult] = await db.batch([
+        db
+          .prepare(
+            `INSERT OR IGNORE INTO assets(
+               sha256, r2_key, mime_type, byte_count, width, height
+             )
+             SELECT ?, ?, ?, ?, ?, ?
+             WHERE (SELECT count(*) FROM asset_sources WHERE packet_id = ?) < 20`,
+          )
+          .bind(
+            canonical.sha256,
+            r2Key,
+            canonical.mimeType,
+            canonical.byteCount,
+            canonical.width,
+            canonical.height,
+            asset.packet_id,
+          ),
+        db
+          .prepare(
+            `INSERT INTO asset_sources(
+               asset_id, packet_id, canonical_sha256, source_sha256,
+               source_byte_count, source_mime_type, source_width,
+               source_height, alt_text, source, source_url, rights_basis,
+               rights_status, usage_status, dlp_status, sanitization_status,
+               perceptual_dedup_status, status, captured_at
+             )
+             SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'verified', ?
+             WHERE (SELECT count(*) FROM asset_sources WHERE packet_id = ?) < 20
+               AND EXISTS (
+                 SELECT 1 FROM assets
+                 WHERE sha256 = ? AND r2_key = ? AND mime_type = ?
+                   AND byte_count = ? AND width = ? AND height = ?
+               )`,
+          )
+          .bind(
+            asset.asset_id,
+            asset.packet_id,
+            canonical.sha256,
+            asset.source_sha256,
+            asset.source_byte_count,
+            asset.source_mime_type,
+            asset.source_width,
+            asset.source_height,
+            asset.alt_text,
+            asset.source,
+            asset.source_url,
+            asset.rights_basis,
+            asset.rights_status,
+            asset.usage_status,
+            asset.dlp_status,
+            asset.sanitization_status,
+            asset.perceptual_dedup_status,
+            asset.captured_at,
+            asset.packet_id,
+            canonical.sha256,
+            r2Key,
+            canonical.mimeType,
+            canonical.byteCount,
+            canonical.width,
+            canonical.height,
+          ),
+      ]);
+      if (
+        (changes(canonicalResult) === 0 || changes(canonicalResult) === 1) &&
+        changes(sourceResult) === 1
+      ) {
+        return "created";
+      }
     } catch (cause) {
-      const winner = await findExisting();
+      const winner = await findExistingSource();
       if (isReplay(winner)) return "replay";
       throw new Error("asset conflict", { cause });
     }
-    const winner = await findExisting();
+    const winner = await findExistingSource();
     if (isReplay(winner)) return "replay";
     throw new Error("asset packet limit conflict");
   }

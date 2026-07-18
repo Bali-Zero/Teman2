@@ -21,9 +21,16 @@ response digest as the publication artifact. They are intentionally different.
    `asset_digests` manifest.
 
 The Worker decodes JPEG, PNG, or WebP with Photon, discards source metadata,
-and deterministically re-encodes a browser-safe PNG. It persists the source
-manifest separately from the canonical byte count, dimensions, MIME, and
-digest. AssetUploadV1 is unsupported.
+and deterministically re-encodes a browser-safe PNG. `assets` contains only the
+canonical digest, R2 key, PNG MIME, byte count, dimensions, and creation time.
+Every immutable upload manifest and its provenance lives in `asset_sources`
+and points to that canonical row. Multiple different source digests may
+therefore converge on one canonical digest without losing either provenance
+record. AssetUploadV1 is unsupported.
+
+R2 is source-neutral too. Its custom metadata contains exactly the canonical
+`sha256`, `mimeType`, `byteCount`, `width`, and `height`; source digest or
+provenance fields must never be written to the object.
 
 ## Replay and conflict rules
 
@@ -32,11 +39,22 @@ digest. AssetUploadV1 is unsupported.
 - An exact replay returns `200` and the same canonical digest.
 - A changed source digest, byte count, MIME, dimensions, provenance field,
   canonical result, asset ID binding, or R2 key is a conflict.
+- Reusing an existing source digest under a different asset ID or changed
+  manifest is a conflict. A different source digest that canonicalizes to an
+  existing canonical digest is a new `201 created` source record.
+- The per-packet limit of 20 counts immutable source upload intents, not
+  canonical objects.
 - Never derive the publication digest locally and never assume it equals the
   source digest.
 - Never upload a pre-existing object over a canonical key. The Worker owns
   canonical storage and rejects inconsistent existing objects without
   overwriting them.
+
+Publication and media reads require at least one currently eligible source
+record for the canonical digest. If one frozen provenance is revoked or
+quarantined while another remains approved, the canonical image remains
+eligible and only the safe provenance may be shown. If all sources become
+unsafe, publication and delivery fail closed.
 
 ## Python response check
 

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   check,
   foreignKey,
+  index,
   integer,
   primaryKey,
   sqliteTable,
@@ -536,19 +537,37 @@ export const breakingEntries = sqliteTable(
 export const assets = sqliteTable(
   "assets",
   {
-    assetId: text("asset_id").primaryKey(),
-    packetId: text("packet_id").notNull(),
-    sha256: text("sha256").notNull().unique(),
-    sourceSha256: text("source_sha256").notNull(),
-    sourceByteCount: integer("source_byte_count").notNull(),
-    sourceMimeType: text("source_mime_type").notNull(),
-    sourceWidth: integer("source_width").notNull(),
-    sourceHeight: integer("source_height").notNull(),
+    sha256: text("sha256").primaryKey(),
     r2Key: text("r2_key").notNull().unique(),
     mimeType: text("mime_type").notNull(),
     byteCount: integer("byte_count").notNull(),
     width: integer("width").notNull(),
     height: integer("height").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    check("assets_hash_check", sha256Check("sha256")),
+    check("assets_mime_check", sql`${table.mimeType} = 'image/png'`),
+    check(
+      "assets_dimensions_check",
+      sql`${table.byteCount} > 0 and ${table.width} > 0 and ${table.height} > 0`,
+    ),
+  ],
+);
+
+export const assetSources = sqliteTable(
+  "asset_sources",
+  {
+    assetId: text("asset_id").primaryKey(),
+    packetId: text("packet_id").notNull(),
+    canonicalSha256: text("canonical_sha256")
+      .notNull()
+      .references(() => assets.sha256),
+    sourceSha256: text("source_sha256").notNull(),
+    sourceByteCount: integer("source_byte_count").notNull(),
+    sourceMimeType: text("source_mime_type").notNull(),
+    sourceWidth: integer("source_width").notNull(),
+    sourceHeight: integer("source_height").notNull(),
     altText: text("alt_text").notNull(),
     source: text("source").notNull(),
     sourceUrl: text("source_url"),
@@ -569,46 +588,43 @@ export const assets = sqliteTable(
     createdAt: createdAt(),
   },
   (table) => [
-    check("assets_hash_check", sha256Check("sha256")),
-    check("assets_source_hash_check", sha256Check("source_sha256")),
+    unique("asset_sources_source_sha256_unique").on(table.sourceSha256),
+    index("asset_sources_canonical_sha256_idx").on(table.canonicalSha256),
+    check("asset_sources_source_hash_check", sha256Check("source_sha256")),
     check(
-      "assets_source_mime_check",
+      "asset_sources_source_mime_check",
       sql`${table.sourceMimeType} in ('image/jpeg', 'image/png', 'image/webp')`,
     ),
     check(
-      "assets_status_check",
+      "asset_sources_status_check",
       sql`${table.status} in ('pending', 'verified', 'quarantined', 'revoked')`,
     ),
     check(
-      "assets_rights_status_check",
+      "asset_sources_rights_status_check",
       sql`${table.rightsStatus} in ('approved', 'denied', 'unknown')`,
     ),
     check(
-      "assets_rights_basis_check",
+      "asset_sources_rights_basis_check",
       sql`${table.rightsBasis} in ('internal-owned', 'licensed', 'public-domain', 'official-use', 'generated', 'unknown')`,
     ),
     check(
-      "assets_usage_status_check",
+      "asset_sources_usage_status_check",
       sql`${table.usageStatus} in ('approved', 'denied', 'unknown')`,
     ),
     check(
-      "assets_dlp_status_check",
+      "asset_sources_dlp_status_check",
       sql`${table.dlpStatus} in ('pending', 'passed', 'failed')`,
     ),
     check(
-      "assets_sanitization_status_check",
+      "asset_sources_sanitization_status_check",
       sql`${table.sanitizationStatus} in ('pending', 'passed', 'failed')`,
     ),
     check(
-      "assets_perceptual_dedup_status_check",
+      "asset_sources_perceptual_dedup_status_check",
       sql`${table.perceptualDedupStatus} in ('unreviewed', 'unique', 'intentional-reuse')`,
     ),
     check(
-      "assets_dimensions_check",
-      sql`${table.width} > 0 and ${table.height} > 0`,
-    ),
-    check(
-      "assets_source_dimensions_check",
+      "asset_sources_source_dimensions_check",
       sql`${table.sourceByteCount} > 0 and ${table.sourceWidth} > 0 and ${table.sourceHeight} > 0`,
     ),
   ],
@@ -658,7 +674,7 @@ export const assetStatusEvents = sqliteTable(
   {
     assetId: text("asset_id")
       .notNull()
-      .references(() => assets.assetId),
+      .references(() => assetSources.assetId),
     statusSeq: integer("status_seq").notNull(),
     status: text("status").notNull(),
     rightsStatus: text("rights_status").notNull(),

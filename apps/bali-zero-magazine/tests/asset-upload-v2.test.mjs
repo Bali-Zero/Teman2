@@ -28,14 +28,19 @@ test("AssetUploadV2 binds source bytes while v1 is explicitly unsupported", asyn
   );
 });
 
-test("Task 6 Python publisher fixture matches the closed AssetUploadV2 contract", async () => {
-  const fixture = JSON.parse(
-    await readFile(
-      new URL("./fixtures/asset-upload-v2.json", import.meta.url),
-      "utf8",
-    ),
-  );
-  assert.deepEqual(parseAssetUploadMetadata(fixture), fixture);
+test("Task 6 Python publisher fixtures match the closed AssetUploadV2 contract", async () => {
+  for (const filename of [
+    "asset-upload-v2.json",
+    "asset-upload-v2-collision-source.json",
+  ]) {
+    const fixture = JSON.parse(
+      await readFile(
+        new URL(`./fixtures/${filename}`, import.meta.url),
+        "utf8",
+      ),
+    );
+    assert.deepEqual(parseAssetUploadMetadata(fixture), fixture);
+  }
 });
 
 test("representative JPEG and PNG metadata is accepted and canonicalized to deterministic PNG", async () => {

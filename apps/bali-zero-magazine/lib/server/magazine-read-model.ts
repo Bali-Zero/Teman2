@@ -267,23 +267,24 @@ async function readApprovedAsset(
   const result = await db
     .prepare(
       `/* magazine:story-assets */
-       SELECT asset.alt_text, asset.source, asset.source_url,
-              asset.rights_basis, asset.usage_status, asset.dlp_status,
-              asset.sanitization_status, asset.perceptual_dedup_status,
-              asset.created_at,
+       SELECT source.alt_text, source.source, source.source_url,
+              source.rights_basis, source.usage_status, source.dlp_status,
+              source.sanitization_status, source.perceptual_dedup_status,
+              source.created_at,
               COALESCE((SELECT status.status
                 FROM asset_status_events status
-                WHERE status.asset_id = asset.asset_id
-                ORDER BY status.status_seq DESC LIMIT 1), asset.status) AS status,
+                WHERE status.asset_id = source.asset_id
+                ORDER BY status.status_seq DESC LIMIT 1), source.status) AS status,
               COALESCE((SELECT rights.rights_status
                 FROM asset_status_events rights
-                WHERE rights.asset_id = asset.asset_id
-                ORDER BY rights.status_seq DESC LIMIT 1), asset.rights_status) AS rights_status
+                WHERE rights.asset_id = source.asset_id
+                ORDER BY rights.status_seq DESC LIMIT 1), source.rights_status) AS rights_status
        FROM story_asset_references reference
        JOIN assets asset ON asset.sha256 = reference.asset_sha256
+       JOIN asset_sources source ON source.canonical_sha256 = asset.sha256
        WHERE reference.story_id = ? AND reference.version = ?
          AND reference.publication_state = 'published'
-       ORDER BY asset.created_at DESC`,
+       ORDER BY source.created_at DESC`,
     )
     .bind(storyId, version)
     .all<AssetRow>();

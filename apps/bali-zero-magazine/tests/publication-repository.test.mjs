@@ -115,7 +115,7 @@ test("publication migration encodes replay, singleton-head, uniqueness, and stat
   }
 });
 
-test("AssetUploadV2 migration preserves legacy assets with an explicit source manifest", () => {
+test("source-neutral migration preserves legacy assets and provenance", () => {
   const sqlite = new DatabaseSync(":memory:");
   for (const filename of [
     "0000_magazine_core.sql",
@@ -161,13 +161,25 @@ test("AssetUploadV2 migration preserves legacy assets with an explicit source ma
       "utf8",
     ).replaceAll("--> statement-breakpoint", ""),
   );
+  sqlite.exec(
+    readFileSync(
+      new URL("../drizzle/0003_pale_nightcrawler.sql", import.meta.url),
+      "utf8",
+    ).replaceAll("--> statement-breakpoint", ""),
+  );
   assert.deepEqual(
     {
       ...sqlite
         .prepare(
-          `SELECT sha256, source_sha256, source_byte_count, source_mime_type,
-                  source_width, source_height, byte_count, mime_type, width, height
-           FROM assets WHERE asset_id = 'legacy-asset'`,
+          `SELECT canonical.sha256, source.source_sha256,
+                  source.source_byte_count, source.source_mime_type,
+                  source.source_width, source.source_height,
+                  canonical.byte_count, canonical.mime_type,
+                  canonical.width, canonical.height
+           FROM asset_sources source
+           JOIN assets canonical
+             ON canonical.sha256 = source.canonical_sha256
+           WHERE source.asset_id = 'legacy-asset'`,
         )
         .get(),
     },
@@ -184,6 +196,7 @@ test("AssetUploadV2 migration preserves legacy assets with an explicit source ma
       height: 800,
     },
   );
+  assert.deepEqual(sqlite.prepare("PRAGMA foreign_key_check").all(), []);
   sqlite.close();
 });
 
@@ -397,23 +410,28 @@ function edition(overrides = {}) {
 
 function seedAsset(db, { assetId = "asset-1", digest = HASH_A } = {}) {
   db.execute(
-    `INSERT INTO assets(
-       asset_id, packet_id, sha256, source_sha256, source_byte_count,
-       source_mime_type, source_width, source_height, r2_key, mime_type, byte_count, width,
-       height, alt_text, source, rights_basis, rights_status, usage_status,
+    `INSERT INTO assets(sha256, r2_key, mime_type, byte_count, width, height)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    digest,
+    `assets/sha256/${digest}.png`,
+    "image/png",
+    1024,
+    1200,
+    800,
+  );
+  db.execute(
+    `INSERT INTO asset_sources(
+       asset_id, packet_id, canonical_sha256, source_sha256,
+       source_byte_count, source_mime_type, source_width, source_height,
+       alt_text, source, rights_basis, rights_status, usage_status,
        dlp_status, sanitization_status, perceptual_dedup_status, status
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     assetId,
     "asset-packet-1",
     digest,
     digest,
     1024,
-    "image/webp",
-    1200,
-    800,
-    `assets/sha256/${digest}.webp`,
-    "image/webp",
-    1024,
+    "image/png",
     1200,
     800,
     "Editorial image",
@@ -1027,6 +1045,50 @@ for (const overlay of [
     ]);
   });
 }
+
+test("publication accepts a canonical asset when another frozen source remains safe", async () => {
+  const db = new SqliteD1Database();
+  seedHeadsAndAsset(db, { breakingRevision: 4 });
+  seedStoryHead(db);
+  db.execute(
+    `INSERT INTO asset_sources(
+       asset_id, packet_id, canonical_sha256, source_sha256,
+       source_byte_count, source_mime_type, source_width, source_height,
+       alt_text, source, rights_basis, rights_status, usage_status,
+       dlp_status, sanitization_status, perceptual_dedup_status, status
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    "asset-2",
+    "asset-packet-1",
+    HASH_A,
+    "b".repeat(64),
+    1024,
+    "image/png",
+    1200,
+    800,
+    "Second safe source",
+    "licensed editorial",
+    "licensed",
+    "approved",
+    "approved",
+    "passed",
+    "passed",
+    "unique",
+    "verified",
+  );
+  appendAssetStatusEvent(db, {
+    seq: 1,
+    status: "revoked",
+    rightsStatus: "denied",
+  });
+  const repository = await loadRepository(db);
+  const packet = breaking();
+  await repository.stageBreaking(packet, HASH_A);
+
+  assert.equal(
+    await repository.finalizeBreaking(packet.packet_id),
+    "published",
+  );
+});
 
 test("edition finalization evaluates only the latest visibility and asset overlays", async () => {
   const db = new SqliteD1Database();

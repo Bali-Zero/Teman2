@@ -368,7 +368,6 @@ export async function canonicalizeImageAsset(
 
 type StoredAssetDescriptor = Readonly<{
   sha256: string;
-  sourceSha256: string;
   byteCount: number;
   mimeType: "image/png";
   width: number;
@@ -380,7 +379,7 @@ function expectedMetadata(
 ): Readonly<Record<string, string>> {
   return {
     sha256: asset.sha256,
-    sourceSha256: asset.sourceSha256,
+    mimeType: asset.mimeType,
     byteCount: String(asset.byteCount),
     width: String(asset.width),
     height: String(asset.height),
@@ -423,13 +422,11 @@ async function verifiedObjectBytes(
 
 export async function storeVerifiedAsset(
   bucket: R2BucketLike,
-  metadata: AssetUploadMetadataV2,
   image: CanonicalImage,
 ): Promise<string> {
   const key = `assets/sha256/${image.sha256}.${image.extension}`;
   const descriptor: StoredAssetDescriptor = {
     sha256: image.sha256,
-    sourceSha256: metadata.source_sha256,
     byteCount: image.byteCount,
     mimeType: image.mimeType,
     width: image.width,
@@ -454,25 +451,12 @@ export async function storeVerifiedAsset(
 }
 
 type EligibleAssetRow = Readonly<{
-  asset_id: string;
-  packet_id: string;
   sha256: string;
-  source_sha256: string;
   r2_key: string;
   mime_type: "image/png";
   byte_count: number;
   width: number;
   height: number;
-  captured_at: string;
-  alt_text: string;
-  source: string;
-  source_url: string | null;
-  rights_basis: AssetUploadMetadataV2["rights_basis"];
-  rights_status: "approved";
-  usage_status: "approved";
-  dlp_status: "passed";
-  sanitization_status: "passed";
-  perceptual_dedup_status: AssetUploadMetadataV2["perceptual_dedup_status"];
 }>;
 
 export async function resolvePublishedMedia(
@@ -483,12 +467,8 @@ export async function resolvePublishedMedia(
   if (!SHA256.test(digest)) return null;
   const row = await db
     .prepare(
-      `SELECT a.asset_id, a.packet_id, a.sha256, a.source_sha256,
-              a.r2_key, a.mime_type,
-              a.byte_count, a.width, a.height, a.captured_at, a.alt_text,
-              a.source, a.source_url, a.rights_basis, a.rights_status,
-              a.usage_status, a.dlp_status, a.sanitization_status,
-              a.perceptual_dedup_status
+      `SELECT a.sha256, a.r2_key, a.mime_type,
+              a.byte_count, a.width, a.height
        FROM assets a
        JOIN story_asset_references sar ON sar.asset_sha256 = a.sha256
        JOIN story_versions sv
@@ -498,7 +478,11 @@ export async function resolvePublishedMedia(
        WHERE a.sha256 = ?
          AND sar.publication_state = 'published'
          AND sv.publication_state = 'published'
-         AND ${assetEligibilitySql("a")}
+         AND EXISTS (
+           SELECT 1 FROM asset_sources source
+           WHERE source.canonical_sha256 = a.sha256
+             AND ${assetEligibilitySql("source")}
+         )
          AND NOT EXISTS (
            SELECT 1 FROM story_visibility_events visibility
            WHERE visibility.story_id = sv.story_id
@@ -521,7 +505,6 @@ export async function resolvePublishedMedia(
   try {
     const bytes = await verifiedObjectBytes(bucket, row.r2_key, {
       sha256: row.sha256,
-      sourceSha256: row.source_sha256,
       byteCount: row.byte_count,
       mimeType: row.mime_type,
       width: row.width,

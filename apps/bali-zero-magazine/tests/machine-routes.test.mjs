@@ -15,6 +15,8 @@ import {
   MALFORMED_JPEG,
   MALFORMED_PNG,
   MALFORMED_WEBP,
+  JPEG_WITH_ICC,
+  JPEG_WITH_XMP,
   SqliteD1Database,
   VALID_JPEG,
   VALID_PNG,
@@ -366,7 +368,10 @@ test(
     assert.equal(createdResult.source_sha256, metadata.source_sha256);
     assert.equal(createdResult.canonical_mime_type, "image/png");
     const row = db.get(
-      "SELECT * FROM assets WHERE asset_id = ?",
+      `SELECT canonical.*, source.*
+       FROM asset_sources source JOIN assets canonical
+         ON canonical.sha256 = source.canonical_sha256
+       WHERE source.asset_id = ?`,
       metadata.asset_id,
     );
     assert.equal(row.status, "verified");
@@ -385,6 +390,16 @@ test(
       metadata,
     });
     assert.equal((await invoke(routes.asset, replay, bindings)).status, 200);
+    const conflictingManifest = await signedMachineRequest({
+      path: "/api/machine/assets",
+      body: VALID_PNG,
+      contentType: "image/png",
+      metadata: { ...metadata, alt_text: "Changed immutable provenance" },
+    });
+    assert.equal(
+      (await invoke(routes.asset, conflictingManifest, bindings)).status,
+      409,
+    );
 
     const story = storyVersion({
       suffix: "asset-provenance",
@@ -413,6 +428,86 @@ test(
       perceptualDedupStatus: metadata.perceptual_dedup_status,
       createdAt: row.created_at,
     });
+  },
+);
+
+test(
+  "distinct source manifests converge on one canonical object without losing provenance",
+  { skip: !routesExist },
+  async () => {
+    const routes = await loadRoutes();
+    for (const concurrent of [false, true]) {
+      const db = new SqliteD1Database();
+      const media = new MemoryR2Bucket();
+      const bindings = runtimeBindings(db, media);
+      const sources = [JPEG_WITH_XMP, JPEG_WITH_ICC];
+      const metadata = await Promise.all(
+        sources.map((bytes, index) =>
+          validAssetMetadata(
+            {
+              asset_id: `collision-${concurrent ? "concurrent" : "sequential"}-${index}`,
+              source: `Provenance source ${index}`,
+              mime_type: "image/jpeg",
+            },
+            bytes,
+          ),
+        ),
+      );
+      const requests = await Promise.all(
+        sources.map((body, index) =>
+          signedMachineRequest({
+            path: "/api/machine/assets",
+            body,
+            contentType: "image/jpeg",
+            metadata: metadata[index],
+          }),
+        ),
+      );
+      const responses = concurrent
+        ? await Promise.all(
+            requests.map((request) => invoke(routes.asset, request, bindings)),
+          )
+        : [
+            await invoke(routes.asset, requests[0], bindings),
+            await invoke(routes.asset, requests[1], bindings),
+          ];
+      assert.deepEqual(
+        responses.map((response) => response.status),
+        [201, 201],
+      );
+      const canonicalDigests = await Promise.all(
+        responses.map(
+          async (response) => (await response.json()).canonical_sha256,
+        ),
+      );
+      assert.equal(canonicalDigests[0], canonicalDigests[1]);
+      assert.equal(db.get("SELECT count(*) AS count FROM assets").count, 1);
+      assert.equal(
+        db.get("SELECT count(*) AS count FROM asset_sources").count,
+        2,
+      );
+      assert.deepEqual(
+        db.sqlite
+          .prepare(
+            `SELECT source_sha256, source
+             FROM asset_sources ORDER BY asset_id`,
+          )
+          .all()
+          .map((row) => row.source_sha256)
+          .sort(),
+        metadata.map((item) => item.source_sha256).sort(),
+      );
+      assert.equal(media.objects.size, 1);
+      assert.equal(media.putCalls.length, 1);
+      const [stored] = media.objects.values();
+      assert.deepEqual(Object.keys(stored.customMetadata).sort(), [
+        "byteCount",
+        "height",
+        "mimeType",
+        "sha256",
+        "width",
+      ]);
+    }
   },
 );
 
@@ -561,7 +656,7 @@ test(
       httpMetadata: { contentType: canonical.mimeType },
       customMetadata: {
         sha256: canonical.sha256,
-        sourceSha256: metadata.source_sha256,
+        mimeType: canonical.mimeType,
         byteCount: String(canonical.byteCount),
         width: String(canonical.width),
         height: String(canonical.height),
@@ -593,7 +688,7 @@ test(
       httpMetadata: { contentType: canonical.mimeType },
       customMetadata: {
         sha256: canonical.sha256,
-        sourceSha256: metadata.source_sha256,
+        mimeType: canonical.mimeType,
         byteCount: String(canonical.byteCount),
         width: String(canonical.width),
         height: String(canonical.height),
@@ -780,24 +875,29 @@ test(
   async () => {
     const db = new SqliteD1Database();
     for (let index = 0; index < 19; index += 1) {
+      const digest = index.toString(16).padStart(64, "0");
       db.execute(
-        `INSERT INTO assets(
-           asset_id, packet_id, sha256, source_sha256, source_byte_count,
-           source_mime_type, source_width, source_height, r2_key, mime_type,
-           byte_count, width, height, alt_text, source, rights_status, status,
-           captured_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO assets(sha256, r2_key, mime_type, byte_count, width, height)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        digest,
+        `assets/sha256/${digest}.png`,
+        "image/png",
+        1,
+        1,
+        1,
+      );
+      db.execute(
+        `INSERT INTO asset_sources(
+           asset_id, packet_id, canonical_sha256, source_sha256,
+           source_byte_count, source_mime_type, source_width, source_height,
+           alt_text, source, rights_status, status, captured_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         `seed-${index}`,
         "asset-packet-task-5",
-        index.toString(16).padStart(64, "0"),
-        index.toString(16).padStart(64, "0"),
+        digest,
+        digest,
         1,
         "image/png",
-        1,
-        1,
-        `assets/sha256/${index.toString(16).padStart(64, "0")}.png`,
-        "image/png",
-        1,
         1,
         1,
         "",
@@ -841,7 +941,7 @@ test(
     );
     assert.equal(
       db.get(
-        "SELECT count(*) AS count FROM assets WHERE packet_id = ?",
+        "SELECT count(*) AS count FROM asset_sources WHERE packet_id = ?",
         "asset-packet-task-5",
       ).count,
       20,

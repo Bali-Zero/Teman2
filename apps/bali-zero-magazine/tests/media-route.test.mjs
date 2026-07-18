@@ -35,6 +35,7 @@ async function loadRoute() {
 async function publishVisibleAsset({
   status = "verified",
   rightsStatus = "approved",
+  secondApprovedSource = false,
 } = {}) {
   const db = new SqliteD1Database();
   const media = new MemoryR2Bucket();
@@ -44,20 +45,30 @@ async function publishVisibleAsset({
     httpMetadata: { contentType: "image/png" },
     customMetadata: {
       sha256: metadata.sha256,
-      sourceSha256: metadata.source_sha256,
+      mimeType: "image/png",
       byteCount: String(metadata.byte_count),
       width: String(metadata.width),
       height: String(metadata.height),
     },
   });
   db.execute(
-    `INSERT INTO assets(
-       asset_id, packet_id, sha256, source_sha256, source_byte_count,
-       source_mime_type, source_width, source_height, r2_key, mime_type, byte_count, width,
-       height, alt_text, source, source_url, rights_basis, rights_status,
+    `INSERT INTO assets(sha256, r2_key, mime_type, byte_count, width, height)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    metadata.sha256,
+    key,
+    "image/png",
+    metadata.byte_count,
+    metadata.width,
+    metadata.height,
+  );
+  db.execute(
+    `INSERT INTO asset_sources(
+       asset_id, packet_id, canonical_sha256, source_sha256,
+       source_byte_count, source_mime_type, source_width, source_height,
+       alt_text, source, source_url, rights_basis, rights_status,
        usage_status, dlp_status, sanitization_status, perceptual_dedup_status,
        status, captured_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     metadata.asset_id,
     metadata.packet_id,
     metadata.sha256,
@@ -66,11 +77,6 @@ async function publishVisibleAsset({
     metadata.source_mime_type,
     metadata.source_width,
     metadata.source_height,
-    key,
-    metadata.mime_type,
-    metadata.byte_count,
-    metadata.width,
-    metadata.height,
     "Task 5 editorial image",
     "Bali Zero editorial desk",
     metadata.source_url,
@@ -83,6 +89,36 @@ async function publishVisibleAsset({
     status,
     metadata.captured_at,
   );
+  const secondAssetId = `${metadata.asset_id}-second-source`;
+  if (secondApprovedSource) {
+    db.execute(
+      `INSERT INTO asset_sources(
+         asset_id, packet_id, canonical_sha256, source_sha256,
+         source_byte_count, source_mime_type, source_width, source_height,
+         alt_text, source, rights_basis, rights_status, usage_status,
+         dlp_status, sanitization_status, perceptual_dedup_status, status,
+         captured_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      secondAssetId,
+      metadata.packet_id,
+      metadata.sha256,
+      "b".repeat(64),
+      metadata.source_byte_count,
+      metadata.source_mime_type,
+      metadata.source_width,
+      metadata.source_height,
+      "Second approved editorial source",
+      "Independent approved provenance",
+      metadata.rights_basis,
+      "approved",
+      "approved",
+      "passed",
+      "passed",
+      "unique",
+      "verified",
+      metadata.captured_at,
+    );
+  }
   const story = storyVersion({ assetDigest: metadata.sha256 });
   const repository = createPublicationRepository(db, {
     now: () => "2026-07-18T01:30:00.000Z",
@@ -91,7 +127,7 @@ async function publishVisibleAsset({
   const bodyHash = "f".repeat(64);
   await repository.stageBreaking(packet, bodyHash);
   await repository.finalizeBreaking(packet.packet_id);
-  return { db, media, metadata, story };
+  return { db, media, metadata, secondAssetId, story };
 }
 
 async function getMedia(handler, digest, bindings, authenticated = true) {
@@ -243,6 +279,52 @@ test(
 );
 
 test(
+  "canonical media remains eligible while any frozen source provenance is safe",
+  { skip: !routeExists },
+  async () => {
+    const handler = await loadRoute();
+    const fixture = await publishVisibleAsset({ secondApprovedSource: true });
+    const bindings = runtimeBindings(fixture.db, fixture.media);
+    fixture.db.execute(
+      `INSERT INTO asset_status_events(
+         asset_id, status_seq, status, rights_status, reason_code
+       ) VALUES (?, ?, ?, ?, ?)`,
+      fixture.metadata.asset_id,
+      1,
+      "revoked",
+      "denied",
+      "first-source-revoked",
+    );
+    assert.equal(
+      (await getMedia(handler, fixture.metadata.sha256, bindings)).status,
+      200,
+    );
+    const detail = await runWithMagazineBindings(bindings, () =>
+      readStoryDetail(fixture.story.slug),
+    );
+    assert.equal(
+      detail?.imageProvenance?.source,
+      "Independent approved provenance",
+    );
+
+    fixture.db.execute(
+      `INSERT INTO asset_status_events(
+         asset_id, status_seq, status, rights_status, reason_code
+       ) VALUES (?, ?, ?, ?, ?)`,
+      fixture.secondAssetId,
+      1,
+      "quarantined",
+      "approved",
+      "second-source-quarantined",
+    );
+    assert.equal(
+      (await getMedia(handler, fixture.metadata.sha256, bindings)).status,
+      404,
+    );
+  },
+);
+
+test(
   "media route fails closed on unverified assets and R2 metadata or digest drift",
   { skip: !routeExists },
   async () => {
@@ -250,7 +332,7 @@ test(
     const fixture = await publishVisibleAsset();
     const bindings = runtimeBindings(fixture.db, fixture.media);
     fixture.db.execute(
-      "UPDATE assets SET status = 'pending' WHERE asset_id = ?",
+      "UPDATE asset_sources SET status = 'pending' WHERE asset_id = ?",
       fixture.metadata.asset_id,
     );
     assert.equal(
@@ -259,7 +341,7 @@ test(
     );
 
     fixture.db.execute(
-      "UPDATE assets SET status = 'verified' WHERE asset_id = ?",
+      "UPDATE asset_sources SET status = 'verified' WHERE asset_id = ?",
       fixture.metadata.asset_id,
     );
     const stored = fixture.media.objects.get(
@@ -279,9 +361,9 @@ test(
       fixture.media.objects.get(canonicalKey),
     );
     fixture.db.execute(
-      "UPDATE assets SET r2_key = ? WHERE asset_id = ?",
+      "UPDATE assets SET r2_key = ? WHERE sha256 = ?",
       driftedKey,
-      fixture.metadata.asset_id,
+      fixture.metadata.sha256,
     );
     assert.equal(
       (await getMedia(handler, fixture.metadata.sha256, bindings)).status,
@@ -289,9 +371,9 @@ test(
     );
 
     fixture.db.execute(
-      "UPDATE assets SET r2_key = ? WHERE asset_id = ?",
+      "UPDATE assets SET r2_key = ? WHERE sha256 = ?",
       canonicalKey,
-      fixture.metadata.asset_id,
+      fixture.metadata.sha256,
     );
     fixture.media.corruptReadBack = true;
     assert.equal(
@@ -321,7 +403,7 @@ test(
       const fixture = await publishVisibleAsset();
       const bindings = runtimeBindings(fixture.db, fixture.media);
       fixture.db.execute(
-        `UPDATE assets SET ${column} = ? WHERE asset_id = ?`,
+        `UPDATE asset_sources SET ${column} = ? WHERE asset_id = ?`,
         unsafeValue,
         fixture.metadata.asset_id,
       );
@@ -351,18 +433,28 @@ test(
       httpMetadata: { contentType: "image/png" },
       customMetadata: {
         sha256: metadata.sha256,
-        sourceSha256: metadata.source_sha256,
+        mimeType: "image/png",
         byteCount: String(metadata.byte_count),
         width: "1",
         height: "1",
       },
     });
     db.execute(
-      `INSERT INTO assets(
-         asset_id, packet_id, sha256, source_sha256, source_byte_count,
-         source_mime_type, source_width, source_height, r2_key, mime_type,
-         byte_count, width, height, alt_text, source, rights_status, status, captured_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO assets(sha256, r2_key, mime_type, byte_count, width, height)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      metadata.sha256,
+      `assets/sha256/${metadata.sha256}.png`,
+      "image/png",
+      metadata.byte_count,
+      1,
+      1,
+    );
+    db.execute(
+      `INSERT INTO asset_sources(
+         asset_id, packet_id, canonical_sha256, source_sha256,
+         source_byte_count, source_mime_type, source_width, source_height,
+         alt_text, source, rights_status, status, captured_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       metadata.asset_id,
       metadata.packet_id,
       metadata.sha256,
@@ -371,11 +463,6 @@ test(
       metadata.source_mime_type,
       metadata.source_width,
       metadata.source_height,
-      `assets/sha256/${metadata.sha256}.png`,
-      "image/png",
-      metadata.byte_count,
-      1,
-      1,
       "",
       "",
       "approved",

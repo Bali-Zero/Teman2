@@ -37,7 +37,7 @@ export async function POST(request: Request): Promise<Response> {
     const bindings = getMagazineBindings();
     if (bindings.DB === undefined || bindings.MEDIA === undefined)
       return machineFailure(409);
-    const key = await storeVerifiedAsset(bindings.MEDIA, metadata, image);
+    const key = await storeVerifiedAsset(bindings.MEDIA, image);
     const result = await createPublicationRepository(
       bindings.DB,
     ).ingestVerifiedAsset(metadata, image, key);
