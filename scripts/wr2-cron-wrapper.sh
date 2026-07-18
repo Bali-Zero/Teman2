@@ -32,6 +32,19 @@ fi
 MODULE="$1"
 shift
 
+# G5_kill_switch (organ-conformance gene) — operator stop without uninstall.
+# Global: WR2_CRON_ENABLED=false stops every wr2-wrapped organ. Per-organ:
+# set <MODULE_TAIL>_ENABLED=false in the plist EnvironmentVariables, where
+# MODULE_TAIL is the last dotted segment uppercased (backend.scripts.
+# cost_advisor_cli -> COST_ADVISOR_CLI_ENABLED). Default-true: no-op unless
+# the operator sets it. Exit 0 so launchd/missed-runs read a deliberate
+# stop, not a death.
+ORGAN_VAR="$(printf '%s' "${MODULE##*.}" | tr '[:lower:]-' '[:upper:]_')_ENABLED"
+if [[ "${WR2_CRON_ENABLED:-true}" == "false" || "${!ORGAN_VAR:-true}" == "false" ]]; then
+    echo "[wr2-wrapper] kill switch (${ORGAN_VAR}=false or WR2_CRON_ENABLED=false) — deliberate stop, exit 0"
+    exit 0
+fi
+
 REPO_ROOT="${NUZANTARA_REPO_ROOT:-$HOME/nuzantara}"
 SECRETS_FILE="${NUZANTARA_SECRETS:-$HOME/.nuzantara-secrets.env}"
 LOG_DIR="${WR2_LOG_DIR:-$HOME/.openclaw/workspace/logs/war-room-v2}"
