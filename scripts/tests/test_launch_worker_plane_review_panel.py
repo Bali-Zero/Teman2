@@ -1,0 +1,1038 @@
+from __future__ import annotations
+
+import hashlib
+import importlib.util
+import json
+import os
+import shutil
+import stat
+import subprocess
+import sys
+import textwrap
+import threading
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+MODULE_PATH = REPO_ROOT / "scripts" / "launch_worker_plane_review_panel.py"
+SPEC = importlib.util.spec_from_file_location(
+    "launch_worker_plane_review_panel", MODULE_PATH
+)
+assert SPEC is not None and SPEC.loader is not None
+launcher = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = launcher
+SPEC.loader.exec_module(launcher)
+
+FREEZER_SPEC = importlib.util.spec_from_file_location(
+    "freeze_worker_plane_review",
+    REPO_ROOT / "scripts" / "freeze_worker_plane_review.py",
+)
+assert FREEZER_SPEC is not None and FREEZER_SPEC.loader is not None
+freezer = importlib.util.module_from_spec(FREEZER_SPEC)
+sys.modules[FREEZER_SPEC.name] = freezer
+FREEZER_SPEC.loader.exec_module(freezer)
+
+
+def _sha256(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _git_blob_oid(payload: bytes) -> str:
+    framed = f"blob {len(payload)}\0".encode("ascii") + payload
+    return hashlib.sha1(framed, usedforsecurity=False).hexdigest()
+
+
+def _frozen_review(
+    tmp_path: Path,
+    *,
+    launcher_sha256: str | None = None,
+    launcher_git_blob_oid: str | None = None,
+) -> tuple[Path, bytes, bytes, bytes]:
+    documents = (
+        ("covered", "covered.bin", b"covered\x00bytes\n\n"),
+        ("instructions", "00-review-brief.md", b"review exactly these bytes\n"),
+    )
+    entries = [
+        {
+            "git_blob_oid": _git_blob_oid(content),
+            "path": path,
+            "role": role,
+            "sha256": _sha256(content),
+            "size": len(content),
+        }
+        for role, path, content in documents
+    ]
+    manifest = {"entries": entries}
+    manifest_bytes = freezer.canonical_json_bytes(manifest)
+    packet_parts = [
+        freezer.PACKET_MAGIC,
+        f"MANIFEST {len(manifest_bytes)}\n".encode("ascii"),
+        manifest_bytes,
+    ]
+    for role, path, content in documents:
+        role_bytes = role.encode("utf-8")
+        path_bytes = path.encode("utf-8")
+        packet_parts.extend(
+            [
+                f"ENTRY {len(role_bytes)} {len(path_bytes)} {len(content)}\n".encode(
+                    "ascii"
+                ),
+                role_bytes,
+                path_bytes,
+                content,
+            ]
+        )
+    packet_parts.append(freezer.PACKET_END)
+    packet_bytes = b"".join(packet_parts)
+    parsed = freezer.parse_packet(packet_bytes)
+
+    review_dir = tmp_path / "external" / "sha256" / parsed.packet_sha256
+    review_dir.mkdir(parents=True)
+    packet_path = review_dir / "packet.bin"
+    manifest_path = review_dir / "input-manifest.json"
+    config_path = review_dir / "glm-5.2-v1.json"
+    receipt_path = review_dir / "freeze-receipt.json"
+    packet_path.write_bytes(packet_bytes)
+    manifest_path.write_bytes(manifest_bytes)
+    config_path.write_bytes(freezer.EXPECTED_GLM_ROUTE_CONFIG)
+    packet_stat = packet_path.stat()
+    launcher_bytes = MODULE_PATH.read_bytes()
+    route_config_sha256 = _sha256(freezer.EXPECTED_GLM_ROUTE_CONFIG)
+    receipt = {
+        "base_commit": "1" * 40,
+        "built_at_utc": "2026-07-18T00:00:00+00:00",
+        "generator_git_blob_oid": "2" * 40,
+        "generator_path": "scripts/freeze_worker_plane_review.py",
+        "generator_sha256": "3" * 64,
+        "generator_version": "1.0.0",
+        "git_object_validation": "pass",
+        "input_manifest_sha256": parsed.manifest_sha256,
+        "launcher_git_blob_oid": (
+            launcher_git_blob_oid or _git_blob_oid(launcher_bytes)
+        ),
+        "launcher_path": "scripts/launch_worker_plane_review_panel.py",
+        "launcher_sha256": launcher_sha256 or _sha256(launcher_bytes),
+        "packet_bytes": len(packet_bytes),
+        "packet_device": packet_stat.st_dev,
+        "packet_inode": packet_stat.st_ino,
+        "packet_sha256": parsed.packet_sha256,
+        "route_config_git_blob_oid": _git_blob_oid(freezer.EXPECTED_GLM_ROUTE_CONFIG),
+        "route_config_path": "scripts/review_routes/glm-5.2-v1.json",
+        "route_config_sha256": route_config_sha256,
+        "schema": "nuzantara.worker-plane-review-freeze-receipt/v1",
+        "source_head": "4" * 40,
+        "source_tree": "5" * 40,
+        "tracked_status_sha256": _sha256(b""),
+        "upstream_commit": "6" * 40,
+        "validator_git_blob_oid": "7" * 40,
+        "validator_path": "scripts/check_worker_plane_review.py",
+        "validator_sha256": "8" * 64,
+    }
+    receipt_bytes = freezer.canonical_json_bytes(receipt) + b"\n"
+    receipt_path.write_bytes(receipt_bytes)
+    for path in (packet_path, manifest_path, config_path, receipt_path):
+        path.chmod(0o444)
+    review_dir.chmod(0o555)
+    return review_dir, packet_bytes, manifest_bytes, receipt_bytes
+
+
+def _write_executable(path: Path, source: str) -> Path:
+    path.write_text(textwrap.dedent(source).lstrip(), encoding="utf-8")
+    path.chmod(0o755)
+    return path.resolve()
+
+
+def _fake_clients(
+    tmp_path: Path,
+    output_dir: Path,
+    *,
+    agy_version: str = "1.1.3",
+    fail_model: str | None = None,
+    fail_once_model: str | None = None,
+    emit_claude_metadata: bool = False,
+    mutate_packet: Path | None = None,
+    review_body: str | None = None,
+) -> Any:
+    sync_dir = tmp_path / "sync"
+    sync_dir.mkdir()
+    common = f"""
+        #!{sys.executable}
+        import hashlib
+        import json
+        import os
+        import pathlib
+        import stat
+        import sys
+        import time
+
+        argv = sys.argv[1:]
+        if '--version' in argv:
+            print(VERSION)
+            raise SystemExit(0)
+        if '--model' in argv:
+            seat = argv[argv.index('--model') + 1]
+        else:
+            seat = 'gemini'
+        data = sys.stdin.buffer.read()
+        sync_dir = pathlib.Path({str(sync_dir)!r})
+        (sync_dir / seat.replace('/', '_').replace(' ', '_')).write_text('ready')
+        deadline = time.monotonic() + 5
+        while len(list(sync_dir.iterdir())) < 3 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        visible = sorted(
+            path.name for path in pathlib.Path({str(output_dir)!r}).glob('*')
+            if '.raw.' in path.name or path.name.endswith('.invocation.json')
+        )
+        cwd = pathlib.Path.cwd()
+        payload = {{
+            'argv': argv,
+            'cwd': str(cwd),
+            'cwd_entries': sorted(path.name for path in cwd.iterdir()),
+            'cwd_mode': stat.S_IMODE(cwd.stat().st_mode),
+            'input_hex': data.hex(),
+            'visible_outputs': visible,
+            'anthropic_api_key_present': 'ANTHROPIC_API_KEY' in os.environ,
+            'claude_oauth_present': 'CLAUDE_CODE_OAUTH_TOKEN' in os.environ,
+            'unrelated_secret_present': 'UNRELATED_SECRET' in os.environ,
+            'glm_token_ok': os.environ.get('ANTHROPIC_AUTH_TOKEN') == 'ephemeral-test-token',
+            'glm_route': {{
+                key: os.environ.get(key)
+                for key in (
+                    'API_TIMEOUT_MS', 'ANTHROPIC_BASE_URL',
+                    'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+                    'ANTHROPIC_DEFAULT_OPUS_MODEL',
+                    'ANTHROPIC_DEFAULT_SONNET_MODEL',
+                )
+            }},
+        }}
+        if {emit_claude_metadata!r} and seat != 'Gemini 3.1 Pro (High)':
+            payload['session_id'] = 'session-' + seat
+            payload['modelUsage'] = {{seat: {{'inputTokens': 1}}}}
+        review_body = {review_body!r}
+        if seat == 'Gemini 3.1 Pro (High)' and review_body is not None:
+            output = review_body.encode('utf-8')
+        else:
+            payload['result'] = review_body or ('review-body-' + seat)
+            output = json.dumps(
+                payload,
+                ensure_ascii=False,
+                sort_keys=True,
+            ).encode('utf-8')
+        sys.stdout.buffer.write(output)
+        sys.stderr.buffer.write(('stderr-' + seat + '\\n').encode())
+        if {fail_model!r} == seat:
+            raise SystemExit(7)
+        fail_once_marker = sync_dir / ('failed-once-' + seat.replace('/', '_').replace(' ', '_'))
+        if {fail_once_model!r} == seat and not fail_once_marker.exists():
+            fail_once_marker.write_text('failed')
+            raise SystemExit(7)
+    """
+    common_source = textwrap.dedent(common).lstrip()
+    shebang, body = common_source.split("\n", 1)
+    claude = _write_executable(
+        tmp_path / "fake-claude",
+        f"{shebang}\nVERSION = '2.0.0'\n{body}",
+    )
+    agy = _write_executable(
+        tmp_path / "fake-agy",
+        f"{shebang}\nVERSION = {agy_version!r}\n{body}",
+    )
+    mutation = ""
+    if mutate_packet is not None:
+        mutation = f"path = pathlib.Path({str(mutate_packet)!r}); path.chmod(0o644); path.write_bytes(path.read_bytes()[:-1] + b'X')\n"
+    security = _write_executable(
+        tmp_path / "fake-security",
+        f"""#!{sys.executable}
+import pathlib
+import sys
+{mutation}sys.stdout.write('ephemeral-test-token\\n')
+""",
+    )
+    return launcher.ClientPaths(claude=claude, gemini=agy, security=security)
+
+
+def _raw_payload(path: Path) -> tuple[dict[str, Any], bytes]:
+    raw = path.read_bytes()
+    return json.loads(raw), raw
+
+
+def _launch_test_panel(**kwargs: Any) -> Any:
+    """Run script-based fixtures only through the explicit non-production seam."""
+    return launcher.launch_panel(
+        **kwargs,
+        command_runner=launcher._run_test_path_command,
+    )
+
+
+def test_launch_panel_uses_one_buffer_concurrent_isolated_clients_and_receipts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    frozen_review, packet_bytes, manifest_bytes, receipt_bytes = _frozen_review(
+        tmp_path
+    )
+    output_dir = tmp_path / "reviews"
+    output_dir.mkdir()
+    (output_dir / "00-review-brief.md").write_text("excluded input already committed\n")
+    clients = _fake_clients(tmp_path, output_dir)
+
+    packet_path = frozen_review / "packet.bin"
+    packet_open_count = 0
+    real_open = launcher.os.open
+    calls: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+    executable_sandbox_observations: list[tuple[int, tuple[str, ...]]] = []
+    calls_lock = threading.Lock()
+    real_run = launcher.subprocess.run
+
+    def tracking_open(path: Any, flags: int, *args: Any, **kwargs: Any) -> int:
+        nonlocal packet_open_count
+        if Path(path) == packet_path and flags & os.O_RDONLY == os.O_RDONLY:
+            packet_open_count += 1
+        return real_open(path, flags, *args, **kwargs)
+
+    def tracking_run(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        with calls_lock:
+            calls.append((args, dict(kwargs)))
+            execution_path = Path(kwargs["executable"])
+            if execution_path.parent.name.startswith(
+                "worker-plane-review-executables."
+            ):
+                executable_sandbox_observations.append(
+                    (
+                        stat.S_IMODE(execution_path.parent.stat().st_mode),
+                        tuple(
+                            sorted(
+                                child.name
+                                for child in execution_path.parent.iterdir()
+                            )
+                        ),
+                    )
+                )
+        return real_run(*args, **kwargs)
+
+    monkeypatch.setattr(launcher.os, "open", tracking_open)
+    monkeypatch.setattr(launcher.subprocess, "run", tracking_run)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-leak")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-test-token")
+    monkeypatch.setenv("UNRELATED_SECRET", "must-not-leak")
+
+    result = _launch_test_panel(
+        frozen_review=frozen_review,
+        output_dir=output_dir,
+        clients=clients,
+    )
+
+    assert packet_open_count == 1
+    assert result.packet_sha256 == _sha256(packet_bytes)
+    assert (output_dir / "00-review-packet.bin").read_bytes() == packet_bytes
+    assert (output_dir / "input-manifest.json").read_bytes() == manifest_bytes
+    assert (output_dir / "freeze-receipt.json").read_bytes() == receipt_bytes
+    for name in ("00-review-packet.bin", "input-manifest.json", "freeze-receipt.json"):
+        assert stat.S_IMODE((output_dir / name).stat().st_mode) == 0o444
+
+    observed: dict[str, dict[str, Any]] = {}
+    raw_by_seat: dict[str, bytes] = {}
+    receipt_by_seat: dict[str, dict[str, Any]] = {}
+    for seat in launcher.SEATS:
+        payload, raw = _raw_payload(output_dir / seat.raw_name)
+        observed[seat.name] = payload
+        raw_by_seat[seat.name] = raw
+        receipt_path = output_dir / seat.receipt_name
+        receipt_raw = receipt_path.read_bytes()
+        receipt = json.loads(receipt_raw)
+        assert receipt_raw == freezer.canonical_json_bytes(receipt) + b"\n"
+        receipt_by_seat[seat.name] = receipt
+        assert stat.S_IMODE(receipt_path.stat().st_mode) == 0o444
+        assert stat.S_IMODE((output_dir / seat.raw_name).stat().st_mode) == 0o444
+        assert receipt["stdout_sha256"] == _sha256(raw)
+        assert receipt["stderr_sha256"] == _sha256(
+            (output_dir / seat.stderr_name).read_bytes()
+        )
+        assert receipt["executable_sha256"] == _sha256(
+            Path(receipt["executable_path"]).read_bytes()
+        )
+        assert receipt["argv_sha256"] == _sha256(
+            freezer.canonical_json_bytes(receipt["argv"])
+        )
+        assert receipt["provider_session_id"] is None
+        assert receipt["reported_model"] is None
+        assert receipt["shell"] is False
+        assert receipt["tools_denied"] is True
+        assert receipt["cwd_initial_entries"] == []
+        assert receipt["cwd_mode"] == "0700"
+        assert receipt["cwd_removed_after_run"] is True
+        assert receipt["packet_sha256"] == _sha256(packet_bytes)
+
+    assert (
+        len(
+            {
+                receipt["launcher_invocation_uuid"]
+                for receipt in receipt_by_seat.values()
+            }
+        )
+        == 3
+    )
+    assert {bytes.fromhex(value["input_hex"]) for value in observed.values()} == {
+        packet_bytes
+    }
+    assert {value["cwd"] for value in observed.values()} == {
+        receipt_by_seat["fable"]["cwd_path"]
+    }
+    assert all(value["cwd_mode"] == 0o700 for value in observed.values())
+    assert all(value["cwd_entries"] == [] for value in observed.values())
+    assert all(value["visible_outputs"] == [] for value in observed.values())
+
+    fable = observed["fable"]
+    glm = observed["glm"]
+    gemini = observed["gemini"]
+    assert fable["argv"] == list(launcher.FABLE_ARGV_SUFFIX)
+    assert glm["argv"] == list(launcher.GLM_ARGV_SUFFIX)
+    assert gemini["argv"] == list(launcher.GEMINI_ARGV_SUFFIX)
+    for payload in observed.values():
+        assert "--session-id" not in payload["argv"]
+        assert packet_bytes not in [arg.encode() for arg in payload["argv"]]
+        assert payload["anthropic_api_key_present"] is False
+        assert payload["unrelated_secret_present"] is False
+    assert "-p" not in gemini["argv"] and "-p -" not in gemini["argv"]
+    assert glm["glm_token_ok"] is True
+    assert glm["claude_oauth_present"] is False
+    assert glm["glm_route"] == {
+        "API_TIMEOUT_MS": "3000000",
+        "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.2",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.2",
+    }
+    assert "ephemeral-test-token" not in "".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for path in output_dir.iterdir()
+        if path.is_file()
+    )
+    assert receipt_by_seat["fable"]["route_config_sha256"] is None
+    assert receipt_by_seat["gemini"]["route_config_sha256"] is None
+    assert receipt_by_seat["glm"]["route_config_sha256"] == _sha256(
+        freezer.EXPECTED_GLM_ROUTE_CONFIG
+    )
+
+    review_calls = [call for call in calls if call[1].get("input") == packet_bytes]
+    assert len(review_calls) == 3
+    assert all(kwargs["shell"] is False for _, kwargs in calls)
+    assert all(kwargs["capture_output"] is True for _, kwargs in calls)
+    assert all(Path(kwargs["cwd"]).is_absolute() for _, kwargs in review_calls)
+    canonical_by_client = {
+        "claude": clients.claude,
+        "gemini": clients.gemini,
+    }
+    for seat in launcher.SEATS:
+        matching_calls = [
+            call
+            for call in review_calls
+            if tuple(call[0][0][1:]) == seat.argv_suffix
+        ]
+        assert len(matching_calls) == 1
+        args, kwargs = matching_calls[0]
+        canonical = canonical_by_client[seat.client]
+        assert Path(args[0][0]) == canonical
+        assert Path(kwargs["executable"]).is_absolute()
+        assert Path(kwargs["executable"]) != canonical
+    assert len(calls) == 6
+    assert len(executable_sandbox_observations) == len(calls)
+    assert all(mode == 0o500 for mode, _ in executable_sandbox_observations)
+    assert {
+        entries for _, entries in executable_sandbox_observations
+    } == {("claude-client", "gemini-client", "security-client")}
+
+
+def test_launch_panel_rejects_old_gemini_without_spawning_reviewers(
+    tmp_path: Path,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(tmp_path, output_dir, agy_version="1.1.1")
+
+    with pytest.raises(launcher.LauncherError, match="Gemini client 1.1.2 or newer"):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+
+    assert not list(output_dir.glob("*.raw.*"))
+    assert not list(output_dir.glob("*.invocation.json"))
+
+
+def test_launch_panel_fails_closed_on_nonzero_seat_without_publishing_outputs(
+    tmp_path: Path,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(tmp_path, output_dir, fail_model="glm-5.2")
+
+    with pytest.raises(launcher.LauncherError, match="glm exited with status 7"):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+
+    assert not list(output_dir.glob("*.raw.*"))
+    assert not list(output_dir.glob("*.invocation.json"))
+
+
+def test_launch_panel_detects_frozen_packet_mutation_before_dispatch(
+    tmp_path: Path,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(
+        tmp_path,
+        output_dir,
+        mutate_packet=frozen_review / "packet.bin",
+    )
+
+    with pytest.raises(
+        launcher.LauncherError, match="frozen packet changed after verification"
+    ):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+
+    assert not list(output_dir.glob("*.raw.*"))
+    assert not list(output_dir.glob("*.invocation.json"))
+
+
+def test_launch_panel_fails_if_any_output_cannot_be_published(tmp_path: Path) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    output_dir.mkdir()
+    clients = _fake_clients(tmp_path, output_dir)
+    occupied = output_dir / launcher.SEATS[0].raw_name
+    occupied.write_bytes(b"pre-existing")
+
+    with pytest.raises(
+        launcher.LauncherError, match="refusing to replace existing output"
+    ):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+
+    assert occupied.read_bytes() == b"pre-existing"
+    assert not list(output_dir.glob("*.invocation.json"))
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"launcher_sha256": "0" * 64}, "launcher SHA-256"),
+        ({"launcher_git_blob_oid": "0" * 40}, "launcher Git blob"),
+    ],
+)
+def test_launch_panel_authenticates_launcher_from_freeze_receipt_before_spawn(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    overrides: dict[str, str],
+    message: str,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path, **overrides)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(tmp_path, output_dir)
+
+    def forbidden_spawn(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("a client was spawned before launcher authentication")
+
+    monkeypatch.setattr(launcher.subprocess, "run", forbidden_spawn)
+    with pytest.raises(launcher.LauncherError, match=message):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+
+    assert not output_dir.exists() or not list(output_dir.iterdir())
+
+
+def test_launch_panel_records_only_provider_emitted_claude_metadata(
+    tmp_path: Path,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(tmp_path, output_dir, emit_claude_metadata=True)
+
+    _launch_test_panel(
+        frozen_review=frozen_review,
+        output_dir=output_dir,
+        clients=clients,
+    )
+
+    receipts = {
+        seat.name: json.loads((output_dir / seat.receipt_name).read_bytes())
+        for seat in launcher.SEATS
+    }
+    assert receipts["fable"]["provider_session_id"] == "session-claude-fable-5"
+    assert receipts["fable"]["reported_model"] == "claude-fable-5"
+    assert receipts["glm"]["provider_session_id"] == "session-glm-5.2"
+    assert receipts["glm"]["reported_model"] == "glm-5.2"
+    assert receipts["gemini"]["provider_session_id"] is None
+    assert receipts["gemini"]["reported_model"] is None
+
+
+def test_launch_panel_atomically_normalizes_exact_unedited_provider_bodies(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    body = "\n# Exact body\nUnicode: café 日本語\n\ntrailing blank line\n\n"
+    clients = _fake_clients(
+        tmp_path,
+        output_dir,
+        emit_claude_metadata=True,
+        review_body=body,
+    )
+    real_publish = launcher._publish_new_files
+    publication_groups: list[tuple[str, ...]] = []
+
+    def tracking_publish(
+        directory: Path,
+        files: dict[str, bytes],
+    ) -> tuple[launcher.PublishedFile, ...]:
+        publication_groups.append(tuple(files))
+        return real_publish(directory, files)
+
+    monkeypatch.setattr(launcher, "_publish_new_files", tracking_publish)
+    _launch_test_panel(
+        frozen_review=frozen_review,
+        output_dir=output_dir,
+        clients=clients,
+    )
+
+    assert publication_groups[0] == launcher.VALIDATOR_INPUT_NAMES
+    expected_review_group = tuple(
+        name
+        for seat in launcher.SEATS
+        for name in (
+            seat.raw_name,
+            seat.stderr_name,
+            seat.receipt_name,
+            seat.review_name,
+        )
+    )
+    assert set(publication_groups[1]) == set(expected_review_group)
+    assert len(publication_groups) == 2
+
+    expected_frontmatter_keys = (
+        "requested_route",
+        "launcher_invocation_uuid",
+        "provider_session_id",
+        "reported_model",
+        "input_manifest_sha256",
+        "packet_sha256",
+        "launcher_proof_sha256",
+        "raw_response_sha256",
+    )
+    for seat in launcher.SEATS:
+        normalized = (output_dir / seat.review_name).read_bytes()
+        frontmatter_end = normalized.find(b"---\n", 4)
+        assert frontmatter_end > 4
+        frontmatter_lines = normalized[4:frontmatter_end].decode("utf-8").splitlines()
+        frontmatter = dict(line.split(": ", 1) for line in frontmatter_lines)
+        assert tuple(frontmatter) == expected_frontmatter_keys
+        assert normalized[frontmatter_end + 4 :] == body.encode("utf-8")
+
+        raw = (output_dir / seat.raw_name).read_bytes()
+        if seat.client == "claude":
+            assert json.loads(raw)["result"] == body
+        else:
+            assert raw == body.encode("utf-8")
+        receipt_bytes = (output_dir / seat.receipt_name).read_bytes()
+        assert frontmatter["launcher_proof_sha256"] == _sha256(receipt_bytes)
+        assert frontmatter["raw_response_sha256"] == _sha256(raw)
+
+
+def test_failed_launch_cleans_own_validator_inputs_and_can_retry_same_directory(
+    tmp_path: Path,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(tmp_path, output_dir, fail_once_model="glm-5.2")
+
+    with pytest.raises(launcher.LauncherError, match="glm exited with status 7"):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+
+    assert not list(output_dir.iterdir())
+    result = _launch_test_panel(
+        frozen_review=frozen_review,
+        output_dir=output_dir,
+        clients=clients,
+    )
+    assert len(result.receipt_paths) == 3
+
+
+@pytest.mark.parametrize("cleanup_mode", ["raise", "noop"])
+def test_launch_panel_fails_closed_without_receipts_when_cwd_cleanup_is_unproven(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    cleanup_mode: str,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(tmp_path, output_dir)
+    real_rmtree = launcher.shutil.rmtree
+    attempted: list[Path] = []
+
+    def broken_rmtree(path: Any, *args: Any, **kwargs: Any) -> None:
+        attempted.append(Path(path))
+        if cleanup_mode == "raise":
+            raise OSError("synthetic cleanup failure")
+
+    monkeypatch.setattr(launcher.shutil, "rmtree", broken_rmtree)
+    try:
+        with pytest.raises(launcher.LauncherError, match="review cwd cleanup"):
+            _launch_test_panel(
+                frozen_review=frozen_review,
+                output_dir=output_dir,
+                clients=clients,
+            )
+        assert attempted
+        assert not list(output_dir.iterdir())
+    finally:
+        monkeypatch.setattr(launcher.shutil, "rmtree", real_rmtree)
+        for path in attempted:
+            if path.exists():
+                real_rmtree(path)
+
+
+def test_preexisting_canonical_output_blocks_before_any_provider_spawn(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    output_dir.mkdir()
+    occupied = output_dir / launcher.SEATS[0].raw_name
+    occupied.write_bytes(b"pre-existing")
+    clients = _fake_clients(tmp_path, output_dir)
+    spawn_count = 0
+
+    def forbidden_spawn(*args: Any, **kwargs: Any) -> Any:
+        nonlocal spawn_count
+        spawn_count += 1
+        raise AssertionError("provider spawn was not preflighted")
+
+    monkeypatch.setattr(launcher.subprocess, "run", forbidden_spawn)
+    with pytest.raises(
+        launcher.LauncherError, match="refusing to replace existing output"
+    ):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+
+    assert spawn_count == 0
+    assert occupied.read_bytes() == b"pre-existing"
+    assert sorted(path.name for path in output_dir.iterdir()) == [occupied.name]
+
+
+def test_launch_panel_rejects_symlinked_client_without_spawning(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frozen_review, _, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(tmp_path, output_dir)
+    linked_claude = tmp_path / "linked-claude"
+    linked_claude.symlink_to(clients.claude)
+    clients = launcher.ClientPaths(
+        claude=linked_claude.absolute(),
+        gemini=clients.gemini,
+        security=clients.security,
+    )
+    spawn_count = 0
+
+    def forbidden_spawn(*args: Any, **kwargs: Any) -> Any:
+        nonlocal spawn_count
+        spawn_count += 1
+        raise AssertionError("symlinked executable was spawned")
+
+    monkeypatch.setattr(launcher.subprocess, "run", forbidden_spawn)
+    with pytest.raises(launcher.LauncherError, match="must not be a symlink"):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+    assert spawn_count == 0
+
+
+def test_launch_panel_detects_same_bytes_executable_replacement(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frozen_review, packet_bytes, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(tmp_path, output_dir)
+    real_run = launcher.subprocess.run
+    replaced = False
+
+    def replace_after_gemini_run(
+        *args: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[bytes]:
+        nonlocal replaced
+        result = real_run(*args, **kwargs)
+        argv = args[0]
+        if (
+            not replaced
+            and kwargs.get("input") == packet_bytes
+            and Path(argv[0]) == clients.gemini
+        ):
+            replacement = tmp_path / "replacement-agy"
+            replacement.write_bytes(clients.gemini.read_bytes())
+            replacement.chmod(0o755)
+            os.replace(replacement, clients.gemini)
+            replaced = True
+        return result
+
+    monkeypatch.setattr(launcher.subprocess, "run", replace_after_gemini_run)
+    with pytest.raises(launcher.LauncherError, match="Gemini executable changed"):
+        _launch_test_panel(
+            frozen_review=frozen_review,
+            output_dir=output_dir,
+            clients=clients,
+        )
+    assert replaced is True
+    assert not list(output_dir.iterdir())
+
+
+def test_launch_panel_never_executes_canonical_path_after_authentication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frozen_review, packet_bytes, _, _ = _frozen_review(tmp_path)
+    output_dir = tmp_path / "reviews"
+    clients = _fake_clients(tmp_path, output_dir)
+    unauthenticated_marker = tmp_path / "unauthenticated-executable-ran"
+    gemini_sync_marker = tmp_path / "sync" / "Gemini_3.1_Pro_(High)"
+    unauthenticated_gemini = _write_executable(
+        tmp_path / "unauthenticated-agy",
+        f"""#!{sys.executable}
+import pathlib
+import sys
+
+pathlib.Path({str(unauthenticated_marker)!r}).write_text("executed")
+pathlib.Path({str(gemini_sync_marker)!r}).write_text("ready")
+sys.stdin.buffer.read()
+sys.stdout.write("unauthenticated review")
+""",
+    )
+    authenticated_backup = tmp_path / "authenticated-agy"
+    real_run = launcher.subprocess.run
+    swapped = False
+
+    def swap_canonical_path_during_run(
+        *args: Any, **kwargs: Any
+    ) -> subprocess.CompletedProcess[bytes]:
+        nonlocal swapped
+        argv = args[0]
+        if (
+            not swapped
+            and kwargs.get("input") == packet_bytes
+            and "--mode" in argv
+        ):
+            clients.gemini.rename(authenticated_backup)
+            unauthenticated_gemini.rename(clients.gemini)
+            try:
+                return real_run(*args, **kwargs)
+            finally:
+                clients.gemini.rename(unauthenticated_gemini)
+                authenticated_backup.rename(clients.gemini)
+                swapped = True
+        return real_run(*args, **kwargs)
+
+    monkeypatch.setattr(launcher.subprocess, "run", swap_canonical_path_during_run)
+    with pytest.raises(launcher.LauncherError, match="Gemini executable changed"):
+        try:
+            _launch_test_panel(
+                frozen_review=frozen_review,
+                output_dir=output_dir,
+                clients=clients,
+            )
+        finally:
+            assert not unauthenticated_marker.exists()
+
+    assert swapped is True
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="Darwin vnode race proof")
+def test_private_copy_replacement_after_last_check_never_executes_replacement(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A same-UID swap at the exec boundary must not run a different vnode."""
+    jq_path = shutil.which("jq")
+    if jq_path is None:
+        pytest.skip("jq is required for the signed Mach-O race fixture")
+    canonical = Path(jq_path).resolve()
+    replacement_source = Path(sys.executable).resolve()
+    try:
+        launcher._macho_cdhash(canonical.read_bytes())
+        launcher._macho_cdhash(replacement_source.read_bytes())
+    except launcher.LauncherError:
+        pytest.skip("race fixture requires two signed thin Mach-O images")
+    executable_sandbox, _ = launcher._sandbox(
+        prefix="worker-plane-review-executables-guilt."
+    )
+    marker = tmp_path / "replacement-executed"
+    python_program = (
+        "from pathlib import Path; "
+        f"Path({str(marker)!r}).write_text('executed', encoding='utf-8')"
+    )
+    seat = launcher.Seat(
+        name="guilt",
+        requested_route="guilt",
+        client="test",
+        argv_suffix=("-c", python_program),
+        raw_name="guilt.raw",
+        stderr_name="guilt.stderr",
+        receipt_name="guilt.invocation",
+        review_name="guilt.md",
+    )
+    real_spawn = launcher._darwin_spawn_suspended
+    swapped = False
+
+    try:
+        prepared = launcher._validate_executable(
+            canonical.resolve(),
+            "guilt",
+            executable_sandbox,
+        )
+        launcher._seal_executable_sandbox(executable_sandbox, (prepared,))
+
+        def swap_private_copy_at_exec_boundary(
+            **kwargs: Any,
+        ) -> subprocess.CompletedProcess[bytes]:
+            nonlocal swapped
+            if not swapped:
+                executable_sandbox.chmod(0o700)
+                replacement = tmp_path / "replacement-python"
+                shutil.copyfile(
+                    replacement_source,
+                    replacement,
+                )
+                replacement.chmod(0o500)
+                os.replace(replacement, prepared.private_copy.path)
+                executable_sandbox.chmod(0o500)
+                swapped = True
+            return real_spawn(**kwargs)
+
+        monkeypatch.setattr(
+            launcher,
+            "_darwin_spawn_suspended",
+            swap_private_copy_at_exec_boundary,
+        )
+        with pytest.raises(
+            launcher.LauncherError,
+            match="executable changed at the Darwin spawn boundary",
+        ):
+            launcher._run_seat(
+                seat=seat,
+                executable=prepared,
+                client_version="test",
+                packet_bytes=b"",
+                cwd=tmp_path,
+                environment=launcher._base_environment(os.environ),
+                invocation_uuid="00000000-0000-0000-0000-000000000000",
+                command_runner=launcher._run_bound_command,
+            )
+        assert swapped is True
+        assert not marker.exists()
+    finally:
+        launcher._remove_sandbox(executable_sandbox)
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="Darwin bound-spawn primitive")
+def test_darwin_bound_runner_executes_authenticated_signed_image(
+    tmp_path: Path,
+) -> None:
+    jq_path = shutil.which("jq")
+    if jq_path is None:
+        pytest.skip("jq is required for the signed Mach-O execution fixture")
+    canonical = Path(jq_path).resolve()
+    try:
+        launcher._macho_cdhash(canonical.read_bytes())
+    except launcher.LauncherError:
+        pytest.skip("execution fixture requires a signed thin Mach-O image")
+    executable_sandbox, _ = launcher._sandbox(
+        prefix="worker-plane-review-executables-bound."
+    )
+    try:
+        prepared = launcher._validate_executable(
+            canonical,
+            "bound execution",
+            executable_sandbox,
+        )
+        launcher._seal_executable_sandbox(executable_sandbox, (prepared,))
+        result = launcher._run_bound_command(
+            executable=prepared,
+            argv=(str(prepared.canonical.path), "--version"),
+            input_bytes=b"",
+            cwd=tmp_path,
+            environment=launcher._base_environment(os.environ),
+            label="bound execution",
+        )
+        assert result.returncode == 0
+        assert result.stdout.startswith(b"jq-")
+    finally:
+        launcher._remove_sandbox(executable_sandbox)
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS system binary contract")
+def test_macos_security_uses_authenticated_read_only_system_image(
+    tmp_path: Path,
+) -> None:
+    executable_sandbox, _ = launcher._sandbox(
+        prefix="worker-plane-review-security-test."
+    )
+    try:
+        prepared = launcher._validate_executable(
+            launcher.PRODUCTION_CLIENTS.security,
+            "security",
+            executable_sandbox,
+            allow_read_only_canonical=True,
+        )
+        assert prepared.private_copy.path == launcher.PRODUCTION_CLIENTS.security
+        result = subprocess.run(
+            [str(prepared.canonical.path), "help"],
+            executable=str(prepared.private_copy.path),
+            input=b"",
+            shell=False,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 0
+    finally:
+        launcher._remove_sandbox(executable_sandbox)
+
+
+def test_cli_pins_production_absolute_routes() -> None:
+    parser = launcher.build_parser()
+    args = parser.parse_args(
+        ["--frozen-review", "/tmp/frozen", "--output-dir", "/tmp/output"]
+    )
+
+    assert args.clients == launcher.PRODUCTION_CLIENTS
+    assert launcher.PRODUCTION_CLIENTS.claude == Path(
+        "/Users/nuzantara/.local/share/claude/versions/2.1.214"
+    )
+    assert launcher.PRODUCTION_CLIENTS.gemini == Path("/Users/nuzantara/.local/bin/agy")
+    assert launcher.PRODUCTION_CLIENTS.security == Path("/usr/bin/security")
