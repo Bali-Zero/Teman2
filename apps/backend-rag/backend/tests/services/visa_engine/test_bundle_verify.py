@@ -20,6 +20,7 @@ from backend.services.visa_engine.bundle import (
     TrustedSigningKey,
     VerifiedRulePack,
     _decode_base64url_no_padding,
+    _snapshot_envelope,
     canonicalize_json,
     resolve_allow_unsigned_default,
     verify_rule_pack,
@@ -399,6 +400,85 @@ class TestUnsignedProductionToctou:
                 observed_at=_OBSERVED_AT,
                 allow_unsigned=True,
             )
+
+
+class TestSnapshotAntiToctou:
+    """3-seat verify FIX-NOW #2: the whole envelope is read EXACTLY ONCE, at
+    entry, into a plain JSON-round-tripped snapshot (:func:`_snapshot_envelope`)
+    — every downstream check operates on that snapshot alone, never on the
+    caller's original object again. This is the general fix FIX-NOW #1
+    patched one specific instance of (the unsigned-PRODUCTION gate)."""
+
+    def test_snapshot_of_a_stateful_lying_dict_is_a_plain_immune_copy(self) -> None:
+        """White-box unit test of `_snapshot_envelope` itself: a `dict`
+        subclass whose `.get("environment")` would answer differently on
+        each call produces a snapshot that is a genuinely independent,
+        ordinary `dict` — reading the SAME key from the snapshot twice
+        afterward is always consistent, because `json.dumps` reads a dict
+        subclass's real underlying storage directly, never the overridden
+        `.get()`/`__getitem__` (confirmed empirically: this is exactly what
+        neutralizes the class of bug FIX-NOW #1 fixed one instance of)."""
+
+        class _StatefulGetDict(dict):
+            def __init__(self, *args: object, **kwargs: object) -> None:
+                super().__init__(*args, **kwargs)
+                self.get_calls = 0
+
+            def get(self, key, default=None):  # type: ignore[override]
+                if key == "environment":
+                    self.get_calls += 1
+                    return "TEST" if self.get_calls == 1 else "PRODUCTION"
+                return super().get(key, default)
+
+        hostile = _StatefulGetDict({"environment": "PRODUCTION", "rules": []})
+
+        snapshot = _snapshot_envelope(hostile)
+
+        assert type(snapshot) is dict
+        assert snapshot is not hostile
+        # The overridden .get() is bypassed entirely by json.dumps on a
+        # dict subclass — the snapshot reflects the REAL stored value.
+        assert snapshot["environment"] == "PRODUCTION"
+        # And once snapshotted, reading it repeatedly can never diverge —
+        # it is now an ordinary dict with no override machinery attached.
+        assert snapshot.get("environment") == "PRODUCTION"
+        assert snapshot.get("environment") == "PRODUCTION"
+
+    def test_full_verify_flow_never_touches_the_live_envelope_after_the_snapshot(
+        self,
+    ) -> None:
+        """Integration proof: thread a real signed envelope through
+        `verify_rule_pack` wrapped in a `dict` subclass that COUNTS every
+        `.get()` call made directly against it. If any check downstream of
+        the snapshot re-read the live object (the pre-FIX-NOW-#2 pattern),
+        the counter would keep climbing as the function progresses; instead
+        it must stay flat at whatever `_snapshot_envelope` itself touched
+        (proven to be zero direct `.get()` calls by the unit test above,
+        since `json.dumps` on a dict subclass never invokes the override),
+        and the result must describe exactly the payload that was signed."""
+
+        class _CountingDict(dict):
+            def __init__(self, *args: object, **kwargs: object) -> None:
+                super().__init__(*args, **kwargs)
+                self.get_calls = 0
+
+            def get(self, key, default=None):  # type: ignore[override]
+                self.get_calls += 1
+                return super().get(key, default)
+
+        private_key, public_key = ephemeral_ed25519_keypair()
+        real_payload = minimal_valid_envelope()["payload"]
+        signed_envelope = sign_rule_pack_envelope(real_payload, private_key=private_key)
+        hostile = _CountingDict(signed_envelope)
+        trust_store = _trust_store_with(public_key=public_key)
+
+        result = verify_rule_pack(hostile, trust_store=trust_store, observed_at=_OBSERVED_AT)
+
+        assert str(result.pack.payload.rule_pack_id) == real_payload["rule_pack_id"]
+        # json.dumps never calls .get() on a dict subclass (confirmed by
+        # the unit test above) — the live hostile object is never consulted
+        # for anything past the single up-front snapshot read.
+        assert hostile.get_calls == 0
 
 
 class TestAllowUnsignedEnvParsing:

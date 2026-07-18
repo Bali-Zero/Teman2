@@ -443,6 +443,38 @@ def _validate_envelope_against_schema(raw_envelope: Mapping[str, JsonValue]) -> 
 # --- Verification --------------------------------------------------------
 
 
+def _snapshot_envelope(raw_envelope: Mapping[str, JsonValue]) -> dict[str, JsonValue]:
+    """Read ``raw_envelope`` EXACTLY ONCE, at the trust boundary's entry
+    point, into a plain, JSON round-tripped ``dict`` — every check
+    downstream (schema validation, canonicalization, hashing, key
+    resolution, ``model_validate``) reads only this snapshot, never the
+    caller's original object again.
+
+    Kills the entire TOCTOU class (3-seat verify FIX-NOW #2): a mutable or
+    hostile ``Mapping`` whose ``.get()``/``__getitem__``/iteration answer
+    differently across separate reads can otherwise show one value to an
+    early check and a different one to a later check — the exact
+    vulnerability FIX-NOW #1 patched one instance of (a stateful dict lying
+    on its first ``.get("environment")`` call, telling the truth on the
+    next). Snapshotting once, up front, removes the live object from the
+    picture entirely: there is no second read left to diverge.
+
+    ``json.loads(json.dumps(value))`` rather than a manual recursive walk:
+    JSON round-tripping of dict/list/str/int/bool/None is byte-safe for JCS
+    purposes (JCS's canonical form is defined over the JSON data model
+    itself, not over Python object identity) — a legitimate wire envelope
+    may only ever carry these JSON-primitive types to begin with, so the
+    round-trip changes nothing a real signer could have meant.
+    """
+
+    try:
+        return json.loads(json.dumps(raw_envelope))
+    except (TypeError, ValueError) as exc:
+        raise RulePackVerificationError(
+            f"rule pack envelope is not a plain JSON-safe structure: {exc}"
+        ) from exc
+
+
 @dataclass(frozen=True)
 class VerifiedRulePack:
     """A ``RulePack`` that has passed either full cryptographic
@@ -519,17 +551,25 @@ def verify_rule_pack(
     ``VerifiedRulePack(unsigned_dev=True)``; nothing downstream needs its
     own PRODUCTION-unsigned guard because this function never lets one
     through.
+
+    ANTI-TOCTOU SNAPSHOT (3-seat verify FIX-NOW #2): ``raw_envelope`` is
+    read exactly once, right here, via :func:`_snapshot_envelope` — every
+    check below (schema validation, canonicalization, hashing, key
+    resolution, ``model_validate``) operates on that snapshot, never on the
+    caller's original object again. See that function's docstring.
     """
 
-    if not _has_signature(raw_envelope):
+    envelope = _snapshot_envelope(raw_envelope)
+
+    if not _has_signature(envelope):
         return _verify_unsigned_dev(
-            raw_envelope, allow_unsigned=allow_unsigned, observed_at=observed_at
+            envelope, allow_unsigned=allow_unsigned, observed_at=observed_at
         )
 
-    _validate_envelope_against_schema(raw_envelope)
+    _validate_envelope_against_schema(envelope)
 
-    raw_protected = raw_envelope["protected"]
-    raw_payload = raw_envelope["payload"]
+    raw_protected = envelope["protected"]
+    raw_payload = envelope["payload"]
     if not isinstance(raw_protected, Mapping) or not isinstance(raw_payload, Mapping):
         # Schema validation above already enforces object shape for both —
         # this is unreachable in practice, but keeps the type-narrowing
@@ -553,7 +593,7 @@ def verify_rule_pack(
     payload_bytes = _canonicalize_wire_object(raw_payload, label="payload")
 
     computed_payload_sha256 = hashlib.sha256(payload_bytes).digest()
-    declared_payload_sha256 = raw_envelope.get("payload_sha256")
+    declared_payload_sha256 = envelope.get("payload_sha256")
     if computed_payload_sha256.hex() != declared_payload_sha256:
         raise RulePackVerificationError(
             f"payload_sha256 mismatch: envelope declares {declared_payload_sha256!r}, "
@@ -570,7 +610,7 @@ def verify_rule_pack(
         environment=protected_environment,
     )
 
-    raw_signature = raw_envelope.get("signature")
+    raw_signature = envelope.get("signature")
     signature_bytes = _decode_signature(raw_signature)
     signed_bytes = _build_signed_bytes(protected_bytes, payload_bytes)
 
@@ -584,7 +624,7 @@ def verify_rule_pack(
     # ONLY AFTER the signature verifies do we build the typed model — see
     # the trust-boundary invariant in the docstring above.
     try:
-        pack = RulePack.model_validate(raw_envelope)
+        pack = RulePack.model_validate(envelope)
     except PydanticValidationError as exc:
         raise RulePackVerificationError(
             f"rule pack envelope failed model validation: {exc}"
@@ -606,12 +646,17 @@ def verify_rule_pack(
 
 
 def _verify_unsigned_dev(
-    raw_envelope: Mapping[str, JsonValue],
+    envelope: Mapping[str, JsonValue],
     *,
     allow_unsigned: bool,
     observed_at: datetime,
 ) -> VerifiedRulePack:
-    raw_payload = raw_envelope.get("payload")
+    """Private; called ONLY from :func:`verify_rule_pack`, which already
+    ran ``envelope`` through :func:`_snapshot_envelope` — this function
+    performs no further defensive copying and assumes ``envelope`` is
+    already an inert, plain JSON structure (no live/hostile Mapping)."""
+
+    raw_payload = envelope.get("payload")
     if not isinstance(raw_payload, Mapping):
         raise RulePackVerificationError("unsigned rule pack envelope is missing a 'payload' object")
 
