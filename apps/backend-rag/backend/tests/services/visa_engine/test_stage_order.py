@@ -11,6 +11,8 @@ this; this file pins the mapping itself in isolation.
 
 from __future__ import annotations
 
+import pytest
+
 from backend.services.visa_engine.enums import STAGE_ORDER, RuleStage
 
 
@@ -39,3 +41,28 @@ class TestStageOrder:
     def test_stage_order_dict_covers_every_member_exactly_once(self) -> None:
         assert frozenset(STAGE_ORDER) == frozenset(RuleStage)
         assert sorted(STAGE_ORDER.values()) == [0, 1, 2, 3]
+
+
+class TestStageOrderImmutability:
+    """F4 (2-seat review, 2026-07-18): ``STAGE_ORDER`` is a
+    ``MappingProxyType``, not a plain ``dict`` — the same "type-annotated
+    read-only is not actually immutable at runtime" class of defect
+    ``fact_registry.FactRegistry._specs`` already guards against (see
+    ``test_fact_registry.py::TestRegistryImmutability``). A plain ``dict``
+    would let any importer mutate the single module-level ordering every
+    ``RuleStage.order``/``CompiledRulePack.rules_for()`` call relies on.
+    """
+
+    def test_item_assignment_raises_type_error(self) -> None:
+        # Guilt: MappingProxyType raises TypeError on item assignment —
+        # a plain dict would silently corrupt the shared ordering here.
+        with pytest.raises(TypeError):
+            STAGE_ORDER[RuleStage.RANKING] = -1  # type: ignore[index]
+
+    def test_reads_still_work_after_attempted_mutation(self) -> None:
+        # Innocence: the guard above must never impair ordinary reads —
+        # every stage's `.order` property still resolves correctly.
+        assert RuleStage.HARD_FILTER.order == 0
+        assert RuleStage.HUMAN_REVIEW.order == 1
+        assert RuleStage.ELIGIBILITY.order == 2
+        assert RuleStage.RANKING.order == 3

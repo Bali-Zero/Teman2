@@ -17,7 +17,9 @@ in one place as instructed.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from enum import Enum
+from types import MappingProxyType
 
 # ---------------------------------------------------------------------------
 # Core engine vocabularies (spec §1 enums.py, verbatim)
@@ -94,12 +96,14 @@ class RuleStage(str, Enum):
 #: ``RuleStage``'s declaration order (see that class's docstring for the
 #: correction). Module-level (not a class body dict comprehension) so
 #: ``RuleStage.order`` can reference it after the class is fully defined.
-STAGE_ORDER: dict[RuleStage, int] = {
-    RuleStage.HARD_FILTER: 0,
-    RuleStage.HUMAN_REVIEW: 1,
-    RuleStage.ELIGIBILITY: 2,
-    RuleStage.RANKING: 3,
-}
+STAGE_ORDER: Mapping[RuleStage, int] = MappingProxyType(
+    {
+        RuleStage.HARD_FILTER: 0,
+        RuleStage.HUMAN_REVIEW: 1,
+        RuleStage.ELIGIBILITY: 2,
+        RuleStage.RANKING: 3,
+    }
+)
 
 
 class EngineMode(str, Enum):
