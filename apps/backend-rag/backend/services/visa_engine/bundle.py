@@ -634,6 +634,27 @@ def _verify_unsigned_dev(
             f"unsigned dev rule pack payload failed model validation: {exc}"
         ) from exc
 
+    # TOCTOU re-check (3-seat verify, FIX-NOW #1): the PRODUCTION-unsigned
+    # refusal above reads `raw_payload.get("environment")` — a plain dict
+    # read. If `raw_payload` is ever a hostile/stateful Mapping whose
+    # `.get()` returns a DIFFERENT value on a later call (the same object is
+    # read again by Pydantic inside `model_validate` above), the first read
+    # could see a harmless environment while the validated model ends up
+    # with `environment=PRODUCTION` — the guard above would have been
+    # checking a value that no longer describes the payload actually
+    # accepted. Re-assert against the VALIDATED model (never re-readable
+    # out from under us — `RulePackPayload` is frozen) as the authoritative
+    # gate. Empirically reproduced: a `dict` subclass whose `.get(
+    # "environment")` returns "TEST" on its first call and "PRODUCTION" on
+    # every call thereafter sails past the raw-dict check above and lands
+    # here with `payload.environment is Environment.PRODUCTION`.
+    if payload.environment == _PRODUCTION_ENVIRONMENT:
+        raise RulePackVerificationError(
+            "PRODUCTION rule packs must always be signed — allow_unsigned "
+            "never applies to environment=PRODUCTION, regardless of the "
+            "flag (post-validation re-check)"
+        )
+
     # Same trust-boundary invariant as the signed path: canonicalize the
     # LITERAL wire payload, not a Pydantic re-serialization, so an
     # unsigned-dev pack's payload_sha256 is defined identically to a signed

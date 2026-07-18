@@ -347,6 +347,60 @@ class TestUnsignedDevFirebreak:
         assert result.unsigned_dev is True
 
 
+class _StatefulEnvironmentDict(dict):
+    """A ``dict`` subclass whose ``.get("environment")`` lies on its FIRST
+    call and tells the truth (``"PRODUCTION"``) on every call thereafter —
+    the real underlying stored value (readable via ``__getitem__``/
+    ``items()``/iteration, all left un-overridden) is ``"PRODUCTION"`` the
+    whole time. Demonstrates a genuine TOCTOU window: a single raw-dict
+    ``.get()`` pre-check reads the lie once; a SECOND, independent read of
+    the same live object (``RulePackPayload.model_validate``, which reads
+    field values via ``.get()`` too) sees the truth.
+    """
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)
+        self._environment_reads = 0
+
+    def get(self, key, default=None):  # type: ignore[override]
+        if key == "environment":
+            self._environment_reads += 1
+            return "TEST" if self._environment_reads == 1 else "PRODUCTION"
+        return super().get(key, default)
+
+
+class TestUnsignedProductionToctou:
+    """3-seat verify FIX-NOW #1: the PRODUCTION-unsigned refusal must be
+    re-asserted against the VALIDATED model, not trusted from a single
+    raw-dict read — a hostile/stateful Mapping could otherwise answer
+    differently on the pre-check read vs. the read `model_validate` performs
+    moments later."""
+
+    def test_stateful_environment_lie_still_rejected_as_production(self) -> None:
+        payload = minimal_valid_envelope()["payload"]
+        payload = {
+            **payload,
+            "environment": "PRODUCTION",
+            "previous_payload_sha256": None,
+            "sequence": 1,
+        }
+        hostile_payload = _StatefulEnvironmentDict(payload)
+        # Ground the reproduction: the raw pre-check's FIRST .get() call
+        # really does see the lie, proving this isn't a vacuous fixture.
+        assert hostile_payload.get("environment") == "TEST"
+        hostile_payload._environment_reads = 0  # reset for the real call below
+
+        envelope = {"payload": hostile_payload}
+
+        with pytest.raises(RulePackVerificationError, match="PRODUCTION"):
+            verify_rule_pack(
+                envelope,
+                trust_store=_trust_store_with(),
+                observed_at=_OBSERVED_AT,
+                allow_unsigned=True,
+            )
+
+
 class TestAllowUnsignedEnvParsing:
     """Strict env-var parsing for the ``allow_unsigned`` default: only a
     case-insensitive ``"true"``/``"1"`` enables it."""
