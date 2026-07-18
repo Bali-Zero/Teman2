@@ -39,7 +39,10 @@ export function EvidenceDrawer({ claims }: EvidenceDrawerProps) {
                         <span>{evidence.citation}</span>
                       ) : null}
                       {evidence.canonicalUrl ? (
-                        <a href={evidence.canonicalUrl} rel="noreferrer">
+                        <a
+                          href={evidence.canonicalUrl}
+                          rel="noopener noreferrer"
+                        >
                           Open source
                         </a>
                       ) : null}

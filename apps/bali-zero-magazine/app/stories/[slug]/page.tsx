@@ -16,6 +16,26 @@ type StoryPageProps = Readonly<{
   params: Promise<{ slug: string }>;
 }>;
 
+function readableTimestamp(value: string | null): string {
+  if (value === null) return "Not recorded";
+  return `${new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Makassar",
+  }).format(new Date(value))} WITA`;
+}
+
+function titleCase(value: string): string {
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export default async function StoryPage({ params }: StoryPageProps) {
   const viewer = await requireMagazineViewer();
   if (viewer === null) {
@@ -52,6 +72,40 @@ export default async function StoryPage({ params }: StoryPageProps) {
               })}
             </time>
           </div>
+          <dl className="story-metadata" aria-label="Publication metadata">
+            <div>
+              <dt>Section</dt>
+              <dd>{titleCase(detail.section)}</dd>
+            </div>
+            <div>
+              <dt>Severity</dt>
+              <dd>{titleCase(detail.story.severity)}</dd>
+            </div>
+            <div>
+              <dt>Lifecycle</dt>
+              <dd>{titleCase(detail.lifecycleState)}</dd>
+            </div>
+            <div>
+              <dt>Coverage</dt>
+              <dd>{titleCase(detail.story.coverageState)}</dd>
+            </div>
+            <div>
+              <dt>Event time</dt>
+              <dd>{readableTimestamp(detail.updatedAt)}</dd>
+            </div>
+            <div>
+              <dt>First seen</dt>
+              <dd>{readableTimestamp(detail.firstSeenAt)}</dd>
+            </div>
+            <div>
+              <dt>Verified</dt>
+              <dd>{readableTimestamp(detail.verifiedAt)}</dd>
+            </div>
+            <div>
+              <dt>Published</dt>
+              <dd>{readableTimestamp(detail.story.publishedAt)}</dd>
+            </div>
+          </dl>
         </header>
 
         <div className="story-page-grid">
@@ -81,19 +135,55 @@ export default async function StoryPage({ params }: StoryPageProps) {
           </aside>
         </div>
 
+        <section className="visual-provenance" aria-labelledby="visual-title">
+          <p className="section-label">Image record</p>
+          <h2 id="visual-title">Visual provenance</h2>
+          {detail.imageProvenance ? (
+            <dl>
+              <div>
+                <dt>Source</dt>
+                <dd>{detail.imageProvenance.source}</dd>
+              </div>
+              <div>
+                <dt>Alt text</dt>
+                <dd>{detail.imageProvenance.altText}</dd>
+              </div>
+              <div>
+                <dt>Created</dt>
+                <dd>{readableTimestamp(detail.imageProvenance.createdAt)}</dd>
+              </div>
+            </dl>
+          ) : (
+            <p>No verified, rights-approved visual is currently visible.</p>
+          )}
+        </section>
+
         <EvidenceDrawer claims={detail.claims} />
 
-        <section className="revision-note" aria-labelledby="revision-title">
-          <p className="section-label">Revision record</p>
-          <h2 id="revision-title">
-            {detail.hasSupersededHistory
-              ? "Supersedes an earlier revision"
-              : "First published revision"}
-          </h2>
-          <p>
-            The narrative above is the current visible version. Earlier
-            revisions remain immutable in the publication ledger.
-          </p>
+        <section className="revision-note" aria-labelledby="timeline-title">
+          <div>
+            <p className="section-label">Revision record</p>
+            <h2 id="timeline-title">Publication timeline</h2>
+            <p>
+              Append-only amendments, supersessions, corrections, and visibility
+              overlays.
+            </p>
+          </div>
+          {detail.timeline.length > 0 ? (
+            <ol className="publication-timeline">
+              {detail.timeline.map((event, index) => (
+                <li key={`${event.kind}-${event.version}-${index}`}>
+                  <strong>{event.label}</strong>
+                  <span>Revision {event.version}</span>
+                  <time dateTime={event.occurredAt}>
+                    {readableTimestamp(event.occurredAt)}
+                  </time>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>No earlier publication event is recorded.</p>
+          )}
         </section>
       </article>
     </MagazineShell>

@@ -19,6 +19,16 @@ function editionDate(value: string): string {
   }).format(new Date(`${value}T00:00:00Z`));
 }
 
+function verifiedAtWita(value: string): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Makassar",
+  }).format(new Date(value));
+  return `${parts} WITA`;
+}
+
 export function FrontPage({ page, archive = false }: FrontPageProps) {
   const edition = page.edition;
   return (
@@ -32,7 +42,12 @@ export function FrontPage({ page, archive = false }: FrontPageProps) {
       ) : null}
 
       <header className="edition-header">
-        <p>{edition ? editionDate(edition.date) : "Workspace edition"}</p>
+        <div>
+          <p>{edition ? editionDate(edition.date) : "Workspace edition"}</p>
+          {edition ? (
+            <p>Last verified {verifiedAtWita(edition.verifiedAt)}</p>
+          ) : null}
+        </div>
         <div className="edition-badges">
           {edition?.kind === "quiet" ? <span>Quiet edition</span> : null}
           {edition?.coverageState === "partial" ? (

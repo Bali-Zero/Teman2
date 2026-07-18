@@ -1,30 +1,43 @@
 import { headers } from "next/headers";
 
+import type {
+  ClaimKind,
+  EditionPlacementV1,
+  StoryVersionV1,
+} from "../contracts/publication";
 import type { RoleAllowlist, Viewer } from "./authorization";
 import { authorize } from "./authorization";
 import { requireViewer } from "./identity";
-import type { D1DatabaseLike } from "./publication-repository";
+import type {
+  D1DatabaseLike,
+  PublishedEdition,
+  PublishedStory,
+} from "./publication-repository";
+import { createPublicationRepository } from "./publication-repository";
 import { getMagazineBindings } from "./runtime-bindings";
 
 export const DOMAIN_SECTIONS = [
   { key: "immigration", label: "Immigration" },
-  { key: "company-investment", label: "Company & Investment" },
+  { key: "company", label: "Company & Investment" },
   { key: "tax", label: "Tax" },
   { key: "property", label: "Property" },
-  { key: "regulation-compliance", label: "Regulation & Compliance" },
-] as const;
+  { key: "compliance", label: "Regulation & Compliance" },
+] as const satisfies readonly Readonly<{
+  key: EditionPlacementV1["section"];
+  label: string;
+}>[];
 
 export type StoryCardView = Readonly<{
   slug: string;
-  domain: string;
-  severity: string;
+  domain: StoryVersionV1["domain"];
+  severity: StoryVersionV1["severity"];
   title: string;
   deck: string;
   summary: string;
   whyItMatters: string;
   curiosityText: string | null;
-  coverageState: string;
-  confidence: string;
+  coverageState: StoryVersionV1["coverage_state"];
+  confidence: StoryVersionV1["confidence"];
   publishedAt: string;
   imageAlt: string;
 }>;
@@ -38,8 +51,8 @@ export type SourceStatusView = Readonly<{
 export type EditionView = Readonly<{
   date: string;
   revision: number;
-  kind: "standard" | "quiet";
-  coverageState: "complete" | "partial";
+  kind: PublishedEdition["edition_kind"];
+  coverageState: PublishedEdition["coverage_state"];
   verifiedAt: string;
   publishedAt: string;
   coverageGaps: readonly string[];
@@ -65,14 +78,14 @@ export type EvidenceView = Readonly<{
   publisher: string;
   citation: string | null;
   canonicalUrl: string | null;
-  sourceType: string;
+  sourceType: "official" | "journalism" | "research" | "dataset";
   publishedAt: string | null;
   retrievedAt: string;
   note: string | null;
 }>;
 
 export type ClaimView = Readonly<{
-  kind: "fact" | "numeric" | "analysis";
+  kind: ClaimKind;
   text: string;
   numericValue: string | null;
   numericUnit: string | null;
@@ -80,57 +93,38 @@ export type ClaimView = Readonly<{
   evidence: readonly EvidenceView[];
 }>;
 
+export type ImageProvenanceView = Readonly<{
+  altText: string;
+  source: string;
+  createdAt: string;
+}>;
+
+export type StoryTimelineEvent = Readonly<{
+  kind:
+    | "publication"
+    | "amendment"
+    | "supersession"
+    | "correction"
+    | "quarantine"
+    | "restoration";
+  label: string;
+  occurredAt: string;
+  version: number;
+}>;
+
 export type StoryDetailView = Readonly<{
   story: StoryCardView;
   language: string;
-  lifecycleState: string;
+  section: EditionPlacementV1["section"];
+  lifecycleState: StoryVersionV1["lifecycle_state"];
   firstSeenAt: string;
   updatedAt: string;
+  verifiedAt: string | null;
   contributors: readonly string[];
   claims: readonly ClaimView[];
   currentVisibility: "Visible now";
-  hasSupersededHistory: boolean;
-  history: readonly Readonly<{
-    version: number;
-    state: string;
-    publishedAt: string | null;
-  }>[];
-}>;
-
-type EditionRow = Readonly<{
-  edition_id: string;
-  edition_date: string;
-  edition_revision: number;
-  edition_kind: string;
-  coverage_state: string;
-  verified_at: string;
-  published_at: string;
-  coverage_gaps_json: string;
-  reader_notices_json: string;
-}>;
-
-type StoryRow = Readonly<{
-  story_id: string;
-  version: number;
-  slug: string;
-  language?: string;
-  domain: string;
-  section?: string;
-  editorial_order?: number;
-  severity: string;
-  lifecycle_state: string;
-  title: string;
-  deck: string;
-  summary: string;
-  why_it_matters: string;
-  curiosity_text: string | null;
-  coverage_state: string;
-  confidence: string;
-  first_seen_at?: string;
-  updated_at?: string;
-  published_at: string;
-  desired_quarantined?: number | boolean | null;
-  media_alt_text?: string | null;
+  imageProvenance: ImageProvenanceView | null;
+  timeline: readonly StoryTimelineEvent[];
 }>;
 
 type SourceRow = Readonly<{
@@ -141,7 +135,7 @@ type SourceRow = Readonly<{
 
 type ClaimRow = Readonly<{
   claim_id: string;
-  claim_kind: ClaimView["kind"];
+  claim_kind: ClaimKind;
   normalized_text: string;
   numeric_value: string | null;
   numeric_unit: string | null;
@@ -153,10 +147,18 @@ type EvidenceRow = Readonly<{
   publisher: string;
   document_citation: string | null;
   canonical_url: string | null;
-  source_type: string;
+  source_type: EvidenceView["sourceType"];
   published_at: string | null;
   retrieved_at: string;
   evidence_note: string | null;
+}>;
+
+type AssetRow = Readonly<{
+  alt_text: string;
+  source: string;
+  created_at: string;
+  status: string;
+  rights_status: string;
 }>;
 
 function parseRoleAllowlist(raw: string | undefined): RoleAllowlist {
@@ -193,52 +195,37 @@ function dbBinding(): D1DatabaseLike | null {
   return getMagazineBindings().DB ?? null;
 }
 
-function stringArray(raw: string): readonly string[] {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function normalizeEdition(row: EditionRow): EditionView {
+function normalizeEdition(edition: PublishedEdition): EditionView {
   return {
-    date: row.edition_date,
-    revision: row.edition_revision,
-    kind: row.edition_kind === "quiet" ? "quiet" : "standard",
-    coverageState: row.coverage_state === "partial" ? "partial" : "complete",
-    verifiedAt: row.verified_at,
-    publishedAt: row.published_at,
-    coverageGaps: stringArray(row.coverage_gaps_json),
-    readerNotices: stringArray(row.reader_notices_json),
+    date: edition.edition_date,
+    revision: edition.edition_revision,
+    kind: edition.edition_kind,
+    coverageState: edition.coverage_state,
+    verifiedAt: edition.verified_at,
+    publishedAt: edition.published_at,
+    coverageGaps: edition.coverage_gaps,
+    readerNotices: edition.reader_notices,
   };
 }
 
-function normalizeStory(row: StoryRow): StoryCardView {
+function normalizeStory(
+  story: PublishedStory,
+  asset: ImageProvenanceView | null,
+): StoryCardView {
   return {
-    slug: row.slug,
-    domain: row.domain,
-    severity: row.severity,
-    title: row.title,
-    deck: row.deck,
-    summary: row.summary,
-    whyItMatters: row.why_it_matters,
-    curiosityText: row.curiosity_text,
-    coverageState: row.coverage_state,
-    confidence: row.confidence,
-    publishedAt: row.published_at,
-    imageAlt:
-      row.media_alt_text?.trim() || `Editorial visual context for ${row.title}`,
+    slug: story.slug,
+    domain: story.domain,
+    severity: story.severity,
+    title: story.title,
+    deck: story.deck,
+    summary: story.summary,
+    whyItMatters: story.why_it_matters,
+    curiosityText: story.curiosity_text,
+    coverageState: story.coverage_state,
+    confidence: story.confidence,
+    publishedAt: story.published_at,
+    imageAlt: asset?.altText ?? `Editorial visual context for ${story.title}`,
   };
-}
-
-function visibleRows(rows: readonly StoryRow[]): readonly StoryRow[] {
-  return rows.filter(
-    (row) => row.desired_quarantined !== 1 && row.desired_quarantined !== true,
-  );
 }
 
 async function readSourceStatus(
@@ -263,111 +250,92 @@ async function readSourceStatus(
   }));
 }
 
-async function readEditionStories(
+async function readApprovedAsset(
   db: D1DatabaseLike,
-  editionId: string,
-): Promise<readonly StoryRow[]> {
+  storyId: string,
+  version: number,
+): Promise<ImageProvenanceView | null> {
   const result = await db
     .prepare(
-      `/* magazine:edition-stories */
-       SELECT story.story_id, version.version, story.slug, version.language,
-              version.domain, entry.section,
-              entry.editorial_order, version.severity,
-              version.lifecycle_state, version.title, version.deck,
-              version.summary, version.why_it_matters,
-              version.curiosity_text, version.coverage_state,
-              version.confidence, version.first_seen_at, version.updated_at,
-              version.published_at,
-              COALESCE((SELECT visibility.desired_quarantined
-                FROM story_visibility_events visibility
-                WHERE visibility.story_id = story.story_id
-                ORDER BY visibility.visibility_seq DESC LIMIT 1), 0)
-                AS desired_quarantined,
-              (SELECT asset.alt_text
-                FROM story_asset_references reference
-                JOIN assets asset ON asset.sha256 = reference.asset_sha256
-                WHERE reference.story_id = story.story_id
-                  AND reference.version = version.version
-                  AND reference.publication_state = 'published'
-                  AND COALESCE((SELECT status.status
-                    FROM asset_status_events status
-                    WHERE status.asset_id = asset.asset_id
-                    ORDER BY status.status_seq DESC LIMIT 1), asset.status) = 'verified'
-                  AND COALESCE((SELECT rights.rights_status
-                    FROM asset_status_events rights
-                    WHERE rights.asset_id = asset.asset_id
-                    ORDER BY rights.status_seq DESC LIMIT 1), asset.rights_status) = 'approved'
-                LIMIT 1) AS media_alt_text
-       FROM edition_entries entry
-       JOIN stories story ON story.story_id = entry.story_id
-       JOIN story_versions version
-         ON version.story_id = entry.story_id AND version.version = entry.version
-       WHERE entry.edition_id = ?
-         AND entry.publication_state = 'published'
-         AND version.publication_state = 'published'
-       ORDER BY entry.editorial_order`,
+      `/* magazine:story-assets */
+       SELECT asset.alt_text, asset.source, asset.created_at,
+              COALESCE((SELECT status.status
+                FROM asset_status_events status
+                WHERE status.asset_id = asset.asset_id
+                ORDER BY status.status_seq DESC LIMIT 1), asset.status) AS status,
+              COALESCE((SELECT rights.rights_status
+                FROM asset_status_events rights
+                WHERE rights.asset_id = asset.asset_id
+                ORDER BY rights.status_seq DESC LIMIT 1), asset.rights_status) AS rights_status
+       FROM story_asset_references reference
+       JOIN assets asset ON asset.sha256 = reference.asset_sha256
+       WHERE reference.story_id = ? AND reference.version = ?
+         AND reference.publication_state = 'published'
+       ORDER BY asset.created_at DESC`,
     )
-    .bind(editionId)
-    .all<StoryRow>();
-  return visibleRows(result.results ?? []);
+    .bind(storyId, version)
+    .all<AssetRow>();
+  const safe = (result.results ?? []).find(
+    (asset) =>
+      asset.status === "verified" && asset.rights_status === "approved",
+  );
+  return safe === undefined
+    ? null
+    : {
+        altText: safe.alt_text,
+        source: safe.source,
+        createdAt: safe.created_at,
+      };
 }
 
-async function readBreaking(db: D1DatabaseLike): Promise<readonly StoryRow[]> {
-  const result = await db
-    .prepare(
-      `/* magazine:active-breaking */
-       SELECT story.story_id, version.version, story.slug, version.language,
-              version.domain, 'breaking' AS section, 0 AS editorial_order,
-              version.severity, version.lifecycle_state, version.title,
-              version.deck, version.summary, version.why_it_matters,
-              version.curiosity_text, version.coverage_state,
-              version.confidence, version.first_seen_at, version.updated_at,
-              version.published_at,
-              COALESCE((SELECT visibility.desired_quarantined
-                FROM story_visibility_events visibility
-                WHERE visibility.story_id = story.story_id
-                ORDER BY visibility.visibility_seq DESC LIMIT 1), 0)
-                AS desired_quarantined,
-              NULL AS media_alt_text
-       FROM breaking_pointer pointer
-       JOIN breaking_entries entry
-         ON entry.breaking_revision = pointer.active_revision
-       JOIN stories story ON story.story_id = entry.story_id
-       JOIN story_versions version
-         ON version.story_id = entry.story_id AND version.version = entry.version
-       WHERE pointer.singleton_id = 1
-         AND entry.publication_state = 'published'
-         AND version.publication_state = 'published'
-         AND version.severity IN ('high', 'critical')
-       ORDER BY CASE version.severity WHEN 'critical' THEN 0 ELSE 1 END,
-                version.published_at DESC`,
-    )
-    .all<StoryRow>();
-  return visibleRows(result.results ?? []);
+async function cardsForStories(
+  db: D1DatabaseLike,
+  stories: readonly PublishedStory[],
+): Promise<readonly StoryCardView[]> {
+  return Promise.all(
+    stories.map(async (story) =>
+      normalizeStory(
+        story,
+        await readApprovedAsset(db, story.story_id, story.version),
+      ),
+    ),
+  );
 }
 
 async function composeFrontPage(
   db: D1DatabaseLike,
-  editionRow: EditionRow | null,
+  edition: PublishedEdition | null,
+  includeBreaking: boolean,
 ): Promise<FrontPageView> {
   const sourceSystems = await readSourceStatus(db);
-  if (editionRow === null) {
-    return emptyFrontPage(sourceSystems, false);
-  }
-  const rows = await readEditionStories(db, editionRow.edition_id);
-  const cards = rows.map(normalizeStory);
-  const heroIndex = rows.findIndex((row) => row.section === "hero");
-  const hero = cards[heroIndex >= 0 ? heroIndex : 0] ?? null;
-  const nonHero = cards.filter((story) => story.slug !== hero?.slug);
-  const breaking = (await readBreaking(db)).map(normalizeStory);
+  if (edition === null) return emptyFrontPage(sourceSystems, false);
+
+  const orderedEntries = [...edition.entries].sort(
+    (left, right) => left.order - right.order,
+  );
+  const cards = await cardsForStories(
+    db,
+    orderedEntries.map((entry) => entry.story),
+  );
+  const hero = cards[0] ?? null;
+  const nonHero = orderedEntries.slice(1).map((entry, index) => ({
+    entry,
+    card: cards[index + 1],
+  }));
+  const repository = createPublicationRepository(db);
+  const breaking = includeBreaking
+    ? await cardsForStories(db, await repository.getActiveBreaking())
+    : [];
   return {
-    edition: normalizeEdition(editionRow),
+    edition: normalizeEdition(edition),
     hero,
     breaking,
-    dispatches: nonHero.slice(0, 4),
+    dispatches: nonHero.slice(0, 4).map(({ card }) => card),
     sections: DOMAIN_SECTIONS.map((section) => ({
       ...section,
-      stories: nonHero.filter((story) => story.domain === section.key),
+      stories: nonHero
+        .filter(({ entry }) => entry.section === section.key)
+        .map(({ card }) => card),
     })),
     curiosity: cards.find((story) => story.curiosityText?.trim()) ?? null,
     sourceSystems,
@@ -395,22 +363,8 @@ export async function readCurrentFrontPage(): Promise<FrontPageView> {
   const db = dbBinding();
   if (db === null) return emptyFrontPage([], true);
   try {
-    const edition = await db
-      .prepare(
-        `/* magazine:current-edition */
-         SELECT edition.edition_id, edition.edition_date,
-                edition.edition_revision, edition.edition_kind,
-                edition.coverage_state, edition.verified_at,
-                edition.published_at, edition.coverage_gaps_json,
-                edition.reader_notices_json
-         FROM edition_pointer pointer
-         JOIN editions edition
-           ON edition.edition_id = pointer.current_edition_id
-         WHERE pointer.singleton_id = 1
-           AND edition.publication_state = 'published'`,
-      )
-      .first<EditionRow>();
-    return composeFrontPage(db, edition);
+    const edition = await createPublicationRepository(db).getCurrentEdition();
+    return composeFrontPage(db, edition, true);
   } catch {
     return emptyFrontPage([], true);
   }
@@ -432,19 +386,20 @@ export async function readArchivedEdition(
   const db = dbBinding();
   if (parsed === null || db === null) return null;
   try {
-    const edition = await db
+    const pointer = await db
       .prepare(
-        `/* magazine:edition-by-id */
-         SELECT edition_id, edition_date, edition_revision, edition_kind,
-                coverage_state, verified_at, published_at,
-                coverage_gaps_json, reader_notices_json
-         FROM editions
+        `/* magazine:edition-id-by-key */
+         SELECT edition_id FROM editions
          WHERE edition_date = ? AND edition_revision = ?
            AND publication_state = 'published'`,
       )
       .bind(parsed.date, parsed.revision)
-      .first<EditionRow>();
-    return edition === null ? null : composeFrontPage(db, edition);
+      .first<{ edition_id: string }>();
+    if (pointer === null) return null;
+    const edition = await createPublicationRepository(db).getPublishedEdition(
+      pointer.edition_id,
+    );
+    return edition === null ? null : composeFrontPage(db, edition, false);
   } catch {
     return null;
   }
@@ -462,66 +417,137 @@ function httpsUrlOrNull(value: string | null): string | null {
   }
 }
 
+async function readStorySectionAndVerification(
+  db: D1DatabaseLike,
+  storyId: string,
+  version: number,
+  fallback: StoryVersionV1["domain"],
+): Promise<{
+  section: EditionPlacementV1["section"];
+  verifiedAt: string | null;
+}> {
+  const row = await db
+    .prepare(
+      `/* magazine:story-publication-metadata */
+       SELECT entry.section, edition.verified_at
+       FROM edition_entries entry
+       JOIN editions edition ON edition.edition_id = entry.edition_id
+       WHERE entry.story_id = ? AND entry.version = ?
+         AND entry.publication_state = 'published'
+         AND edition.publication_state = 'published'
+       ORDER BY edition.edition_revision DESC LIMIT 1`,
+    )
+    .bind(storyId, version)
+    .first<{
+      section: EditionPlacementV1["section"];
+      verified_at: string;
+    }>();
+  return {
+    section: row?.section ?? fallback,
+    verifiedAt: row?.verified_at ?? null,
+  };
+}
+
+async function readTimeline(
+  db: D1DatabaseLike,
+  story: PublishedStory,
+): Promise<readonly StoryTimelineEvent[]> {
+  const [historyResult, visibilityResult] = await Promise.all([
+    db
+      .prepare(
+        `/* magazine:story-history */
+         SELECT version, lifecycle_state, updated_at, published_at
+         FROM story_versions
+         WHERE story_id = ? AND publication_state IN ('published', 'superseded')
+         ORDER BY version`,
+      )
+      .bind(story.story_id)
+      .all<{
+        version: number;
+        lifecycle_state: StoryVersionV1["lifecycle_state"];
+        updated_at: string;
+        published_at: string | null;
+      }>(),
+    db
+      .prepare(
+        `/* magazine:story-visibility-history */
+         SELECT story_version, desired_quarantined, created_at
+         FROM story_visibility_events
+         WHERE story_id = ?
+         ORDER BY visibility_seq`,
+      )
+      .bind(story.story_id)
+      .all<{
+        story_version: number;
+        desired_quarantined: number;
+        created_at: string;
+      }>(),
+  ]);
+
+  const versions = historyResult.results ?? [];
+  const timeline: StoryTimelineEvent[] = versions.map((item) => {
+    if (item.version < story.version) {
+      return {
+        kind: "supersession",
+        label: "Earlier revision superseded",
+        occurredAt: item.published_at ?? item.updated_at,
+        version: item.version,
+      };
+    }
+    if (item.lifecycle_state === "amended") {
+      return {
+        kind: "amendment",
+        label: "Amendment published — correction recorded",
+        occurredAt: item.published_at ?? item.updated_at,
+        version: item.version,
+      };
+    }
+    return {
+      kind: "publication",
+      label: "Revision published",
+      occurredAt: item.published_at ?? item.updated_at,
+      version: item.version,
+    };
+  });
+  for (const event of visibilityResult.results ?? []) {
+    timeline.push({
+      kind: event.desired_quarantined === 1 ? "quarantine" : "restoration",
+      label: event.desired_quarantined === 1 ? "Quarantined" : "Restored",
+      occurredAt: event.created_at,
+      version: event.story_version,
+    });
+  }
+  return timeline.sort(
+    (left, right) => Date.parse(left.occurredAt) - Date.parse(right.occurredAt),
+  );
+}
+
 export async function readStoryDetail(
   slug: string,
 ): Promise<StoryDetailView | null> {
   const db = dbBinding();
   if (db === null) return null;
   try {
-    const row = await db
-      .prepare(
-        `/* magazine:story-by-slug */
-         SELECT story.story_id, version.version, story.slug, version.language,
-                version.domain, version.severity, version.lifecycle_state,
-                version.title, version.deck, version.summary,
-                version.why_it_matters, version.curiosity_text,
-                version.coverage_state, version.confidence,
-                version.first_seen_at, version.updated_at,
-                version.published_at,
-                COALESCE((SELECT visibility.desired_quarantined
-                  FROM story_visibility_events visibility
-                  WHERE visibility.story_id = story.story_id
-                  ORDER BY visibility.visibility_seq DESC LIMIT 1), 0)
-                  AS desired_quarantined,
-                NULL AS media_alt_text
-         FROM stories story
-         JOIN story_versions version
-           ON version.story_id = story.story_id
-          AND version.version = story.current_version
-         WHERE story.slug = ? AND version.publication_state = 'published'`,
-      )
-      .bind(slug)
-      .first<StoryRow>();
-    if (
-      row === null ||
-      row.desired_quarantined === 1 ||
-      row.desired_quarantined === true
-    ) {
-      return null;
-    }
+    const row = await createPublicationRepository(db).getCurrentStory(slug);
+    if (row === null) return null;
 
-    const [
-      contributorsResult,
-      claimsResult,
-      evidenceResult,
-      historyResult,
-      assetsResult,
-    ] = await Promise.all([
-      db
-        .prepare(
-          `/* magazine:story-contributors */
+    const [contributorsResult, claimsResult, evidenceResult, asset, metadata] =
+      await Promise.all([
+        db
+          .prepare(
+            `/* magazine:story-contributors */
              SELECT DISTINCT system.display_name
              FROM story_versions version,
                   json_each(version.contributing_system_ids_json) contributor
              JOIN source_systems system ON system.system_id = contributor.value
              WHERE version.story_id = ? AND version.version = ?
              ORDER BY system.display_name`,
-        )
-        .bind(row.story_id, row.version)
-        .all<{ display_name: string }>(),
-      db
-        .prepare(
-          `/* magazine:story-claims */
+          )
+          .bind(row.story_id, row.version)
+          .all<{ display_name: string }>(),
+        db
+          .prepare(
+            `/* magazine:story-claims */
              SELECT claim_id, claim_kind, normalized_text, numeric_value,
                     numeric_unit, as_of
              FROM story_claims
@@ -529,12 +555,12 @@ export async function readStoryDetail(
                AND publication_state = 'published'
              ORDER BY CASE claim_kind WHEN 'fact' THEN 0 WHEN 'numeric' THEN 1 ELSE 2 END,
                       claim_id`,
-        )
-        .bind(row.story_id, row.version)
-        .all<ClaimRow>(),
-      db
-        .prepare(
-          `/* magazine:story-evidence */
+          )
+          .bind(row.story_id, row.version)
+          .all<ClaimRow>(),
+        db
+          .prepare(
+            `/* magazine:story-evidence */
              SELECT link.claim_id, evidence.publisher,
                     evidence.document_citation, evidence.canonical_url,
                     evidence.source_type, evidence.published_at,
@@ -545,57 +571,17 @@ export async function readStoryDetail(
              WHERE link.story_id = ? AND link.version = ?
                AND link.publication_state = 'published'
              ORDER BY link.claim_id, evidence.publisher`,
-        )
-        .bind(row.story_id, row.version)
-        .all<EvidenceRow>(),
-      db
-        .prepare(
-          `/* magazine:story-history */
-             SELECT version, lifecycle_state, published_at
-             FROM story_versions
-             WHERE story_id = ? AND publication_state IN ('published', 'superseded')
-             ORDER BY version DESC`,
-        )
-        .bind(row.story_id)
-        .all<{
-          version: number;
-          lifecycle_state: string;
-          published_at: string | null;
-        }>(),
-      db
-        .prepare(
-          `/* magazine:story-assets */
-             SELECT reference.asset_sha256, asset.alt_text,
-                    COALESCE((SELECT status.status
-                      FROM asset_status_events status
-                      WHERE status.asset_id = asset.asset_id
-                      ORDER BY status.status_seq DESC LIMIT 1), asset.status) AS status,
-                    COALESCE((SELECT rights.rights_status
-                      FROM asset_status_events rights
-                      WHERE rights.asset_id = asset.asset_id
-                      ORDER BY rights.status_seq DESC LIMIT 1), asset.rights_status) AS rights_status
-             FROM story_asset_references reference
-             JOIN assets asset ON asset.sha256 = reference.asset_sha256
-             WHERE reference.story_id = ? AND reference.version = ?
-               AND reference.publication_state = 'published'`,
-        )
-        .bind(row.story_id, row.version)
-        .all<{
-          asset_sha256: string;
-          alt_text: string;
-          status: string;
-          rights_status: string;
-        }>(),
-    ]);
-
-    const safeAsset = (assetsResult.results ?? []).find(
-      (asset) =>
-        asset.status === "verified" && asset.rights_status === "approved",
-    );
-    const story = normalizeStory({
-      ...row,
-      media_alt_text: safeAsset?.alt_text ?? row.media_alt_text,
-    });
+          )
+          .bind(row.story_id, row.version)
+          .all<EvidenceRow>(),
+        readApprovedAsset(db, row.story_id, row.version),
+        readStorySectionAndVerification(
+          db,
+          row.story_id,
+          row.version,
+          row.domain,
+        ),
+      ]);
     const evidence = evidenceResult.results ?? [];
     const claims = (claimsResult.results ?? []).map<ClaimView>((claim) => ({
       kind: claim.claim_kind,
@@ -615,26 +601,21 @@ export async function readStoryDetail(
           note: item.evidence_note,
         })),
     }));
-    const history = (historyResult.results ?? []).map((item) => ({
-      version: item.version,
-      state: item.lifecycle_state,
-      publishedAt: item.published_at,
-    }));
     return {
-      story,
-      language: row.language ?? "en",
+      story: normalizeStory(row, asset),
+      language: row.language,
+      section: metadata.section,
       lifecycleState: row.lifecycle_state,
-      firstSeenAt: row.first_seen_at ?? row.published_at,
-      updatedAt: row.updated_at ?? row.published_at,
+      firstSeenAt: row.first_seen_at,
+      updatedAt: row.updated_at,
+      verifiedAt: metadata.verifiedAt,
       contributors: (contributorsResult.results ?? []).map(
         (item) => item.display_name,
       ),
       claims,
       currentVisibility: "Visible now",
-      hasSupersededHistory: history.some(
-        (item) => item.state === "superseded" || item.version < row.version,
-      ),
-      history,
+      imageProvenance: asset,
+      timeline: await readTimeline(db, row),
     };
   } catch {
     return null;

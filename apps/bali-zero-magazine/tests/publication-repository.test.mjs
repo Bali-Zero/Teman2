@@ -715,9 +715,10 @@ test("standalone Breaking commits both heads or neither", async () => {
     (await repository.getCurrentStory(packet.story.slug))?.version,
     2,
   );
-  assert.deepEqual(await repository.getActiveBreaking(), [
-    packet.story.story_id,
-  ]);
+  assert.deepEqual(
+    (await repository.getActiveBreaking()).map((story) => story.story_id),
+    [packet.story.story_id],
+  );
 });
 
 test("a Breaking CAS conflict leaves both story and Breaking heads unchanged", async () => {
@@ -782,9 +783,32 @@ test("edition finalization promotes the complete packet-scoped graph", async () 
       `${table} must be promoted exactly once`,
     );
   }
-  assert.deepEqual((await repository.getCurrentEdition())?.entries, [
-    { story_id: "story-1", version: 2, section: "compliance", order: 1 },
-  ]);
+  const publishedEntries = (await repository.getCurrentEdition())?.entries;
+  assert.deepEqual(
+    publishedEntries?.map((entry) => ({
+      story_id: entry.story_id,
+      version: entry.version,
+      section: entry.section,
+      order: entry.order,
+    })),
+    [{ story_id: "story-1", version: 2, section: "compliance", order: 1 }],
+  );
+  assert.deepEqual(
+    publishedEntries?.map((entry) => ({
+      slug: entry.story.slug,
+      domain: entry.story.domain,
+      firstSeenAt: entry.story.first_seen_at,
+      updatedAt: entry.story.updated_at,
+    })),
+    [
+      {
+        slug: packet.stories[0].slug,
+        domain: packet.stories[0].domain,
+        firstSeenAt: packet.stories[0].first_seen_at,
+        updatedAt: packet.stories[0].updated_at,
+      },
+    ],
+  );
 });
 
 test("concurrent duplicate edition finalization returns published plus replay", async () => {

@@ -1,6 +1,7 @@
 import type {
   ClaimV1,
   EditionPacketV1,
+  EditionPlacementV1,
   EvidenceRefV1,
   StoryPacketV1,
   StoryVersionV1,
@@ -34,16 +35,18 @@ export type PublishedStory = Readonly<{
   version: number;
   slug: string;
   language: string;
-  domain: string;
-  severity: string;
-  lifecycle_state: string;
+  domain: StoryVersionV1["domain"];
+  severity: StoryVersionV1["severity"];
+  lifecycle_state: StoryVersionV1["lifecycle_state"];
+  first_seen_at: string;
+  updated_at: string;
   title: string;
   deck: string;
   summary: string;
   why_it_matters: string;
   curiosity_text: string | null;
-  coverage_state: string;
-  confidence: string;
+  coverage_state: StoryVersionV1["coverage_state"];
+  confidence: StoryVersionV1["confidence"];
   published_at: string;
 }>;
 
@@ -51,14 +54,18 @@ export type PublishedEdition = Readonly<{
   edition_id: string;
   edition_date: string;
   edition_revision: number;
-  edition_kind: string;
-  coverage_state: string;
+  edition_kind: EditionPacketV1["edition_kind"];
+  coverage_state: EditionPacketV1["coverage_state"];
+  verified_at: string;
   published_at: string;
+  coverage_gaps: readonly string[];
+  reader_notices: readonly string[];
   entries: readonly Readonly<{
     story_id: string;
     version: number;
-    section: string;
+    section: EditionPlacementV1["section"];
     order: number;
+    story: PublishedStory;
   }>[];
 }>;
 
@@ -99,6 +106,17 @@ const SHA256 = /^[a-f0-9]{64}$/;
 
 function json(value: unknown): string {
   return JSON.stringify(value);
+}
+
+function stringArray(value: string): readonly string[] {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string")
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 function requireManifestHash(value: string): void {
@@ -1151,18 +1169,34 @@ export function createPublicationRepository(
     const row = await db
       .prepare(
         `SELECT edition_id, edition_date, edition_revision, edition_kind,
-                coverage_state, published_at
+                coverage_state, verified_at, published_at,
+                coverage_gaps_json, reader_notices_json
          FROM editions
          WHERE edition_id = ? AND publication_state = 'published'`,
       )
       .bind(editionId)
-      .first<Omit<PublishedEdition, "entries">>();
+      .first<{
+        edition_id: string;
+        edition_date: string;
+        edition_revision: number;
+        edition_kind: PublishedEdition["edition_kind"];
+        coverage_state: PublishedEdition["coverage_state"];
+        verified_at: string;
+        published_at: string | null;
+        coverage_gaps_json: string;
+        reader_notices_json: string;
+      }>();
     if (row === null || row.published_at === null) return null;
     const entryResult = await db
       .prepare(
         `SELECT ee.story_id, ee.version, ee.section,
-                ee.editorial_order AS "order"
+                ee.editorial_order AS "order", s.slug, sv.language,
+                sv.domain, sv.severity, sv.lifecycle_state,
+                sv.first_seen_at, sv.updated_at, sv.title, sv.deck,
+                sv.summary, sv.why_it_matters, sv.curiosity_text,
+                sv.coverage_state, sv.confidence, sv.published_at
          FROM edition_entries ee
+         JOIN stories s ON s.story_id = ee.story_id
          JOIN story_versions sv
            ON sv.story_id = ee.story_id AND sv.version = ee.version
          WHERE ee.edition_id = ?
@@ -1181,11 +1215,62 @@ export function createPublicationRepository(
          ORDER BY ee.section, ee.editorial_order`,
       )
       .bind(editionId)
-      .all<PublishedEdition["entries"][number]>();
+      .all<{
+        story_id: string;
+        version: number;
+        section: EditionPlacementV1["section"];
+        order: number;
+        slug: string;
+        language: string;
+        domain: StoryVersionV1["domain"];
+        severity: StoryVersionV1["severity"];
+        lifecycle_state: StoryVersionV1["lifecycle_state"];
+        first_seen_at: string;
+        updated_at: string;
+        title: string;
+        deck: string;
+        summary: string;
+        why_it_matters: string;
+        curiosity_text: string | null;
+        coverage_state: StoryVersionV1["coverage_state"];
+        confidence: StoryVersionV1["confidence"];
+        published_at: string;
+      }>();
     return {
-      ...row,
+      edition_id: row.edition_id,
+      edition_date: row.edition_date,
+      edition_revision: row.edition_revision,
+      edition_kind: row.edition_kind,
+      coverage_state: row.coverage_state,
+      verified_at: row.verified_at,
       published_at: row.published_at,
-      entries: (entryResult.results ?? []).map((entry) => ({ ...entry })),
+      coverage_gaps: stringArray(row.coverage_gaps_json),
+      reader_notices: stringArray(row.reader_notices_json),
+      entries: (entryResult.results ?? []).map((entry) => ({
+        story_id: entry.story_id,
+        version: entry.version,
+        section: entry.section,
+        order: entry.order,
+        story: {
+          story_id: entry.story_id,
+          version: entry.version,
+          slug: entry.slug,
+          language: entry.language,
+          domain: entry.domain,
+          severity: entry.severity,
+          lifecycle_state: entry.lifecycle_state,
+          first_seen_at: entry.first_seen_at,
+          updated_at: entry.updated_at,
+          title: entry.title,
+          deck: entry.deck,
+          summary: entry.summary,
+          why_it_matters: entry.why_it_matters,
+          curiosity_text: entry.curiosity_text,
+          coverage_state: entry.coverage_state,
+          confidence: entry.confidence,
+          published_at: entry.published_at,
+        },
+      })),
     };
   }
 
@@ -1205,7 +1290,8 @@ export function createPublicationRepository(
     return db
       .prepare(
         `SELECT s.story_id, sv.version, s.slug, sv.language, sv.domain,
-                sv.severity, sv.lifecycle_state, sv.title, sv.deck, sv.summary,
+                sv.severity, sv.lifecycle_state, sv.first_seen_at,
+                sv.updated_at, sv.title, sv.deck, sv.summary,
                 sv.why_it_matters, sv.curiosity_text, sv.coverage_state,
                 sv.confidence, sv.published_at
          FROM stories s
@@ -1227,10 +1313,14 @@ export function createPublicationRepository(
       .first<PublishedStory>();
   }
 
-  async function getActiveBreaking(): Promise<readonly string[]> {
+  async function getActiveBreaking(): Promise<readonly PublishedStory[]> {
     const result = await db
       .prepare(
-        `SELECT be.story_id
+        `SELECT s.story_id, sv.version, s.slug, sv.language, sv.domain,
+                sv.severity, sv.lifecycle_state, sv.first_seen_at,
+                sv.updated_at, sv.title, sv.deck, sv.summary,
+                sv.why_it_matters, sv.curiosity_text, sv.coverage_state,
+                sv.confidence, sv.published_at
          FROM breaking_pointer bp
          JOIN breaking_entries be ON be.breaking_revision = bp.active_revision
          JOIN stories s
@@ -1250,10 +1340,11 @@ export function createPublicationRepository(
                )
                AND visibility.desired_quarantined = 1
            )
-         ORDER BY be.story_id`,
+         ORDER BY CASE sv.severity WHEN 'critical' THEN 0 ELSE 1 END,
+                  sv.published_at DESC, be.story_id`,
       )
-      .all<{ story_id: string }>();
-    return (result.results ?? []).map((row) => row.story_id);
+      .all<PublishedStory>();
+    return (result.results ?? []).map((row) => ({ ...row }));
   }
 
   return {

@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
+
+import { parseEditionPacket } from "../lib/contracts/publication.ts";
+import { createPublicationRepository } from "../lib/server/publication-repository.ts";
 
 const RAW_STORY_ID = "story_01JZX7Z8P9Q2M4N6R8T0V2W4Y6";
 const RAW_QUARANTINED_ID = "story_01JZX7Z8P9Q2M4N6R8T0V2W4Z7";
@@ -16,10 +21,10 @@ const storyRows = [
     slug: "bali-visa-evidence-standard",
     language: "en",
     domain: "immigration",
-    section: "hero",
+    section: "immigration",
     editorial_order: 1,
     severity: "high",
-    lifecycle_state: "published",
+    lifecycle_state: "amended",
     title: "Bali visa files move to a stricter evidence standard",
     deck: "A verified document trail now matters earlier in the application cycle.",
     summary:
@@ -28,7 +33,7 @@ const storyRows = [
       "Teams must identify missing evidence before a client reaches the submission window.",
     curiosity_text:
       "The overlooked detail: translation dates can change the useful life of a supporting document.",
-    coverage_state: "complete",
+    coverage_state: "full",
     confidence: "high",
     first_seen_at: "2026-07-18T00:15:00.000Z",
     updated_at: "2026-07-18T01:20:00.000Z",
@@ -40,22 +45,25 @@ const storyRows = [
     desired_quarantined: 0,
     media_alt_text:
       "A reviewed immigration dossier arranged beside a verification checklist",
+    media_source: "Bali Zero editorial desk",
+    media_created_at: "2026-07-18T00:45:00.000Z",
+    verified_at: "2026-07-18T01:25:00.000Z",
   },
   {
     story_id: "story_company_internal",
     version: 1,
     slug: "investment-licensing-sequence",
-    domain: "company-investment",
-    section: "company-investment",
+    domain: "company",
+    section: "company",
     editorial_order: 1,
     severity: "medium",
-    lifecycle_state: "published",
+    lifecycle_state: "verified",
     title: "Investment licensing now rewards the correct filing sequence",
     deck: "Corporate documents and operational permits must tell the same story.",
     summary: "A sequencing mismatch can delay downstream approvals.",
     why_it_matters: "Company setup teams need one shared readiness view.",
     curiosity_text: null,
-    coverage_state: "complete",
+    coverage_state: "full",
     confidence: "high",
     published_at: "2026-07-18T01:30:00.000Z",
     contributing_system_ids_json: "[]",
@@ -70,7 +78,7 @@ const storyRows = [
     section: "tax",
     editorial_order: 1,
     severity: "medium",
-    lifecycle_state: "published",
+    lifecycle_state: "verified",
     title: "The tax calendar needs a second operational cross-check",
     deck: "Filing dates and client evidence windows do not always align.",
     summary: "A cross-check protects the filing window.",
@@ -92,13 +100,13 @@ const storyRows = [
     section: "property",
     editorial_order: 1,
     severity: "medium",
-    lifecycle_state: "published",
+    lifecycle_state: "verified",
     title: "Property reviews put usage rights before the sales narrative",
     deck: "The operational file begins with title, zoning, and permitted use.",
     summary: "Rights verification precedes commercial interpretation.",
     why_it_matters: "Advisers need a grounded file before discussing options.",
     curiosity_text: null,
-    coverage_state: "complete",
+    coverage_state: "full",
     confidence: "high",
     published_at: "2026-07-18T01:30:00.000Z",
     contributing_system_ids_json: "[]",
@@ -109,17 +117,17 @@ const storyRows = [
     story_id: "story_regulation_internal",
     version: 1,
     slug: "regulatory-source-refresh",
-    domain: "regulation-compliance",
-    section: "regulation-compliance",
+    domain: "compliance",
+    section: "compliance",
     editorial_order: 1,
     severity: "critical",
-    lifecycle_state: "published",
+    lifecycle_state: "verified",
     title: "Primary-source refresh changes the compliance watchlist",
     deck: "A newly verified source changes which files require attention first.",
     summary: "The watchlist now follows the verified primary source.",
     why_it_matters: "Compliance owners can prioritize affected client files.",
     curiosity_text: null,
-    coverage_state: "complete",
+    coverage_state: "full",
     confidence: "high",
     published_at: "2026-07-18T01:30:00.000Z",
     contributing_system_ids_json: "[]",
@@ -134,13 +142,13 @@ const storyRows = [
     section: "tax",
     editorial_order: 2,
     severity: "high",
-    lifecycle_state: "published",
+    lifecycle_state: "verified",
     title: "This quarantined title must never render",
     deck: "Hidden by the latest visibility overlay.",
     summary: "Hidden.",
     why_it_matters: "Hidden.",
     curiosity_text: null,
-    coverage_state: "complete",
+    coverage_state: "full",
     confidence: "high",
     published_at: "2026-07-18T01:30:00.000Z",
     contributing_system_ids_json: "[]",
@@ -244,6 +252,54 @@ function createFixtureDb({ quiet = false, empty = false } = {}) {
       };
   const fixture = {
     answer(sql, values, mode) {
+      if (sql.includes("SELECT ep.current_edition_id")) {
+        return currentEdition === null
+          ? null
+          : { current_edition_id: currentEdition.edition_id };
+      }
+      if (
+        sql.includes("FROM editions") &&
+        sql.includes("WHERE edition_id = ?")
+      ) {
+        return values[0] === currentEdition?.edition_id ? currentEdition : null;
+      }
+      if (sql.includes("FROM edition_entries ee")) {
+        return quiet
+          ? []
+          : storyRows
+              .filter(
+                (story) =>
+                  story.desired_quarantined !== 1 &&
+                  story.slug !== "regulatory-source-refresh",
+              )
+              .map((story) => ({
+                ...story,
+                order: story.editorial_order,
+              }));
+      }
+      if (sql.includes("FROM breaking_pointer bp")) {
+        return quiet
+          ? []
+          : storyRows.filter(
+              (story) => story.slug === "regulatory-source-refresh",
+            );
+      }
+      if (sql.includes("FROM stories s")) {
+        return values[0] === "bali-visa-evidence-standard"
+          ? storyRows[0]
+          : null;
+      }
+      if (sql.includes("magazine:edition-id-by-key")) {
+        return values[0] === "2026-07-18" && values[1] === 2
+          ? { edition_id: currentEdition?.edition_id }
+          : null;
+      }
+      if (sql.includes("magazine:story-publication-metadata")) {
+        return {
+          section: "immigration",
+          verified_at: editionRow.verified_at,
+        };
+      }
       if (sql.includes("magazine:current-edition")) return currentEdition;
       if (sql.includes("magazine:edition-by-id")) {
         return values[0] === "2026-07-18" && values[1] === 2
@@ -273,7 +329,7 @@ function createFixtureDb({ quiet = false, empty = false } = {}) {
         return [
           {
             version: 2,
-            lifecycle_state: "published",
+            lifecycle_state: "amended",
             published_at: "2026-07-18T01:30:00.000Z",
           },
           {
@@ -283,12 +339,28 @@ function createFixtureDb({ quiet = false, empty = false } = {}) {
           },
         ];
       }
+      if (sql.includes("magazine:story-visibility-history")) {
+        return [
+          {
+            story_version: 1,
+            desired_quarantined: 1,
+            created_at: "2026-07-17T02:00:00.000Z",
+          },
+          {
+            story_version: 2,
+            desired_quarantined: 0,
+            created_at: "2026-07-18T01:28:00.000Z",
+          },
+        ];
+      }
       if (sql.includes("magazine:story-assets")) {
         return [
           {
             asset_sha256: RAW_DIGEST,
             alt_text:
               "A reviewed immigration dossier arranged beside a verification checklist",
+            source: "Bali Zero editorial desk",
+            created_at: "2026-07-18T00:45:00.000Z",
             status: "verified",
             rights_status: "approved",
           },
@@ -305,6 +377,243 @@ function createFixtureDb({ quiet = false, empty = false } = {}) {
       throw new Error("read-only fixture must not batch");
     },
   };
+}
+
+class SqliteD1Statement {
+  constructor(owner, sql, values = []) {
+    this.owner = owner;
+    this.sql = sql;
+    this.values = values;
+  }
+
+  bind(...values) {
+    return new SqliteD1Statement(this.owner, this.sql, values);
+  }
+
+  runSync() {
+    const result = this.owner.sqlite.prepare(this.sql).run(...this.values);
+    return {
+      success: true,
+      results: [],
+      meta: { changes: Number(result.changes) },
+    };
+  }
+
+  async run() {
+    return this.runSync();
+  }
+
+  async first() {
+    return this.owner.sqlite.prepare(this.sql).get(...this.values) ?? null;
+  }
+
+  async all() {
+    return {
+      success: true,
+      results: this.owner.sqlite.prepare(this.sql).all(...this.values),
+      meta: { changes: 0 },
+    };
+  }
+}
+
+class SqliteD1Database {
+  constructor() {
+    this.sqlite = new DatabaseSync(":memory:");
+    this.sqlite.exec("PRAGMA foreign_keys = ON");
+    const migration = readFileSync(
+      new URL("../drizzle/0000_magazine_core.sql", import.meta.url),
+      "utf8",
+    ).replaceAll("--> statement-breakpoint", "");
+    this.sqlite.exec(migration);
+  }
+
+  prepare(sql) {
+    return new SqliteD1Statement(this, sql);
+  }
+
+  async batch(statements) {
+    this.sqlite.exec("BEGIN IMMEDIATE");
+    try {
+      const results = statements.map((statement) => statement.runSync());
+      this.sqlite.exec("COMMIT");
+      return results;
+    } catch (error) {
+      this.sqlite.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  execute(sql, ...values) {
+    return this.sqlite.prepare(sql).run(...values);
+  }
+}
+
+function integrationStory({ version, expectedCurrentVersion, title }) {
+  return {
+    story_id: "story-render-integration",
+    version,
+    expected_current_version: expectedCurrentVersion,
+    slug: "reader-current-version-invariant",
+    language: "en",
+    domain: "compliance",
+    severity: "high",
+    lifecycle_state: version === 1 ? "verified" : "amended",
+    first_seen_at: "2026-07-17T23:45:00Z",
+    updated_at: version === 1 ? "2026-07-18T00:15:00Z" : "2026-07-18T01:15:00Z",
+    title,
+    deck: "The canonical publication reader must preserve version equality.",
+    summary: "A sanitized reader-integration fixture.",
+    why_it_matters: "Stale Breaking rows cannot override the story head.",
+    curiosity_text: null,
+    score_components: {
+      editorial: 0.9,
+      impact: 0.8,
+      freshness: 0.9,
+      evidence: 1,
+      diversity: 0.6,
+    },
+    claims: [
+      {
+        claim_id: "claim-render-integration",
+        claim_kind: "fact",
+        normalized_text: "The current story version is the only visible one.",
+        numeric_value: null,
+        numeric_unit: null,
+        as_of: "2026-07-18",
+        evidence_ids: ["evidence-render-integration"],
+        breaking_gate: "official-primary",
+      },
+    ],
+    evidence_refs: [
+      {
+        evidence_id: "evidence-render-integration",
+        root_source_id: "root-render-integration",
+        canonical_url: "https://example.go.id/current-version",
+        publisher: "Example Authority",
+        document_citation: "Current version notice",
+        published_at: "2026-07-17T23:30:00Z",
+        retrieved_at: "2026-07-17T23:40:00Z",
+        source_type: "official",
+        primary_document_status: "verified",
+        root_resolution_status: "resolved",
+        independence_verdict: "independent",
+        evidence_note: "Verified issuing-authority publication.",
+        upstream_root_source_ids: [],
+        syndication_group_fingerprint: "render-integration",
+        independence_ruleset_version: "independence.v1",
+        independence_reason: "issuing-authority-primary-document",
+        counts_toward_breaking: true,
+      },
+    ],
+    contributing_system_ids: [],
+    coverage_state: "full",
+    confidence: "high",
+    asset_digests: [RAW_DIGEST],
+    adapter_version: "adapter.v1",
+    ruleset_version: "rules.v1",
+  };
+}
+
+function integrationEdition({ revision, story, breakingStoryIds }) {
+  return {
+    schema_version: "edition.v1",
+    packet_id: `packet-render-integration-${revision}`,
+    editor_version: "editor.v1",
+    ruleset_version: "rules.v1",
+    edition_date: "2026-07-18",
+    edition_revision: revision,
+    expected_current_revision: revision - 1,
+    expected_breaking_revision: revision - 1,
+    edition_kind: "standard",
+    publication_state: "building",
+    coverage_state: "complete",
+    readiness_cutoff: "2026-07-18T01:20:00Z",
+    verified_at:
+      revision === 1 ? "2026-07-18T00:20:00Z" : "2026-07-18T01:20:00Z",
+    collector_run_ids: [],
+    stories: [story],
+    placements: [
+      {
+        story_id: story.story_id,
+        version: story.version,
+        section: "compliance",
+        order: 1,
+      },
+    ],
+    breaking_story_ids: breakingStoryIds,
+    referenced_claim_ids: ["claim-render-integration"],
+    referenced_evidence_ids: ["evidence-render-integration"],
+    asset_digests: [RAW_DIGEST],
+    coverage_gaps: [],
+    reader_notices: [],
+  };
+}
+
+async function createIntegrationDb() {
+  const db = new SqliteD1Database();
+  db.execute(
+    `INSERT INTO assets(
+       asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
+       height, alt_text, source, rights_status, status
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    "asset-render-integration",
+    "asset-packet-render-integration",
+    RAW_DIGEST,
+    `assets/sha256/${RAW_DIGEST}.webp`,
+    "image/webp",
+    1024,
+    1200,
+    800,
+    "A compliance publication under editorial review",
+    "Bali Zero editorial desk",
+    "approved",
+    "verified",
+  );
+  const repository = createPublicationRepository(db, {
+    now: () => "2026-07-18T01:30:00.000Z",
+  });
+  const firstStory = integrationStory({
+    version: 1,
+    expectedCurrentVersion: 0,
+    title: "Stale breaking revision must not render",
+  });
+  const firstEdition = parseEditionPacket(
+    integrationEdition({
+      revision: 1,
+      story: firstStory,
+      breakingStoryIds: [firstStory.story_id],
+    }),
+  );
+  const currentStory = integrationStory({
+    version: 2,
+    expectedCurrentVersion: 1,
+    title: "Current amended compliance revision",
+  });
+  const currentEdition = parseEditionPacket(
+    integrationEdition({
+      revision: 2,
+      story: currentStory,
+      breakingStoryIds: [],
+    }),
+  );
+
+  await repository.stageEdition(firstEdition, "b".repeat(64));
+  assert.equal(
+    await repository.finalizeEdition(firstEdition.packet_id),
+    "published",
+  );
+  await repository.stageEdition(currentEdition, "c".repeat(64));
+  assert.equal(
+    await repository.finalizeEdition(currentEdition.packet_id),
+    "published",
+  );
+
+  // Simulate an out-of-date active Breaking revision. The canonical reader must
+  // still enforce breaking_entries.version = stories.current_version.
+  db.execute(
+    "UPDATE breaking_pointer SET active_revision = 1 WHERE singleton_id = 1",
+  );
+  return db;
 }
 
 function appEnv(db) {
@@ -399,6 +708,12 @@ test("magazine front page renders editorial priority, five domains, coverage, an
   assert.match(html, /Notebook Insight/);
   assert.match(html, /Partial coverage/);
   assert.match(html, /Delayed/);
+  assert.match(html, /Last verified/i);
+  assert.match(html, /09:25 WITA/i);
+  assert.match(
+    html,
+    /<meta[^>]+name="robots"[^>]+content="noindex, nofollow"/i,
+  );
   assert.ok(
     html.indexOf("The Morning File") < html.indexOf("Source systems"),
     "editorial issue must precede system controls",
@@ -444,8 +759,30 @@ test("story page separates analysis from claim evidence and exposes current revi
   assert.match(html, /The reviewed workflow requires supporting evidence/);
   assert.match(html, /Directorate General of Immigration/);
   assert.match(html, /Operational guidance, section 4/);
-  assert.match(html, /Supersedes an earlier revision/);
+  for (const label of [
+    "Section",
+    "Immigration",
+    "Severity",
+    "High",
+    "Lifecycle",
+    "Amended",
+    "Coverage",
+    "Full",
+    "Event time",
+    "First seen",
+    "Verified",
+    "Published",
+    "Visual provenance",
+    "Bali Zero editorial desk",
+    "Amendment published",
+    "Earlier revision superseded",
+    "Quarantined",
+    "Restored",
+  ]) {
+    assert.match(html, new RegExp(label, "i"));
+  }
   assert.match(html, /Visible now/);
+  assert.match(html, /rel="noopener noreferrer"/i);
   assertNoInternalIdentifiers(html);
 });
 
@@ -458,8 +795,53 @@ test("edition archive identifies its immutable revision and applies current visi
   assert.match(html, /Immutable revision 2/i);
   assert.match(html, /Current visibility and rights overlays apply/i);
   assert.match(html, /Bali visa files move to a stricter evidence standard/);
+  assert.doesNotMatch(html, /class="breaking-strip"/);
+  assert.doesNotMatch(
+    html,
+    /Primary-source refresh changes the compliance watchlist/,
+  );
   assert.doesNotMatch(html, /This quarantined title must never render/);
   assertNoInternalIdentifiers(html);
+});
+
+test("contract-valid packets render through the canonical repository without stale Breaking rows", async () => {
+  const db = await createIntegrationDb();
+  const currentResponse = await render("/", { db });
+  assertProtectedHtml(currentResponse);
+  const currentHtml = await currentResponse.text();
+
+  assert.match(currentHtml, /Current amended compliance revision/);
+  assert.doesNotMatch(currentHtml, /Stale breaking revision must not render/);
+  assert.doesNotMatch(currentHtml, /class="breaking-strip"/);
+
+  const archivedResponse = await render("/editions/2026-07-18-r1", { db });
+  assertProtectedHtml(archivedResponse);
+  const archivedHtml = await archivedResponse.text();
+  assert.match(archivedHtml, /Stale breaking revision must not render/);
+  assert.doesNotMatch(archivedHtml, /Current amended compliance revision/);
+  assert.doesNotMatch(archivedHtml, /class="breaking-strip"/);
+});
+
+test("editorial CSS uses the locked Bali Zero palette and Montserrat stack", () => {
+  const css = readFileSync(
+    new URL("../app/globals.css", import.meta.url),
+    "utf8",
+  );
+  for (const token of ["#2C2F38", "#000000", "#FFFFFF", "#F4C430", "#C8102E"]) {
+    assert.match(css, new RegExp(token, "i"));
+  }
+  for (const rejected of [
+    "#141414",
+    "#FFD400",
+    "#D52B1E",
+    "#333333",
+    "#C6C6C6",
+    "Inter",
+    "Arial",
+  ]) {
+    assert.doesNotMatch(css, new RegExp(rejected, "i"));
+  }
+  assert.match(css, /font-family:\s*Montserrat,\s*sans-serif/i);
 });
 
 test("anonymous readers receive a protected shell without editorial data", async () => {
