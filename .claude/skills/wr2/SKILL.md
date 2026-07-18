@@ -43,16 +43,38 @@ live_news_score/liveness_tier/live_news_reasons through the 3-break contract cha
 (scraper→ScraperSubmission→staging JSON→/pending projection), scar family #9; Codex red-team
 round added projection normalization + score→tier derivation; PROVE-LIVE 2026-07-18: prod probe
 submitted score=85 with NO tier, /pending returned 85/"breaking"(derived)/["probe reason"], then
-rejected. Fly deployed, Pro ~/nuzantara blob-aligned, WR2_PREFER_LIVE_NEWS=true already armed**.
+rejected. Fly deployed, Pro ~/nuzantara blob-aligned, WR2_PREFER_LIVE_NEWS=true already armed** ·
+**official `--rebrief <draft_id>` verb SHIPPED + PROVEN (#2667, growth-loop B5) — `_pg.rebrief_draft`
+atomic reset (`status`→briefed + `fact_check_json`/status/at + `drive_url` + `html_render_attempts`=0 +
+`canva_*` all cleared) mirroring `requeue_draft_for_rerender`; reconciler `--rebrief` one-shot guarded
+by `lease_owner IS NULL` + a status whitelist (every literal mig-245-verified) + a queue-published
+resurrection guard (reuses `wr2_rerender_requeue.check_queue_state` → refuses if the draft's queue
+entry is published/published_with_edits — blood-bought #4). Codex red-team round added the queue
+guard (BLOCKER it caught: rebrief of a DB-`rendered` draft whose queue entry was already published
+would resurrect a live carousel). PROVE-LIVE 2026-07-18 BOTH sides on Pro: APPLY reset a real
+`render_failed` draft (8e582ce0) to `briefed`, fact-check trio + attempts cleared (MCP-confirmed
+delta); REFUSE left a queue-published `rendered` draft (4ca7b22b) byte-identical — exit-refused, zero
+mutation. LIMITATION ledgered: the fact-extractor/checker lane takes no `lease_owner` CAS (unlike
+render/image), so `--rebrief`'s lease guard cannot exclude a concurrent fact-lane run — low-risk
+(rebrief resets upstream of the fact lane, extractor re-runs idempotently) but structurally
+asymmetric**.
 
 **In queue awaiting Zero (Legge 5):** deportation carousel remake (`drafted`, 2026-07-17, tells
 the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari reply.
 
 **Open wounds / next targets:**
 
-- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural end-to-end proof: next nightly (03:00 WITA) — enricher yields non-zero scores → live pool non-empty → a breaking item is picked (topic-selector logs "using live pool"). Watch `~/logs/wr2_topic_selector.launchd.out.log`. Related open item (ledgered): enrichment silent-drop — build_staging_payload sends brief/faq/slug/tags/seo/featured but ScraperSubmission has no such fields → `enrichment: {}` on drafts.
-- **13 unknown_intent** queue entries (complete-or-nothing backfill refused to guess) — need
-  adjudication = re-render from slides.json. · **3 render_incomplete** same family.
+- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof NOT yet landed (checked 2026-07-18 05:29 WITA): every topic-selector run 07-07→07-18 logs "live pool empty"; today's top-ranked items — incl. breaking-shaped "Bali Deports Three Foreigners" — all carry `live=0/0.0`. Whether this is expected timing (fresh enricher scores land next scraper cycle post-deploy) or a residual break (enricher not emitting non-zero, or fresh items not carrying fields) is NOT yet distinguished — staging is file-based (not Postgres-queryable) so it needs a dedicated probe. Watch the REAL app log `~/logs/wr2_topic_selector.log` — NOT `.launchd.out.log`, which is empty because the daemon logs via Python logging, not stdout (watching the wrong file = blind receptor, scar #2). Related open item (ledgered): enrichment silent-drop — build_staging_payload sends brief/faq/slug/tags/seo/featured but ScraperSubmission has no such fields → `enrichment: {}` on drafts.
+- **~~13 unknown_intent + 3 render_incomplete~~ → RESOLVED, verified 2026-07-18 (growth-loop B).**
+  The live queue (Pro SSOT + M5 mirror, both fresh) has **0 render_incomplete, 0 unknown_intent** —
+  cleared by the daily reconciler + the #2563 `slides_dir`-resolution fix (`unknown_intent` was a
+  reconciler classification, not a persisted state; the "13" was a report count). Genuine
+  resolution proven: 2 live entries carry `render_incomplete → drafted → published` in
+  `state_history`; only 1 render_incomplete was archived. **The real current render-lane residue
+  (a different, lower-urgency backlog — DB `war_room_drafts.status`):** `render_failed`=20
+  (slow-accumulating since 2026-06-09, ~4/wk, 1 in last 3d — not acute), `missed`=17 (one-time
+  2026-06-23), `rendered_shadow`=7 (2026-06-13 test batch). A render-failure sweep, if wanted, is
+  a fresh item — not the (now-closed) queue-stuck one.
 - **fact_check_status "degraded" pipeline-wide** — ROOT-CAUSED 2026-07-18 (growth-loop B4,
   `research/marketing/2026-07-18-wr2-fact-check-degraded-root-cause.md`, Codex-CADE-sharpened):
   NOT a bug — correct fail-closed. The checker verifies each draft against `brief_json`, the
@@ -60,18 +82,28 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   independent truth (`research_json` never populated in prod). 52/79 degraded drafts are
   grounding-starved; the naive "inject citations into brief" is a closed citation-echo. Real
   fix (GO-gated): verify at check-time against a source the composer never saw + verdict-
-  provenance labels + slides-excluded verification (:662/:676). ⚠️ A live sibling
-  (`.worktrees/wr2-factcheck-wordnumbers`, commit `3516d31039`) ships word-number normalization
-  against the **slide-inclusive** source → self-verify risk; their PR's adversarial gate must
-  require slides-excluded verification first. Ledgered (PENDING-ARMS 2026-07-18).
-- **Gate log noise**: app re-emits ~29 exclusions every ~10s cycle → `wr2control.err` grows
-  ~30MB/day. Needs delta-logging or rotation.
+  provenance labels + slides-excluded verification (:662/:676). The word-number sub-slice (105/438 unverifiable
+  claims are numbers-as-words) was attempted (branch `factcheck-wordnumbers`) and **REJECTED by
+  2 red-team rounds** (growth-loop B3, 2026-07-18): token-normalization of decomposed number-words
+  structurally false-verifies (2M=200M, 101=100, pronominal "one", sign-loss — all empirically
+  confirmed on the real functions) and self-verifies against the slide-inclusive source (B4's exact
+  warning, proven). Branch cleaned, not shipped. Those 105 claims need the LLM-escalation path
+  (`WR2_FACT_CHECKER_LLM=true`, off in prod — 90/90 telemetry `llm_enabled:false`) or a narrow
+  cardinal-only-vs-external matcher, NOT normalization. Ledgered (PENDING-ARMS 2026-07-18).
+- **Gate log noise — SHIPPED (#2676, growth-loop B, 2026-07-18)**: `WarRoom.swift` delta-emission
+  dedups the ~29 exclusion stderr writes across scans (key `slug|reason`; memory committed only on
+  a successful scan, never on the early `return []` failure path) → kills the ~30MB/day
+  `wr2control.err` growth. Codex-red-teamed (reasons stationary → storm stopped, memory bounded);
+  release-built + canonical `~/Applications` bundle installed 2026-07-18. Live err-rate→~0/cycle =
+  receptor on Zero's next app launch (the app was OFF at ship — err last grew 2026-07-17). Adjacent
+  PRE-EXISTING finding (a readable-empty `slides/` dir excluded without count/log) + 2 NICEs
+  (`@MainActor`, multi-root key) ledgered in PENDING-ARMS, not fixed (intent decision).
 - **4 accessibility amendments** in conflict with the constitution await Zero's reconciliation
   (`~/.claude/skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md`).
 - **Slide-7 closer micro-text** (remake deck): elegant-close layout renders the kicker tiny.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
-  official `--rebrief` verb (see §3 remake hygiene) · M5 queue shared-lock protocol ·
-  Swift tolerant decode · plist validator red on main · 19 env-coupled tests.
+  M5 queue shared-lock protocol · Swift tolerant decode · plist validator red on main ·
+  19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).
 
 ## 2. Anatomy — the hot files (verified 2026-07-17)
 
@@ -124,9 +156,11 @@ pull both checkouts + kickstart affected daemons. Prove-live per consumer surfac
    composition prompt; grounding citations SUPPORT, never replace. News-shaped topic with no
    usable source → `parked`, never composed. Never "tidy" this.
 2. **Remake hygiene**: re-briefing a composed draft by status reset leaves stale derived fields —
-   `fact_check_json` starves the extractor, `drive_url` starves the render lane. Clear
-   fact_check_json/status/at + use `_pg.requeue_draft_for_rerender` for the render leg. (Official
-   `--rebrief` verb is a ledgered TODO.)
+   `fact_check_json` starves the extractor, `drive_url` starves the render lane. Use the official
+   verb `python scripts/wr2_daily_reconciler.py --rebrief <draft_id>` (#2667) — one atomic reset
+   (`status`→briefed + `fact_check_json`/status/at + `drive_url` + `html_render_attempts`=0 + `canva_*`),
+   lease-guarded + queue-published-guarded (refuses to resurrect a published carousel). Do NOT
+   hand-reset status + clear fields piecemeal; the verb is the single safe path.
 3. **Never `launchctl kickstart -k` a one-shot job that may be mid-run** — it kills the worker
    and orphans its DB lease (42-min starvation, 2026-07-17). Plain kickstart; `-k` only for
    daemons you intend to restart.
@@ -163,7 +197,15 @@ Multi-fonte (web + external-bench esistenti in ~/.claude/skills/bali-zero-brand/
 corpus + metriche IG reali). Output: research capture in research/marketing/ con ≥3 fonti e UNA
 raccomandazione azionabile ("adotta X per Y, atteso Z"). Niente ricerca senza raccomandazione.
 
-SPRINT B (build, ~70% del tempo): prendi UN item — dalla raccomandazione dell'ultimo sprint R,
+SPRINT B (build, ~70% del tempo). ANTI-TWIN PRE-FLIGHT (obbligatorio, scar #5 — l'intero sprint B6
+del 2026-07-18 fu un duplicato convergente di una sessione parallela M5, #2680/#2685 vs #2676/#2679,
+~1 sprint bruciato): PRIMA di aprire qualunque lavoro su un wound, per l'item che stai per prendere
+esegui i tre check e STAI GIÙ se un twin è già in volo — (1) `git worktree list` (un lane sibling
+sullo stesso wound è già lì: il tell `wr2-log-delta` era nell'inventario dall'inizio); (2)
+`gh pr list --repo Balizero1987/Teman2 --state all --search "<keyword del wound>"` (twin appena
+aperto/mergiato); (3) grep `origin/main` per il fix già atterrato, verifica per CONTENUTO (W88). Se
+il wound è già curato o in-volo → NON aprire un duplicato: aggiorna solo corner/ledger se stantio e
+passa al prossimo item. POI: prendi UN item — dalla raccomandazione dell'ultimo sprint R,
 dalla §1 LIVE STATE del corner /wr2 (open wounds: liveness scorer 0.0, 13 unknown_intent,
 fact-check degraded, log noise, --rebrief verb…), o da un fix emerso live — e portalo fino in
 fondo con modus: GROUND (ri-grep dei file citati) → BUILD (implementer Sonnet in worktree) →
@@ -187,9 +229,10 @@ Regole del loop:
 ```
 
 **Seed backlog for the first loops** (in rough value order): (1) liveness scorer rewire — the
-single highest-leverage fix, unlocks the whole breaking/developing register system; (2)
-fact-check degraded root-cause; (3) unknown_intent/render_incomplete adjudication via re-render;
-(4) `--rebrief` official verb; (5) metrics→editorial feedback: use the now-live IG metrics to
+single highest-leverage fix, unlocks the whole breaking/developing register system [DONE #2631];
+(2) fact-check degraded root-cause [DONE #2651 + R #2655]; (3) ~~unknown_intent/render_incomplete
+adjudication~~ [DONE — verified resolved 2026-07-18, see §1];
+(4) `--rebrief` official verb [DONE #2667, proven live 2026-07-18]; (5) metrics→editorial feedback: use the now-live IG metrics to
 auto-tune topic selection weights; (6) gate log delta-emission; (7) accessibility amendment
 implementation once Zero rules; (8) slide-7 closer layout fix; (9) A/B hook experiments on
 cover copy measured via the metrics loop.

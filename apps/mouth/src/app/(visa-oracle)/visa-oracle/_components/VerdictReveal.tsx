@@ -39,11 +39,24 @@ export const ELIGIBILITY_ICON: Record<EligibilityState, typeof CheckCircle2> = {
 
 /**
  * "The Oracle deals your card" (design doc §3 interaction #4): the
- * strongest path resolves into a hero verdict card. Uses
- * `--motion-curve-reveal` (the overshoot curve made for this moment) —
- * a scoped, honest interpretation of the shared-element idea: the tree
- * panel stays visible alongside this reveal rather than literally
- * morphing across components (a craft debt noted for a follow-up pass).
+ * strongest path resolves into a hero verdict card. Two layers, feature-
+ * detected in OracleShell:
+ *
+ * 1. Where the View Transitions API exists and motion isn't reduced,
+ *    OracleShell wraps the confirmation→verdict `advance()` dispatch in
+ *    `document.startViewTransition()`. The tree's "verdict" trunk row
+ *    (LivingTree.tsx `TreePanel`) and this card share the CSS
+ *    `view-transition-name: oracle-verdict-morph` — never on both at once,
+ *    since the tree row only carries it before this card mounts — so the
+ *    browser interpolates geometry between the small trunk line and this
+ *    hero card: a real shared-element detach-and-grow, not a simulation.
+ * 2. This component's own spring reveal below (`--motion-curve-reveal`,
+ *    the overshoot curve made for this moment) is what actually plays
+ *    inside that browser-native transition, AND is the full fallback on
+ *    its own wherever the View Transitions API is unsupported. Reduced
+ *    motion skips both: OracleShell never calls `startViewTransition`, and
+ *    every animated prop below already resolves to `undefined` in that
+ *    branch — an instant swap, per spec.
  */
 export function VerdictReveal({
   language,
@@ -88,6 +101,14 @@ export function VerdictReveal({
   return (
     <motion.div
       className="oracle-verdict-card"
+      // Shared-element morph target (see the class-level comment above) —
+      // only while motion isn't reduced, so a reduced-motion visit never
+      // even offers the browser a transition to interpolate.
+      style={
+        reducedMotion
+          ? undefined
+          : { viewTransitionName: "oracle-verdict-morph" }
+      }
       initial={reducedMotion ? undefined : { opacity: 0, scale: 0.92, y: 12 }}
       animate={reducedMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
       transition={{

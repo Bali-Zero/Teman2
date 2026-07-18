@@ -175,6 +175,62 @@ def test_payload_trusts_explicit_tier_over_score_derivation() -> None:
     assert payload["liveness_tier"] == "breaking"
 
 
+# ---------------------------------------------------------------------------
+# enrichment passthrough (scar family #9, state-schema mutation drift): the
+# structured enricher object was flattened into content/brief/faq/slug/tags
+# but never sent as a nested object — wr2_topic_selector.py's
+# `top_item.get("enrichment") or {}` always saw {} (verified 2026-06-24: {}
+# on 12/12 drafts). Additive fix: the full enr dict also rides along as
+# payload["enrichment"] when non-empty.
+# ---------------------------------------------------------------------------
+
+
+def test_payload_includes_full_enrichment_object_when_present() -> None:
+    """GUILT: a non-empty art["enrichment"] must survive verbatim as
+    payload["enrichment"] — the full structured object, not just the
+    flattened content/brief/faq fields."""
+    art = _base_art(
+        thirty_second_brief="Brief text",
+        faq=[{"q": "Q1", "a": "A1"}],
+        bali_zero_take="Our take.",
+        in_practice="Practice.",
+        next_steps="Steps.",
+        metadata={"suggested_slug": "slug-here", "tags": ["tag1"]},
+    )
+
+    payload = build_staging_payload(art)
+
+    assert payload["enrichment"] == art["enrichment"]
+    assert payload["enrichment"]["the_facts"] == "Facts go here."
+    assert payload["enrichment"]["thirty_second_brief"] == "Brief text"
+    # The existing flattening is UNCHANGED — additive, not a replacement.
+    assert payload["brief"] == "Brief text"
+    assert payload["faq"] == [{"q": "Q1", "a": "A1"}]
+    assert "## Facts\n\nFacts go here." in payload["content"]
+
+
+def test_payload_omits_enrichment_when_absent_or_empty() -> None:
+    """INNOCENCE: art without an enrichment dict (or an explicitly empty
+    one) must NOT invent a payload["enrichment"] key — omit it entirely so
+    legacy/partial-deploy consumers see today's behavior unchanged."""
+    art = {
+        "title": "Raw title",
+        "text": "Raw scraped text.",
+        "source": "raw-source",
+        "source_url": "https://example.com/raw",
+    }
+
+    payload = build_staging_payload(art)
+
+    assert "enrichment" not in payload
+
+    art_empty = _base_art()
+    art_empty["enrichment"] = {}
+    payload_empty = build_staging_payload(art_empty)
+
+    assert "enrichment" not in payload_empty
+
+
 def test_payload_falls_back_to_title_when_no_enrichment() -> None:
     """No enrichment dict at all (art["enrichment"] missing) must not
     crash — falls back to art["title"] / empty sections, matching the

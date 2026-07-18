@@ -1023,6 +1023,147 @@ def _cmd_repair_false_incomplete(apply: bool, exclude_ids: list[str]) -> int:
     return 0
 
 
+async def _rebrief_async(draft_id: str) -> bool:
+    """Open the SAME connection the normal tick opens (DATABASE_URL, asyncpg,
+    timeout=15 — see `run()` above), call the DB-leg verb, and close it. Not a
+    new connection path (scar: one-true-way pg) — just the sibling one-shot to
+    `wr2_rerender_requeue.py`'s DSN pattern, reused here because --rebrief lives
+    on THIS CLI (spec B5), not a standalone script."""
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        raise RuntimeError("DATABASE_URL not set — run where prod PG is reachable (see scripts/pg.sh)")
+
+    import asyncpg
+
+    sys.path.insert(0, str(_REPO / "apps" / "backend-rag"))
+    from backend.services.canva_renderer_v2 import _pg  # noqa: PLC0415
+
+    conn = await asyncpg.connect(dsn, timeout=15)
+    try:
+        return await _pg.rebrief_draft(conn, draft_id)
+    finally:
+        await conn.close()
+
+
+async def _rebrief_preview_async(draft_id: str) -> dict[str, Any] | None:
+    """Read-only preview for --dry-run (Codex red-team B5 FIX 3): SELECT status
+    + lease_owner ONLY — no mutation, no write path taken. Opens its own
+    short-lived connection via the same DATABASE_URL/asyncpg pattern as
+    `_rebrief_async` (one-true-way pg)."""
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        raise RuntimeError("DATABASE_URL not set — run where prod PG is reachable (see scripts/pg.sh)")
+
+    import asyncpg
+
+    conn = await asyncpg.connect(dsn, timeout=15)
+    try:
+        row = await conn.fetchrow(
+            "SELECT status, lease_owner FROM war_room_drafts WHERE id = $1",
+            draft_id,
+        )
+    finally:
+        await conn.close()
+    return dict(row) if row else None
+
+
+def _rebrief_queue_guard(draft_id: str) -> tuple[bool, str]:
+    """Reuse wr2_rerender_requeue's queue-state guard directly (same scripts/
+    dir, same venv — do NOT reimplement the queue read here, per Codex
+    red-team B5 FIX 1 instructions).
+
+    WHY THIS EXISTS: Damar's mark_published/mark_rejected write ONLY the
+    review-queue JSON — never war_room_drafts.status. So a draft can carry DB
+    status='rendered' (inside `_pg.rebrief_draft`'s whitelist) while the queue
+    already says 'published'. The DB-only whitelist in `_pg.rebrief_draft`
+    cannot see the queue at all and would let a rebrief through, recompose,
+    and clobber an already-published carousel. `check_queue_state` returns
+    ok=False ONLY on a genuine post-publish state (published/
+    published_with_edits); 'rejected' and the other pre-publish states stay
+    ALLOWED — a rebrief of a rejected draft is a legitimate operator remake,
+    same doctrine as the sibling re-render verb."""
+    import wr2_rerender_requeue as _requeue  # noqa: PLC0415 — same scripts/ dir, same venv
+
+    return _requeue.check_queue_state(draft_id)
+
+
+def _rebrief_dry_run_message(
+    row: dict[str, Any] | None, *, ok_queue: bool, queue_reason: str
+) -> str:
+    """Classify --dry-run eligibility using the SAME whitelist `_pg.rebrief_draft`'s
+    SQL enforces (`_pg.REBRIEF_STATUS_WHITELIST`, single-sourced — never a
+    hand-copied duplicate, cicatrix #9 schema-drift) plus the queue guard above.
+    Truthful preview (Codex red-team B5 FIX 3): states EXACTLY which gate would
+    fire, never a blanket "would rebrief" for an ineligible draft."""
+    if row is None:
+        return "would NO-OP (reason: not found)"
+    if row["lease_owner"] is not None:
+        return f"would NO-OP (reason: leased by {row['lease_owner']})"
+    if not ok_queue:
+        return f"would NO-OP (reason: published in review queue — {queue_reason})"
+
+    sys.path.insert(0, str(_REPO / "apps" / "backend-rag"))
+    from backend.services.canva_renderer_v2 import _pg  # noqa: PLC0415
+
+    if row["status"] not in _pg.REBRIEF_STATUS_WHITELIST:
+        return f"would NO-OP (reason: status={row['status']} not rebrief-eligible)"
+    return f"would REBRIEF (status={row['status']}, unleased, queue={queue_reason})"
+
+
+def _cmd_rebrief(draft_id: str, *, dry_run: bool) -> int:
+    """One-shot CLI mode (B5): reset a composed draft back to 'briefed' and
+    atomically clear fact_check_json/status/at + drive_url + html_render_attempts
+    + the 4 stale Canva refs, so it recomposes cleanly (remake hygiene). Respects
+    the DB-side lease + status whitelist (see `_pg.rebrief_draft`) AND the
+    review-QUEUE guard (`_rebrief_queue_guard`) — a draft can be DB
+    status='rendered' while the queue already says 'published' (queue-only
+    state, see `_rebrief_queue_guard`'s docstring), which the DB whitelist
+    alone cannot refuse.
+
+    --dry-run (Codex red-team B5 FIX 3, honest preview): opens the DB READ-ONLY
+    (SELECT status + lease_owner, no mutation), runs the SAME queue guard as
+    the live path, and reports the truthful per-draft outcome — "would
+    REBRIEF (...)" or "would NO-OP (reason: ...)" — never a blanket message.
+    DEVIATION from "exit 0 either way": a preview that could NOT run at all
+    (DB unreachable / DATABASE_URL unset) returns 2, same as the live path's
+    connection-failure code — an infra failure is not a truthful verdict, so
+    it is not folded into the 0-either-way preview contract."""
+    ok_queue, queue_reason = _rebrief_queue_guard(draft_id)
+
+    if dry_run:
+        try:
+            row = asyncio.run(_rebrief_preview_async(draft_id))
+        except Exception as exc:  # noqa: BLE001 — connection/env failure, not a verdict
+            logger.error(
+                "rebrief dry-run: connection/query failed for draft %s: %s", draft_id, exc
+            )
+            return 2
+        logger.info(
+            "DRY-RUN: draft %s — %s",
+            draft_id,
+            _rebrief_dry_run_message(row, ok_queue=ok_queue, queue_reason=queue_reason),
+        )
+        return 0
+
+    if not ok_queue:
+        logger.warning(
+            "rebrief: draft %s is %s in the review queue — refusing (would "
+            "resurrect a published carousel)", draft_id, queue_reason,
+        )
+        return 1
+
+    try:
+        ok = asyncio.run(_rebrief_async(draft_id))
+    except Exception as exc:  # noqa: BLE001 — connection/env failure, not a refusal
+        logger.error("rebrief: connection/query failed for draft %s: %s", draft_id, exc)
+        return 2
+    if ok:
+        logger.info("rebrief: draft %s reset to briefed (remake hygiene applied)", draft_id)
+        return 0
+    logger.warning("rebrief: draft %s NOT reset (leased, wrong status, or not found)", draft_id)
+    return 1
+
+
 def _cmd_backfill_completeness(apply: bool) -> int:
     """One-shot mode (A3): apply the 3-way completeness classification to
     every non-terminal queue entry. Default dry-run (report only); --apply
@@ -1065,7 +1206,21 @@ def main() -> int:
         help="with --backfill-completeness or --repair-false-incomplete: "
              "actually mutate the queue (default: report only)",
     )
+    parser.add_argument(
+        "--rebrief", metavar="DRAFT_ID",
+        help="one-shot: reset a composed draft back to 'briefed' and atomically "
+             "clear fact_check_json/status/at + drive_url + html_render_attempts "
+             "+ the 4 stale canva_* refs, so it recomposes cleanly (remake "
+             "hygiene). Respects DB lease + status whitelist AND the review-queue "
+             "guard (refuses a draft already 'published' in the queue, even if "
+             "DB status alone looks eligible); no-op on leased/rejected*/briefed "
+             "(*rejected in the QUEUE is still allowed — only published is a hard "
+             "stop). Combine with --dry-run for an honest preview (SELECT-only, "
+             "no mutation): reports would-REBRIEF vs would-NO-OP with reason.",
+    )
     args = parser.parse_args()
+    if args.rebrief:
+        return _cmd_rebrief(args.rebrief, dry_run=args.dry_run)
     if args.repair_false_incomplete:
         return _cmd_repair_false_incomplete(apply=args.apply, exclude_ids=args.exclude_id)
     if args.backfill_completeness:

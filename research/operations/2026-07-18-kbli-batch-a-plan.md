@@ -181,6 +181,19 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
   the addendum wave and the abstention-lifting re-run are scoped from the Pilota A1 measured
   report alongside Batch B cadence.
 
+- **A-2 (2026-07-18, conductor) — lot-shape rule.** §5 defines a lot as "one taxonomy division
+  within a wave", but Batch A's 114 in-scope codes span **31 taxonomy divisions**, many with only
+  1-3 codes each — a literal one-division lot makes m1/m2 statistically meaningless (one
+  quarantine in a 2-code lot reads as a spurious control-limit breach; a floor/ceiling only means
+  something over a sample large enough to carry a fraction). **Rule: a lot is a contiguous
+  taxonomy-ordered segment of >=10 codes, divisions kept intact and consecutive divisions bundled
+  until the >=10 threshold is met** (a division never splits across two lots). This does not
+  relax any acceptance criterion or calibration limit (§3, §5) — it only fixes the sampling unit
+  m1/m2 are measured over. **Lot 1 = divisions 01->39** (13 codes, taxonomy order): `01287`,
+  `01700`, `02201`, `02402`, `02409`, `05102`, `05200`, `08920`, `19206`, `36003`, `38122`,
+  `38222`, `39001`. Control limits (m1-m5, `data/kbli-filiera/batch-reports/batchA-calibration.json`)
+  are unchanged by this amendment.
+
 ## Adversarial review
 
 Codex GPT-5.6-sol (high effort, read-only, 2026-07-18) attacked v1 of this plan against the

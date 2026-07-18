@@ -177,6 +177,127 @@ async def test_match_folder_name_no_path() -> None:
 
 
 # ---------------------------------------------------------------------------
+# _folder_segments + multi-segment matching (m227 fix 2026-07-18: Drive deep path)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        # every folder segment + leaf stem is probed; non-client segments (kitas/scan/doc)
+        # are harmless — they just never clear FUZZY_APPLY_THRESHOLD against a client name.
+        ("PEMEGANG KITAS/Budi Santoso/kitas/scan.jpg", ["PEMEGANG KITAS", "Budi Santoso", "kitas", "scan"]),
+        ("EXTEND VISA/John Doe (2027)/###doc###.pdf", ["EXTEND VISA", "John Doe", "doc"]),
+        ("A/A/x.pdf", []),  # all segments <3 chars → dropped
+        ("file-at-root.pdf", ["file-at-root"]),  # leaf ext stripped
+        ("", []),
+        (None, []),
+    ],
+)
+def test_folder_segments(raw: str | None, expected: list[str]) -> None:
+    assert rt._folder_segments(raw) == expected
+
+
+def _patch_fuzzy_by_name(monkeypatch: pytest.MonkeyPatch, hits: dict[str, list[dict]]) -> None:
+    """Name-aware fake: returns rows only for the segment name that matches (lowercased)."""
+    async def _fake_fuzzy(conn: Any, table: str, name_col: str, name: str) -> list[dict]:
+        return [dict(c) for c in hits.get((table, name.lower()), [])]
+
+    monkeypatch.setattr(rt, "_match_fuzzy_name", _fake_fuzzy)
+
+
+@pytest.mark.asyncio
+async def test_match_folder_name_deep_drive_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The client folder is at DEPTH 2 under a staff/category root — the pre-fix
+    # root-only matcher was blind to it. Now it resolves.
+    _patch_fuzzy_by_name(monkeypatch, {
+        ("clients", "budi santoso"): [{"table": "clients", "id": 7, "name": "Budi Santoso",
+                                        "method": "fuzzy_full_name", "score": 0.91,
+                                        "matched_value": "budi santoso"}],
+    })
+    out = await rt._match_folder_name(None, "PEMEGANG KITAS/Budi Santoso/kitas/scan.jpg")
+    assert len(out) == 1
+    assert (out[0]["table"], out[0]["id"], out[0]["method"]) == ("clients", 7, "folder_name")
+    assert out[0]["matched_value"] == "Budi Santoso"
+    assert out[0]["folder_sim"] == 0.91
+
+
+@pytest.mark.asyncio
+async def test_match_folder_name_subthreshold_category_filtered(monkeypatch: pytest.MonkeyPatch) -> None:
+    # GENUINE (not mock-returns-nothing): the category root DOES return a client hit,
+    # but sub-FUZZY_APPLY_THRESHOLD (0.55) — it must be filtered, leaving only the deep
+    # client. Proves the 0.70 gate suppresses category noise.
+    _patch_fuzzy_by_name(monkeypatch, {
+        ("clients", "extend visa"): [{"table": "clients", "id": 99, "name": "Vista Nendra",
+                                      "method": "fuzzy_full_name", "score": 0.55, "matched_value": "extend visa"}],
+        ("clients", "jane doe"): [{"table": "clients", "id": 3, "name": "Jane Doe",
+                                   "method": "fuzzy_full_name", "score": 0.88, "matched_value": "jane doe"}],
+    })
+    out = await rt._match_folder_name(None, "EXTEND VISA/Jane Doe/paspor.pdf")
+    assert len(out) == 1
+    assert out[0]["id"] == 3
+    assert 99 not in {c["id"] for c in out}
+
+
+@pytest.mark.asyncio
+async def test_match_folder_name_two_client_segments_ambiguous(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Two DIFFERENT client segments in one path (misfiled/moved) → AMBIGUOUS, never guess.
+    _patch_fuzzy_by_name(monkeypatch, {
+        ("clients", "budi santoso"): [{"table": "clients", "id": 7, "name": "Budi Santoso",
+                                       "method": "fuzzy_full_name", "score": 0.90, "matched_value": "budi santoso"}],
+        ("clients", "wira putra"): [{"table": "clients", "id": 8, "name": "Wira Putra",
+                                     "method": "fuzzy_full_name", "score": 0.86, "matched_value": "wira putra"}],
+    })
+    out = await rt._match_folder_name(None, "Budi Santoso/Wira Putra/doc.pdf")
+    assert {c["id"] for c in out} == {7, 8}
+
+
+@pytest.mark.asyncio
+async def test_match_folder_name_two_clients_WIDE_gap_still_ambiguous(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Regression for the cross-segment global-margin bug (Codex review 2026-07-18):
+    # segment A names client 7 at 1.00, segment B names client 8 at 0.80 — a WIDE gap
+    # (0.20 > AMBIGUITY_MARGIN). Scores from DIFFERENT segments are not comparable, so
+    # the margin must NOT collapse them to a single confident pick. Two distinct client
+    # folders in one path → AMBIGUOUS. (Pre-fix this returned client 7 alone.)
+    _patch_fuzzy_by_name(monkeypatch, {
+        ("clients", "budi santoso"): [{"table": "clients", "id": 7, "name": "Budi Santoso",
+                                       "method": "fuzzy_full_name", "score": 1.00, "matched_value": "budi santoso"}],
+        ("clients", "wira putra"): [{"table": "clients", "id": 8, "name": "Wira Putra",
+                                     "method": "fuzzy_full_name", "score": 0.80, "matched_value": "wira putra"}],
+    })
+    out = await rt._match_folder_name(None, "Budi Santoso/Wira Putra/doc.pdf")
+    assert {c["id"] for c in out} == {7, 8}
+
+
+@pytest.mark.asyncio
+async def test_match_folder_name_cyrillic_segment_not_dropped(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A Cyrillic client-folder name (Russian/Ukrainian clients) must NOT be dropped as
+    # "alpha-less" (Codex review 2026-07-18: the old [A-Za-z] check rejected it).
+    assert rt._folder_segments("Іван Петренко/passport.jpg") == ["Іван Петренко", "passport"]
+    _patch_fuzzy_by_name(monkeypatch, {
+        ("clients", "іван петренко"): [{"table": "clients", "id": 5, "name": "Іван Петренко",
+                                        "method": "fuzzy_full_name", "score": 0.93, "matched_value": "іван петренко"}],
+    })
+    out = await rt._match_folder_name(None, "Іван Петренко/passport.jpg")
+    assert len(out) == 1 and out[0]["id"] == 5
+
+
+@pytest.mark.asyncio
+async def test_match_folder_name_same_client_two_segments_dedups(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Same client named in two segments → one candidate (dedup by (table,id), best score).
+    _patch_fuzzy_by_name(monkeypatch, {
+        ("clients", "budi santoso"): [{"table": "clients", "id": 7, "name": "Budi Santoso",
+                                       "method": "fuzzy_full_name", "score": 0.78, "matched_value": "budi santoso"}],
+        ("clients", "budi santoso 2026"): [{"table": "clients", "id": 7, "name": "Budi Santoso",
+                                            "method": "fuzzy_full_name", "score": 0.92, "matched_value": "budi santoso 2026"}],
+    })
+    out = await rt._match_folder_name(None, "Budi Santoso 2026/Budi Santoso/x.pdf")
+    assert len(out) == 1
+    assert out[0]["id"] == 7
+    assert out[0]["folder_sim"] == 0.92  # best-scoring segment wins
+
+
+# ---------------------------------------------------------------------------
 # resolve_entity wiring — fake pool/conn (no PG)
 # ---------------------------------------------------------------------------
 

@@ -507,56 +507,140 @@ async def _match_sender_phone(
     ]
 
 
-def _clean_folder_segment(value: Any) -> str | None:
-    """Normalise the first path segment of ``source_path`` into a name to match.
+# Cap the folder segments probed per document — bounds the 2×N fuzzy round-trips
+# (a Drive path can nest arbitrarily; the client folder is always in the top few).
+_MAX_FOLDER_SEGMENTS = 8
 
-    Real Dropbox folders carry human decorations — ``###PERPANJANGAN KITAS
-    JOHN DOE###``, ``@arsip Cetak (2027)`` — so strip non-name punctuation and
-    parenthetical suffixes, collapse whitespace, reject <3 chars.
+
+def _clean_one_segment(seg: str) -> str | None:
+    """Strip human folder decorations from ONE path segment → a matchable name.
+
+    Real Dropbox/Drive folders carry decorations — ``###PERPANJANGAN KITAS
+    JOHN DOE###``, ``@arsip Cetak (2027)`` — so drop non-name punctuation and
+    parenthetical suffixes, collapse whitespace, reject <3 chars or alpha-less.
     """
-    if value is None:
-        return None
-    seg = str(value).split("/", 1)[0]
     seg = re.sub(r"\([^)]*\)", " ", seg)        # drop parenthetical suffixes
     seg = re.sub(r"[#@_*\[\]{}!]+", " ", seg)   # drop decoration characters
     seg = re.sub(r"\s+", " ", seg).strip()
-    if len(seg) < 3:
+    # reject <3 chars or alpha-less — Unicode-aware so Cyrillic/Arabic/CJK client
+    # names (Russian/Ukrainian clients) are NOT dropped as "alpha-less".
+    if len(seg) < 3 or not any(ch.isalpha() for ch in seg):
         return None
     return seg
+
+
+def _clean_folder_segment(value: Any) -> str | None:
+    """Normalise the FIRST path segment of ``source_path`` into a name to match.
+
+    Kept for the Dropbox layout (client folder at the root) and as the single-
+    segment helper; Drive's deeper hierarchy is handled by :func:`_folder_segments`.
+    """
+    if value is None:
+        return None
+    return _clean_one_segment(str(value).split("/", 1)[0])
+
+
+def _folder_segments(value: Any) -> list[str]:
+    """ALL matchable name-segments of ``source_path`` (folders + filename stem).
+
+    m227 originally inspected only ``source_path.split('/')[0]`` — correct for the
+    Dropbox layout where the root IS the client folder, but WRONG for Drive, whose
+    roots are staff/category folders (``PEMEGANG KITAS``, ``EXTEND VISA``) and whose
+    client folder lives DEEPER. That single-segment blind spot is why ~24k Drive
+    docs land 0-candidate despite the folder signal existing. Scanning every segment
+    fixes both layouts: the client folder is matched at whatever depth it sits, and
+    non-client segments (categories, ``scan``/``kitas``) simply fall below
+    FUZZY_APPLY_THRESHOLD. The leaf's file extension is stripped; dedup is
+    case-insensitive and order-preserving (shallow→deep).
+    """
+    if value is None:
+        return []
+    parts = str(value).split("/")
+    if parts:  # strip the file extension on the leaf segment only
+        parts[-1] = re.sub(r"\.[A-Za-z0-9]{1,7}$", "", parts[-1])
+    out: list[str] = []
+    seen: set[str] = set()
+    for part in parts:
+        cleaned = _clean_one_segment(part)
+        if cleaned and cleaned.lower() not in seen:
+            seen.add(cleaned.lower())
+            out.append(cleaned)
+        if len(out) >= _MAX_FOLDER_SEGMENTS:  # cap the fuzzy round-trips per doc
+            break
+    return out
 
 
 async def _match_folder_name(
     conn: asyncpg.Connection, source_path: str | None
 ) -> list[dict[str, Any]]:
-    """Folder-name match (m227): first ``source_path`` segment vs CRM names.
+    """Folder-name match (m227): EVERY ``source_path`` segment vs CRM names.
 
-    Fuzzy (pg_trgm) against ``clients.full_name`` AND ``companies.company_name``;
-    only a similarity >= FUZZY_APPLY_THRESHOLD counts as a transport hint (a weak
-    folder sim is noise — unlike the OCR-name fuzzy, which has its own review
-    band). One clear winner → a single CONF_FOLDER_MATCH candidate; top-2 inside
-    the ambiguity margin → both returned so the decision matrix degrades to
-    AMBIGUOUS rather than guessing.
+    Fuzzy (pg_trgm) against ``clients.full_name`` AND ``companies.company_name`` for
+    each folder segment (m227 fix 2026-07-18: was root-segment-only, blind to Drive's
+    deep hierarchy). Only a similarity >= FUZZY_APPLY_THRESHOLD counts as a transport
+    hint (a weak folder sim is noise).
+
+    Two-level disambiguation (the AMBIGUITY_MARGIN is a WITHIN-segment tool — scores
+    from different segments are not comparable): (1) each segment resolves to ONE
+    winner, unless its own top-2 are DISTINCT clients within the margin (a homonym
+    folder) → both kept; (2) winners are unioned and deduped by (table, id) keeping the
+    best score. If the union names ONE distinct entity → a single CONF_FOLDER_MATCH
+    LINK_CANDIDATE; if it names ≥2 DISTINCT entities (homonyms, OR two different client
+    folders in one path) → the top-2 are returned so the decision matrix degrades to
+    AMBIGUOUS rather than silently picking the higher-scoring segment. Favouring
+    AMBIGUOUS (human disambiguates) over a confident single pick is the safe direction
+    for a NEVER-auto signal (2026-05-17 identity-hallucination scar; a wrong attach is
+    worse than an unattached doc).
     """
-    name = _clean_folder_segment(source_path)
-    if not name:
+    segments = _folder_segments(source_path)
+    if not segments:
         return []
-    merged = await _match_fuzzy_name(conn, "clients", "full_name", name)
-    merged += await _match_fuzzy_name(conn, "companies", "company_name", name)
-    usable = [c for c in merged if c["score"] >= FUZZY_APPLY_THRESHOLD]
-    usable.sort(key=lambda c: c["score"], reverse=True)
-    if not usable:
+
+    # (1) per-segment winners — the margin disambiguates homonyms WITHIN a segment.
+    seg_winners: list[dict[str, Any]] = []
+    for name in segments:
+        merged = await _match_fuzzy_name(conn, "clients", "full_name", name)
+        merged += await _match_fuzzy_name(conn, "companies", "company_name", name)
+        usable = [c for c in merged if c["score"] >= FUZZY_APPLY_THRESHOLD]
+        if not usable:
+            continue
+        usable.sort(key=lambda c: c["score"], reverse=True)
+        winners = [usable[0]]
+        # a homonym folder: two DISTINCT entities matched within the margin → keep both.
+        if (
+            len(usable) >= 2
+            and (usable[1]["table"], usable[1]["id"]) != (usable[0]["table"], usable[0]["id"])
+            and usable[0]["score"] - usable[1]["score"] < AMBIGUITY_MARGIN
+        ):
+            winners.append(usable[1])
+        for w in winners:
+            ww = dict(w)
+            ww["matched_value"] = name
+            seg_winners.append(ww)
+
+    # (2) union across segments, dedup by entity keeping the best-scoring segment.
+    best: dict[tuple[str, Any], dict[str, Any]] = {}
+    for c in seg_winners:
+        key = (c["table"], c["id"])
+        if key not in best or c["score"] > best[key]["score"]:
+            best[key] = c
+    if not best:
         return []
+
+    ranked = sorted(best.values(), key=lambda c: c["score"], reverse=True)
 
     def _as_hint(c: dict[str, Any]) -> dict[str, Any]:
         return {
             "table": c["table"], "id": c["id"], "name": c["name"],
             "method": "folder_name", "score": CONF_FOLDER_MATCH,
-            "matched_value": name, "basis": "folder", "folder_sim": c["score"],
+            "matched_value": c["matched_value"], "basis": "folder",
+            "folder_sim": c["score"],
         }
 
-    if len(usable) >= 2 and usable[0]["score"] - usable[1]["score"] < AMBIGUITY_MARGIN:
-        return [_as_hint(usable[0]), _as_hint(usable[1])]
-    return [_as_hint(usable[0])]
+    # ≥2 DISTINCT entities anywhere in the path → AMBIGUOUS (never guess); else single.
+    if len(ranked) >= 2:
+        return [_as_hint(ranked[0]), _as_hint(ranked[1])]
+    return [_as_hint(ranked[0])]
 
 
 async def _match_fuzzy_name(

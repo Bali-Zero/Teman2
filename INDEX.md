@@ -141,6 +141,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 <!-- DOCSYNC:WORKFLOWS_INDEX_START -->
 | File | Name | Description |
 | ---- | ---- | ----------- |
+| `infra/workflows/kbli-batch-a-lot.js` | kbli-batch-a-lot | GARUDA-FILIERA Batch A calibration-enforced lot runner (D1 crosswalk proposal -> D5 blind refutation -> D2 self-confirming extraction) over evidence already pulled by dossier_pull.py, gated on membership and reporting m1-m4 control limits per lot |
 | `infra/workflows/kbli-pilot-a1.js` | kbli-pilot-a1 | GARUDA-FILIERA per-code adjudication (D1 crosswalk proposal -> D5 blind refutation -> D2 self-confirming extraction) over evidence already pulled by dossier_pull.py |
 | `infra/workflows/modus-bench.js` | modus-bench | Self-refinement sweep for the modus master loop: internal scars/memory × external frontier watch → adversarially verified, operator-gated amendment proposals |
 | `infra/workflows/verify-template.js` | verify-template | Reusable generator≠grader workflow: gather N angles → adversarially verify each → synthesize survivors |
@@ -153,6 +154,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 | ----- | ----------------------- |
 | `.claude/skills/agent-session-discipline/` | Use at session start when working on a feature/fix that involves code changes. Creates an isolated worktree via L1 broker (scripts/agent_start.py) to prevent... |
 | `.claude/skills/bot/` | "Zantara WA bot corner — the live shared context for ALL work on the Zantara WhatsApp Meta bot (+62 821-3465-159): outbox/inbox pipeline, agentic RAG brain, ... |
+| `.claude/skills/intake/` | "Intake corner — the live shared context for the document-intake organism (WhatsApp/Drive docs → OCR → classify → extract → route → attach-to-client). Load B... |
 | `.claude/skills/karpathy-discipline/` | Use BEFORE any feature implementation, refactor, bug fix, or non-trivial code change. Applies 4 Karpathy principles to reduce common LLM coding mistakes (sil... |
 | `.claude/skills/kbli-navigator/` | "KBLI Navigator corner — the live shared context AND the full plan-to-the-end for ALL KBLI corpus/product work (dataset, gold, KG, editorial, kbli pages on b... |
 | `.claude/skills/modus/` | USE FOR EVERY non-trivial mandate — feature, fix, refactor, research, audit, ops, content — coding or not. The master operating loop of the organism: TRIAGE ... |
