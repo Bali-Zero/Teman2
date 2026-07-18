@@ -107,6 +107,7 @@ scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
 # validation of the raw wire dict before any Pydantic parsing.
 rfc8785==0.1.4  # exact pin: canonicalization is a security-relevant deterministic contract, no version drift allowed
 jsonschema>=4.26.0  # already resolved transitively via `mcp`, but bundle.py imports Draft202012Validator/FormatChecker directly — declared explicitly so a future `mcp` dependency change can never silently drop it from the lock (scar W98)
+rfc3339-validator>=0.1.4  # jsonschema's FormatChecker() "date-time" check is a no-op without this installed (silently skips validation, not an error) — 3-seat verify FIX-NOW #11 caught it present in the dev venv (via some other transitive chain) but undeclared in any manifest, so a clean prod install from the lock would have silently run with format validation OFF
 
 # REMOVED FOR SIZE OPTIMIZATION:
 # - sentence-transformers (2GB+ with PyTorch) - using OpenAI API embeddings

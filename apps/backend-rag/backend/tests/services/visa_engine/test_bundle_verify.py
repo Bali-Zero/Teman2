@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import copy
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 import rfc8785
@@ -22,8 +22,10 @@ from backend.services.visa_engine.bundle import (
     TrustedSigningKey,
     VerifiedRulePack,
     _decode_base64url_no_padding,
+    _parse_utc_datetime,
     _rule_pack_validator,
     _snapshot_envelope,
+    _validate_envelope_against_schema,
     canonicalize_json,
     resolve_allow_unsigned_default,
     verify_rule_pack,
@@ -866,3 +868,82 @@ class TestFromEnvTypedErrorContract:
         trust_store = StaticTrustStore.from_env()
 
         assert isinstance(trust_store, StaticTrustStore)
+
+
+class TestDateTimeFormatCheckIsReal:
+    """3-seat verify FIX-NOW #11: ``jsonschema``'s ``FormatChecker()``
+    "date-time" check is a silent no-op unless the optional
+    ``rfc3339-validator`` package is installed — GLM verified live that it
+    was present in the dev venv but undeclared in any manifest, so a clean
+    prod install (from the lock alone) would have run with format
+    validation silently OFF (green-but-not-working, the #2 cron-theater
+    family). ``rfc3339-validator`` is now a declared dependency
+    (``requirements-prod.txt`` + regenerated lock) — this test proves the
+    check is genuinely wired, not just theoretically present."""
+
+    def test_malformed_signed_at_rejected_by_schema_format_check(self) -> None:
+        payload = minimal_valid_envelope()["payload"]
+        envelope = {
+            "canonicalization": "RFC8785",
+            "protected": {
+                "domain": "balizero.visa-rulepack.v1",
+                "alg": "Ed25519",
+                "kid": "test-key-1",
+                "signed_at": "not-a-real-date-time",  # type: string, but not RFC3339
+                "schema_version": "1.0.0",
+                "environment": payload["environment"],
+            },
+            "payload": payload,
+            "payload_sha256": "0" * 64,
+            "signature": "A" * 86,
+        }
+
+        with pytest.raises(RulePackVerificationError, match="not a 'date-time'"):
+            _validate_envelope_against_schema(envelope)
+
+    def test_well_formed_signed_at_still_accepted(self) -> None:
+        payload = minimal_valid_envelope()["payload"]
+        envelope = {
+            "canonicalization": "RFC8785",
+            "protected": {
+                "domain": "balizero.visa-rulepack.v1",
+                "alg": "Ed25519",
+                "kid": "test-key-1",
+                "signed_at": "2026-07-01T00:00:00Z",
+                "schema_version": "1.0.0",
+                "environment": payload["environment"],
+            },
+            "payload": payload,
+            "payload_sha256": "0" * 64,
+            "signature": "A" * 86,
+        }
+
+        result = _validate_envelope_against_schema(envelope)
+        assert result is None  # documents the "returns None on success" contract
+
+
+class TestParseUtcDatetimeOffsetHardening:
+    """3-seat verify FIX-NOW #11 (GLM sub-claim): an explicit
+    ``utcoffset() == timedelta(0)`` check on top of
+    ``datetime.fromisoformat``. Empirically, every "<offset>Z" malformed
+    shape (offset followed by a literal Z rather than a genuine UTC
+    marker) already raises ``ValueError`` via the double-offset string
+    this function builds (``"...+02:00+00:00"`` is not valid isoformat) —
+    so this is provably unreachable defense-in-depth today, not a fix for
+    a live hole. Both facts are demonstrated here."""
+
+    @pytest.mark.parametrize(
+        "malformed",
+        [
+            "2026-01-01T00:00:00+02:00Z",
+            "2026-01-01T00:00:00-05:00Z",
+            "2026-01-01T00:00:00+0200Z",
+        ],
+    )
+    def test_offset_followed_by_z_still_rejected(self, malformed: str) -> None:
+        with pytest.raises(RulePackVerificationError, match="not a valid date-time"):
+            _parse_utc_datetime(malformed)
+
+    def test_genuine_utc_z_still_accepted(self) -> None:
+        result = _parse_utc_datetime("2026-01-01T00:00:00Z")
+        assert result.utcoffset() == timedelta(0)

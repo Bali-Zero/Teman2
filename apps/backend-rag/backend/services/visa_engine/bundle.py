@@ -454,9 +454,24 @@ def _parse_utc_datetime(value: str) -> datetime:
     if not isinstance(value, str) or not value.endswith("Z"):
         raise RulePackVerificationError(f"not a UTC date-time (must end in 'Z'): {value!r}")
     try:
-        return datetime.fromisoformat(value[:-1] + "+00:00")
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
     except ValueError as exc:
         raise RulePackVerificationError(f"not a valid date-time: {value!r}") from exc
+
+    # Belt-and-suspenders (3-seat verify FIX-NOW #11): a malformed
+    # "<offset>Z" shape (e.g. "...+02:00Z", offset followed by a literal Z
+    # rather than a genuine UTC marker) is ALREADY rejected above —
+    # `value[:-1] + "+00:00"` turns it into a double-offset string
+    # (`"...+02:00+00:00"`) that `datetime.fromisoformat` always raises
+    # `ValueError` on (confirmed empirically for every offset shape this
+    # module could plausibly receive). This explicit `utcoffset()` check is
+    # therefore provably unreachable today, kept only so the parsed
+    # result's behavior always matches this function's documented
+    # contract — "UTC, full stop" — even if the stripping logic above ever
+    # changes.
+    if parsed.utcoffset() != timedelta(0):
+        raise RulePackVerificationError(f"not a UTC (+00:00) date-time: {value!r}")
+    return parsed
 
 
 def _format_utc_datetime(value: datetime) -> str:
