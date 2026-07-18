@@ -68,7 +68,19 @@ type PacketRow = Readonly<{
   manifest_hash: string;
   packet_kind: "edition" | "breaking";
   publication_state: "building" | "published" | "failed";
+  expected_claim_count: number;
+  expected_evidence_link_count: number;
+  expected_edition_entry_count: number;
+  expected_breaking_entry_count: number;
+  expected_asset_reference_count: number;
 }>;
+
+type BreakingEntryRow = Readonly<{
+  story_id: string;
+  version: number;
+}>;
+
+type ChangeExpectation = Readonly<{ index: number; count: number }>;
 
 type EditionFinalizeRow = Readonly<{
   edition_id: string;
@@ -101,14 +113,212 @@ function changes(result: D1ResultLike): number {
 
 function assertChangedExactly(
   results: readonly D1ResultLike[],
-  indexes: readonly number[],
+  expectations: readonly ChangeExpectation[],
   operation: string,
 ): void {
-  if (indexes.some((index) => changes(results[index] ?? {}) !== 1)) {
+  if (
+    expectations.some(
+      ({ index, count }) => changes(results[index] ?? {}) !== count,
+    )
+  ) {
     throw new Error(
       `CAS conflict: ${operation} affected an unexpected row count`,
     );
   }
+}
+
+function packetExpectedCount(
+  packet: PacketRow,
+  kind: "claims" | "links" | "editionEntries" | "breakingEntries" | "assets",
+): number {
+  return {
+    claims: packet.expected_claim_count,
+    links: packet.expected_evidence_link_count,
+    editionEntries: packet.expected_edition_entry_count,
+    breakingEntries: packet.expected_breaking_entry_count,
+    assets: packet.expected_asset_reference_count,
+  }[kind];
+}
+
+function graphGuardStatement(
+  db: D1DatabaseLike,
+  packetId: string,
+  headCondition: string,
+): D1PreparedStatementLike {
+  return db
+    .prepare(
+      `UPDATE publication_packets
+       SET publication_state = CASE WHEN publication_state = 'building'
+         AND expected_story_version_count = (
+           SELECT count(*) FROM story_versions
+           WHERE packet_id = publication_packets.packet_id
+             AND publication_state = 'building'
+         )
+         AND expected_claim_count = (
+           SELECT count(*) FROM story_claims
+           WHERE packet_id = publication_packets.packet_id
+             AND publication_state = 'building'
+         )
+         AND expected_evidence_link_count = (
+           SELECT count(*) FROM story_evidence
+           WHERE packet_id = publication_packets.packet_id
+             AND publication_state = 'building'
+         )
+         AND expected_edition_entry_count = (
+           SELECT count(*) FROM edition_entries
+           WHERE packet_id = publication_packets.packet_id
+             AND publication_state = 'building'
+         )
+         AND expected_breaking_entry_count = (
+           SELECT count(*) FROM breaking_entries
+           WHERE packet_id = publication_packets.packet_id
+             AND publication_state = 'building'
+         )
+         AND expected_asset_reference_count = (
+           SELECT count(*) FROM story_asset_references
+           WHERE packet_id = publication_packets.packet_id
+             AND publication_state = 'building'
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM story_versions sv
+           JOIN stories s ON s.story_id = sv.story_id
+           WHERE sv.packet_id = publication_packets.packet_id
+             AND (
+               s.current_version <> sv.expected_current_version
+               OR json_array_length(sv.claim_ids_json) <> (
+                 SELECT count(*) FROM story_claims sc
+                 WHERE sc.packet_id = sv.packet_id
+                   AND sc.story_id = sv.story_id AND sc.version = sv.version
+               )
+               OR EXISTS (
+                 SELECT 1 FROM json_each(sv.claim_ids_json) expected
+                 WHERE NOT EXISTS (
+                   SELECT 1 FROM story_claims sc
+                   WHERE sc.packet_id = sv.packet_id
+                     AND sc.story_id = sv.story_id AND sc.version = sv.version
+                     AND sc.claim_id = expected.value
+                 )
+               )
+               OR json_array_length(sv.asset_digests_json) <> (
+                 SELECT count(*) FROM story_asset_references sar
+                 WHERE sar.packet_id = sv.packet_id
+                   AND sar.story_id = sv.story_id AND sar.version = sv.version
+               )
+             )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM story_claims sc
+           WHERE sc.packet_id = publication_packets.packet_id
+             AND (
+               json_array_length(sc.evidence_ids_json) <> (
+                 SELECT count(*) FROM story_evidence se
+                 WHERE se.packet_id = sc.packet_id
+                   AND se.story_id = sc.story_id AND se.version = sc.version
+                   AND se.claim_id = sc.claim_id
+               )
+               OR EXISTS (
+                 SELECT 1 FROM json_each(sc.evidence_ids_json) expected
+                 WHERE NOT EXISTS (
+                   SELECT 1 FROM story_evidence se
+                   WHERE se.packet_id = sc.packet_id
+                     AND se.story_id = sc.story_id AND se.version = sc.version
+                     AND se.claim_id = sc.claim_id
+                     AND se.evidence_id = expected.value
+                 )
+               )
+             )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM story_asset_references sar
+           LEFT JOIN assets asset
+             ON asset.sha256 = sar.asset_sha256
+            AND asset.status = 'verified' AND asset.rights_status = 'approved'
+           JOIN story_versions sv
+             ON sv.packet_id = sar.packet_id AND sv.story_id = sar.story_id
+            AND sv.version = sar.version
+           WHERE sar.packet_id = publication_packets.packet_id
+             AND (
+               asset.sha256 IS NULL OR NOT EXISTS (
+                 SELECT 1 FROM json_each(sv.asset_digests_json) expected
+                 WHERE expected.value = sar.asset_sha256
+               )
+             )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM edition_entries ee
+           JOIN editions e
+             ON e.edition_id = ee.edition_id AND e.packet_id = ee.packet_id
+           WHERE ee.packet_id = publication_packets.packet_id
+             AND NOT EXISTS (
+               SELECT 1 FROM json_each(e.placements_json) expected
+               WHERE json_extract(expected.value, '$.story_id') = ee.story_id
+                 AND json_extract(expected.value, '$.version') = ee.version
+                 AND json_extract(expected.value, '$.section') = ee.section
+                 AND json_extract(expected.value, '$.order') = ee.editorial_order
+             )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM breaking_entries be
+           WHERE be.packet_id = publication_packets.packet_id
+             AND NOT EXISTS (
+               SELECT 1 FROM json_each(publication_packets.breaking_entries_json) expected
+               WHERE json_extract(expected.value, '$.story_id') = be.story_id
+                 AND json_extract(expected.value, '$.version') = be.version
+             )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM json_each(publication_packets.referenced_claim_ids_json) expected
+           WHERE NOT EXISTS (
+             SELECT 1 FROM story_claims sc
+             WHERE sc.packet_id = publication_packets.packet_id
+               AND sc.claim_id = expected.value
+           )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM story_claims sc
+           WHERE sc.packet_id = publication_packets.packet_id
+             AND NOT EXISTS (
+               SELECT 1 FROM json_each(publication_packets.referenced_claim_ids_json) expected
+               WHERE expected.value = sc.claim_id
+             )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM json_each(publication_packets.referenced_evidence_ids_json) expected
+           WHERE NOT EXISTS (
+             SELECT 1 FROM story_evidence se
+             WHERE se.packet_id = publication_packets.packet_id
+               AND se.evidence_id = expected.value
+           )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM story_evidence se
+           WHERE se.packet_id = publication_packets.packet_id
+             AND NOT EXISTS (
+               SELECT 1 FROM json_each(publication_packets.referenced_evidence_ids_json) expected
+               WHERE expected.value = se.evidence_id
+             )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM json_each(publication_packets.referenced_asset_digests_json) expected
+           WHERE NOT EXISTS (
+             SELECT 1 FROM story_asset_references sar
+             WHERE sar.packet_id = publication_packets.packet_id
+               AND sar.asset_sha256 = expected.value
+           )
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM story_asset_references sar
+           WHERE sar.packet_id = publication_packets.packet_id
+             AND NOT EXISTS (
+               SELECT 1 FROM json_each(publication_packets.referenced_asset_digests_json) expected
+               WHERE expected.value = sar.asset_sha256
+             )
+         )
+         ${headCondition}
+       THEN 'building' ELSE '__cas_conflict__' END
+       WHERE packet_id = ?`,
+    )
+    .bind(packetId);
 }
 
 function storyStatements(
@@ -130,9 +340,10 @@ function storyStatements(
            story_id, version, packet_id, expected_current_version, language,
            domain, severity, lifecycle_state, first_seen_at, updated_at, title,
            deck, summary, why_it_matters, curiosity_text, score_components_json,
+           claim_ids_json,
            contributing_system_ids_json, coverage_state, confidence,
            asset_digests_json, adapter_version, ruleset_version, publication_state
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'building')`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'building')`,
       )
       .bind(
         story.story_id,
@@ -151,6 +362,7 @@ function storyStatements(
         story.why_it_matters,
         story.curiosity_text,
         json(story.score_components),
+        json(story.claims.map((claim) => claim.claim_id)),
         json(story.contributing_system_ids),
         story.coverage_state,
         story.confidence,
@@ -164,17 +376,36 @@ function storyStatements(
     statements.push(evidenceStatement(db, evidence));
   }
   for (const claim of story.claims) {
-    statements.push(claimStatement(db, story, claim));
+    statements.push(claimStatement(db, packetId, story, claim));
     for (const evidenceId of claim.evidence_ids) {
       statements.push(
         db
           .prepare(
-            `INSERT INTO story_evidence(story_id, version, claim_id, evidence_id)
-             VALUES (?, ?, ?, ?)`,
+            `INSERT INTO story_evidence(
+               packet_id, story_id, version, claim_id, evidence_id,
+               publication_state
+             ) VALUES (?, ?, ?, ?, ?, 'building')`,
           )
-          .bind(story.story_id, story.version, claim.claim_id, evidenceId),
+          .bind(
+            packetId,
+            story.story_id,
+            story.version,
+            claim.claim_id,
+            evidenceId,
+          ),
       );
     }
+  }
+  for (const digest of story.asset_digests) {
+    statements.push(
+      db
+        .prepare(
+          `INSERT INTO story_asset_references(
+             packet_id, story_id, version, asset_sha256, publication_state
+           ) VALUES (?, ?, ?, ?, 'building')`,
+        )
+        .bind(packetId, story.story_id, story.version, digest),
+    );
   }
   return statements;
 }
@@ -193,7 +424,24 @@ function evidenceStatement(
          syndication_group_fingerprint, independence_ruleset_version,
          independence_reason, counts_toward_breaking
        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(evidence_id) DO NOTHING`,
+       ON CONFLICT(evidence_id) DO UPDATE SET source_type = CASE
+         WHEN evidence_refs.root_source_id IS excluded.root_source_id
+          AND evidence_refs.canonical_url IS excluded.canonical_url
+          AND evidence_refs.publisher IS excluded.publisher
+          AND evidence_refs.document_citation IS excluded.document_citation
+          AND evidence_refs.published_at IS excluded.published_at
+          AND evidence_refs.retrieved_at IS excluded.retrieved_at
+          AND evidence_refs.source_type IS excluded.source_type
+          AND evidence_refs.primary_document_status IS excluded.primary_document_status
+          AND evidence_refs.root_resolution_status IS excluded.root_resolution_status
+          AND evidence_refs.independence_verdict IS excluded.independence_verdict
+          AND evidence_refs.evidence_note IS excluded.evidence_note
+          AND evidence_refs.upstream_root_source_ids_json IS excluded.upstream_root_source_ids_json
+          AND evidence_refs.syndication_group_fingerprint IS excluded.syndication_group_fingerprint
+          AND evidence_refs.independence_ruleset_version IS excluded.independence_ruleset_version
+          AND evidence_refs.independence_reason IS excluded.independence_reason
+          AND evidence_refs.counts_toward_breaking IS excluded.counts_toward_breaking
+         THEN evidence_refs.source_type ELSE '__immutable_conflict__' END`,
     )
     .bind(
       evidence.evidence_id,
@@ -218,18 +466,21 @@ function evidenceStatement(
 
 function claimStatement(
   db: D1DatabaseLike,
+  packetId: string,
   story: StoryVersionV1,
   claim: ClaimV1,
 ): D1PreparedStatementLike {
   return db
     .prepare(
       `INSERT INTO story_claims(
-         claim_id, story_id, version, claim_kind, normalized_text,
-         numeric_value, numeric_unit, as_of, breaking_gate
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         claim_id, packet_id, story_id, version, claim_kind, normalized_text,
+         numeric_value, numeric_unit, as_of, breaking_gate, evidence_ids_json,
+         publication_state
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'building')`,
     )
     .bind(
       claim.claim_id,
+      packetId,
       story.story_id,
       story.version,
       claim.claim_kind,
@@ -238,6 +489,7 @@ function claimStatement(
       claim.numeric_unit,
       claim.as_of,
       claim.breaking_gate,
+      json(claim.evidence_ids),
     );
 }
 
@@ -250,7 +502,10 @@ export function createPublicationRepository(
   async function getPacket(packetId: string): Promise<PacketRow | null> {
     return db
       .prepare(
-        `SELECT packet_id, manifest_hash, packet_kind, publication_state
+        `SELECT packet_id, manifest_hash, packet_kind, publication_state,
+                expected_claim_count, expected_evidence_link_count,
+                expected_edition_entry_count, expected_breaking_entry_count,
+                expected_asset_reference_count
          FROM publication_packets WHERE packet_id = ?`,
       )
       .bind(packetId)
@@ -288,6 +543,72 @@ export function createPublicationRepository(
     }
   }
 
+  function graphCounts(stories: readonly StoryVersionV1[]) {
+    return {
+      stories: stories.length,
+      claims: stories.reduce((total, story) => total + story.claims.length, 0),
+      links: stories.reduce(
+        (total, story) =>
+          total +
+          story.claims.reduce(
+            (claimTotal, claim) => claimTotal + claim.evidence_ids.length,
+            0,
+          ),
+        0,
+      ),
+      assets: stories.reduce(
+        (total, story) => total + story.asset_digests.length,
+        0,
+      ),
+    };
+  }
+
+  async function recoverStageConflict(
+    packetId: string,
+    manifestHash: string,
+    kind: PacketRow["packet_kind"],
+    cause: unknown,
+  ): Promise<StageResult> {
+    if (await checkReplay(packetId, manifestHash, kind)) return "replay";
+    if (
+      /evidence_refs_source_type_check|__immutable_conflict__/i.test(
+        String(cause),
+      )
+    ) {
+      throw new Error("immutable evidence conflict", { cause });
+    }
+    throw new Error("publication staging conflict", { cause });
+  }
+
+  async function resolveBreakingEntries(
+    storyIds: readonly string[],
+    stagedStories: readonly StoryVersionV1[],
+  ): Promise<BreakingEntryRow[]> {
+    const entries: BreakingEntryRow[] = [];
+    for (const storyId of storyIds) {
+      const staged = stagedStories.find((story) => story.story_id === storyId);
+      if (staged !== undefined) {
+        entries.push({ story_id: storyId, version: staged.version });
+        continue;
+      }
+      const published = await db
+        .prepare(
+          `SELECT s.story_id, s.current_version AS version
+           FROM stories s
+           JOIN story_versions sv
+             ON sv.story_id = s.story_id AND sv.version = s.current_version
+           WHERE s.story_id = ? AND sv.publication_state = 'published'`,
+        )
+        .bind(storyId)
+        .first<BreakingEntryRow>();
+      if (published === null) {
+        throw new Error(`unknown published Breaking story ${storyId}`);
+      }
+      entries.push(published);
+    }
+    return entries;
+  }
+
   async function stageEdition(
     packet: EditionPacketV1,
     manifestHash: string,
@@ -296,14 +617,38 @@ export function createPublicationRepository(
       return "replay";
     }
     await verifyStoryIdentities(packet.stories);
+    const counts = graphCounts(packet.stories);
+    const breakingEntries = await resolveBreakingEntries(
+      packet.breaking_story_ids,
+      packet.stories,
+    );
 
     const statements: D1PreparedStatementLike[] = [
       db
         .prepare(
-          `INSERT INTO publication_packets(packet_id, manifest_hash, packet_kind, publication_state)
-           VALUES (?, ?, 'edition', 'building')`,
+          `INSERT INTO publication_packets(
+             packet_id, manifest_hash, packet_kind, publication_state,
+             expected_story_version_count, expected_claim_count,
+             expected_evidence_link_count, expected_edition_entry_count,
+             expected_breaking_entry_count, expected_asset_reference_count,
+             referenced_claim_ids_json, referenced_evidence_ids_json,
+             referenced_asset_digests_json, breaking_entries_json
+           ) VALUES (?, ?, 'edition', 'building', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .bind(packet.packet_id, manifestHash),
+        .bind(
+          packet.packet_id,
+          manifestHash,
+          counts.stories,
+          counts.claims,
+          counts.links,
+          packet.placements.length,
+          breakingEntries.length,
+          counts.assets,
+          json(packet.referenced_claim_ids),
+          json(packet.referenced_evidence_ids),
+          json(packet.asset_digests),
+          json(breakingEntries),
+        ),
     ];
     for (const story of packet.stories) {
       statements.push(...storyStatements(db, packet.packet_id, story));
@@ -316,9 +661,9 @@ export function createPublicationRepository(
              edition_date, edition_revision, expected_current_revision,
              expected_breaking_revision, edition_kind, publication_state,
              coverage_state, readiness_cutoff, verified_at,
-             collector_run_ids_json, breaking_story_ids_json,
+             collector_run_ids_json, placements_json, breaking_story_ids_json,
              asset_digests_json, coverage_gaps_json, reader_notices_json
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'building', ?, ?, ?, ?, ?, ?, ?, ?)`,
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'building', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
           packet.packet_id,
@@ -334,6 +679,7 @@ export function createPublicationRepository(
           packet.readiness_cutoff,
           packet.verified_at,
           json(packet.collector_run_ids),
+          json(packet.placements),
           json(packet.breaking_story_ids),
           json(packet.asset_digests),
           json(packet.coverage_gaps),
@@ -345,10 +691,12 @@ export function createPublicationRepository(
         db
           .prepare(
             `INSERT INTO edition_entries(
-               edition_id, story_id, version, section, editorial_order
-             ) VALUES (?, ?, ?, ?, ?)`,
+               edition_id, packet_id, story_id, version, section,
+               editorial_order, publication_state
+             ) VALUES (?, ?, ?, ?, ?, ?, 'building')`,
           )
           .bind(
+            packet.packet_id,
             packet.packet_id,
             placement.story_id,
             placement.version,
@@ -358,44 +706,33 @@ export function createPublicationRepository(
       );
     }
     const nextBreakingRevision = packet.expected_breaking_revision + 1;
-    for (const storyId of packet.breaking_story_ids) {
-      const stagedStory = packet.stories.find(
-        (candidate) => candidate.story_id === storyId,
+    for (const entry of breakingEntries) {
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO breaking_entries(
+               breaking_revision, story_id, version, packet_id,
+               publication_state
+             ) VALUES (?, ?, ?, ?, 'building')`,
+          )
+          .bind(
+            nextBreakingRevision,
+            entry.story_id,
+            entry.version,
+            packet.packet_id,
+          ),
       );
-      if (stagedStory !== undefined) {
-        statements.push(
-          db
-            .prepare(
-              `INSERT INTO breaking_entries(
-                 breaking_revision, story_id, version, packet_id
-               ) VALUES (?, ?, ?, ?)`,
-            )
-            .bind(
-              nextBreakingRevision,
-              storyId,
-              stagedStory.version,
-              packet.packet_id,
-            ),
-        );
-      } else {
-        statements.push(
-          db
-            .prepare(
-              `INSERT INTO breaking_entries(
-                 breaking_revision, story_id, version, packet_id
-               )
-               SELECT ?, story_id, current_version, ? FROM stories
-               WHERE story_id = ?`,
-            )
-            .bind(nextBreakingRevision, packet.packet_id, storyId),
-        );
-      }
     }
 
     try {
       await db.batch(statements);
     } catch (cause) {
-      throw new Error("publication staging conflict", { cause });
+      return recoverStageConflict(
+        packet.packet_id,
+        manifestHash,
+        "edition",
+        cause,
+      );
     }
     return "staged";
   }
@@ -409,31 +746,78 @@ export function createPublicationRepository(
     }
     await verifyStoryIdentities([packet.story]);
     const nextBreakingRevision = packet.expected_breaking_revision + 1;
+    const existingResult = await db
+      .prepare(
+        `SELECT be.story_id, be.version
+         FROM breaking_entries be
+         JOIN story_versions sv
+           ON sv.story_id = be.story_id AND sv.version = be.version
+         WHERE be.breaking_revision = ?
+           AND be.publication_state = 'published'
+           AND sv.publication_state = 'published'
+           AND be.story_id <> ?
+         ORDER BY be.story_id`,
+      )
+      .bind(packet.expected_breaking_revision, packet.story.story_id)
+      .all<BreakingEntryRow>();
+    const breakingEntries = [
+      ...(existingResult.results ?? []),
+      { story_id: packet.story.story_id, version: packet.story.version },
+    ];
+    const counts = graphCounts([packet.story]);
     const statements: D1PreparedStatementLike[] = [
       db
         .prepare(
-          `INSERT INTO publication_packets(packet_id, manifest_hash, packet_kind, publication_state)
-           VALUES (?, ?, 'breaking', 'building')`,
-        )
-        .bind(packet.packet_id, manifestHash),
-      ...storyStatements(db, packet.packet_id, packet.story),
-      db
-        .prepare(
-          `INSERT INTO breaking_entries(
-             breaking_revision, story_id, version, packet_id
-           ) VALUES (?, ?, ?, ?)`,
+          `INSERT INTO publication_packets(
+             packet_id, manifest_hash, packet_kind, publication_state,
+             expected_story_version_count, expected_claim_count,
+             expected_evidence_link_count, expected_edition_entry_count,
+             expected_breaking_entry_count, expected_asset_reference_count,
+             referenced_claim_ids_json, referenced_evidence_ids_json,
+             referenced_asset_digests_json, breaking_entries_json
+           ) VALUES (?, ?, 'breaking', 'building', ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,
         )
         .bind(
-          nextBreakingRevision,
-          packet.story.story_id,
-          packet.story.version,
           packet.packet_id,
+          manifestHash,
+          counts.stories,
+          counts.claims,
+          counts.links,
+          breakingEntries.length,
+          counts.assets,
+          json(packet.story.claims.map((claim) => claim.claim_id)),
+          json(packet.story.evidence_refs.map((item) => item.evidence_id)),
+          json(packet.story.asset_digests),
+          json(breakingEntries),
         ),
+      ...storyStatements(db, packet.packet_id, packet.story),
     ];
+    for (const entry of breakingEntries) {
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO breaking_entries(
+               breaking_revision, story_id, version, packet_id,
+               publication_state
+             ) VALUES (?, ?, ?, ?, 'building')`,
+          )
+          .bind(
+            nextBreakingRevision,
+            entry.story_id,
+            entry.version,
+            packet.packet_id,
+          ),
+      );
+    }
     try {
       await db.batch(statements);
     } catch (cause) {
-      throw new Error("publication staging conflict", { cause });
+      return recoverStageConflict(
+        packet.packet_id,
+        manifestHash,
+        "breaking",
+        cause,
+      );
     }
     return "staged";
   }
@@ -469,52 +853,73 @@ export function createPublicationRepository(
     const nextBreakingRevision = edition.expected_breaking_revision + 1;
 
     const statements: D1PreparedStatementLike[] = [
+      graphGuardStatement(
+        db,
+        packetId,
+        `AND EXISTS (
+           SELECT 1 FROM editions e, edition_pointer ep, breaking_pointer bp
+           WHERE e.packet_id = publication_packets.packet_id
+             AND e.publication_state = 'building'
+             AND ep.singleton_id = 1
+             AND bp.singleton_id = 1
+             AND e.expected_current_revision = ep.current_revision
+             AND e.expected_breaking_revision = bp.active_revision
+         )`,
+      ),
       db
         .prepare(
-          `UPDATE editions
-           SET publication_state = CASE
-             WHEN publication_state = 'building'
-              AND expected_current_revision = (
-                SELECT current_revision FROM edition_pointer WHERE singleton_id = 1
-              )
-              AND expected_breaking_revision = (
-                SELECT active_revision FROM breaking_pointer WHERE singleton_id = 1
-              )
-              AND (SELECT count(*) FROM story_versions WHERE packet_id = ?) = ?
-              AND NOT EXISTS (
-                SELECT 1 FROM story_versions sv
-                JOIN stories s ON s.story_id = sv.story_id
-                WHERE sv.packet_id = ? AND (
-                  sv.publication_state <> 'building'
-                  OR s.current_version <> sv.expected_current_version
-                  OR EXISTS (
-                    SELECT 1 FROM json_each(sv.asset_digests_json) digest
-                    LEFT JOIN assets asset
-                      ON asset.sha256 = digest.value
-                     AND asset.status = 'verified'
-                     AND asset.rights_status = 'approved'
-                    WHERE asset.sha256 IS NULL
-                  )
-                )
-              )
-             THEN 'published' ELSE '__cas_conflict__' END,
-             published_at = ?
-           WHERE packet_id = ?`,
+          `UPDATE editions SET publication_state = 'published', published_at = ?
+           WHERE packet_id = ? AND publication_state = 'building'`,
         )
-        .bind(packetId, stories.length, packetId, publishedAt, packetId),
+        .bind(publishedAt, packetId),
+      db
+        .prepare(
+          `UPDATE story_versions SET publication_state = 'published', published_at = ?
+           WHERE packet_id = ? AND publication_state = 'building'`,
+        )
+        .bind(publishedAt, packetId),
+      db
+        .prepare(
+          `UPDATE story_claims SET publication_state = 'published'
+           WHERE packet_id = ? AND publication_state = 'building'`,
+        )
+        .bind(packetId),
+      db
+        .prepare(
+          `UPDATE story_evidence SET publication_state = 'published'
+           WHERE packet_id = ? AND publication_state = 'building'`,
+        )
+        .bind(packetId),
+      db
+        .prepare(
+          `UPDATE edition_entries SET publication_state = 'published'
+           WHERE packet_id = ? AND publication_state = 'building'`,
+        )
+        .bind(packetId),
+      db
+        .prepare(
+          `UPDATE breaking_entries SET publication_state = 'published'
+           WHERE packet_id = ? AND publication_state = 'building'`,
+        )
+        .bind(packetId),
+      db
+        .prepare(
+          `UPDATE story_asset_references SET publication_state = 'published'
+           WHERE packet_id = ? AND publication_state = 'building'`,
+        )
+        .bind(packetId),
     ];
-    const requiredIndexes = [0];
+    const expectations: ChangeExpectation[] = [
+      { index: 0, count: 1 },
+      { index: 1, count: 1 },
+      { index: 2, count: stories.length },
+      { index: 3, count: packetExpectedCount(packet, "claims") },
+      { index: 4, count: packetExpectedCount(packet, "links") },
+      { index: 5, count: packetExpectedCount(packet, "editionEntries") },
+      { index: 6, count: packetExpectedCount(packet, "breakingEntries") },
+      { index: 7, count: packetExpectedCount(packet, "assets") },
+    ];
     for (const story of stories) {
-      statements.push(
-        db
-          .prepare(
-            `UPDATE story_versions SET publication_state = 'published', published_at = ?
-             WHERE packet_id = ? AND story_id = ? AND version = ?
-               AND publication_state = 'building'`,
-          )
-          .bind(publishedAt, packetId, story.story_id, story.version),
-      );
-      requiredIndexes.push(statements.length - 1);
       statements.push(
         db
           .prepare(
@@ -523,7 +928,7 @@ export function createPublicationRepository(
           )
           .bind(story.version, story.story_id, story.expected_current_version),
       );
-      requiredIndexes.push(statements.length - 1);
+      expectations.push({ index: statements.length - 1, count: 1 });
     }
     statements.push(
       db
@@ -538,7 +943,7 @@ export function createPublicationRepository(
           edition.expected_current_revision,
         ),
     );
-    requiredIndexes.push(statements.length - 1);
+    expectations.push({ index: statements.length - 1, count: 1 });
     statements.push(
       db
         .prepare(
@@ -551,7 +956,7 @@ export function createPublicationRepository(
           edition.expected_breaking_revision,
         ),
     );
-    requiredIndexes.push(statements.length - 1);
+    expectations.push({ index: statements.length - 1, count: 1 });
     statements.push(
       db
         .prepare(
@@ -561,11 +966,11 @@ export function createPublicationRepository(
         )
         .bind(publishedAt, packetId),
     );
-    requiredIndexes.push(statements.length - 1);
+    expectations.push({ index: statements.length - 1, count: 1 });
 
     try {
       const results = await db.batch(statements);
-      assertChangedExactly(results, requiredIndexes, "edition finalization");
+      assertChangedExactly(results, expectations, "edition finalization");
     } catch (cause) {
       if (cause instanceof Error && cause.message.startsWith("CAS conflict:")) {
         throw cause;
@@ -607,57 +1012,51 @@ export function createPublicationRepository(
     const expectedBreakingRevision = entry.breaking_revision - 1;
     const publishedAt = now();
     const statements: D1PreparedStatementLike[] = [
+      graphGuardStatement(
+        db,
+        packetId,
+        `AND EXISTS (
+           SELECT 1 FROM breaking_pointer bp
+           WHERE bp.singleton_id = 1
+             AND bp.active_revision = ${Number(expectedBreakingRevision)}
+         )`,
+      ),
       db
         .prepare(
-          `UPDATE story_versions
-           SET publication_state = CASE
-             WHEN publication_state = 'building'
-              AND expected_current_version = (
-                SELECT current_version FROM stories WHERE story_id = ?
-              )
-              AND ? = (
-                SELECT active_revision FROM breaking_pointer WHERE singleton_id = 1
-              )
-              AND NOT EXISTS (
-                SELECT 1 FROM json_each(asset_digests_json) digest
-                LEFT JOIN assets asset
-                  ON asset.sha256 = digest.value
-                 AND asset.status = 'verified'
-                 AND asset.rights_status = 'approved'
-                WHERE asset.sha256 IS NULL
-              )
-             THEN 'published' ELSE '__cas_conflict__' END,
-             published_at = ?
-           WHERE packet_id = ? AND story_id = ? AND version = ?`,
+          `UPDATE story_versions SET publication_state = 'published', published_at = ?
+           WHERE packet_id = ? AND publication_state = 'building'`,
         )
-        .bind(
-          story.story_id,
-          expectedBreakingRevision,
-          publishedAt,
-          packetId,
-          story.story_id,
-          story.version,
-        ),
+        .bind(publishedAt, packetId),
+      db
+        .prepare(
+          `UPDATE story_claims SET publication_state = 'published'
+           WHERE packet_id = ? AND publication_state = 'building'`,
+        )
+        .bind(packetId),
+      db
+        .prepare(
+          `UPDATE story_evidence SET publication_state = 'published'
+           WHERE packet_id = ? AND publication_state = 'building'`,
+        )
+        .bind(packetId),
+      db
+        .prepare(
+          `UPDATE breaking_entries SET publication_state = 'published'
+           WHERE packet_id = ? AND publication_state = 'building'`,
+        )
+        .bind(packetId),
+      db
+        .prepare(
+          `UPDATE story_asset_references SET publication_state = 'published'
+           WHERE packet_id = ? AND publication_state = 'building'`,
+        )
+        .bind(packetId),
       db
         .prepare(
           `UPDATE stories SET current_version = ?
            WHERE story_id = ? AND current_version = ?`,
         )
         .bind(story.version, story.story_id, story.expected_current_version),
-      db
-        .prepare(
-          `INSERT INTO breaking_entries(
-             breaking_revision, story_id, version, packet_id
-           )
-           SELECT ?, story_id, version, ? FROM breaking_entries
-           WHERE breaking_revision = ? AND story_id <> ?`,
-        )
-        .bind(
-          entry.breaking_revision,
-          packetId,
-          expectedBreakingRevision,
-          story.story_id,
-        ),
       db
         .prepare(
           `UPDATE breaking_pointer SET active_revision = ?, updated_at = ?
@@ -674,7 +1073,21 @@ export function createPublicationRepository(
     ];
     try {
       const results = await db.batch(statements);
-      assertChangedExactly(results, [0, 1, 3, 4], "Breaking finalization");
+      assertChangedExactly(
+        results,
+        [
+          { index: 0, count: 1 },
+          { index: 1, count: 1 },
+          { index: 2, count: packetExpectedCount(packet, "claims") },
+          { index: 3, count: packetExpectedCount(packet, "links") },
+          { index: 4, count: packetExpectedCount(packet, "breakingEntries") },
+          { index: 5, count: packetExpectedCount(packet, "assets") },
+          { index: 6, count: 1 },
+          { index: 7, count: 1 },
+          { index: 8, count: 1 },
+        ],
+        "Breaking finalization",
+      );
     } catch (cause) {
       if (cause instanceof Error && cause.message.startsWith("CAS conflict:")) {
         throw cause;
@@ -706,7 +1119,19 @@ export function createPublicationRepository(
          FROM edition_entries ee
          JOIN story_versions sv
            ON sv.story_id = ee.story_id AND sv.version = ee.version
-         WHERE ee.edition_id = ? AND sv.publication_state = 'published'
+         WHERE ee.edition_id = ?
+           AND ee.publication_state = 'published'
+           AND sv.publication_state = 'published'
+           AND NOT EXISTS (
+             SELECT 1 FROM story_visibility_events visibility
+             WHERE visibility.story_id = ee.story_id
+               AND visibility.visibility_seq = (
+                 SELECT max(latest.visibility_seq)
+                 FROM story_visibility_events latest
+                 WHERE latest.story_id = ee.story_id
+               )
+               AND visibility.desired_quarantined = 1
+           )
          ORDER BY ee.section, ee.editorial_order`,
       )
       .bind(editionId)
@@ -714,7 +1139,7 @@ export function createPublicationRepository(
     return {
       ...row,
       published_at: row.published_at,
-      entries: entryResult.results ?? [],
+      entries: (entryResult.results ?? []).map((entry) => ({ ...entry })),
     };
   }
 
@@ -766,7 +1191,9 @@ export function createPublicationRepository(
            ON s.story_id = be.story_id AND s.current_version = be.version
          JOIN story_versions sv
            ON sv.story_id = be.story_id AND sv.version = be.version
-         WHERE bp.singleton_id = 1 AND sv.publication_state = 'published'
+         WHERE bp.singleton_id = 1
+           AND be.publication_state = 'published'
+           AND sv.publication_state = 'published'
            AND NOT EXISTS (
              SELECT 1 FROM story_visibility_events visibility
              WHERE visibility.story_id = be.story_id

@@ -43,3 +43,37 @@ issues (`cloudflare:workers`, global `Fetcher`/`D1Database`, and Task 2
 
 The pre-existing `INDEX.md`, `README.md`, and `.husky/_` changes were neither
 modified nor staged.
+
+## Review remediation (2026-07-18)
+
+Resolved all five Important findings and the exact-version Minor finding from
+the Task 3 review.
+
+- Publication packets now durably declare packet-scoped counts and reference
+  manifests for story versions, claims, evidence links, edition/Breaking
+  placements, and story asset references.
+- Staging writes the complete graph in `building` state. Finalization runs a
+  structural/count/head guard and promotes every graph table plus both relevant
+  heads in one D1 batch; any mismatch rolls back the batch.
+- Current and historical edition readers now require published entries and
+  apply the latest quarantine overlay.
+- The baseline migration seeds both singleton pointer rows, and D1 enforces
+  `version = expected_current_version + 1`.
+- Evidence IDs permit only byte-for-byte-equivalent persisted-field reuse;
+  changed content fails atomically without mutating the original evidence.
+- Concurrent identical staging resolves to one `staged` result and one
+  `replay`; a concurrent hash mismatch remains fail closed.
+
+### Remediation TDD and verification
+
+- RED: 20 focused failures covered schema/migration invariants, clean bootstrap,
+  exact story versioning, concurrent replay, immutable evidence, complete graph
+  promotion/corruption, and edition quarantine behavior.
+- GREEN: `npm run test:unit` passes 63/63.
+- `npm run build`: pass.
+- `npm run lint`: pass.
+- `npm run db:generate`: pass, 26 tables, no schema drift.
+- `git diff --check`: pass.
+
+The unrelated `INDEX.md`, `README.md`, and `.husky/_` workspace changes remain
+unstaged and untouched by this remediation.

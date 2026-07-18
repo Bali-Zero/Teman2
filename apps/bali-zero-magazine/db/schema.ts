@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  foreignKey,
   integer,
   primaryKey,
   sqliteTable,
@@ -84,6 +85,26 @@ export const publicationPackets = sqliteTable(
     manifestHash: text("manifest_hash").notNull(),
     packetKind: text("packet_kind").notNull(),
     publicationState: text("publication_state").notNull().default("building"),
+    expectedStoryVersionCount: integer(
+      "expected_story_version_count",
+    ).notNull(),
+    expectedClaimCount: integer("expected_claim_count").notNull(),
+    expectedEvidenceLinkCount: integer(
+      "expected_evidence_link_count",
+    ).notNull(),
+    expectedEditionEntryCount: integer(
+      "expected_edition_entry_count",
+    ).notNull(),
+    expectedBreakingEntryCount: integer(
+      "expected_breaking_entry_count",
+    ).notNull(),
+    expectedAssetReferenceCount: integer(
+      "expected_asset_reference_count",
+    ).notNull(),
+    referencedClaimIdsJson: text("referenced_claim_ids_json").notNull(),
+    referencedEvidenceIdsJson: text("referenced_evidence_ids_json").notNull(),
+    referencedAssetDigestsJson: text("referenced_asset_digests_json").notNull(),
+    breakingEntriesJson: text("breaking_entries_json").notNull(),
     stagedAt: createdAt(),
     publishedAt: text("published_at"),
   },
@@ -96,6 +117,10 @@ export const publicationPackets = sqliteTable(
     check(
       "publication_packets_state_check",
       sql`${table.publicationState} in ('building', 'published', 'failed')`,
+    ),
+    check(
+      "publication_packets_expected_counts_check",
+      sql`${table.expectedStoryVersionCount} >= 0 and ${table.expectedClaimCount} >= 0 and ${table.expectedEvidenceLinkCount} >= 0 and ${table.expectedEditionEntryCount} >= 0 and ${table.expectedBreakingEntryCount} >= 0 and ${table.expectedAssetReferenceCount} >= 0`,
     ),
   ],
 );
@@ -136,6 +161,7 @@ export const storyVersions = sqliteTable(
     whyItMatters: text("why_it_matters").notNull(),
     curiosityText: text("curiosity_text"),
     scoreComponentsJson: text("score_components_json").notNull(),
+    claimIdsJson: text("claim_ids_json").notNull(),
     contributingSystemIdsJson: text("contributing_system_ids_json").notNull(),
     coverageState: text("coverage_state").notNull(),
     confidence: text("confidence").notNull(),
@@ -151,10 +177,15 @@ export const storyVersions = sqliteTable(
       table.storyId,
       table.version,
     ),
+    unique("story_versions_packet_story_version_unique").on(
+      table.packetId,
+      table.storyId,
+      table.version,
+    ),
     check("story_versions_version_check", sql`${table.version} > 0`),
     check(
       "story_versions_expected_version_check",
-      sql`${table.expectedCurrentVersion} >= 0 and ${table.version} > ${table.expectedCurrentVersion}`,
+      sql`${table.expectedCurrentVersion} >= 0 and ${table.version} = ${table.expectedCurrentVersion} + 1`,
     ),
     check(
       "story_versions_state_check",
@@ -166,7 +197,10 @@ export const storyVersions = sqliteTable(
 export const storyClaims = sqliteTable(
   "story_claims",
   {
-    claimId: text("claim_id").primaryKey(),
+    claimId: text("claim_id").notNull(),
+    packetId: text("packet_id")
+      .notNull()
+      .references(() => publicationPackets.packetId),
     storyId: text("story_id").notNull(),
     version: integer("version").notNull(),
     claimKind: text("claim_kind").notNull(),
@@ -175,16 +209,38 @@ export const storyClaims = sqliteTable(
     numericUnit: text("numeric_unit"),
     asOf: text("as_of"),
     breakingGate: text("breaking_gate"),
+    evidenceIdsJson: text("evidence_ids_json").notNull(),
+    publicationState: text("publication_state").notNull().default("building"),
   },
   (table) => [
+    primaryKey({
+      columns: [table.packetId, table.storyId, table.version, table.claimId],
+    }),
     unique("story_claims_story_version_claim_unique").on(
       table.storyId,
       table.version,
       table.claimId,
     ),
+    unique("story_claims_packet_claim_unique").on(
+      table.packetId,
+      table.claimId,
+    ),
+    foreignKey({
+      columns: [table.packetId, table.storyId, table.version],
+      foreignColumns: [
+        storyVersions.packetId,
+        storyVersions.storyId,
+        storyVersions.version,
+      ],
+      name: "story_claims_story_version_fk",
+    }),
     check(
       "story_claims_kind_check",
       sql`${table.claimKind} in ('fact', 'numeric', 'analysis')`,
+    ),
+    check(
+      "story_claims_state_check",
+      sql`${table.publicationState} in ('building', 'published', 'failed')`,
     ),
   ],
 );
@@ -225,17 +281,41 @@ export const evidenceRefs = sqliteTable(
 export const storyEvidence = sqliteTable(
   "story_evidence",
   {
+    packetId: text("packet_id")
+      .notNull()
+      .references(() => publicationPackets.packetId),
     storyId: text("story_id").notNull(),
     version: integer("version").notNull(),
     claimId: text("claim_id").notNull(),
     evidenceId: text("evidence_id")
       .notNull()
       .references(() => evidenceRefs.evidenceId),
+    publicationState: text("publication_state").notNull().default("building"),
   },
   (table) => [
     primaryKey({
-      columns: [table.storyId, table.version, table.claimId, table.evidenceId],
+      columns: [
+        table.packetId,
+        table.storyId,
+        table.version,
+        table.claimId,
+        table.evidenceId,
+      ],
     }),
+    foreignKey({
+      columns: [table.packetId, table.storyId, table.version, table.claimId],
+      foreignColumns: [
+        storyClaims.packetId,
+        storyClaims.storyId,
+        storyClaims.version,
+        storyClaims.claimId,
+      ],
+      name: "story_evidence_claim_fk",
+    }),
+    check(
+      "story_evidence_state_check",
+      sql`${table.publicationState} in ('building', 'published', 'failed')`,
+    ),
   ],
 );
 
@@ -321,6 +401,7 @@ export const editions = sqliteTable(
     readinessCutoff: text("readiness_cutoff").notNull(),
     verifiedAt: text("verified_at").notNull(),
     collectorRunIdsJson: text("collector_run_ids_json").notNull(),
+    placementsJson: text("placements_json").notNull(),
     breakingStoryIdsJson: text("breaking_story_ids_json").notNull(),
     assetDigestsJson: text("asset_digests_json").notNull(),
     coverageGapsJson: text("coverage_gaps_json").notNull(),
@@ -332,6 +413,7 @@ export const editions = sqliteTable(
       table.editionDate,
       table.editionRevision,
     ),
+    unique("editions_id_packet_unique").on(table.editionId, table.packetId),
     check("editions_revision_check", sql`${table.editionRevision} > 0`),
     check(
       "editions_state_check",
@@ -354,17 +436,39 @@ export const editionEntries = sqliteTable(
     editionId: text("edition_id")
       .notNull()
       .references(() => editions.editionId),
+    packetId: text("packet_id")
+      .notNull()
+      .references(() => publicationPackets.packetId),
     storyId: text("story_id").notNull(),
     version: integer("version").notNull(),
     section: text("section").notNull(),
     editorialOrder: integer("editorial_order").notNull(),
+    publicationState: text("publication_state").notNull().default("building"),
   },
   (table) => [
-    primaryKey({ columns: [table.editionId, table.storyId] }),
+    primaryKey({ columns: [table.editionId, table.packetId, table.storyId] }),
     unique("edition_entries_order_unique").on(
       table.editionId,
       table.section,
       table.editorialOrder,
+    ),
+    foreignKey({
+      columns: [table.editionId, table.packetId],
+      foreignColumns: [editions.editionId, editions.packetId],
+      name: "edition_entries_edition_packet_fk",
+    }),
+    foreignKey({
+      columns: [table.packetId, table.storyId, table.version],
+      foreignColumns: [
+        storyVersions.packetId,
+        storyVersions.storyId,
+        storyVersions.version,
+      ],
+      name: "edition_entries_story_version_fk",
+    }),
+    check(
+      "edition_entries_state_check",
+      sql`${table.publicationState} in ('building', 'published', 'failed')`,
     ),
   ],
 );
@@ -404,8 +508,20 @@ export const breakingEntries = sqliteTable(
     packetId: text("packet_id")
       .notNull()
       .references(() => publicationPackets.packetId),
+    publicationState: text("publication_state").notNull().default("building"),
   },
-  (table) => [primaryKey({ columns: [table.breakingRevision, table.storyId] })],
+  (table) => [
+    primaryKey({ columns: [table.breakingRevision, table.storyId] }),
+    foreignKey({
+      columns: [table.storyId, table.version],
+      foreignColumns: [storyVersions.storyId, storyVersions.version],
+      name: "breaking_entries_story_version_fk",
+    }),
+    check(
+      "breaking_entries_state_check",
+      sql`${table.publicationState} in ('building', 'published', 'failed')`,
+    ),
+  ],
 );
 
 export const assets = sqliteTable(
@@ -434,6 +550,45 @@ export const assets = sqliteTable(
     check(
       "assets_dimensions_check",
       sql`${table.width} > 0 and ${table.height} > 0`,
+    ),
+  ],
+);
+
+export const storyAssetReferences = sqliteTable(
+  "story_asset_references",
+  {
+    packetId: text("packet_id")
+      .notNull()
+      .references(() => publicationPackets.packetId),
+    storyId: text("story_id").notNull(),
+    version: integer("version").notNull(),
+    assetSha256: text("asset_sha256")
+      .notNull()
+      .references(() => assets.sha256),
+    publicationState: text("publication_state").notNull().default("building"),
+  },
+  (table) => [
+    primaryKey({
+      columns: [
+        table.packetId,
+        table.storyId,
+        table.version,
+        table.assetSha256,
+      ],
+    }),
+    foreignKey({
+      columns: [table.packetId, table.storyId, table.version],
+      foreignColumns: [
+        storyVersions.packetId,
+        storyVersions.storyId,
+        storyVersions.version,
+      ],
+      name: "story_asset_references_story_version_fk",
+    }),
+    check("story_asset_references_hash_check", sha256Check("asset_sha256")),
+    check(
+      "story_asset_references_state_check",
+      sql`${table.publicationState} in ('building', 'published', 'failed')`,
     ),
   ],
 );

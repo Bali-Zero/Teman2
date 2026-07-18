@@ -75,8 +75,11 @@ CREATE TABLE `breaking_entries` (
 	`story_id` text NOT NULL,
 	`version` integer NOT NULL,
 	`packet_id` text NOT NULL,
+	`publication_state` text DEFAULT 'building' NOT NULL,
 	PRIMARY KEY(`breaking_revision`, `story_id`),
-	FOREIGN KEY (`packet_id`) REFERENCES `publication_packets`(`packet_id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`packet_id`) REFERENCES `publication_packets`(`packet_id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`story_id`,`version`) REFERENCES `story_versions`(`story_id`,`version`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "breaking_entries_state_check" CHECK("breaking_entries"."publication_state" in ('building', 'published', 'failed'))
 );
 --> statement-breakpoint
 CREATE TABLE `breaking_pointer` (
@@ -109,12 +112,18 @@ CREATE TABLE `collector_runs` (
 --> statement-breakpoint
 CREATE TABLE `edition_entries` (
 	`edition_id` text NOT NULL,
+	`packet_id` text NOT NULL,
 	`story_id` text NOT NULL,
 	`version` integer NOT NULL,
 	`section` text NOT NULL,
 	`editorial_order` integer NOT NULL,
-	PRIMARY KEY(`edition_id`, `story_id`),
-	FOREIGN KEY (`edition_id`) REFERENCES `editions`(`edition_id`) ON UPDATE no action ON DELETE no action
+	`publication_state` text DEFAULT 'building' NOT NULL,
+	PRIMARY KEY(`edition_id`, `packet_id`, `story_id`),
+	FOREIGN KEY (`edition_id`) REFERENCES `editions`(`edition_id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`packet_id`) REFERENCES `publication_packets`(`packet_id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`edition_id`,`packet_id`) REFERENCES `editions`(`edition_id`,`packet_id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`packet_id`,`story_id`,`version`) REFERENCES `story_versions`(`packet_id`,`story_id`,`version`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "edition_entries_state_check" CHECK("edition_entries"."publication_state" in ('building', 'published', 'failed'))
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `edition_entries_order_unique` ON `edition_entries` (`edition_id`,`section`,`editorial_order`);--> statement-breakpoint
@@ -141,6 +150,7 @@ CREATE TABLE `editions` (
 	`readiness_cutoff` text NOT NULL,
 	`verified_at` text NOT NULL,
 	`collector_run_ids_json` text NOT NULL,
+	`placements_json` text NOT NULL,
 	`breaking_story_ids_json` text NOT NULL,
 	`asset_digests_json` text NOT NULL,
 	`coverage_gaps_json` text NOT NULL,
@@ -155,6 +165,7 @@ CREATE TABLE `editions` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `editions_packet_id_unique` ON `editions` (`packet_id`);--> statement-breakpoint
 CREATE UNIQUE INDEX `editions_date_revision_unique` ON `editions` (`edition_date`,`edition_revision`);--> statement-breakpoint
+CREATE UNIQUE INDEX `editions_id_packet_unique` ON `editions` (`edition_id`,`packet_id`);--> statement-breakpoint
 CREATE TABLE `evidence_refs` (
 	`evidence_id` text PRIMARY KEY NOT NULL,
 	`root_source_id` text NOT NULL,
@@ -220,11 +231,22 @@ CREATE TABLE `publication_packets` (
 	`manifest_hash` text NOT NULL,
 	`packet_kind` text NOT NULL,
 	`publication_state` text DEFAULT 'building' NOT NULL,
+	`expected_story_version_count` integer NOT NULL,
+	`expected_claim_count` integer NOT NULL,
+	`expected_evidence_link_count` integer NOT NULL,
+	`expected_edition_entry_count` integer NOT NULL,
+	`expected_breaking_entry_count` integer NOT NULL,
+	`expected_asset_reference_count` integer NOT NULL,
+	`referenced_claim_ids_json` text NOT NULL,
+	`referenced_evidence_ids_json` text NOT NULL,
+	`referenced_asset_digests_json` text NOT NULL,
+	`breaking_entries_json` text NOT NULL,
 	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	`published_at` text,
 	CONSTRAINT "publication_packets_hash_check" CHECK(length("manifest_hash") = 64 and "manifest_hash" not glob '*[^0-9a-f]*'),
 	CONSTRAINT "publication_packets_kind_check" CHECK("publication_packets"."packet_kind" in ('edition', 'breaking')),
-	CONSTRAINT "publication_packets_state_check" CHECK("publication_packets"."publication_state" in ('building', 'published', 'failed'))
+	CONSTRAINT "publication_packets_state_check" CHECK("publication_packets"."publication_state" in ('building', 'published', 'failed')),
+	CONSTRAINT "publication_packets_expected_counts_check" CHECK("publication_packets"."expected_story_version_count" >= 0 and "publication_packets"."expected_claim_count" >= 0 and "publication_packets"."expected_evidence_link_count" >= 0 and "publication_packets"."expected_edition_entry_count" >= 0 and "publication_packets"."expected_breaking_entry_count" >= 0 and "publication_packets"."expected_asset_reference_count" >= 0)
 );
 --> statement-breakpoint
 CREATE TABLE `release_attestations` (
@@ -280,8 +302,23 @@ CREATE TABLE `stories` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `stories_slug_unique` ON `stories` (`slug`);--> statement-breakpoint
+CREATE TABLE `story_asset_references` (
+	`packet_id` text NOT NULL,
+	`story_id` text NOT NULL,
+	`version` integer NOT NULL,
+	`asset_sha256` text NOT NULL,
+	`publication_state` text DEFAULT 'building' NOT NULL,
+	PRIMARY KEY(`packet_id`, `story_id`, `version`, `asset_sha256`),
+	FOREIGN KEY (`packet_id`) REFERENCES `publication_packets`(`packet_id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`asset_sha256`) REFERENCES `assets`(`sha256`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`packet_id`,`story_id`,`version`) REFERENCES `story_versions`(`packet_id`,`story_id`,`version`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "story_asset_references_hash_check" CHECK(length("asset_sha256") = 64 and "asset_sha256" not glob '*[^0-9a-f]*'),
+	CONSTRAINT "story_asset_references_state_check" CHECK("story_asset_references"."publication_state" in ('building', 'published', 'failed'))
+);
+--> statement-breakpoint
 CREATE TABLE `story_claims` (
-	`claim_id` text PRIMARY KEY NOT NULL,
+	`claim_id` text NOT NULL,
+	`packet_id` text NOT NULL,
 	`story_id` text NOT NULL,
 	`version` integer NOT NULL,
 	`claim_kind` text NOT NULL,
@@ -290,17 +327,29 @@ CREATE TABLE `story_claims` (
 	`numeric_unit` text,
 	`as_of` text,
 	`breaking_gate` text,
-	CONSTRAINT "story_claims_kind_check" CHECK("story_claims"."claim_kind" in ('fact', 'numeric', 'analysis'))
+	`evidence_ids_json` text NOT NULL,
+	`publication_state` text DEFAULT 'building' NOT NULL,
+	PRIMARY KEY(`packet_id`, `story_id`, `version`, `claim_id`),
+	FOREIGN KEY (`packet_id`) REFERENCES `publication_packets`(`packet_id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`packet_id`,`story_id`,`version`) REFERENCES `story_versions`(`packet_id`,`story_id`,`version`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "story_claims_kind_check" CHECK("story_claims"."claim_kind" in ('fact', 'numeric', 'analysis')),
+	CONSTRAINT "story_claims_state_check" CHECK("story_claims"."publication_state" in ('building', 'published', 'failed'))
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `story_claims_story_version_claim_unique` ON `story_claims` (`story_id`,`version`,`claim_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `story_claims_packet_claim_unique` ON `story_claims` (`packet_id`,`claim_id`);--> statement-breakpoint
 CREATE TABLE `story_evidence` (
+	`packet_id` text NOT NULL,
 	`story_id` text NOT NULL,
 	`version` integer NOT NULL,
 	`claim_id` text NOT NULL,
 	`evidence_id` text NOT NULL,
-	PRIMARY KEY(`story_id`, `version`, `claim_id`, `evidence_id`),
-	FOREIGN KEY (`evidence_id`) REFERENCES `evidence_refs`(`evidence_id`) ON UPDATE no action ON DELETE no action
+	`publication_state` text DEFAULT 'building' NOT NULL,
+	PRIMARY KEY(`packet_id`, `story_id`, `version`, `claim_id`, `evidence_id`),
+	FOREIGN KEY (`packet_id`) REFERENCES `publication_packets`(`packet_id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`evidence_id`) REFERENCES `evidence_refs`(`evidence_id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`packet_id`,`story_id`,`version`,`claim_id`) REFERENCES `story_claims`(`packet_id`,`story_id`,`version`,`claim_id`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "story_evidence_state_check" CHECK("story_evidence"."publication_state" in ('building', 'published', 'failed'))
 );
 --> statement-breakpoint
 CREATE TABLE `story_versions` (
@@ -320,6 +369,7 @@ CREATE TABLE `story_versions` (
 	`why_it_matters` text NOT NULL,
 	`curiosity_text` text,
 	`score_components_json` text NOT NULL,
+	`claim_ids_json` text NOT NULL,
 	`contributing_system_ids_json` text NOT NULL,
 	`coverage_state` text NOT NULL,
 	`confidence` text NOT NULL,
@@ -332,11 +382,12 @@ CREATE TABLE `story_versions` (
 	FOREIGN KEY (`story_id`) REFERENCES `stories`(`story_id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`packet_id`) REFERENCES `publication_packets`(`packet_id`) ON UPDATE no action ON DELETE no action,
 	CONSTRAINT "story_versions_version_check" CHECK("story_versions"."version" > 0),
-	CONSTRAINT "story_versions_expected_version_check" CHECK("story_versions"."expected_current_version" >= 0 and "story_versions"."version" > "story_versions"."expected_current_version"),
+	CONSTRAINT "story_versions_expected_version_check" CHECK("story_versions"."expected_current_version" >= 0 and "story_versions"."version" = "story_versions"."expected_current_version" + 1),
 	CONSTRAINT "story_versions_state_check" CHECK("story_versions"."publication_state" in ('building', 'published', 'superseded', 'failed'))
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `story_versions_story_version_unique` ON `story_versions` (`story_id`,`version`);--> statement-breakpoint
+CREATE UNIQUE INDEX `story_versions_packet_story_version_unique` ON `story_versions` (`packet_id`,`story_id`,`version`);--> statement-breakpoint
 CREATE TABLE `story_visibility_events` (
 	`story_id` text NOT NULL,
 	`visibility_seq` integer NOT NULL,
@@ -351,3 +402,9 @@ CREATE TABLE `story_visibility_events` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `story_visibility_events_intent_id_unique` ON `story_visibility_events` (`intent_id`);--> statement-breakpoint
 CREATE UNIQUE INDEX `story_visibility_story_seq_unique` ON `story_visibility_events` (`story_id`,`visibility_seq`);
+--> statement-breakpoint
+INSERT INTO edition_pointer (singleton_id, current_edition_id, current_revision)
+VALUES (1, NULL, 0);
+--> statement-breakpoint
+INSERT INTO breaking_pointer (singleton_id, active_revision, updated_at)
+VALUES (1, 0, NULL);
