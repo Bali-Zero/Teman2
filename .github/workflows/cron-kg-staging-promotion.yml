@@ -1,0 +1,65 @@
+name: Cron — KG staging promotion
+
+# Campaign S5 (2026-07-18): arms the second half of the KG quarantine pattern
+# (migration_077 staging tables). Design spec:
+# research/operations/2026-07-18-kg-staging-promotion-job-design.md
+#
+# SHADOW-FIRST: default mode is dry-run (read-only, zero writes to kg_*).
+# Arming paths, in priority order:
+#   1. manual workflow_dispatch with mode=apply (operator GO, Legge 5)
+#   2. repo variable KG_PROMOTION_MODE=apply (changes schedule behavior)
+# Runs are chunked short transactions + advisory-lock singleton, so a dropped
+# ssh session costs at most one ~25-row rollback and the next run resumes.
+
+on:
+  schedule:
+    # Every 6h, off the :00 herd mark (UTC).
+    - cron: "23 5,11,17,23 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run (shadow) or apply (armed — operator GO only)"
+        required: false
+        default: "dry-run"
+        type: choice
+        options:
+          - dry-run
+          - apply
+
+jobs:
+  promote:
+    name: KG staging promotion (${{ github.event.inputs.mode || vars.KG_PROMOTION_MODE || 'dry-run' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }} # flyctl ≥0.3 reads this name
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run promotion job via fly ssh (api group — asyncpg lives there)
+        timeout-minutes: 10
+        run: |
+          MODE="${{ github.event.inputs.mode || vars.KG_PROMOTION_MODE || 'dry-run' }}"
+          echo "KG staging promotion mode: $MODE"
+          set -o pipefail
+          flyctl ssh console \
+            --app nuzantara-rag \
+            --process-group api \
+            --command "/bin/sh -c 'cd /app && PYTHONPATH=. python -m backend.scripts.kg_staging_promotion --${MODE}'" 2>&1 | tee promotion.log
+
+      - name: Upload run report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kg-promotion-${{ github.run_id }}
+          path: promotion.log
+          retention-days: 30
+
+      - name: Alert on failure (Telegram, deploy pattern)
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=⚠️ KG staging promotion cron FAILED — run ${{ github.run_id }} (${{ github.event.inputs.mode || vars.KG_PROMOTION_MODE || 'dry-run' }})" \
+            || true
