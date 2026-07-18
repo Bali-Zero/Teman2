@@ -61,6 +61,7 @@ from backend.services.visa_engine.enums import (
     EntryCount,
     EntryPattern,
     Environment,
+    FactPath,
     MaritalStatus,
     OnUnknownAction,
     ProposedRole,
@@ -80,7 +81,6 @@ from backend.services.visa_engine.enums import (
     VisaProductStatus,
     VisaPurpose,
 )
-from backend.services.visa_engine.fact_registry import FactPath
 
 # ---------------------------------------------------------------------------
 # Primitive $defs (spec §2) — reusable field types

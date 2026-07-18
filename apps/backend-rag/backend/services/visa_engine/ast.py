@@ -18,16 +18,36 @@ than reshaping them.
 truth-value semantics) because ``compiler.py`` needs it for the
 ``required_facts == collect_fact_paths(when)`` invariant (spec §2
 compiler-only invariants).
+
+PR3 addition: ``ConditionResult``, ``evaluate_condition()`` — the strong-
+Kleene tri-state evaluator this module's own docstring above named as
+deferred. Also ``FactSnapshot``/``KnownFact``/``UnknownFact``, the runtime
+fact-value wrappers ``evaluate_condition`` reads (``fact_registry.py``'s
+``FactRegistry.derive()`` is what *produces* a ``FactSnapshot`` from a wire
+``ApplicantFacts`` — see that module's docstring). These three small
+dataclasses live HERE, not in ``fact_registry.py`` (where the original spec
+snippet places them), for an import-cycle reason specific to this package's
+actual module graph: ``models.py`` imports ``Condition`` from this module,
+and (post PR3 fix) ``fact_registry.py`` imports ``ApplicantFacts`` from
+``models.py`` — so if ``FactSnapshot`` lived in ``fact_registry.py`` and
+this module needed it, the edge would be ``ast -> fact_registry -> models
+-> ast``, a real cycle. Keeping them here instead gives ``fact_registry.py
+-> ast.py`` (for these three types) and ``fact_registry.py -> models.py``
+(for ``ApplicantFacts``) as two one-way edges into a module (``ast.py``)
+that itself depends on nothing but ``enums.py``/``errors.py`` — no cycle.
+See ``fact_registry.py``'s module docstring for the companion note on the
+``models.py`` import-cycle redirect this relies on.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
+from dataclasses import dataclass
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from backend.services.visa_engine.enums import FactPath
+from backend.services.visa_engine.enums import FactPath, TruthValue, UnknownReason
 from backend.services.visa_engine.errors import ConditionStructureError
 
 #: Spec §2 compiler-only invariant: "Maximum AST depth 12, condition nodes 256".
@@ -451,3 +471,237 @@ def parse_condition(raw: object) -> Condition:
         return raw
     holder = _RootConditionHolder.model_validate({"root": raw})
     return holder.root
+
+
+# ---------------------------------------------------------------------------
+# PR3: the strong-Kleene tri-state evaluator + its runtime fact types.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class KnownFact:
+    """Runtime representation of a fact whose value is known.
+
+    ``value`` is already canonicalized by ``fact_registry.FactRegistry.
+    derive()``: dates are ISO-8601 strings (so ``lt``/``lte``/``gt``/``gte``
+    work as plain string comparison), ``STRING_SET``-kind facts are
+    ``frozenset[str]``, everything else is the bare ``bool``/``int``/``str``.
+
+    TYPING CONTRACT (F5, 2-seat review 2026-07-18): ``value`` MUST originate
+    from ``FactRegistry.derive()``, which produces compiler-validated kinds
+    (every fact's shape already proved against ``fact_registry.FactSpec.kind``
+    by ``compiler.py``'s ``FACT_LITERAL_KIND_MISMATCH`` check). The scalar
+    comparison operators in ``evaluate_condition`` below (``EqCondition`` etc.)
+    TRUST these types and do NOT re-validate them — a hand-built
+    ``FactSnapshot`` carrying a mistyped ``KnownFact`` (e.g. ``KnownFact(1)``
+    where a BOOLEAN fact is expected) can produce a wrong DEFINITE truth
+    (Python's ``1 == True`` is ``True``), the same class of defect the set
+    operators (``intersects``/``contains_all``) guard against explicitly with
+    their own "unreachable for a compiler-validated RulePack" ``TypeError``
+    (see ``evaluate_condition``'s docstring) — scalar operators have no
+    equivalent guard. On the sanctioned path (``FactRegistry.derive()`` +
+    a ``compiler.py``-validated ``RulePack``) this is unreachable. Hardening
+    the public evaluator boundary (validating a snapshot against the fact
+    registry before it ever reaches ``evaluate_condition``) is deferred to
+    the ``evaluate_product`` / snapshot-construction PR — this note pins the
+    known gap so that deferral cannot become a silent trap.
+    """
+
+    value: object
+
+
+@dataclass(frozen=True)
+class UnknownFact:
+    """Runtime representation of a fact whose value is unknown."""
+
+    reason: UnknownReason
+
+
+@dataclass(frozen=True)
+class FactSnapshot:
+    """The full set of facts (applicant-supplied + derived) for one
+    evaluation, keyed by :class:`~backend.services.visa_engine.enums.FactPath`
+    (a ``str`` subclass — a plain dotted string key also matches, since
+    ``FactPath`` members compare/hash equal to their own string value).
+
+    See ``KnownFact``'s "TYPING CONTRACT" note (F5, 2-seat review
+    2026-07-18): a snapshot assembled by anything other than
+    ``FactRegistry.derive()`` is not guaranteed to carry compiler-validated
+    value kinds, and ``evaluate_condition``'s scalar operators do not
+    re-check that guarantee themselves.
+    """
+
+    values: Mapping[FactPath, KnownFact | UnknownFact]
+
+
+@dataclass(frozen=True)
+class ConditionResult:
+    """The outcome of evaluating one condition node.
+
+    ``referenced_facts``/``unknown_facts`` are the union across the *entire*
+    evaluated subtree (every child, always — no short-circuit, see
+    ``evaluate_condition``'s docstring), so a trace built from these stays
+    complete even when an early child already decided the aggregate truth
+    value.
+
+    ABSTENTION CONTRACT (load-bearing for the future ``evaluate_product`` /
+    ``on_unknown`` consumer, PR ladder step after this one): a caller
+    deciding whether to abstain MUST gate on ``truth is TruthValue.UNKNOWN``,
+    **never** on ``bool(unknown_facts)``. ``unknown_facts`` is a
+    *trace/provenance* set, not an "is this result uncertain" flag: a
+    ``PresenceCondition`` (``known``/``unknown``) records the tested fact in
+    ``unknown_facts`` when that fact is absent, yet produces a *definite*
+    truth (``known(missing)`` → definite FALSE, ``unknown(missing)`` →
+    definite TRUE). Gating abstention on ``unknown_facts`` would therefore
+    wrongly abstain on a rule that deliberately tests for a fact's absence.
+    Whether ``PresenceCondition`` should instead emit ``unknown_facts=∅`` is
+    deferred to that consumer PR, where the ``on_unknown`` semantics are
+    defined — the safe behavior is pinned here so the deferral cannot become
+    a silent trap (2-seat review F1, 2026-07-18).
+    """
+
+    truth: TruthValue
+    referenced_facts: frozenset[FactPath]
+    unknown_facts: frozenset[FactPath]
+
+
+def _leaf_lookup(
+    fact: FactPath, facts: FactSnapshot
+) -> tuple[frozenset[FactPath], frozenset[FactPath], bool, object]:
+    """Shared bookkeeping for every fact-referencing leaf condition.
+
+    Returns ``(referenced_facts, unknown_facts, is_unknown, value_or_none)``.
+    A fact path absent from the snapshot (should not happen for a snapshot
+    built by ``FactRegistry.derive()``, which always populates all 38 paths)
+    is treated as UNKNOWN rather than raising — the same fail-safe posture
+    as an explicit ``UnknownFact`` entry.
+    """
+
+    snapshot_value = facts.values.get(fact)
+    is_unknown = snapshot_value is None or isinstance(snapshot_value, UnknownFact)
+    referenced = frozenset({fact})
+    unknown = frozenset({fact}) if is_unknown else frozenset()
+    value = None if is_unknown else snapshot_value.value  # type: ignore[union-attr]
+    return referenced, unknown, is_unknown, value
+
+
+def evaluate_condition(condition: Condition, facts: FactSnapshot) -> ConditionResult:
+    """Evaluate ``condition`` against ``facts`` per the spec §4.1 strong-
+    Kleene truth tables.
+
+    Never short-circuits: ``all``/``any`` always evaluate every child (a
+    Python list comprehension over ``condition.args`` forces every element
+    unconditionally), and the returned ``referenced_facts``/``unknown_facts``
+    are always the union over the whole subtree — a later child's fact
+    reference is recorded even when an earlier child already decided the
+    aggregate truth value.
+
+    Kleene tables (spec §4.1):
+
+    * ``all``: FALSE if any child FALSE; elif any child UNKNOWN -> UNKNOWN;
+      else TRUE.
+    * ``any``: TRUE if any child TRUE; elif any child UNKNOWN -> UNKNOWN;
+      else FALSE.
+    * ``not``: UNKNOWN -> UNKNOWN; TRUE -> FALSE; FALSE -> TRUE.
+    * ``known``/``unknown`` (``PresenceCondition``): decide on the fact's
+      presence, never on its own value's truthiness.
+    * every scalar/scalar-set comparison: the referenced fact UNKNOWN ->
+      condition UNKNOWN, regardless of operator or literal.
+
+    ``intersects``/``contains_all`` against a fact whose known value is not
+    itself a ``set``/``frozenset`` raises ``TypeError`` — unreachable for a
+    ``compiler.py``-validated RulePack (its ``FACT_LITERAL_KIND_MISMATCH``
+    check rejects that shape at compile time), so this is an internal
+    consistency check, never a silent degrade.
+    """
+
+    if isinstance(condition, AllCondition):
+        children = [evaluate_condition(child, facts) for child in condition.args]
+        referenced = frozenset[FactPath]().union(*(c.referenced_facts for c in children))
+        unknown = frozenset[FactPath]().union(*(c.unknown_facts for c in children))
+        if any(c.truth is TruthValue.FALSE for c in children):
+            truth = TruthValue.FALSE
+        elif any(c.truth is TruthValue.UNKNOWN for c in children):
+            truth = TruthValue.UNKNOWN
+        else:
+            truth = TruthValue.TRUE
+        return ConditionResult(truth, referenced, unknown)
+
+    if isinstance(condition, AnyCondition):
+        children = [evaluate_condition(child, facts) for child in condition.args]
+        referenced = frozenset[FactPath]().union(*(c.referenced_facts for c in children))
+        unknown = frozenset[FactPath]().union(*(c.unknown_facts for c in children))
+        if any(c.truth is TruthValue.TRUE for c in children):
+            truth = TruthValue.TRUE
+        elif any(c.truth is TruthValue.UNKNOWN for c in children):
+            truth = TruthValue.UNKNOWN
+        else:
+            truth = TruthValue.FALSE
+        return ConditionResult(truth, referenced, unknown)
+
+    if isinstance(condition, NotCondition):
+        child = evaluate_condition(condition.arg, facts)
+        if child.truth is TruthValue.UNKNOWN:
+            truth = TruthValue.UNKNOWN
+        elif child.truth is TruthValue.TRUE:
+            truth = TruthValue.FALSE
+        else:
+            truth = TruthValue.TRUE
+        return ConditionResult(truth, child.referenced_facts, child.unknown_facts)
+
+    if isinstance(condition, PresenceCondition):
+        referenced, unknown, is_unknown, _value = _leaf_lookup(condition.fact, facts)
+        if condition.op == "known":
+            truth = TruthValue.FALSE if is_unknown else TruthValue.TRUE
+        else:  # "unknown"
+            truth = TruthValue.TRUE if is_unknown else TruthValue.FALSE
+        return ConditionResult(truth, referenced, unknown)
+
+    # Every remaining node type is a scalar/scalar-set leaf carrying `.fact`.
+    referenced, unknown, is_unknown, value = _leaf_lookup(condition.fact, facts)
+
+    if is_unknown:
+        return ConditionResult(TruthValue.UNKNOWN, referenced, unknown)
+
+    if isinstance(condition, EqCondition):
+        truth = TruthValue.TRUE if value == condition.value else TruthValue.FALSE
+    elif isinstance(condition, NeqCondition):
+        truth = TruthValue.TRUE if value != condition.value else TruthValue.FALSE
+    elif isinstance(condition, LtCondition):
+        truth = TruthValue.TRUE if value < condition.value else TruthValue.FALSE
+    elif isinstance(condition, LteCondition):
+        truth = TruthValue.TRUE if value <= condition.value else TruthValue.FALSE
+    elif isinstance(condition, GtCondition):
+        truth = TruthValue.TRUE if value > condition.value else TruthValue.FALSE
+    elif isinstance(condition, GteCondition):
+        truth = TruthValue.TRUE if value >= condition.value else TruthValue.FALSE
+    elif isinstance(condition, InCondition):
+        truth = TruthValue.TRUE if value in condition.values else TruthValue.FALSE
+    elif isinstance(condition, NotInCondition):
+        truth = TruthValue.TRUE if value not in condition.values else TruthValue.FALSE
+    elif isinstance(condition, BetweenCondition):
+        truth = (
+            TruthValue.TRUE if condition.lower <= value <= condition.upper else TruthValue.FALSE
+        )
+    elif isinstance(condition, IntersectsCondition):
+        if not isinstance(value, (set, frozenset)):
+            raise TypeError(
+                f"intersects requires a set-typed fact value, got "
+                f"{type(value).__name__} for fact {condition.fact.value!r} — "
+                "unreachable for a compiler-validated RulePack (compiler.py's "
+                "FACT_LITERAL_KIND_MISMATCH check rejects this at compile time)"
+            )
+        truth = TruthValue.TRUE if value & set(condition.values) else TruthValue.FALSE
+    elif isinstance(condition, ContainsAllCondition):
+        if not isinstance(value, (set, frozenset)):
+            raise TypeError(
+                f"contains_all requires a set-typed fact value, got "
+                f"{type(value).__name__} for fact {condition.fact.value!r} — "
+                "unreachable for a compiler-validated RulePack (compiler.py's "
+                "FACT_LITERAL_KIND_MISMATCH check rejects this at compile time)"
+            )
+        truth = TruthValue.TRUE if set(condition.values) <= value else TruthValue.FALSE
+    else:  # pragma: no cover - exhaustive over the closed Condition union
+        raise TypeError(f"unhandled condition type: {type(condition)!r}")
+
+    return ConditionResult(truth, referenced, unknown)
