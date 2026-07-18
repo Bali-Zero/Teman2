@@ -13,6 +13,13 @@
 --     2) no updated_at — the Phase-4 retention prune (rejected rows > 30 days)
 --        has no reliable timestamp → add updated_at, backfilled from created_at.
 --
+-- SELF-SUFFICIENCY (scar 2026-07-18, caught by CI Backend Tests): the v2 chain
+--   (092→246) never creates kg_*_staging — they came from LEGACY migration_077,
+--   so they exist in prod but NOT in a fresh v2-only schema (CI bootstrap).
+--   This migration therefore creates the tables IF NOT EXISTS first (exact
+--   migration_077 column shape; a no-op in prod), then alters them. One file,
+--   both worlds.
+--
 -- Shape mirrors migration 245: normalizing UPDATE of stragglers FIRST (else
 -- VALIDATE fails on existing rows), then DROP CONSTRAINT IF EXISTS → ADD
 -- CONSTRAINT ... NOT VALID → VALIDATE CONSTRAINT. Stray/typo statuses normalize
@@ -20,6 +27,50 @@
 -- NOTE (same caveat as 245): backend/db/migration_base.py wraps the forward SQL
 -- in a SINGLE transaction, so NOT VALID + VALIDATE commit together; kept as the
 -- inherited convention, lock duration is trivial on these small tables.
+
+-- --- 0. Ensure the staging tables exist (legacy-077 shape; no-op where present) ---
+
+CREATE TABLE IF NOT EXISTS kg_nodes_staging (
+    entity_id TEXT PRIMARY KEY,
+    entity_type TEXT NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    properties JSONB DEFAULT '{}'::jsonb,
+    confidence FLOAT DEFAULT 0.7,
+    source_chunk_ids TEXT[],
+    extraction_source TEXT DEFAULT 'auto_heuristic',
+    promotion_status TEXT DEFAULT 'pending',
+    rejection_reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_kg_nodes_staging_status
+    ON kg_nodes_staging(promotion_status);
+CREATE INDEX IF NOT EXISTS idx_kg_nodes_staging_created
+    ON kg_nodes_staging(created_at);
+CREATE INDEX IF NOT EXISTS idx_kg_nodes_staging_type
+    ON kg_nodes_staging(entity_type);
+
+CREATE TABLE IF NOT EXISTS kg_edges_staging (
+    relationship_id TEXT PRIMARY KEY,
+    source_entity_id TEXT NOT NULL,
+    target_entity_id TEXT NOT NULL,
+    relationship_type TEXT NOT NULL,
+    properties JSONB DEFAULT '{}'::jsonb,
+    confidence FLOAT DEFAULT 0.7,
+    source_chunk_ids TEXT[],
+    extraction_source TEXT DEFAULT 'auto_heuristic',
+    promotion_status TEXT DEFAULT 'pending',
+    rejection_reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_kg_edges_staging_status
+    ON kg_edges_staging(promotion_status);
+CREATE INDEX IF NOT EXISTS idx_kg_edges_staging_source
+    ON kg_edges_staging(source_entity_id);
+CREATE INDEX IF NOT EXISTS idx_kg_edges_staging_target
+    ON kg_edges_staging(target_entity_id);
 
 -- --- kg_nodes_staging ---
 
@@ -83,6 +134,11 @@ ALTER TABLE kg_edges_staging
 -- Drop the constraints and the updated_at columns. Status values stay as they
 -- are (no data rewrite needed — 'pending'/'promoted'/'rejected'/'merged' were
 -- all valid free-TEXT values before this migration too).
+-- The staging TABLES are intentionally NOT dropped: in prod they pre-date this
+-- migration (legacy 077), and CREATE TABLE IF NOT EXISTS made no change there.
+-- DROP ... IF EXISTS on tables is safe on a v2-only schema (where this file did
+-- create them) and a no-op error-free everywhere... but a rollback in prod must
+-- never destroy the live staging area, so tables are left in place by design.
 
 ALTER TABLE kg_nodes_staging
     DROP CONSTRAINT IF EXISTS kg_nodes_staging_promotion_status_check;
