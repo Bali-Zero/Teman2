@@ -29,7 +29,7 @@ back into the next editorial decision. Growth = the standing loop in §4.
 **Legge 5 (absolute)**: publishing to Instagram is Zero's act. The pipeline stops at `drafted`
 in the review queue. No session ever publishes autonomously.
 
-## 1. LIVE STATE (last update 2026-07-18 — keep current)
+## 1. LIVE STATE (last update 2026-07-19 — keep current)
 
 **Shipped & proven (July 16-17 arc):** complete-or-nothing gate (#2543 app / #2553 py) ·
 take-label variety + vendored agent defs (#2544) · archive-aware M5 merge + reconciler repair
@@ -127,15 +127,25 @@ forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.p
   PRE-EXISTING finding (a readable-empty `slides/` dir excluded without count/log) + 2 NICEs
   (`@MainActor`, multi-root key) ledgered in PENDING-ARMS, not fixed (intent decision).
 - **Accessibility/legibility SOTA is in the external benches, NOT a separate amendments file.** Verified 2026-07-18 (M5 + Pro): `_proposed-amendments/2026-07-16-accessibility-discipline.md` does NOT exist on either machine and no "4 accessibility amendments" content is in the brand skill — the prior reference was phantom (scar #6). The real, still-UN-shipped accessibility work is grounded in `_external-bench-2026-06.md`: **Art 14.7 AI-disclosure label** (Meta AI-label + EU AI Act pressure; constitution silent, Art 5.4 covers faces only) + **translucent-caption-pill** legibility scrim. Grounding these into constitution articles is the real (Zero-gated brand judgment) work — there is no lost amendments file to reconcile.
-- **Slide-7 closer micro-text** — ⚠️ corner-note was WRONG, corrected 2026-07-18 (growth-loop B): the
-  deportation-remake closer is NOT elegant-close. DB `slides_json`: `slide_type=cta`, `layout_family`
-  empty → `composer._pick_layout` routes it to **statement-bomb** (Art 9.5 hard rule) with a hero photo
-  injected behind it, and the mandated closing statement ("WHERE THIS LEAVES YOU") renders as a **tiny
-  micro-caption over the full-bleed photo** (`07.png` examined). First "thumbnail-legibility" hypothesis
-  refuted by `claude_vision.py` (secondary text is judged at full size). Real fix surface = the
-  photo-backed statement-bomb `.statement` sizing, NOT elegant-close CSS; exact tiny-rendering mechanism
-  TBD (needs the rendered HTML / a faithful Pro-side repro) + must non-regress all photo statement-bombs.
-  **Fix is already BENCHED** (`_external-bench-2026-06.md:57`, translucent-caption-pill): an antracite ~75% translucent scrim/pill behind the `.statement` text over the full-bleed photo — closes the May "poor-contrast text-over-image" gap and is explicitly NOT an Art 15 violation (the ban targets color-coded kicker pills, not legibility scrims — document that for wr2-critic). So this is a BUILD of a benched device, not new research (though it touches brand rendering = Zero-gated). Ledgered (PENDING-ARMS 2026-07-18) · memory `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18`.
+- **Slide-7 closer micro-text — ✅ MECHANISM PINNED + FIXED + LIVE 2026-07-19 (#2767, growth-loop B).**
+  Corner-note was WRONG (corrected 2026-07-18): the closer is NOT elegant-close — a true-last
+  `cta`/empty-`layout_family` slide routes to **statement-bomb** (Art 9.5). The tiny rendering was a
+  **SIZE COLLAPSE, not a contrast problem**: the injected hero photo's bottom edge → `bottom_ink_ratio≈0.497`
+  → the designer-loop geometry critic reads "bottom overflow" → emits `shrink_font:body`, which rendered
+  `[data-zone-type='text']{font-size:calc(1em*factor)}`; the statement-bomb `.statement` carries
+  `data-zone-type="text"` (over-match) and `1em` resolves to the ~16px PARENT → the Art-9.5 closer collapsed
+  72px→~10px. A black-bg closer has no photo → no false overflow → no lever → stays 72px. **Fix (LIVE):**
+  exclude `.statement` from both the shrink AND grow body-lever selectors (`:not(.statement)`, `composer.py`) —
+  Playwright prove-live on Pro `~/nuzantara-deploy`: closer+shrink_body **72px** (was 12.16px), editorial prose
+  still shrinks (non-regression), 139/139 tests + a regression test; Codex R2 approved scoped.
+  **Still open (SEPARATE axes, ledgered PENDING-ARMS 2026-07-19):** (a) **W89** — the `[data-zone-type='text']`
+  arm over-matches OTHER primary-text leaves (dark-status-list `.heading` 56→12px CONFIRMED); root-cure =
+  prose-only selector + fix `calc(1em*factor)`, render-QA'd across the layout library (NOT a `:not()` whack-a-mole
+  = scar #3); (b) an over-long closer now has neither auto-shrink nor hard-fail (72px unbounded — strictly better
+  than the old ~10px collapse); (c) the **translucent-caption-pill** contrast device
+  (`_external-bench-2026-06.md:57`) for text-over-photo LEGIBILITY stays a separate Zero-gated brand BUILD (it
+  addresses contrast, NOT the size collapse this fixed). Memory
+  `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18` (RESOLVED section).
 - **Render/visual-QA is research-SATURATED + build-partial + armed-live — do NOT re-research** (growth-loop
   R, 2026-07-18). The 2026-06-07 pair (`design-critic-loop-sota` + `html-css-carousel-renderer-sota`) is the
   authoritative render-QA SOTA. Built + armed-live on the Pro (ssh-verified: `WR2_VISION_REQUIRED=1`,
