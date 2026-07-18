@@ -70,3 +70,13 @@ root-cause pass" is the **conductor's call** (calibration §5) — the lane surf
 
 7 hash-chained dossiers (D0→D1→D5→D4) in `data/kbli-filiera/dossiers/` on PR #2695; all chains verified;
 compiler-mediated writes only; leases acquired/released per code.
+
+## Adversarial review
+
+Seat: **Codex GPT-5.6 (family-independent)** — applied at the CONDUCTOR gate that post-dates this
+lane report (see `2026-07-18-kbli-batch-a-lot1-conductor-gate.md`, PR #2721): 3 refuter passes +
+full-report red-team + verify pass, plus a blind GLM-5.2 second extraction with vision. Surviving
+objections: none against the dossier evidence itself; however the gate OVERTURNED this report's
+clean-count conclusions — final adjudication is **13/13 quarantine, 0 certified** (the lane's
+"clean" set contained 7 substantively false-clean codes + 1 divergence-rule flip). The dossiers
+remain the immutable evidence trail; the conductor-gate report is the authoritative verdict layer.
