@@ -1,0 +1,16 @@
+[run]
+branch = True
+source = nuzantara_mcp
+
+[report]
+fail_under = 70
+precision = 2
+show_missing = True
+skip_covered = False
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    if __name__ == .__main__.:
+
+[xml]
+output = coverage.xml

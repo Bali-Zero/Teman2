@@ -1,9 +1,14 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { getOrCreateSessionId, BZ_SESSION_COOKIE } from "./session-bridge";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import {
+  attachToServerSession,
+  getOrCreateSessionId,
+  BZ_SESSION_COOKIE,
+} from "./session-bridge";
 
 describe("session-bridge", () => {
   beforeEach(() => {
     document.cookie = `${BZ_SESSION_COOKIE}=; Max-Age=0; path=/`;
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
   });
 
   it("creates a UUID v4 cookie on first call", () => {
@@ -18,5 +23,25 @@ describe("session-bridge", () => {
     const a = getOrCreateSessionId();
     const b = getOrCreateSessionId();
     expect(a).toBe(b);
+  });
+
+  it("attaches funnel state to the server session with credentials", async () => {
+    document.cookie = `${BZ_SESSION_COOKIE}=existing-session-id; path=/`;
+
+    await attachToServerSession({
+      funnel: "visa",
+      step_state: { step: 2, answer: "E33G" },
+    });
+
+    expect(fetch).toHaveBeenCalledWith("/api/funnel/session/touch", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        session_id: "existing-session-id",
+        funnel: "visa",
+        step_state: { step: 2, answer: "E33G" },
+      }),
+    });
   });
 });

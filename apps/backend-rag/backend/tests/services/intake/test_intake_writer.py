@@ -21,6 +21,7 @@ import json
 import os
 import uuid
 from collections.abc import AsyncIterator
+from typing import Any
 
 import asyncpg
 import pytest
@@ -437,6 +438,38 @@ async def test_real_commit_writes_document_and_advances(pool, seed, monkeypatch)
     assert correction["outcome"] == "approved"
     assert correction["source"] == "drive"
     assert correction["verified_by"] == ADMIN["email"]
+
+
+async def test_real_commit_delivery_failure_is_visible_in_approve_response(
+    pool,
+    seed,
+    monkeypatch,
+):
+    """A durable local commit must not masquerade as end-to-end delivery success."""
+    from backend.app.routers import intake_review
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    delivery_calls: list[dict[str, Any]] = []
+
+    async def _failed_delivery(**kwargs: Any) -> dict[str, str]:
+        delivery_calls.append(kwargs)
+        return {"status": "server_error", "detail": "synthetic upstream failure"}
+
+    monkeypatch.setattr(intake_review, "_deliver_committed_to_crm", _failed_delivery)
+
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        response = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["dry_run"] is False
+    assert body["outcome"] == "committed"
+    assert body["status"] == "committed_local_delivery_failed"
+    assert body["crm_push"]["status"] == "server_error"
+    assert body["result"]["doc_id"] is not None
+    assert len(delivery_calls) == 1
+    assert delivery_calls[0]["queue_id"] is not None
 
 
 async def test_real_commit_idempotent_recommit(pool, seed, monkeypatch):

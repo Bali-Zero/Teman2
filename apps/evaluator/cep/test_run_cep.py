@@ -1,7 +1,10 @@
 """Tests for CEP run_cep — golden integrity + scoring logic."""
 
+import json
 from pathlib import Path
 from unittest.mock import patch
+
+import httpx
 
 from apps.evaluator.cep import run_cep
 

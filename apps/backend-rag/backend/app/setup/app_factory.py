@@ -117,19 +117,31 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error("⚠️ Failed to initialize AlertService: %s", e)
 
-        from backend.app.setup.service_initializer import initialize_services
-
         try:
+            from backend.app.setup.service_initializer import initialize_services
+
             await initialize_services(app)
-        except RuntimeError as e:
-            logger.critical("❌ CRITICAL: Service initialization failed: %s", e)
+        except Exception as e:
+            logger.critical(
+                "❌ CRITICAL: Service initialization failed: %s",
+                e,
+                exc_info=True,
+            )
             app.state.startup_failed = True
             app.state.startup_error = str(e)
             return  # Stop background init, health check will report 503
 
-        from backend.app.setup.plugin_initializer import initialize_plugins
+        try:
+            from backend.app.setup.plugin_initializer import initialize_plugins
 
-        await initialize_plugins(app)
+            await initialize_plugins(app)
+        except Exception as e:
+            logger.error(
+                "⚠️ Failed to initialize plugins (non-critical): %s",
+                e,
+                exc_info=True,
+            )
+            app.state.plugin_registry = None
 
         # Initialize Notification Scheduler (automated email alerts)
         try:

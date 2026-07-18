@@ -10,6 +10,7 @@
     "apps/admin-dashboard-local",
     "apps/autonomous-lab",
     "apps/web",
+    "packages/core",
     "packages/ts-schemas"
   ],
   "scripts": {

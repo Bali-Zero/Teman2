@@ -88,8 +88,14 @@ jobs:
       - name: Run Python tests with coverage
         run: |
           cd apps/backend-rag
-          PYTHONPATH=.:../crm-cell pytest backend/tests/ -v \
+          PYTHONPATH=.:../crm-cell pytest \
+            backend/tests/ \
+            tests/test_sentry_lazy_import.py \
+            tests/test_sentry_pii_redaction.py \
+            tests/kb/test_politics_hierarchical.py \
+            -v \
             --cov=backend \
+            --cov-branch \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
             --junit-xml=test-results.xml
@@ -118,13 +124,6 @@ jobs:
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         continue-on-error: true
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v7
-        with:
-          files: apps/backend-rag/coverage.xml
-          flags: backend
-          name: backend-coverage
 
       - name: Comment PR with results
         if: github.event_name == 'pull_request'

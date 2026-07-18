@@ -285,6 +285,12 @@ class NB3Pipeline:
                 summary["halted_at"] = "preflight"
                 return summary
 
+            if not self.circuit_breakers.nlm.should_allow_request():
+                self._degradation = DegradationLevel.DEGRADED_L1
+                summary["halted_at"] = "l1_circuit_open"
+                self._phase = PipelinePhase.HALTED
+                return summary
+
             # ARCH-8: snapshot before any mutation
             if not self.dry_run:
                 try:
@@ -364,6 +370,7 @@ class NB3Pipeline:
             self._write_brief(summary)
 
         except Exception as e:
+            self.circuit_breakers.nlm.record_probe_failure_if_in_flight()
             logger.error("NB-3 pipeline error: %s", e, exc_info=True)
             self._phase = PipelinePhase.HALTED
             self._degradation = DegradationLevel.DEGRADED_L2

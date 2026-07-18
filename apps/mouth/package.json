@@ -11,7 +11,7 @@
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "test:ci": "vitest --run --coverage",
-    "test:coverage:check": "node -e \"const fs=require('fs');const r=JSON.parse(fs.readFileSync('./coverage/coverage-summary.json','utf8'));const s=r.total.statements.pct;if(s<10){console.error('Coverage '+s+'% below 10% threshold');process.exit(1)}else{console.log('Coverage '+s+'% OK')}\"",
+    "test:coverage:check": "node -e \"const fs=require('fs');const r=JSON.parse(fs.readFileSync('./coverage/coverage-summary.json','utf8'));const s=r.total.statements.pct;if(s<20){console.error('Coverage '+s+'% below 20% threshold');process.exit(1)}else{console.log('Coverage '+s+'% OK')}\"",
     "test:e2e": "playwright test -c playwright.config.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
