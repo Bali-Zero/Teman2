@@ -84,6 +84,15 @@ probe after 2026-07-19T18:10Z · stray mirror copy in `nuzantara-warroom-images/
   measured pilot report is the basis for the batch-A-remainder GO.
 - **BKPM discrepancy findings stay INTERNAL** (Zero, 2026-07-16): the 68112 surat klarifikasi stays
   drafted in the drawer, not sent, without a fresh Zero GO.
+- **PMA primary-verdict labeling — RULED (Zero, 2026-07-18, Legge 5):** the headline PMA verdict
+  (hero PMABadge + verdict banner + Foreign-Ownership key-facts cells + OG status chip) STAYS a clean
+  OPEN/RESTRICTED/CLOSED. The Perpres-10/49 vintage-2020 + crosswalk-pending status (FATAL-2 axis) is
+  disclosed ONLY in the TRACK-P "Sources & Verification" panel (already live), NOT stamped on the
+  headline verdict. Rationale: the PMA values are the in-force investment-list annexes (not the
+  per_skala silent-fill disease), largely correct; the FATAL-2 per-code crosswalk refines the
+  underlying values later. → the "PMA re-label" follow-up is CLOSED (ruled), not open — do not
+  re-open without a fresh Zero GO.
+
 - **data-plane guard LIVE** (#2550): only `scripts/kbli_filiera/` compilers may write the canonical
   KBLI dataset + `data/kbli-filiera/**`; interactive hand-edits BLOCKED. Registry
   `infra/claude-hooks/data-plane-registry.json` is the extension point. Kill switch
