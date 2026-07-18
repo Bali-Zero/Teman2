@@ -29,9 +29,9 @@ from ._builders import applicant_facts_envelope
 def test_default_registry_covers_every_applicant_and_derived_path() -> None:
     registry = FactRegistry()
     known = registry.known_paths()
-    for path in ApplicantFactPath:
+    for path in list(ApplicantFactPath):
         assert path.value in known
-    for path in DerivedFactPath:
+    for path in list(DerivedFactPath):
         assert path.value in known
     assert len(known) == 35 + 3
 
@@ -125,9 +125,9 @@ def test_derive_covers_every_applicant_and_derived_path_in_snapshot() -> None:
     registry = FactRegistry()
     facts = ApplicantFacts(**applicant_facts_envelope())
     snapshot = registry.derive(facts, effective_at=datetime(2026, 7, 18, tzinfo=timezone.utc))
-    for path in ApplicantFactPath:
+    for path in list(ApplicantFactPath):
         assert path.value in snapshot.values
-    for path in DerivedFactPath:
+    for path in list(DerivedFactPath):
         assert path.value in snapshot.values
 
 

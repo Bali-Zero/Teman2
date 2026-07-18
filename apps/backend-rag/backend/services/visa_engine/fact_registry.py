@@ -1,4 +1,4 @@
-"""The closed fact vocabulary + the applicant-facts -> evaluation-snapshot step.
+"""FactRegistry: the closed-catalog lookup + applicant-facts -> evaluation-snapshot step.
 
 Two representations of a "fact" exist in this package, deliberately kept
 distinct:
@@ -7,14 +7,28 @@ distinct:
   mirrors the JSON Schema contract 1:1 — each fact is either
   ``{"status": "UNKNOWN", "reason": ...}`` or a status/value pair typed per
   path (``KnownBoolean``, ``KnownDate``, ...).
-* The **runtime snapshot** (this module's :class:`KnownFact`/:class:`UnknownFact`
-  + :class:`FactSnapshot`) is what the AST evaluator (``ast.py``) actually
-  reads: a flat ``Mapping[str, KnownFact | UnknownFact]`` covering both the
-  35 applicant-supplied paths *and* the 3 derived paths
-  (``derived.age_years``, ``derived.is_minor``,
-  ``derived.has_indonesian_citizenship``), with dates canonicalized to ISO
-  strings (so ``lt``/``lte``/``gt``/``gte`` work as plain string comparison)
-  and set-valued facts canonicalized to ``frozenset[str]``.
+* The **runtime snapshot** (:class:`~backend.services.visa_engine._types.KnownFact`/
+  :class:`~backend.services.visa_engine._types.UnknownFact` +
+  :class:`~backend.services.visa_engine._types.FactSnapshot`) is what the AST
+  evaluator (``ast.py``) actually reads: a flat
+  ``Mapping[str, KnownFact | UnknownFact]`` covering both the 35
+  applicant-supplied paths *and* the 3 derived paths (``derived.age_years``,
+  ``derived.is_minor``, ``derived.has_indonesian_citizenship``), with dates
+  canonicalized to ISO strings (so ``lt``/``lte``/``gt``/``gte`` work as
+  plain string comparison) and set-valued facts canonicalized to
+  ``frozenset[str]``.
+
+The closed fact-path vocabulary (``UnknownReason``, ``ApplicantFactPath``,
+``DerivedFactPath``, ``FactPath``) and the two runtime fact wrappers
+(``KnownFact``, ``UnknownFact``, ``FactSnapshot``) live in the
+dependency-free leaf module ``_types.py`` — ``models.py`` and ``ast.py``
+import them from there directly, so neither needs to import this module at
+runtime (this breaks the ``models -> fact_registry -> models`` /
+``models -> ast -> fact_registry -> models`` import cycles CodeQL's
+``py/unsafe-cyclic-import`` flagged). This module re-exports every one of
+those names unchanged for backward compatibility —
+``from backend.services.visa_engine.fact_registry import ApplicantFactPath``
+keeps working exactly as before.
 
 :class:`FactRegistry` is the single source of truth for "what fact paths
 exist, what shape are they, are they derived, and can a RANKING-stage rule
@@ -24,9 +38,9 @@ smuggle a legal fact into a commercial ranking rule.
 
 Pure module: no I/O. The only reference to
 ``backend.services.visa_engine.models.ApplicantFacts`` is deferred
-(``TYPE_CHECKING``-only) to avoid a runtime import cycle — ``models.py``
-imports ``ApplicantFactPath``/``UnknownReason`` from *this* module, so this
-module must not import ``models.py`` at runtime.
+(``TYPE_CHECKING``-only) to avoid a runtime import cycle — this is now a
+single non-cyclic edge (``fact_registry -> models``, nothing points back)
+since ``models.py`` no longer imports anything from this module.
 """
 
 from __future__ import annotations
@@ -35,10 +49,18 @@ import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
-from enum import Enum
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
+from backend.services.visa_engine._types import (
+    ApplicantFactPath,
+    DerivedFactPath,
+    FactSnapshot,
+    KnownFact,
+    UnknownFact,
+    UnknownReason,
+)
+from backend.services.visa_engine._types import FactPath as FactPath  # explicit re-export (F401)
 from backend.services.visa_engine.errors import FactValidationError
 
 if TYPE_CHECKING:  # pragma: no cover - import-cycle avoidance only
@@ -49,76 +71,10 @@ logger = logging.getLogger(__name__)
 JsonValue = None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
 """A JSON-safe value: what :func:`canonical_fact_payload` returns members of."""
 
-
-class UnknownReason(str, Enum):
-    """Why a fact is ``UNKNOWN`` — matches ``$defs.UnknownFact.reason`` in the
-    JSON Schema contract exactly (5 members, no silent 6th "other")."""
-
-    NOT_ASKED = "NOT_ASKED"
-    NOT_PROVIDED = "NOT_PROVIDED"
-    UNVERIFIED = "UNVERIFIED"
-    CONFLICTING = "CONFLICTING"
-    NOT_APPLICABLE = "NOT_APPLICABLE"
-
-
-class ApplicantFactPath(str, Enum):
-    """The 35 fact paths an applicant (or intake flow) can supply.
-
-    Matches ``$defs.ApplicantFactPath`` in the JSON Schema contract exactly —
-    same 35 members, same order, same dotted-string values.
-    """
-
-    PERSON_BIRTH_DATE = "person.birth_date"
-    PERSON_NATIONALITIES = "person.nationalities"
-    PERSON_MARITAL_STATUS = "person.marital_status"
-    IMMIGRATION_CURRENTLY_IN_INDONESIA = "immigration.currently_in_indonesia"
-    IMMIGRATION_CURRENT_STATUS_CODE = "immigration.current_status_code"
-    IMMIGRATION_CURRENT_STATUS_EXPIRY = "immigration.current_status_expiry"
-    IMMIGRATION_LAST_ENTRY_DATE = "immigration.last_entry_date"
-    IMMIGRATION_OVERSTAY_DAYS = "immigration.overstay_days"
-    IMMIGRATION_VIOLATION_HISTORY = "immigration.violation_history"
-    INTENT_PURPOSES = "intent.purposes"
-    INTENT_STAY_DAYS = "intent.stay_days"
-    INTENT_DESIRED_ENTRY_DATE = "intent.desired_entry_date"
-    INTENT_ENTRY_PATTERN = "intent.entry_pattern"
-    INTENT_REQUESTED_PRODUCT_CODE = "intent.requested_product_code"
-    WORK_EMPLOYER_COUNTRY_CODE = "work.employer_country_code"
-    WORK_EMPLOYER_IS_INDONESIAN_ENTITY = "work.employer_is_indonesian_entity"
-    WORK_SERVES_INDONESIAN_CLIENTS = "work.serves_indonesian_clients"
-    WORK_INDONESIA_SOURCE_COMPENSATION = "work.indonesia_source_compensation"
-    WORK_INDONESIAN_WORK_SPONSOR_CONFIRMED = "work.indonesian_work_sponsor_confirmed"
-    INVESTMENT_PT_PMA_COMMITTED = "investment.pt_pma_committed"
-    INVESTMENT_INVESTMENT_CAPITAL_IDR = "investment.investment_capital_idr"
-    INVESTMENT_PAID_UP_CAPITAL_IDR = "investment.paid_up_capital_idr"
-    INVESTMENT_PROPOSED_ROLE = "investment.proposed_role"
-    FAMILY_RELATION_TO_SPONSOR = "family.relation_to_sponsor"
-    FAMILY_SPONSOR_NATIONALITIES = "family.sponsor_nationalities"
-    FAMILY_SPONSOR_STATUS_CODE = "family.sponsor_status_code"
-    FAMILY_MARRIAGE_REGISTERED = "family.marriage_registered"
-    FAMILY_SPONSOR_CONFIRMED = "family.sponsor_confirmed"
-    STUDY_LEVEL = "study.level"
-    STUDY_ADMISSION_CONFIRMED = "study.admission_confirmed"
-    STUDY_SPONSOR_CONFIRMED = "study.sponsor_confirmed"
-    PROCESS_APPLICATION_CHANNEL = "process.application_channel"
-    PROCESS_WANTS_ONSHORE_CONVERSION = "process.wants_onshore_conversion"
-    COMMERCIAL_SERVICE_FEE_BUDGET_IDR = "commercial.service_fee_budget_idr"
-    COMMERCIAL_WANTS_QUOTE = "commercial.wants_quote"
-
-
-class DerivedFactPath(str, Enum):
-    """The 3 facts the engine computes itself — never supplied by an applicant.
-
-    Matches the ``derived.*`` half of ``$defs.FactPath`` exactly.
-    """
-
-    AGE_YEARS = "derived.age_years"
-    IS_MINOR = "derived.is_minor"
-    HAS_INDONESIAN_CITIZENSHIP = "derived.has_indonesian_citizenship"
-
-
-FactPath = ApplicantFactPath | DerivedFactPath
-"""Every valid fact path a condition (``ast.py``) may reference —
-matches ``$defs.FactPath`` (``oneOf`` [ApplicantFactPath, derived.*])."""
+# Re-exported unchanged from ``_types.py`` (see module docstring) so every
+# existing ``from backend.services.visa_engine.fact_registry import X``
+# keeps resolving: UnknownReason, ApplicantFactPath, DerivedFactPath,
+# FactPath, KnownFact, UnknownFact, FactSnapshot.
 
 
 @dataclass(frozen=True)
@@ -143,31 +99,6 @@ class FactSpec:
     derived: bool
     dependencies: frozenset[str]
     commercial_only: bool
-
-
-@dataclass(frozen=True)
-class KnownFact:
-    """Runtime representation of a fact whose value is known.
-
-    ``value`` is already canonicalized: dates are ISO-8601 strings, sets are
-    ``frozenset[str]``, everything else is the bare ``bool``/``int``/``str``.
-    """
-
-    value: object
-
-
-@dataclass(frozen=True)
-class UnknownFact:
-    """Runtime representation of a fact whose value is unknown."""
-
-    reason: UnknownReason
-
-
-@dataclass(frozen=True)
-class FactSnapshot:
-    """The full set of facts (applicant-supplied + derived) for one evaluation."""
-
-    values: Mapping[str, KnownFact | UnknownFact]
 
 
 def _spec(
@@ -377,9 +308,13 @@ def __getattr__(name: str) -> object:
     """PEP 562 lazy module attribute.
 
     ``ApplicantFacts`` is intentionally never imported at module-load time
-    (see the module docstring: it would reintroduce the
-    ``fact_registry -> models -> ast -> fact_registry`` import cycle). That
-    also means it is invisible to ``typing.get_type_hints()``, which
+    (see the module docstring: ``models.py`` imports ``ApplicantFacts`` from
+    ``pydantic``-model definitions living in the very module this
+    ``TYPE_CHECKING``-only reference points at — importing it eagerly here
+    would force ``models.py`` to be fully initialized before this module
+    finishes loading, which is fragile even though it's no longer a true
+    cycle post-``_types.py`` extraction). That also means it is invisible to
+    ``typing.get_type_hints()``, which
     resolves the ``"ApplicantFacts"`` forward-reference string used in
     :meth:`FactRegistry.derive`/:func:`canonical_fact_payload` by evaluating
     it against this module's *real* ``__globals__`` dict — a bare

@@ -21,12 +21,12 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, field_validator
 
-from backend.services.visa_engine.enums import TruthValue
-from backend.services.visa_engine.fact_registry import (
+from backend.services.visa_engine._types import (
     FactPath,
     FactSnapshot,
     UnknownFact,
 )
+from backend.services.visa_engine.enums import TruthValue
 
 _INT_MIN = -9_007_199_254_740_991
 _INT_MAX = 9_007_199_254_740_991

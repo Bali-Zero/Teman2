@@ -38,9 +38,9 @@ from pydantic import (
     model_validator,
 )
 
+from backend.services.visa_engine._types import ApplicantFactPath, FactPath, UnknownReason
 from backend.services.visa_engine.ast import Condition
 from backend.services.visa_engine.enums import DecisionState, RuleStage
-from backend.services.visa_engine.fact_registry import ApplicantFactPath, FactPath, UnknownReason
 
 _INT_MAX = 9_007_199_254_740_991
 
