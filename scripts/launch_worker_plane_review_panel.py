@@ -2293,6 +2293,10 @@ def launch_panel(
             route_config={},
             glm_token="",
         )
+        # Keychain lookup is the one intentionally user-scoped helper call.
+        # Keep its login-keychain HOME while retaining the empty sandbox for
+        # cwd, temporary files, and all provider/client configuration.
+        security_environment["HOME"] = os.environ.get("HOME", security_environment["HOME"])
         _assert_authenticated_file_unchanged(authenticated_launcher, "launcher")
         claude_version, _ = _client_version(
             claude,
