@@ -15,6 +15,7 @@ Born 2026-07-16 from two real gaps found the same day:
 from __future__ import annotations
 
 import inspect
+import json
 import re
 from pathlib import Path
 
@@ -123,3 +124,50 @@ def test_openai_embedding_model_is_frozen() -> None:
         "Mismatched dims corrupt every similarity search against the existing "
         "index."
     )
+
+
+# ---------------------------------------------------------------------------
+# Invariant 3 — authoritative pricing JSON never regresses to the retired
+# WhatsApp/location contact block (2026-07-18)
+# ---------------------------------------------------------------------------
+
+_RETIRED_WHATSAPP = "+62 813 3805 1876"
+_RETIRED_LOCATION = "Canggu, Bali, Indonesia"
+
+
+def test_authoritative_pricing_json_never_reintroduces_retired_contact() -> None:
+    """``bali_zero_official_prices_2026.json`` — the file `PricingService`
+    loads and ``scripts/prepare_payloads.py`` embeds into
+    ``bali_zero_pricing_hybrid`` — must never regress to the retired
+    WhatsApp/location.
+
+    That retired string lived for months as stale text inside
+    ALREADY-UPSERTED Qdrant vectors (payload-only patched 2026-07-18 by
+    ``scripts/patch_pricing_contact_block.py``) even though this JSON's
+    generator had already moved on to the correct contact info — the JSON
+    was never the bug. A regression here would silently re-poison the
+    collection on the next `prepare_payloads.py` regeneration.
+
+    Deliberately does NOT check ``bali_zero_official_prices_2025.json`` —
+    that file is an intentionally-frozen rollback artefact (see
+    ``apps/backend-rag/backend/data/PRICING_DEPRECATED_2025.md``) and is
+    excluded from every production code path by contract, not by accident.
+    """
+    from backend.app.core.config import settings
+
+    data_path = (
+        _repo_root() / "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json"
+    )
+    assert data_path.exists(), f"authoritative pricing JSON missing at {data_path}"
+
+    contact = json.loads(data_path.read_text(encoding="utf-8"))["metadata"]["contact"]
+
+    assert contact["whatsapp"] == settings.SUPPORT_WHATSAPP, (
+        f"{data_path.name} contact.whatsapp={contact['whatsapp']!r} does not "
+        f"match settings.SUPPORT_WHATSAPP={settings.SUPPORT_WHATSAPP!r} (the "
+        "Meta-verified Bali Zero number) — PricingService answers and the "
+        "RAG-embedded text would drift from the number the bot itself "
+        "advertises."
+    )
+    assert contact["whatsapp"] != _RETIRED_WHATSAPP
+    assert contact.get("location") != _RETIRED_LOCATION

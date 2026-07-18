@@ -98,6 +98,25 @@ class ScraperSubmission(BaseModel):
     )
     liveness_tier: Literal["breaking", "developing", "evergreen"] | None = None
     live_news_reasons: list[str] | None = Field(None, max_length=3)
+    # WR2 enrichment passthrough (scar family #9, state-schema mutation
+    # drift): the intel enricher produces a full structured object
+    # (the_facts/bali_zero_take/in_practice/next_steps/faq/
+    # thirty_second_brief/metadata, ~1400-2000 words) but it was lost
+    # before reaching WR2 drafts — wr2_topic_selector wrote enrichment: {}
+    # into every draft's brief_json (verified 2026-06-24: {} on 12/12
+    # drafts). Carried through so the topic selector gets structured
+    # ground truth, not just truncated content. Optional: legacy
+    # callers/scrapers that don't send it keep working unchanged.
+    enrichment: dict | None = Field(
+        None,
+        description=(
+            "Full structured enricher object (the_facts/bali_zero_take/"
+            "in_practice/next_steps/faq/thirty_second_brief/metadata) — "
+            "carried through so wr2_topic_selector gets structured ground "
+            "truth, not just truncated content. Optional: legacy callers "
+            "unaffected (scar #9)."
+        ),
+    )
 
 
 class ApprovalRequest(BaseModel):
@@ -186,8 +205,17 @@ async def list_pending_items(
     filter_type: str | None = None,
     sort_type: str | None = None,
     search: str | None = None,
+    include_enrichment: bool = False,
 ) -> Any:
-    """List items pending approval in staging area with filtering and sorting"""
+    """List items pending approval in staging area with filtering and sorting.
+
+    include_enrichment (round-2 red-team MUST-FIX #1, scar family #9):
+    opt-in only. This route has no pagination and the default projection
+    would otherwise ship the full ~1400-2000 word enrichment object on
+    EVERY pending item to EVERY consumer (News Room UI, Visa Oracle UI, MCP
+    tool) — only scripts/wr2_topic_selector.py actually reads it, and only
+    from the single ranked top item. Default False keeps the payload lean.
+    """
     logger.info(
         "Listing pending items",
         extra={
@@ -195,11 +223,18 @@ async def list_pending_items(
             "filter_type": filter_type,
             "sort_type": sort_type,
             "has_search": bool(search),
+            "include_enrichment": include_enrichment,
             "endpoint": "/api/intel/staging/pending",
         },
     )
 
-    return staging_service.list_pending_items(type, filter_type, sort_type, search)
+    return staging_service.list_pending_items(
+        type,
+        filter_type,
+        sort_type,
+        search,
+        include_enrichment=include_enrichment,
+    )
 
 
 @router.get("/api/intel/staging/preview/{type}/{item_id}")

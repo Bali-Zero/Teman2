@@ -124,7 +124,7 @@ def _make_llm_message(payload: dict) -> ClaudeOAuthMessage:
     return ClaudeOAuthMessage(
         content=[_TextBlock(text=json.dumps(payload))],
         usage=_Usage(input_tokens=1000, output_tokens=1500),
-        model="deepseek-chat",
+        model="deepseek-v4-flash",
         token_label="deepseek_cache_hit=0",
     )
 
@@ -190,7 +190,7 @@ def test_compose_article_success(
     assert data["api_cost_cents"] >= 0
     assert "image_prompt" not in data["article"]
     mock_call.assert_called_once()
-    assert mock_call.call_args.kwargs.get("model") == "deepseek-chat"
+    assert mock_call.call_args.kwargs.get("model") == "deepseek-v4-flash"
 
 
 @patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
@@ -277,7 +277,7 @@ def test_compose_article_json_cleanup(mock_call, test_client, sample_compose_req
         mock_call.return_value = ClaudeOAuthMessage(
             content=[_TextBlock(text=wrapper)],
             usage=_Usage(input_tokens=500, output_tokens=800),
-            model="deepseek-chat",
+            model="deepseek-v4-flash",
             token_label="deepseek_cache_hit=0",
         )
 
@@ -316,7 +316,7 @@ def test_compose_article_json_parse_error(
     mock_call.return_value = ClaudeOAuthMessage(
         content=[_TextBlock(text="Invalid JSON {{{")],
         usage=_Usage(input_tokens=500, output_tokens=100),
-        model="deepseek-chat",
+        model="deepseek-v4-flash",
         token_label="deepseek_cache_hit=0",
     )
 
@@ -359,7 +359,7 @@ def test_compose_status_configured(test_client):
         data = response.json()
         assert data["configured"] is True
         assert data["api_key_set"] is True
-        assert data["model"] == "deepseek-chat"
+        assert data["model"] == "deepseek-v4-flash"
         assert data["provider"] == "deepseek"
 
 

@@ -125,9 +125,30 @@ enum WarRoom {
     /// GalleryView can show "N nascosti" next to the existing carousel count.
     private(set) static var excludedIncompleteCount: Int = 0
 
+    /// Delta-emission memory (2026-07-18 wound: ~29 gate-exclusion lines re-emitted to
+    /// wr2control.err on EVERY `scanCarousels` refresh — ~10s cadence — grew the file
+    /// ~30MB/day for a STEADY-STATE set of exclusions that never changed). `lastLoggedExclusions`
+    /// persists ACROSS scans; `currentScanExclusions` accumulates the CURRENT scan only. A
+    /// line is written to stderr ONLY the first time a `slug|reason` key appears — the SAME
+    /// key on the NEXT scan stays silent. `excludedIncompleteCount` still increments on
+    /// EVERY exclusion, every scan (the "N nascosti" GalleryView count must keep counting) —
+    /// only the stderr WRITE is deduped, never the count.
+    private static var lastLoggedExclusions: Set<String> = []
+    private static var currentScanExclusions: Set<String> = []
+
+    /// Injectable stderr sink (test seam, 2026-07-18). Production default writes to real
+    /// stderr; tests swap this for an array-recorder so delta-emission is assertable
+    /// deterministically without capturing real FileHandle.standardError.
+    static var exclusionEmit: (String) -> Void = {
+        FileHandle.standardError.write($0.data(using: .utf8)!)
+    }
+
     private static func logGateExclusion(slug: String, reason: String) {
-        FileHandle.standardError.write("wr2-gate: excluded '\(slug)' — \(reason)\n".data(using: .utf8)!)
+        let key = "\(slug)|\(reason)"
+        currentScanExclusions.insert(key)
         excludedIncompleteCount += 1
+        guard lastLoggedExclusions.contains(key) == false else { return }
+        exclusionEmit("wr2-gate: excluded '\(slug)' — \(reason)\n")
     }
 
     /// Resolve the DECLARED slide count for an on-disk carousel directory — the number the
@@ -304,6 +325,14 @@ enum WarRoom {
         // a gallery that simply failed to read, its own silent-lie (Codex red-team
         // finding #5, 2026-07-16).
         excludedIncompleteCount = 0
+        // Delta-emission scan-local accumulator (2026-07-18) — NOT `lastLoggedExclusions`,
+        // which persists across scans and is only committed at the function's FINAL
+        // `return` below, once the scan has reached its natural end. The early
+        // `guard let entries = ... else { return [] }` a few lines down is a DIFFERENT
+        // exit path that never reaches that commit: a transient dir-read failure must
+        // never wipe the dedup memory, or the next good scan would re-log every
+        // exclusion (re-introducing the storm this fix exists to stop).
+        currentScanExclusions = []
 
         let fm = FileManager.default
         let croot = root ?? carouselRoot()
@@ -479,6 +508,10 @@ enum WarRoom {
                 state: item.state))
         }
 
+        // Commit the delta-emission memory ONLY here — the scan reached its end without
+        // hitting the early `return []` above, so every exclusion this cycle was a real,
+        // fully-resolved verdict (not a partial pass cut short by an I/O failure).
+        lastLoggedExclusions = currentScanExclusions
         return carousels.sorted { $0.modified > $1.modified }
     }
 
@@ -606,6 +639,43 @@ enum WarRoom {
             lastGoodQueue = items
             return items
         }
-        return lastGoodQueue   // decode failed (partial write) → keep last known good
+        // Whole-array decode failed. One malformed entry must not blank the other N-1
+        // valid ones (they'd otherwise fall all the way back to the stale M3 cache).
+        // First confirm the file is a COMPLETE, well-formed JSON array at all — a
+        // mid-write truncation is still not valid JSON of ANY shape, and must keep
+        // hitting the M3 last-good fallback exactly as before.
+        guard let jsonObject = try? JSONSerialization.jsonObject(with: data),
+              let elements = jsonObject as? [Any] else {
+            return lastGoodQueue   // not a complete JSON array → partial write, keep last good
+        }
+        // (an empty [] array is already handled by the fast-path decode above)
+        var recovered: [ReviewItem] = []
+        var skipped = 0
+        for element in elements {
+            guard let dict = element as? [String: Any],
+                  let elementData = try? JSONSerialization.data(withJSONObject: dict),
+                  let item = try? dec.decode(ReviewItem.self, from: elementData) else {
+                skipped += 1
+                continue
+            }
+            recovered.append(item)
+        }
+        guard recovered.isEmpty == false else {
+            // Every entry failed — a systemic/schema break, not per-entry corruption.
+            // Don't blank the gallery (M3 anti-blank spirit extends here too) — but stay
+            // observable (scar #2, esiste≠armato): a totally-incompatible new schema must
+            // be visible in the log, not a silent stale-cache hold forever.
+            FileHandle.standardError.write(
+                "wr2-queue: all \(elements.count) entries failed to decode — keeping \(lastGoodQueue.count) last-good (possible schema break)\n"
+                    .data(using: .utf8)!)
+            return lastGoodQueue
+        }
+        lastGoodQueue = recovered
+        if skipped > 0 {
+            FileHandle.standardError.write(
+                "wr2-queue: recovered \(recovered.count)/\(elements.count) entries, skipped \(skipped) malformed\n"
+                    .data(using: .utf8)!)
+        }
+        return recovered
     }
 }

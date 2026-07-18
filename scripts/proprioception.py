@@ -410,7 +410,7 @@ DEFAULT_REGISTRY: list[dict] = [
             {"glob": "~/.nuzantara-proprioception/last.json", "max_age_h": 48, "label": "proprioception (self)"},
             {"glob": "~/.organism/last_seen/pro.runtime_reconcile.json", "max_age_h": 26, "label": "runtime-reconcile (W81 watchdog)", "machines": ["pro"]},
             {"glob": "~/logs/verify-connectome*.log", "max_age_h": 192, "label": "verify-connectome (weekly)"},
-            {"glob": "~/.organism/arsenal/last.json", "max_age_h": 26, "label": "arsenal seats probe (healer-armed)", "machines": ["mini"]},
+            {"glob": "~/.organism/arsenal/last.json", "max_age_h": 26, "label": "arsenal seats probe (healer-armed)", "machines": ["mini", "pro"]},
         ]},
         "fix_hint": "a stale guardian: run it by hand, read ITS log, then fix its scheduler",
     },
@@ -455,14 +455,15 @@ DEFAULT_REGISTRY: list[dict] = [
     },
     {
         # Reader, not prober: re-emits the last arsenal_probe report (no live LLM
-        # calls here — the heavy probe is healer-armed on Mini). Transients
+        # calls here — the heavy probe is healer-armed on Mini AND on Pro since
+        # 2026-07-18, pro-healer Receptor D). Transients
         # (QUOTA/SHED/TIMEOUT) are ok_values: they belong to transition alerting,
         # not boundary reconciliation — only persistent seat-death DIVERGEs.
         "id": "arsenal_seats", "type": "wrap",
         "target": ["python3", "{repo}/scripts/arsenal_probe.py", "--read-last", "--json"],
         "class": "seat<->armed",
         "boundary": "AI-seat credential/quota <-> last live probe (cascade depth)",
-        "machines": ["mini"], "tags": ["fast", "arsenal"], "timeout_sec": 15,
+        "machines": ["mini", "pro"], "tags": ["fast", "arsenal"], "timeout_sec": 15,
         "severity": "P1", "parse": "findings_list", "unwrap_key": "findings",
         "verdict_key": "status",
         "ok_values": ["LIVE", "CRED_UNAVAILABLE", "NOT_INSTALLED", "CONTEXT_AUTH",

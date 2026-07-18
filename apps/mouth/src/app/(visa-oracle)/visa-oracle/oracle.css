@@ -346,6 +346,29 @@
   animation: oracle-breathe 3.2s var(--motion-ease-standard) infinite;
 }
 
+/* Tap-to-edit (design doc §3 interaction #6) — completed trunk steps only,
+   rendered as real `<button>`s (LivingTree.tsx `isEditableTreeStep`). Reset
+   button chrome, keep the same status-driven colors as the decorative
+   `<div>` variant above (selectors match by class+attribute, not tag), add
+   an explicit hover/pressed affordance and a touch-sized target. Visible
+   focus comes for free from the global `:focus-visible` rule below. */
+button.oracle-tree__step--editable {
+  appearance: none;
+  background: none;
+  border: none;
+  border-left: 2px solid var(--oracle-leaf-pending);
+  padding-left: var(--space-3);
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  min-height: 44px;
+  cursor: pointer;
+}
+button.oracle-tree__step--editable:hover {
+  color: var(--oracle-ink);
+  background: color-mix(in srgb, var(--oracle-canopy) 8%, transparent);
+}
+
 .oracle-tree__leaves {
   margin-top: var(--space-3);
   padding-top: var(--space-3);
@@ -897,11 +920,143 @@
   color: var(--oracle-ink-faint);
 }
 
+/* ─── QR code (design doc §3 interaction #8 — QR handoff to WhatsApp) ──── */
+.oracle-qr-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* P1 (Codex GPT-5.6-terra xhigh adversarial review 2026-07-18): the
+     previous fixed 64px box put the ~65-97-module wa.me-URL QR at
+     ~0.7-1px/module — well under any reliably-scannable density. `clamp`
+     guarantees >=160px on every viewport (the concrete fix) while still
+     capping growth on wide screens and never exceeding a sane share of a
+     narrow mobile width; the section's flexWrap lets it drop to its own
+     row rather than fight the WhatsApp button for space. */
+  width: clamp(160px, 40vw, 208px);
+  height: clamp(160px, 40vw, 208px);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--oracle-border-strong);
+  /* QR codes need fixed black-on-white contrast to stay scannable —
+     never themed, in either light or dark mode. */
+  background: #ffffff;
+  flex-shrink: 0;
+}
+.oracle-qr {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ─── Document checklist — checkable (reuses the review-gate checklist
+   pattern at .oracle-checklist / .oracle-checklist__item above) ────────── */
+.oracle-checklist-doc--checkable {
+  gap: var(--space-2);
+}
+
+/* ─── Copy summary / Print — outcome-page anatomy "share/print/PDF" ────── */
+.oracle-outcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.oracle-copy-cta,
+.oracle-print-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--oracle-border-strong);
+  background: var(--oracle-bg-elevated);
+  color: var(--oracle-ink);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  width: fit-content;
+}
+.oracle-copy-cta:hover,
+.oracle-print-cta:hover {
+  border-color: var(--oracle-canopy);
+  color: var(--oracle-canopy);
+}
+.oracle-copy-cta[data-copy-state="copied"] {
+  color: var(--oracle-state-eligible);
+  border-color: var(--oracle-state-eligible);
+}
+/* P1 minor (Codex GPT-5.6-terra xhigh adversarial review 2026-07-18): the
+   clipboard write can genuinely reject (insecure context, denied
+   permission) — a visible failure state, not just a silently-swallowed
+   catch, color+icon+text never color-alone (never-color-alone spec
+   hard-constraint 4). */
+.oracle-copy-cta[data-copy-state="failed"] {
+  color: var(--oracle-state-likely-not);
+  border-color: var(--oracle-state-likely-not);
+}
+
+/* Print-only content — hidden on screen, revealed only inside @media print
+   below (the facts recap "answers" section print's anatomy needs but the
+   verdict screen never otherwise renders — see OutcomeSheet.tsx). */
+.oracle-print-only {
+  display: none;
+}
+
 /* ─── Reduced motion — cut everything that isn't structural ────────────── */
 @media (prefers-reduced-motion: reduce) {
   .oracle-root * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  /* The verdict tree→card shared-element morph is entirely opt-in from
+     JS (OracleShell only calls `document.startViewTransition` when
+     `useReducedMotion()` is false) — this is belt-and-braces so the name
+     is inert even if some future caller forgets that check. */
+  .oracle-tree__step,
+  .oracle-verdict-card {
+    view-transition-name: none !important;
+  }
+}
+
+/* ─── Print — clean verdict + answers + checklist + assumptions +
+   disclaimer, no tree/atmosphere/toggles, black-on-white (design doc §3
+   outcome-page anatomy "share/print/PDF") ───────────────────────────────── */
+@media print {
+  .oracle-constellation,
+  .oracle-topbar,
+  .oracle-main__tree,
+  .oracle-tree-minimap-trigger,
+  .oracle-footer,
+  .oracle-no-print {
+    display: none !important;
+  }
+  .oracle-main {
+    display: block !important;
+    padding: 0 !important;
+  }
+  .oracle-main__content {
+    max-width: none !important;
+  }
+  .oracle-print-only {
+    display: block !important;
+  }
+  .oracle-root,
+  .oracle-root * {
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  .oracle-root
+    :is(
+      .oracle-verdict-card,
+      .oracle-confirmation__group,
+      .oracle-receipt,
+      .oracle-table-scroll,
+      .oracle-checklist__item,
+      .oracle-verdict-chip
+    ) {
+    border-color: #000000 !important;
   }
 }

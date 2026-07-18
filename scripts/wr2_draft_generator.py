@@ -576,6 +576,16 @@ def _build_enriched_brief(enrichment: dict[str, Any], live_reasons: list[str] | 
     Returns an empty string if enrichment has no usable fields, so the
     caller can fall back to the legacy summary path cleanly.
     """
+    # Round-2 red-team MUST-FIX #2 defense-in-depth (scar family #9): a
+    # hand-edited/legacy staging JSON can carry a truthy non-dict
+    # `enrichment` (e.g. a list) that survives the upstream projection and
+    # topic-selector guards. Every field access below is an unguarded
+    # `enrichment.get(...)`, which raises AttributeError on a non-dict and
+    # was previously uncaught by the local handlers, sending the whole
+    # draft to REJECTED. Coerce here as the last line of defense.
+    if not isinstance(enrichment, dict):
+        enrichment = {}
+
     parts: list[str] = []
 
     brief30 = enrichment.get("thirty_second_brief") or {}
@@ -791,7 +801,12 @@ def _has_usable_source(summary: str, enrichment: dict[str, Any] | None) -> bool:
     """
     if summary and summary.strip():
         return True
-    if not enrichment:
+    # Belt-and-suspenders (round-3 red-team MUST-FIX, scar family #9): the
+    # `_process_one` caller now coerces a truthy non-dict enrichment to None
+    # before it reaches here, but `enrichment.get(...)` below is unguarded —
+    # a truthy non-dict (e.g. a list) is not caught by `if not enrichment`
+    # alone, so this function must also be safe for any other caller.
+    if not isinstance(enrichment, dict) or not enrichment:
         return False
 
     the_facts = str(enrichment.get("the_facts") or "")
@@ -1371,7 +1386,11 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> _Proces
     brief = json.loads(brief_raw) if isinstance(brief_raw, str) else (brief_raw or {})
     summary = brief.get("article_summary") or ""
     source_url = brief.get("source_url") or ""
-    enrichment = brief.get("enrichment") or None
+    # A truthy non-dict enrichment (hand-edited/legacy brief_json, e.g. a list)
+    # must coerce to None here so every downstream use (_has_usable_source,
+    # _build_enriched_brief) sees a safe dict-or-None — not just falsy values.
+    _enrichment_raw = brief.get("enrichment")
+    enrichment = _enrichment_raw if isinstance(_enrichment_raw, dict) else None
     live_reasons = brief.get("live_news_reasons") or []
     if not isinstance(live_reasons, list):
         live_reasons = []

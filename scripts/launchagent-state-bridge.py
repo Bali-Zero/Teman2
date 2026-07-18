@@ -80,7 +80,12 @@ BRIDGED_LABELS: tuple[BridgedLaunchAgent, ...] = (
     BridgedLaunchAgent(
         label="com.balizero.post-publish-poller",
         organ_id="pro.post_publish_poller",
-        daemon=False,
+        # daemon=True: this is a long-running KeepAlive poller with a live pid,
+        # not a scheduled one-shot. With daemon=False the receipt was derived
+        # from launchctl's sticky "last exit code" column (=1 after any past
+        # crash/restart), reporting status=failed while ps proved the process
+        # alive and actively opening PRs (observed live 2026-07-18).
+        daemon=True,
         legacy_job_id="post_publish_poller",
     ),
     BridgedLaunchAgent(

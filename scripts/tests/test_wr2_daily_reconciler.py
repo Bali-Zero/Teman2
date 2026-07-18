@@ -207,3 +207,219 @@ def test_visibility_dry_run_touches_nothing(tmp_path, monkeypatch):
     monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
     assert rec._verify_visibility_or_backfill(_rendered_row("d-dry"), dry_run=True) == "dry_run"
     assert not (tmp_path / "queue" / "human-review-queue.json").exists()
+
+
+# ── --rebrief one-shot CLI dispatch (B5 remake-hygiene verb + Codex red-team round) ──
+
+
+def _write_rebrief_queue(tmp_path, entries):
+    """W96: NEVER touch the real prod queue — every test below sets
+    WR2_OUTPUT_ROOT to tmp_path first, mirroring the existing
+    test_visibility_* convention in this file."""
+    import json
+
+    qp = tmp_path / "queue" / "human-review-queue.json"
+    qp.parent.mkdir(parents=True, exist_ok=True)
+    qp.write_text(json.dumps(entries))
+    return qp
+
+
+# ── _rebrief_queue_guard (FIX 1 BLOCKER) ──────────────────────────────────────
+
+
+def test_queue_guard_refuses_published(tmp_path, monkeypatch):
+    """A draft already 'published' in the review queue must be refused — Damar's
+    mark_published writes ONLY the queue JSON, never war_room_drafts.status, so
+    a DB-only whitelist can't see this on its own."""
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+    _write_rebrief_queue(tmp_path, [{"draft_id": "pub-1", "state": "published"}])
+    ok, reason = rec._rebrief_queue_guard("pub-1")
+    assert ok is False
+    assert "published" in reason
+
+
+def test_queue_guard_allows_rejected(tmp_path, monkeypatch):
+    """A 'rejected' queue entry is a legitimate operator-remake target — same
+    doctrine as the sibling wr2_rerender_requeue.py verb (_PREPUBLISH_STATES
+    includes 'rejected')."""
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+    _write_rebrief_queue(tmp_path, [{"draft_id": "rej-1", "state": "rejected"}])
+    ok, _reason = rec._rebrief_queue_guard("rej-1")
+    assert ok is True
+
+
+def test_queue_guard_allows_drafted(tmp_path, monkeypatch):
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+    _write_rebrief_queue(tmp_path, [{"draft_id": "dft-1", "state": "drafted"}])
+    ok, _reason = rec._rebrief_queue_guard("dft-1")
+    assert ok is True
+
+
+def test_queue_guard_allows_absent_entry(tmp_path, monkeypatch):
+    """No queue entry for THIS draft at all (a different id is published) —
+    absence is normal (pre-queue-era draft); proceed on DB state only."""
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+    _write_rebrief_queue(tmp_path, [{"draft_id": "other", "state": "published"}])
+    ok, _reason = rec._rebrief_queue_guard("missing-id")
+    assert ok is True
+
+
+# ── _cmd_rebrief live path (queue guard wired in front of the mutation) ──────
+
+
+def test_cmd_rebrief_live_refuses_published_without_touching_db(tmp_path, monkeypatch):
+    """FIX 1 BLOCKER: the live path must refuse BEFORE calling _rebrief_async
+    at all when the queue says published — never even attempts the mutation."""
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+    _write_rebrief_queue(tmp_path, [{"draft_id": "pub-2", "state": "published"}])
+
+    async def _boom(_draft_id):
+        raise AssertionError("must not call _rebrief_async on a published queue entry")
+
+    monkeypatch.setattr(rec, "_rebrief_async", _boom)
+    assert rec._cmd_rebrief("pub-2", dry_run=False) == 1
+
+
+def test_cmd_rebrief_live_proceeds_when_rejected_in_queue(tmp_path, monkeypatch):
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+    _write_rebrief_queue(tmp_path, [{"draft_id": "rej-2", "state": "rejected"}])
+
+    async def _fake(draft_id):
+        assert draft_id == "rej-2"
+        return True
+
+    monkeypatch.setattr(rec, "_rebrief_async", _fake)
+    assert rec._cmd_rebrief("rej-2", dry_run=False) == 0
+
+
+def test_cmd_rebrief_success_returns_zero(tmp_path, monkeypatch):
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))  # empty queue dir -> guard fail-open
+
+    async def _fake(draft_id):
+        assert draft_id == "abc-123"
+        return True
+
+    monkeypatch.setattr(rec, "_rebrief_async", _fake)
+    assert rec._cmd_rebrief("abc-123", dry_run=False) == 0
+
+
+def test_cmd_rebrief_refused_returns_one(tmp_path, monkeypatch):
+    """INNOCENCE (leased/wrong-status/not-found, per rebrief_draft's False path)
+    surfaces as exit 1 — distinct from a connection/env failure (exit 2)."""
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+
+    async def _fake(_draft_id):
+        return False
+
+    monkeypatch.setattr(rec, "_rebrief_async", _fake)
+    assert rec._cmd_rebrief("abc-123", dry_run=False) == 1
+
+
+def test_cmd_rebrief_connection_failure_returns_two(tmp_path, monkeypatch):
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+
+    async def _fake(_draft_id):
+        raise RuntimeError("DATABASE_URL not set")
+
+    monkeypatch.setattr(rec, "_rebrief_async", _fake)
+    assert rec._cmd_rebrief("abc-123", dry_run=False) == 2
+
+
+# ── _rebrief_dry_run_message classifier (FIX 3 honest preview) ───────────────
+
+
+def test_rebrief_dry_run_message_not_found():
+    msg = rec._rebrief_dry_run_message(None, ok_queue=True, queue_reason="no queue entry for draft")
+    assert msg == "would NO-OP (reason: not found)"
+
+
+def test_rebrief_dry_run_message_leased():
+    row = {"status": "rendering", "lease_owner": "pid@host"}
+    msg = rec._rebrief_dry_run_message(row, ok_queue=True, queue_reason="no queue entry for draft")
+    assert msg == "would NO-OP (reason: leased by pid@host)"
+
+
+def test_rebrief_dry_run_message_published_in_queue():
+    """A DB-eligible row (status='rendered', unleased) must still be reported
+    NO-OP when the queue says published — the queue guard outranks the DB
+    whitelist in the truthful message, matching the live-path refusal."""
+    row = {"status": "rendered", "lease_owner": None}
+    msg = rec._rebrief_dry_run_message(row, ok_queue=False, queue_reason="queue entry state=published")
+    assert "would NO-OP" in msg
+    assert "published" in msg
+
+
+def test_rebrief_dry_run_message_wrong_status():
+    row = {"status": "briefed", "lease_owner": None}
+    msg = rec._rebrief_dry_run_message(row, ok_queue=True, queue_reason="no queue entry for draft")
+    assert msg == "would NO-OP (reason: status=briefed not rebrief-eligible)"
+
+
+def test_rebrief_dry_run_message_eligible():
+    row = {"status": "rendered", "lease_owner": None}
+    msg = rec._rebrief_dry_run_message(row, ok_queue=True, queue_reason="no queue entry for draft")
+    assert msg == "would REBRIEF (status=rendered, unleased, queue=no queue entry for draft)"
+
+
+# ── _cmd_rebrief dry-run wiring (never mutates, honest failure mode) ─────────
+
+
+def test_cmd_rebrief_dry_run_never_mutates(tmp_path, monkeypatch):
+    """FIX 3: dry-run must never call the mutating _rebrief_async, regardless
+    of what the preview concludes."""
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+
+    async def _boom(_draft_id):
+        raise AssertionError("dry-run must not call _rebrief_async")
+
+    async def _preview(_draft_id):
+        return {"status": "rendered", "lease_owner": None}
+
+    monkeypatch.setattr(rec, "_rebrief_async", _boom)
+    monkeypatch.setattr(rec, "_rebrief_preview_async", _preview)
+    assert rec._cmd_rebrief("elig-1", dry_run=True) == 0
+
+
+def test_cmd_rebrief_dry_run_connection_failure_returns_two(tmp_path, monkeypatch):
+    """DEVIATION from "exit 0 either way": a preview that could NOT run at all
+    (DB unreachable) is an infra failure, not a truthful verdict — returns 2,
+    same code as the live path's connection failure."""
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+
+    async def _preview(_draft_id):
+        raise RuntimeError("DATABASE_URL not set")
+
+    monkeypatch.setattr(rec, "_rebrief_preview_async", _preview)
+    assert rec._cmd_rebrief("abc-123", dry_run=True) == 2
+
+
+def test_cmd_rebrief_dry_run_reflects_published_queue(tmp_path, monkeypatch, caplog):
+    """Integration: a published queue entry must surface in the dry-run LOGGED
+    message even though the DB row alone looks eligible (status='rendered',
+    unleased) — the honest preview cannot say "would REBRIEF" for a draft the
+    live path would actually refuse."""
+    monkeypatch.setenv("WR2_OUTPUT_ROOT", str(tmp_path))
+    _write_rebrief_queue(tmp_path, [{"draft_id": "pub-3", "state": "published"}])
+
+    async def _preview(_draft_id):
+        return {"status": "rendered", "lease_owner": None}
+
+    monkeypatch.setattr(rec, "_rebrief_preview_async", _preview)
+    caplog.set_level("INFO")
+    assert rec._cmd_rebrief("pub-3", dry_run=True) == 0
+    assert "NO-OP" in caplog.text
+    assert "published" in caplog.text
+
+
+def test_main_dispatches_rebrief_before_normal_tick(monkeypatch):
+    """--rebrief must short-circuit main() before the normal decide()/run() tick —
+    same dispatch shape as --repair-false-incomplete / --backfill-completeness."""
+    calls = []
+    monkeypatch.setattr(
+        rec,
+        "_cmd_rebrief",
+        lambda draft_id, *, dry_run: calls.append((draft_id, dry_run)) or 0,
+    )
+    monkeypatch.setattr(sys, "argv", ["wr2_daily_reconciler.py", "--rebrief", "abc-123"])
+    assert rec.main() == 0
+    assert calls == [("abc-123", False)]

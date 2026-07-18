@@ -20,7 +20,11 @@ export interface ConfirmationCardProps {
   onConfirm: () => void;
 }
 
-const DISPLAY_ORDER = [
+/** Exported so OutcomeSheet's print-only "your answers" recap (design doc
+ * §3 print anatomy) can render the exact same rows in the exact same
+ * order without duplicating this list — the printed verdict page is the
+ * one place besides this screen the facts summary ever appears. */
+export const DISPLAY_ORDER = [
   "in_indonesia",
   "permit_expiry",
   "category",
@@ -39,7 +43,7 @@ function localeFor(language: Language): string {
  * CSV of item keys, never the old binary "flagged" sentinel — render each
  * selected item's own label instead of trying (and failing) to resolve a
  * `q.review_gate.opt.<csv>` key that was never defined. */
-function reviewGateDisplay(language: Language, value: string): string {
+export function reviewGateDisplay(language: Language, value: string): string {
   const items = value.split(",").filter(Boolean);
   if (items.length === 0 || (items.length === 1 && items[0] === "none")) {
     return translate(language, "q.review_gate.item.none" as I18nKey);

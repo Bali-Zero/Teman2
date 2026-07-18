@@ -89,7 +89,11 @@ _CURATED_QA_INJECTION_ENABLED = os.getenv("CURATED_QA_INJECTION_ENABLED", "true"
 )
 _CURATED_QA_COLLECTION_NAME = "curated_qa"
 _CURATED_QA_TOP_K = 2
-_CURATED_QA_SCORE_THRESHOLD = 0.90
+# 0.90 raw cosine was calibrated against near-verbatim question matches; real
+# paraphrased visa queries score 0.46-0.74 against the stored questions, so
+# the gate almost never fired in prod. 0.58 is the calibrated within-domain
+# threshold — safe only because injection is now domain-filtered (below).
+_CURATED_QA_SCORE_THRESHOLD = float(os.getenv("CURATED_QA_SCORE_THRESHOLD", "0.58"))
 
 
 class OrchestratorCore:
@@ -336,7 +340,11 @@ class OrchestratorCore:
 
         return None
 
-    async def _inject_curated_qa_grounding(self, query: str) -> str:
+    async def _inject_curated_qa_grounding(
+        self,
+        query: str,
+        extracted_entities: dict[str, Any] | None = None,
+    ) -> str:
         """D3-L2 (SPEC v2, F1b): grounding injection from the curated_qa collection.
 
         This is NOT verbatim serving. On a high-confidence hit (score >=
@@ -347,6 +355,16 @@ class OrchestratorCore:
         method never returns an answer directly and never short-circuits the
         query pipeline.
 
+        Injection is DOMAIN-GATED: with the score threshold alone, cosine
+        similarity overlaps enough across domains that a query in one domain
+        (e.g. "register a PT PMA company") can score above threshold against a
+        curated_qa entry from an unrelated domain (e.g. a visa Q&A) — polluting
+        the answer with irrelevant evidence. So we only inject when the query
+        has a concrete, classified domain AND each retrieved hit's own `domain`
+        tag matches it (the per-hit recheck below). The gate is applied on the
+        retrieved hits rather than as a Qdrant `filter` argument on purpose —
+        see the search_collection call for why passing a filter there is a trap.
+
         Defensive by design: any failure (Qdrant down, malformed payload,
         missing retriever) is logged and degrades to "" (no injection) —
         this step must never break the main query path.
@@ -354,16 +372,40 @@ class OrchestratorCore:
         Args:
             query: The user's query (embedded and searched verbatim against
                 the curated_qa collection).
+            extracted_entities: Output of EntityExtractionService.extract_entities()
+                for this query, used to read the classified `domain`.
 
         Returns:
             A formatted evidence-block string ready to append to
-            `system_context_for_prompt`, or "" if disabled/no qualifying hit/
-            error.
+            `system_context_for_prompt`, or "" if disabled/no domain/no
+            qualifying hit/error.
         """
         if not _CURATED_QA_INJECTION_ENABLED or not self.retriever:
             return ""
 
+        domain = (extracted_entities or {}).get("domain")
+        # Never inject cross-domain: an unclassified/general query has no
+        # curated_qa domain to filter on, and all-domain cosine overlap at
+        # the calibrated threshold would pollute unrelated answers.
+        if not domain or domain == EntityExtractionService.DOMAIN_GENERAL:
+            return ""
+
         try:
+            # NO Qdrant-level domain filter here (root-caused 2026-07-18):
+            # search_collection() feeds `filter` through SearchService ->
+            # _convert_filter_to_qdrant_format, which expects the SIMPLIFIED
+            # {field: value} shape and re-wraps anything else. A Qdrant-native
+            # {"must": [{"key": "domain", ...}]} filter got mangled into a
+            # condition on a field literally named "must" -> Qdrant HTTP 400
+            # ("Expected some form of condition"); even the simplified
+            # {"domain": domain} form emits an unindexed `metadata.domain` term
+            # -> HTTP 400. Either way the whole search died, so curated_qa
+            # injection NEVER fired in prod (dead since F1b/#2588; #2684's
+            # "domain filter" only reinforced the trap). The per-hit
+            # `hit_domain != domain` recheck below is the real, sufficient
+            # domain gate: every curated_qa point carries a top-level `domain`,
+            # so an off-domain query retrieves only same-store hits and discards
+            # any whose tag doesn't match -> "" (no cross-domain pollution).
             search_result = await self.retriever.search_collection(
                 query=query,
                 collection_name=_CURATED_QA_COLLECTION_NAME,
@@ -384,6 +426,15 @@ class OrchestratorCore:
                 if hit.get("score", 0.0) < _CURATED_QA_SCORE_THRESHOLD:
                     continue
                 metadata = hit.get("metadata") or {}
+                # PRIMARY domain gate (there is no Qdrant-level filter — see the
+                # search_collection call above): inject a hit ONLY when its own
+                # `domain` tag equals the query's classified domain. This is what
+                # prevents cross-domain pollution (scar family #3). A hit with a
+                # missing/blank/mismatched domain tag is skipped conservatively —
+                # every real curated_qa point carries an explicit domain.
+                hit_domain = metadata.get("domain")
+                if hit_domain != domain:
+                    continue
                 answer = metadata.get("answer")
                 if not answer:
                     # Question-only seeds (prewarm/golden) must never reach
@@ -969,7 +1020,7 @@ class OrchestratorCore:
         # through the full ReAct loop + abstain gate below; this only shapes
         # the evidence the LLM reasons over. Defensive by design (see
         # _inject_curated_qa_grounding docstring) — never raises.
-        curated_qa_context = await self._inject_curated_qa_grounding(query)
+        curated_qa_context = await self._inject_curated_qa_grounding(query, extracted_entities)
         if curated_qa_context:
             system_context_for_prompt += curated_qa_context
 
@@ -980,6 +1031,7 @@ class OrchestratorCore:
                 ma_result = await self._multi_agent_coordinator.process(
                     query=query,
                     user_context={"extracted_entities": extracted_entities},
+                    grounding_context=system_context_for_prompt,
                 )
                 if ma_result.get("final_answer"):
                     return CoreResult(

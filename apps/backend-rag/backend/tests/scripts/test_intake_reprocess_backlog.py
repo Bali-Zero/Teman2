@@ -1050,3 +1050,41 @@ def test_review_backlog_report_sql_is_latest_aggregate_and_pii_safe() -> None:
     assert "ocr_chars >= $1" in sql
     assert "sender phone%" in sql
     assert "SELECT 'automation_bucket'" in sql
+
+
+def test_reroute_drive_folder_sql_targets_drive_zero_candidate_bucket() -> None:
+    irb = _load()
+    sql = irb.REROUTE_DRIVE_FOLDER_SELECT_SQL
+    assert "SELECT DISTINCT ON (q.id)" in sql
+    assert "q.source = 'drive'" in sql
+    assert "q.source_path IS NOT NULL" in sql
+    assert "p.status = 'review_pending'" in sql
+    assert "'NO_MATCH'" in sql
+    assert "jsonb_array_length" in sql
+    assert "LIMIT $1" in sql
+
+
+def test_reroute_drive_folder_reset_resumes_route_and_preserves_stage_output() -> None:
+    # The load-bearing invariant: 97.7% of these rows' blobs are retention-
+    # evicted, so the saved stage_output (OCR/extract fields) is the ONLY copy.
+    # A reset that wiped it (like REPROCESS_RESET_SQL does) would be
+    # irreversible data loss + a guaranteed pipeline failure at preprocess.
+    irb = _load()
+    sql = irb.REROUTE_DRIVE_FOLDER_RESET_SQL
+    assert "stage_output" not in sql  # NEVER wiped — route-only resume
+    assert "status           = 'validated'" in sql
+    assert "stage            = 'validate'" in sql
+    assert "pipeline_version = $2" in sql
+    assert "lease_owner      = NULL" in sql
+    assert "lease_expires_at = NULL" in sql
+    assert "attempts         = 0" in sql
+    # guilt check: the FULL-rerun reset (for contrast) DOES wipe stage_output.
+    assert "stage_output" in irb.REPROCESS_RESET_SQL
+
+
+def test_reroute_drive_folder_supersede_only_review_pending() -> None:
+    irb = _load()
+    sql = irb.REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL
+    assert "SET status = 'superseded'" in sql
+    assert "status = 'review_pending'" in sql
+    assert "queue_id = ANY($1::bigint[])" in sql
