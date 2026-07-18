@@ -311,6 +311,56 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
   AFTER this registry re-emission is merged — a GO issued before it is a GO to close the registry
   first, not to start Lot 2.
 
+- **A-7 (2026-07-18, conductor) — Lot 2 (42999→59131) conductor-signed D6 verdict + control
+  limits + m5 deviation declared.**
+  **Verdict table — 13 quarantined, 0 certified:**
+
+  | Category | Codes | Count |
+  |---|---|---|
+  | `source_absent_in_vault` | 42999, 47771, 49233, 50113, 52105, 52219, 52299, 59131 | 8 |
+  | `payload_cross_contamination` | 49296, 52103, 52211, 52232 | 4 |
+  | `mapping_metadata_false` | 52239 | 1 |
+
+  Plus a **56101 metadata-only cure** (innocence-violation finding, NOT a detach — per_skala
+  substance independently verified correct and left untouched): `pp28_sources` corrected
+  `['56101','56104','56103','56109']` → `['56101','56102','56109']`, `aggregation_note` and
+  `intel_2026.whatChanged` corrected to credit KBLI-2020 56102 ("Rumah/Warung Makan") as the true
+  omitted ancestor instead of the false 56103/56104 claim (BPS Tabel Konversi Vol.2, Lampiran 5
+  p.211/printed-197 + Lampiran 10 p.407, conductor eye-verified). Also cured in the same PR
+  (value-in-place, `apps/mouth/data/kbli-gold-all.json`, NOT data-plane-guarded, Codex-gated
+  generator≠grader, 2 review rounds both PASS): 49296.whatYouNeed + 50113.whatYouNeed honest-gap
+  (gold masks canonical intel_2026 on the live page, 49213/50115 precedent) and 56101.whatChanged
+  mirror of the metadata correction.
+
+  **Control limits (per-lot adjudication against the A-4 declared-BREACH state, no silent
+  resume):**
+  - **m1** cross-family IAA **10/13 = 0.769 PASS** (≥0.75 floor) — the FIRST m1 PASS of the
+    program (Lot 1 was 0.385/0.538 BREACH). Cross-family seat = Codex gpt-5.6 blind
+    image-grounded extractor per plan A-4. The 3 structural disagreements are content-level
+    contamination confirmed by conductor eye-verify, not extractor noise. **Gotcha-in-the-gotcha**:
+    the cross-family seat itself misread a digit on 49296 (49224 vs the true 49424) — caught only
+    by the conductor's own image-verify against the pinned PP28 renders. Scar discipline "digits
+    from scans: image-verify" (kbli-navigator §4 rule 5) applies to the CHECKER too, not just the
+    original extraction.
+  - **m2** = **0.000, declared BREACH** — population disease, not lot noise (per A-4's per-lot
+    adjudication rule; the floor is not re-registered, the breach is recorded and the lot proceeds
+    under the existing signed exception).
+  - **m3** no new categories beyond the A-5 registry extension (`payload_cross_contamination`,
+    `unresolvable_source_pointer`/`source_absent_in_vault` naming, `mapping_metadata_false`) — all
+    13 Lot 2 findings classify cleanly into the existing closed-7 registry.
+  - **m4** ≈197k tokens/dossier average, **PASS** (≤400k ceiling).
+  - **m5 NOT MEASURED — declared deviation, not a silent skip.** The digest-salted gold sets
+    (negative/positive controls per emit_batch_calibration_v2) were not embedded into this lot's
+    conductor-eye adjudication process; instead the conductor served a hand-picked innocence pair
+    (47111 — clean, untouched by any finding; 56101 — a TRUE POSITIVE at the *metadata* layer, not
+    the per_skala layer) as the innocence check. This means the innocence set ITSELF carries the
+    July-disease pattern (a record can be simultaneously "per_skala clean" and "metadata
+    contaminated") — a finding worth recording in its own right, not just a control-limit
+    shortfall. **Disposition:** Lot 3 embeds the v2-salted gold selection for m5 measurement; this
+    deviation and its innocence-violation finding are recorded here so no future reader mistakes
+    Lot 2's m5 silence for a clean PASS.
+  - **Disposition:** SIGNED — Fable conductor session f5892d39, 2026-07-18.
+
 ## Adversarial review
 
 Codex GPT-5.6-sol (high effort, read-only, 2026-07-18) attacked v1 of this plan against the

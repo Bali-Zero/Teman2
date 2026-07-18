@@ -1,0 +1,100 @@
+{
+  "_doc": "GARUDA-FILIERA Batch A Lot 2 cure spec — the 13 KBLI-2025 codes quarantined at the conductor-signed D6 verdict (session f5892d39, 2026-07-18), taxonomy segment 42999->59131 following Lot 1 (01->39). Categories: 8 source_absent_in_vault (42999, 47771, 49233, 50113, 52105, 52219, 52299, 59131 — the cited PP28 row is not retrievable from the pinned corpus, 21 lampiran files / 11,208 pages, as hunted), 4 payload_cross_contamination (49296, 52103, 52211, 52232 — the served per_skala payload content belongs to a different activity, conductor eye-verified), 1 mapping_metadata_false (52239 — the recorded pp28_sources pointer is a bizarre cross-sector claim contradicted by the crosswalk). Compiler input for scripts/kbli_filiera/cure_canonical_collisions.py — the false-friend detach pattern: per_skala -> [] + PRESERVE the contaminated block under the disputed key + corroborated _data_note + honest-gap intel_2026.whatYouNeed. NEVER authors a replacement licensing value (rule #9 / rule #4 detach>plausible-remap). pma_status / l4_bali / TKA facets are NOT touched and NOT asserted in any note (P1-v2 abstain fail-safe, plan §8 A-1). Uses the SAME disputed_key as Lot 1 (per_skala_disputed_pp28_collision) for continuity — the key name is generic ('collision'), not flavor-specific, and already spans multiple categories in Lot 1.",
+  "_provenance": "Batch A plan §8 (Lot 2 of the remainder, GO granted 2026-07-18: \"quando finisce lot 2 procedi con gli altri lot senza fermarti\"). Conductor-signed D6 verdict handed down directly (session f5892d39) — categories + evidence per code as recorded in each entry's data_note. Crosswalk source: BPS Tabel Konversi Vol.2 (sha 29f17b3b, read verbatim in the Lot 1 spec committed on main) where a crosswalk-level finding (merge/split shape) was cited; the source-absence findings rest on the pinned PP28 corpus (21 lampiran files, 11,208 pages, manifest batch0) text-hunt. No PP28-lampiran page number is cited for any code where the conductor's verdict did not supply one — no page/sha is invented in this spec beyond what was directly handed down.",
+  "version": 1,
+  "disputed_key": "per_skala_disputed_pp28_collision",
+  "codes": [
+    {
+      "code": "42999",
+      "flavor": "source_absent_in_vault",
+      "judul": "Konstruksi Bangunan Sipil Lainnya YTDL",
+      "data_note": "KBLI 2025 code 42999 'Konstruksi Bangunan Sipil Lainnya YTDL' is recorded as status_mapping CODICE_RINUMERATO with pp28_sources=['42929'] — a single-ancestor claim. The BPS crosswalk (Vol.2 Lampiran 5 p.172-173, Lampiran 10 p.367) shows 42999 is in fact a MERGE of KBLI-2020 code 42929 plus a residual portion of KBLI-2020 code 42930, not a straight renumbering. Its served per_skala (2 rows) cites PP 28/2025 source 42929, but that row is not retrievable from the pinned PP28 corpus (21 lampiran files, 11,208 pages) as hunted. per_skala detached; the licensing regime for this merged scope is not retrievable from the pinned sources as hunted. BPS Vol.2 sha 29f17b3b.",
+      "whatYouNeed": "This 2025 code merges a prior civil-construction classification with a residual portion of another old code, not a simple renumbering. The licensing rows shown here earlier cited a regulatory source we could not verify in the official document set, so they have been removed from this page; the correct licensing is not yet reliably defined in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "47771",
+      "flavor": "source_absent_in_vault",
+      "judul": "Perdagangan Eceran Minyak Tanah",
+      "data_note": "KBLI 2025 code 47771 'Perdagangan Eceran Minyak Tanah' is recorded as status_mapping MATCH_LANGSUNG with pp28_sources=['47771'] — a single-ancestor claim. The BPS crosswalk shows 47771 is in fact a 4-ancestor MERGE of KBLI-2020 codes 47771, 47892, 47919, and 47996, not a direct one-to-one match. Its served per_skala (2 rows) cites PP 28/2025 source 47771, but that row is not retrievable from the pinned PP28 corpus (21 lampiran files, 11,208 pages) as hunted. per_skala detached; the licensing regime for this merged retail scope is not retrievable from the pinned sources as hunted.",
+      "whatYouNeed": "This kerosene-retail code actually merges four prior retail classifications, not a direct one-to-one continuation. The licensing rows shown here earlier cited a regulatory source we could not verify in the official document set, so they have been removed from this page; the correct licensing is not yet reliably defined in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "49233",
+      "flavor": "source_absent_in_vault",
+      "judul": "Angkutan Tidak Bermotor untuk Barang",
+      "data_note": "KBLI 2025 code 49233 'Angkutan Tidak Bermotor untuk Barang' is a clean ONE_TO_ONE continuation of KBLI-2020 code 49433 (status_mapping CODICE_RINUMERATO, pp28_sources=['49433'] — the crosswalk itself is not in dispute). Its served per_skala (1 row) cites PP 28/2025 source 49433, but that row is not retrievable from the pinned PP28 corpus (21 lampiran files, 11,208 pages) as hunted. per_skala detached; no claim is made about what the correct regime for this activity is — only that the cited source cannot be verified from the pinned corpus. A future image-grade lampiran sweep may restore it WITH provenance.",
+      "whatYouNeed": "This code covers non-motorized goods transport, unchanged from the previous classification. The licensing rows shown here earlier cited a regulatory source we could not verify in the official document set, so they have been removed from this page pending re-verification; the correct licensing is not yet reliably confirmed in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "49296",
+      "flavor": "payload_cross_contamination",
+      "judul": "Angkutan Ojek Motor",
+      "data_note": "KBLI 2025 code 49296 'Angkutan Ojek Motor' (motorcycle-taxi/ojek transport) descends from KBLI-2020 code 49424 — the ancestry itself is correct, image-verified (BPS Vol.2 Lampiran 10 p.386). Its served per_skala payload, however, carries SPECIAL-RAILWAY licensing content — 'prasarana perkeretaapian khusus' (special railway infrastructure) and rail-interconnection permits, mentioned 5 times across the row — an entirely different activity (rail infrastructure) from motorcycle-taxi transport; conductor eye-verified 2026-07-18. per_skala detached; the licensing regime for ojek transport is not retrievable from the pinned sources as hunted. BPS Vol.2 sha 29f17b3b.",
+      "whatYouNeed": "This code covers motorcycle-taxi (ojek) transport. The licensing rows shown here earlier contained special-railway-infrastructure requirements belonging to a different activity, carried over in error, so they have been removed from this page; the correct licensing for this code is not yet reliably defined in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "50113",
+      "flavor": "source_absent_in_vault",
+      "judul": "Angkutan Laut Dalam Negeri untuk Wisata",
+      "data_note": "KBLI 2025 code 50113 'Angkutan Laut Dalam Negeri untuk Wisata' is a clean ONE_TO_ONE continuation of KBLI-2020 code 50113 (status_mapping MATCH_LANGSUNG — the crosswalk itself is not in dispute). Its served per_skala (1 row) cites PP 28/2025 source 50113, but that row is not retrievable from the pinned PP28 corpus (21 lampiran files, 11,208 pages) as hunted. per_skala detached; no claim is made about what the correct regime for this activity is — only that the cited source cannot be verified from the pinned corpus.",
+      "whatYouNeed": "This code covers domestic sea tourism transport, unchanged from the previous classification. The licensing rows shown here earlier cited a regulatory source we could not verify in the official document set, so they have been removed from this page pending re-verification; the correct licensing is not yet reliably confirmed in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "52103",
+      "flavor": "payload_cross_contamination",
+      "judul": "Aktivitas Gudang Berikat",
+      "data_note": "KBLI 2025 code 52103 'Aktivitas Gudang Berikat' (bonded warehouse activities) is recorded as status_mapping MATCH_LANGSUNG with pp28_sources=['52103'] — a single-ancestor claim. The BPS crosswalk shows 52103 is in fact a 5-ancestor MERGE that includes fisheries codes 03143, 03241, 03243, and 03263 alongside 52103 itself, not a direct one-to-one match. Its served per_skala (2 rows) carries a payload sourced from the single 52103 ancestor only, mismatched against the actual merged fisheries+warehousing scope; conductor eye-verified 2026-07-18. per_skala detached — the licensing regime for this merged scope is not retrievable from the pinned sources as hunted.",
+      "whatYouNeed": "This bonded-warehouse code actually merges in several fisheries-related classifications, not a direct one-to-one continuation. The licensing rows shown here earlier were carried over from a single narrower ancestor and cannot represent the merged scope, so they have been removed from this page; the correct licensing is not yet reliably defined in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "52105",
+      "flavor": "source_absent_in_vault",
+      "judul": "Aktivitas Penyimpanan Barang Berbahaya dan Beracun (B3)",
+      "data_note": "KBLI 2025 code 52105 'Aktivitas Penyimpanan Barang Berbahaya dan Beracun (B3)' is a clean ONE_TO_ONE continuation of KBLI-2020 code 52105 (status_mapping MATCH_LANGSUNG — the crosswalk itself is not in dispute). Its served per_skala (1 row) cites PP 28/2025 source 52105, but that row is not retrievable from the pinned PP28 corpus (21 lampiran files, 11,208 pages) as hunted. per_skala detached; no claim is made about what the correct regime for this activity is — only that the cited source cannot be verified from the pinned corpus.",
+      "whatYouNeed": "This code covers hazardous and toxic (B3) goods storage. The licensing rows shown here earlier cited a regulatory source we could not verify in the official document set, so they have been removed from this page pending re-verification; the correct licensing is not yet reliably confirmed in our verified sources. Before considering any activity under this code, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "52211",
+      "flavor": "payload_cross_contamination",
+      "judul": "Aktivitas Terminal Darat",
+      "data_note": "KBLI 2025 code 52211 'Aktivitas Terminal Darat' (land terminal activities) is a clean ONE_TO_ONE continuation of KBLI-2020 code 52211 (status_mapping MATCH_LANGSUNG). Its served per_skala payload, however, demands port tally-clerk experts ('tenaga ahli di bidang tally') — a PORT/maritime cargo-tallying requirement, not a land-terminal one; conductor eye-verified 2026-07-18. In addition, the cited PP 28/2025 source row for 52211 is not retrievable from the pinned PP28 corpus (21 lampiran files, 11,208 pages) as hunted. per_skala detached; the licensing regime for land-terminal activities is not retrievable from the pinned sources as hunted.",
+      "whatYouNeed": "This code covers land terminal (bus/truck station) activities. The licensing rows shown here earlier demanded port cargo-tallying expertise — a requirement belonging to maritime port operations, not land terminals — and cited a source we could not verify, so they have been removed from this page; the correct licensing is not yet reliably defined in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "52219",
+      "flavor": "source_absent_in_vault",
+      "judul": "Aktivitas Jasa Terkait Transportasi Darat Lainnya",
+      "data_note": "KBLI 2025 code 52219 'Aktivitas Jasa Terkait Transportasi Darat Lainnya' is recorded as status_mapping MATCH_LANGSUNG with pp28_sources=['52219'] — a bare-digit join. The BPS crosswalk carries a same-digit-collision signal for 52219 shaped as a SPLIT (the 2020 code divides across multiple 2025 destinations), which a bare-digit join does not account for. Its served per_skala (1 row) cites PP 28/2025 source 52219, but that row is not retrievable from the pinned PP28 corpus (21 lampiran files, 11,208 pages) as hunted. per_skala detached; the licensing regime for this scope is not retrievable from the pinned sources as hunted.",
+      "whatYouNeed": "This code's 2025 classification may only cover part of what the equivalent 2020 code used to include. The licensing rows shown here earlier were carried over by code number alone and cited a source we could not verify, so they have been removed from this page; the correct licensing is not yet reliably defined in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "52232",
+      "flavor": "payload_cross_contamination",
+      "judul": "Jasa Pelayanan Navigasi Penerbangan",
+      "data_note": "KBLI 2025 code 52232 'Jasa Pelayanan Navigasi Penerbangan' (flight navigation services) is a clean ONE_TO_ONE continuation of KBLI-2020 code 52232 (status_mapping MATCH_LANGSUNG). Its served per_skala persyaratan text, however, is a PORT development proposal ('rencana kegiatan kepelabuhanan') — a maritime-port planning requirement, not an aviation-navigation one; conductor eye-verified 2026-07-18. In addition, the cited PP 28/2025 source row for 52232 is not retrievable from the pinned PP28 corpus (21 lampiran files, 11,208 pages) as hunted. per_skala detached; the licensing regime for flight navigation services is not retrievable from the pinned sources as hunted.",
+      "whatYouNeed": "This code covers flight navigation services. The licensing rows shown here earlier demanded a maritime port development plan — a requirement belonging to port operations, not aviation — and cited a source we could not verify, so they have been removed from this page; the correct licensing is not yet reliably defined in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "52239",
+      "flavor": "mapping_metadata_false",
+      "judul": "Aktivitas Jasa Terkait Angkutan Udara Lainnya",
+      "data_note": "KBLI 2025 code 52239 'Aktivitas Jasa Terkait Angkutan Udara Lainnya' carries pp28_sources=['96990'] — a bizarre foreign-sector ancestry claim ('96990' is a generic/other-services code far outside the air-transport division). The BPS crosswalk truth for this code is 52296->52239 within the same transport-services family, not 96990 — the recorded mapping metadata is false. The served per_skala (1 row) is sourced via this false pointer; per_skala detached. This finding flags the pp28_sources metadata as false; the field itself is left untouched by this compiler (audit trail, rule: KEEP pp28_sources unchanged) — the licensing regime for this code is not retrievable from the pinned sources under the correct ancestry.",
+      "whatYouNeed": "This code covers other air-transport-related services. The regulatory source pointer recorded for this code's licensing rows was itself found to be a mismatched cross-sector reference, so the licensing rows have been removed from this page; the correct licensing for this code is not yet reliably defined in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "52299",
+      "flavor": "source_absent_in_vault",
+      "judul": "Aktivitas Penunjang Angkutan Lainnya YTDL",
+      "data_note": "KBLI 2025 code 52299 'Aktivitas Penunjang Angkutan Lainnya YTDL' is recorded as status_mapping MATCH_LANGSUNG with pp28_sources=['52299'] — a single-ancestor claim. The BPS crosswalk shows a compound ancestry [52299 + 90023] for this code, not a single ancestor. Its served per_skala (1 row) cites PP 28/2025 source 52299, but that row is not retrievable from the pinned PP28 corpus (21 lampiran files, 11,208 pages) as hunted. per_skala detached; the licensing regime for this compound scope is not retrievable from the pinned sources as hunted.",
+      "whatYouNeed": "This code's 2025 scope draws on more than one prior classification, not a single direct continuation. The licensing rows shown here earlier cited a regulatory source we could not verify in the official document set, so they have been removed from this page pending re-verification; the correct licensing is not yet reliably confirmed in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    },
+    {
+      "code": "59131",
+      "flavor": "source_absent_in_vault",
+      "judul": "Aktivitas Distribusi Film, Video, dan Program Televisi oleh Pemerintah",
+      "data_note": "KBLI 2025 code 59131 'Aktivitas Distribusi Film, Video, dan Program Televisi oleh Pemerintah' is a clean ONE_TO_ONE continuation of KBLI-2020 code 59131 (status_mapping MATCH_LANGSUNG — the crosswalk itself is not in dispute). Its served per_skala (1 row) cites PP 28/2025 source 59131, but that row is not retrievable from the pinned PP28 corpus (21 lampiran files, 11,208 pages) as hunted. per_skala detached; no claim is made about what the correct regime for this activity is — only that the cited source cannot be verified from the pinned corpus.",
+      "whatYouNeed": "This code covers government film/video/TV-program distribution, unchanged from the previous classification. The licensing rows shown here earlier cited a regulatory source we could not verify in the official document set, so they have been removed from this page pending re-verification; the correct licensing is not yet reliably confirmed in our verified sources. Before registering or investing, confirm the current requirements with the Bali Zero team."
+    }
+  ],
+  "_whatYouNeed_doc": "v1 (2026-07-18): each code carries a client-facing honest-gap whatYouNeed REPLACING the stale intel_2026.whatYouNeed derived from the detached rows. No PMA/l4_bali/TKA assertion anywhere (P1-v2 abstain). Wording follows F12: statements speak only about OUR verified sources ('not retrievable from the pinned sources' / 'not yet reliably defined in our verified sources'), never about regulatory absence. Two of these 13 (49296, 50113) ALSO have a record in the separate gold layer (apps/mouth/data/kbli-gold-all.json), which masks intel_2026 on /kbli/<code> — their gold.whatYouNeed is cured to the equivalent honest-gap text in the same PR (49213/50115 precedent, commit 344a928bed), never left to silently continue serving the contaminated licensing on the live page."
+}
