@@ -173,3 +173,42 @@ class TestCandidateWithoutQuoteStillValid:
         )
         assert decision.quotes == ()
         assert decision.candidates[0].product_version_id == product_version_id
+
+
+class TestCandidatesUniqueProductVersionId:
+    """PR1b item 10 (GLM adversarial review): ``candidates`` must have unique
+    ``product_version_id``s — the precondition ``_check_quotes_reference_
+    candidates`` now enforces BEFORE building its lookup dict. Without this,
+    ``{c.product_version_id: c for c in self.candidates}`` silently clobbers
+    a duplicate (last-one-wins), so two candidates for the same product
+    would let the survivor arbitrarily decide any quote-match outcome
+    instead of failing loud on the real defect.
+    """
+
+    def test_two_candidates_same_product_version_id_rejected(self) -> None:
+        product_version_id = uuid.uuid4()
+        first = make_candidate(product_version_id=product_version_id)
+        second = first.model_copy(update={"rank": 2, "score": 5})
+        with pytest.raises(ValidationError, match="unique product_version_id"):
+            M.Decision(
+                **_supported_kwargs(
+                    candidates=[first, second],
+                    quotes=[],
+                )
+            )
+
+    def test_distinct_candidates_are_innocent(self) -> None:
+        first_id = uuid.uuid4()
+        second_id = uuid.uuid4()
+        decision = M.Decision(
+            **_supported_kwargs(
+                candidates=[
+                    make_candidate(product_version_id=first_id),
+                    make_candidate(product_version_id=second_id).model_copy(
+                        update={"rank": 2, "product_code": "E23"}
+                    ),
+                ],
+                quotes=[],
+            )
+        )
+        assert {c.product_version_id for c in decision.candidates} == {first_id, second_id}

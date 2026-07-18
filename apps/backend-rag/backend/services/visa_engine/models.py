@@ -1223,7 +1223,24 @@ class Decision(BaseModel):
         A no-op for every state other than ``SUPPORTED_CANDIDATES``:
         ``_check_state_conditionals`` above already forces
         ``quotes == ()`` for all of them, so this loop never iterates.
+
+        PR1b item 10 (GLM adversarial review): ``candidates`` itself must
+        have unique ``product_version_id``s BEFORE the lookup dict below is
+        built — ``{c.product_version_id: c for c in self.candidates}``
+        silently clobbers any duplicate (last-one-wins), so a Decision with
+        two candidates for the same product would let the *survivor*
+        arbitrarily decide the quote-match outcome instead of failing loud
+        on the real defect (two candidates for one product is itself
+        malformed — ``rank``/``score``/``support_rule_ids`` would all be
+        ambiguous for that product_version_id).
         """
+        candidate_ids = [c.product_version_id for c in self.candidates]
+        if len(set(candidate_ids)) != len(candidate_ids):
+            duplicates = sorted({str(pv) for pv in candidate_ids if candidate_ids.count(pv) > 1})
+            raise ValueError(
+                f"candidates must have unique product_version_id, duplicate(s): {duplicates}"
+            )
+
         candidates_by_id = {c.product_version_id: c for c in self.candidates}
         for quote in self.quotes:
             candidate = candidates_by_id.get(quote.product_version_id)
