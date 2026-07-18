@@ -841,9 +841,19 @@ def _check_fact_literal_kind(
                     spec.kind is FactValueKind.STRING and spec.value_format == "date"
                 )
                 if not ordering_allowed:
+                    # PR1b item 7 (nit Codex on hotfix #2739): this is NOT a
+                    # literal/fact kind mismatch — the literal's own Python
+                    # kind is correct (e.g. `marital_status < "MARRIED"` is a
+                    # STRING literal against a genuinely STRING-kind fact).
+                    # The defect is the OPERATOR: ordering has no legally
+                    # meaningful semantics for this fact's kind/value_format.
+                    # Dedicated code so a rule author isn't misled into
+                    # "fixing" the literal's type when the literal was never
+                    # wrong. Pre-SHADOW (no external consumer of error codes
+                    # yet), so renaming/splitting a code here is safe.
                     errors.append(
                         CompilationError(
-                            code="FACT_LITERAL_KIND_MISMATCH",
+                            code="FACT_ORDERING_UNSUPPORTED",
                             message=(
                                 f"ordering operator {op!r} not valid against fact "
                                 f"{fact.value!r} of kind {spec.kind.value}"

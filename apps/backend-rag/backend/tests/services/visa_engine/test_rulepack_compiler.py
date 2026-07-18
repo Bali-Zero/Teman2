@@ -266,7 +266,10 @@ class TestFactLiteralKindMismatch:
             rules=[rule], products=[product], source_records=[source_record]
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
-        assert any(e.code == "FACT_LITERAL_KIND_MISMATCH" for e in report.errors)
+        # PR1b item 7: the operator is unsupported for this fact's kind, not
+        # a literal/fact kind mismatch — dedicated FACT_ORDERING_UNSUPPORTED
+        # code (was FACT_LITERAL_KIND_MISMATCH pre-PR1b).
+        assert any(e.code == "FACT_ORDERING_UNSUPPORTED" for e in report.errors)
 
 
 class TestUnknownProductReference:
@@ -1487,7 +1490,9 @@ class TestOrderingOpsRestrictedToNumericOrDate:
             rules=[rule], products=[product], source_records=[source_record]
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
-        assert any(e.code == "FACT_LITERAL_KIND_MISMATCH" for e in report.errors)
+        # PR1b item 7: the literal's OWN kind is correct (STRING against a
+        # STRING-kind fact) — the operator is what's unsupported here.
+        assert any(e.code == "FACT_ORDERING_UNSUPPORTED" for e in report.errors)
 
     def test_ordering_against_integer_fact_is_innocent(
         self, source_record: M.SourceRecord
@@ -1507,7 +1512,10 @@ class TestOrderingOpsRestrictedToNumericOrDate:
             rules=[rule], products=[product], source_records=[source_record]
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
-        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+        assert not any(
+            e.code in ("FACT_LITERAL_KIND_MISMATCH", "FACT_ORDERING_UNSUPPORTED")
+            for e in report.errors
+        )
 
     def test_ordering_against_date_fact_is_innocent(self, source_record: M.SourceRecord) -> None:
         product_id = uuid.uuid4()
@@ -1525,7 +1533,10 @@ class TestOrderingOpsRestrictedToNumericOrDate:
             rules=[rule], products=[product], source_records=[source_record]
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
-        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+        assert not any(
+            e.code in ("FACT_LITERAL_KIND_MISMATCH", "FACT_ORDERING_UNSUPPORTED")
+            for e in report.errors
+        )
 
 
 class TestCountryCodeShape:
