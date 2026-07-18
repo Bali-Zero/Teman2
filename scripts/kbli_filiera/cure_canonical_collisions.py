@@ -25,6 +25,22 @@ program's own compilers/ (infra/claude-hooks/data-plane-registry.json, id
 "kbli-filiera") — opening the file inside this script is what is sanctioned;
 hand-editing it via Edit/Write/Bash text tools is not.
 
+Batch A Lot 2 extension (2026-07-18, mapping_metadata_false class, e.g. 47771):
+some spec entries ALSO need a crosswalk-metadata correction alongside the
+detach — a canonical `status_mapping` (and, when it derives from the same false
+narrative, `intel_2026.whatChanged`) that itself asserts a wrong crosswalk
+story (e.g. "MATCH_LANGSUNG"/"direct match" when BPS documents a multi-parent
+merge). Two OPTIONAL spec-entry keys drive this, mirroring the existing
+whatYouNeed pattern (spec-driven, idempotent, never invented ad hoc by this
+script):
+  - status_mapping_correction: new canonical status_mapping value (must already
+    be one of the enum values used elsewhere in the dataset — this script does
+    not validate the enum, the spec author does, same discipline as data_note).
+  - whatChanged_correction: new intel_2026.whatChanged value.
+Both are no-ops when absent from the entry (Fase 1 / Lot 1 specs are
+unaffected). Applied independently of the detach — a record can get a
+metadata-only correction, a detach-only cure, or both in the same apply.
+
 Usage:
   # dry run (default) — prints a per-code diff summary, writes nothing
   python scripts/kbli_filiera/cure_canonical_collisions.py
@@ -96,9 +112,11 @@ class CurePlan:
 
     status:
       "apply"          — record will be mutated: detach (per_skala -> []) and/or the
-                         honest-gap intel_2026.whatYouNeed rewrite (see the flags)
+                         honest-gap intel_2026.whatYouNeed rewrite and/or a
+                         status_mapping / whatChanged metadata correction (see the flags)
       "already-cured"  — detach already done (per_skala == []) AND whatYouNeed already
-                         matches the spec (or spec supplies none): idempotent no-op
+                         matches the spec (or spec supplies none) AND any requested
+                         metadata correction already matches: idempotent no-op
       "ambiguous-skip" — per_skala == [] but NO disputed_key: an unrecognised prior
                          state — refuse to touch the record at all, skip
       "missing"        — code not found in canonical at all
@@ -115,6 +133,8 @@ class CurePlan:
         data_note: str = "",
         needs_detach: bool = False,
         needs_whatyouneed: bool = False,
+        needs_status_mapping: bool = False,
+        needs_whatchanged: bool = False,
     ) -> None:
         self.code = code
         self.status = status
@@ -124,6 +144,8 @@ class CurePlan:
         self.data_note = data_note
         self.needs_detach = needs_detach
         self.needs_whatyouneed = needs_whatyouneed
+        self.needs_status_mapping = needs_status_mapping
+        self.needs_whatchanged = needs_whatchanged
 
     def describe(self) -> str:
         note_preview = (self.data_note[:80] + "…") if len(self.data_note) > 80 else self.data_note
@@ -144,12 +166,21 @@ class CurePlan:
             )
         if self.needs_whatyouneed:
             actions.append("intel_2026.whatYouNeed -> honest-gap")
+        if self.needs_status_mapping:
+            actions.append("status_mapping -> metadata-corrected")
+        if self.needs_whatchanged:
+            actions.append("intel_2026.whatChanged -> metadata-corrected")
         return f"{self.code}: {' | '.join(actions)} | _data_note: {note_preview!r}"
 
 
 def _current_whatyouneed(record: dict[str, Any]) -> Any:
     intel = record.get("intel_2026")
     return intel.get("whatYouNeed") if isinstance(intel, dict) else None
+
+
+def _current_whatchanged(record: dict[str, Any]) -> Any:
+    intel = record.get("intel_2026")
+    return intel.get("whatChanged") if isinstance(intel, dict) else None
 
 
 def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) -> CurePlan:
@@ -167,7 +198,15 @@ def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) 
     target_wyn = entry.get("whatYouNeed")
     needs_whatyouneed = bool(target_wyn) and _current_whatyouneed(record) != target_wyn
 
-    if not needs_detach and not needs_whatyouneed:
+    target_status_mapping = entry.get("status_mapping_correction")
+    needs_status_mapping = (
+        bool(target_status_mapping) and record.get("status_mapping") != target_status_mapping
+    )
+
+    target_whatchanged = entry.get("whatChanged_correction")
+    needs_whatchanged = bool(target_whatchanged) and _current_whatchanged(record) != target_whatchanged
+
+    if not (needs_detach or needs_whatyouneed or needs_status_mapping or needs_whatchanged):
         return CurePlan(code, "already-cured", disputed_key=disputed_key)
 
     row_count = len(current_per_skala) if isinstance(current_per_skala, list) else 0
@@ -180,6 +219,8 @@ def plan_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str) 
         data_note=entry["data_note"],
         needs_detach=needs_detach,
         needs_whatyouneed=needs_whatyouneed,
+        needs_status_mapping=needs_status_mapping,
+        needs_whatchanged=needs_whatchanged,
     )
 
 
@@ -192,7 +233,11 @@ def apply_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str)
        so a re-run never clobbers the previously-preserved disputed block with [].
     2. WHATYOUNEED — when the spec supplies `whatYouNeed`, (re)write
        intel_2026.whatYouNeed to the honest-gap text (existing sub-key, order preserved).
-    3. _data_note is (re)set at the end (same string -> idempotent).
+    3. METADATA CORRECTION (Lot 2 extension) — when the spec supplies
+       `status_mapping_correction` and/or `whatChanged_correction`, (re)write those
+       fields verbatim from the spec. Independent of (1): a record may get a
+       metadata-only correction with no detach, or both together.
+    4. _data_note is (re)set at the end (same string -> idempotent).
     """
     current_per_skala = record.get("per_skala")
 
@@ -227,6 +272,21 @@ def apply_cure(record: dict[str, Any], entry: dict[str, Any], disputed_key: str)
             )
         intel = dict(intel)
         intel["whatYouNeed"] = target_wyn
+        new_record["intel_2026"] = intel
+
+    target_status_mapping = entry.get("status_mapping_correction")
+    if target_status_mapping:
+        new_record["status_mapping"] = target_status_mapping
+
+    target_whatchanged = entry.get("whatChanged_correction")
+    if target_whatchanged:
+        intel = new_record.get("intel_2026")
+        if not isinstance(intel, dict):
+            raise CureError(
+                f"{entry['code']}: cannot set whatChanged — intel_2026 is missing or not a dict"
+            )
+        intel = dict(intel)
+        intel["whatChanged"] = target_whatchanged
         new_record["intel_2026"] = intel
 
     new_record["_data_note"] = entry["data_note"]
