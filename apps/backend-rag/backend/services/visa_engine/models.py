@@ -1159,3 +1159,37 @@ class Decision(BaseModel):
                 raise ValueError("state=TEMPORARILY_UNAVAILABLE requires a non-null outage")
 
         return self
+
+    @model_validator(mode="after")
+    def _check_quotes_reference_candidates(self) -> Decision:
+        """PR1b port from design B (F6 — quote<->candidate integrity).
+
+        Every ``PriceQuote`` in ``self.quotes`` must reference a real
+        ``Candidate`` in ``self.candidates``: membership by
+        ``product_version_id`` AND a matching ``product_code``. Without this,
+        a quote could silently drift onto the wrong product (same
+        ``product_version_id`` typo'd into a different candidate's slot, or a
+        ``product_code`` that disagrees with the candidate it claims to
+        price) and nothing downstream would ever notice — ``quotes`` and
+        ``candidates`` are two independently-constructed arrays with no
+        structural link enforced elsewhere.
+
+        A no-op for every state other than ``SUPPORTED_CANDIDATES``:
+        ``_check_state_conditionals`` above already forces
+        ``quotes == ()`` for all of them, so this loop never iterates.
+        """
+        candidates_by_id = {c.product_version_id: c for c in self.candidates}
+        for quote in self.quotes:
+            candidate = candidates_by_id.get(quote.product_version_id)
+            if candidate is None:
+                raise ValueError(
+                    f"quote {quote.quote_id} references product_version_id "
+                    f"{quote.product_version_id} with no matching candidate"
+                )
+            if candidate.product_code != quote.product_code:
+                raise ValueError(
+                    f"quote {quote.quote_id} product_code {quote.product_code!r} does not "
+                    f"match candidate product_code {candidate.product_code!r} for "
+                    f"product_version_id {quote.product_version_id}"
+                )
+        return self
