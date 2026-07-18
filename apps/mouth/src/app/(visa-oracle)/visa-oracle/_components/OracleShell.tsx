@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { useReducedMotion } from "framer-motion";
 import { useOracleFlow } from "../_lib/flow";
 import { QUESTIONS, getLane } from "../_lib/tree";
 import { translate, type I18nKey } from "../_lib/i18n";
@@ -54,6 +56,40 @@ export function OracleShell() {
     setLanguage,
   } = flow;
   const language = state.language;
+  const reducedMotion = useReducedMotion();
+
+  /**
+   * "Oracle deals your card" (design doc §3 interaction #4): the ONLY call
+   * site that ever moves confirmation → verdict. Where the browser
+   * supports the View Transitions API and motion isn't reduced, the
+   * `advance()` dispatch (and the DOM update it causes) runs inside
+   * `document.startViewTransition()` — `flushSync` forces React to apply
+   * the resulting re-render synchronously inside that callback, which the
+   * API requires to capture an accurate "after" snapshot. LivingTree's
+   * "verdict" trunk row and VerdictReveal's hero card share a
+   * `view-transition-name`, so the browser morphs geometry between them.
+   * Every other environment (no API support, or `prefers-reduced-motion`)
+   * falls through to a plain `advance()` — an instant swap, with
+   * VerdictReveal's own spring reveal (unaffected by any of this) as the
+   * craft fallback either way.
+   */
+  const revealVerdict = useCallback(() => {
+    const startViewTransition =
+      typeof document !== "undefined"
+        ? (
+            document as Document & {
+              startViewTransition?: (callback: () => void) => unknown;
+            }
+          ).startViewTransition
+        : undefined;
+    if (reducedMotion || !startViewTransition) {
+      advance();
+      return;
+    }
+    startViewTransition.call(document, () => {
+      flushSync(() => advance());
+    });
+  }, [advance, reducedMotion]);
 
   useEffect(() => {
     if (current.kind === "verdict" && frozenToday === null) {
@@ -91,6 +127,7 @@ export function OracleShell() {
               language={language}
               current={current}
               facts={state.facts}
+              onEditQuestion={edit}
             />
           </div>
 
@@ -152,7 +189,7 @@ export function OracleShell() {
                 assumptions={assumptions}
                 pathsRemaining={result.pathsRemaining}
                 onEdit={edit}
-                onConfirm={advance}
+                onConfirm={revealVerdict}
               />
             )}
 
@@ -175,6 +212,7 @@ export function OracleShell() {
                     confirmation screen (to tweak one answer without
                     re-answering everything) are one click away. */}
                 <div
+                  className="oracle-no-print"
                   style={{
                     display: "flex",
                     flexWrap: "wrap",

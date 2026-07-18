@@ -1103,6 +1103,121 @@ func test_externalManualCompletenessGateGuiltInnocence() {
     T.eq(external?.slideCount, 0, "INNOCENCE: slideCount reflects the declared 0")
 }
 
+// MARK: - Gate-exclusion delta-emission (2026-07-18 wound: ~29 lines re-emitted to
+// wr2control.err on EVERY scanCarousels refresh, ~30MB/day). Swaps WarRoom.exclusionEmit
+// (the injectable test seam) for an array-recorder so the stderr WRITE is assertable
+// deterministically, distinct from excludedIncompleteCount (the UI count), which must
+// NEVER be affected by delta-emission dedup.
+
+func test_gateExclusionDeltaEmission() {
+    T.suite("gate-exclusion delta-emission — stderr write deduped across scans, count never deduped (2026-07-18)")
+
+    let originalEmit = WarRoom.exclusionEmit
+    defer { WarRoom.exclusionEmit = originalEmit }
+    var emitted: [String] = []
+    WarRoom.exclusionEmit = { emitted.append($0) }
+
+    // --- GUILT (dedup) + INNOCENCE (count unchanged) ---------------------------------
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        _ = makeCarousel(in: root, slug: "delta-dedup-guilt", slides: ["1.png", "2.png"], declareSlides: .absent)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "GUILT scan 1: steady-state exclusion is emitted exactly once")
+        T.eq(WarRoom.excludedIncompleteCount, 1, "INNOCENCE scan 1: count reflects the 1 excluded dir")
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 0, "GUILT scan 2: the SAME steady-state exclusion emits ZERO lines on the next scan")
+        T.eq(WarRoom.excludedIncompleteCount, 1,
+             "INNOCENCE scan 2: excludedIncompleteCount STILL counts it — delta-emission dedupes the WRITE, never the count")
+    }
+
+    // --- NEW mid-run: excluded on scan 2 but not scan 1 -------------------------------
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        _ = makeCarousel(in: root, slug: "delta-new-midrun", slides: (1...3).map { "\($0).png" })   // complete N-of-N
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 0, "NEW scan 1: complete carousel excludes nothing yet")
+
+        // simulate a mid-render dir losing a slide between the two scans (declared count
+        // stays 3 in the already-written slides.json — only the disk count drops to 2).
+        let slidesDir = croot.appendingPathComponent("delta-new-midrun/slides", isDirectory: true)
+        try? fm.removeItem(at: slidesDir.appendingPathComponent("3.png"))
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "NEW scan 2: an exclusion appearing for the FIRST time is emitted once")
+    }
+
+    // --- REAPPEAR: excluded scan 1, absent scan 2, excluded scan 3 -------------------
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        let dir = makeCarousel(in: root, slug: "delta-reappear", slides: ["1.png"], declareSlides: .objectSlides(3))
+        // declared=3, disk=1 → excluded (mismatch reason)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "REAPPEAR scan 1: initial exclusion emits once")
+
+        // scan 2: the dir is gone entirely — nothing to exclude, and this ALSO drops the
+        // key from the delta memory (scanCarousels' final-return commit is a scan-scoped
+        // REPLACE of lastLoggedExclusions, not a running union).
+        try? fm.removeItem(at: dir)
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 0, "REAPPEAR scan 2: the dir is absent — nothing excluded, nothing emitted")
+
+        // scan 3: the SAME slug+reason exclusion reappears — since scan 2 dropped it from
+        // memory, it must be treated as new again and logged once more.
+        _ = makeCarousel(in: root, slug: "delta-reappear", slides: ["1.png"], declareSlides: .objectSlides(3))
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "REAPPEAR scan 3: a re-appearing exclusion (absent in between) is logged again")
+    }
+
+    // --- FAILURE-PATH memory: an early-return scan must not wipe the dedup memory ----
+    do {
+        let root = makeFixtureRoot()
+        defer { try? fm.removeItem(at: root) }
+        let croot = root.appendingPathComponent("carousel", isDirectory: true)
+        _ = makeCarousel(in: root, slug: "delta-failure-path-x", slides: ["1.png"], declareSlides: .absent)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "FAILURE-PATH scan A (good): first-time exclusion X emits once")
+
+        // scan B hits the early `guard let entries = ... else { return [] }` failure path —
+        // a nonexistent root can never be listed by contentsOfDirectory.
+        let badRoot = root.appendingPathComponent("does-not-exist-\(UUID().uuidString)", isDirectory: true)
+        emitted.removeAll()
+        let failedScan = WarRoom.scanCarousels(carouselRoot: badRoot, queue: [])
+        T.eq(failedScan.count, 0, "FAILURE-PATH scan B: unreadable root returns an empty carousel list")
+        T.eq(emitted.count, 0, "FAILURE-PATH scan B: the early-return path itself emits nothing (no dirs were scanned)")
+
+        // scan C is a GOOD scan again, on the ORIGINAL root, with a genuinely NEW exclusion
+        // Z added alongside the still-present X.
+        _ = makeCarousel(in: root, slug: "delta-failure-path-z", slides: ["1.png", "2.png"], declareSlides: .absent)
+
+        emitted.removeAll()
+        _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+        T.eq(emitted.count, 1, "FAILURE-PATH scan C: emits ONLY the genuinely-new exclusion Z (does NOT go silent)")
+        T.check(emitted.first?.contains("delta-failure-path-z") == true,
+                "FAILURE-PATH scan C: the one emitted line is Z, not a re-storm of X")
+        T.check(emitted.contains { $0.contains("delta-failure-path-x") } == false,
+                "FAILURE-PATH scan C: X stays silent — the failed scan B did NOT wipe its memory (no re-storm)")
+    }
+}
+
 // MARK: - main
 
 let suites: [() -> Void] = [
@@ -1135,6 +1250,7 @@ let suites: [() -> Void] = [
     test_matchesAnyPhysicalInstagramURL,
     test_scanCarouselsDedupesVirtualEntrySharingURL,
     test_externalManualCompletenessGateGuiltInnocence,
+    test_gateExclusionDeltaEmission,
 ]
 for s in suites { s() }
 exit(T.report())

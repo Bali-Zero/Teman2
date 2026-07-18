@@ -5,10 +5,20 @@ context as high-priority evidence; the LLM still answers the real question
 and the abstain gate still runs downstream (the injection never short-
 circuits the query, unlike the FAQ cache exact-match path).
 
-Two layers of coverage:
-1. `_inject_curated_qa_grounding()` in isolation — the actual new retrieval/
-   formatting/threshold/exception-handling logic.
-2. One process_query_core() wiring test — proves the call site actually
+Domain filter (2026-07-18): the 0.90 raw-cosine gate almost never fired for
+real paraphrased queries (0.46-0.74 cosine vs stored questions). Lowering the
+threshold alone pollutes cross-domain answers (a "register PT PMA" query can
+score >0.58 against a visa Q&A). The fix is DOMAIN-FILTERED injection: only
+inject when the query has a concrete, classified domain, and restrict the
+Qdrant search itself (+ a defensive per-hit re-check) to that domain.
+
+Three layers of coverage:
+1. `_inject_curated_qa_grounding()` in isolation — retrieval/formatting/
+   threshold/domain-gate/exception-handling logic.
+2. Domain-gate guilt + innocence — proves a matching domain injects (with the
+   domain filter sent to search_collection) and a mismatched/general domain
+   never does, even when a same-score foreign-domain hit is present.
+3. One process_query_core() wiring test — proves the call site actually
    flows the injected string into the system prompt's additional_context,
    and that the ReAct loop (and therefore the abstain gate) still executes
    afterwards rather than being bypassed.
@@ -22,6 +32,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from backend.services.rag.agentic import orchestrator_core as orchestrator_core_module
+from backend.services.rag.agentic.entity_extractor import EntityExtractionService
 from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
 from backend.services.tools.definitions import AgentState
 
@@ -65,6 +76,9 @@ def _hit(score: float, answer: str = "curated answer", **meta_overrides) -> dict
     return {"id": "abc", "text": "curated question", "metadata": metadata, "score": score}
 
 
+VISA_ENTITIES = {"domain": "visa"}
+
+
 # ── _inject_curated_qa_grounding() isolated tests ───────────────────────────
 
 
@@ -73,7 +87,10 @@ async def test_no_retriever_returns_empty_string() -> None:
     core = make_core()
     core.retriever = None
 
-    result = await core._inject_curated_qa_grounding("What is the E33 deposit amount?")
+    result = await core._inject_curated_qa_grounding(
+        "What is the E33 deposit amount?",
+        VISA_ENTITIES,
+    )
 
     assert result == ""
 
@@ -87,7 +104,7 @@ async def test_disabled_via_env_returns_empty_string(monkeypatch) -> None:
         search_collection=AsyncMock(return_value=_search_result([_hit(0.95)])),
     )
 
-    result = await core._inject_curated_qa_grounding("query")
+    result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
 
     assert result == ""
     core.retriever.search_collection.assert_not_called()
@@ -105,7 +122,10 @@ async def test_hit_above_threshold_is_prepended_with_source_tag() -> None:
     )
 
     with patch("backend.app.metrics.curated_qa_injections_total") as mock_counter:
-        result = await core._inject_curated_qa_grounding("What is the E33 deposit amount?")
+        result = await core._inject_curated_qa_grounding(
+            "What is the E33 deposit amount?",
+            VISA_ENTITIES,
+        )
 
     assert "The E33 deposit is USD 130,000." in result
     assert "E33-DEFINITIVE-CHATKB-2026-07-15.md#Q1" in result
@@ -117,6 +137,26 @@ async def test_hit_above_threshold_is_prepended_with_source_tag() -> None:
     _, kwargs = core.retriever.search_collection.call_args
     assert kwargs["collection_name"] == "curated_qa"
     assert kwargs["limit"] == 2
+    assert kwargs["filter"] == {"must": [{"key": "domain", "match": {"value": "visa"}}]}
+
+
+@pytest.mark.asyncio
+async def test_paraphrased_query_score_now_qualifies_under_new_threshold() -> None:
+    """GUILT — the whole point of the fix: a real paraphrased-query cosine
+    score (0.46-0.74 range, per the prod measurement) must now clear the
+    calibrated 0.58 threshold, where it would NOT have cleared the old 0.90
+    gate."""
+    core = make_core()
+    core.retriever = SimpleNamespace(
+        search_collection=AsyncMock(
+            return_value=_search_result([_hit(0.65, answer="Paraphrase-matched answer.")]),
+        ),
+    )
+
+    with patch("backend.app.metrics.curated_qa_injections_total"):
+        result = await core._inject_curated_qa_grounding("paraphrased visa question", VISA_ENTITIES)
+
+    assert "Paraphrase-matched answer." in result
 
 
 @pytest.mark.asyncio
@@ -126,7 +166,7 @@ async def test_hit_below_threshold_is_filtered_out() -> None:
         search_collection=AsyncMock(return_value=_search_result([_hit(0.42)])),
     )
 
-    result = await core._inject_curated_qa_grounding("unrelated small talk")
+    result = await core._inject_curated_qa_grounding("unrelated small talk", VISA_ENTITIES)
 
     assert result == ""
 
@@ -146,7 +186,7 @@ async def test_multiple_hits_above_threshold_all_included() -> None:
     )
 
     with patch("backend.app.metrics.curated_qa_injections_total"):
-        result = await core._inject_curated_qa_grounding("query")
+        result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
 
     assert "Answer one." in result
     assert "Answer two." in result
@@ -158,7 +198,7 @@ async def test_no_hits_returns_empty_string_without_metrics_increment() -> None:
     core.retriever = SimpleNamespace(search_collection=AsyncMock(return_value=_search_result([])))
 
     with patch("backend.app.metrics.curated_qa_injections_total") as mock_counter:
-        result = await core._inject_curated_qa_grounding("query")
+        result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
 
     assert result == ""
     mock_counter.inc.assert_not_called()
@@ -173,7 +213,7 @@ async def test_exception_in_search_is_caught_and_returns_empty_string() -> None:
 
     # Must not raise — defensive per spec ("any exception in this step logs
     # and continues without injection").
-    result = await core._inject_curated_qa_grounding("query")
+    result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
 
     assert result == ""
 
@@ -189,7 +229,7 @@ async def test_non_dict_search_result_is_treated_as_miss() -> None:
         search_collection=AsyncMock(return_value="not-a-dict"),
     )
 
-    result = await core._inject_curated_qa_grounding("query")
+    result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
 
     assert result == ""
 
@@ -203,7 +243,103 @@ async def test_hit_with_missing_answer_metadata_is_skipped() -> None:
         search_collection=AsyncMock(return_value=_search_result([hit])),
     )
 
-    result = await core._inject_curated_qa_grounding("query")
+    result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
+
+    assert result == ""
+
+
+@pytest.mark.asyncio
+async def test_threshold_env_override_is_respected(monkeypatch) -> None:
+    """The module-level threshold constant is env-configurable
+    (CURATED_QA_SCORE_THRESHOLD). Simulate an operator raising it back up and
+    verify a hit that would have qualified under the default 0.58 no longer
+    does."""
+    monkeypatch.setattr(orchestrator_core_module, "_CURATED_QA_SCORE_THRESHOLD", 0.99)
+    core = make_core()
+    core.retriever = SimpleNamespace(
+        search_collection=AsyncMock(return_value=_search_result([_hit(0.65)])),
+    )
+
+    result = await core._inject_curated_qa_grounding("query", VISA_ENTITIES)
+
+    assert result == ""
+
+
+# ── Domain gate: guilt + innocence ──────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_missing_domain_returns_empty_string_and_never_calls_search() -> None:
+    """INNOCENCE — no extracted_entities at all (or a domain-less dict) must
+    short-circuit before ever calling search_collection."""
+    core = make_core()
+    search_mock = AsyncMock(return_value=_search_result([_hit(0.99)]))
+    core.retriever = SimpleNamespace(search_collection=search_mock)
+
+    result = await core._inject_curated_qa_grounding("some query", None)
+
+    assert result == ""
+    search_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_general_domain_returns_empty_string_and_never_calls_search() -> None:
+    """INNOCENCE — the classifier's general/fallback sentinel
+    (EntityExtractionService.DOMAIN_GENERAL == "general") must short-circuit
+    before ever calling search_collection, exactly like a missing domain."""
+    core = make_core()
+    search_mock = AsyncMock(return_value=_search_result([_hit(0.99)]))
+    core.retriever = SimpleNamespace(search_collection=search_mock)
+
+    result = await core._inject_curated_qa_grounding(
+        "some general small-talk query",
+        {"domain": EntityExtractionService.DOMAIN_GENERAL},
+    )
+
+    assert result == ""
+    search_mock.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_concrete_domain_query_sends_matching_qdrant_filter() -> None:
+    """GUILT — a concrete non-general domain (e.g. company) DOES call search,
+    with a Qdrant filter scoped to that exact domain."""
+    core = make_core()
+    search_mock = AsyncMock(return_value=_search_result([]))
+    core.retriever = SimpleNamespace(search_collection=search_mock)
+
+    result = await core._inject_curated_qa_grounding(
+        "how do I register a PT PMA company",
+        {"domain": "company"},
+    )
+
+    assert result == ""  # no company-domain curated_qa content exists yet
+    search_mock.assert_awaited_once()
+    _, kwargs = search_mock.call_args
+    assert kwargs["filter"] == {"must": [{"key": "domain", "match": {"value": "company"}}]}
+
+
+@pytest.mark.asyncio
+async def test_company_domain_query_never_injects_a_leaked_visa_hit() -> None:
+    """INNOCENCE — the core anti-pollution guarantee: a company-domain query
+    must return "" even if the search layer (Qdrant misconfig, or — as
+    simulated here — a permissive test double) leaks back a high-scoring
+    VISA-tagged hit despite the domain=company filter that was requested.
+    The orchestrator's own per-hit domain re-check is the second line of
+    defense (never trust a single signal — scar family #3)."""
+    core = make_core()
+    core.retriever = SimpleNamespace(
+        search_collection=AsyncMock(
+            return_value=_search_result(
+                [_hit(0.95, answer="A visa-domain answer that must never leak.")],
+            ),
+        ),
+    )
+
+    result = await core._inject_curated_qa_grounding(
+        "how do I register a PT PMA company",
+        {"domain": "company"},
+    )
 
     assert result == ""
 
@@ -234,7 +370,10 @@ def wired_core() -> OrchestratorCore:
         patch("backend.services.rag.agentic.orchestrator_core.KGAutoExpansion"),
     ):
         entity_ext = MagicMock()
-        entity_ext.extract_entities = AsyncMock(return_value={})
+        # Domain must be concrete (non-general) for the injection call site to
+        # reach the retriever — see the domain-gate tests above for the
+        # general/missing-domain short-circuit itself.
+        entity_ext.extract_entities = AsyncMock(return_value={"domain": "visa"})
 
         core = OrchestratorCore(
             llm_gateway=MagicMock(),
@@ -311,6 +450,34 @@ async def test_process_query_core_omits_curated_context_on_miss(
 
     _, kwargs = core.prompt_builder.build_system_prompt.call_args
     assert "CURATED" not in kwargs["additional_context"]
+
+
+@pytest.mark.asyncio
+async def test_process_query_core_omits_curated_context_on_general_domain(
+    wired_core: OrchestratorCore,
+) -> None:
+    """INNOCENCE end-to-end: even with a hit that would qualify on score,
+    a general-domain classification must keep the wiring silent."""
+    core = wired_core
+    core.entity_extractor.extract_entities = AsyncMock(
+        return_value={"domain": EntityExtractionService.DOMAIN_GENERAL},
+    )
+    search_mock = AsyncMock(
+        return_value=_search_result([_hit(0.95, answer="Should never appear.")]),
+    )
+    core.retriever = SimpleNamespace(search_collection=search_mock)
+
+    with pytest.raises(_StopAfterPromptBuild):
+        await core.process_query_core(
+            query="unrelated small talk",
+            user_id="u1",
+            conversation_history=None,
+            start_time=0.0,
+        )
+
+    _, kwargs = core.prompt_builder.build_system_prompt.call_args
+    assert "Should never appear." not in kwargs["additional_context"]
+    search_mock.assert_not_called()
 
 
 @pytest.mark.asyncio
