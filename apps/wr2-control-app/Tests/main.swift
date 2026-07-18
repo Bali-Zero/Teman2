@@ -434,6 +434,87 @@ func test_completeOrNothingGate() {
          "excludedIncompleteCount counts exactly the 2 unpublished exclusions (mismatch + undeclarable)")
 }
 
+func test_gateExclusionDeltaLogging() {
+    T.suite("gate exclusion delta-logging (scar #2 — throttle stderr, keep count exact)")
+
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+
+    // Two unpublished exclusions: a count mismatch and an undeclarable dir.
+    let mismatchDir = makeCarousel(in: root, slug: "delta-mismatch", slides: (1...8).map { "\($0).png" },
+                                    declareSlides: .objectSlides(9))
+    _ = makeCarousel(in: root, slug: "delta-undeclarable", slides: ["1.png", "2.png"], declareSlides: .absent)
+
+    // Scan 1 — first observation: both exclusions are NEW, so both emit to stderr.
+    _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+    T.eq(WarRoom.excludedIncompleteCount, 2, "scan 1: both exclusions counted")
+    T.eq(WarRoom.gateExclusionLogEmits, 2, "scan 1: first observation emits both (new exclusions)")
+
+    // Scan 2 — identical fixture: INNOCENCE. Count stays exact (badge still right) but
+    // NOTHING is re-emitted — this is the ~30MB/day fix.
+    _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+    T.eq(WarRoom.excludedIncompleteCount, 2, "scan 2: count stays exact across an unchanged re-scan")
+    T.eq(WarRoom.gateExclusionLogEmits, 0, "innocence: an unchanged exclusion does NOT re-emit next cycle")
+
+    // Scan 3 — mutate one exclusion's REASON (declared 9 → 10 ⇒ 'disk=8 declared=10'):
+    // GUILT. A changed reason must break the throttle; the unchanged one stays quiet.
+    let tenSlides: [String: Any] = ["slides": (0..<10).map { ["index": $0 + 1] }]
+    try? JSONSerialization.data(withJSONObject: tenSlides)
+        .write(to: mismatchDir.appendingPathComponent("slides.json"))
+    _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+    T.eq(WarRoom.excludedIncompleteCount, 2, "scan 3: still 2 exclusions")
+    T.eq(WarRoom.gateExclusionLogEmits, 1, "guilt: a CHANGED exclusion reason re-emits (only the changed one)")
+
+    // Scan 4 — TRANSIENT root-read failure (nonexistent root): returns [] and must NOT
+    // touch the dedup baseline (Codex red-team CADE 2026-07-18). Counters still reset to 0.
+    let deadRoot = root.appendingPathComponent("carousel-nonexistent", isDirectory: true)
+    let survivors = WarRoom.scanCarousels(carouselRoot: deadRoot, queue: [])
+    T.eq(survivors.count, 0, "scan 4: unreadable root returns empty")
+    T.eq(WarRoom.excludedIncompleteCount, 0, "scan 4: failed scan resets the badge count to 0")
+    T.eq(WarRoom.gateExclusionLogEmits, 0, "scan 4: failed scan emits nothing")
+
+    // Scan 5 — good root again, fixture UNCHANGED since scan 3: the baseline survived the
+    // flap, so nothing re-emits. Pre-fix this printed a full duplicate burst (2 emits).
+    _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+    T.eq(WarRoom.excludedIncompleteCount, 2, "scan 5: count exact again after recovery")
+    T.eq(WarRoom.gateExclusionLogEmits, 0,
+         "guilt (Codex CADE): after a transient root-read failure, unchanged exclusions must NOT re-emit — the dedup baseline survives the flap")
+}
+
+func test_gateExclusionDeltaFixedThenBrokenAgain() {
+    T.suite("gate exclusion delta-logging — a carousel FIXED then BROKEN AGAIN re-emits (Codex #1 coverage)")
+
+    let root = makeFixtureRoot()
+    defer { try? fm.removeItem(at: root) }
+    let croot = root.appendingPathComponent("carousel", isDirectory: true)
+    let slidesDir = root.appendingPathComponent("carousel/flapper/slides", isDirectory: true)
+
+    // declared=3, start incomplete (disk=2) → excluded.
+    _ = makeCarousel(in: root, slug: "flapper", slides: ["1.png", "2.png"], declareSlides: .objectSlides(3))
+
+    // Scan 1 — incomplete: NEW exclusion → emits.
+    _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+    T.eq(WarRoom.excludedIncompleteCount, 1, "scan 1: incomplete flapper excluded")
+    T.eq(WarRoom.gateExclusionLogEmits, 1, "scan 1: new exclusion emits")
+
+    // Scan 2 — FIX (add 3rd png ⇒ disk=3=declared): now complete, drops out of the baseline.
+    try? fm.copyItem(at: slidesDir.appendingPathComponent("1.png"),
+                     to: slidesDir.appendingPathComponent("3.png"))
+    let survivors2 = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+    T.check(survivors2.contains(where: { $0.slug == "flapper" }), "scan 2: fixed flapper is now listed")
+    T.eq(WarRoom.excludedIncompleteCount, 0, "scan 2: no exclusions after fix")
+    T.eq(WarRoom.gateExclusionLogEmits, 0, "scan 2: nothing to emit after fix")
+
+    // Scan 3 — BREAK AGAIN (remove the 3rd png ⇒ disk=2): excluded again. Because scan 2
+    // dropped it from the baseline, this must RE-EMIT — a regressed carousel is never
+    // silently swallowed (scar #2, esiste≠armato).
+    try? fm.removeItem(at: slidesDir.appendingPathComponent("3.png"))
+    _ = WarRoom.scanCarousels(carouselRoot: croot, queue: [])
+    T.eq(WarRoom.excludedIncompleteCount, 1, "scan 3: broken-again flapper excluded")
+    T.eq(WarRoom.gateExclusionLogEmits, 1, "guilt: fixed→broken-again re-emits (regression stays observable)")
+}
+
 // MARK: - Codex red-team hardening (2026-07-16, findings #1/#2/#3/#6 on the A2 gate)
 
 func test_matchCarouselPrecedenceOrder() {
@@ -1118,6 +1199,8 @@ let suites: [() -> Void] = [
     test_completeOrNothingGate,
     test_matchCarouselPrecedenceOrder,
     test_completeOrNothingGateHardening,
+    test_gateExclusionDeltaLogging,
+    test_gateExclusionDeltaFixedThenBrokenAgain,
     test_publishEligibilityCrossFinding,
     test_isPublishedIndependentFieldCheck,
     test_stateWiredThroughScanCarousels,

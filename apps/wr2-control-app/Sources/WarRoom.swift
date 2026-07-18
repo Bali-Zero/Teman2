@@ -125,9 +125,32 @@ enum WarRoom {
     /// GalleryView can show "N nascosti" next to the existing carousel count.
     private(set) static var excludedIncompleteCount: Int = 0
 
+    /// Delta-logging state for `logGateExclusion` (scar #2, esiste≠armato — noise that
+    /// drowns real signal). The pipeline re-scans every ~10s; re-emitting the ~29 identical
+    /// "excluded '<slug>'" stderr lines every cycle grew `wr2control.err` ~30MB/day. These
+    /// two maps let the gate emit a line ONLY when a slug's exclusion is NEW or its reason
+    /// CHANGED vs the immediately-previous scan — un-exclude→re-exclude re-emits (a slug
+    /// absent from `thisScanExclusions` this cycle is gone from `lastScanExclusions` next
+    /// cycle), so a carousel that breaks AGAIN is never silently swallowed.
+    private static var lastScanExclusions: [String: String] = [:]
+    private static var thisScanExclusions: [String: String] = [:]
+    /// Count of exclusion lines ACTUALLY written to stderr on the most recent scan (delta
+    /// survivors), reset per scan alongside excludedIncompleteCount. Test-only surface that
+    /// makes the throttle observable without capturing stderr: on a steady-state re-scan
+    /// this is 0 while excludedIncompleteCount stays exact.
+    private(set) static var gateExclusionLogEmits: Int = 0
+
     private static func logGateExclusion(slug: String, reason: String) {
-        FileHandle.standardError.write("wr2-gate: excluded '\(slug)' — \(reason)\n".data(using: .utf8)!)
+        // Counter ALWAYS advances — the "N nascosti" gallery badge must stay exact; only the
+        // stderr WRITE is throttled (scar #2), never the count.
         excludedIncompleteCount += 1
+        thisScanExclusions[slug] = reason
+        // Suppress only an exclusion identical to the previous scan's; a NEW slug or a
+        // CHANGED reason still emits, so exclusion stays observable (first occurrence +
+        // every change is logged).
+        if lastScanExclusions[slug] == reason { return }
+        gateExclusionLogEmits += 1
+        FileHandle.standardError.write("wr2-gate: excluded '\(slug)' — \(reason)\n".data(using: .utf8)!)
     }
 
     /// Resolve the DECLARED slide count for an on-disk carousel directory — the number the
@@ -302,8 +325,10 @@ enum WarRoom {
         // Reset BEFORE any I/O, on every exit path including an early return below — a
         // stale nonzero count surviving a failed/empty scan would show "N nascosti" over
         // a gallery that simply failed to read, its own silent-lie (Codex red-team
-        // finding #5, 2026-07-16).
+        // finding #5, 2026-07-16). `gateExclusionLogEmits` (stderr lines written this scan)
+        // shares that discipline — 0 on a failed scan.
         excludedIncompleteCount = 0
+        gateExclusionLogEmits = 0
 
         let fm = FileManager.default
         let croot = root ?? carouselRoot()
@@ -311,6 +336,16 @@ enum WarRoom {
             at: croot,
             includingPropertiesForKeys: [.contentModificationDateKey, .isDirectoryKey],
             options: [.skipsHiddenFiles]) else { return [] }
+
+        // Delta-logging baseline rotation (scar #2 noise reduction) — done ONLY here, AFTER
+        // the unreadable-root guard, NEVER before it (Codex red-team CADE 2026-07-18). A
+        // transient root-read failure must not overwrite `lastScanExclusions`: if it did,
+        // the next successful scan would see an empty baseline and re-emit EVERY unchanged
+        // exclusion, so one I/O flap recreates the ~30MB/day log storm (cross-family #8
+        // network-flap). On early return the maps are left untouched, so the last
+        // SUCCESSFUL scan's snapshot survives the flap and becomes the baseline here.
+        lastScanExclusions = thisScanExclusions
+        thisScanExclusions = [:]
 
         // Every physical (non-archived) directory slug on disk, gathered BEFORE gating
         // or queue-joining — two downstream steps need the FULL set, not just
