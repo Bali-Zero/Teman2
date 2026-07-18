@@ -221,8 +221,10 @@ const CALIBRATION = {
     "code_collision",
     "illegitimate_inheritance",
     "wrong_authority_level",
-    "phantom_source_pointer",
     "source_absent_in_vault",
+    "payload_cross_contamination",
+    "unresolvable_source_pointer",
+    "mapping_metadata_false",
   ],
   m4_tokens_per_dossier_ceiling: 400000,
 };
@@ -267,8 +269,10 @@ const REFUTATION_CATEGORIES = [
   "code_collision",
   "illegitimate_inheritance",
   "wrong_authority_level",
-  "phantom_source_pointer",
   "source_absent_in_vault",
+  "payload_cross_contamination",
+  "unresolvable_source_pointer",
+  "mapping_metadata_false",
 ];
 
 const D1_SCHEMA = {
@@ -492,7 +496,8 @@ function d1Prompt(code) {
     `of the three out-of-scope facets above blocks your determination, set abstain={needed:true, ` +
     `facet:"<name>"} instead of guessing. If needs_quarantine=true, also set problem_category to the ` +
     `ONE closed-registry label (code_collision / illegitimate_inheritance / wrong_authority_level / ` +
-    `phantom_source_pointer / source_absent_in_vault) that best fits your reason — or the literal ` +
+    `source_absent_in_vault / payload_cross_contamination / unresolvable_source_pointer / ` +
+    `mapping_metadata_false) that best fits your reason — or the literal ` +
     `sentinel OTHER_NEW_CATEGORY if genuinely none fit (never invent a new label).`
   );
 }
@@ -698,9 +703,10 @@ async function adjudicateCode(code) {
   // the PARENT code 38220, not 38222 itself — self_confirmed.code_appears_in_row=false — and the
   // runner still emitted "certified" because nothing downstream of D2 ever looked at its own
   // self-confirmation result. The conductor caught it at D6 review; this closes the runner gap so
-  // the same class of miss can't reach "certified" again. Category=phantom_source_pointer (closed
-  // registry, plan §5 m3): "the cited row/source doesn't actually confirm the code" is precisely
-  // what a failed self-confirmation means.
+  // the same class of miss can't reach "certified" again. Category=unresolvable_source_pointer
+  // (closed registry, plan §5 m3, v2 label — renamed from phantom_source_pointer per plan A-5:
+  // text-hunt evidence cannot establish nonexistence): "the cited row/source doesn't actually
+  // confirm the code" is precisely what a failed self-confirmation means.
   const d2SelfConfirmFailed =
     d2 !== null &&
     (!d2.self_confirmed ||
@@ -712,7 +718,7 @@ async function adjudicateCode(code) {
   const quarantined = verdict === "quarantined";
   const category = quarantined
     ? d2SelfConfirmFailed
-      ? "phantom_source_pointer"
+      ? "unresolvable_source_pointer"
       : diff.category
     : null;
 

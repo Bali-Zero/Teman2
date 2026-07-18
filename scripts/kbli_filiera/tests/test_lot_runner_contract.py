@@ -45,6 +45,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[3]
 LOT_RUNNER_JS = REPO_ROOT / "infra/workflows/kbli-batch-a-lot.js"
 CALIBRATION_JSON = REPO_ROOT / "data/kbli-filiera/batch-reports/batchA-calibration.json"
+CALIBRATION_V2_JSON = REPO_ROOT / "data/kbli-filiera/batch-reports/batchA-calibration-v2.json"
 
 
 @pytest.fixture(scope="module")
@@ -87,22 +88,32 @@ def test_m1_m2_m4_literals_match_calibration_artifact(js_source: str) -> None:
 
 
 def test_m3_closed_registry_matches_calibration_categories(js_source: str) -> None:
-    """m3's 5-category closed registry is pinned in the .js as a JS array — assert it appears
-    verbatim, independent of whether the calibration JSON has landed yet (the registry is quoted
-    in the plan doc too, so this half of the guard has no external-file dependency)."""
+    """m3's closed registry (v2, 7 categories — Lot 1 close-out: +payload_cross_contamination,
+    +mapping_metadata_false; phantom_source_pointer renamed unresolvable_source_pointer per plan
+    A-5) is pinned in the .js as a JS array — assert it appears verbatim, and that it matches the
+    v2 calibration artifact when present. The RETIRED v1 label must never reappear as a live
+    emittable literal (only inside comments explaining the rename)."""
     expected = [
         "code_collision",
         "illegitimate_inheritance",
         "wrong_authority_level",
-        "phantom_source_pointer",
         "source_absent_in_vault",
+        "payload_cross_contamination",
+        "unresolvable_source_pointer",
+        "mapping_metadata_false",
     ]
     for category in expected:
         assert f'"{category}"' in js_source, f"m3 category {category!r} missing from lot runner"
 
-    if CALIBRATION_JSON.exists():
-        calibration = json.loads(CALIBRATION_JSON.read_text(encoding="utf-8"))
-        assert calibration["control_limits"]["m3_refutation_categories"]["categories"] == expected
+    assert '"phantom_source_pointer"' not in js_source, (
+        "retired v1 label phantom_source_pointer still emittable in the lot runner — "
+        "v2 renamed it unresolvable_source_pointer (plan A-5)"
+    )
+
+    if CALIBRATION_V2_JSON.exists():
+        calibration = json.loads(CALIBRATION_V2_JSON.read_text(encoding="utf-8"))
+        v2 = calibration["control_limits"]["m3_refutation_categories"]["categories"]
+        assert sorted(v2) == sorted(expected)
 
 
 # ---------------------------------------------------------------------------
@@ -280,7 +291,7 @@ def test_guilt_d2_self_confirm_failure_retro_demotes_certified(js_source: str) -
         r'verdict\s*=\s*d2SelfConfirmFailed\s*\?\s*"quarantined"\s*:\s*preD2Verdict',
         js_source,
     ), "the final verdict is not gated on d2SelfConfirmFailed — retro-demote is not wired"
-    assert '"phantom_source_pointer"' in js_source
+    assert '"unresolvable_source_pointer"' in js_source
 
 
 def test_innocence_successful_d2_keeps_certified_verdict(js_source: str) -> None:
