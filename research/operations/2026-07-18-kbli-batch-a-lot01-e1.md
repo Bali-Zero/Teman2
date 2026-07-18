@@ -91,3 +91,13 @@ Extraction: 4 Sonnet seats (D1+D5 ×2; no D2 — neither code inherits), 330 s w
 
 Lot 02 = division 02 (`02201`, `02402`, `02409`). Same D0→D5+D4 pipeline; lane continues absent a
 control-limit breach (calibration §5 pause/resume).
+
+## Adversarial review
+
+Seat: **Codex GPT-5.6 (family-independent)** — applied at the CONDUCTOR gate that post-dates this
+lane report (see `2026-07-18-kbli-batch-a-lot1-conductor-gate.md`, PR #2721): 3 refuter passes +
+full-report red-team + verify pass, plus a blind GLM-5.2 second extraction with vision. Surviving
+objections: none against the dossier evidence itself; however the gate OVERTURNED this report's
+clean-count conclusions — final adjudication is **13/13 quarantine, 0 certified** (the lane's
+"clean" set contained 7 substantively false-clean codes + 1 divergence-rule flip). The dossiers
+remain the immutable evidence trail; the conductor-gate report is the authoritative verdict layer.
