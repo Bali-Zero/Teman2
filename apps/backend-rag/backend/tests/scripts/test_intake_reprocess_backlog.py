@@ -1050,3 +1050,179 @@ def test_review_backlog_report_sql_is_latest_aggregate_and_pii_safe() -> None:
     assert "ocr_chars >= $1" in sql
     assert "sender phone%" in sql
     assert "SELECT 'automation_bucket'" in sql
+
+
+# ---------------------------------------------------------------------------
+# --backfill-identity (intake-v2 PR-2 identity backfill)
+# ---------------------------------------------------------------------------
+
+
+def test_parser_backfill_identity_is_dry_run_and_batched() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(["--backfill-identity"])
+    assert args.apply is False
+    assert args.backfill_identity is True
+    assert args.identity_after_id == 0
+    assert args.identity_limit == 500
+
+
+def test_parser_backfill_identity_overrides() -> None:
+    irb = _load()
+    args = irb.build_parser().parse_args(
+        [
+            "--backfill-identity",
+            "--identity-after-id",
+            "194741",
+            "--identity-limit",
+            "50",
+            "--apply",
+        ]
+    )
+    assert args.identity_after_id == 194741
+    assert args.identity_limit == 50
+    assert args.apply is True
+
+
+def test_backfill_identity_select_sql_scopes_whatsapp_unstamped_only() -> None:
+    irb = _load()
+    sql = irb.BACKFILL_IDENTITY_SELECT_SQL
+    assert "source = 'whatsapp'" in sql
+    assert "sender_phone IS NOT NULL" in sql
+    assert "client_id_hint IS NULL" in sql
+    assert "id > $1" in sql
+    assert "LIMIT $2" in sql
+
+
+def test_backfill_identity_apply_sql_never_overwrites_existing_hint() -> None:
+    irb = _load()
+    sql = irb.BACKFILL_IDENTITY_APPLY_SQL
+    assert "client_id_hint IS NULL" in sql
+
+
+class _FakeIdentityConn:
+    """Minimal asyncpg-shaped fake: fetch() for the candidate SELECT, execute()
+    recorded for the apply UPDATE, transaction() a no-op async context."""
+
+    def __init__(self, rows: list[dict], executed: list[tuple]) -> None:
+        self._rows = rows
+        self._executed = executed
+
+    async def fetch(self, _sql: str, *_args):
+        return self._rows
+
+    async def execute(self, sql: str, *args):
+        self._executed.append((sql, args))
+        return "UPDATE 1"
+
+    def transaction(self):
+        return _NoopAsyncCtx()
+
+
+class _NoopAsyncCtx:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _FakePool:
+    def __init__(self, rows: list[dict], executed: list[tuple]) -> None:
+        self._conn = _FakeIdentityConn(rows, executed)
+
+    def acquire(self):
+        return _AcquireCtx(self._conn)
+
+
+class _AcquireCtx:
+    def __init__(self, conn: _FakeIdentityConn) -> None:
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+def _fake_resolution(kind: str, client_id: int | None):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(kind=kind, client_id=client_id, phone_normalized=None, reason="test")
+
+
+def test_run_backfill_identity_dry_run_never_writes() -> None:
+    irb = _load()
+
+    rows = [
+        {"id": 100, "sender_phone": "628110000001"},
+        {"id": 101, "sender_phone": "628110000002"},
+    ]
+    executed: list[tuple] = []
+    pool = _FakePool(rows, executed)
+
+    async def fake_resolver(_conn, *, sender_phone):
+        if sender_phone == "628110000001":
+            return _fake_resolution("existing", 555)
+        return _fake_resolution("ambiguous", None)
+
+    irb.resolve_or_create_contact = fake_resolver  # module-level name used by run_backfill_identity
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=False))
+
+    assert counts["candidates"] == 2
+    assert counts["by_kind"] == {"existing": 1, "ambiguous": 1}
+    assert counts["stamped"] == 0
+    assert counts["errors"] == 0
+    assert counts["max_id_seen"] == 101
+    assert executed == []  # dry-run must never call the UPDATE
+
+
+def test_run_backfill_identity_apply_stamps_only_resolved_rows() -> None:
+    irb = _load()
+
+    rows = [
+        {"id": 100, "sender_phone": "628110000001"},
+        {"id": 101, "sender_phone": "628110000002"},
+    ]
+    executed: list[tuple] = []
+    pool = _FakePool(rows, executed)
+
+    async def fake_resolver(_conn, *, sender_phone):
+        if sender_phone == "628110000001":
+            return _fake_resolution("existing", 555)
+        return _fake_resolution("ambiguous", None)
+
+    irb.resolve_or_create_contact = fake_resolver
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=True))
+
+    assert counts["stamped"] == 1
+    assert len(executed) == 1
+    sql, args = executed[0]
+    assert sql is irb.BACKFILL_IDENTITY_APPLY_SQL
+    assert args == (100, 555)
+
+
+def test_run_backfill_identity_resolver_error_is_isolated_per_row() -> None:
+    irb = _load()
+
+    rows = [
+        {"id": 100, "sender_phone": "628110000001"},
+        {"id": 101, "sender_phone": "628110000002"},
+    ]
+    executed: list[tuple] = []
+    pool = _FakePool(rows, executed)
+
+    async def flaky_resolver(_conn, *, sender_phone):
+        if sender_phone == "628110000001":
+            raise RuntimeError("boom")
+        return _fake_resolution("existing", 777)
+
+    irb.resolve_or_create_contact = flaky_resolver
+
+    counts = asyncio.run(irb.run_backfill_identity(pool, 0, 500, apply=True))
+
+    assert counts["errors"] == 1
+    assert counts["stamped"] == 1
+    assert counts["by_kind"] == {"existing": 1}

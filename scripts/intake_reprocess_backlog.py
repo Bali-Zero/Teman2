@@ -143,6 +143,7 @@ import httpx
 # Reuse the shipped, tested enqueue core (same import shim as the sweeper).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "apps" / "backend-rag"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from backend.services.intake.contact_autocreate import resolve_or_create_contact
 from backend.services.intake.classify import (
     VISION_CLASSIFY_CONF,
     TEXT_LLM_CLASSIFY_CONF,
@@ -600,6 +601,33 @@ SELECT w.id, w.baileys_message_id, w.media_stored_path, w.media_mime,
          WHERE q.source_ref = 'wa-mirror:' || w.baileys_message_id
    )
  ORDER BY w.id ASC
+"""
+
+# intake-v2 PR-2 (2026-07-18): already-enqueued whatsapp docs that carry a
+# sender_phone but never got a client_id_hint stamped — the identity
+# backfill population. Batched (LIMIT $2) + resumable (id > $1, the caller
+# passes the last-processed id back in as --identity-after-id). Scoped to
+# source='whatsapp' only (drive/zoho have their own identity signals) and to
+# rows with a real sender_phone (group wa-mirror rows are intentionally
+# hint-less by design — see auto_attach's group suppression — so they are
+# correctly excluded here, not a miss).
+BACKFILL_IDENTITY_SELECT_SQL = """
+SELECT id, sender_phone
+  FROM intake_queue
+ WHERE source = 'whatsapp'
+   AND sender_phone IS NOT NULL
+   AND client_id_hint IS NULL
+   AND id > $1
+ ORDER BY id ASC
+ LIMIT $2
+"""
+
+BACKFILL_IDENTITY_APPLY_SQL = """
+UPDATE intake_queue
+   SET client_id_hint = $2,
+       updated_at = now()
+ WHERE id = $1
+   AND client_id_hint IS NULL
 """
 
 SCRUB_GROUP_PHONE_SELECT_SQL = """
@@ -2146,6 +2174,84 @@ async def run_backfill(
     return counts
 
 
+async def run_backfill_identity(
+    pool: asyncpg.Pool,
+    after_id: int,
+    limit: int,
+    apply: bool,
+) -> dict[str, Any]:
+    """Stamp client_id_hint on already-enqueued whatsapp docs via sender_phone.
+
+    intake-v2 PR-2 (2026-07-18): identity capture at the door (contact_autocreate)
+    was wired into the live entry points AFTER a lot of whatsapp intake_queue rows
+    already existed with a sender_phone but no client_id_hint — a resolvable gap,
+    not a missing-blob one. This mode re-runs the SAME resolve_or_create_contact
+    primitive over that backlog, batched (LIMIT) + resumable (id > after_id).
+
+    Dry-run counts candidates by resolution kind only. --apply stamps
+    client_id_hint for every kind that yields a client_id (existing match, or a
+    newly auto-created contact if INTAKE_AUTOCREATE_CONTACT_ENABLED is armed —
+    the kill-switch inside resolve_or_create_contact is the sole gate, never
+    re-implemented here). Never overwrites a client_id_hint that is already set
+    (WHERE client_id_hint IS NULL in both the SELECT and the UPDATE).
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(BACKFILL_IDENTITY_SELECT_SQL, after_id, limit)
+
+    counts: dict[str, Any] = {
+        "candidates": len(rows),
+        "by_kind": {},
+        "stamped": 0,
+        "errors": 0,
+        "max_id_seen": after_id,
+    }
+
+    for r in rows:
+        queue_id = int(r["id"])
+        counts["max_id_seen"] = max(counts["max_id_seen"], queue_id)
+        try:
+            async with pool.acquire() as conn, conn.transaction():
+                resolution = await resolve_or_create_contact(
+                    conn, sender_phone=r["sender_phone"]
+                )
+        except Exception as exc:  # noqa: BLE001 — isolate per-row failure
+            counts["errors"] += 1
+            logger.error(
+                "[backfill-identity] resolver failed for queue row %d: %s",
+                queue_id, exc,
+            )
+            continue
+
+        counts["by_kind"][resolution.kind] = counts["by_kind"].get(resolution.kind, 0) + 1
+        if resolution.client_id is None:
+            continue
+        if not apply:
+            continue
+        async with pool.acquire() as conn:
+            await conn.execute(
+                BACKFILL_IDENTITY_APPLY_SQL, queue_id, resolution.client_id
+            )
+        counts["stamped"] += 1
+
+    if not apply:
+        logger.info(
+            "[backfill-identity][DRY-RUN] candidates=%d (id > %d, limit=%d) by_kind=%s "
+            "would_stamp=%d errors=%d — resume with --identity-after-id %d "
+            "(pass --apply to execute)",
+            counts["candidates"], after_id, limit, counts["by_kind"],
+            sum(v for k, v in counts["by_kind"].items() if k in ("existing", "created")),
+            counts["errors"], counts["max_id_seen"],
+        )
+    else:
+        logger.info(
+            "[backfill-identity] candidates=%d by_kind=%s stamped=%d errors=%d "
+            "— resume with --identity-after-id %d",
+            counts["candidates"], counts["by_kind"], counts["stamped"],
+            counts["errors"], counts["max_id_seen"],
+        )
+    return counts
+
+
 async def run_quality_sample(
     pool: asyncpg.Pool,
     source: str,
@@ -3018,6 +3124,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="enqueue historical wa-mirror media skipped by the watermark seed",
     )
     p.add_argument(
+        "--backfill-identity",
+        action="store_true",
+        help=(
+            "stamp client_id_hint on already-enqueued whatsapp docs that carry a "
+            "sender_phone but no client_id_hint (intake-v2 PR-2 identity backfill)"
+        ),
+    )
+    p.add_argument(
+        "--identity-after-id",
+        type=int,
+        default=0,
+        help="resume cursor for --backfill-identity: only rows with id > this (default 0)",
+    )
+    p.add_argument(
+        "--identity-limit",
+        type=int,
+        default=500,
+        help="batch size for --backfill-identity (default 500)",
+    )
+    p.add_argument(
         "--scrub-group-phone",
         action="store_true",
         help="clear sender_phone/client_id_hint from historical wa-mirror group queue rows",
@@ -3280,6 +3406,7 @@ async def main(argv: list[str] | None = None) -> int:
     needs_db = (
         args.reprocess
         or args.backfill
+        or args.backfill_identity
         or args.scrub_group_phone
         or args.backfill_source_context
         or args.revive_stub
@@ -3297,7 +3424,7 @@ async def main(argv: list[str] | None = None) -> int:
     )
     if not (needs_db or args.delivery_readiness_report):
         logger.error(
-            "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
+            "nothing to do: pass --backfill, --backfill-identity, --reprocess, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, "
             "--retry-empty-pdf-ocr, --retry-unschematised-supported, "
             "--retry-typed-missing-fields, --quality-sample, and/or "
@@ -3325,6 +3452,13 @@ async def main(argv: list[str] | None = None) -> int:
                 logger.error("no watermark: %s missing and --watermark not given", WATERMARK_FILE)
                 return 2
             await run_backfill(pool, watermark, _media_types(args.media_types), args.apply)
+        if args.backfill_identity:
+            await run_backfill_identity(
+                pool,
+                max(args.identity_after_id, 0),
+                max(args.identity_limit, 1),
+                args.apply,
+            )
         if args.scrub_group_phone:
             await run_scrub_group_phone(pool, args.apply)
         if args.backfill_source_context:

@@ -11,6 +11,20 @@ never a byte of the client document. This worker, running ONLY on the Pro:
 3. For each: downloads the media FROM META ITSELF to the local sovereign blob
    root (``INTAKE_BLOB_ROOT``), then enqueues into the LOCAL nuzantara_dev
    intake_queue. PII therefore only ever exists on the Pro.
+3b. Identity capture at the door (intake-v2 PR-2, 2026-07-18): the outbox
+    payload already carries ``from_phone`` (published by
+    ``whatsapp_chat._ingest_meta_inbox_media``). Before this fix the enqueue
+    call never passed it through, so every official-line document landed
+    with ``sender_phone``/``client_id_hint`` both NULL — a 0-candidate doc
+    for the trivial reason nobody ever looked up the sender. Reuses the same
+    ``contact_autocreate.resolve_or_create_contact`` primitive the live
+    webhook adapter (``whatsapp_live_adapter.ingest_live_media``) and the
+    wa-mirror sweeper already rely on — one identity-resolution seam, not
+    three drifting copies. Matching an EXISTING client is always attempted
+    (read-only, no mis-creation risk); auto-creating a NEW contact for an
+    unknown phone stays behind the existing ``INTAKE_AUTOCREATE_CONTACT_ENABLED``
+    kill-switch (default OFF). A resolver fault never drops the document —
+    it just falls back to no hint, same as before this feature existed.
 4. ACKs the Fly row only AFTER a successful local enqueue (at-least-once;
    enqueue is idempotent on intake_key, so a re-pull is harmless).
 5. Staleness guard: Meta media_ids expire (~days). Any pending row older than
@@ -56,6 +70,7 @@ from backend.channels.whatsapp.media_download import (
     MediaDownloadError,
     download_media,
 )
+from backend.services.intake.contact_autocreate import resolve_or_create_contact
 from backend.services.intake.enqueue import enqueue
 
 logger = logging.getLogger("wa_media_pull")
@@ -286,6 +301,27 @@ async def run_one_poll() -> int:
                     )
                     continue
 
+                # 3b. Identity capture — see module docstring. Best-effort:
+                # a resolver fault must NOT drop the document.
+                from_phone = it.get("from_phone")
+                client_id_hint: int | None = None
+                try:
+                    async with pool.acquire() as identity_conn, identity_conn.transaction():
+                        resolution = await resolve_or_create_contact(
+                            identity_conn, sender_phone=from_phone
+                        )
+                    client_id_hint = resolution.client_id
+                    logger.info(
+                        "contact_autocreate: media_id=%s kind=%s client_id=%s",
+                        media_id, resolution.kind, resolution.client_id,
+                    )
+                except Exception:
+                    logger.exception(
+                        "contact_autocreate resolver failed media_id=%s (row %d) — "
+                        "falling back to no client_id_hint",
+                        media_id, oid,
+                    )
+
                 try:
                     result = await enqueue(
                         pool,
@@ -296,6 +332,8 @@ async def run_one_poll() -> int:
                         blob_hash=dl.sha256,
                         byte_size=dl.byte_size,
                         received_by=None,
+                        sender_phone=from_phone,
+                        client_id_hint=client_id_hint,
                     )
                 except Exception as exc:
                     logger.error(
