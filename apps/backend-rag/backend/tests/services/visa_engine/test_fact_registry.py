@@ -146,6 +146,14 @@ class TestValueFormat:
         spec = DEFAULT_FACT_REGISTRY.spec(FactPath.PERSON_MARITAL_STATUS)
         assert spec.value_format is None
 
+    def test_employer_country_code_has_country_code_format(self) -> None:
+        spec = DEFAULT_FACT_REGISTRY.spec(FactPath.WORK_EMPLOYER_COUNTRY_CODE)
+        assert spec.value_format == "country_code"
+
+    def test_nationalities_set_has_country_code_format(self) -> None:
+        spec = DEFAULT_FACT_REGISTRY.spec(FactPath.PERSON_NATIONALITIES)
+        assert spec.value_format == "country_code"
+
 
 class TestRegistryConstruction:
     def test_duplicate_spec_path_rejected(self) -> None:

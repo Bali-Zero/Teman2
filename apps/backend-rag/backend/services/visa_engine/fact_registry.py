@@ -113,7 +113,12 @@ def _spec(
 #: else defaults to PERSONAL.
 _DEFAULT_SPECS: tuple[FactSpec, ...] = (
     _spec(FactPath.PERSON_BIRTH_DATE, FactValueKind.STRING, "date", value_format="date"),
-    _spec(FactPath.PERSON_NATIONALITIES, FactValueKind.STRING_SET, "country_code_set"),
+    _spec(
+        FactPath.PERSON_NATIONALITIES,
+        FactValueKind.STRING_SET,
+        "country_code_set",
+        value_format="country_code",
+    ),
     _spec(
         FactPath.PERSON_MARITAL_STATUS,
         FactValueKind.STRING,
@@ -193,7 +198,12 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
         allowed_values=frozenset({"SINGLE", "MULTIPLE"}),
     ),
     _spec(FactPath.INTENT_REQUESTED_PRODUCT_CODE, FactValueKind.STRING, "product_code"),
-    _spec(FactPath.WORK_EMPLOYER_COUNTRY_CODE, FactValueKind.STRING, "country_code"),
+    _spec(
+        FactPath.WORK_EMPLOYER_COUNTRY_CODE,
+        FactValueKind.STRING,
+        "country_code",
+        value_format="country_code",
+    ),
     _spec(FactPath.WORK_EMPLOYER_IS_INDONESIAN_ENTITY, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.WORK_SERVES_INDONESIAN_CLIENTS, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.WORK_INDONESIA_SOURCE_COMPENSATION, FactValueKind.BOOLEAN, "boolean"),
@@ -231,7 +241,12 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
         "relation_enum",
         allowed_values=frozenset({"SPOUSE", "CHILD", "PARENT", "DEPENDENT", "OTHER"}),
     ),
-    _spec(FactPath.FAMILY_SPONSOR_NATIONALITIES, FactValueKind.STRING_SET, "country_code_set"),
+    _spec(
+        FactPath.FAMILY_SPONSOR_NATIONALITIES,
+        FactValueKind.STRING_SET,
+        "country_code_set",
+        value_format="country_code",
+    ),
     _spec(FactPath.FAMILY_SPONSOR_STATUS_CODE, FactValueKind.STRING, "product_code"),
     _spec(FactPath.FAMILY_MARRIAGE_REGISTERED, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.FAMILY_SPONSOR_CONFIRMED, FactValueKind.BOOLEAN, "boolean"),

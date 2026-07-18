@@ -1456,3 +1456,101 @@ class TestOrderingOpsRestrictedToNumericOrDate:
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
         assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+
+
+class TestCountryCodeShape:
+    """Gap D: facts marked ``value_format="country_code"`` had no shape
+    check — a 3-letter code (``"USA"``) or a lowercase code (``"us"``)
+    compiled clean, on both the scalar fact (``work.employer_country_code``)
+    and set-valued facts' members (``person.nationalities``).
+    """
+
+    def test_three_letter_code_guilty(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.country.three_letter",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "work.employer_country_code", "value": "USA"},
+            required_facts=("work.employer_country_code",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_INVALID_COUNTRY_CODE" for e in report.errors)
+
+    def test_lowercase_code_guilty(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.country.lowercase",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "work.employer_country_code", "value": "us"},
+            required_facts=("work.employer_country_code",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_INVALID_COUNTRY_CODE" for e in report.errors)
+
+    def test_set_member_invalid_code_guilty(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.country.set.invalid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "intersects", "fact": "person.nationalities", "values": ["USA"]},
+            required_facts=("person.nationalities",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_INVALID_COUNTRY_CODE" for e in report.errors)
+
+    def test_scalar_code_valid_is_innocent(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.country.valid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "work.employer_country_code", "value": "US"},
+            required_facts=("work.employer_country_code",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+
+    def test_set_member_valid_codes_is_innocent(self, source_record: M.SourceRecord) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.country.set.valid",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "intersects", "fact": "person.nationalities", "values": ["US", "GB"]},
+            required_facts=("person.nationalities",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)

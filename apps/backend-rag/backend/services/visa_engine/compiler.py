@@ -594,6 +594,30 @@ def _check_date_literal_shape(
         )
 
 
+#: Hotfix (2026-07-18, Gap D): a fact marked ``value_format="country_code"``
+#: must be a 2-letter uppercase ISO 3166-1 alpha-2 *shape* — ``kind`` alone
+#: accepted ``"USA"`` (3 letters) or ``"us"`` (lowercase). Deliberately just
+#: a shape check, not the full ISO country list (that list changes; this
+#: package does not own it).
+_COUNTRY_CODE_LITERAL_SHAPE = re.compile(r"^[A-Z]{2}$")
+
+
+def _check_country_code_literal_shape(
+    value: str, spec: FactSpec, op: str, rule: Rule, errors: list[CompilationError]
+) -> None:
+    if not _COUNTRY_CODE_LITERAL_SHAPE.fullmatch(value):
+        errors.append(
+            CompilationError(
+                code="FACT_LITERAL_INVALID_COUNTRY_CODE",
+                message=(
+                    f"operator {op!r} literal {value!r} for fact {spec.path.value!r} must be "
+                    "a 2-letter uppercase ISO 3166-1 alpha-2 code"
+                ),
+                rule_id=rule.rule_id,
+            )
+        )
+
+
 def _literal_kind(value: bool | int | str) -> FactValueKind:
     # `bool` before `int` — `bool` is an `int` subclass in Python.
     if isinstance(value, bool):
@@ -642,12 +666,14 @@ def _check_single_literal_against_kind(
             )
         )
         return
-    # Hotfix (2026-07-18, Gap A): `kind` alone cannot distinguish a
-    # free-form STRING from a date-shaped one — `value_format` is the extra
-    # axis for that. Only reachable for a `str` literal (date facts are
-    # always STRING-kind per fact_registry.py).
+    # Hotfix (2026-07-18, Gap A/D): `kind` alone cannot distinguish a
+    # free-form STRING from a date- or country-code-shaped one —
+    # `value_format` is the extra axis for that. Only reachable for a `str`
+    # literal (both formats are STRING-kind facts per fact_registry.py).
     if spec.value_format == "date" and isinstance(value, str):
         _check_date_literal_shape(value, spec, op, rule, errors)
+    elif spec.value_format == "country_code" and isinstance(value, str):
+        _check_country_code_literal_shape(value, spec, op, rule, errors)
 
 
 def _check_literal_list(
