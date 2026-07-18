@@ -222,6 +222,69 @@ class TestEngineVersionCompatibility:
             )
 
 
+class TestEngineVersionAsciiStrict:
+    """3-seat verify FIX-NOW #10: the old `_parse_semver` did
+    `int(part) for part in value.split(".")` — Python's `int()` silently
+    accepts Unicode decimal digits (e.g. Arabic-Indic `"٣"` -> 3) and
+    leading/trailing whitespace (`int(" 1")` -> 1), so a version string
+    that LOOKS malformed could still compare successfully. Now an
+    ASCII-strict `major.minor.patch` regex."""
+
+    def test_arabic_indic_digit_rejected(self) -> None:
+        verified = _verified(
+            {
+                "sequence": 5,
+                "previous_payload_sha256": sha256_hex("1"),
+                "engine_min_version": "1.0.0",
+                "engine_max_version": "2.0.0",
+            }
+        )
+        with pytest.raises(RulePackVerificationError, match="invalid semantic version"):
+            validate_activation(
+                verified,
+                current_sequence=4,
+                current_payload_sha256=bytes.fromhex(sha256_hex("1")),
+                environment="TEST",
+                engine_version="1.2.٣",  # Arabic-Indic digit THREE
+            )
+
+    def test_leading_whitespace_rejected(self) -> None:
+        verified = _verified(
+            {
+                "sequence": 5,
+                "previous_payload_sha256": sha256_hex("1"),
+                "engine_min_version": "1.0.0",
+                "engine_max_version": "2.0.0",
+            }
+        )
+        with pytest.raises(RulePackVerificationError, match="invalid semantic version"):
+            validate_activation(
+                verified,
+                current_sequence=4,
+                current_payload_sha256=bytes.fromhex(sha256_hex("1")),
+                environment="TEST",
+                engine_version=" 1.2.0",
+            )
+
+    def test_ordinary_version_still_accepted(self) -> None:
+        verified = _verified(
+            {
+                "sequence": 5,
+                "previous_payload_sha256": sha256_hex("1"),
+                "engine_min_version": "1.0.0",
+                "engine_max_version": "2.0.0",
+            }
+        )
+        result = validate_activation(
+            verified,
+            current_sequence=4,
+            current_payload_sha256=bytes.fromhex(sha256_hex("1")),
+            environment="TEST",
+            engine_version="1.2.0",
+        )
+        assert result is None
+
+
 class TestUnsignedDevIntoProductionRejected:
     """3-seat verify FIX-NOW #5: defense in depth. `verify_rule_pack`
     already refuses to produce an `unsigned_dev=True` candidate for

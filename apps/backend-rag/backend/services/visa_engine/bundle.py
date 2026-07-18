@@ -870,11 +870,24 @@ def _verify_unsigned_dev(
 # --- Anti-rollback activation gating --------------------------------------
 
 
+# ASCII-strict major.minor.patch (3-seat verify FIX-NOW #10): no
+# pre-release/build metadata (not supported by the engine_version contract
+# — engine_min_version/engine_max_version are compared as plain
+# (int, int, int) tuples), no sign, no whitespace, no leading zeros beyond
+# a bare "0". The naive `int(part) for part in value.split(".")` this
+# replaces was silently permissive in ways Python's own `int()` allows but
+# a version string never should: `int()` accepts Unicode decimal digits
+# (e.g. Arabic-Indic `"٣"` -> 3, confirmed empirically) and leading/
+# trailing whitespace (`int(" 1")` -> 1) — both would let a version string
+# that LOOKS malformed compare successfully.
+_SEMVER_PATTERN = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
+
+
 def _parse_semver(value: str) -> tuple[int, int, int]:
-    try:
-        major, minor, patch = (int(part) for part in value.split("."))
-    except ValueError as exc:
-        raise RulePackVerificationError(f"invalid semantic version: {value!r}") from exc
+    match = _SEMVER_PATTERN.fullmatch(value)
+    if match is None:
+        raise RulePackVerificationError(f"invalid semantic version: {value!r}")
+    major, minor, patch = (int(part) for part in match.groups())
     return (major, minor, patch)
 
 
