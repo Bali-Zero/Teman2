@@ -1031,6 +1031,7 @@ class OrchestratorCore:
                 ma_result = await self._multi_agent_coordinator.process(
                     query=query,
                     user_context={"extracted_entities": extracted_entities},
+                    grounding_context=system_context_for_prompt,
                 )
                 if ma_result.get("final_answer"):
                     return CoreResult(
