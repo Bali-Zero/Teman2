@@ -58,6 +58,13 @@ if [[ "$MODULE" == "backend.services.newsletter.newsletter_cli" ]]; then
         echo "[wr2-wrapper] ERROR: fly CLI not found on PATH — cannot dispatch newsletter_cli into Fly (api process)." >&2
         exit 74
     fi
+    # A stale FLY_API_TOKEN in the secrets file overrides the (curated) fly
+    # agent auth in ~/.fly/config.yml and makes every fly call die with
+    # 'Could not find App "nuzantara-rag"'. This killed the daily newsletter
+    # run; the same rot already recurred twice (secrets file line 3 carries a
+    # #DISABLED-2026-06-03-stale marker, and fly-pg-backup.sh unsets the var
+    # for the same reason). Config-file auth is the reliable path here.
+    unset FLY_API_TOKEN
     remote_cmd="python -m $MODULE"
     for arg in "$@"; do
         remote_cmd+=" $(printf '%q' "$arg")"
