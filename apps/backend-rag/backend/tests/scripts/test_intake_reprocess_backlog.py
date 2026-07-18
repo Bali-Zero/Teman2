@@ -1088,3 +1088,45 @@ def test_reroute_drive_folder_supersede_only_review_pending() -> None:
     assert "SET status = 'superseded'" in sql
     assert "status = 'review_pending'" in sql
     assert "queue_id = ANY($1::bigint[])" in sql
+
+
+def test_reroute_npwp_sql_targets_full_npwp_review_pending() -> None:
+    # m248: selects review_pending rows with a FULL extracted npwp (>=15
+    # digits after normalization) from either the routed fields or the saved
+    # extract payload — no source / candidate-count filter (the docs that can
+    # gain the npwp signal already carry folder/fuzzy candidates).
+    irb = _load()
+    sql = irb.REROUTE_NPWP_SELECT_SQL
+    assert "SELECT DISTINCT ON (q.id)" in sql
+    assert "p.status = 'review_pending'" in sql
+    assert "npwp_number" in sql
+    assert ">= 15" in sql
+    assert "LIMIT $1" in sql
+    # innocence: it must NOT copy the folder-mode drive/0-candidate filters.
+    assert "q.source = 'drive'" not in sql
+    assert "jsonb_array_length" not in sql
+
+
+def test_reroute_npwp_reuses_route_only_reset_contract() -> None:
+    # The npwp mode reuses the folder-mode reset/supersede SQL — the
+    # stage_output-preservation invariant is inherited, and this test pins
+    # that the mode has NO reset SQL of its own that could drift.
+    irb = _load()
+    assert not hasattr(irb, "REROUTE_NPWP_RESET_SQL")
+    assert not hasattr(irb, "REROUTE_NPWP_SUPERSEDE_SQL")
+    import inspect
+
+    src = inspect.getsource(irb.run_reroute_npwp)
+    assert "REROUTE_DRIVE_FOLDER_RESET_SQL" in src
+    assert "REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL" in src
+
+
+def test_reroute_pipeline_version_defaults_per_mode() -> None:
+    # --reroute-pipeline-version default is None; each mode picks its own tag
+    # so a folder rerun and an npwp rerun stay measurable independently.
+    irb = _load()
+    import inspect
+
+    src = inspect.getsource(irb.main)
+    assert 'or "v2.2-m227-folder"' in src
+    assert 'or "v2.3-npwp"' in src

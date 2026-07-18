@@ -290,6 +290,37 @@ UPDATE intake_queue
  WHERE id = ANY($1::bigint[])
 """
 
+# m248: route-only resume of review_pending rows whose extracted npwp is a
+# full 15/16-digit value — the person matcher now consults clients.npwp
+# (previously invisible locally; 291 alive clients carry one after the
+# 2026-07-18 snapshot refresh). No source / candidate-count filter: the docs
+# that can gain the npwp strong-id signal already HAVE folder/fuzzy candidates
+# (measured: 3/131 match a client; 0 in the 0-candidate pool). Reuses the
+# folder-mode supersede+reset SQL (both are generic by queue_id; the reset
+# NEVER touches stage_output).
+REROUTE_NPWP_SELECT_SQL = """
+WITH latest AS (
+    SELECT DISTINCT ON (q.id)
+           p.id AS proposal_id, q.id AS queue_id,
+           COALESCE(
+             p.routing->'fields'->'npwp_number'->>'value',
+             p.routing->'fields'->>'npwp_number',
+             q.stage_output->'extract'->'fields'->'npwp_number'->>'value',
+             q.stage_output->'extract'->'fields'->>'npwp_number'
+           ) AS npwp_raw
+      FROM intake_queue q
+      JOIN document_routing_proposal p ON p.queue_id = q.id
+     WHERE p.status = 'review_pending'
+     ORDER BY q.id, p.id DESC
+)
+SELECT proposal_id, queue_id
+  FROM latest
+ WHERE npwp_raw IS NOT NULL
+   AND length(regexp_replace(npwp_raw, '[^0-9]', '', 'g')) >= 15
+ ORDER BY queue_id
+ LIMIT $1
+"""
+
 # Same v2 reset contract, but for targeted retry lanes that must be observable
 # immediately in production tests. The worker orders pending WhatsApp jobs by
 # next_visible_at, so resetting historical rows to now() parks them behind newer
@@ -1989,6 +2020,50 @@ async def run_reroute_drive_folder(
     return counts
 
 
+async def run_reroute_npwp(
+    pool: asyncpg.Pool, pipeline_version: str, limit: int, apply: bool
+) -> dict[str, int]:
+    """Re-route review_pending rows carrying a full extracted npwp (m248).
+
+    Route-only resume, identical contract to --reroute-drive-folder
+    (stage_output PRESERVED, supersede stale proposals, worker re-runs fase-4
+    where _match_person_strong now consults clients.npwp). Never attaches —
+    a unique npwp hit adds a CONF_STRONG_EXACT candidate to the review tier;
+    duplicate-npwp hits degrade to AMBIGUOUS downstream.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(REROUTE_NPWP_SELECT_SQL, limit)
+        queue_ids = sorted({r["queue_id"] for r in rows})
+
+        counts = {"proposals": len(rows), "queue_rows": len(queue_ids)}
+        if not apply:
+            logger.info(
+                "[reroute-npwp][DRY-RUN] would supersede %d proposals and "
+                "resume %d queue rows at route (pipeline_version=%s, limit=%d) "
+                "(pass --apply to execute)",
+                counts["proposals"], counts["queue_rows"], pipeline_version, limit,
+            )
+            return counts
+
+        async with conn.transaction():
+            superseded = await conn.execute(
+                REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL, queue_ids
+            )
+            reset = await conn.execute(
+                REROUTE_DRIVE_FOLDER_RESET_SQL, queue_ids, pipeline_version
+            )
+        counts["superseded"] = int(superseded.split()[-1]) if superseded else 0
+        counts["reset"] = int(reset.split()[-1]) if reset else 0
+
+    logger.info(
+        "[reroute-npwp] superseded=%d proposals, resumed=%d queue rows at "
+        "route (pipeline_version=%s) — the intake worker re-routes them with "
+        "the m248 person-npwp matcher",
+        counts.get("superseded", 0), counts.get("reset", 0), pipeline_version,
+    )
+    return counts
+
+
 async def run_revive_stub(
     pool: asyncpg.Pool, pipeline_version: str, include_groups: bool, apply: bool
 ) -> dict[str, int]:
@@ -3114,15 +3189,26 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--reroute-npwp",
+        action="store_true",
+        help=(
+            "route-only resume of review_pending rows with a full extracted "
+            "npwp through the m248 person-npwp matcher (stage_output preserved)"
+        ),
+    )
+    p.add_argument(
         "--reroute-limit",
         type=int,
         default=30000,
-        help="max Drive 0-candidate rows selected per --reroute-drive-folder run",
+        help="max rows selected per --reroute-drive-folder / --reroute-npwp run",
     )
     p.add_argument(
         "--reroute-pipeline-version",
-        default="v2.2-m227-folder",
-        help="pipeline_version stamped on rerouted rows (fresh routing_key)",
+        default=None,
+        help=(
+            "pipeline_version stamped on rerouted rows (fresh routing_key); "
+            "defaults per mode: v2.2-m227-folder (drive-folder), v2.3-npwp (npwp)"
+        ),
     )
     p.add_argument(
         "--backfill",
@@ -3392,6 +3478,7 @@ async def main(argv: list[str] | None = None) -> int:
     needs_db = (
         args.reprocess
         or args.reroute_drive_folder
+        or args.reroute_npwp
         or args.backfill
         or args.scrub_group_phone
         or args.backfill_source_context
@@ -3411,7 +3498,7 @@ async def main(argv: list[str] | None = None) -> int:
     if not (needs_db or args.delivery_readiness_report):
         logger.error(
             "nothing to do: pass --backfill, --reprocess, --reroute-drive-folder, "
-            "--scrub-group-phone, "
+            "--reroute-npwp, --scrub-group-phone, "
             "--backfill-source-context, --revive-stub, "
             "--retry-empty-pdf-ocr, --retry-unschematised-supported, "
             "--retry-typed-missing-fields, --quality-sample, and/or "
@@ -3448,7 +3535,14 @@ async def main(argv: list[str] | None = None) -> int:
         if args.reroute_drive_folder:
             await run_reroute_drive_folder(
                 pool,
-                args.reroute_pipeline_version,
+                args.reroute_pipeline_version or "v2.2-m227-folder",
+                max(args.reroute_limit, 1),
+                args.apply,
+            )
+        if args.reroute_npwp:
+            await run_reroute_npwp(
+                pool,
+                args.reroute_pipeline_version or "v2.3-npwp",
                 max(args.reroute_limit, 1),
                 args.apply,
             )

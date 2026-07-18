@@ -329,7 +329,7 @@ def normalize_sender_phone(value: Any) -> str | None:
 async def _match_person_strong(
     conn: asyncpg.Connection, extracted: dict[str, Any]
 ) -> list[dict[str, Any]]:
-    """Strong-identifier match against ``clients`` (passport / kitas number)."""
+    """Strong-identifier match against ``clients`` (passport / kitas / npwp)."""
     candidates: list[dict[str, Any]] = []
 
     passport = _field_value(extracted, "passport_no") or _field_value(extracted, "passport_number")
@@ -377,6 +377,32 @@ async def _match_person_strong(
                 candidates.append({
                     "table": "clients", "id": r["id"], "name": r["full_name"],
                     "method": "kitas_number", "score": CONF_STRONG_EXACT,
+                    "matched_value": norm,
+                })
+
+    npwp = _field_value(extracted, "npwp_number") or _field_value(extracted, "npwp")
+    if npwp:
+        norm = _digits_only(npwp)
+        # NPWP is 15 (legacy) or 16 (post-2024 NIK-format) digits. Anything
+        # shorter is a partial OCR read — an "exact" match on a fragment is a
+        # false strong-id (clients.npwp already holds duplicate values across
+        # records; ambiguity is degraded downstream, garbage must not enter).
+        if norm and len(norm) >= 15:
+            rows = await conn.fetch(
+                """
+                SELECT id, full_name
+                FROM clients
+                WHERE deleted_at IS NULL
+                  AND npwp IS NOT NULL
+                  AND REGEXP_REPLACE(npwp, '\\D', '', 'g') = $1
+                ORDER BY id
+                """,
+                norm,
+            )
+            for r in rows:
+                candidates.append({
+                    "table": "clients", "id": r["id"], "name": r["full_name"],
+                    "method": "npwp", "score": CONF_STRONG_EXACT,
                     "matched_value": norm,
                 })
 
