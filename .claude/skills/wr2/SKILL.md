@@ -57,14 +57,27 @@ delta); REFUSE left a queue-published `rendered` draft (4ca7b22b) byte-identical
 mutation. LIMITATION ledgered: the fact-extractor/checker lane takes no `lease_owner` CAS (unlike
 render/image), so `--rebrief`'s lease guard cannot exclude a concurrent fact-lane run — low-risk
 (rebrief resets upstream of the fact lane, extractor re-runs idempotently) but structurally
-asymmetric**.
+asymmetric** ·
+**enrichment passthrough SHIPPED + PROVEN-LIVE (#2691, growth-loop) — killed `brief_json.enrichment={}`**:
+the enricher's structured object (`the_facts`/`bali_zero_take`/`faq`/`thirty_second_brief`) was silently
+dropped scraper→staging→drafts (scar family #9). Fix = 4-hop contract: `ScraperSubmission.enrichment`
+field + `submit_from_scraper` persist + `list_pending_items` **opt-in** projection
+(`include_enrichment=true`, never on archived — round-2 payload-fan-out fix) + `build_staging_payload`.
+3 implementer rounds, 2 independent graders: Codex round-1 found 3 MUST-FIX (opt-in projection,
+legacy-dirty-JSON `isinstance(dict)` type-guard, dedup enrichment-heal); a fresh-context Sonnet refuter
+found the round-3 MUST-FIX (`_has_usable_source` unguarded `.get()` crash on a truthy non-dict) + a NICE
+(dedup-heal status-gate) — used because Codex/agy/DeepSeek ALL failed the round-2 re-gate (Codex 30-min
+hang, agy timeout, DeepSeek HTTP 402 balance-dead). PROVE-LIVE 2026-07-18 prod entity-match: submitted
+`enrichment.the_facts` marker → `/pending?include_enrichment=true` returned it exactly, default
+`/pending` omitted it, item cleaned. Fly deploy stalled ~90 min on GitHub-Actions runner starvation.
+LIMITATION ledgered: dedup-heal is a lockless read-modify-write (pre-existing class, low risk).
 
 **In queue awaiting Zero (Legge 5):** deportation carousel remake (`drafted`, 2026-07-17, tells
 the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari reply.
 
 **Open wounds / next targets:**
 
-- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof NOT yet landed (checked 2026-07-18 05:29 WITA): every topic-selector run 07-07→07-18 logs "live pool empty"; today's top-ranked items — incl. breaking-shaped "Bali Deports Three Foreigners" — all carry `live=0/0.0`. Whether this is expected timing (fresh enricher scores land next scraper cycle post-deploy) or a residual break (enricher not emitting non-zero, or fresh items not carrying fields) is NOT yet distinguished — staging is file-based (not Postgres-queryable) so it needs a dedicated probe. Watch the REAL app log `~/logs/wr2_topic_selector.log` — NOT `.launchd.out.log`, which is empty because the daemon logs via Python logging, not stdout (watching the wrong file = blind receptor, scar #2). Related open item (ledgered): enrichment silent-drop — build_staging_payload sends brief/faq/slug/tags/seo/featured but ScraperSubmission has no such fields → `enrichment: {}` on drafts.
+- **Liveness live-pool — contract chain FIXED + PROVE-LIVE (#2631, 2026-07-18)**; the 0.0-for-all was scar #9 (fields dropped scraper→staging→/pending), not a scorer bug. Enricher already scored; now the values flow and `WR2_PREFER_LIVE_NEWS=true` is armed (filter min 40). REMAINING natural proof **DISTINGUISHED 2026-07-18 (growth-loop B): expected post-deploy TIMING, not a residual break.** No nightly has run on the #2631-patched code yet — the content scraper `com.balizero.intel.nightly` (StartCalendarInterval Hour=1, alive; REAL logs `~/.openclaw/workspace/logs/intel_nightly_YYYYMMDD.log`, NOT the Mar-3-frozen launchd stdout = scar #2 wrong-log) last ran 2026-07-18 01:00→01:55 on PRE-patch code (enricher/pipeline mtimes 02:23/12:52, both after the 01:55 finish; its log had 0 live_news emissions). Enricher classifier VERIFIED working: last night's `data/intel_output_latest.json` = 1 `developing` + 14 evergreen, scores 30/50 (OLD additive — the #2635 deterministic `_TIER_TO_SCORE`={breaking:90,developing:60,evergreen:0} landed with the 02:23 enricher update). Contract fields live in BOTH checkouts (`~/nuzantara` = nightly scraper root, `~/nuzantara-deploy` = WR2 daemon root; grep=4 each). E2E proven by composition (contract carries injected score = #2631 probe; enricher emits developing; both deployed). **RECEPTOR (do NOT force — the nightly auto-publishes):** tonight's 2026-07-19 01:00 nightly → expect live pool NON-empty (developing→60 ≥ 40 filter) and a developing/breaking item picked in `~/logs/wr2_topic_selector.log`. If a post-patch nightly STILL yields an empty live pool → THEN it is a residual break (LLM over-classifying evergreen, or a persistence gap) to investigate. Memory `discovery_wr2_liveness_natural_proof_timing_not_break_2026_07_18`. Related item — enrichment silent-drop **CLOSED + PROVEN-LIVE (#2691, 2026-07-18)**: the enricher's structured object now reaches WR2 drafts via the 4-hop opt-in contract; prod entity-match confirmed (`/pending?include_enrichment=true` carries it, default omits it).
 - **~~13 unknown_intent + 3 render_incomplete~~ → RESOLVED, verified 2026-07-18 (growth-loop B).**
   The live queue (Pro SSOT + M5 mirror, both fresh) has **0 render_incomplete, 0 unknown_intent** —
   cleared by the daily reconciler + the #2563 `slides_dir`-resolution fix (`unknown_intent` was a
@@ -74,7 +87,14 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   (a different, lower-urgency backlog — DB `war_room_drafts.status`):** `render_failed`=20
   (slow-accumulating since 2026-06-09, ~4/wk, 1 in last 3d — not acute), `missed`=17 (one-time
   2026-06-23), `rendered_shadow`=7 (2026-06-13 test batch). A render-failure sweep, if wanted, is
-  a fresh item — not the (now-closed) queue-stuck one.
+  a fresh item — not the (now-closed) queue-stuck one. **GROUND 2026-07-18 (growth-loop B):** the 19
+  render_failed are CONTENT/QUALITY failures, NOT render-infra — #4b279125 = `Article 7 hard fail:
+forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.py:1269`), others =
+  weak-slide non-convergence (max_iters). A blind requeue is FUTILE (identical content → identical
+  fail). The 8 `attempts=0` rows are a stale 06-08→06-13 batch (leave — stale news). **Systematic
+  sub-bug (ledgered):** the render lane's generic `except Exception` (`wr2_html_render_apply.py:1415`)
+  mislabels the deterministic Article-7 reject as 'transient' and burns all 3 retries — should
+  fail-fast. Deeper root cause: composer should never emit forbidden phrases.
 - **fact_check_status "degraded" pipeline-wide** — ROOT-CAUSED 2026-07-18 (growth-loop B4,
   `research/marketing/2026-07-18-wr2-fact-check-degraded-root-cause.md`, Codex-CADE-sharpened):
   NOT a bug — correct fail-closed. The checker verifies each draft against `brief_json`, the
@@ -98,8 +118,7 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   receptor on Zero's next app launch (the app was OFF at ship — err last grew 2026-07-17). Adjacent
   PRE-EXISTING finding (a readable-empty `slides/` dir excluded without count/log) + 2 NICEs
   (`@MainActor`, multi-root key) ledgered in PENDING-ARMS, not fixed (intent decision).
-- **4 accessibility amendments** in conflict with the constitution await Zero's reconciliation
-  (`~/.claude/skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md`).
+- **Accessibility/legibility SOTA is in the external benches, NOT a separate amendments file.** Verified 2026-07-18 (M5 + Pro): `_proposed-amendments/2026-07-16-accessibility-discipline.md` does NOT exist on either machine and no "4 accessibility amendments" content is in the brand skill — the prior reference was phantom (scar #6). The real, still-UN-shipped accessibility work is grounded in `_external-bench-2026-06.md`: **Art 14.7 AI-disclosure label** (Meta AI-label + EU AI Act pressure; constitution silent, Art 5.4 covers faces only) + **translucent-caption-pill** legibility scrim. Grounding these into constitution articles is the real (Zero-gated brand judgment) work — there is no lost amendments file to reconcile.
 - **Slide-7 closer micro-text** — ⚠️ corner-note was WRONG, corrected 2026-07-18 (growth-loop B): the
   deportation-remake closer is NOT elegant-close. DB `slides_json`: `slide_type=cta`, `layout_family`
   empty → `composer._pick_layout` routes it to **statement-bomb** (Art 9.5 hard rule) with a hero photo
@@ -108,7 +127,7 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   refuted by `claude_vision.py` (secondary text is judged at full size). Real fix surface = the
   photo-backed statement-bomb `.statement` sizing, NOT elegant-close CSS; exact tiny-rendering mechanism
   TBD (needs the rendered HTML / a faithful Pro-side repro) + must non-regress all photo statement-bombs.
-  Ledgered (PENDING-ARMS 2026-07-18) · memory `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18`.
+  **Fix is already BENCHED** (`_external-bench-2026-06.md:57`, translucent-caption-pill): an antracite ~75% translucent scrim/pill behind the `.statement` text over the full-bleed photo — closes the May "poor-contrast text-over-image" gap and is explicitly NOT an Art 15 violation (the ban targets color-coded kicker pills, not legibility scrims — document that for wr2-critic). So this is a BUILD of a benched device, not new research (though it touches brand rendering = Zero-gated). Ledgered (PENDING-ARMS 2026-07-18) · memory `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18`.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
   M5 queue shared-lock protocol · Swift tolerant decode · plist validator red on main ·
   19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).

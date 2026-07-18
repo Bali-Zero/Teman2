@@ -221,6 +221,36 @@ def _log_paths(plist: Path) -> list[Path]:
     return uniq
 
 
+def _label_of(plist: Path) -> str:
+    """Read the plist's declared :Label — launchctl keys ON THIS, not the
+    filename stem. Some of our own plists have stem != Label (real finding
+    2026-07-18: `com.matagaruda.kita-feed.daily.plist` and
+    `com.matagaruda.wr2-bridge.hourly.plist` both declare a Label WITHOUT the
+    trailing `.daily`/`.hourly` — `com.matagaruda.kita-feed` /
+    `com.matagaruda.wr2-bridge`. Querying `launchctl list <stem>` for those
+    asks about a label launchctl has never heard of, so a live, currently-
+    running job (verified: success logs 05:00 and 14:22 the same day) gets
+    reported NOT-LOADED — a false alarm on a healthy job.
+
+    Reuses the pattern already proven in
+    apps/mata-garuda/mata_garuda/workers/plist_watchdog.py::_label_of
+    (~lines 77-93). Falls back to the filename stem if `plutil` fails (e.g.
+    the plist is malformed XML — `_parse_plist` already has its own
+    launchctl-backed fallback for that case; this fallback keeps `_label_of`
+    itself total)."""
+    try:
+        r = subprocess.run(
+            ["plutil", "-extract", "Label", "raw", "-o", "-", str(plist)],
+            capture_output=True, text=True, timeout=10,
+        )
+        lbl = r.stdout.strip()
+        if r.returncode == 0 and lbl:
+            return lbl
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return plist.stem
+
+
 def _program_path(plist: Path) -> str | None:
     data = _parse_plist(plist)
     if data.get("Program"):
@@ -397,6 +427,18 @@ def _classify(
         return "DEAD-GREEN"          # the W84 vector: green lies
     if marker and exit_code not in (0, None):
         return "DEAD-NONZERO"        # honest non-zero + proven launch failure
+    # Fix 2026-07-18 (real finding: com.matagaruda.kg-query-api, last_exit=78
+    # posix_spawn fail, program /Users/nuzantara/scripts/mini-infra/kg-query-api-
+    # wrapper.sh missing on Pro): a missing program must be checked BEFORE the
+    # exit_code triage below. A missing program IS the root cause of the
+    # non-zero exit (launchd can't posix_spawn a path that doesn't exist) — a
+    # job in this shape was misclassified FAILING-HONESTLY (a "give it evidence
+    # time" verdict) when ARMED-TO-NOTHING is strictly more informative and
+    # already an ALARM_VERDICTS member either way. Ordering does NOT change the
+    # exit_code==0/None case (that already fell through to the old
+    # `if not prog_exists` check below unaffected).
+    if not prog_exists:
+        return "ARMED-TO-NOTHING"    # plist points at a missing script
     if exit_code not in (0, None):
         if (
             pid is not None
@@ -405,9 +447,61 @@ def _classify(
         ):
             return "RECOVERED"       # sticky exit code, provably alive since
         return "FAILING-HONESTLY"    # non-zero, no marker, no recovery proof
-    if not prog_exists:
-        return "ARMED-TO-NOTHING"    # plist points at a missing script
     return "OK"
+
+
+def _disabled_labels() -> set[str]:
+    """Labels the operator deliberately `launchctl disable`-d — a disarm, not
+    a crash. Without this, a disabled job is indistinguishable from an
+    accidental NOT-LOADED and cries wolf forever. Two real cases, 2026-07-18:
+    `com.balizero.agent-library-evolver.daily`/`.weekly` disarmed per
+    `research/operations/specs/WR3-QUALITY-DECISIONS.md` (~lines 293-304,
+    2026-06-12), and `com.matagaruda.kg-query-api` `launchctl disable`-d the
+    same day on Pro as a phantom instance of a service that lives on Mini.
+
+    Parses `launchctl print-disabled gui/<uid>`, whose lines look like
+    `\t\t"label" => disabled` / `"label" => enabled` (verified live 2026-07-18).
+    Only DISABLED entries are collected — that's the only membership this
+    detector needs, and it keeps the regex from having to reason about the
+    'enabled' spelling at all.
+
+    Best-effort: any failure (launchctl missing, timeout, unparseable output)
+    returns an EMPTY set — a detector that can't tell disabled-from-crashed
+    degrades to the OLD, noisier-but-never-silently-blind behavior (every
+    NOT-LOADED still alarms), never the reverse (silently swallowing a real
+    NOT-LOADED as a phantom 'disabled')."""
+    try:
+        out = subprocess.run(
+            ["launchctl", "print-disabled", f"gui/{os.getuid()}"],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return set()
+    if out.returncode != 0:
+        return set()
+    labels: set[str] = set()
+    for line in out.stdout.splitlines():
+        m = re.search(r'"([^"]+)"\s*=>\s*disabled\b', line)
+        if m:
+            labels.add(m.group(1))
+    return labels
+
+
+def _disabled_verdict(verdict: str, label: str, disabled_labels: set[str]) -> str:
+    """Override NOT-LOADED with DISABLED when the label is in the operator's
+    `launchctl disable` registry — a deliberate disarm the detector should
+    stop crying wolf about (it is NOT in ALARM_VERDICTS).
+
+    Scoped STRICTLY to NOT-LOADED: any other verdict (DEAD-GREEN,
+    ARMED-TO-NOTHING, FAILING-HONESTLY, ...) is left untouched even if the
+    label also happens to be in the disabled registry — those verdicts rest
+    on evidence besides 'not currently loaded' (a fresh failure marker, a
+    missing program) that a mere `launchctl disable` does not explain away,
+    and silently absorbing them into DISABLED would hide a real finding
+    behind an unrelated disarm."""
+    if verdict == "NOT-LOADED" and label in disabled_labels:
+        return "DISABLED"
+    return verdict
 
 
 def audit() -> list[dict]:
@@ -415,10 +509,19 @@ def audit() -> list[dict]:
     if not LAUNCHAGENTS.exists():
         return findings
     now = time.time()
+    # Once per run (2026-07-18 fix): the operator-disable registry, so a
+    # deliberately disarmed job (see _disabled_verdict) doesn't cry wolf as
+    # NOT-LOADED on every finding below.
+    disabled_labels = _disabled_labels()
     for plist in sorted(LAUNCHAGENTS.glob("*.plist")):
-        label = plist.stem
-        if not OURS_RE.search(label):
+        stem = plist.stem
+        if not OURS_RE.search(stem):
             continue
+        # 2026-07-18 fix: query launchctl by the plist's DECLARED Label, not
+        # the filename stem — see _label_of. The scope gate above stays on
+        # the (cheap, no-subprocess) stem since every label variant we care
+        # about still contains the "ours" marker word either way.
+        label = _label_of(plist)
         status = _launchctl_status(label)
         logs = _log_paths(plist)
         marker = _log_has_failure_marker(logs)
@@ -436,6 +539,9 @@ def audit() -> list[dict]:
             status=status, marker=marker, prog_exists=prog_exists,
             uptime_sec=uptime_sec,
         )
+        # 2026-07-18 fix: a deliberate `launchctl disable` reads as DISABLED,
+        # not NOT-LOADED — see _disabled_verdict.
+        verdict = _disabled_verdict(verdict, label, disabled_labels)
 
         findings.append({
             "label": label,
@@ -497,6 +603,7 @@ def main() -> int:
             for f in findings:
                 flag = (
                     "🚨" if f["verdict"] in ALARM_VERDICTS
+                    else "⛔" if f["verdict"] == "DISABLED"
                     else "⚠️ " if f["verdict"] == "FAILING-HONESTLY"
                     else "♻️ " if f["verdict"] == "RECOVERED"
                     else "✓ "
@@ -506,6 +613,8 @@ def main() -> int:
                     print(f"        ↳ log proves launch failure: {f['log_marker']}")
                 if f["verdict"] == "ARMED-TO-NOTHING":
                     print(f"        ↳ program missing: {f['program']}")
+                if f["verdict"] == "DISABLED":
+                    print("        ↳ deliberate disarm — launchctl disable (not an alarm)")
             print("\nDEAD-GREEN = launchd exit 0 but the log proves the worker never ran")
             print("(the W84 TCC vector). Cure is OPERATOR-ONLY: grant the launchd context")
             print("Full Disk Access in System Settings, OR relocate the wrapper outside ~/Desktop.")

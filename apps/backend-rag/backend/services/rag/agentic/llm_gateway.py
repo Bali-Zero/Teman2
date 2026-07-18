@@ -37,6 +37,7 @@ UPDATED 2025-12-23:
 
 import asyncio
 import logging
+import time
 from typing import Any
 
 import httpx
@@ -60,6 +61,7 @@ from backend.app.metrics import (
 )
 from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient, get_genai_client, types
+from backend.llm.metrics_emitter import emit_llm_metric
 from backend.services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
 from backend.services.llm_clients.pricing import TokenUsage, create_token_usage
 from backend.services.rag.agentic.chat_session import ChatSession, MockChatSession
@@ -331,8 +333,16 @@ class LLMGateway:
             >>> logger.info(f"[{model}] {response} (cost: ${usage.cost_usd:.6f})")
         """
         query_cost_tracker = {"cost": 0.0, "depth": 0}
+        # Latency telemetry (2026-07-18): this call and the rephrase/
+        # self-correction retry are the two biggest single LLM calls in the
+        # ReAct loop (~15-17s each in the live timeout repro), yet had ZERO
+        # latency logging — unlike genai_client.generate_content's "LLM
+        # call" logger. Mirror that pattern here at the gateway level so the
+        # duration is visible regardless of which tier/model actually served
+        # the request.
+        t0 = time.perf_counter()
         try:
-            return await self._send_with_fallback(
+            text_content, model_used, response_obj, token_usage = await self._send_with_fallback(
                 chat=chat,
                 message=message,
                 system_prompt=system_prompt,
@@ -342,13 +352,36 @@ class LLMGateway:
                 query_cost_tracker=query_cost_tracker,
                 images=images,
             )
+            latency_ms = round((time.perf_counter() - t0) * 1000)
+            provider = "openrouter" if model_used == "openrouter" else "gemini"
+            logger.info(
+                "LLM gateway call",
+                extra={
+                    "provider": provider,
+                    "model": model_used,
+                    "tier": tier,
+                    "latency_ms": latency_ms,
+                    "prompt_tokens": token_usage.prompt_tokens,
+                    "completion_tokens": token_usage.completion_tokens,
+                },
+            )
+            await emit_llm_metric(
+                provider=provider,
+                model=model_used,
+                latency_ms=latency_ms,
+                prompt_tokens=token_usage.prompt_tokens,
+                completion_tokens=token_usage.completion_tokens,
+            )
+            return (text_content, model_used, response_obj, token_usage)
         except Exception as e:
+            latency_ms = round((time.perf_counter() - t0) * 1000)
             logger.exception(
                 "All LLM models failed",
                 extra={
                     "tier": tier,
                     "fallback_depth": query_cost_tracker["depth"],
                     "total_cost": query_cost_tracker["cost"],
+                    "latency_ms": latency_ms,
                 },
             )
             llm_all_models_failed_total.inc()

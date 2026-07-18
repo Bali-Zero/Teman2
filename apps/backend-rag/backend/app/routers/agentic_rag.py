@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from backend.app.core.config import settings
 from backend.app.dependencies import (
     get_current_user,
     get_current_user_optional,
@@ -454,7 +455,21 @@ async def query_agentic_rag(
                 "cache_hit": result.cache_hit,
                 "ab_config": {
                     "hybrid": hybrid_config,
-                    "rerank": rerank_config,
+                    # HONESTY FIX (2026-07-18): `rerank_config` is the A/B
+                    # experiment's INTENDED variant (e.g. "with_rerank" ->
+                    # {"use_reranking": True}) from a random per-user split —
+                    # it is never actually wired into orchestrator.process_query
+                    # and does NOT reflect whether reranking really ran.
+                    # search_service._init_reranker() used to hardcode
+                    # enabled=True regardless of settings.enable_reranker,
+                    # so a query could show "with_rerank" here while the
+                    # cross-encoder silently failed to import and returned
+                    # zero scores. `reranker_actually_enabled` is the real,
+                    # global on/off switch (see settings.enable_reranker).
+                    "rerank": {
+                        **rerank_config,
+                        "reranker_actually_enabled": settings.enable_reranker,
+                    },
                     "expansion": expansion_config,
                 },
             },
