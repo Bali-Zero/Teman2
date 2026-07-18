@@ -19,6 +19,7 @@ export type MachineSignatureInput = Readonly<{
   nonce: string;
   keyId: string;
   audience: string;
+  signedHeaders?: readonly Readonly<{ name: string; value: string }>[];
 }>;
 
 export type MachineHmacKey = Readonly<{
@@ -33,6 +34,7 @@ export interface MachineNonceStore {
     keyId: string,
     nonce: string,
     expiresAt: number,
+    bodySha256?: string,
   ): Promise<boolean>;
 }
 
@@ -62,6 +64,7 @@ export type MachineSigningOptions = Readonly<{
   keyId: string;
   audience: string;
   secret: string;
+  signedHeaderNames?: readonly string[];
 }>;
 
 const DEFAULT_ALLOWED_CONTENT_TYPES = [
@@ -227,12 +230,23 @@ export function canonicalizeMachineSignature(
     "audience",
   ];
   fields.forEach((field, index) => assertCanonicalField(field, names[index]));
+  const signedHeaders = input.signedHeaders ?? [];
+  let previousName = "";
+  for (const { name, value } of signedHeaders) {
+    if (!/^[a-z0-9-]+$/.test(name) || name <= previousName) {
+      throw new TypeError("invalid machine signature signed headers");
+    }
+    assertCanonicalField(value, `header ${name}`);
+    previousName = name;
+    fields.push(`${name}:${value}`);
+  }
   return fields.join("\n");
 }
 
 async function requestBody(
   request: Request,
   maximumBytes: number,
+  consumeOriginal = false,
 ): Promise<Uint8Array> {
   const declaredLength = request.headers.get("content-length");
   if (declaredLength !== null) {
@@ -243,7 +257,8 @@ async function requestBody(
       throw new TypeError("machine request body exceeds size limit");
     }
   }
-  const body = new Uint8Array(await request.clone().arrayBuffer());
+  const source = consumeOriginal ? request : request.clone();
+  const body = new Uint8Array(await source.arrayBuffer());
   if (body.byteLength > maximumBytes)
     throw new TypeError("machine request body exceeds size limit");
   return body;
@@ -255,6 +270,10 @@ function signatureInput(
   bodySha256: string,
   options: Omit<MachineSigningOptions, "secret">,
 ): MachineSignatureInput {
+  const signedHeaderNames = [...(options.signedHeaderNames ?? [])].sort();
+  if (new Set(signedHeaderNames).size !== signedHeaderNames.length) {
+    throw new TypeError("duplicate machine signature signed header");
+  }
   return {
     method: request.method.toUpperCase(),
     normalizedPath: normalizeRequestPath(request.url),
@@ -264,6 +283,12 @@ function signatureInput(
     nonce: options.nonce,
     keyId: options.keyId,
     audience: options.audience,
+    signedHeaders: signedHeaderNames.map((name) => {
+      if (name !== name.toLowerCase() || !/^[a-z0-9-]+$/.test(name)) {
+        throw new TypeError("invalid machine signature signed header name");
+      }
+      return { name, value: requireHeader(request.headers, name) };
+    }),
   };
 }
 
@@ -294,6 +319,7 @@ export async function machineSignatureHeaders(
 export async function verifyMachineRequest(
   request: Request,
   env: MagazineEnv,
+  options: Readonly<{ signedHeaderNames?: readonly string[] }> = {},
 ): Promise<VerifiedMachineRequest> {
   const validatedEnvironment = validateMachineEnvironment(env);
   const contentType = normalizeContentType(
@@ -348,6 +374,7 @@ export async function verifyMachineRequest(
   const body = await requestBody(
     request,
     validatedEnvironment.maximumBodyBytes,
+    true,
   );
   const bodySha256 = await sha256Hex(body);
   const canonical = canonicalizeMachineSignature(
@@ -356,6 +383,7 @@ export async function verifyMachineRequest(
       nonce,
       keyId,
       audience,
+      signedHeaderNames: options.signedHeaderNames,
     }),
   );
   const expectedSignature = await hmacSha256Hex(matchingKey.secret, canonical);
@@ -365,7 +393,9 @@ export async function verifyMachineRequest(
 
   const expiresAt =
     (timestampSeconds + validatedEnvironment.maximumSkew) * 1000;
-  if (!(await env.nonceStore.insertUnique(keyId, nonce, expiresAt))) {
+  if (
+    !(await env.nonceStore.insertUnique(keyId, nonce, expiresAt, bodySha256))
+  ) {
     throw new TypeError("nonce already used");
   }
   return {

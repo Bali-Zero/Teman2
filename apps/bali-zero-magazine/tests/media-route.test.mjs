@@ -1,0 +1,299 @@
+import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import test from "node:test";
+
+import { parseStoryPacket } from "../lib/contracts/publication.ts";
+import { createPublicationRepository } from "../lib/server/publication-repository.ts";
+import { runWithMagazineBindings } from "../lib/server/runtime-bindings.ts";
+import {
+  MemoryR2Bucket,
+  SqliteD1Database,
+  VALID_PNG,
+  breakingPacket,
+  runtimeBindings,
+  storyVersion,
+  validAssetMetadata,
+} from "./helpers/task-5-fixtures.mjs";
+
+const routePath = new URL(
+  "../app/api/media/[digest]/route.ts",
+  import.meta.url,
+);
+const mediaModulePath = new URL("../lib/server/media.ts", import.meta.url);
+const routeExists = existsSync(routePath) && existsSync(mediaModulePath);
+
+test("authenticated media route and resolver exist", () => {
+  assert.ok(existsSync(routePath), "missing authenticated media route");
+  assert.ok(existsSync(mediaModulePath), "missing media resolver");
+});
+
+async function loadRoute() {
+  return (await import(routePath)).GET;
+}
+
+async function publishVisibleAsset({
+  status = "verified",
+  rightsStatus = "approved",
+} = {}) {
+  const db = new SqliteD1Database();
+  const media = new MemoryR2Bucket();
+  const metadata = await validAssetMetadata();
+  const key = `assets/sha256/${metadata.sha256}.png`;
+  await media.put(key, VALID_PNG, {
+    httpMetadata: { contentType: "image/png" },
+    customMetadata: {
+      sha256: metadata.sha256,
+      byteCount: String(metadata.byte_count),
+      width: String(metadata.width),
+      height: String(metadata.height),
+    },
+  });
+  db.execute(
+    `INSERT INTO assets(
+       asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
+       height, alt_text, source, rights_status, status, captured_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    metadata.asset_id,
+    metadata.packet_id,
+    metadata.sha256,
+    key,
+    metadata.mime_type,
+    metadata.byte_count,
+    metadata.width,
+    metadata.height,
+    "Task 5 editorial image",
+    "Bali Zero editorial desk",
+    rightsStatus,
+    status,
+    metadata.captured_at,
+  );
+  const story = storyVersion({ assetDigest: metadata.sha256 });
+  const repository = createPublicationRepository(db, {
+    now: () => "2026-07-18T01:30:00.000Z",
+  });
+  const packet = parseStoryPacket(breakingPacket(story));
+  const bodyHash = "f".repeat(64);
+  await repository.stageBreaking(packet, bodyHash);
+  await repository.finalizeBreaking(packet.packet_id);
+  return { db, media, metadata, story };
+}
+
+async function getMedia(handler, digest, bindings, authenticated = true) {
+  const headers = authenticated
+    ? { "oai-authenticated-user-email": "reader@balizero.com" }
+    : {};
+  const request = new Request(`https://magazine.example/api/media/${digest}`, {
+    headers,
+  });
+  return runWithMagazineBindings(bindings, () =>
+    handler(request, { params: Promise.resolve({ digest }) }),
+  );
+}
+
+test(
+  "media route serves only an authenticated visible current association",
+  { skip: !routeExists },
+  async () => {
+    const handler = await loadRoute();
+    const { db, media, metadata } = await publishVisibleAsset();
+    const bindings = runtimeBindings(db, media);
+    const anonymous = await getMedia(handler, metadata.sha256, bindings, false);
+    assert.equal(anonymous.status, 401);
+    assert.equal((await anonymous.text()).includes(metadata.sha256), false);
+
+    const response = await getMedia(handler, metadata.sha256, bindings);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "image/png");
+    assert.equal(
+      response.headers.get("content-length"),
+      String(VALID_PNG.byteLength),
+    );
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(
+      response.headers.get("cross-origin-resource-policy"),
+      "same-origin",
+    );
+    assert.deepEqual(new Uint8Array(await response.arrayBuffer()), VALID_PNG);
+  },
+);
+
+test(
+  "media route rejects malformed digest and never exposes raw R2 keys",
+  { skip: !routeExists },
+  async () => {
+    const handler = await loadRoute();
+    const { db, media, metadata } = await publishVisibleAsset();
+    const bindings = runtimeBindings(db, media);
+    for (const digest of ["not-a-digest", metadata.sha256.toUpperCase()]) {
+      const response = await getMedia(handler, digest, bindings);
+      assert.equal(response.status, 404);
+      assert.equal((await response.text()).includes("assets/sha256"), false);
+    }
+  },
+);
+
+test(
+  "media route denies the next request after story quarantine or asset revocation",
+  { skip: !routeExists },
+  async () => {
+    const handler = await loadRoute();
+    const { db, media, metadata, story } = await publishVisibleAsset();
+    const bindings = runtimeBindings(db, media);
+    assert.equal(
+      (await getMedia(handler, metadata.sha256, bindings)).status,
+      200,
+    );
+
+    db.execute(
+      `INSERT INTO audit_events(
+         event_id, stream_id, stream_seq, payload_json,
+         previous_event_hash, event_hash
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+      "audit-media-quarantine",
+      `story-visibility:${story.story_id}`,
+      1,
+      "{}",
+      "0".repeat(64),
+      "a".repeat(64),
+    );
+    db.execute(
+      `INSERT INTO story_visibility_events(
+         story_id, visibility_seq, story_version, intent_id,
+         desired_quarantined, audit_event_id
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+      story.story_id,
+      1,
+      story.version,
+      "intent-media-quarantine",
+      1,
+      "audit-media-quarantine",
+    );
+    assert.equal(
+      (await getMedia(handler, metadata.sha256, bindings)).status,
+      404,
+    );
+
+    db.execute(
+      `INSERT INTO audit_events(
+         event_id, stream_id, stream_seq, payload_json,
+         previous_event_hash, event_hash
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+      "audit-media-release",
+      `story-visibility:${story.story_id}`,
+      2,
+      "{}",
+      "a".repeat(64),
+      "b".repeat(64),
+    );
+    db.execute(
+      `INSERT INTO story_visibility_events(
+         story_id, visibility_seq, story_version, intent_id,
+         desired_quarantined, audit_event_id
+       ) VALUES (?, ?, ?, ?, ?, ?)`,
+      story.story_id,
+      2,
+      story.version,
+      "intent-media-release",
+      0,
+      "audit-media-release",
+    );
+    db.execute(
+      `INSERT INTO asset_status_events(
+         asset_id, status_seq, status, rights_status, reason_code
+       ) VALUES (?, ?, ?, ?, ?)`,
+      metadata.asset_id,
+      1,
+      "revoked",
+      "denied",
+      "rights-revoked",
+    );
+    assert.equal(
+      (await getMedia(handler, metadata.sha256, bindings)).status,
+      404,
+    );
+  },
+);
+
+test(
+  "media route fails closed on unverified assets and R2 metadata or digest drift",
+  { skip: !routeExists },
+  async () => {
+    const handler = await loadRoute();
+    const fixture = await publishVisibleAsset();
+    const bindings = runtimeBindings(fixture.db, fixture.media);
+    fixture.db.execute(
+      "UPDATE assets SET status = 'pending' WHERE asset_id = ?",
+      fixture.metadata.asset_id,
+    );
+    assert.equal(
+      (await getMedia(handler, fixture.metadata.sha256, bindings)).status,
+      404,
+    );
+
+    fixture.db.execute(
+      "UPDATE assets SET status = 'verified' WHERE asset_id = ?",
+      fixture.metadata.asset_id,
+    );
+    const stored = fixture.media.objects.get(
+      `assets/sha256/${fixture.metadata.sha256}.png`,
+    );
+    stored.customMetadata.sha256 = "0".repeat(64);
+    assert.equal(
+      (await getMedia(handler, fixture.metadata.sha256, bindings)).status,
+      404,
+    );
+
+    stored.customMetadata.sha256 = fixture.metadata.sha256;
+    fixture.media.corruptReadBack = true;
+    assert.equal(
+      (await getMedia(handler, fixture.metadata.sha256, bindings)).status,
+      404,
+    );
+  },
+);
+
+test(
+  "media route requires a published story association",
+  { skip: !routeExists },
+  async () => {
+    const handler = await loadRoute();
+    const db = new SqliteD1Database();
+    const media = new MemoryR2Bucket();
+    const metadata = await validAssetMetadata();
+    await media.put(`assets/sha256/${metadata.sha256}.png`, VALID_PNG, {
+      httpMetadata: { contentType: "image/png" },
+      customMetadata: {
+        sha256: metadata.sha256,
+        byteCount: String(metadata.byte_count),
+        width: "1",
+        height: "1",
+      },
+    });
+    db.execute(
+      `INSERT INTO assets(
+         asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
+         height, alt_text, source, rights_status, status, captured_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      metadata.asset_id,
+      metadata.packet_id,
+      metadata.sha256,
+      `assets/sha256/${metadata.sha256}.png`,
+      "image/png",
+      metadata.byte_count,
+      1,
+      1,
+      "",
+      "",
+      "approved",
+      "verified",
+      metadata.captured_at,
+    );
+    const response = await getMedia(
+      handler,
+      metadata.sha256,
+      runtimeBindings(db, media),
+    );
+    assert.equal(response.status, 404);
+  },
+);

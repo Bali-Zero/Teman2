@@ -25,6 +25,7 @@ CREATE TABLE `assets` (
 	`source` text NOT NULL,
 	`rights_status` text NOT NULL,
 	`status` text NOT NULL,
+	`captured_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	CONSTRAINT "assets_hash_check" CHECK(length("sha256") = 64 and "sha256" not glob '*[^0-9a-f]*'),
 	CONSTRAINT "assets_status_check" CHECK("assets"."status" in ('pending', 'verified', 'quarantined', 'revoked')),
@@ -108,7 +109,9 @@ CREATE TABLE `collector_runs` (
 	`unreachable_source_count` integer NOT NULL,
 	`watermark` text NOT NULL,
 	`verified_at` text NOT NULL,
+	`manifest_hash` text NOT NULL,
 	FOREIGN KEY (`system_id`) REFERENCES `source_systems`(`system_id`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "collector_runs_manifest_hash_check" CHECK(length("manifest_hash") = 64 and "manifest_hash" not glob '*[^0-9a-f]*'),
 	CONSTRAINT "collector_runs_status_check" CHECK("collector_runs"."status" in ('healthy', 'delayed', 'degraded', 'unavailable', 'unknown')),
 	CONSTRAINT "collector_runs_freshness_check" CHECK("collector_runs"."freshness" in ('fresh', 'delayed', 'archived')),
 	CONSTRAINT "collector_runs_counts_check" CHECK("collector_runs"."items_seen" >= 0 and "collector_runs"."items_eligible" >= 0 and "collector_runs"."source_count" >= 0 and "collector_runs"."unreachable_source_count" >= 0)
@@ -132,8 +135,8 @@ CREATE TABLE `edition_entries` (
 	CONSTRAINT "edition_entries_lead_check" CHECK("edition_entries"."is_lead" in (0, 1))
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `edition_entries_order_unique` ON `edition_entries` (`edition_id`,`section`,`editorial_order`);--> statement-breakpoint
 CREATE UNIQUE INDEX `edition_entries_single_lead_unique` ON `edition_entries` (`edition_id`) WHERE "edition_entries"."is_lead" = 1;--> statement-breakpoint
+CREATE UNIQUE INDEX `edition_entries_order_unique` ON `edition_entries` (`edition_id`,`section`,`editorial_order`);--> statement-breakpoint
 CREATE TABLE `edition_pointer` (
 	`singleton_id` integer PRIMARY KEY DEFAULT 1 NOT NULL,
 	`current_edition_id` text,
@@ -409,8 +412,10 @@ CREATE TABLE `story_visibility_events` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `story_visibility_events_intent_id_unique` ON `story_visibility_events` (`intent_id`);--> statement-breakpoint
-CREATE UNIQUE INDEX `story_visibility_story_seq_unique` ON `story_visibility_events` (`story_id`,`visibility_seq`);--> statement-breakpoint
+CREATE UNIQUE INDEX `story_visibility_story_seq_unique` ON `story_visibility_events` (`story_id`,`visibility_seq`);
+--> statement-breakpoint
 INSERT INTO edition_pointer (singleton_id, current_edition_id, current_revision)
-VALUES (1, NULL, 0);--> statement-breakpoint
+VALUES (1, NULL, 0);
+--> statement-breakpoint
 INSERT INTO breaking_pointer (singleton_id, active_revision, updated_at)
 VALUES (1, 0, NULL);

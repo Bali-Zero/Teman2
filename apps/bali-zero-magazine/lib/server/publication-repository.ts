@@ -6,6 +6,10 @@ import type {
   StoryPacketV1,
   StoryVersionV1,
 } from "../contracts/publication.ts";
+import type {
+  AssetUploadMetadataV1,
+  CollectorRunProjectionV1,
+} from "../contracts/collector.ts";
 
 export type D1ResultLike<T = Record<string, unknown>> = Readonly<{
   success?: boolean;
@@ -29,6 +33,7 @@ export interface D1DatabaseLike {
 
 export type StageResult = "staged" | "replay";
 export type FinalizeResult = "published" | "replay";
+export type IngestResult = "created" | "replay";
 
 export type PublishedStory = Readonly<{
   story_id: string;
@@ -103,6 +108,12 @@ type StoryFinalizeRow = Readonly<{
   version: number;
   expected_current_version: number;
 }>;
+
+type CollectorRunRow = Omit<CollectorRunProjectionV1, "schema_version"> &
+  Readonly<{ manifest_hash: string }>;
+
+type AssetRow = Omit<AssetUploadMetadataV1, "schema_version"> &
+  Readonly<{ r2_key: string; status: string }>;
 
 const SHA256 = /^[a-f0-9]{64}$/;
 
@@ -554,6 +565,130 @@ export function createPublicationRepository(
   options: RepositoryOptions = {},
 ) {
   const now = options.now ?? (() => new Date().toISOString());
+
+  async function ingestCollectorRun(
+    run: CollectorRunProjectionV1,
+    manifestHash: string,
+  ): Promise<IngestResult> {
+    requireManifestHash(manifestHash);
+    const existing = await db
+      .prepare("SELECT * FROM collector_runs WHERE run_id = ?")
+      .bind(run.run_id)
+      .first<CollectorRunRow>();
+    const isReplay = (row: CollectorRunRow | null): boolean =>
+      row !== null &&
+      row.manifest_hash === manifestHash &&
+      Object.entries(run).every(
+        ([key, value]) =>
+          key === "schema_version" ||
+          row[key as keyof CollectorRunRow] === value,
+      );
+    if (existing !== null) {
+      if (isReplay(existing)) return "replay";
+      throw new Error("collector run conflict");
+    }
+    try {
+      await db
+        .prepare(
+          `INSERT INTO collector_runs(
+             run_id, system_id, collector_id, started_at, completed_at, status,
+             freshness, items_seen, items_eligible, source_count,
+             unreachable_source_count, watermark, verified_at, manifest_hash
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          run.run_id,
+          run.system_id,
+          run.collector_id,
+          run.started_at,
+          run.completed_at,
+          run.status,
+          run.freshness,
+          run.items_seen,
+          run.items_eligible,
+          run.source_count,
+          run.unreachable_source_count,
+          run.watermark,
+          run.verified_at,
+          manifestHash,
+        )
+        .run();
+      return "created";
+    } catch (cause) {
+      const winner = await db
+        .prepare("SELECT * FROM collector_runs WHERE run_id = ?")
+        .bind(run.run_id)
+        .first<CollectorRunRow>();
+      if (isReplay(winner)) return "replay";
+      throw new Error("collector run conflict", { cause });
+    }
+  }
+
+  async function ingestVerifiedAsset(
+    asset: AssetUploadMetadataV1,
+    r2Key: string,
+  ): Promise<IngestResult> {
+    const findExisting = () =>
+      db
+        .prepare(
+          `SELECT asset_id, packet_id, sha256, r2_key, mime_type, byte_count,
+                  width, height, captured_at, rights_status, status
+           FROM assets WHERE asset_id = ? OR sha256 = ? OR r2_key = ? LIMIT 1`,
+        )
+        .bind(asset.asset_id, asset.sha256, r2Key)
+        .first<AssetRow>();
+    const isReplay = (row: AssetRow | null): boolean =>
+      row !== null &&
+      row.asset_id === asset.asset_id &&
+      row.packet_id === asset.packet_id &&
+      row.sha256 === asset.sha256 &&
+      row.r2_key === r2Key &&
+      row.mime_type === asset.mime_type &&
+      row.byte_count === asset.byte_count &&
+      row.width === asset.width &&
+      row.height === asset.height &&
+      row.captured_at === asset.captured_at &&
+      row.rights_status === asset.rights_status &&
+      row.status === "verified";
+    const existing = await findExisting();
+    if (existing !== null) {
+      if (isReplay(existing)) return "replay";
+      throw new Error("asset conflict");
+    }
+    try {
+      const result = await db
+        .prepare(
+          `INSERT INTO assets(
+             asset_id, packet_id, sha256, r2_key, mime_type, byte_count,
+             width, height, alt_text, source, rights_status, status, captured_at
+           )
+           SELECT ?, ?, ?, ?, ?, ?, ?, ?, '', '', ?, 'verified', ?
+           WHERE (SELECT count(*) FROM assets WHERE packet_id = ?) < 20`,
+        )
+        .bind(
+          asset.asset_id,
+          asset.packet_id,
+          asset.sha256,
+          r2Key,
+          asset.mime_type,
+          asset.byte_count,
+          asset.width,
+          asset.height,
+          asset.rights_status,
+          asset.captured_at,
+          asset.packet_id,
+        )
+        .run();
+      if (changes(result) === 1) return "created";
+    } catch (cause) {
+      const winner = await findExisting();
+      if (isReplay(winner)) return "replay";
+      throw new Error("asset conflict", { cause });
+    }
+    const winner = await findExisting();
+    if (isReplay(winner)) return "replay";
+    throw new Error("asset packet limit conflict");
+  }
 
   async function getPacket(packetId: string): Promise<PacketRow | null> {
     return db
@@ -1360,6 +1495,8 @@ export function createPublicationRepository(
   }
 
   return {
+    ingestCollectorRun,
+    ingestVerifiedAsset,
     stageEdition,
     finalizeEdition,
     stageBreaking,

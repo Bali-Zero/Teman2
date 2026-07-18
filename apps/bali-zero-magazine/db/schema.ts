@@ -62,8 +62,10 @@ export const collectorRuns = sqliteTable(
     unreachableSourceCount: integer("unreachable_source_count").notNull(),
     watermark: text("watermark").notNull(),
     verifiedAt: text("verified_at").notNull(),
+    manifestHash: text("manifest_hash").notNull(),
   },
   (table) => [
+    check("collector_runs_manifest_hash_check", sha256Check("manifest_hash")),
     check(
       "collector_runs_status_check",
       sql`${table.status} in ('healthy', 'delayed', 'degraded', 'unavailable', 'unknown')`,
@@ -546,6 +548,9 @@ export const assets = sqliteTable(
     source: text("source").notNull(),
     rightsStatus: text("rights_status").notNull(),
     status: text("status").notNull(),
+    capturedAt: text("captured_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
     createdAt: createdAt(),
   },
   (table) => [

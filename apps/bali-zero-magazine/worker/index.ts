@@ -12,8 +12,12 @@ import { secureProtectedHtmlResponse } from "./response-security";
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  MEDIA: R2Bucket;
   ACTOR_KEY_SECRET?: string;
   ROLE_ALLOWLIST_JSON?: string;
+  MACHINE_HMAC_AUDIENCE?: string;
+  MACHINE_HMAC_CURRENT_KEY_JSON?: string;
+  MACHINE_HMAC_NEXT_KEY_JSON?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
