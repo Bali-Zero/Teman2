@@ -25,7 +25,13 @@ below MUST carry a non-null, in-registry `category` (or the literal sentinel
 "OTHER_NEW_CATEGORY") — `_validate_verdicts` refuses to render or emit if any
 entry is missing one. This is deliberate: a per-code category is a D6
 conductor judgment call, and this compiler must never let an unlabeled
-placeholder slip into a persisted, git-committed artifact by accident.
+placeholder slip into a persisted, git-committed artifact by accident. (The
+first draft of this file shipped with 9 of 13 categories and both
+innocence-control code identities as explicit NEEDS-DATA/PENDING placeholders
+— the conductor's initial aggregate summary named the 4 categories SEEN
+across the lot but not the per-code map. The gate correctly refused to build
+or emit while incomplete; the conductor supplied the full table in a
+follow-up message, 2026-07-18, and it is what's pinned below now.)
 
 Determinism (G16): same LOT_A_L1_VERDICTS/LOT_A_L1_INNOCENCE inputs => byte-
 identical JSON; sorted keys; trailing newline. PINNED_DATE is a constant,
@@ -72,13 +78,13 @@ FROZEN_TAXONOMY: tuple[str, ...] = ("certified", "quarantined", "abstained")
 # ---------------------------------------------------------------------------
 # Lot A-L1 — conductor-signed verdict table (plan §8 amendment A-3).
 #
-# PINNED LITERAL, source: the conductor's D6 review + plan §8 A-3. Every
-# entry with verdict="quarantined" MUST carry a category (see
-# _validate_verdicts). Entries below with category=None are KNOWN-INCOMPLETE
-# placeholders — the conductor's per-code category for these 9 codes was not
-# yet supplied at the time this compiler was authored (2026-07-18); `--apply`
-# and `--check` both refuse to run while any placeholder remains, by design
-# (see module docstring "FAIL-CLOSED BY CONSTRUCTION").
+# PINNED LITERAL, source: the conductor's D6 review + plan §8 A-3 (categories
+# and innocence-control identities conductor-signed 2026-07-18, second
+# message, exact/verbatim). Every entry with verdict="quarantined" carries an
+# in-registry category (see _validate_verdicts) — the earlier NEEDS-DATA
+# placeholders are gone; the fail-closed gate is retained as a regression
+# guard (see test_incomplete_pinned_literal_refuses_to_build, updated
+# accordingly), never removed.
 # ---------------------------------------------------------------------------
 LOT_A_L1_VERDICTS: list[dict[str, Any]] = [
     {
@@ -91,26 +97,29 @@ LOT_A_L1_VERDICTS: list[dict[str, Any]] = [
     {
         "code": "01287",
         "verdict": "quarantined",
-        "category": "illegitimate_inheritance",
+        "category": "code_collision",
         "d2_self_confirm_failed": False,
         "note": (
-            "D6 image-confirmed: 3/8 per_skala rows copied from a livestock-feed code onto a "
-            "narcotic-plant-cultivation code (silent PP28-crosswalk misfill)"
+            "D5's evidenced judgment (conductor-verified: 3/8 per_skala rows carry livestock-feed "
+            "text inside the narcotics code): a DIFFERENT code's PP28 obligation table was merged "
+            "into 01287's record — content-level collision, more specific than the absent-source "
+            "signal (category corrected from an earlier illegitimate_inheritance draft, "
+            "conductor-confirmed 2026-07-18)"
         ),
     },
     {
         "code": "01700",
         "verdict": "quarantined",
-        "category": None,  # NEEDS-DATA: conductor per-code category pending
+        "category": "source_absent_in_vault",
         "d2_self_confirm_failed": False,
-        "note": "PENDING conductor per-code category (plan §8 A-3 aggregate only named 4 categories seen across the lot, not a per-code map)",
+        "note": "conductor-signed category, D6 review (plan §8 A-3)",
     },
     {
         "code": "02201",
         "verdict": "quarantined",
-        "category": None,  # NEEDS-DATA
+        "category": "source_absent_in_vault",
         "d2_self_confirm_failed": False,
-        "note": "PENDING conductor per-code category",
+        "note": "conductor-signed category, D6 review (plan §8 A-3)",
     },
     {
         "code": "02402",
@@ -122,44 +131,44 @@ LOT_A_L1_VERDICTS: list[dict[str, Any]] = [
     {
         "code": "02409",
         "verdict": "quarantined",
-        "category": None,  # NEEDS-DATA
+        "category": "phantom_source_pointer",
         "d2_self_confirm_failed": False,
-        "note": "PENDING conductor per-code category",
+        "note": "conductor-signed category, D6 review (plan §8 A-3)",
     },
     {
         "code": "05102",
         "verdict": "quarantined",
-        "category": None,  # NEEDS-DATA
+        "category": "illegitimate_inheritance",
         "d2_self_confirm_failed": False,
-        "note": "PENDING conductor per-code category",
+        "note": "conductor-signed category, D6 review (plan §8 A-3)",
     },
     {
         "code": "05200",
         "verdict": "quarantined",
-        "category": None,  # NEEDS-DATA
+        "category": "phantom_source_pointer",
         "d2_self_confirm_failed": False,
-        "note": "PENDING conductor per-code category",
+        "note": "conductor-signed category, D6 review (plan §8 A-3)",
     },
     {
         "code": "08920",
         "verdict": "quarantined",
-        "category": None,  # NEEDS-DATA
+        "category": "source_absent_in_vault",
         "d2_self_confirm_failed": False,
-        "note": "PENDING conductor per-code category",
+        "note": "conductor-signed category, D6 review (plan §8 A-3)",
     },
     {
         "code": "36003",
         "verdict": "quarantined",
-        "category": None,  # NEEDS-DATA
+        "category": "phantom_source_pointer",
         "d2_self_confirm_failed": False,
-        "note": "PENDING conductor per-code category",
+        "note": "conductor-signed category, D6 review (plan §8 A-3)",
     },
     {
         "code": "38122",
         "verdict": "quarantined",
-        "category": None,  # NEEDS-DATA
+        "category": "phantom_source_pointer",
         "d2_self_confirm_failed": False,
-        "note": "PENDING conductor per-code category",
+        "note": "conductor-signed category, D6 review (plan §8 A-3)",
     },
     {
         "code": "38222",
@@ -176,17 +185,19 @@ LOT_A_L1_VERDICTS: list[dict[str, Any]] = [
     {
         "code": "39001",
         "verdict": "quarantined",
-        "category": None,  # NEEDS-DATA
+        "category": "illegitimate_inheritance",
         "d2_self_confirm_failed": False,
-        "note": "PENDING conductor per-code category",
+        "note": "conductor-signed category, D6 review (plan §8 A-3)",
     },
 ]
 
-# NEEDS-DATA: the 2 innocence-control codes for Lot A-L1 were not named in
-# the mandate — codes below are placeholders (code=None) until supplied.
+# Innocence controls (identities conductor-signed 2026-07-18, second message —
+# the aggregate A-3 summary counted 2/2 clean but omitted the identities):
+# both OSS-native, both "boring as expected" per plan §3's innocence-control
+# design (a control the pipeline must NOT quarantine).
 LOT_A_L1_INNOCENCE: list[dict[str, Any]] = [
-    {"code": None, "verdict": "certified", "note": "PENDING: innocence-control code identity not yet supplied"},
-    {"code": None, "verdict": "certified", "note": "PENDING: innocence-control code identity not yet supplied"},
+    {"code": "65121", "verdict": "certified", "note": "Asuransi Umum Konvensional — OSS-native, innocence_control=true"},
+    {"code": "85202", "verdict": "certified", "note": "Pendidikan Dasar Umum Swasta — OSS-native, innocence_control=true"},
 ]
 
 

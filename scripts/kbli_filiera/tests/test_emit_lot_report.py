@@ -9,18 +9,16 @@ Three properties, per the mandate:
 3. Census matches the conductor's Lot A-L1 report: 1 certified, 12 quarantined
    (11 + the 1 D6-demoted 38222), 2 innocence controls.
 
-NOTE on (3): as of this test file's authoring, the real LOT_A_L1_VERDICTS pinned
-literal in emit_lot_report.py has 9 of 13 quarantined-code categories marked
-NEEDS-DATA (category=None) and both innocence-control codes marked NEEDS-DATA
-(code=None) — the conductor's per-code category table was not in the mandate's
-aggregate summary. The module's own `_validate_verdicts` fail-closed gate refuses
-to build a report from incomplete data (test_incomplete_pinned_literal_refuses_to_build
-is the regression guard for that gate). test_lot_a_l1_census_matches_conductor_report
-below fills the PENDING category slots with an arbitrary in-registry placeholder
-(test-local only, never touching the module's real data) because census COUNTS
-depend only on code identity + certified/quarantined/demoted assignment — all of
-which ARE certain, given directly in the mandate + plan §8 A-2's code list — never
-on which specific category a code got.
+History: the first draft of LOT_A_L1_VERDICTS/LOT_A_L1_INNOCENCE shipped with 9 of
+13 quarantined-code categories and both innocence-control codes as explicit
+NEEDS-DATA/PENDING placeholders — the conductor's initial aggregate summary named
+the 4 categories SEEN across the lot but not the per-code map. build_report()'s
+fail-closed gate correctly refused to build from that incomplete data (this was
+verified live before the real table arrived). The conductor supplied the complete,
+signed table in a follow-up message (2026-07-18); it is what's pinned in
+emit_lot_report.py now, and the tests below exercise the REAL literal directly —
+no test-local placeholder-filling needed anymore. The fail-closed gate itself
+remains covered by the synthetic guilt/innocence pairs below (never removed).
 """
 from __future__ import annotations
 
@@ -140,58 +138,66 @@ def test_innocence_quarantined_with_registry_category_is_accepted() -> None:
     assert ctx["categories_seen"] == ["code_collision"]
 
 
-def test_incomplete_pinned_literal_refuses_to_build() -> None:
-    """Regression guard for the fail-closed gate itself: as long as
-    LOT_A_L1_VERDICTS carries any NEEDS-DATA placeholder (category=None on a
-    quarantined entry, or code=None on an innocence entry), build_report() on
-    the REAL pinned literal must raise — proving this compiler cannot silently
-    emit the incomplete Lot A-L1 report today. Once the conductor supplies the
-    real per-code categories and innocence-control codes, this test should be
-    UPDATED (not deleted) to assert the real report builds successfully — see
-    test_lot_a_l1_census_matches_conductor_report below, which is READY for
-    that data the moment it lands."""
-    with pytest.raises(LotReportError):
-        build_report(lot_id="A-L1", verdicts=LOT_A_L1_VERDICTS, innocence=LOT_A_L1_INNOCENCE)
+def test_real_pinned_literal_builds_successfully() -> None:
+    """The REAL, now-complete LOT_A_L1_VERDICTS/LOT_A_L1_INNOCENCE pinned
+    literal must build cleanly — proving the fail-closed gate's earlier
+    refusal (see module docstring "History") was a data-completeness issue,
+    now resolved, not a structural defect in the table itself."""
+    ctx = build_report(lot_id="A-L1", verdicts=LOT_A_L1_VERDICTS, innocence=LOT_A_L1_INNOCENCE)
+    assert ctx["census"]["adjudicated"] == 13
 
 
 # ---------------------------------------------------------------------------
-# 4. Census matches the conductor's Lot A-L1 report (real code/verdict data,
-#    placeholder category only — see module docstring)
+# 4. Census matches the conductor's Lot A-L1 report (real code/verdict/category
+#    data — the conductor's full signed table, 2026-07-18 second message)
 # ---------------------------------------------------------------------------
 
 def test_lot_a_l1_census_matches_conductor_report() -> None:
-    """Census counts (adjudicated/certified/quarantined/demoted/innocence) use
-    the REAL code identities and REAL verdict/demotion assignments from
-    LOT_A_L1_VERDICTS (all certain, given directly in the mandate + plan §8
-    A-2's 13-code list) — only the 9 PENDING categories are filled with an
-    arbitrary in-registry placeholder here, test-local only, since census
-    counts don't depend on WHICH category a code got, only that it has one."""
-    filled_verdicts = []
-    for v in LOT_A_L1_VERDICTS:
-        entry = dict(v)
-        if entry["verdict"] == "quarantined" and entry.get("category") is None:
-            entry["category"] = "source_absent_in_vault"  # test-local placeholder ONLY
-        filled_verdicts.append(entry)
-    filled_innocence = [
-        {**i, "code": i["code"] or f"INNOCENCE_PLACEHOLDER_{n}"}
-        for n, i in enumerate(LOT_A_L1_INNOCENCE)
-    ]
-
-    ctx = build_report(lot_id="A-L1", verdicts=filled_verdicts, innocence=filled_innocence)
+    """Census counts against the REAL pinned literal — no placeholder-filling
+    needed anymore, the conductor's full table is in."""
+    ctx = build_report(lot_id="A-L1", verdicts=LOT_A_L1_VERDICTS, innocence=LOT_A_L1_INNOCENCE)
 
     assert ctx["census"]["adjudicated"] == 13
     assert ctx["census"]["certified"] == 1
     assert ctx["census"]["quarantined"] == 12
     assert ctx["census"]["demoted_at_d6"] == 1
     assert ctx["census"]["innocence_controls"] == 2
+    assert ctx["categories_seen"] == [
+        "code_collision",
+        "illegitimate_inheritance",
+        "phantom_source_pointer",
+        "source_absent_in_vault",
+    ]
 
-    # spot-check the two hard-evidenced non-placeholder categories survive untouched
+    # spot-check every per-code category against the conductor's signed table verbatim
     by_code = {v["code"]: v for v in ctx["verdicts"]}
-    assert by_code["02402"]["category"] == "code_collision"
-    assert by_code["01287"]["category"] == "illegitimate_inheritance"
-    assert by_code["38222"]["category"] == "phantom_source_pointer"
-    assert by_code["38222"]["d2_self_confirm_failed"] is True
+    expected_categories = {
+        "19206": None,
+        "01287": "code_collision",
+        "01700": "source_absent_in_vault",
+        "02201": "source_absent_in_vault",
+        "02402": "code_collision",
+        "02409": "phantom_source_pointer",
+        "05102": "illegitimate_inheritance",
+        "05200": "phantom_source_pointer",
+        "08920": "source_absent_in_vault",
+        "36003": "phantom_source_pointer",
+        "38122": "phantom_source_pointer",
+        "38222": "phantom_source_pointer",
+        "39001": "illegitimate_inheritance",
+    }
+    for code, category in expected_categories.items():
+        assert by_code[code]["category"] == category, f"{code}: expected category {category!r}"
     assert by_code["19206"]["verdict"] == "certified"
+    assert by_code["38222"]["d2_self_confirm_failed"] is True
+    for code in expected_categories:
+        if code != "38222":
+            assert by_code[code]["d2_self_confirm_failed"] is False
+
+    innocence_codes = {i["code"] for i in ctx["innocence_controls"]}
+    assert innocence_codes == {"65121", "85202"}
+    for i in ctx["innocence_controls"]:
+        assert i["verdict"] == "certified"
 
 
 def test_lot_a_l1_verdicts_cover_exactly_the_plan_a2_code_list() -> None:

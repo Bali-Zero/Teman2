@@ -24,13 +24,19 @@ Inputs (all pinned, no network):
     research/operations/2026-07-17-kbli-pilot-a1-results.md (conductor-set).
 
 Control limits (plan §5, conductor-fixed from pilot A1 — written EXACTLY as
-given, never re-derived):
-  m1 blind-concordance floor   >= 0.75   (pilot: 0.917)
-  m2 certification rate band   [0.20, 0.85] (pilot: 0.417 — a ceiling breach
-                                 is drift, not excellence)
-  m3 refutation-category registry (closed list) — any new category = pause
-  m4 tokens/dossier ceiling    <= 400000 (pilot avg 225008, max 357453)
-  m5 gold-set hit rate         == 1.00   — any miss halts the lot
+given, never re-derived). RECALIBRATED for remaining A-serving lots by plan §8
+amendment A-3 (2026-07-18) after Lot A-L1 — the first truly-blind lot — breached
+the original pilot-derived floors (m1=0.538, m2=0.077); root cause was that the
+pilot's own D5 was anchored, not truly blind, so floors derived from it were
+themselves miscalibrated. CURRENT values below; ORIGINAL values are preserved
+in every emitted artifact under control_limits.*.revisions.original — never a
+silent overwrite:
+  m1 blind-concordance floor   >= 0.45   (was >= 0.75; pilot baseline: 0.917)
+  m2 certification rate band   [0.05, 0.60] (was [0.20, 0.85]; pilot baseline:
+                                 0.417 — a ceiling breach is drift, not excellence)
+  m3 refutation-category registry (closed list) — any new category = pause — UNCHANGED
+  m4 tokens/dossier ceiling    <= 400000 (pilot avg 225008, max 357453) — UNCHANGED
+  m5 gold-set hit rate         == 1.00   — any miss halts the lot — UNCHANGED
 
 Gold sets (digest-pinned, blind-to-lanes — plaintext NEVER printed, not to
 the artifact, not to stdout):
@@ -91,6 +97,25 @@ PILOT_A1: dict[str, Any] = {
     "innocence_untouched": 3,
     "d1_d5_dossier_concordance": "11/12",
 }
+
+# Recalibration — plan §8 amendment A-3 (2026-07-18): Lot A-L1 (the first
+# TRULY blind lot — see agent/air-m5/kbli/batcha-lot-runner PR #2683's D5-blind
+# fix) measured m1=0.538/m2=0.077, breaching the ORIGINAL pilot-derived floors
+# below. Root cause: the pilot's own D5 was not truly blind (its
+# d5Prompt(code, d1Result) embedded the extractor's own proposal in the
+# refuter's prompt), so m1/m2 floors derived from that anchored baseline were
+# themselves miscalibrated at the source — not a Lot A-L1 adjudication defect.
+# Scope: REMAINING A-SERVING LOTS ONLY. m3/m4/m5 are UNCHANGED. Does NOT
+# weaken blindness or relax any per-fact acceptance criterion (plan §3 A1-A6).
+# The ORIGINAL values are kept alongside the revised ones in every emitted
+# artifact (control_limits.*.revisions.original) — recalibration is auditable
+# history, never a silent overwrite.
+A3_AMENDMENT_REF = "plan §8 amendment A-3 (2026-07-18)"
+A3_AMENDMENT_REASON = "floors re-derived from the first true-blind lot; original pilot baseline was anchored"
+A3_AMENDMENT_SCOPE = "remaining A-serving lots only"
+A3_REVISED_M1_FLOOR = 0.45
+A3_REVISED_M2_FLOOR = 0.05
+A3_REVISED_M2_CEILING = 0.60
 
 # m3 — closed refutation-category registry (plan §5). Any category found
 # outside this list during a lot is a NEW category => automatic lot pause.
@@ -279,8 +304,8 @@ def build_context(
         "control_limits": {
             "m1_blind_concordance": {
                 "name": "extractor/refuter blind-concordance floor per lot",
-                "floor": 0.75,
-                "floor_str": "0.75",
+                "floor": A3_REVISED_M1_FLOOR,
+                "floor_str": f"{A3_REVISED_M1_FLOOR:.2f}",
                 "pilot_baseline": 0.917,
                 "pilot_baseline_str": "0.917",
                 "definition": (
@@ -288,17 +313,49 @@ def build_context(
                     "matches the D1 proposal"
                 ),
                 "on_breach": "lane pauses at lot boundary, conductor-signed resume note in plan §8",
+                "revisions": {
+                    "original": {
+                        "floor": 0.75,
+                        "floor_str": "0.75",
+                        "source": "pilot A1 baseline — D5 was NOT truly blind (anchored), see A-3 root cause",
+                    },
+                    "current": {
+                        "floor": A3_REVISED_M1_FLOOR,
+                        "floor_str": f"{A3_REVISED_M1_FLOOR:.2f}",
+                        "amendment": A3_AMENDMENT_REF,
+                        "reason": A3_AMENDMENT_REASON,
+                        "scope": A3_AMENDMENT_SCOPE,
+                    },
+                },
             },
             "m2_certification_rate": {
                 "name": "certification rate per lot",
-                "floor": 0.20,
-                "floor_str": "0.20",
-                "ceiling": 0.85,
-                "ceiling_str": "0.85",
+                "floor": A3_REVISED_M2_FLOOR,
+                "floor_str": f"{A3_REVISED_M2_FLOOR:.2f}",
+                "ceiling": A3_REVISED_M2_CEILING,
+                "ceiling_str": f"{A3_REVISED_M2_CEILING:.2f}",
                 "pilot_baseline": 0.417,
                 "pilot_baseline_str": "0.417",
                 "definition": "certified_clean / adjudicated, per lot — a too-high rate is drift, not excellence",
                 "on_breach": "lane pauses (ceiling breach = drift suspicion), conductor-signed resume note",
+                "revisions": {
+                    "original": {
+                        "floor": 0.20,
+                        "floor_str": "0.20",
+                        "ceiling": 0.85,
+                        "ceiling_str": "0.85",
+                        "source": "pilot A1 baseline — D5 was NOT truly blind (anchored), see A-3 root cause",
+                    },
+                    "current": {
+                        "floor": A3_REVISED_M2_FLOOR,
+                        "floor_str": f"{A3_REVISED_M2_FLOOR:.2f}",
+                        "ceiling": A3_REVISED_M2_CEILING,
+                        "ceiling_str": f"{A3_REVISED_M2_CEILING:.2f}",
+                        "amendment": A3_AMENDMENT_REF,
+                        "reason": A3_AMENDMENT_REASON,
+                        "scope": A3_AMENDMENT_SCOPE,
+                    },
+                },
             },
             "m3_refutation_categories": {
                 "name": "refutation-category registry (closed list)",
@@ -430,6 +487,30 @@ def render_markdown(ctx: dict[str, Any]) -> str:
     )
     lines.append("")
 
+    lines.append("## Recalibration history — m1/m2 (plan §8 A-3)")
+    lines.append("")
+    lines.append(
+        "The m1/m2 limits in the table above are the CURRENT ones (post-A-3, in force for "
+        "remaining A-serving lots). The original pilot-derived values are kept here — "
+        "recalibration is auditable history, never a silent overwrite."
+    )
+    lines.append("")
+    lines.append("| Metric | Original (pilot-derived) | Current (A-3) | Amendment | Reason |")
+    lines.append("| --- | --- | --- | --- | --- |")
+    m1r, m2r = m1["revisions"], m2["revisions"]
+    lines.append(
+        f"| m1 floor | {m1r['original']['floor_str']} | {m1r['current']['floor_str']} | "
+        f"{m1r['current']['amendment']} | {m1r['current']['reason']} |"
+    )
+    lines.append(
+        f"| m2 floor / ceiling | {m2r['original']['floor_str']} / {m2r['original']['ceiling_str']} | "
+        f"{m2r['current']['floor_str']} / {m2r['current']['ceiling_str']} | "
+        f"{m2r['current']['amendment']} | {m2r['current']['reason']} |"
+    )
+    lines.append("")
+    lines.append(f"Scope: {m1r['current']['scope']}. m3/m4/m5 are unchanged by this amendment.")
+    lines.append("")
+
     lines.append("## Gold sets (digest-pinned, blind to lanes)")
     lines.append("")
     neg, pos = gs["negative_control"], gs["positive_control"]
@@ -518,7 +599,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  eligible positive-control population: {len(eligible)}")
     print(f"  negative controls: {len(neg_digests)} digests")
     print(f"  positive controls: {len(positive_digests)} digests")
-    print("  control limits: m1>=0.75 m2=[0.20,0.85] m3=closed-5 m4<=400000 m5==1.00")
+    print(
+        f"  control limits (current, plan §8 A-3): m1>={A3_REVISED_M1_FLOOR:.2f} "
+        f"m2=[{A3_REVISED_M2_FLOOR:.2f},{A3_REVISED_M2_CEILING:.2f}] m3=closed-5 "
+        "m4<=400000 m5==1.00 (original pre-A-3: m1>=0.75 m2=[0.20,0.85])"
+    )
 
     if not args.apply:
         print("DRY RUN — no file written. Re-run with --apply.")

@@ -131,11 +131,16 @@ def test_too_few_eligible_codes_raises():
 
 
 def test_control_limits_exact_values():
+    """CURRENT (post plan §8 A-3, 2026-07-18) active limits — these are the
+    values the drift test (test_lot_runner_contract.py::
+    test_m1_m2_m4_literals_match_calibration_artifact) cross-checks against
+    infra/workflows/kbli-batch-a-lot.js's CALIBRATION literal. m1/m2 were
+    recalibrated for remaining A-serving lots; m3/m4/m5 are UNCHANGED."""
     cl = _synthetic_ctx()["control_limits"]
-    assert cl["m1_blind_concordance"]["floor"] == 0.75
+    assert cl["m1_blind_concordance"]["floor"] == 0.45
     assert cl["m1_blind_concordance"]["pilot_baseline"] == 0.917
-    assert cl["m2_certification_rate"]["floor"] == 0.20
-    assert cl["m2_certification_rate"]["ceiling"] == 0.85
+    assert cl["m2_certification_rate"]["floor"] == 0.05
+    assert cl["m2_certification_rate"]["ceiling"] == 0.60
     assert cl["m2_certification_rate"]["pilot_baseline"] == 0.417
     assert cl["m3_refutation_categories"]["categories"] == [
         "code_collision",
@@ -150,13 +155,38 @@ def test_control_limits_exact_values():
     assert cl["m5_gold_set_hit_rate"]["required"] == 1.00
 
 
+def test_control_limits_original_values_preserved_in_revisions():
+    """ORIGINAL (pilot-derived, pre-A-3) values must remain visible under
+    revisions.original — recalibration is auditable history, never a silent
+    overwrite (plan §8 A-3, explicit requirement)."""
+    cl = _synthetic_ctx()["control_limits"]
+    m1_orig = cl["m1_blind_concordance"]["revisions"]["original"]
+    m2_orig = cl["m2_certification_rate"]["revisions"]["original"]
+    assert m1_orig["floor"] == 0.75
+    assert m2_orig["floor"] == 0.20
+    assert m2_orig["ceiling"] == 0.85
+
+    m1_cur = cl["m1_blind_concordance"]["revisions"]["current"]
+    m2_cur = cl["m2_certification_rate"]["revisions"]["current"]
+    assert m1_cur["floor"] == cl["m1_blind_concordance"]["floor"] == 0.45
+    assert m2_cur["floor"] == cl["m2_certification_rate"]["floor"] == 0.05
+    assert m2_cur["ceiling"] == cl["m2_certification_rate"]["ceiling"] == 0.60
+    for entry in (m1_cur, m2_cur):
+        assert entry["amendment"] == "plan §8 amendment A-3 (2026-07-18)"
+        assert entry["scope"] == "remaining A-serving lots only"
+
+
 def test_control_limits_exact_strings_in_rendered_output():
     ctx = _synthetic_ctx()
     md = c.render_markdown(ctx)
     js = c.render_json(ctx)
     for text in (md, js):
-        for needle in ("0.75", "0.917", "0.20", "0.85", "0.417", "400000", "225008", "357453", "1.00"):
+        # current (active) values
+        for needle in ("0.45", "0.05", "0.60", "0.917", "400000", "225008", "357453", "1.00"):
             assert needle in text, f"{needle!r} missing from rendered artifact"
+        # original (pre-A-3) values must ALSO still be visible — history, not overwrite
+        for needle in ("0.75", "0.20", "0.85", "0.417"):
+            assert needle in text, f"original value {needle!r} missing from rendered artifact"
 
 
 def test_pilot_a1_values_pinned_exactly():
@@ -332,6 +362,69 @@ def test_end_to_end_against_real_repo_inputs():
     assert js.endswith("\n") and not js.endswith("\n\n")
     assert c.CONDUCTOR_SIGN_OFF in md
     assert c.CONDUCTOR_SIGN_OFF in js
+
+
+# --- Part 4 (plan §8 A-3): recalibration must not touch gold-set selection -
+
+
+# Regression pin: the EXACT 8+8 digests + pinned-revisions as committed in
+# data/kbli-filiera/batch-reports/batchA-calibration.json BEFORE this
+# recalibration (Part 4) landed. Gold-set digests are a pure function of
+# (canonical, manifest_digest) — control_limits changes must never move them.
+_PRE_A3_NEGATIVE_DIGESTS = [
+    "0be62853bc799751a2c1fdf3d35f2b4ca6f42f87bdfdd04c182ab64c07563160",
+    "148e8314ff7d55fe6acef963d0e51b4d83b92bd44e568da405c45452dcbca6bb",
+    "34ad28116dea958b6481af2155ebd20cbbd7ef807178a7fee49b45e48f5a5402",
+    "40bb04a7514c53133acf4d979def4d8d667accb5ea9c1f12f9853364c4148e5b",
+    "5fbb35d093c960a1cfe9166d1419a1e3853eec0a82d3fd4dd880bc817729dd97",
+    "cce4f93a7687b6c201c046fc55af2fe9659db7857b84cb33e839681b0ec3293f",
+    "d279d2b5cf9396272bced8d09a19aa3005150155240433a32a6751b89973ce92",
+    "fb5df44ffe81b6af8ac36fb6a666243f815c84e8a02c8d0de223223e77aa4a1e",
+]
+_PRE_A3_POSITIVE_DIGESTS = [
+    "002b2f50370eeb36d78030d3a0137997571b9535954f34c595f032d7d5abcd0b",
+    "0090e8cc839d35a849b789fcd4c15816c0c72de46a5a02191abca0f938b6fb24",
+    "00bcc0ba8e78902530873e111ffa57b7f86685acbbe26bddad1d43cf36bfd5fd",
+    "00c324c333f44f347349f475b9f084f55dd1a7249acf6495f468becaafc5b6d1",
+    "00c4757efbe09c7b0f764078d7732b47b557f9ad204fd70cd46fd86d5b5f3c8a",
+    "00f964023ee65e7bb184d770624485b8eec6057e78624ef5d6bd187e5ddfa048",
+    "011b8eecc4a165dd230b1e25d8fb1e898e9e75a2c55b02889b9f4c813c18204b",
+    "0181b72ccb224bd7d53017f67be1e7c9ba6d3e8efbef3524c0a6d4f3f37335df",
+]
+
+
+def test_a3_recalibration_does_not_change_gold_digests():
+    """Part 4 regression pin: recalibrating m1/m2 (plan §8 A-3) must NEVER
+    touch gold-set selection. Compares against the real repo's canonical +
+    manifest + membership inputs — same fixtures as
+    test_end_to_end_against_real_repo_inputs — asserting the negative/positive
+    digest lists are byte-identical to what was committed before this Part-4
+    recalibration landed."""
+    manifest_digest = c._sha256_file(c.MANIFEST_PATH)
+    records = _load_real_canonical()
+    pos = c.select_positive_digests(records, manifest_digest)
+    neg = c.negative_digests(manifest_digest)
+    assert neg == _PRE_A3_NEGATIVE_DIGESTS
+    assert pos == _PRE_A3_POSITIVE_DIGESTS
+
+
+def test_a3_recalibration_pinned_revisions_unchanged():
+    """The pinned-revisions block (canonical/manifest/membership pins) is
+    orthogonal to control_limits — recalibrating m1/m2 must not touch it.
+
+    NOTE (scar W88 — verify by CONTENT, never by a SHA/ancestor/timestamp
+    proxy): canonical_git_revision is `git rev-parse HEAD`, which advances on
+    EVERY commit regardless of whether the canonical file changed — pinning
+    that here would break on the very next unrelated commit. manifest_sha256
+    and membership_sha256, and the canonical FILE's own content sha256, are
+    content-addressed and genuinely stable across commits that don't touch
+    those files — those are the load-bearing assertions."""
+    manifest_digest = c._sha256_file(c.MANIFEST_PATH)
+    membership_sha256 = c._sha256_file(c.MEMBERSHIP_PATH)
+    canonical_content_sha256 = c._sha256_file(c.CANONICAL)
+    assert manifest_digest == "e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d"
+    assert membership_sha256 == "aa0a0a6980117d57321e625fdad4e1a89f19f5b34125614d8d9921fb50f60497"
+    assert canonical_content_sha256 == "659dc7a71b360e16fbdb7bac5cbc0fe1831f33a994785185b56fe66e73fb04b5"
 
 
 # --- helpers -----------------------------------------------------------

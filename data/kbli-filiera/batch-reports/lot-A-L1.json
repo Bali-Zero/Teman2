@@ -1,0 +1,133 @@
+{
+  "batch": "A",
+  "categories_seen": [
+    "code_collision",
+    "illegitimate_inheritance",
+    "phantom_source_pointer",
+    "source_absent_in_vault"
+  ],
+  "census": {
+    "abstained": 0,
+    "adjudicated": 13,
+    "certified": 1,
+    "demoted_at_d6": 1,
+    "innocence_controls": 2,
+    "quarantined": 12
+  },
+  "closed_registry": [
+    "code_collision",
+    "illegitimate_inheritance",
+    "wrong_authority_level",
+    "phantom_source_pointer",
+    "source_absent_in_vault"
+  ],
+  "conductor_sign_off": "SIGNED — Fable conductor session f5892d39, 2026-07-18",
+  "date": "2026-07-18",
+  "innocence_controls": [
+    {
+      "code": "65121",
+      "note": "Asuransi Umum Konvensional — OSS-native, innocence_control=true",
+      "verdict": "certified"
+    },
+    {
+      "code": "85202",
+      "note": "Pendidikan Dasar Umum Swasta — OSS-native, innocence_control=true",
+      "verdict": "certified"
+    }
+  ],
+  "lot_id": "A-L1",
+  "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
+  "verdicts": [
+    {
+      "category": "code_collision",
+      "code": "01287",
+      "d2_self_confirm_failed": false,
+      "note": "D5's evidenced judgment (conductor-verified: 3/8 per_skala rows carry livestock-feed text inside the narcotics code): a DIFFERENT code's PP28 obligation table was merged into 01287's record — content-level collision, more specific than the absent-source signal (category corrected from an earlier illegitimate_inheritance draft, conductor-confirmed 2026-07-18)",
+      "verdict": "quarantined"
+    },
+    {
+      "category": "source_absent_in_vault",
+      "code": "01700",
+      "d2_self_confirm_failed": false,
+      "note": "conductor-signed category, D6 review (plan §8 A-3)",
+      "verdict": "quarantined"
+    },
+    {
+      "category": "source_absent_in_vault",
+      "code": "02201",
+      "d2_self_confirm_failed": false,
+      "note": "conductor-signed category, D6 review (plan §8 A-3)",
+      "verdict": "quarantined"
+    },
+    {
+      "category": "code_collision",
+      "code": "02402",
+      "d2_self_confirm_failed": false,
+      "note": "D6 image-confirmed same-digit cross-vintage collision, Lampiran-5 p.135",
+      "verdict": "quarantined"
+    },
+    {
+      "category": "phantom_source_pointer",
+      "code": "02409",
+      "d2_self_confirm_failed": false,
+      "note": "conductor-signed category, D6 review (plan §8 A-3)",
+      "verdict": "quarantined"
+    },
+    {
+      "category": "illegitimate_inheritance",
+      "code": "05102",
+      "d2_self_confirm_failed": false,
+      "note": "conductor-signed category, D6 review (plan §8 A-3)",
+      "verdict": "quarantined"
+    },
+    {
+      "category": "phantom_source_pointer",
+      "code": "05200",
+      "d2_self_confirm_failed": false,
+      "note": "conductor-signed category, D6 review (plan §8 A-3)",
+      "verdict": "quarantined"
+    },
+    {
+      "category": "source_absent_in_vault",
+      "code": "08920",
+      "d2_self_confirm_failed": false,
+      "note": "conductor-signed category, D6 review (plan §8 A-3)",
+      "verdict": "quarantined"
+    },
+    {
+      "category": null,
+      "code": "19206",
+      "d2_self_confirm_failed": false,
+      "note": "image-verified provenance chain held under D6 review",
+      "verdict": "certified"
+    },
+    {
+      "category": "phantom_source_pointer",
+      "code": "36003",
+      "d2_self_confirm_failed": false,
+      "note": "conductor-signed category, D6 review (plan §8 A-3)",
+      "verdict": "quarantined"
+    },
+    {
+      "category": "phantom_source_pointer",
+      "code": "38122",
+      "d2_self_confirm_failed": false,
+      "note": "conductor-signed category, D6 review (plan §8 A-3)",
+      "verdict": "quarantined"
+    },
+    {
+      "category": "phantom_source_pointer",
+      "code": "38222",
+      "d2_self_confirm_failed": true,
+      "note": "D6-DEMOTED: D1/D5 independently agreed clean, but D2's self-confirming extraction failed (evidence page carries only the parent code 38220, not 38222 itself). Runner gap fixed same PR (Part 1) — a certified verdict with a failed D2 self-confirmation is now impossible by construction.",
+      "verdict": "quarantined"
+    },
+    {
+      "category": "illegitimate_inheritance",
+      "code": "39001",
+      "d2_self_confirm_failed": false,
+      "note": "conductor-signed category, D6 review (plan §8 A-3)",
+      "verdict": "quarantined"
+    }
+  ]
+}

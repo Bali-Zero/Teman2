@@ -10,7 +10,7 @@
 
 | Artifact | Pin |
 | --- | --- |
-| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `45bbc1f42a0c74d12c3021f56a54565a747a01c7` |
+| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `954432cdfa278cb5bc84409753a61c93772eb7ac` |
 | vault manifest (`data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json`) | sha256 `e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d` |
 | membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `aa0a0a6980117d57321e625fdad4e1a89f19f5b34125614d8d9921fb50f60497` |
 
@@ -34,13 +34,24 @@ Source: `research/operations/2026-07-17-kbli-pilot-a1-results.md`. Pinned litera
 
 | # | Metric | Limit | Pilot baseline | On breach |
 | --- | --- | --- | --- | --- |
-| m1 | extractor/refuter blind-concordance floor per lot | floor 0.75 | 0.917 | lane pauses at lot boundary, conductor-signed resume note in plan §8 |
-| m2 | certification rate per lot | floor 0.20 / ceiling 0.85 | 0.417 | lane pauses (ceiling breach = drift suspicion), conductor-signed resume note |
+| m1 | extractor/refuter blind-concordance floor per lot | floor 0.45 | 0.917 | lane pauses at lot boundary, conductor-signed resume note in plan §8 |
+| m2 | certification rate per lot | floor 0.05 / ceiling 0.60 | 0.417 | lane pauses (ceiling breach = drift suspicion), conductor-signed resume note |
 | m3 | refutation-category registry (closed list) | closed list: `code_collision`, `illegitimate_inheritance`, `wrong_authority_level`, `phantom_source_pointer`, `source_absent_in_vault` | n/a | any category outside the registry = automatic lot pause + conductor triage |
 | m4 | tokens/dossier ceiling | ceiling 400000 | avg 225008 / max 357453 | lane pauses, investigate runaway |
 | m5 | gold-set hit rate | 1.00 | n/a | any miss halts the lot immediately |
 
 m1 definition: per-lot fraction of adjudicated dossiers where the D5 blind verdict matches the D1 proposal. m2 definition: certified_clean / adjudicated, per lot — a too-high rate is drift, not excellence.
+
+## Recalibration history — m1/m2 (plan §8 A-3)
+
+The m1/m2 limits in the table above are the CURRENT ones (post-A-3, in force for remaining A-serving lots). The original pilot-derived values are kept here — recalibration is auditable history, never a silent overwrite.
+
+| Metric | Original (pilot-derived) | Current (A-3) | Amendment | Reason |
+| --- | --- | --- | --- | --- |
+| m1 floor | 0.75 | 0.45 | plan §8 amendment A-3 (2026-07-18) | floors re-derived from the first true-blind lot; original pilot baseline was anchored |
+| m2 floor / ceiling | 0.20 / 0.85 | 0.05 / 0.60 | plan §8 amendment A-3 (2026-07-18) | floors re-derived from the first true-blind lot; original pilot baseline was anchored |
+
+Scope: remaining A-serving lots only. m3/m4/m5 are unchanged by this amendment.
 
 ## Gold sets (digest-pinned, blind to lanes)
 

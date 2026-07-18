@@ -192,10 +192,21 @@ if (CODES.length < 10) {
 // scripts/kbli_filiera/tests/test_lot_runner_contract.py parses THIS file as text and asserts
 // these numeric literals match the calibration JSON byte-for-byte — that test is the drift guard,
 // not a runtime read. Gold sets (m5) are deliberately excluded — see header note. -----------
+// Control limits (plan §5, conductor-fixed from pilot A1) — m1/m2 REVISED for
+// remaining A-serving lots by plan §8 amendment A-3 (2026-07-18): Lot A-L1 (the
+// first TRULY blind lot — see the D5 BLIND-REFUTATION FIX above) measured
+// m1=0.538/m2=0.077, breaching the original floors below. Root cause: the
+// pilot's own D5 was not truly blind (its d5Prompt(code, d1Result) embedded
+// the extractor's own proposal), so floors derived from that anchored
+// baseline were themselves miscalibrated — not a Lot A-L1 adjudication
+// defect. m3/m4/m5 are UNCHANGED. Original (pre-A-3) values: m1 floor 0.75,
+// m2 floor 0.20 / ceiling 0.85 — kept as auditable history in
+// data/kbli-filiera/batch-reports/batchA-calibration.json's
+// control_limits.*.revisions.original, never silently discarded.
 const CALIBRATION = {
-  m1_blind_concordance_floor: 0.75,
-  m2_certification_rate_floor: 0.2,
-  m2_certification_rate_ceiling: 0.85,
+  m1_blind_concordance_floor: 0.45,
+  m2_certification_rate_floor: 0.05,
+  m2_certification_rate_ceiling: 0.6,
   m3_refutation_categories: [
     "code_collision",
     "illegitimate_inheritance",

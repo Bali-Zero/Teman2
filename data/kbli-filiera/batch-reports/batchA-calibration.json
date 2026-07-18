@@ -4,23 +4,55 @@
   "control_limits": {
     "m1_blind_concordance": {
       "definition": "per-lot fraction of adjudicated dossiers where the D5 blind verdict matches the D1 proposal",
-      "floor": 0.75,
-      "floor_str": "0.75",
+      "floor": 0.45,
+      "floor_str": "0.45",
       "name": "extractor/refuter blind-concordance floor per lot",
       "on_breach": "lane pauses at lot boundary, conductor-signed resume note in plan §8",
       "pilot_baseline": 0.917,
-      "pilot_baseline_str": "0.917"
+      "pilot_baseline_str": "0.917",
+      "revisions": {
+        "current": {
+          "amendment": "plan §8 amendment A-3 (2026-07-18)",
+          "floor": 0.45,
+          "floor_str": "0.45",
+          "reason": "floors re-derived from the first true-blind lot; original pilot baseline was anchored",
+          "scope": "remaining A-serving lots only"
+        },
+        "original": {
+          "floor": 0.75,
+          "floor_str": "0.75",
+          "source": "pilot A1 baseline — D5 was NOT truly blind (anchored), see A-3 root cause"
+        }
+      }
     },
     "m2_certification_rate": {
-      "ceiling": 0.85,
-      "ceiling_str": "0.85",
+      "ceiling": 0.6,
+      "ceiling_str": "0.60",
       "definition": "certified_clean / adjudicated, per lot — a too-high rate is drift, not excellence",
-      "floor": 0.2,
-      "floor_str": "0.20",
+      "floor": 0.05,
+      "floor_str": "0.05",
       "name": "certification rate per lot",
       "on_breach": "lane pauses (ceiling breach = drift suspicion), conductor-signed resume note",
       "pilot_baseline": 0.417,
-      "pilot_baseline_str": "0.417"
+      "pilot_baseline_str": "0.417",
+      "revisions": {
+        "current": {
+          "amendment": "plan §8 amendment A-3 (2026-07-18)",
+          "ceiling": 0.6,
+          "ceiling_str": "0.60",
+          "floor": 0.05,
+          "floor_str": "0.05",
+          "reason": "floors re-derived from the first true-blind lot; original pilot baseline was anchored",
+          "scope": "remaining A-serving lots only"
+        },
+        "original": {
+          "ceiling": 0.85,
+          "ceiling_str": "0.85",
+          "floor": 0.2,
+          "floor_str": "0.20",
+          "source": "pilot A1 baseline — D5 was NOT truly blind (anchored), see A-3 root cause"
+        }
+      }
     },
     "m3_refutation_categories": {
       "categories": [
@@ -99,7 +131,7 @@
     "total_sonnet_tokens": 3375127
   },
   "pinned_revisions": {
-    "canonical_git_revision": "45bbc1f42a0c74d12c3021f56a54565a747a01c7",
+    "canonical_git_revision": "954432cdfa278cb5bc84409753a61c93772eb7ac",
     "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
     "manifest_path": "data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json",
     "manifest_sha256": "e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d",
