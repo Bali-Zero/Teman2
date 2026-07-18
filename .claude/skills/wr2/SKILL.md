@@ -57,7 +57,18 @@ delta); REFUSE left a queue-published `rendered` draft (4ca7b22b) byte-identical
 mutation. LIMITATION ledgered: the fact-extractor/checker lane takes no `lease_owner` CAS (unlike
 render/image), so `--rebrief`'s lease guard cannot exclude a concurrent fact-lane run — low-risk
 (rebrief resets upstream of the fact lane, extractor re-runs idempotently) but structurally
-asymmetric**.
+asymmetric** ·
+**gate-log delta-emission SHIPPED + LIVE (#2676, growth-loop B6) — `logGateExclusion` now writes stderr
+only when a slug's exclusion is NEW or its reason CHANGED vs the previous scan (dedup key `slug|reason`
+in `lastLoggedExclusions`, committed ONLY at the natural final return so a transient root-read flap
+can't reset the baseline and re-storm); `excludedIncompleteCount` badge stays exact. Stops the
+~30MB/day `wr2control.err` growth. This loop opened a convergent TWIN PR (#2680) with an equivalent
+fix + Codex-CADE hardening, then CLOSED it as a duplicate (scar #5 — #2676 landed first and covers the
+transient-failure case identically; never clobber the sibling). PROVE-LIVE M5 2026-07-18: the installed
+`~/Applications/WR2 Control.app` binary was STALE (17 lug < #2676 18 lug) — rebuilt from main #2676 via
+`build.sh` + atomic ditto-swap, launchd `com.balizero.wr2control` ProgramArguments targets exactly that
+bundle → next launch runs the fix (app was not running, non-intrusive). Memory
+`discovery_wr2_gate_log_delta_twin_race_2026_07_18`**.
 
 **In queue awaiting Zero (Legge 5):** deportation carousel remake (`drafted`, 2026-07-17, tells
 the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari reply.
@@ -90,8 +101,6 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   warning, proven). Branch cleaned, not shipped. Those 105 claims need the LLM-escalation path
   (`WR2_FACT_CHECKER_LLM=true`, off in prod — 90/90 telemetry `llm_enabled:false`) or a narrow
   cardinal-only-vs-external matcher, NOT normalization. Ledgered (PENDING-ARMS 2026-07-18).
-- **Gate log noise**: app re-emits ~29 exclusions every ~10s cycle → `wr2control.err` grows
-  ~30MB/day. Needs delta-logging or rotation.
 - **4 accessibility amendments** in conflict with the constitution await Zero's reconciliation
   (`~/.claude/skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md`).
 - **Slide-7 closer micro-text** (remake deck): elegant-close layout renders the kicker tiny.
