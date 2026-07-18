@@ -31,12 +31,13 @@ SELECT-only for inspection). The MCP `postgres-nuzantara` points at PROD and is 
 intake — always use the local dev DB for intake work.
 
 Core tables:
-| Table | Key columns |
-|---|---|
+
+| Table                             | Key columns                                                                                                                                                                                                                      |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `document_routing_proposal` (`p`) | `id`, `queue_id`, `status` (**review_pending** / review_claimed / routed / **auto_routed**), `entity_resolution` (JSON: `candidates[]{table,id}`, `doc_type`, `decision`), `routing` (JSON: `fields`, `decision`), `commit_gate` |
-| `intake_queue` (`q`) | `id`, `stage_output` (JSON: `classify.ocr_text_per_page[]`, `extract.fields`, `ocr.pages[]`), `source`, `source_ref`, `blob_hash`, `pipeline_version` |
-| `intake_commit_audit` | `proposal_id`, `client_id`, `outcome` (dry_run/blocked/committed/failed/rolled_back), `committed_by`, `dry_run` (bool) — every decision recorded, reversible |
-| `clients` | `id`, `full_name`, `phone_normalized`, `passport_number`, `kitas_number`, `nationality`, `deleted_at` (soft-delete) |
+| `intake_queue` (`q`)              | `id`, `stage_output` (JSON: `classify.ocr_text_per_page[]`, `extract.fields`, `ocr.pages[]`), `source`, `source_ref`, `blob_hash`, `pipeline_version`                                                                            |
+| `intake_commit_audit`             | `proposal_id`, `client_id`, `outcome` (dry_run/blocked/committed/failed/rolled_back), `committed_by`, `dry_run` (bool) — every decision recorded, reversible                                                                     |
+| `clients`                         | `id`, `full_name`, `phone_normalized`, `passport_number`, `kitas_number`, `nationality`, `deleted_at` (soft-delete)                                                                                                              |
 
 **Extracted fields shape:** `routing.fields` (fallback `stage_output.extract.fields`); each value is
 `{value, confidence, source_page}` or a scalar. Strong-id keys: `passport_no`, `kitas_no`.
@@ -133,6 +134,18 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
 ---
 
 ## 5. LIVE STATE (update on every material change)
+
+- **2026-07-18 evening — BACKLOG REROUTED through the m227 fix (EXECUTED, measured):**
+  `scripts/intake_reprocess_backlog.py --reroute-drive-folder --apply` resumed **24,256** Drive
+  0-candidate rows at route-only (stage_output PRESERVED — the blobs are retention-evicted, the saved
+  fields are the only copy; the generic `--reprocess` would have WIPED them, locked by test). Worker
+  restarted first (launchagent `com.nuzantara.intake-worker` runs from `~/nuzantara-deploy`, had
+  pre-merge code in memory). Drained in ~5 min. **Outcome: 1,588 docs (6.5%) gained ≥1 candidate —
+  1,285 LINK_CANDIDATE + 300 AMBIGUOUS** (676 LINK + 172 AMBIG live in review_pending; 588+128 in
+  quarantine via the LEVA-1 noise filter, consultable). Methods: folder_name 1,665, fuzzy_full_name
+  195, strong-id 3 (2 passport + 1 kitas — enricher backfill from prior attaches already compounding).
+  **never-auto held: 0 auto_routed.** Side-win: 14,859 noise NO_MATCH moved review_pending→quarantine
+  (review feed −~15k). Pipeline tag: `pipeline_version='v2.2-m227-folder'`.
 
 - **2026-07-18 (m227 FOLDER FIX — the structural lever for the 24k drive backlog):** `routing.py::
 _match_folder_name` was **root-segment-only** (`source_path.split('/')[0]`) — correct for Dropbox
