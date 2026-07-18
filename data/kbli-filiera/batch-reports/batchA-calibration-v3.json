@@ -213,12 +213,12 @@
     "max_tokens_per_code": 357453
   },
   "pinned_revisions": {
-    "canonical_git_revision": "b37b2ccdff6d8efdeff2d4b83600ab382dfb1c35",
+    "canonical_git_revision": "edb310c436ffead9e14349d327a85c9eb1b780d9",
     "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
     "manifest_path": "data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json",
     "manifest_sha256": "e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d",
     "membership_path": "data/kbli-filiera/membership/batch-a-members.json",
-    "membership_sha256": "84c7f73a68163d367fb62ae44f939e7fe02030761f71f93893a007bfc27ab4ff"
+    "membership_sha256": "7eb14d9cf024113c15ba596ab29729963de9461ef0b79170d1f12b4e9d0659fd"
   },
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
   "precondition": "Lot 3 conductor gate report sign-off condition (3) (research/operations/2026-07-19-kbli-batch-a-lot3-conductor-gate.md): 'Lot 4 is authorized ONLY after: (1) cross-family m1/m5 adjudicated in an appendix to this report, (2) the Lot 3 cure shipped, (3) the v3 registry re-salt shipped.' This re-emission ships condition (3).",
