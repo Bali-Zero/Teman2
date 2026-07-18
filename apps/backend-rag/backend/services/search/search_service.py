@@ -915,10 +915,22 @@ class SearchService:
         """
         if not hasattr(self, "_reranker"):
             backend: str = getattr(settings, "reranker_backend", "cross-encoder")
+            # HONESTY FIX (2026-07-18): this used to hardcode enabled=True
+            # regardless of settings.enable_reranker (default False — the
+            # cross-encoder model is intentionally NOT bundled in the prod
+            # image, saves ~5GB). That forced CrossEncoderReranker to try
+            # loading sentence_transformers on every call, fail with
+            # "No module named 'sentence_transformers'", and silently
+            # return zero scores — while callers still believed reranking
+            # ran. Respecting the setting here makes `.enabled` honest, so
+            # search_with_reranking()'s `if reranker.enabled:` check
+            # actually short-circuits instead of eating the failed-import
+            # cost on every query.
+            reranker_enabled = getattr(settings, "enable_reranker", False)
             if backend == "cross-encoder":
                 from backend.services.rag.reranker import CrossEncoderReranker
 
-                self._reranker = CrossEncoderReranker(enabled=True)
+                self._reranker = CrossEncoderReranker(enabled=reranker_enabled)
                 logger.info(
                     f"🔧 CrossEncoderReranker initialized: enabled={self._reranker.enabled}, "
                     f"model={self._reranker.model_name}",
@@ -937,7 +949,7 @@ class SearchService:
                 )
                 from backend.services.rag.reranker import CrossEncoderReranker
 
-                self._reranker = CrossEncoderReranker(enabled=True)
+                self._reranker = CrossEncoderReranker(enabled=reranker_enabled)
         return self._reranker
 
     async def search_with_reranking(
