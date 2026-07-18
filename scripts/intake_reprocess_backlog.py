@@ -242,6 +242,54 @@ UPDATE intake_queue
  WHERE id = ANY($1::bigint[])
 """
 
+# --reroute-drive-folder: Drive 0-candidate rows re-routed through the fixed
+# m227 multi-segment folder matcher (PR #2664). ROUTE-ONLY resume: unlike
+# REPROCESS_RESET_SQL this MUST NOT wipe stage_output — 97.7% of these rows'
+# blobs are retention-evicted, so the saved OCR/extract fields are the ONLY
+# copy; a full re-run would fail at preprocess AND destroy them. Resuming at
+# status='validated' makes the worker run exactly one stage (route → fase4
+# resolve_entity with source_path) against the preserved fields.
+REROUTE_DRIVE_FOLDER_SELECT_SQL = """
+WITH latest AS (
+    SELECT DISTINCT ON (q.id)
+           p.id AS proposal_id, q.id AS queue_id
+      FROM intake_queue q
+      JOIN document_routing_proposal p ON p.queue_id = q.id
+     WHERE q.source = 'drive'
+       AND q.source_path IS NOT NULL
+       AND p.status = 'review_pending'
+       AND (p.entity_resolution->>'decision') = 'NO_MATCH'
+       AND jsonb_array_length(
+             COALESCE(p.entity_resolution->'candidates', '[]'::jsonb)) = 0
+     ORDER BY q.id, p.id DESC
+)
+SELECT proposal_id, queue_id
+  FROM latest
+ ORDER BY queue_id
+ LIMIT $1
+"""
+
+REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL = """
+UPDATE document_routing_proposal
+   SET status = 'superseded'
+ WHERE queue_id = ANY($1::bigint[])
+   AND status = 'review_pending'
+"""
+
+REROUTE_DRIVE_FOLDER_RESET_SQL = """
+UPDATE intake_queue
+   SET status           = 'validated',
+       stage            = 'validate',
+       lease_owner      = NULL,
+       lease_expires_at = NULL,
+       attempts         = 0,
+       next_visible_at  = now(),
+       last_error       = NULL,
+       pipeline_version = $2,
+       updated_at       = now()
+ WHERE id = ANY($1::bigint[])
+"""
+
 # Same v2 reset contract, but for targeted retry lanes that must be observable
 # immediately in production tests. The worker orders pending WhatsApp jobs by
 # next_visible_at, so resetting historical rows to now() parks them behind newer
@@ -1896,6 +1944,51 @@ async def run_reprocess(pool: asyncpg.Pool, pipeline_version: str, apply: bool) 
     return counts
 
 
+async def run_reroute_drive_folder(
+    pool: asyncpg.Pool, pipeline_version: str, limit: int, apply: bool
+) -> dict[str, int]:
+    """Re-route Drive 0-candidate proposals through the fixed m227 folder matcher.
+
+    Route-only resume (status='validated', stage_output PRESERVED — the saved
+    OCR/extract fields are the only copy left after blob retention). Supersedes
+    the stale NO_MATCH proposals and lets the live worker re-run fase-4
+    resolve_entity with source_path, so client folders at any depth (PR #2664)
+    produce LINK_CANDIDATE/AMBIGUOUS proposals. Never attaches — candidates
+    feed the normal review/panel tier.
+    """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(REROUTE_DRIVE_FOLDER_SELECT_SQL, limit)
+        queue_ids = sorted({r["queue_id"] for r in rows})
+
+        counts = {"proposals": len(rows), "queue_rows": len(queue_ids)}
+        if not apply:
+            logger.info(
+                "[reroute-drive-folder][DRY-RUN] would supersede %d proposals and "
+                "resume %d queue rows at route (pipeline_version=%s, limit=%d) "
+                "(pass --apply to execute)",
+                counts["proposals"], counts["queue_rows"], pipeline_version, limit,
+            )
+            return counts
+
+        async with conn.transaction():
+            superseded = await conn.execute(
+                REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL, queue_ids
+            )
+            reset = await conn.execute(
+                REROUTE_DRIVE_FOLDER_RESET_SQL, queue_ids, pipeline_version
+            )
+        counts["superseded"] = int(superseded.split()[-1]) if superseded else 0
+        counts["reset"] = int(reset.split()[-1]) if reset else 0
+
+    logger.info(
+        "[reroute-drive-folder] superseded=%d proposals, resumed=%d queue rows at "
+        "route (pipeline_version=%s) — the intake worker re-routes them with the "
+        "m227 multi-segment folder matcher",
+        counts.get("superseded", 0), counts.get("reset", 0), pipeline_version,
+    )
+    return counts
+
+
 async def run_revive_stub(
     pool: asyncpg.Pool, pipeline_version: str, include_groups: bool, apply: bool
 ) -> dict[str, int]:
@@ -3013,6 +3106,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="supersede unknown/NO_MATCH review_pending proposals + reset queue rows",
     )
     p.add_argument(
+        "--reroute-drive-folder",
+        action="store_true",
+        help=(
+            "route-only resume of Drive 0-candidate review_pending rows through "
+            "the fixed m227 folder matcher (stage_output preserved, never wiped)"
+        ),
+    )
+    p.add_argument(
+        "--reroute-limit",
+        type=int,
+        default=30000,
+        help="max Drive 0-candidate rows selected per --reroute-drive-folder run",
+    )
+    p.add_argument(
+        "--reroute-pipeline-version",
+        default="v2.2-m227-folder",
+        help="pipeline_version stamped on rerouted rows (fresh routing_key)",
+    )
+    p.add_argument(
         "--backfill",
         action="store_true",
         help="enqueue historical wa-mirror media skipped by the watermark seed",
@@ -3279,6 +3391,7 @@ async def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     needs_db = (
         args.reprocess
+        or args.reroute_drive_folder
         or args.backfill
         or args.scrub_group_phone
         or args.backfill_source_context
@@ -3297,7 +3410,8 @@ async def main(argv: list[str] | None = None) -> int:
     )
     if not (needs_db or args.delivery_readiness_report):
         logger.error(
-            "nothing to do: pass --backfill, --reprocess, --scrub-group-phone, "
+            "nothing to do: pass --backfill, --reprocess, --reroute-drive-folder, "
+            "--scrub-group-phone, "
             "--backfill-source-context, --revive-stub, "
             "--retry-empty-pdf-ocr, --retry-unschematised-supported, "
             "--retry-typed-missing-fields, --quality-sample, and/or "
@@ -3331,6 +3445,13 @@ async def main(argv: list[str] | None = None) -> int:
             await run_backfill_source_context(pool, args.apply)
         if args.reprocess:
             await run_reprocess(pool, args.pipeline_version, args.apply)
+        if args.reroute_drive_folder:
+            await run_reroute_drive_folder(
+                pool,
+                args.reroute_pipeline_version,
+                max(args.reroute_limit, 1),
+                args.apply,
+            )
         if args.autocatalog_direct_unknown_text:
             await run_autocatalog_direct_unknown_text(
                 pool,
