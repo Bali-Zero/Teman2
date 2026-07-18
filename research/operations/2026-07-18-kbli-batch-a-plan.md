@@ -284,6 +284,25 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
   violation") understated this: the preregistered rule does not distinguish evidenced completion
   paths from fills, and the distinction — if wanted — must enter the registry by amendment, not by
   in-gate interpretation.
+  **(b)-RESOLVED (2026-07-18, same session, post-GO — conductor per-ancestor image-grade
+  adjudication): HALT LIFTED.** Zero issued the GO; the conductor then ran the full per-ancestor
+  check the 01700 lesson mandates (a MERGE never inherits from a single ancestor). KBLI-2025 49213
+  "Angkutan Perkotaan" = MERGE of THREE 2020 ancestors (BPS Lampiran 10 printed p.385 / PDF p.399,
+  read by eye): 49214 "Angkutan Bus Kota", 49219 "Angkutan Bus Dalam Trayek Lainnya", 49413
+  "Angkutan Perkotaan Bukan Bus, Dalam Trayek". ALL THREE PP28 I.I rows were rendered at 300 dpi
+  and read by eye (49214: p.40 row 9 · 49219: p.51 row 11 · 49413: p.65 row 14; digits verified
+  against the OCR trap — text layer shows `492L4`/`492t9`): the three regimes are SUBSTANTIVELY
+  IDENTICAL — Menengah Tinggi · 'NIB dan Sertifikat Standar' · 5 Hari · municipal authority for
+  the urban scope (Wali Kota / Bupati-Wali Kota; 49219 grades by territory, its kabupaten/kota
+  tier converges). Unlike 01700 (divergent ancestor regimes → non-inheritable), this merge is
+  regulatorily homogeneous → the completion path is **CERTIFIED**. Disposition: the GLM NEG "miss"
+  is adjudicated a TRUE FINDING; the 49213 honest-gap stays LIVE until a provenance-backed RESTORE
+  ships as its own data-plane cure (spec-driven compiler extension, per-ancestor pp28_sources
+  ['49214','49219','49413'], row content transcribed from the three renders — scheduled, NOT
+  applied in-gate). m5 stays recorded as ❌ BREACH for Lot 1 honesty, but the HALT is lifted; the
+  registry ruling for the remainder (A-6(c)): a NEG miss raising an evidenced completion path is
+  adjudicated per-ancestor image-grade by the conductor — certified → scheduled restore (never an
+  in-gate fill), refuted → halt stands.
   **(c) Registry closure precondition:** before ANY Lot 2 work, the calibration registry
   (`data/kbli-filiera/batch-reports/batchA-calibration.json` successor artifact) must be re-emitted
   to carry: the m3 category extensions (A-5), the m1 measure formalized as cross-family
