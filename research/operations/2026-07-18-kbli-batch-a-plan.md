@@ -194,6 +194,20 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
   `38222`, `39001`. Control limits (m1-m5, `data/kbli-filiera/batch-reports/batchA-calibration.json`)
   are unchanged by this amendment.
 
+- **A-3 (2026-07-18, conductor) — canonical pin is the BLOB, not the commit (W88).** The signed
+  calibration artifact pins the canonical to git revision `45bbc1f42a…` — a lane PR-head that is
+  unreachable from main after the squash-merge, so any §4 emit fencing keyed on that commit-SHA
+  would fail spuriously (scar #9/W88: an SHA-ancestor proxy lies where the content arrived by
+  another path). Rule, effective immediately: **the content-authoritative canonical pin for Batch A
+  is the blob sha `3cfe8134d` (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`); any commit-SHA
+  recorded alongside it is informative only.** Verified this session: `git rev-parse
+  origin/main:data/source_documents/KBLI_2025_FINAL_CLEAN.json` = `3cfe8134d` — byte-identical to
+  the calibration's intent (the artifact itself already records "(blob 3cfe8134d)" in PR #2695's
+  grounding). The filiera compilers already validate content-aware (`_validate_membership_pin`,
+  W88-aware) — no compiler change needed; the calibration artifact is NOT edited (it stays
+  historically accurate; this amendment governs its interpretation). Emit fencing (§4) shall
+  compare the canonical BLOB at emit time against `3cfe8134d`, re-basing if it moved.
+
 ## Adversarial review
 
 Codex GPT-5.6-sol (high effort, read-only, 2026-07-18) attacked v1 of this plan against the
