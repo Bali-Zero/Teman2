@@ -57,7 +57,9 @@ services:
     ports:
       - "9187:9187"
     environment:
-      - DATA_SOURCE_NAME=postgresql://postgres:bali_secure_2024!@host.docker.internal:5433/bali_intel?sslmode=disable
+      # Password via env (scar family W38/W65: no cleartext credentials in repo).
+      # NOTE: the previous literal password was committed in git history — treat as compromised, rotate.
+      - DATA_SOURCE_NAME=postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD not set}@host.docker.internal:5433/bali_intel?sslmode=disable
     networks:
       - monitoring
 
