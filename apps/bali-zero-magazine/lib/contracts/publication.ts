@@ -59,6 +59,7 @@ export type StoryVersionV1 = Readonly<{
   severity: "low" | "medium" | "high" | "critical";
   lifecycle_state: "developing" | "verified" | "amended" | "superseded";
   first_seen_at: string;
+  event_occurred_at: string | null;
   updated_at: string;
   title: string;
   deck: string;
@@ -97,6 +98,7 @@ export type EditionPlacementV1 = Readonly<{
     | "compliance"
     | "general";
   order: number;
+  lead: boolean;
 }>;
 
 export type EditionPacketV1 = Readonly<{
@@ -136,6 +138,7 @@ const STORY_KEYS = [
   "severity",
   "lifecycle_state",
   "first_seen_at",
+  "event_occurred_at",
   "updated_at",
   "title",
   "deck",
@@ -189,6 +192,13 @@ function requireNullableString(value: unknown, path: string): string | null {
   return requireString(value, path);
 }
 
+function requireBoolean(value: unknown, path: string): boolean {
+  if (typeof value !== "boolean") {
+    throw new TypeError(`${path} must be a boolean`);
+  }
+  return value;
+}
+
 export function requireInteger(
   value: unknown,
   path: string,
@@ -232,6 +242,11 @@ export function requireTimestamp(value: unknown, path: string): string {
     throw new TypeError(`${path} must be a valid timestamp`);
   }
   return timestamp;
+}
+
+function requireNullableTimestamp(value: unknown, path: string): string | null {
+  if (value === null) return null;
+  return requireTimestamp(value, path);
 }
 
 export function requireSha256(value: unknown, path: string): string {
@@ -591,6 +606,10 @@ function parseStory(
       ["developing", "verified", "amended", "superseded"] as const,
     ),
     first_seen_at: requireTimestamp(raw.first_seen_at, `${path}.first_seen_at`),
+    event_occurred_at: requireNullableTimestamp(
+      raw.event_occurred_at,
+      `${path}.event_occurred_at`,
+    ),
     updated_at: requireTimestamp(raw.updated_at, `${path}.updated_at`),
     title: requireString(raw.title, `${path}.title`),
     deck: requireString(raw.deck, `${path}.deck`),
@@ -700,6 +719,7 @@ function parsePlacement(value: unknown, path: string): EditionPlacementV1 {
     "version",
     "section",
     "order",
+    "lead",
   ]);
   return {
     story_id: requireString(raw.story_id, `${path}.story_id`),
@@ -713,6 +733,7 @@ function parsePlacement(value: unknown, path: string): EditionPlacementV1 {
       "general",
     ] as const),
     order: requireInteger(raw.order, `${path}.order`, 1),
+    lead: requireBoolean(raw.lead, `${path}.lead`),
   };
 }
 
@@ -792,6 +813,18 @@ export function parseEditionPacket(raw: unknown): EditionPacketV1 {
   const placements = packet.placements.map((item, index) =>
     parsePlacement(item, `edition packet.placements[${index}]`),
   );
+  const editionKind = requireEnum(
+    packet.edition_kind,
+    "edition packet.edition_kind",
+    ["standard", "quiet"] as const,
+  );
+  const leadCount = placements.filter((placement) => placement.lead).length;
+  if (editionKind === "standard" && leadCount !== 1) {
+    throw new TypeError("standard edition must declare exactly one lead");
+  }
+  if (editionKind === "quiet" && leadCount !== 0) {
+    throw new TypeError("quiet edition must not declare a lead");
+  }
   for (const placement of placements) {
     if (!storyKeys.has(`${placement.story_id}:${placement.version}`)) {
       throw new TypeError(
@@ -871,11 +904,7 @@ export function parseEditionPacket(raw: unknown): EditionPacketV1 {
       packet.expected_breaking_revision,
       "edition packet.expected_breaking_revision",
     ),
-    edition_kind: requireEnum(
-      packet.edition_kind,
-      "edition packet.edition_kind",
-      ["standard", "quiet"] as const,
-    ),
+    edition_kind: editionKind,
     publication_state: requireEnum(
       packet.publication_state,
       "edition packet.publication_state",

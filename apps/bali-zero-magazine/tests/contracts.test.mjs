@@ -46,6 +46,7 @@ function story(overrides = {}) {
     severity: "high",
     lifecycle_state: "verified",
     first_seen_at: "2026-07-17T20:00:00Z",
+    event_occurred_at: null,
     updated_at: "2026-07-17T21:00:00Z",
     title: "An important regulation changed",
     deck: "The official source confirms the effective date.",
@@ -113,7 +114,13 @@ function edition(overrides = {}) {
     collector_run_ids: ["run-1"],
     stories: [story({ severity: "medium" })],
     placements: [
-      { story_id: "story-1", version: 2, section: "compliance", order: 1 },
+      {
+        story_id: "story-1",
+        version: 2,
+        section: "compliance",
+        order: 1,
+        lead: true,
+      },
     ],
     breaking_story_ids: [],
     referenced_claim_ids: ["claim-1"],
@@ -128,7 +135,11 @@ function edition(overrides = {}) {
 test("edition contract keeps kind and coverage as orthogonal dimensions", () => {
   assert.equal(parseEditionPacket(edition()).edition_kind, "standard");
   const quietPartial = parseEditionPacket(
-    edition({ edition_kind: "quiet", coverage_state: "partial" }),
+    edition({
+      edition_kind: "quiet",
+      coverage_state: "partial",
+      placements: [{ ...edition().placements[0], lead: false }],
+    }),
   );
   assert.equal(quietPartial.edition_kind, "quiet");
   assert.equal(quietPartial.coverage_state, "partial");
@@ -144,6 +155,79 @@ test("edition contract keeps kind and coverage as orthogonal dimensions", () => 
   assert.throws(
     () => parseEditionPacket(edition({ coverage_state: "quiet" })),
     /coverage_state/,
+  );
+});
+
+test("story contract carries an explicit nullable event occurrence timestamp", () => {
+  const occurredAt = "2026-07-17T19:30:00Z";
+  const parsed = parseStoryPacket(
+    breaking({ story: story({ event_occurred_at: occurredAt }) }),
+  );
+  assert.equal(parsed.story.event_occurred_at, occurredAt);
+  assert.equal(
+    parseStoryPacket(breaking({ story: story({ event_occurred_at: null }) }))
+      .story.event_occurred_at,
+    null,
+  );
+  assert.throws(
+    () =>
+      parseStoryPacket(
+        breaking({ story: story({ event_occurred_at: "yesterday" }) }),
+      ),
+    /event_occurred_at.*UTC RFC 3339/i,
+  );
+});
+
+test("edition contract requires one explicit lead only for standard editions", () => {
+  const placement = edition().placements[0];
+  const standard = parseEditionPacket(
+    edition({ placements: [{ ...placement, lead: true }] }),
+  );
+  assert.equal(standard.placements[0].lead, true);
+
+  assert.throws(
+    () =>
+      parseEditionPacket(
+        edition({ placements: [{ ...placement, lead: false }] }),
+      ),
+    /standard edition must declare exactly one lead/i,
+  );
+  assert.throws(
+    () =>
+      parseEditionPacket(
+        edition({
+          stories: [story(), story({ story_id: "story-2", slug: "story-2" })],
+          placements: [
+            { ...placement, lead: true },
+            {
+              story_id: "story-2",
+              version: 2,
+              section: "tax",
+              order: 1,
+              lead: true,
+            },
+          ],
+        }),
+      ),
+    /standard edition must declare exactly one lead/i,
+  );
+  assert.doesNotThrow(() =>
+    parseEditionPacket(
+      edition({
+        edition_kind: "quiet",
+        placements: [{ ...placement, lead: false }],
+      }),
+    ),
+  );
+  assert.throws(
+    () =>
+      parseEditionPacket(
+        edition({
+          edition_kind: "quiet",
+          placements: [{ ...placement, lead: true }],
+        }),
+      ),
+    /quiet edition must not declare a lead/i,
   );
 });
 

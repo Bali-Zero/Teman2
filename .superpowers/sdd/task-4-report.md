@@ -44,3 +44,20 @@
 - `npm run lint -- --max-warnings=0`: passed.
 - `git diff --check`: passed.
 - A standalone `npx tsc --noEmit` diagnostic remains outside the package gate because the existing Vinext/Cloudflare setup lacks ambient `cloudflare:workers`, `Fetcher`, and `D1Database` types and enables import-extension patterns that the standalone command rejects. The production package build passes.
+
+## Second review correction pass
+
+- Reassigned the locked palette to semantic surface roles: anthracite is the primary editorial canvas, black is the secondary surface, white is body ink, and yellow/red retain their exact accent values. Contrast-sensitive yellow treatments now use black text.
+- Added an explicit `lead` placement field to the closed edition contract. Standard editions require exactly one lead; quiet editions require none. D1 persists `is_lead`, enforces at most one lead with a partial unique index, and compares the persisted flag with the packet during atomic finalization.
+- Changed front-page composition to select the declared lead instead of inferring a hero from section-local order. A two-section integration fixture gives both stories order 1 and proves that the declared tax lead wins in the current edition while the archived edition keeps its own declared compliance lead.
+- Added nullable `event_occurred_at` to the story contract, migration, repository, and reader DTO. The story page renders an explicit unavailable message when the source packet does not declare event time; it never substitutes `updated_at`.
+- Removed the inferred correction event. The timeline now reports only persisted publication lifecycle rows with real `published_at` values and append-only visibility events with their recorded `created_at` values.
+
+## Second review TDD and verification
+
+- RED/GREEN: contract tests first failed on unknown `event_occurred_at` and `lead` fields, then passed after closed-schema validation and standard/quiet lead cardinality rules were implemented.
+- RED/GREEN: the render fixture now exercises equal section-local ordering across tax and compliance and asserts the explicit lead in both current and archived revisions.
+- GREEN: `npm test` passed the production Vinext build and all 82 tests (82 passed, 0 failed).
+- `npm run lint -- --max-warnings=0`: passed.
+- `npm run db:generate`: reported `No schema changes, nothing to migrate`.
+- `npx prettier --check` and `git diff --check`: passed for the scoped implementation.

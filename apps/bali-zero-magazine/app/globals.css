@@ -6,11 +6,12 @@
   --white: #ffffff;
   --yellow: #f4c430;
   --red: #c8102e;
-  --ink: var(--black);
-  --paper: var(--white);
-  --soft-paper: rgba(44, 47, 56, 0.06);
-  --rule: var(--anthracite);
-  --muted: rgba(44, 47, 56, 0.72);
+  --paper: var(--anthracite);
+  --secondary-surface: var(--black);
+  --ink: var(--white);
+  --soft-paper: rgba(0, 0, 0, 0.24);
+  --rule: rgba(255, 255, 255, 0.42);
+  --muted: rgba(255, 255, 255, 0.72);
 }
 
 * {
@@ -47,7 +48,7 @@ summary:focus-visible {
 
 .skip-link {
   background: var(--yellow);
-  color: var(--ink);
+  color: var(--black);
   font-weight: 800;
   left: 1rem;
   padding: 0.7rem 1rem;
@@ -96,6 +97,7 @@ summary:focus-visible {
 
 .wordmark strong {
   background: var(--yellow);
+  color: var(--black);
   font-weight: 900;
   padding: 0.12em 0.18em 0.08em;
 }
@@ -149,7 +151,7 @@ main {
 .edition-badges span,
 .story-meta b {
   background: var(--yellow);
-  color: var(--ink);
+  color: var(--black);
   font-size: 0.65rem;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -167,7 +169,7 @@ main {
 .breaking-strip {
   align-items: center;
   background: var(--red);
-  color: var(--paper);
+  color: var(--white);
   display: grid;
   gap: 1.5rem;
   grid-template-columns: minmax(8rem, 0.35fr) 1fr;
@@ -260,7 +262,7 @@ main {
 }
 
 .story-summary {
-  color: var(--anthracite);
+  color: var(--muted);
   font-size: 1rem;
   max-width: 62ch;
 }
@@ -277,8 +279,8 @@ main {
 .editorial-visual {
   align-items: end;
   aspect-ratio: 16 / 8;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--secondary-surface);
+  color: var(--white);
   display: flex;
   margin-bottom: 1.1rem;
   overflow: hidden;
@@ -379,6 +381,7 @@ main {
 
 .curiosity-block {
   background: var(--yellow);
+  color: var(--black);
   display: grid;
   gap: 1rem;
   grid-template-columns: 0.55fr 1.5fr auto;
@@ -425,7 +428,7 @@ main {
 
 .system-status li {
   align-items: baseline;
-  border-bottom: 1px solid rgba(44, 47, 56, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
   display: grid;
   font-size: 0.72rem;
   gap: 0.4rem;
@@ -479,8 +482,8 @@ main {
 }
 
 .archive-banner {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--secondary-surface);
+  color: var(--white);
   margin: 1rem 0 0;
   padding: 1.5rem;
 }
@@ -531,6 +534,7 @@ main {
 
 .story-state-line span:first-child {
   background: var(--yellow);
+  color: var(--black);
   padding: 0.15rem 0.35rem;
 }
 
@@ -651,8 +655,8 @@ main {
 }
 
 .claim-kind {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--secondary-surface);
+  color: var(--white);
   display: inline-block;
   font-size: 0.62rem;
   font-weight: 900;
@@ -663,7 +667,7 @@ main {
 
 .claim-kind--analysis {
   background: var(--yellow);
-  color: var(--ink);
+  color: var(--black);
 }
 
 .numeric-claim {
@@ -729,8 +733,8 @@ main {
 }
 
 .magazine-footer {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--secondary-surface);
+  color: var(--white);
   display: flex;
   font-size: 0.67rem;
   font-weight: 800;

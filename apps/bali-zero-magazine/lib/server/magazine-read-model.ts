@@ -100,13 +100,7 @@ export type ImageProvenanceView = Readonly<{
 }>;
 
 export type StoryTimelineEvent = Readonly<{
-  kind:
-    | "publication"
-    | "amendment"
-    | "supersession"
-    | "correction"
-    | "quarantine"
-    | "restoration";
+  kind: "publication" | "amendment" | "quarantine" | "restoration";
   label: string;
   occurredAt: string;
   version: number;
@@ -118,6 +112,7 @@ export type StoryDetailView = Readonly<{
   section: EditionPlacementV1["section"];
   lifecycleState: StoryVersionV1["lifecycle_state"];
   firstSeenAt: string;
+  eventOccurredAt: string | null;
   updatedAt: string;
   verifiedAt: string | null;
   contributors: readonly string[];
@@ -310,18 +305,25 @@ async function composeFrontPage(
   const sourceSystems = await readSourceStatus(db);
   if (edition === null) return emptyFrontPage(sourceSystems, false);
 
+  const sectionOrder = new Map(
+    DOMAIN_SECTIONS.map((section, index) => [section.key, index]),
+  );
   const orderedEntries = [...edition.entries].sort(
-    (left, right) => left.order - right.order,
+    (left, right) =>
+      left.order - right.order ||
+      (sectionOrder.get(left.section) ?? DOMAIN_SECTIONS.length) -
+        (sectionOrder.get(right.section) ?? DOMAIN_SECTIONS.length),
   );
   const cards = await cardsForStories(
     db,
     orderedEntries.map((entry) => entry.story),
   );
-  const hero = cards[0] ?? null;
-  const nonHero = orderedEntries.slice(1).map((entry, index) => ({
+  const entriesWithCards = orderedEntries.map((entry, index) => ({
     entry,
-    card: cards[index + 1],
+    card: cards[index],
   }));
+  const hero = entriesWithCards.find(({ entry }) => entry.lead)?.card ?? null;
+  const nonHero = entriesWithCards.filter(({ entry }) => !entry.lead);
   const repository = createPublicationRepository(db);
   const breaking = includeBreaking
     ? await cardsForStories(db, await repository.getActiveBreaking())
@@ -456,7 +458,7 @@ async function readTimeline(
     db
       .prepare(
         `/* magazine:story-history */
-         SELECT version, lifecycle_state, updated_at, published_at
+         SELECT version, lifecycle_state, publication_state, published_at
          FROM story_versions
          WHERE story_id = ? AND publication_state IN ('published', 'superseded')
          ORDER BY version`,
@@ -465,7 +467,7 @@ async function readTimeline(
       .all<{
         version: number;
         lifecycle_state: StoryVersionV1["lifecycle_state"];
-        updated_at: string;
+        publication_state: "published" | "superseded";
         published_at: string | null;
       }>(),
     db
@@ -485,29 +487,18 @@ async function readTimeline(
   ]);
 
   const versions = historyResult.results ?? [];
-  const timeline: StoryTimelineEvent[] = versions.map((item) => {
-    if (item.version < story.version) {
-      return {
-        kind: "supersession",
-        label: "Earlier revision superseded",
-        occurredAt: item.published_at ?? item.updated_at,
+  const timeline: StoryTimelineEvent[] = versions.flatMap((item) => {
+    if (item.published_at === null) return [];
+    const stateLabel =
+      item.publication_state === "superseded" ? " — currently superseded" : "";
+    return [
+      {
+        kind: item.lifecycle_state === "amended" ? "amendment" : "publication",
+        label: `Revision published — lifecycle ${item.lifecycle_state}${stateLabel}`,
+        occurredAt: item.published_at,
         version: item.version,
-      };
-    }
-    if (item.lifecycle_state === "amended") {
-      return {
-        kind: "amendment",
-        label: "Amendment published — correction recorded",
-        occurredAt: item.published_at ?? item.updated_at,
-        version: item.version,
-      };
-    }
-    return {
-      kind: "publication",
-      label: "Revision published",
-      occurredAt: item.published_at ?? item.updated_at,
-      version: item.version,
-    };
+      },
+    ];
   });
   for (const event of visibilityResult.results ?? []) {
     timeline.push({
@@ -607,6 +598,7 @@ export async function readStoryDetail(
       section: metadata.section,
       lifecycleState: row.lifecycle_state,
       firstSeenAt: row.first_seen_at,
+      eventOccurredAt: row.event_occurred_at,
       updatedAt: row.updated_at,
       verifiedAt: metadata.verifiedAt,
       contributors: (contributorsResult.results ?? []).map(

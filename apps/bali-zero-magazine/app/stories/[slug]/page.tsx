@@ -91,7 +91,11 @@ export default async function StoryPage({ params }: StoryPageProps) {
             </div>
             <div>
               <dt>Event time</dt>
-              <dd>{readableTimestamp(detail.updatedAt)}</dd>
+              <dd>
+                {detail.eventOccurredAt === null
+                  ? "Unavailable — source packet did not declare an occurrence time."
+                  : readableTimestamp(detail.eventOccurredAt)}
+              </dd>
             </div>
             <div>
               <dt>First seen</dt>
@@ -164,10 +168,7 @@ export default async function StoryPage({ params }: StoryPageProps) {
           <div>
             <p className="section-label">Revision record</p>
             <h2 id="timeline-title">Publication timeline</h2>
-            <p>
-              Append-only amendments, supersessions, corrections, and visibility
-              overlays.
-            </p>
+            <p>Append-only publication lifecycle and visibility overlays.</p>
           </div>
           {detail.timeline.length > 0 ? (
             <ol className="publication-timeline">

@@ -7,6 +7,7 @@ import {
   sqliteTable,
   text,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
 const createdAt = () =>
@@ -154,6 +155,7 @@ export const storyVersions = sqliteTable(
     severity: text("severity").notNull(),
     lifecycleState: text("lifecycle_state").notNull(),
     firstSeenAt: text("first_seen_at").notNull(),
+    eventOccurredAt: text("event_occurred_at"),
     updatedAt: text("updated_at").notNull(),
     title: text("title").notNull(),
     deck: text("deck").notNull(),
@@ -443,6 +445,7 @@ export const editionEntries = sqliteTable(
     version: integer("version").notNull(),
     section: text("section").notNull(),
     editorialOrder: integer("editorial_order").notNull(),
+    isLead: integer("is_lead", { mode: "boolean" }).notNull(),
     publicationState: text("publication_state").notNull().default("building"),
   },
   (table) => [
@@ -452,6 +455,9 @@ export const editionEntries = sqliteTable(
       table.section,
       table.editorialOrder,
     ),
+    uniqueIndex("edition_entries_single_lead_unique")
+      .on(table.editionId)
+      .where(sql`${table.isLead} = 1`),
     foreignKey({
       columns: [table.editionId, table.packetId],
       foreignColumns: [editions.editionId, editions.packetId],
@@ -470,6 +476,7 @@ export const editionEntries = sqliteTable(
       "edition_entries_state_check",
       sql`${table.publicationState} in ('building', 'published', 'failed')`,
     ),
+    check("edition_entries_lead_check", sql`${table.isLead} in (0, 1)`),
   ],
 );
 

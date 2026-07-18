@@ -23,6 +23,7 @@ const storyRows = [
     domain: "immigration",
     section: "immigration",
     editorial_order: 1,
+    lead: true,
     severity: "high",
     lifecycle_state: "amended",
     title: "Bali visa files move to a stricter evidence standard",
@@ -36,6 +37,7 @@ const storyRows = [
     coverage_state: "full",
     confidence: "high",
     first_seen_at: "2026-07-18T00:15:00.000Z",
+    event_occurred_at: null,
     updated_at: "2026-07-18T01:20:00.000Z",
     published_at: "2026-07-18T01:30:00.000Z",
     contributing_system_ids_json: JSON.stringify([
@@ -56,6 +58,7 @@ const storyRows = [
     domain: "company",
     section: "company",
     editorial_order: 1,
+    lead: false,
     severity: "medium",
     lifecycle_state: "verified",
     title: "Investment licensing now rewards the correct filing sequence",
@@ -77,6 +80,7 @@ const storyRows = [
     domain: "tax",
     section: "tax",
     editorial_order: 1,
+    lead: false,
     severity: "medium",
     lifecycle_state: "verified",
     title: "The tax calendar needs a second operational cross-check",
@@ -99,6 +103,7 @@ const storyRows = [
     domain: "property",
     section: "property",
     editorial_order: 1,
+    lead: false,
     severity: "medium",
     lifecycle_state: "verified",
     title: "Property reviews put usage rights before the sales narrative",
@@ -120,6 +125,7 @@ const storyRows = [
     domain: "compliance",
     section: "compliance",
     editorial_order: 1,
+    lead: false,
     severity: "critical",
     lifecycle_state: "verified",
     title: "Primary-source refresh changes the compliance watchlist",
@@ -141,6 +147,7 @@ const storyRows = [
     domain: "tax",
     section: "tax",
     editorial_order: 2,
+    lead: false,
     severity: "high",
     lifecycle_state: "verified",
     title: "This quarantined title must never render",
@@ -330,11 +337,13 @@ function createFixtureDb({ quiet = false, empty = false } = {}) {
           {
             version: 2,
             lifecycle_state: "amended",
+            publication_state: "published",
             published_at: "2026-07-18T01:30:00.000Z",
           },
           {
             version: 1,
             lifecycle_state: "superseded",
+            publication_state: "superseded",
             published_at: "2026-07-17T01:30:00.000Z",
           },
         ];
@@ -448,17 +457,24 @@ class SqliteD1Database {
   }
 }
 
-function integrationStory({ version, expectedCurrentVersion, title }) {
+function integrationStory({
+  suffix,
+  domain,
+  version,
+  expectedCurrentVersion,
+  title,
+}) {
   return {
-    story_id: "story-render-integration",
+    story_id: `story-render-integration-${suffix}`,
     version,
     expected_current_version: expectedCurrentVersion,
-    slug: "reader-current-version-invariant",
+    slug: `reader-current-version-invariant-${suffix}`,
     language: "en",
-    domain: "compliance",
+    domain,
     severity: "high",
     lifecycle_state: version === 1 ? "verified" : "amended",
     first_seen_at: "2026-07-17T23:45:00Z",
+    event_occurred_at: null,
     updated_at: version === 1 ? "2026-07-18T00:15:00Z" : "2026-07-18T01:15:00Z",
     title,
     deck: "The canonical publication reader must preserve version equality.",
@@ -474,20 +490,20 @@ function integrationStory({ version, expectedCurrentVersion, title }) {
     },
     claims: [
       {
-        claim_id: "claim-render-integration",
+        claim_id: `claim-render-integration-${suffix}`,
         claim_kind: "fact",
         normalized_text: "The current story version is the only visible one.",
         numeric_value: null,
         numeric_unit: null,
         as_of: "2026-07-18",
-        evidence_ids: ["evidence-render-integration"],
+        evidence_ids: [`evidence-render-integration-${suffix}`],
         breaking_gate: "official-primary",
       },
     ],
     evidence_refs: [
       {
-        evidence_id: "evidence-render-integration",
-        root_source_id: "root-render-integration",
+        evidence_id: `evidence-render-integration-${suffix}`,
+        root_source_id: `root-render-integration-${suffix}`,
         canonical_url: "https://example.go.id/current-version",
         publisher: "Example Authority",
         document_citation: "Current version notice",
@@ -499,7 +515,7 @@ function integrationStory({ version, expectedCurrentVersion, title }) {
         independence_verdict: "independent",
         evidence_note: "Verified issuing-authority publication.",
         upstream_root_source_ids: [],
-        syndication_group_fingerprint: "render-integration",
+        syndication_group_fingerprint: `render-integration-${suffix}`,
         independence_ruleset_version: "independence.v1",
         independence_reason: "issuing-authority-primary-document",
         counts_toward_breaking: true,
@@ -514,7 +530,12 @@ function integrationStory({ version, expectedCurrentVersion, title }) {
   };
 }
 
-function integrationEdition({ revision, story, breakingStoryIds }) {
+function integrationEdition({
+  revision,
+  stories,
+  leadStoryId,
+  breakingStoryIds,
+}) {
   return {
     schema_version: "edition.v1",
     packet_id: `packet-render-integration-${revision}`,
@@ -531,18 +552,21 @@ function integrationEdition({ revision, story, breakingStoryIds }) {
     verified_at:
       revision === 1 ? "2026-07-18T00:20:00Z" : "2026-07-18T01:20:00Z",
     collector_run_ids: [],
-    stories: [story],
-    placements: [
-      {
-        story_id: story.story_id,
-        version: story.version,
-        section: "compliance",
-        order: 1,
-      },
-    ],
+    stories,
+    placements: stories.map((story) => ({
+      story_id: story.story_id,
+      version: story.version,
+      section: story.domain,
+      order: 1,
+      lead: story.story_id === leadStoryId,
+    })),
     breaking_story_ids: breakingStoryIds,
-    referenced_claim_ids: ["claim-render-integration"],
-    referenced_evidence_ids: ["evidence-render-integration"],
+    referenced_claim_ids: stories.flatMap((story) =>
+      story.claims.map((claim) => claim.claim_id),
+    ),
+    referenced_evidence_ids: stories.flatMap((story) =>
+      story.evidence_refs.map((evidence) => evidence.evidence_id),
+    ),
     asset_digests: [RAW_DIGEST],
     coverage_gaps: [],
     reader_notices: [],
@@ -572,27 +596,47 @@ async function createIntegrationDb() {
   const repository = createPublicationRepository(db, {
     now: () => "2026-07-18T01:30:00.000Z",
   });
-  const firstStory = integrationStory({
+  const firstCompliance = integrationStory({
+    suffix: "compliance",
+    domain: "compliance",
     version: 1,
     expectedCurrentVersion: 0,
     title: "Stale breaking revision must not render",
   });
+  const firstTax = integrationStory({
+    suffix: "tax",
+    domain: "tax",
+    version: 1,
+    expectedCurrentVersion: 0,
+    title: "Earlier tax dispatch",
+  });
   const firstEdition = parseEditionPacket(
     integrationEdition({
       revision: 1,
-      story: firstStory,
-      breakingStoryIds: [firstStory.story_id],
+      stories: [firstCompliance, firstTax],
+      leadStoryId: firstCompliance.story_id,
+      breakingStoryIds: [firstCompliance.story_id],
     }),
   );
-  const currentStory = integrationStory({
+  const currentCompliance = integrationStory({
+    suffix: "compliance",
+    domain: "compliance",
     version: 2,
     expectedCurrentVersion: 1,
     title: "Current amended compliance revision",
   });
+  const currentTax = integrationStory({
+    suffix: "tax",
+    domain: "tax",
+    version: 2,
+    expectedCurrentVersion: 1,
+    title: "Explicit tax lead wins equal section order",
+  });
   const currentEdition = parseEditionPacket(
     integrationEdition({
       revision: 2,
-      story: currentStory,
+      stories: [currentCompliance, currentTax],
+      leadStoryId: currentTax.story_id,
       breakingStoryIds: [],
     }),
   );
@@ -774,13 +818,18 @@ test("story page separates analysis from claim evidence and exposes current revi
     "Published",
     "Visual provenance",
     "Bali Zero editorial desk",
-    "Amendment published",
-    "Earlier revision superseded",
+    "Revision published — lifecycle amended",
+    "Revision published — lifecycle superseded — currently superseded",
     "Quarantined",
     "Restored",
   ]) {
     assert.match(html, new RegExp(label, "i"));
   }
+  assert.match(
+    html,
+    /Unavailable — source packet did not declare an occurrence time/i,
+  );
+  assert.doesNotMatch(html, /correction recorded/i);
   assert.match(html, /Visible now/);
   assert.match(html, /rel="noopener noreferrer"/i);
   assertNoInternalIdentifiers(html);
@@ -804,21 +853,33 @@ test("edition archive identifies its immutable revision and applies current visi
   assertNoInternalIdentifiers(html);
 });
 
-test("contract-valid packets render through the canonical repository without stale Breaking rows", async () => {
+test("contract-valid packets render the explicit cross-section lead without stale Breaking rows", async () => {
   const db = await createIntegrationDb();
   const currentResponse = await render("/", { db });
   assertProtectedHtml(currentResponse);
   const currentHtml = await currentResponse.text();
 
   assert.match(currentHtml, /Current amended compliance revision/);
+  assert.match(
+    currentHtml,
+    /<article class="story-card story-card--hero">[\s\S]*?Explicit tax lead wins equal section order[\s\S]*?<\/article>/,
+  );
   assert.doesNotMatch(currentHtml, /Stale breaking revision must not render/);
   assert.doesNotMatch(currentHtml, /class="breaking-strip"/);
 
   const archivedResponse = await render("/editions/2026-07-18-r1", { db });
   assertProtectedHtml(archivedResponse);
   const archivedHtml = await archivedResponse.text();
-  assert.match(archivedHtml, /Stale breaking revision must not render/);
+  assert.match(
+    archivedHtml,
+    /<article class="story-card story-card--hero">[\s\S]*?Stale breaking revision must not render[\s\S]*?<\/article>/,
+  );
+  assert.match(archivedHtml, /Earlier tax dispatch/);
   assert.doesNotMatch(archivedHtml, /Current amended compliance revision/);
+  assert.doesNotMatch(
+    archivedHtml,
+    /Explicit tax lead wins equal section order/,
+  );
   assert.doesNotMatch(archivedHtml, /class="breaking-strip"/);
 });
 
@@ -841,6 +902,17 @@ test("editorial CSS uses the locked Bali Zero palette and Montserrat stack", () 
   ]) {
     assert.doesNotMatch(css, new RegExp(rejected, "i"));
   }
+  assert.match(css, /--paper:\s*var\(--anthracite\)/i);
+  assert.match(css, /--secondary-surface:\s*var\(--black\)/i);
+  assert.match(css, /--ink:\s*var\(--white\)/i);
+  assert.match(
+    css,
+    /html\s*\{[^}]*background:\s*var\(--paper\)[^}]*color:\s*var\(--ink\)/is,
+  );
+  assert.match(
+    css,
+    /body\s*\{[^}]*background:\s*var\(--paper\)[^}]*color:\s*var\(--ink\)/is,
+  );
   assert.match(css, /font-family:\s*Montserrat,\s*sans-serif/i);
 });
 

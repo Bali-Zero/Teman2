@@ -121,16 +121,19 @@ CREATE TABLE `edition_entries` (
 	`version` integer NOT NULL,
 	`section` text NOT NULL,
 	`editorial_order` integer NOT NULL,
+	`is_lead` integer NOT NULL,
 	`publication_state` text DEFAULT 'building' NOT NULL,
 	PRIMARY KEY(`edition_id`, `packet_id`, `story_id`),
 	FOREIGN KEY (`edition_id`) REFERENCES `editions`(`edition_id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`packet_id`) REFERENCES `publication_packets`(`packet_id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`edition_id`,`packet_id`) REFERENCES `editions`(`edition_id`,`packet_id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`packet_id`,`story_id`,`version`) REFERENCES `story_versions`(`packet_id`,`story_id`,`version`) ON UPDATE no action ON DELETE no action,
-	CONSTRAINT "edition_entries_state_check" CHECK("edition_entries"."publication_state" in ('building', 'published', 'failed'))
+	CONSTRAINT "edition_entries_state_check" CHECK("edition_entries"."publication_state" in ('building', 'published', 'failed')),
+	CONSTRAINT "edition_entries_lead_check" CHECK("edition_entries"."is_lead" in (0, 1))
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `edition_entries_order_unique` ON `edition_entries` (`edition_id`,`section`,`editorial_order`);--> statement-breakpoint
+CREATE UNIQUE INDEX `edition_entries_single_lead_unique` ON `edition_entries` (`edition_id`) WHERE "edition_entries"."is_lead" = 1;--> statement-breakpoint
 CREATE TABLE `edition_pointer` (
 	`singleton_id` integer PRIMARY KEY DEFAULT 1 NOT NULL,
 	`current_edition_id` text,
@@ -366,6 +369,7 @@ CREATE TABLE `story_versions` (
 	`severity` text NOT NULL,
 	`lifecycle_state` text NOT NULL,
 	`first_seen_at` text NOT NULL,
+	`event_occurred_at` text,
 	`updated_at` text NOT NULL,
 	`title` text NOT NULL,
 	`deck` text NOT NULL,

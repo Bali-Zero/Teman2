@@ -79,6 +79,15 @@ test("publication migration encodes replay, singleton-head, uniqueness, and stat
   assert.match(sql, /editions_coverage_check[^;]+\('complete', 'partial'\)/i);
   assert.match(
     sql,
+    /CREATE UNIQUE INDEX `edition_entries_single_lead_unique`[^;]+\(`edition_id`\)[^;]+is_lead[^;]+1/i,
+  );
+  assert.match(sql, /edition_entries_lead_check[^;]+is_lead[^;]+\(0, 1\)/i);
+  assert.match(
+    sql,
+    /CREATE TABLE `story_versions`[^;]+`event_occurred_at` text/is,
+  );
+  assert.match(
+    sql,
     /CREATE TABLE `asset_status_events`[^;]+`rights_status` text NOT NULL/is,
   );
   assert.match(
@@ -222,6 +231,7 @@ function story(overrides = {}) {
     severity: "high",
     lifecycle_state: "verified",
     first_seen_at: "2026-07-17T20:00:00Z",
+    event_occurred_at: "2026-07-17T19:30:00Z",
     updated_at: "2026-07-17T21:00:00Z",
     title: "An important regulation changed",
     deck: "The official source confirms the effective date.",
@@ -295,6 +305,7 @@ function edition(overrides = {}) {
         version: editionStory.version,
         section: "compliance",
         order: 1,
+        lead: true,
       },
     ],
     breaking_story_ids: [],
@@ -421,6 +432,7 @@ function firstEdition(overrides = {}) {
         version: firstStory.version,
         section: "compliance",
         order: 1,
+        lead: true,
       },
     ],
     ...overrides,
@@ -566,7 +578,8 @@ test("D1 rejects story versions that skip the exact next version", async () => {
         `INSERT INTO story_versions
         SELECT story_id, version + 1, packet_id, expected_current_version,
                language, domain, severity, lifecycle_state, first_seen_at,
-               updated_at, title, deck, summary, why_it_matters, curiosity_text,
+               event_occurred_at, updated_at, title, deck, summary,
+               why_it_matters, curiosity_text,
                score_components_json, claim_ids_json, contributing_system_ids_json,
                coverage_state, confidence, asset_digests_json, adapter_version,
                ruleset_version, publication_state, published_at
@@ -790,14 +803,24 @@ test("edition finalization promotes the complete packet-scoped graph", async () 
       version: entry.version,
       section: entry.section,
       order: entry.order,
+      lead: entry.lead,
     })),
-    [{ story_id: "story-1", version: 2, section: "compliance", order: 1 }],
+    [
+      {
+        story_id: "story-1",
+        version: 2,
+        section: "compliance",
+        order: 1,
+        lead: true,
+      },
+    ],
   );
   assert.deepEqual(
     publishedEntries?.map((entry) => ({
       slug: entry.story.slug,
       domain: entry.story.domain,
       firstSeenAt: entry.story.first_seen_at,
+      eventOccurredAt: entry.story.event_occurred_at,
       updatedAt: entry.story.updated_at,
     })),
     [
@@ -805,6 +828,7 @@ test("edition finalization promotes the complete packet-scoped graph", async () 
         slug: packet.stories[0].slug,
         domain: packet.stories[0].domain,
         firstSeenAt: packet.stories[0].first_seen_at,
+        eventOccurredAt: packet.stories[0].event_occurred_at,
         updatedAt: packet.stories[0].updated_at,
       },
     ],
@@ -979,6 +1003,10 @@ for (const fault of [
   {
     name: "edition placement",
     sql: "UPDATE edition_entries SET publication_state = 'failed' WHERE packet_id = ?",
+  },
+  {
+    name: "edition lead designation",
+    sql: "UPDATE edition_entries SET is_lead = 0 WHERE packet_id = ?",
   },
   {
     name: "asset reference",

@@ -39,6 +39,7 @@ export type PublishedStory = Readonly<{
   severity: StoryVersionV1["severity"];
   lifecycle_state: StoryVersionV1["lifecycle_state"];
   first_seen_at: string;
+  event_occurred_at: string | null;
   updated_at: string;
   title: string;
   deck: string;
@@ -65,6 +66,7 @@ export type PublishedEdition = Readonly<{
     version: number;
     section: EditionPlacementV1["section"];
     order: number;
+    lead: boolean;
     story: PublishedStory;
   }>[];
 }>;
@@ -306,6 +308,7 @@ function graphGuardStatement(
                  AND json_extract(expected.value, '$.version') = ee.version
                  AND json_extract(expected.value, '$.section') = ee.section
                  AND json_extract(expected.value, '$.order') = ee.editorial_order
+                 AND json_extract(expected.value, '$.lead') = ee.is_lead
              )
          )
          AND NOT EXISTS (
@@ -389,12 +392,13 @@ function storyStatements(
       .prepare(
         `INSERT INTO story_versions(
            story_id, version, packet_id, expected_current_version, language,
-           domain, severity, lifecycle_state, first_seen_at, updated_at, title,
+           domain, severity, lifecycle_state, first_seen_at,
+           event_occurred_at, updated_at, title,
            deck, summary, why_it_matters, curiosity_text, score_components_json,
            claim_ids_json,
            contributing_system_ids_json, coverage_state, confidence,
            asset_digests_json, adapter_version, ruleset_version, publication_state
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'building')`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'building')`,
       )
       .bind(
         story.story_id,
@@ -406,6 +410,7 @@ function storyStatements(
         story.severity,
         story.lifecycle_state,
         story.first_seen_at,
+        story.event_occurred_at,
         story.updated_at,
         story.title,
         story.deck,
@@ -766,8 +771,8 @@ export function createPublicationRepository(
           .prepare(
             `INSERT INTO edition_entries(
                edition_id, packet_id, story_id, version, section,
-               editorial_order, publication_state
-             ) VALUES (?, ?, ?, ?, ?, ?, 'building')`,
+               editorial_order, is_lead, publication_state
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, 'building')`,
           )
           .bind(
             packet.packet_id,
@@ -776,6 +781,7 @@ export function createPublicationRepository(
             placement.version,
             placement.section,
             placement.order,
+            placement.lead ? 1 : 0,
           ),
       );
     }
@@ -1190,9 +1196,11 @@ export function createPublicationRepository(
     const entryResult = await db
       .prepare(
         `SELECT ee.story_id, ee.version, ee.section,
-                ee.editorial_order AS "order", s.slug, sv.language,
+                ee.editorial_order AS "order", ee.is_lead AS lead,
+                s.slug, sv.language,
                 sv.domain, sv.severity, sv.lifecycle_state,
-                sv.first_seen_at, sv.updated_at, sv.title, sv.deck,
+                sv.first_seen_at, sv.event_occurred_at, sv.updated_at,
+                sv.title, sv.deck,
                 sv.summary, sv.why_it_matters, sv.curiosity_text,
                 sv.coverage_state, sv.confidence, sv.published_at
          FROM edition_entries ee
@@ -1212,7 +1220,7 @@ export function createPublicationRepository(
                )
                AND visibility.desired_quarantined = 1
            )
-         ORDER BY ee.section, ee.editorial_order`,
+         ORDER BY ee.is_lead DESC, ee.section, ee.editorial_order`,
       )
       .bind(editionId)
       .all<{
@@ -1220,12 +1228,14 @@ export function createPublicationRepository(
         version: number;
         section: EditionPlacementV1["section"];
         order: number;
+        lead: number | boolean;
         slug: string;
         language: string;
         domain: StoryVersionV1["domain"];
         severity: StoryVersionV1["severity"];
         lifecycle_state: StoryVersionV1["lifecycle_state"];
         first_seen_at: string;
+        event_occurred_at: string | null;
         updated_at: string;
         title: string;
         deck: string;
@@ -1251,6 +1261,7 @@ export function createPublicationRepository(
         version: entry.version,
         section: entry.section,
         order: entry.order,
+        lead: Boolean(entry.lead),
         story: {
           story_id: entry.story_id,
           version: entry.version,
@@ -1260,6 +1271,7 @@ export function createPublicationRepository(
           severity: entry.severity,
           lifecycle_state: entry.lifecycle_state,
           first_seen_at: entry.first_seen_at,
+          event_occurred_at: entry.event_occurred_at,
           updated_at: entry.updated_at,
           title: entry.title,
           deck: entry.deck,
@@ -1291,7 +1303,7 @@ export function createPublicationRepository(
       .prepare(
         `SELECT s.story_id, sv.version, s.slug, sv.language, sv.domain,
                 sv.severity, sv.lifecycle_state, sv.first_seen_at,
-                sv.updated_at, sv.title, sv.deck, sv.summary,
+                sv.event_occurred_at, sv.updated_at, sv.title, sv.deck, sv.summary,
                 sv.why_it_matters, sv.curiosity_text, sv.coverage_state,
                 sv.confidence, sv.published_at
          FROM stories s
@@ -1318,7 +1330,7 @@ export function createPublicationRepository(
       .prepare(
         `SELECT s.story_id, sv.version, s.slug, sv.language, sv.domain,
                 sv.severity, sv.lifecycle_state, sv.first_seen_at,
-                sv.updated_at, sv.title, sv.deck, sv.summary,
+                sv.event_occurred_at, sv.updated_at, sv.title, sv.deck, sv.summary,
                 sv.why_it_matters, sv.curiosity_text, sv.coverage_state,
                 sv.confidence, sv.published_at
          FROM breaking_pointer bp
