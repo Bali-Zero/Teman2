@@ -5,19 +5,22 @@ context as high-priority evidence; the LLM still answers the real question
 and the abstain gate still runs downstream (the injection never short-
 circuits the query, unlike the FAQ cache exact-match path).
 
-Domain filter (2026-07-18): the 0.90 raw-cosine gate almost never fired for
+Domain gate (2026-07-18): the 0.90 raw-cosine gate almost never fired for
 real paraphrased queries (0.46-0.74 cosine vs stored questions). Lowering the
 threshold alone pollutes cross-domain answers (a "register PT PMA" query can
-score >0.58 against a visa Q&A). The fix is DOMAIN-FILTERED injection: only
-inject when the query has a concrete, classified domain, and restrict the
-Qdrant search itself (+ a defensive per-hit re-check) to that domain.
+score high against a visa Q&A). The fix injects ONLY when the query has a
+concrete, classified domain AND each retrieved hit's own `domain` tag matches
+it. Note: NO Qdrant `filter` is passed — search_collection re-wraps a native
+filter into a malformed query that Qdrant 400s (the reason injection was dead
+in prod even after #2684's "domain filter"); the per-hit recheck is the real,
+sufficient domain gate.
 
 Three layers of coverage:
 1. `_inject_curated_qa_grounding()` in isolation — retrieval/formatting/
    threshold/domain-gate/exception-handling logic.
-2. Domain-gate guilt + innocence — proves a matching domain injects (with the
-   domain filter sent to search_collection) and a mismatched/general domain
-   never does, even when a same-score foreign-domain hit is present.
+2. Domain-gate guilt + innocence — proves a matching domain injects (calling
+   search WITHOUT a Qdrant filter) and a mismatched/general domain never does,
+   even when a same-score foreign-domain hit is present.
 3. One process_query_core() wiring test — proves the call site actually
    flows the injected string into the system prompt's additional_context,
    and that the ReAct loop (and therefore the abstain gate) still executes
@@ -137,7 +140,12 @@ async def test_hit_above_threshold_is_prepended_with_source_tag() -> None:
     _, kwargs = core.retriever.search_collection.call_args
     assert kwargs["collection_name"] == "curated_qa"
     assert kwargs["limit"] == 2
-    assert kwargs["filter"] == {"must": [{"key": "domain", "match": {"value": "visa"}}]}
+    # REGRESSION (2026-07-18): the injection must NOT pass a Qdrant-native
+    # `filter` — search_collection re-wraps it through the simplified-format
+    # converter, producing a malformed filter that Qdrant 400s and kills the
+    # whole search (curated_qa injection was dead in prod for exactly this).
+    # Domain scoping is enforced by the per-hit recheck, not a Qdrant filter.
+    assert kwargs.get("filter") is None
 
 
 @pytest.mark.asyncio
@@ -301,9 +309,11 @@ async def test_general_domain_returns_empty_string_and_never_calls_search() -> N
 
 
 @pytest.mark.asyncio
-async def test_concrete_domain_query_sends_matching_qdrant_filter() -> None:
-    """GUILT — a concrete non-general domain (e.g. company) DOES call search,
-    with a Qdrant filter scoped to that exact domain."""
+async def test_concrete_domain_query_searches_without_a_qdrant_filter() -> None:
+    """GUILT + REGRESSION — a concrete non-general domain (e.g. company) DOES
+    call search, but WITHOUT any Qdrant `filter` kwarg. Passing a native
+    {"must": [...]} filter here is the bug that made curated_qa injection 400
+    and go dark in prod; domain scoping is done by the per-hit recheck below."""
     core = make_core()
     search_mock = AsyncMock(return_value=_search_result([]))
     core.retriever = SimpleNamespace(search_collection=search_mock)
@@ -316,17 +326,18 @@ async def test_concrete_domain_query_sends_matching_qdrant_filter() -> None:
     assert result == ""  # no company-domain curated_qa content exists yet
     search_mock.assert_awaited_once()
     _, kwargs = search_mock.call_args
-    assert kwargs["filter"] == {"must": [{"key": "domain", "match": {"value": "company"}}]}
+    assert kwargs.get("filter") is None
 
 
 @pytest.mark.asyncio
 async def test_company_domain_query_never_injects_a_leaked_visa_hit() -> None:
     """INNOCENCE — the core anti-pollution guarantee: a company-domain query
-    must return "" even if the search layer (Qdrant misconfig, or — as
-    simulated here — a permissive test double) leaks back a high-scoring
-    VISA-tagged hit despite the domain=company filter that was requested.
-    The orchestrator's own per-hit domain re-check is the second line of
-    defense (never trust a single signal — scar family #3)."""
+    must return "" even though the search layer returns a high-scoring
+    VISA-tagged hit (all curated_qa content is visa-domain today, and retrieval
+    is unfiltered by design — there is no Qdrant-level domain filter). The
+    orchestrator's per-hit `hit_domain != domain` recheck is the ONLY and
+    sufficient domain gate (match on the entity, not a single upstream signal —
+    scar family #3)."""
     core = make_core()
     core.retriever = SimpleNamespace(
         search_collection=AsyncMock(
