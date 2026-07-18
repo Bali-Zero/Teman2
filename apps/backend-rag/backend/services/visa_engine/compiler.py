@@ -574,7 +574,18 @@ _SCALAR_FACT_KINDS = frozenset({FactValueKind.BOOLEAN, FactValueKind.INTEGER, Fa
 #: ``"2026-1-1"`` (wrong shape) and ``"2026-02-30"`` (right shape, no such
 #: calendar day). The regex catches shape; ``date.fromisoformat`` catches
 #: calendar validity (leap years, day-of-month bounds, month range).
-_DATE_LITERAL_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+#:
+#: PR1b item 8 (nit Codex): ``[0-9]``, never bare ``\d`` — Python's ``re``
+#: module makes ``\d`` Unicode-aware by default, so it matches any Unicode
+#: decimal digit (e.g. Arabic-Indic ٠-٩), not just ASCII 0-9. A literal like
+#: ``"٢٠٢٦-٠٧-١٧"`` passed this shape check under ``\d`` and only failed
+#: later at ``date.fromisoformat`` — a real defect, but mis-classified: the
+#: reported message said "is not a valid calendar date" when the actual
+#: problem is "wrong digit script/shape" entirely. ``[0-9]`` is
+#: ASCII-only (matching ECMA-262/JSON-Schema's own ``\d`` semantics,
+#: which — unlike Python's — IS ASCII-only), so this now fails at the
+#: shape check with the correct message.
+_DATE_LITERAL_SHAPE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 
 
 def _check_date_literal_shape(

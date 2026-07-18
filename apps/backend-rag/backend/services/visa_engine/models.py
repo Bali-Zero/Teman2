@@ -629,7 +629,21 @@ CountryCode = Annotated[str, Field(pattern=COUNTRY_CODE_PATTERN)]
 
 #: ``$defs/KnownDate`` — JSON Schema ``format: "date"`` (calendar date, no
 #: time-of-day component — deliberately distinct from ``UtcDateTime``).
-ISO_DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
+#:
+#: PR1b item 8: ``[0-9]``, never bare ``\d`` (same rationale as
+#: ``compiler.py``'s ``_DATE_LITERAL_SHAPE`` — see that constant's
+#: docstring). This pattern is exported verbatim into the JSON Schema
+#: contract (``schema_export.py`` -> ``contracts/*.schema.json``), where an
+#: EXTERNAL grader (e.g. the ``jsonschema`` library's ``Draft202012Validator``
+#: used in ``test_schema_contracts.py``, or any other JSON-Schema-compliant
+#: consumer) evaluates ``pattern`` using its own regex engine — for a Python
+#: `jsonschema` grader specifically, that is Python's own Unicode-aware
+#: ``re`` module, the exact engine whose ``\d`` behavior this hotfix works
+#: around. ``[0-9]`` keeps the exported contract's guarantee as strict as
+#: pydantic-core's (Rust regex, already ASCII-only for `\d` in practice) —
+#: writing the ASCII class explicitly removes any ambiguity for whichever
+#: engine ends up evaluating it.
+ISO_DATE_PATTERN = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
 IsoDate = Annotated[str, Field(pattern=ISO_DATE_PATTERN)]
 
 #: ``$defs/PublicDecisionId`` inline pattern (spec §2 ``Decision.public_id``).

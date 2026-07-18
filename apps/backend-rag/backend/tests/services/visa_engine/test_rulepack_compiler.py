@@ -1348,6 +1348,30 @@ class TestFactLiteralDateShape:
         report = C.compile_rule_pack(make_rule_pack(payload))
         assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
 
+    def test_arabic_indic_digits_shape_guilty(self, source_record: M.SourceRecord) -> None:
+        # PR1b item 8: Python's `re` module treats bare `\d` as Unicode-
+        # aware — an Arabic-Indic-digit string ("2026-07-17" spelled with
+        # ٠-٩) used to match `_DATE_LITERAL_SHAPE`'s old `\d` pattern and
+        # only fail downstream at `date.fromisoformat`, mis-classified as a
+        # calendar-validity defect rather than a shape one. `[0-9]` (ASCII-
+        # only) now catches it at the shape check itself.
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.date.arabic_indic_digits",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={"op": "eq", "fact": "person.birth_date", "value": "٢٠٢٦-٠٧-١٧"},
+            required_facts=("person.birth_date",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert any(e.code == "FACT_LITERAL_INVALID_DATE" for e in report.errors)
+
     def test_between_bounds_invalid_date_guilty(self, source_record: M.SourceRecord) -> None:
         product_id = uuid.uuid4()
         product = make_product(

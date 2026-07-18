@@ -1566,3 +1566,48 @@ class TestKnownDateCalendarValidity:
         # same class of defect as month-13/day-45.
         with pytest.raises(ValidationError, match="calendar date"):
             M.KnownDate(status="KNOWN", value="2023-02-29")
+
+
+class TestIsoDatePatternAsciiOnly:
+    """PR1b item 8: ``ISO_DATE_PATTERN`` used bare ``\\d``, which Python's
+    ``re`` module treats as Unicode-aware (any Unicode decimal digit, not
+    just ASCII 0-9) — an Arabic-Indic-digit string like ``"٢٠٢٦-٠٧-١٧"``
+    matched the *shape* under ``\\d`` and only failed downstream at
+    ``date.fromisoformat``. ``[0-9]`` is ASCII-only, matching ECMA-262/
+    JSON-Schema's own ``\\d`` semantics (which, unlike Python's, already are
+    ASCII-only) — closing a real generator!=grader gap: the exported
+    contract's pattern is evaluated by the ``jsonschema`` library using
+    Python's OWN Unicode-aware ``re`` engine, a DIFFERENT engine from
+    pydantic-core's Rust regex (which already rejected the Arabic-Indic
+    literal in practice) — so the old bare-``\\d`` pattern text left the
+    exported JSON Schema contract accepting a string the Pydantic model
+    itself rejected, a real model<->contract divergence, verified
+    empirically below against the committed snapshot.
+    """
+
+    _ARABIC_INDIC_DATE = "٢٠٢٦-٠٧-١٧"  # "2026-07-17" digits
+
+    def test_known_date_rejects_arabic_indic_digits(self) -> None:
+        with pytest.raises(ValidationError):
+            M.KnownDate(status="KNOWN", value=self._ARABIC_INDIC_DATE)
+
+    def test_known_date_still_accepts_ascii_digits(self) -> None:
+        known = M.KnownDate(status="KNOWN", value="2026-07-17")
+        assert known.value == "2026-07-17"
+
+    def test_committed_snapshot_pattern_rejects_arabic_indic_digits_via_jsonschema(
+        self,
+    ) -> None:
+        # The real regression this item closes: validate the LITERAL
+        # committed contract.schema.json's KnownDate.value pattern with the
+        # `jsonschema` library (Python's own re engine, Unicode-aware for
+        # bare \d) — proves the exported contract itself is ASCII-only, not
+        # just proving pydantic-core's separate Rust engine is.
+        contract = _load_snapshot("contract.schema.json")
+        pattern = contract["$defs"]["KnownDate"]["properties"]["value"]["pattern"]
+        assert Draft202012Validator({"type": "string", "pattern": pattern}).is_valid(
+            self._ARABIC_INDIC_DATE
+        ) is False
+        assert Draft202012Validator({"type": "string", "pattern": pattern}).is_valid(
+            "2026-07-17"
+        ) is True
