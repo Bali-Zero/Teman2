@@ -10,6 +10,7 @@ import type {
   AssetUploadMetadataV1,
   CollectorRunProjectionV1,
 } from "../contracts/collector.ts";
+import { assetEligibilitySql } from "./asset-eligibility.ts";
 
 export type D1ResultLike<T = Record<string, unknown>> = Readonly<{
   success?: boolean;
@@ -279,35 +280,7 @@ function graphGuardStatement(
            WHERE sar.packet_id = publication_packets.packet_id
              AND (
                asset.sha256 IS NULL
-               OR asset.usage_status <> 'approved'
-               OR asset.dlp_status <> 'passed'
-               OR asset.sanitization_status <> 'passed'
-               OR asset.perceptual_dedup_status NOT IN ('unique', 'intentional-reuse')
-               OR length(trim(asset.alt_text)) = 0
-               OR length(trim(asset.source)) = 0
-               OR (
-                 NOT EXISTS (
-                   SELECT 1 FROM asset_status_events status_event
-                   WHERE status_event.asset_id = asset.asset_id
-                 )
-                 AND (
-                   asset.status <> 'verified'
-                   OR asset.rights_status <> 'approved'
-                 )
-               )
-               OR EXISTS (
-                 SELECT 1 FROM asset_status_events status_event
-                 WHERE status_event.asset_id = asset.asset_id
-                   AND status_event.status_seq = (
-                     SELECT max(latest.status_seq)
-                     FROM asset_status_events latest
-                     WHERE latest.asset_id = asset.asset_id
-                   )
-                   AND (
-                     status_event.status <> 'verified'
-                     OR status_event.rights_status <> 'approved'
-                   )
-               )
+               OR NOT (${assetEligibilitySql("asset")})
                OR NOT EXISTS (
                  SELECT 1 FROM json_each(sv.asset_digests_json) expected
                  WHERE expected.value = sar.asset_sha256

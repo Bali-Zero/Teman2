@@ -2,9 +2,15 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import test from "node:test";
 
+import { validateImageAsset } from "../lib/server/media.ts";
 import { runWithMagazineBindings } from "../lib/server/runtime-bindings.ts";
 import { readStoryDetail } from "../lib/server/magazine-read-model.ts";
 import {
+  ACTIVE_JPEG_APP,
+  ACTIVE_JPEG_COMMENT,
+  ACTIVE_PNG_TEXT,
+  ACTIVE_WEBP_EXIF,
+  ACTIVE_WEBP_XMP,
   MemoryR2Bucket,
   MALFORMED_JPEG,
   MALFORMED_PNG,
@@ -466,6 +472,58 @@ test(
         malformedDb.get("SELECT count(*) AS count FROM assets").count,
         0,
       );
+    }
+  },
+);
+
+test(
+  "asset upload rejects active content in complete ancillary metadata",
+  { skip: !routesExist },
+  async () => {
+    const routes = await loadRoutes();
+    const fixtures = [
+      {
+        name: "PNG tEXt beyond byte 1250",
+        mime: "image/png",
+        bytes: ACTIVE_PNG_TEXT,
+      },
+      { name: "JPEG APP metadata", mime: "image/jpeg", bytes: ACTIVE_JPEG_APP },
+      {
+        name: "JPEG COM metadata",
+        mime: "image/jpeg",
+        bytes: ACTIVE_JPEG_COMMENT,
+      },
+      {
+        name: "WebP EXIF metadata",
+        mime: "image/webp",
+        bytes: ACTIVE_WEBP_EXIF,
+      },
+      { name: "WebP XMP metadata", mime: "image/webp", bytes: ACTIVE_WEBP_XMP },
+    ];
+    assert.ok(ACTIVE_PNG_TEXT.indexOf(0x3c) > 1250);
+    for (const [index, fixture] of fixtures.entries()) {
+      const db = new SqliteD1Database();
+      const metadata = await validAssetMetadata(
+        {
+          asset_id: `asset-active-metadata-${index}`,
+          mime_type: fixture.mime,
+        },
+        fixture.bytes,
+      );
+      await assert.rejects(
+        validateImageAsset(fixture.bytes, fixture.mime, metadata),
+        /active document media is forbidden/,
+        fixture.name,
+      );
+      const request = await signedMachineRequest({
+        path: "/api/machine/assets",
+        body: fixture.bytes,
+        contentType: fixture.mime,
+        metadata,
+      });
+      const response = await invoke(routes.asset, request, runtimeBindings(db));
+      assert.equal(response.status, 400, fixture.name);
+      assert.equal(db.get("SELECT count(*) AS count FROM assets").count, 0);
     }
   },
 );

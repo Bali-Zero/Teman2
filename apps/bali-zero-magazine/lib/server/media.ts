@@ -1,6 +1,7 @@
 // Node's type-stripping test runner executes the TypeScript source directly.
 import { PhotonImage } from "@cf-wasm/photon";
 import type { AssetUploadMetadataV1 } from "../contracts/collector.ts";
+import { assetEligibilitySql } from "./asset-eligibility.ts";
 import type { D1DatabaseLike } from "./publication-repository.ts";
 import { sha256Hex } from "./security.ts";
 
@@ -101,23 +102,56 @@ function crc32(bytes: Uint8Array): number {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function rejectActiveText(bytes: Uint8Array): void {
-  const sample = new TextDecoder("utf-8", { fatal: false })
-    .decode(bytes.subarray(0, Math.min(bytes.length, 1024)))
-    .replaceAll("\u0000", "")
-    .trimStart()
-    .toLowerCase();
-  if (
-    sample.startsWith("<") ||
-    sample.includes("<script") ||
-    sample.includes("<?xml") ||
-    sample.includes("<svg") ||
-    sample.includes("<!doctype html") ||
-    sample.includes("<html")
+const ACTIVE_METADATA_PATTERNS = [
+  "<",
+  "javascript:",
+  "vbscript:",
+  "data:text/html",
+  "onerror=",
+  "onload=",
+  "@import",
+] as const;
+const METADATA_SCAN_CHUNK_BYTES = 64 * 1024;
+const METADATA_SCAN_OVERLAP =
+  Math.max(...ACTIVE_METADATA_PATTERNS.map((pattern) => pattern.length)) - 1;
+
+function rejectActiveMetadata(bytes: Uint8Array): void {
+  const decoder = new TextDecoder("utf-8", { fatal: false });
+  let overlap = "";
+  for (
+    let offset = 0;
+    offset < bytes.length;
+    offset += METADATA_SCAN_CHUNK_BYTES
   ) {
-    throw new TypeError("active document media is forbidden");
+    const end = Math.min(offset + METADATA_SCAN_CHUNK_BYTES, bytes.length);
+    const text = (
+      overlap +
+      decoder.decode(bytes.subarray(offset, end), {
+        stream: end < bytes.length,
+      })
+    )
+      .replaceAll("\u0000", "")
+      .toLowerCase();
+    if (ACTIVE_METADATA_PATTERNS.some((pattern) => text.includes(pattern))) {
+      throw new TypeError("active document media is forbidden");
+    }
+    overlap = text.slice(-METADATA_SCAN_OVERLAP);
   }
 }
+
+const SAFE_PNG_ANCILLARY_CHUNKS = new Set([
+  "bKGD",
+  "cHRM",
+  "gAMA",
+  "hIST",
+  "pHYs",
+  "sBIT",
+  "sRGB",
+  "tIME",
+  "tRNS",
+]);
+
+const SCANNED_PNG_METADATA_CHUNKS = new Set(["eXIf", "iTXt", "tEXt"]);
 
 function parsePng(
   bytes: Uint8Array,
@@ -150,8 +184,26 @@ function parsePng(
       height = u32be(bytes, dataStart + 4);
     } else if (type === "IDAT") {
       sawIdat = true;
+    } else if (type === "PLTE") {
+      // Palette bytes are decoded image data, not textual metadata.
     } else if (type === "acTL" || type === "fcTL" || type === "fdAT") {
       throw new TypeError("animated PNG is forbidden");
+    } else if (type === "zTXt" || type === "iCCP") {
+      throw new TypeError("compressed PNG metadata is forbidden");
+    } else if (SCANNED_PNG_METADATA_CHUNKS.has(type)) {
+      if (type === "iTXt") {
+        const keywordEnd = bytes.indexOf(0, dataStart);
+        if (keywordEnd < dataStart || keywordEnd + 2 >= dataEnd) {
+          throw new TypeError("invalid PNG international text metadata");
+        }
+        const compressionFlag = bytes[keywordEnd + 1];
+        if (compressionFlag !== 0) {
+          throw new TypeError("compressed PNG metadata is forbidden");
+        }
+      }
+      rejectActiveMetadata(bytes.subarray(dataStart, dataEnd));
+    } else if (SAFE_PNG_ANCILLARY_CHUNKS.has(type)) {
+      // These chunks contain bounded image parameters or fixed-width timestamps.
     } else if (type === "IEND") {
       if (length !== 0 || dataEnd + 4 !== bytes.length) {
         throw new TypeError("invalid PNG terminator");
@@ -159,6 +211,8 @@ function parsePng(
       sawIend = true;
       offset = bytes.length;
       break;
+    } else {
+      throw new TypeError("unsupported PNG chunk");
     }
     offset = dataEnd + 4;
     chunkIndex += 1;
@@ -200,6 +254,9 @@ function parseJpeg(
       if (length < 7) throw new TypeError("invalid JPEG frame");
       height = u16be(bytes, offset + 3);
       width = u16be(bytes, offset + 5);
+    }
+    if ((marker >= 0xe0 && marker <= 0xef) || marker === 0xfe) {
+      rejectActiveMetadata(bytes.subarray(offset + 2, offset + length));
     }
     if (marker === 0xda) {
       offset += length;
@@ -269,6 +326,12 @@ function parseWebp(
       height =
         u16be(Uint8Array.of(bytes[data + 9], bytes[data + 8]), 0) & 0x3fff;
       sawImage = true;
+    } else if (type === "EXIF" || type === "XMP ") {
+      rejectActiveMetadata(bytes.subarray(data, end));
+    } else if (type === "ICCP") {
+      throw new TypeError("embedded WebP color profiles are forbidden");
+    } else if (type !== "ALPH") {
+      throw new TypeError("unsupported WebP chunk");
     }
     offset = end + (length & 1);
   }
@@ -316,7 +379,6 @@ export async function validateImageAsset(
   }
   if (contentType !== metadata.mime_type)
     throw new TypeError("asset MIME mismatch");
-  rejectActiveText(bytes);
   let dimensions: Readonly<{ width: number; height: number }>;
   if (contentType === "image/png") dimensions = parsePng(bytes);
   else if (contentType === "image/jpeg") dimensions = parseJpeg(bytes);
@@ -461,19 +523,7 @@ export async function resolvePublishedMedia(
        WHERE a.sha256 = ?
          AND sar.publication_state = 'published'
          AND sv.publication_state = 'published'
-         AND COALESCE((
-           SELECT ase.status FROM asset_status_events ase
-           WHERE ase.asset_id = a.asset_id
-           ORDER BY ase.status_seq DESC LIMIT 1
-         ), a.status) = 'verified'
-         AND COALESCE((
-           SELECT ase.rights_status FROM asset_status_events ase
-           WHERE ase.asset_id = a.asset_id
-           ORDER BY ase.status_seq DESC LIMIT 1
-         ), a.rights_status) = 'approved'
-         AND a.usage_status = 'approved'
-         AND a.dlp_status = 'passed'
-         AND a.sanitization_status = 'passed'
+         AND ${assetEligibilitySql("a")}
          AND NOT EXISTS (
            SELECT 1 FROM story_visibility_events visibility
            WHERE visibility.story_id = sv.story_id

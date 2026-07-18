@@ -7,6 +7,7 @@ import type {
 } from "../contracts/publication.ts";
 import type { RoleAllowlist, Viewer } from "./authorization.ts";
 import { authorize } from "./authorization.ts";
+import { isAssetEligible } from "./asset-eligibility.ts";
 import { requireViewer } from "./identity.ts";
 import type {
   D1DatabaseLike,
@@ -286,15 +287,7 @@ async function readApprovedAsset(
     )
     .bind(storyId, version)
     .all<AssetRow>();
-  const safe = (result.results ?? []).find(
-    (asset) =>
-      asset.status === "verified" &&
-      asset.rights_status === "approved" &&
-      asset.usage_status === "approved" &&
-      asset.dlp_status === "passed" &&
-      asset.sanitization_status === "passed" &&
-      ["unique", "intentional-reuse"].includes(asset.perceptual_dedup_status),
-  );
+  const safe = (result.results ?? []).find((asset) => isAssetEligible(asset));
   return safe === undefined
     ? null
     : {

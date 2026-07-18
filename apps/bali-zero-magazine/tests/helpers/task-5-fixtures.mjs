@@ -258,6 +258,97 @@ function pngVariant(bytes) {
 
 export const VALID_PNG_VARIANT = pngVariant(VALID_PNG);
 
+function concatBytes(...parts) {
+  const combined = new Uint8Array(
+    parts.reduce((total, part) => total + part.byteLength, 0),
+  );
+  let offset = 0;
+  for (const part of parts) {
+    combined.set(part, offset);
+    offset += part.byteLength;
+  }
+  return combined;
+}
+
+function activeMetadataPayload(prefix) {
+  return concatBytes(
+    new TextEncoder().encode(prefix),
+    new TextEncoder().encode("a".repeat(1300)),
+    new TextEncoder().encode("<script>alert(1)</script>"),
+  );
+}
+
+function pngChunk(typeName, data) {
+  const type = new TextEncoder().encode(typeName);
+  const chunk = new Uint8Array(12 + data.byteLength);
+  const view = new DataView(chunk.buffer);
+  view.setUint32(0, data.byteLength);
+  chunk.set(type, 4);
+  chunk.set(data, 8);
+  view.setUint32(
+    8 + data.byteLength,
+    pngCrc32(chunk.subarray(4, 8 + data.byteLength)),
+  );
+  return chunk;
+}
+
+function withPngMetadata(typeName, data) {
+  const chunk = pngChunk(typeName, data);
+  return concatBytes(
+    VALID_PNG.subarray(0, VALID_PNG.byteLength - 12),
+    chunk,
+    VALID_PNG.subarray(VALID_PNG.byteLength - 12),
+  );
+}
+
+export const ACTIVE_PNG_TEXT = withPngMetadata(
+  "tEXt",
+  activeMetadataPayload("Comment\0"),
+);
+
+function withJpegMetadata(marker, prefix) {
+  const data = activeMetadataPayload(prefix);
+  const segment = new Uint8Array(data.byteLength + 4);
+  segment.set([0xff, marker], 0);
+  new DataView(segment.buffer).setUint16(2, data.byteLength + 2);
+  segment.set(data, 4);
+  return concatBytes(
+    VALID_JPEG.subarray(0, 2),
+    segment,
+    VALID_JPEG.subarray(2),
+  );
+}
+
+export const ACTIVE_JPEG_APP = withJpegMetadata(0xe1, "Exif\0\0");
+export const ACTIVE_JPEG_COMMENT = withJpegMetadata(0xfe, "Comment\0");
+
+function riffChunk(typeName, data) {
+  const chunk = new Uint8Array(8 + data.byteLength + (data.byteLength & 1));
+  chunk.set(new TextEncoder().encode(typeName), 0);
+  new DataView(chunk.buffer).setUint32(4, data.byteLength, true);
+  chunk.set(data, 8);
+  return chunk;
+}
+
+function withWebpMetadata(typeName, featureFlag, prefix) {
+  const extendedHeader = new Uint8Array(10);
+  extendedHeader[0] = featureFlag;
+  const body = concatBytes(
+    new TextEncoder().encode("WEBP"),
+    riffChunk("VP8X", extendedHeader),
+    VALID_WEBP.subarray(12),
+    riffChunk(typeName, activeMetadataPayload(prefix)),
+  );
+  const result = new Uint8Array(8 + body.byteLength);
+  result.set(new TextEncoder().encode("RIFF"), 0);
+  new DataView(result.buffer).setUint32(4, body.byteLength, true);
+  result.set(body, 8);
+  return result;
+}
+
+export const ACTIVE_WEBP_EXIF = withWebpMetadata("EXIF", 0x08, "Exif\0\0");
+export const ACTIVE_WEBP_XMP = withWebpMetadata("XMP ", 0x04, "<?xpacket ");
+
 function corruptPngCompressedPayload(bytes) {
   const corrupted = Uint8Array.from(bytes);
   let offset = 8;

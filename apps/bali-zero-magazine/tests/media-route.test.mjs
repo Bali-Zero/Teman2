@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import test from "node:test";
 
 import { parseStoryPacket } from "../lib/contracts/publication.ts";
+import { readStoryDetail } from "../lib/server/magazine-read-model.ts";
 import { createPublicationRepository } from "../lib/server/publication-repository.ts";
 import { runWithMagazineBindings } from "../lib/server/runtime-bindings.ts";
 import {
@@ -181,6 +182,12 @@ test(
       (await getMedia(handler, metadata.sha256, bindings)).status,
       404,
     );
+    assert.equal(
+      await runWithMagazineBindings(bindings, () =>
+        readStoryDetail(story.slug),
+      ),
+      null,
+    );
 
     db.execute(
       `INSERT INTO audit_events(
@@ -220,6 +227,11 @@ test(
       (await getMedia(handler, metadata.sha256, bindings)).status,
       404,
     );
+    const revokedDetail = await runWithMagazineBindings(bindings, () =>
+      readStoryDetail(story.slug),
+    );
+    assert.equal(revokedDetail?.imageProvenance, null);
+    assert.ok(revokedDetail?.story.imageAlt.trim());
   },
 );
 
@@ -279,6 +291,44 @@ test(
       (await getMedia(handler, fixture.metadata.sha256, bindings)).status,
       404,
     );
+  },
+);
+
+test(
+  "media and visible provenance fail closed after every eligibility field drifts",
+  { skip: !routeExists },
+  async () => {
+    const handler = await loadRoute();
+    const cases = [
+      ["alt_text", "   "],
+      ["source", "   "],
+      ["rights_basis", "unknown"],
+      ["rights_status", "unknown"],
+      ["usage_status", "unknown"],
+      ["dlp_status", "pending"],
+      ["sanitization_status", "pending"],
+      ["perceptual_dedup_status", "unreviewed"],
+      ["status", "pending"],
+    ];
+    for (const [column, unsafeValue] of cases) {
+      const fixture = await publishVisibleAsset();
+      const bindings = runtimeBindings(fixture.db, fixture.media);
+      fixture.db.execute(
+        `UPDATE assets SET ${column} = ? WHERE asset_id = ?`,
+        unsafeValue,
+        fixture.metadata.asset_id,
+      );
+      assert.equal(
+        (await getMedia(handler, fixture.metadata.sha256, bindings)).status,
+        404,
+        `${column} media`,
+      );
+      const detail = await runWithMagazineBindings(bindings, () =>
+        readStoryDetail(fixture.story.slug),
+      );
+      assert.equal(detail?.imageProvenance, null, `${column} provenance`);
+      assert.ok(detail?.story.imageAlt.trim(), `${column} fallback alt`);
+    }
   },
 );
 
