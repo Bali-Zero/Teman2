@@ -2,7 +2,8 @@
 date: 2026-07-18
 domain: operations
 client_case: none (GARUDA-FILIERA Batch A — Lot 1 conductor gate + GO package)
-adversarial_review: codex (3 refuter passes + 1 full-report red-team pass gpt-5.6-sol xhigh, family-independent) + GLM-5.2 blind second extractor
+adversarial_review: codex
+adversarial_review_detail: "codex: 3 refuter passes + full-report red-team + verify pass (gpt-5.6-sol xhigh, family-independent) · glm-5.2: blind second extractor with vision (29 codes)"
 sources:
   - "plan: research/operations/2026-07-18-kbli-batch-a-plan.md (§8 A-1..A-6; the signed conclusion depends centrally on A-4/A-5/A-6)"
   - "calibration: data/kbli-filiera/batch-reports/batchA-calibration.md (SIGNED f5892d39; pin interpretation per A-3)"
