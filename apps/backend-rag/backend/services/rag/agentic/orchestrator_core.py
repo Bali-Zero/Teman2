@@ -355,13 +355,15 @@ class OrchestratorCore:
         method never returns an answer directly and never short-circuits the
         query pipeline.
 
-        Injection is DOMAIN-FILTERED: with the calibrated within-domain
-        threshold (0.58) alone, cosine similarity still overlaps enough
-        across domains that a query in one domain (e.g. "register a PT PMA
-        company") can score above threshold against a curated_qa entry from
-        an unrelated domain (e.g. a visa Q&A) — polluting the answer with
-        irrelevant evidence. Only inject when the query has a concrete,
-        classified domain, and restrict the search itself to that domain.
+        Injection is DOMAIN-GATED: with the score threshold alone, cosine
+        similarity overlaps enough across domains that a query in one domain
+        (e.g. "register a PT PMA company") can score above threshold against a
+        curated_qa entry from an unrelated domain (e.g. a visa Q&A) — polluting
+        the answer with irrelevant evidence. So we only inject when the query
+        has a concrete, classified domain AND each retrieved hit's own `domain`
+        tag matches it (the per-hit recheck below). The gate is applied on the
+        retrieved hits rather than as a Qdrant `filter` argument on purpose —
+        see the search_collection call for why passing a filter there is a trap.
 
         Defensive by design: any failure (Qdrant down, malformed payload,
         missing retriever) is logged and degrades to "" (no injection) —
@@ -389,11 +391,25 @@ class OrchestratorCore:
             return ""
 
         try:
+            # NO Qdrant-level domain filter here (root-caused 2026-07-18):
+            # search_collection() feeds `filter` through SearchService ->
+            # _convert_filter_to_qdrant_format, which expects the SIMPLIFIED
+            # {field: value} shape and re-wraps anything else. A Qdrant-native
+            # {"must": [{"key": "domain", ...}]} filter got mangled into a
+            # condition on a field literally named "must" -> Qdrant HTTP 400
+            # ("Expected some form of condition"); even the simplified
+            # {"domain": domain} form emits an unindexed `metadata.domain` term
+            # -> HTTP 400. Either way the whole search died, so curated_qa
+            # injection NEVER fired in prod (dead since F1b/#2588; #2684's
+            # "domain filter" only reinforced the trap). The per-hit
+            # `hit_domain != domain` recheck below is the real, sufficient
+            # domain gate: every curated_qa point carries a top-level `domain`,
+            # so an off-domain query retrieves only same-store hits and discards
+            # any whose tag doesn't match -> "" (no cross-domain pollution).
             search_result = await self.retriever.search_collection(
                 query=query,
                 collection_name=_CURATED_QA_COLLECTION_NAME,
                 limit=_CURATED_QA_TOP_K,
-                filter={"must": [{"key": "domain", "match": {"value": domain}}]},
             )
             if not isinstance(search_result, dict):
                 # Defensive: search_collection's real contract returns a plain
@@ -410,12 +426,14 @@ class OrchestratorCore:
                 if hit.get("score", 0.0) < _CURATED_QA_SCORE_THRESHOLD:
                     continue
                 metadata = hit.get("metadata") or {}
-                # Belt-and-suspenders: the Qdrant `filter` above is the primary
-                # domain gate, but never trust a single signal (scar family #3
-                # guard-over/under-match) — re-check the hit's own domain tag
-                # and skip on mismatch rather than assume the filter held.
+                # PRIMARY domain gate (there is no Qdrant-level filter — see the
+                # search_collection call above): inject a hit ONLY when its own
+                # `domain` tag equals the query's classified domain. This is what
+                # prevents cross-domain pollution (scar family #3). A hit with a
+                # missing/blank/mismatched domain tag is skipped conservatively —
+                # every real curated_qa point carries an explicit domain.
                 hit_domain = metadata.get("domain")
-                if hit_domain and hit_domain != domain:
+                if hit_domain != domain:
                     continue
                 answer = metadata.get("answer")
                 if not answer:
