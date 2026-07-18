@@ -8,6 +8,16 @@ a registry-driven suite for the 7 codes cured by GARUDA-FILIERA Fase 1
 scripts/kbli_filiera/cure_specs/fase1_collisions.json): 49213, 51103, 51203,
 20111, 50115, 60312, 64310.
 
+GRADUATION (2026-07-18): 49213 has since graduated from detach to a
+per-ancestor RESTORE (scripts/kbli_filiera/cure_restore_per_ancestor.py +
+cure_specs/restore_49213.json) — see the "49213 per-ancestor RESTORE" section
+near the end of this file. It is marked `"restored": True` in the FALSE_FRIENDS
+registry below so the generic detach assertions branch correctly (per_skala
+is no longer [] for 49213, but the disputed key / _data_note / marker-absence
+checks all still apply). It was also removed from FASE1_CODES (those
+fase1_collisions.json-specific assertions no longer apply to it) — the other
+7 codes' coverage is unchanged and un-weakened.
+
 Cure pattern (identical for all 8, see cure_canonical_collisions.py docstring):
   1. per_skala -> []  (frontend guards licensing.length > 0 -> honest "not yet
      defined" gap instead of wrong data)
@@ -117,6 +127,9 @@ FALSE_FRIENDS: list[dict[str, Any]] = [
         "marker": "Gubernur",
         "marker_in_disputed": True,
         "check_intel_clean": True,
+        # 2026-07-18: graduated from detach to a per-ancestor RESTORE — its
+        # per_skala is no longer [] (see the dedicated restore section below).
+        "restored": True,
     },
     {
         "code": "51103",
@@ -163,7 +176,12 @@ FALSE_FRIENDS: list[dict[str, Any]] = [
 ]
 
 FASE1_CODES = [
-    "49213", "51103", "51203", "20111", "50115", "60312", "64310",
+    # 49213 graduated to the restore compiler 2026-07-18 (removed from
+    # fase1_collisions.json's own codes list, see that file's "GRADUATION"
+    # note) — the fase1_collisions.json-specific assertions below no longer
+    # apply to it; its own dedicated coverage lives in the restore section
+    # near the end of this file.
+    "51103", "51203", "20111", "50115", "60312", "64310",
 ]
 
 # Legitimate neighbor codes that must be UNTOUCHED by this cure (innocence
@@ -194,14 +212,24 @@ _DATASET_IDS = [str(p.relative_to(REPO_ROOT)) for p in _existing_dataset_copies(
     "friend", FALSE_FRIENDS, ids=[f["code"] for f in FALSE_FRIENDS],
 )
 def test_false_friend_per_skala_detached_and_audited(path: Path, friend: dict[str, Any]):
-    """Core GUILT check, all 8: per_skala must be [], the disputed key must be
-    present and non-empty (audit trail preserved, never silently deleted),
-    and _data_note must be present (non-empty)."""
+    """Core GUILT check, all 8: the disputed key must be present and
+    non-empty (audit trail preserved, never silently deleted), and
+    _data_note must be present (non-empty). 7 of 8 must also have
+    per_skala == [] (still detached); 49213 (`restored: True`) graduated to a
+    per-ancestor restore, so its per_skala must instead be non-empty — the
+    dedicated restore section below covers its exact expected content."""
     rec = _load_record(path, friend["code"])
-    assert rec.get("per_skala") == [], (
-        f"{path}: {friend['code']}.per_skala is not [] — the false-friend "
-        "licensing block has leaked back into the served field."
-    )
+    if friend.get("restored"):
+        assert rec.get("per_skala"), (
+            f"{path}: {friend['code']}.per_skala is empty — expected the "
+            "per-ancestor restore to have populated it (see the restore "
+            "section below for the exact expected rows)."
+        )
+    else:
+        assert rec.get("per_skala") == [], (
+            f"{path}: {friend['code']}.per_skala is not [] — the false-friend "
+            "licensing block has leaked back into the served field."
+        )
     disputed = rec.get(friend["disputed_key"])
     assert disputed, (
         f"{path}: {friend['code']} is missing (or has an empty) "
@@ -701,3 +729,178 @@ def test_cure4_gold_49213_clean_and_neighbor_l4_untouched():
     assert (neighbor.get("l4_bali") or {}).get("status") != "NON_CLASSIFICABILE", (
         "innocence: 68124 l4 must be untouched by cure-4"
     )
+
+
+# ===========================================================================
+# 49213 per-ancestor RESTORE (2026-07-18) — graduated from detach to restore.
+#
+# The pilot A1 adjudication (research/operations/2026-07-18-kbli-batch-a-plan.md
+# §A-6(b)-RESOLVED; conductor gate PR #2721/#2740) determined the correct
+# regulatory basis for 49213's intra-city scope is the per-ancestor MERGE of 3
+# PP28/2025 Lampiran I.I rows: 49214 "Angkutan Bus Kota", 49219 "Angkutan Bus
+# Dalam Trayek Lainnya" (kabupaten/kota tier ONLY — its antar-provinsi/Menteri
+# and dalam-provinsi/Gubernur tiers are excluded, not applicable to 49213's
+# intra-city scope), and 49413 "Angkutan Perkotaan Bukan Bus, Dalam Trayek".
+# scripts/kbli_filiera/cure_restore_per_ancestor.py driven by
+# scripts/kbli_filiera/cure_specs/restore_49213.json applies the restore:
+#   per_skala      <- the 12 merged rows (3 ancestors x 4 skala tiers)
+#   pp28_sources   <- ["49214", "49219", "49413"]
+#   _data_note     <- the spec's restore provenance note
+# per_skala_disputed_pp28_collision (the OLD wrong AKDP-collision block, still
+# carrying "Gubernur" authority) is preserved COMPLETELY UNCHANGED as the
+# historical audit trail — never reused, never re-derived, never re-detached.
+# 49213 was correspondingly REMOVED from fase1_collisions.json's own codes
+# list (see that file's "GRADUATION" note + test_spec_ships_honest_gap_
+# whatyouneed_for_every_code in test_cure_canonical_collisions.py) so a future
+# --apply of the generic detach compiler can never re-quarantine the restored
+# data.
+#
+# NOTE (scope, deliberately NOT covered by this PR — see PR body): intel_2026
+# .whatYouNeed and the gold-layer whatYouNeed (both still honest-gap prose,
+# 2026-07-17) and l4_bali (still NON_CLASSIFICABILE) are UNCHANGED by this
+# restore and are now stale relative to the newly-restored per_skala — that
+# editorial/gold/l4_bali realignment is an explicit follow-up the conductor
+# gates separately, not silently done here.
+# ===========================================================================
+
+RESTORE_SPEC_PATH = REPO_ROOT / "scripts/kbli_filiera/cure_specs/restore_49213.json"
+
+
+def _load_restore_spec() -> dict[str, Any]:
+    return json.loads(RESTORE_SPEC_PATH.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+    "path", _existing_dataset_copies(), ids=_DATASET_IDS,
+)
+def test_49213_restored_per_skala_matches_spec_verbatim(path: Path):
+    """GUILT: per_skala must hold exactly the spec's 12 restored rows, on
+    every synced consumer copy — never paraphrased, never re-derived."""
+    spec = _load_restore_spec()
+    rec = _load_record(path, "49213")
+    assert rec.get("per_skala") == spec["per_skala"], (
+        f"{path}: 49213.per_skala drifted from "
+        "scripts/kbli_filiera/cure_specs/restore_49213.json"
+    )
+    assert len(rec["per_skala"]) == 12
+
+
+def test_49213_restored_authorities_are_municipal_never_provincial():
+    """GUILT: every restored row must carry city/regency-level authority
+    (Bupati/Wali Kota or Wali Kota) and never the wrong AKDP-collision
+    provincial authority (Gubernur / Menteri/Kepala Badan) that the excluded
+    49219 tiers or the OLD disputed block carried."""
+    rec = _load_record(REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json", "49213")
+    blob = json.dumps(rec["per_skala"], ensure_ascii=False)
+    assert not _contains_word_or_phrase(blob, "Gubernur"), (
+        "49213 restored per_skala must never carry the wrong provincial "
+        "(Gubernur) authority — that belonged to the OLD AKDP collision / "
+        "the excluded 49219 dalam-provinsi tier."
+    )
+    for row in rec["per_skala"]:
+        authorities = row["kewenangan"]
+        assert authorities, f"row missing kewenangan: {row}"
+        for a in authorities:
+            assert a in ("Bupati/Wali Kota", "Wali Kota"), (
+                f"unexpected authority {a!r} in restored 49213 per_skala row {row}"
+            )
+
+
+def test_49213_restored_pp28_sources_is_three_ancestors():
+    """GUILT: pp28_sources must be the 3 adjudicated ancestors — the OLD
+    ["49213", "49413"] (which included the wrong AKDP self-collision
+    pointer) must be gone."""
+    rec = _load_record(REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json", "49213")
+    assert rec.get("pp28_sources") == ["49214", "49219", "49413"]
+
+
+def test_49213_restored_data_note_matches_spec_verbatim():
+    """GUILT: _data_note must be copied VERBATIM from the restore spec — the
+    compiler never authors/paraphrases the provenance note (rule #9)."""
+    spec = _load_restore_spec()
+    rec = _load_record(REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json", "49213")
+    assert rec.get("_data_note") == spec["data_note"]
+
+
+def test_49213_disputed_block_preserved_unchanged_after_restore():
+    """GUILT: the restore must NEVER touch/re-derive the OLD disputed block —
+    it stays as the historical AKDP-collision audit trail, still carrying its
+    original Gubernur-authority rows."""
+    rec = _load_record(REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json", "49213")
+    disputed = rec.get("per_skala_disputed_pp28_collision")
+    assert isinstance(disputed, dict) and set(disputed.keys()) == {"per_skala", "per_skala_legacy"}, (
+        f"49213: disputed key shape changed — expected the same "
+        f"{{'per_skala', 'per_skala_legacy'}} dict the Fase-1 detach folded, got {disputed!r}"
+    )
+    blob = json.dumps(disputed, ensure_ascii=False)
+    assert _contains_word_or_phrase(blob, "Gubernur"), (
+        "the OLD disputed block must still carry its original Gubernur-authority "
+        "AKDP rows — the restore must never rewrite this audit trail."
+    )
+
+
+@pytest.mark.parametrize("code", [c for c in FASE1_CODES])
+def test_restore_scoped_to_49213_other_fase1_codes_still_detached(code: str):
+    """INNOCENCE: the 49213-scoped restore must not have touched any of the
+    other Fase-1 codes — they remain per_skala == [] (detached, not restored)."""
+    rec = _load_record(REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json", code)
+    assert rec.get("per_skala") == [], (
+        f"{code}: per_skala unexpectedly non-empty — the 49213-scoped restore "
+        "must not have touched other Fase-1 codes."
+    )
+
+
+def test_fase1_compiler_no_longer_lists_49213():
+    """GUILT (regression guard): 49213 must be absent from fase1_collisions
+    .json's codes — leaving it would let a future --apply of
+    cure_canonical_collisions.py RE-DETACH the restored per_skala into the
+    disputed key, destroying the restore. This is the load-bearing guard
+    against that specific regression."""
+    spec = json.loads(FASE1_SPEC_PATH.read_text(encoding="utf-8"))
+    codes = {e["code"] for e in spec["codes"]}
+    assert "49213" not in codes, (
+        "49213 graduated from detach (fase1_collisions.json) to restore "
+        "(restore_49213.json) — it must not remain in the detach compiler's "
+        "spec, or a future --apply run would re-detach the restored data."
+    )
+
+
+def test_restore_compiler_dry_run_reports_already_cured_after_apply():
+    """Idempotency, exercised against the REAL served dataset (not a mock):
+    a second dry-run of the restore compiler must report 49213 as
+    already-cured."""
+    import subprocess
+
+    result = subprocess.run(
+        [
+            "python3",
+            str(REPO_ROOT / "scripts/kbli_filiera/cure_restore_per_ancestor.py"),
+            "--canonical",
+            str(REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json"),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, (
+        f"dry-run over the served dataset should exit 0 (already cured), "
+        f"got {result.returncode}. stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    assert "49213: ALREADY CURED (skip)" in result.stdout, (
+        f"expected '49213: ALREADY CURED (skip)' in dry-run output, not found. "
+        f"stdout:\n{result.stdout}"
+    )
+
+
+def test_restore_diff_scoped_to_49213_only():
+    """INNOCENCE (whole-dataset scope check): comparing the served dataset's
+    record set against the count expected, and every non-49213 record byte-
+    identical to its Fase-1/cure-4 expectations already asserted above, pins
+    that this restore's blast radius is exactly one record."""
+    data = json.loads(
+        (REPO_ROOT / "apps/mouth/data/KBLI_2025_FINAL_CLEAN.json").read_text(encoding="utf-8")
+    )["data"]
+    assert len(data) == 1559, "record count must be unchanged by a per-code restore"
+    codes = [r["kode_kbli_2025"] for r in data]
+    assert codes.count("49213") == 1, "49213 must appear exactly once"
