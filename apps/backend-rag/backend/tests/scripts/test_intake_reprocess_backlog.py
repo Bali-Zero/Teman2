@@ -1094,6 +1094,18 @@ def test_reroute_drive_folder_supersede_only_review_pending() -> None:
     assert "queue_id = ANY($1::bigint[])" in sql
 
 
+def test_reroute_selected_supersede_is_proposal_scoped_and_confirms() -> None:
+    # Codex round-3: the CONFIRMING supersede must target the exact selected
+    # proposal ids (an older pending sibling must never, alone, confirm a
+    # reset while the newer proposal sits claimed under a reviewer).
+    irb = _load()
+    sql = irb.REROUTE_SUPERSEDE_SELECTED_SQL
+    assert "id = ANY($1::bigint[])" in sql
+    assert "queue_id = ANY" not in sql
+    assert "status = 'review_pending'" in sql
+    assert "RETURNING id, queue_id" in sql
+
+
 def test_reroute_npwp_sql_targets_full_npwp_review_pending() -> None:
     # m248: selects review_pending rows with a FULL extracted npwp (>=15
     # digits after normalization) from either the routed fields or the saved
@@ -1124,7 +1136,7 @@ def test_reroute_npwp_reuses_route_only_reset_contract() -> None:
 
     engine_src = inspect.getsource(irb._run_route_only_reroute)
     assert "REROUTE_DRIVE_FOLDER_RESET_SQL" in engine_src
-    assert "REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL" in engine_src
+    assert "REROUTE_SUPERSEDE_SELECTED_SQL" in engine_src
     assert "REROUTE_ELIGIBLE_LOCK_SQL" in engine_src
     for fn in (irb.run_reroute_npwp, irb.run_reroute_drive_folder):
         assert "_run_route_only_reroute" in inspect.getsource(fn)
@@ -1142,13 +1154,14 @@ def test_reroute_eligible_lock_never_yanks_active_lease() -> None:
 def test_reroute_reset_only_actually_superseded_rows() -> None:
     # Codex round-3: a proposal a human claims between SELECT and supersede
     # (review_pending -> review_claimed) must be left alone entirely — the
-    # supersede RETURNs the queue_ids it touched and ONLY those get reset.
+    # confirming supersede RETURNs (id, queue_id) and ONLY confirmed queue
+    # rows get the sibling sweep + reset.
     irb = _load()
-    assert "RETURNING queue_id" in irb.REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL
     import inspect
 
     src = inspect.getsource(irb._run_route_only_reroute)
-    assert "superseded_qids" in src
+    assert "REROUTE_SUPERSEDE_SELECTED_SQL, selected_pids" in src
+    assert "REROUTE_DRIVE_FOLDER_SUPERSEDE_SQL, superseded_qids" in src
     assert "REROUTE_DRIVE_FOLDER_RESET_SQL, superseded_qids" in src
 
 
