@@ -561,6 +561,41 @@ class TestInitializeIntelligentRouter:
     @pytest.mark.asyncio
     @patch("backend.services.routing.intelligent_router.IntelligentRouter")
     @patch("backend.services.crm.collaborator_service.CollaboratorService")
+    async def test_initialize_intelligent_router_passes_app_state_faq_cache(
+        self,
+        mock_collaborator,
+        mock_intelligent_router,
+    ):
+        """P7 (SPEC v2 D3): app.state.faq_cache must reach IntelligentRouter(...)."""
+        from types import SimpleNamespace
+
+        app = FastAPI()
+        sentinel_faq_cache = object()
+        app.state = SimpleNamespace(faq_cache=sentinel_faq_cache)
+
+        mock_router = MagicMock()
+        mock_intelligent_router.return_value = mock_router
+        mock_collaborator.return_value = MagicMock()
+
+        await initialize_intelligent_router(
+            app,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
+        _, kwargs = mock_intelligent_router.call_args
+        assert kwargs.get("faq_cache") is sentinel_faq_cache
+
+    @pytest.mark.asyncio
+    @patch("backend.services.routing.intelligent_router.IntelligentRouter")
+    @patch("backend.services.crm.collaborator_service.CollaboratorService")
     async def test_initialize_intelligent_router_collaborator_failure(
         self,
         mock_collaborator,

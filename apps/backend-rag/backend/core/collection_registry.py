@@ -23,6 +23,12 @@ CANONICAL_LOGICAL_COLLECTIONS: Final[tuple[str, ...]] = (
     # NLMShadowChunk (NOT HierarchicalChunk) — kept fully separate so
     # legal_unified / visa_oracle / etc. payloads stay rigid.
     "nlm_shadow_hybrid",
+    # SPEC v2 D3 (2026-07-17, F1b): pre-vetted curated Q&A (E33/golden/prewarm/
+    # guides corpora), embedded on the QUESTION. Flat payload: {question(as
+    # "text"), answer, domain, lang, source_ref, source_date, confidence_class,
+    # law_refs, source_priority}. Populated by scripts/curated_qa_harvest.py,
+    # read by the D3-L2 grounding-injection step in orchestrator_core.py.
+    "curated_qa",
 )
 
 LOGICAL_TO_PHYSICAL_COLLECTIONS: Final[dict[str, str]] = {
@@ -45,6 +51,8 @@ LOGICAL_TO_PHYSICAL_COLLECTIONS: Final[dict[str, str]] = {
     SKILLS_MIRROR_COLLECTION: SKILLS_MIRROR_COLLECTION,
     # Sprint 2 Shadow Graphing
     "nlm_shadow_hybrid": "nlm_shadow_hybrid",
+    # SPEC v2 D3 (F1b): curated Q&A — no hybrid successor yet.
+    "curated_qa": "curated_qa",
 }
 
 CANONICAL_COLLECTION_ALIASES: Final[dict[str, str]] = {
@@ -69,6 +77,8 @@ CANONICAL_COLLECTION_ALIASES: Final[dict[str, str]] = {
     "nlm_shadow_hybrid": "nlm_shadow_hybrid",
     # R5 AIL #1
     SKILLS_MIRROR_COLLECTION: SKILLS_MIRROR_COLLECTION,
+    # SPEC v2 D3 (F1b)
+    "curated_qa": "curated_qa",
 }
 
 

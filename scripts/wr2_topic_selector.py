@@ -181,7 +181,12 @@ def score_item(item: dict[str, Any]) -> tuple[float, dict[str, Any]]:
 
 
 async def fetch_staging(backend_url: str, api_key: str) -> list[dict[str, Any]]:
-    url = f"{backend_url.rstrip('/')}/api/intel/staging/pending?type=all"
+    # include_enrichment=true (round-2 red-team MUST-FIX #1, scar family #9):
+    # this is the ONE consumer of the full structured enrichment object
+    # (single ranked top item, see fetch_staging callers below) — opts in
+    # explicitly so the default-lean projection stays lean for every other
+    # consumer of this route (News Room UI, Visa Oracle UI, MCP tool).
+    url = f"{backend_url.rstrip('/')}/api/intel/staging/pending?type=all&include_enrichment=true"
     attempts = max(1, STAGING_FETCH_ATTEMPTS)
     for attempt in range(1, attempts + 1):
         try:
@@ -611,7 +616,13 @@ async def run(*, dry_run: bool = False, force: bool = False) -> int:
         # available material. We pass the entire enriched object through
         # brief_json so the draft generator can use the structured ground
         # truth instead of a truncated paragraph.
-        enrichment_obj = top_item.get("enrichment") or {}
+        # Round-2 red-team MUST-FIX #2 defense-in-depth: a hand-edited/
+        # legacy staging JSON can carry a truthy non-dict enrichment value
+        # (e.g. a list) — `or {}` alone only normalizes falsy values, so a
+        # non-dict would pass straight into brief_json and crash
+        # wr2_draft_generator.py's unguarded `.get("thirty_second_brief")`.
+        _raw_enrichment = top_item.get("enrichment")
+        enrichment_obj = _raw_enrichment if isinstance(_raw_enrichment, dict) else {}
         brief_json: dict[str, Any] = {
             "staging_id": staging_id,
             "staging_type": top_item.get("type"),

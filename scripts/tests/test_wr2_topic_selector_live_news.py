@@ -255,3 +255,43 @@ async def test_fetch_staging_retries_timeout(monkeypatch: pytest.MonkeyPatch) ->
 
     assert calls["count"] == 2
     assert items == [{"id": "keep", "status": "pending"}]
+
+
+@pytest.mark.asyncio
+async def test_fetch_staging_requests_include_enrichment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GUILT (round-2 red-team MUST-FIX #1, scar family #9): the topic
+    selector is the ONE consumer that ranks the full pending queue and then
+    reads enrichment off the single top item — it must opt in explicitly
+    (include_enrichment=true) now that the route defaults the key off."""
+    captured_urls: list[str] = []
+
+    class _Response:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {"items": []}
+
+    class _CapturingAsyncClient:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            return None
+
+        async def __aenter__(self) -> "_CapturingAsyncClient":
+            return self
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+        async def get(self, url: str, *args: object, **kwargs: object) -> _Response:
+            captured_urls.append(url)
+            return _Response()
+
+    monkeypatch.setattr("wr2_topic_selector.httpx.AsyncClient", _CapturingAsyncClient)
+
+    await fetch_staging("https://backend.example", "api-key")
+
+    assert len(captured_urls) == 1
+    assert "include_enrichment=true" in captured_urls[0]
+    assert "type=all" in captured_urls[0]

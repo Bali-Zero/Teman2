@@ -268,6 +268,32 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"_state\.json$"),
         "pipeline state file: run IDs and hashes, not credentials",
     ),
+    # GARUDA-FILIERA evidence layer — TREE-WIDE rule (replaces the narrower
+    # manifest-only + membership-only rules 2026-07-16/18; batch-reports/
+    # calibration artifacts were the THIRD directory under data/kbli-filiera/
+    # to hit the same wall — sha256 vault-manifest digests, git-commit-SHA
+    # canonical_revision pins, and now sha256 gold-set control digests all
+    # read as Hex High Entropy Strings — and dossiers/ (hash-chained JSONL
+    # events, D0-D6 protocol) will be next. Rather than add a fourth
+    # subdirectory rule every time a new compiler ships, cover the whole
+    # tree once.
+    #
+    # Why tree-wide is SAFE, not a blanket carve-out: every file under
+    # data/kbli-filiera/ is written by exactly one class of writer —
+    # scripts/kbli_filiera/*.py compilers — enforced by the data-plane
+    # guard (infra/claude-hooks/data_plane_guard.py, #2550), which blocks
+    # any OTHER path (hand-edits, other scripts, `sed`/`echo` redirection)
+    # from touching this tree. The OSS user_key and every other live
+    # credential never enter these compilers' output by construction (they
+    # emit sha256 digests, git SHAs, public KBLI codes, and PP28/OSS
+    # citations only). A rule this wide would be unsafe for a tree ANYONE
+    # can write into; it is safe here because the writer set is closed and
+    # guard-enforced.
+    (
+        re.compile(r"(^|/)data/kbli-filiera/.*\.(json|md|jsonl)$"),
+        "KBLI filiera evidence layer: compiler-only writes (data-plane guard #2550), "
+        "sha256 digests/git SHAs/public codes by design, zero credentials",
+    ),
     (
         re.compile(r"(^|/)apps/evaluator/nlm_deep_research/.*\.json$"),
         "NLM deep research state files: pipeline artifacts",

@@ -117,6 +117,7 @@ class TestLegalAgentAnalyze:
         state: MultiAgentState = {
             "query": "What documents for KITAS?",
             "user_context": {},
+            "grounding_context": "",
             "legal_analysis": "",
             "financial_breakdown": "",
             "timeline_estimate": "",
@@ -138,6 +139,7 @@ class TestLegalAgentAnalyze:
         state: MultiAgentState = {
             "query": "test",
             "user_context": {},
+            "grounding_context": "",
             "legal_analysis": "",
             "financial_breakdown": "",
             "timeline_estimate": "",
@@ -169,6 +171,7 @@ class TestFinancialAgentAnalyze:
         state: MultiAgentState = {
             "query": "How much does PT PMA cost?",
             "user_context": {},
+            "grounding_context": "",
             "legal_analysis": "",
             "financial_breakdown": "",
             "timeline_estimate": "",
@@ -193,6 +196,7 @@ class TestFinancialAgentAnalyze:
         state: MultiAgentState = {
             "query": "cost?",
             "user_context": {},
+            "grounding_context": "",
             "legal_analysis": "",
             "financial_breakdown": "",
             "timeline_estimate": "",
@@ -218,6 +222,7 @@ class TestTimelineAgentAnalyze:
         state: MultiAgentState = {
             "query": "When can I start?",
             "user_context": {},
+            "grounding_context": "",
             "legal_analysis": "Step 1: Get NPWP\nStep 2: Register OSS",
             "financial_breakdown": "",
             "timeline_estimate": "",
@@ -239,6 +244,7 @@ class TestTimelineAgentAnalyze:
         state: MultiAgentState = {
             "query": "timeline?",
             "user_context": {},
+            "grounding_context": "",
             "legal_analysis": "",
             "financial_breakdown": "",
             "timeline_estimate": "",
@@ -295,6 +301,7 @@ class TestMultiAgentCoordinator:
             state: MultiAgentState = {
                 "query": "test",
                 "user_context": {},
+                "grounding_context": "",
                 "legal_analysis": "Legal stuff",
                 "financial_breakdown": "Cost stuff",
                 "timeline_estimate": "Timeline stuff",
@@ -321,6 +328,7 @@ class TestMultiAgentCoordinator:
             state: MultiAgentState = {
                 "query": "test",
                 "user_context": {},
+                "grounding_context": "",
                 "legal_analysis": "Legal",
                 "financial_breakdown": "Financial",
                 "timeline_estimate": "Timeline",

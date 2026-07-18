@@ -9,7 +9,7 @@ import logging
 import os
 import sys
 from pathlib import Path as PathLib
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -84,6 +84,38 @@ class ScraperSubmission(BaseModel):
     cover_image_base64: str | None = Field(
         None,
         description="Cover image as base64 string (uploaded to Drive on submit)",
+    )
+    # WR2 liveness rewire (SPRINT B1, scar family #9): the enricher
+    # (claude_cli_enricher._normalize_live_news_fields) already computes
+    # these three — carry them through so the WR2 topic selector and News
+    # Room UI see something other than always-0. All optional: legacy
+    # scrapers/callers that don't send them must keep working unchanged.
+    live_news_score: int | None = Field(
+        None,
+        ge=0,
+        le=100,
+        description="Enricher live-news score 0-100",
+    )
+    liveness_tier: Literal["breaking", "developing", "evergreen"] | None = None
+    live_news_reasons: list[str] | None = Field(None, max_length=3)
+    # WR2 enrichment passthrough (scar family #9, state-schema mutation
+    # drift): the intel enricher produces a full structured object
+    # (the_facts/bali_zero_take/in_practice/next_steps/faq/
+    # thirty_second_brief/metadata, ~1400-2000 words) but it was lost
+    # before reaching WR2 drafts — wr2_topic_selector wrote enrichment: {}
+    # into every draft's brief_json (verified 2026-06-24: {} on 12/12
+    # drafts). Carried through so the topic selector gets structured
+    # ground truth, not just truncated content. Optional: legacy
+    # callers/scrapers that don't send it keep working unchanged.
+    enrichment: dict | None = Field(
+        None,
+        description=(
+            "Full structured enricher object (the_facts/bali_zero_take/"
+            "in_practice/next_steps/faq/thirty_second_brief/metadata) — "
+            "carried through so wr2_topic_selector gets structured ground "
+            "truth, not just truncated content. Optional: legacy callers "
+            "unaffected (scar #9)."
+        ),
     )
 
 
@@ -173,8 +205,17 @@ async def list_pending_items(
     filter_type: str | None = None,
     sort_type: str | None = None,
     search: str | None = None,
+    include_enrichment: bool = False,
 ) -> Any:
-    """List items pending approval in staging area with filtering and sorting"""
+    """List items pending approval in staging area with filtering and sorting.
+
+    include_enrichment (round-2 red-team MUST-FIX #1, scar family #9):
+    opt-in only. This route has no pagination and the default projection
+    would otherwise ship the full ~1400-2000 word enrichment object on
+    EVERY pending item to EVERY consumer (News Room UI, Visa Oracle UI, MCP
+    tool) — only scripts/wr2_topic_selector.py actually reads it, and only
+    from the single ranked top item. Default False keeps the payload lean.
+    """
     logger.info(
         "Listing pending items",
         extra={
@@ -182,11 +223,18 @@ async def list_pending_items(
             "filter_type": filter_type,
             "sort_type": sort_type,
             "has_search": bool(search),
+            "include_enrichment": include_enrichment,
             "endpoint": "/api/intel/staging/pending",
         },
     )
 
-    return staging_service.list_pending_items(type, filter_type, sort_type, search)
+    return staging_service.list_pending_items(
+        type,
+        filter_type,
+        sort_type,
+        search,
+        include_enrichment=include_enrichment,
+    )
 
 
 @router.get("/api/intel/staging/preview/{type}/{item_id}")
@@ -559,35 +607,63 @@ async def enqueue_post_publish(
     request: Request,
     pool: Any = Depends(get_database_pool),
 ) -> dict:
-    """Internal: add a slug to the post-processing queue (translate + image + SEO)."""
+    """Internal: add a slug to the post-processing queue (translate + image + SEO).
+
+    `force: true` is the reconciliation path (2026-07-17): a batch flush lost
+    mid-run leaves `completed_steps.image=true` recorded even though the cover
+    never landed on GitHub — the default ON CONFLICT below only resets 'failed'
+    rows, so a 'done' item with a missing cover would never be re-run. `force`
+    unconditionally resets status/attempts/completed_steps regardless of the
+    row's current status.
+    """
     body = await request.json()
     slug = body.get("slug", "")
     category = body.get("category", "business")
     source = body.get("source", "intel")
     article_id = body.get("article_id")
     title = body.get("title")
+    force = bool(body.get("force", False))
     if not slug:
         raise HTTPException(status_code=400, detail="slug required")
     async with pool.acquire() as conn:
-        await conn.execute(
-            """
-            INSERT INTO post_publish_queue (slug, title, category, source, article_id)
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (slug) DO UPDATE SET
-                status = CASE WHEN post_publish_queue.status = 'failed'
-                              THEN 'pending' ELSE post_publish_queue.status END,
-                attempts = CASE WHEN post_publish_queue.status = 'failed'
-                                THEN 0 ELSE post_publish_queue.attempts END,
-                error_message = NULL
-            """,
-            slug,
-            title,
-            category,
-            source,
-            article_id,
-        )
+        if force:
+            await conn.execute(
+                """
+                INSERT INTO post_publish_queue (slug, title, category, source, article_id)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (slug) DO UPDATE SET
+                    status = 'pending',
+                    attempts = 0,
+                    completed_steps = '{}'::jsonb,
+                    error_message = NULL
+                """,
+                slug,
+                title,
+                category,
+                source,
+                article_id,
+            )
+        else:
+            await conn.execute(
+                """
+                INSERT INTO post_publish_queue (slug, title, category, source, article_id)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (slug) DO UPDATE SET
+                    status = CASE WHEN post_publish_queue.status = 'failed'
+                                  THEN 'pending' ELSE post_publish_queue.status END,
+                    attempts = CASE WHEN post_publish_queue.status = 'failed'
+                                    THEN 0 ELSE post_publish_queue.attempts END,
+                    error_message = NULL
+                """,
+                slug,
+                title,
+                category,
+                source,
+                article_id,
+            )
     logger.info(
-        "📥 Post-publish queue: added", extra={"slug": slug, "category": category, "source": source}
+        "📥 Post-publish queue: added",
+        extra={"slug": slug, "category": category, "source": source, "force": force},
     )
     return {"ok": True, "slug": slug}
 

@@ -339,6 +339,29 @@ async def register_notification(
     }
 
 
+def _derive_tier_from_score(score: Any) -> str:
+    """Bucket a live_news_score into the enricher's tier scheme.
+
+    WR2 liveness rewire — red-team round FIX3, 2026-07-18. Mirrors
+    claude_cli_enricher._normalize_live_news_fields's own buckets
+    (>=80 breaking, >=40 developing, else evergreen) so a submission that
+    carries a score WITHOUT an explicit tier doesn't silently default to
+    "evergreen" and fall out of wr2_topic_selector's live pool (a score=85
+    item with no tier previously persisted as 85/"evergreen" — excluded).
+    Defensive against non-numeric input even though ScraperSubmission
+    already validates `live_news_score` as `int | None`.
+    """
+    try:
+        s = int(round(float(score)))
+    except (TypeError, ValueError):
+        return "evergreen"
+    if s >= 80:
+        return "breaking"
+    if s >= 40:
+        return "developing"
+    return "evergreen"
+
+
 @router.post("/api/intel/scraper/submit")
 async def submit_from_scraper(
     submission: ScraperSubmission,
@@ -389,13 +412,71 @@ async def submit_from_scraper(
                 time.time() - start_time,
             )
 
-            return {
+            # Round-2 red-team MUST-FIX #3 (scar family #9): the early
+            # return above happens BEFORE staging_data (with enrichment) is
+            # built below, so a duplicate hit against an item written by an
+            # older/partial-deploy scraper — enrichment absent or `{}` —
+            # would leave that item's future draft stuck at `{}` forever
+            # (7-day dedup window). Heal it in place: merge the new
+            # submission's enrichment into the existing staging file when
+            # the existing item doesn't already have a usable one. Never
+            # let a heal failure turn a successful dedup into a 500 —
+            # log and fall through to the unchanged response shape.
+            enrichment_backfilled = False
+            new_enrichment = submission.enrichment
+            existing_enrichment = duplicate.get("enrichment")
+            dup_item_id = duplicate.get("item_id")
+            if (
+                isinstance(new_enrichment, dict)
+                and new_enrichment
+                and not (isinstance(existing_enrichment, dict) and existing_enrichment)
+                and dup_item_id
+                and duplicate.get("status") in (None, "pending")
+            ):
+                try:
+                    existing_full = staging_service.load_staging_item(intel_type, dup_item_id)
+                    if existing_full is not None:
+                        existing_full["enrichment"] = new_enrichment
+                        staging_service.save_staging_item(intel_type, dup_item_id, existing_full)
+                        enrichment_backfilled = True
+                        logger.info(
+                            "Backfilled enrichment onto duplicate staging item",
+                            extra={"item_id": dup_item_id},
+                        )
+                except Exception:
+                    logger.warning(
+                        "Enrichment backfill failed for duplicate staging item "
+                        "— dedup response unaffected",
+                        extra={"item_id": dup_item_id},
+                        exc_info=True,
+                    )
+
+            response: dict[str, Any] = {
                 "success": True,
                 "message": "Article already exists in staging",
                 "item_id": duplicate.get("item_id"),
                 "intel_type": intel_type,
                 "duplicate": True,
             }
+            if enrichment_backfilled:
+                response["enrichment_backfilled"] = True
+            return response
+
+        # WR2 liveness rewire (SPRINT B1, scar family #9 break #2; red-team
+        # FIX3 2026-07-18): normalize with uniform defaults so every staging
+        # item — scraper sent them or not — has a consistent liveness shape
+        # downstream. When liveness_tier is absent but a score IS present,
+        # derive the tier from the score instead of defaulting to
+        # "evergreen" — a validated, explicitly-provided tier is always
+        # trusted as-is.
+        _live_news_score = (
+            submission.live_news_score if submission.live_news_score is not None else 0
+        )
+        _liveness_tier = (
+            submission.liveness_tier
+            if submission.liveness_tier is not None
+            else _derive_tier_from_score(_live_news_score)
+        )
 
         # Prepare staging data
         staging_data = {
@@ -413,6 +494,17 @@ async def submit_from_scraper(
             "status": "pending",
             "detection_type": "scraper_auto",
             "detected_at": datetime.now(timezone.utc).isoformat(),
+            "live_news_score": _live_news_score,
+            "liveness_tier": _liveness_tier,
+            "live_news_reasons": [
+                r.strip()[:200] for r in (submission.live_news_reasons or [])
+            ][:3],
+            # WR2 enrichment passthrough (scar family #9): carry the full
+            # structured enricher object into staging so it survives to
+            # wr2_topic_selector via list_pending_items' projection. Default
+            # {} preserves today's behavior for legacy/partial-deploy
+            # scrapers that don't send it yet.
+            "enrichment": submission.enrichment or {},
         }
 
         if submission.cover_image:
