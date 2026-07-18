@@ -38,16 +38,19 @@ one place.
   ``ConsentEvent``, ``EvaluationContext`` — neither is referenced by any PR1
   module.
 - **fact_registry.py** — done (PR1) for ``FactSpec``/``FactRegistry.spec()``/
-  ``FactRegistry.missing_paths()`` (the static catalog). **Deferred to PR3**
-  (needs the evaluator to define what "resolving" a fact means
-  operationally): ``FactSnapshot``, ``FactRegistry.derive()``,
-  ``canonical_fact_payload()``.
+  ``FactRegistry.missing_paths()`` (the static catalog); done (PR3) for
+  ``FactRegistry.derive()``/``canonical_fact_payload()`` (``FactSnapshot``
+  itself lives in ``ast.py``, not here — see that module's docstring for the
+  import-cycle rationale).
 - **ast.py** — done (PR1) for the 16 ``Condition`` variants, the
   ``Condition`` discriminated union, and the tree-traversal helpers
   (``iter_nodes``, ``collect_fact_paths``, ``collect_leaf_operators``,
-  ``validate_ast_limits``). **Deferred to PR3-PR4**: ``ConditionResult``,
-  ``evaluate_condition()`` (needs ``FactSnapshot`` from ``fact_registry.py``,
-  itself PR3).
+  ``validate_ast_limits``); done (PR3) for ``ConditionResult``,
+  ``evaluate_condition()``, and ``FactSnapshot``/``KnownFact``/``UnknownFact``
+  (the runtime fact-value wrappers, placed here rather than
+  ``fact_registry.py`` to avoid a real import cycle — ``models.py`` imports
+  ``Condition`` from this module, and ``fact_registry.py`` needs
+  ``models.ApplicantFacts``).
 - **bundle.py** — done (PR2b, 2026-07-18 — ported from a discarded earlier
   "B" API draft to this package's actual "A" models.py, see that module's
   own docstring for the adaptation notes): ``TrustedSigningKey``,
@@ -105,14 +108,26 @@ one place.
   ``models.RulePack`` since PR1 has no ``bundle.py`` yet (see that
   function's own docstring). ``CompilationReport``, not spec's
   ``CompiledRulePack``, is PR1's return type by design — PR1's job is
-  validate-and-report, not compile-to-evaluator-runtime-form.
-  **Deferred to PR3** (needs the evaluator to define what "compiled" means
-  operationally): ``CompiledRule``, ``CompiledProduct``, ``CompiledRulePack``,
-  and the ``VerifiedRulePack``-taking ``compile_rule_pack`` overload/wrapper.
-- **evaluator.py**, **trace.py** — not started. **Deferred to PR3**: the
-  entire evaluator (``ProductProofStatus``, ``ProductProof``,
-  ``DecisionDraft``, ``evaluate()``) and deterministic trace-building
-  (``TraceNode``, ``EvaluationTrace``, ``TraceBuilder``, ``trace_sha256()``).
+  validate-and-report, not compile-to-evaluator-runtime-form. Done (PR3) for
+  ``CompiledRule``/``CompiledProduct``/``CompiledRulePack`` +
+  ``build_compiled_pack(pack, *, fact_registry) -> CompiledRulePack``, a
+  SEPARATE step from ``compile_rule_pack`` (never modified) that assumes its
+  ``.ok`` precondition and performs a pure structural transform.
+  **Still NOT included**: a ``VerifiedRulePack``-taking overload/adapter —
+  ``bundle.VerifiedRulePack -> build_compiled_pack`` is a one-line unwrap
+  (`build_compiled_pack(verified.pack, ...)`) with no real behavior of its
+  own until a Decision-producing ``evaluate()`` exists to thread
+  ``payload_sha256`` into (see the next bullet); deferred rather than
+  building a hollow stub, per the PR3 task brief's explicit escape valve.
+- **evaluator.py**, **trace.py** — not started. **Deferred to a later PR**:
+  the entire per-product/global evaluator (``ProductProofStatus``,
+  ``ProductProof``, ``DecisionDraft``, ``evaluate()`` — spec §4.2/§4.3) and
+  deterministic trace-building (``TraceNode``, ``EvaluationTrace``,
+  ``TraceBuilder``, ``trace_sha256()``). PR3's own scope was narrower: the
+  strong-Kleene tri-state CONDITION evaluator (``ast.evaluate_condition``)
+  plus its two supporting steps (``FactRegistry.derive()``,
+  ``compiler.build_compiled_pack()``) — the per-product proof/ranking/global
+  state machine that consumes them is still greenfield.
 - **pricing.py**, **catalog.py**, **clock.py**, **repository.py**,
   **crypto.py**, **retention.py**, **flags.py** — not started. **Deferred to
   PR4+** (persistence/pricing/clock/consent-adjacent infrastructure; exact PR
