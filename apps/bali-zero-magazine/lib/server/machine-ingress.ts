@@ -116,6 +116,36 @@ export function machineResult(status: "created" | "replay"): Response {
   );
 }
 
+export function machineAssetResult(
+  status: "created" | "replay",
+  asset: Readonly<{
+    assetId: string;
+    sourceSha256: string;
+    canonicalSha256: string;
+    canonicalByteCount: number;
+    width: number;
+    height: number;
+  }>,
+): Response {
+  return Response.json(
+    {
+      ok: true,
+      status,
+      asset_id: asset.assetId,
+      source_sha256: asset.sourceSha256,
+      canonical_sha256: asset.canonicalSha256,
+      canonical_mime_type: "image/png",
+      canonical_byte_count: asset.canonicalByteCount,
+      width: asset.width,
+      height: asset.height,
+    },
+    {
+      status: status === "created" ? 201 : 200,
+      headers: privateNoStoreHeaders(),
+    },
+  );
+}
+
 export function machineFailure(status: 400 | 401 | 409 | 413): Response {
   const error =
     status === 401

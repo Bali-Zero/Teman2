@@ -15,6 +15,13 @@
       "when": 1784394605994,
       "tag": "0001_thick_virginia_dare",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784398557640,
+      "tag": "0002_known_the_hand",
+      "breakpoints": true
     }
   ]
 }

@@ -1,12 +1,12 @@
 import { parseAssetUploadMetadata } from "../../../../lib/contracts/collector.ts";
 import {
   authenticateMachineRequest,
+  machineAssetResult,
   machineFailure,
-  machineResult,
 } from "../../../../lib/server/machine-ingress.ts";
 import {
+  canonicalizeImageAsset,
   storeVerifiedAsset,
-  validateImageAsset,
 } from "../../../../lib/server/media.ts";
 import { createPublicationRepository } from "../../../../lib/server/publication-repository.ts";
 import { getMagazineBindings } from "../../../../lib/server/runtime-bindings.ts";
@@ -29,7 +29,7 @@ export async function POST(request: Request): Promise<Response> {
       JSON.parse(rawMetadata) as unknown,
     );
     const contentType = request.headers.get("content-type") ?? "";
-    const image = await validateImageAsset(
+    const image = await canonicalizeImageAsset(
       verified.body,
       contentType,
       metadata,
@@ -37,16 +37,18 @@ export async function POST(request: Request): Promise<Response> {
     const bindings = getMagazineBindings();
     if (bindings.DB === undefined || bindings.MEDIA === undefined)
       return machineFailure(409);
-    const key = await storeVerifiedAsset(
-      bindings.MEDIA,
-      verified.body,
-      metadata,
-      image,
-    );
+    const key = await storeVerifiedAsset(bindings.MEDIA, metadata, image);
     const result = await createPublicationRepository(
       bindings.DB,
-    ).ingestVerifiedAsset(metadata, key);
-    return machineResult(result);
+    ).ingestVerifiedAsset(metadata, image, key);
+    return machineAssetResult(result, {
+      assetId: metadata.asset_id,
+      sourceSha256: metadata.source_sha256,
+      canonicalSha256: image.sha256,
+      canonicalByteCount: image.byteCount,
+      width: image.width,
+      height: image.height,
+    });
   } catch (error) {
     if (error instanceof TypeError) {
       return error.message.includes("12 MiB") ||

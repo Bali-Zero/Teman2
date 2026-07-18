@@ -12,26 +12,27 @@
 - Added closed-schema parsing and idempotent D1 ingress. A new manifest returns
   `201`, an exact replay returns `200`, and changed-content or publication
   conflicts return generic `409` responses without internal identifiers.
-- Added content-addressed R2 image storage for non-animated JPEG, PNG, and WebP.
-  Upload validation enforces exact MIME, magic/container structure, digest,
-  byte count, dimensions, 12 MiB size, 8,192-pixel dimensions, the independent
-  decoded-pixel ceiling, and a real image decode through
-  `@cf-wasm/photon@0.3.7`. Valid fixtures for all three formats decode, while a
-  CRC-correct malformed PNG, a 17-byte SOF-only JPEG, and a structurally valid
-  WebP with corrupt compressed payload all fail closed.
-- Hardened ancillary metadata inspection across the complete parsed container,
-  without a fixed prefix limit or an allocation proportional to metadata size.
-  PNG validates every chunk length and CRC, scans uncompressed textual/EXIF
-  chunks, and rejects compressed or unknown ancillary metadata. JPEG scans every
-  APP and COM segment. WebP scans EXIF and XMP chunks and rejects embedded color
-  profiles or unknown chunks. Active markup in any inspected metadata fails
-  before raster decode or persistence.
+- Added AssetUploadV2. Its signed manifest binds the exact source digest, byte
+  count, MIME, dimensions, capture time, and provenance to the raw request.
+  AssetUploadV1 is explicitly unsupported. Source identity is stored separately
+  from canonical identity and every field participates in replay comparison.
+- Added deterministic Worker-side canonicalization through
+  `@cf-wasm/photon@0.3.7`: non-animated JPEG, PNG, and WebP are decoded, then
+  re-encoded to browser-safe PNG. Only structural PNG chunks survive; XMP, ICC,
+  C2PA, text, EXIF, compressed metadata, and other ancillary source chunks are
+  discarded. Canonical bytes, digest, MIME, dimensions, and byte count are
+  computed after re-encoding and persisted independently.
+- The compatibility corpus accepts and canonicalizes representative XMP, ICC,
+  and C2PA JPEGs plus zTXt, iCCP, and caBX PNGs. Active script metadata is
+  accepted as source metadata but cannot survive in canonical bytes. CRC-correct
+  malformed PNG and structurally plausible malformed JPEG/WebP payloads still
+  fail closed at decode.
 - Made R2 writes immutable. An existing canonical object is fully verified and
   replayed without a `put`; inconsistent existing bytes or metadata return a
   conflict without overwrite. New writes also use an atomic
   `etagDoesNotMatch: "*"` condition, then are read back and verified before the
   D1 asset row can become `verified`.
-- Made provenance mandatory in `asset-upload.v1`: non-empty `alt_text` and
+- Made provenance mandatory in `asset-upload.v2`: non-empty `alt_text` and
   `source`, nullable validated `source_url`, `rights_basis`, approved rights and
   usage, passed DLP and sanitization, and an approved perceptual-dedup verdict.
   Every field is persisted, included in replay comparison, and projected by the
@@ -43,9 +44,9 @@
   approved non-unknown rights basis and rights decision, approved usage, passed
   DLP and sanitization, an approved dedup result, verified status, and the latest
   visibility/status overlays.
-- Added D1 migration `0001_thick_virginia_dare.sql`. Existing rows are migrated
-  with explicit legacy defaults (`unknown`, `pending`, and `unreviewed`) so they
-  cannot become publication-eligible accidentally.
+- Added D1 migration `0002_known_the_hand.sql`. Existing asset rows copy their
+  prior canonical identity into the new source columns, while new uploads retain
+  separate source and canonical manifests.
 - Added an authenticated media route that derives the canonical R2 key from the
   D1 digest and MIME, rejects stored-key drift, and rechecks the current
   published-story association, latest visibility and asset overlays, provenance,
@@ -65,37 +66,48 @@
 - RED (second remediation): the focused command produced exactly two expected
   failures. A CRC-correct PNG `tEXt` script beyond byte 1,250 returned `201`, and
   post-publication `alt_text` drift left the media route at `200`.
-- GREEN: the focused ingress/media command below passes all 21 tests, including
-  valid and malformed three-format decode coverage, no-overwrite replay and
-  conflict behavior, exact active PNG/JPEG/WebP metadata probes, full provenance
-  round-trip, every eligibility-field drift, latest overlays, and canonical-key
-  drift.
+- RED (final compatibility remediation): AssetUploadV2 corpus tests first failed
+  because no canonicalization export existed. Route tests then exposed an extra
+  D1 insert placeholder and legacy seed rows exposed the new source-column
+  invariants.
+- GREEN: the focused ingress/media suites cover valid and malformed
+  three-format decode behavior, no-overwrite replay and conflict behavior,
+  active PNG/JPEG/WebP metadata probes, full provenance round-trip, every
+  eligibility-field drift, latest overlays, and canonical-key drift.
+- GREEN (final compatibility remediation): deterministic corpus, route,
+  no-overwrite, replay, publication, media, migration, and render tests pass with
+  source and canonical digests kept distinct.
 
 ## Verification
 
-- `node --experimental-strip-types --test tests/machine-routes.test.mjs tests/media-route.test.mjs`:
-  21 passed, 0 failed.
-- `npm test`: Vinext production build passed; 103 tests passed, 0 failed.
+- `node --experimental-strip-types --test tests/publication-repository.test.mjs tests/asset-upload-v2.test.mjs`:
+  36 passed, 0 failed, including the legacy migration and Task 6 fixture.
+- `npm test`: Vinext production build passed; 109 tests passed, 0 failed.
 - `npm run lint`: passed with zero diagnostics.
 - `npm run typecheck`: `tsc --noEmit` passed with zero diagnostics.
-- `npx --prefix apps/bali-zero-magazine --no-install prettier --check <changed files>`:
+- `npx --no-install prettier --check <changed files>`:
   all changed app files use Prettier style.
 - `npm run db:generate`: reported `No schema changes, nothing to migrate`.
 - `git diff --check`: passed.
-- `npx --no-install wrangler dev --config dist/server/wrangler.json --port 8791 --local`
-  plus `curl http://127.0.0.1:8791/`: local Workerd booted with D1/R2 bindings,
-  returned `200 OK`, the protected workspace shell, `private, no-store`, CSP,
-  and `nosniff`.
+- Local D1 applied migrations `0000`, `0001`, and `0002`; then
+  `wrangler dev --config dist/server/wrangler.json --port 8792 --local` served
+  the real `/api/machine/assets` route. A signed source PNG returned `201`
+  with canonical PNG digest
+  `eb52dccdcd43a07c59b48944e7dfba6061dc8cdbf9b1d201f10da76cb2a858a3`;
+  a second request with the identical manifest and a fresh nonce returned
+  `200 replay` with the same digest. The source digest remained separately
+  bound as
+  `431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460`.
 
 `@cf-wasm/photon` publishes separate Node and `workerd` implementations. The
-Node unit suite exercises the same decoder API, while the Vinext production
-build verifies that the Worker export bundles successfully.
+Node compatibility corpus and the signed Workerd route proof both exercise the
+decoder and deterministic PNG encoder.
 
-No Python `asset-upload.v1` parser or producer exists in this worktree
-(`rg -n "asset-upload\\.v1" --glob '*.py' .` returned no matches), so there was
-no Python implementation to patch. The TypeScript contract is the current
-single source of truth; any future Python producer must supply the complete
-required provenance projection before integration.
+No Python asset producer exists in this worktree. Task 6 now has a closed JSON
+fixture and publisher handoff at
+`apps/bali-zero-magazine/docs/task-6-asset-upload-v2.md`: sign the source
+manifest and bytes, require the canonical digest from the upload response, and
+use only that digest in publication packets.
 
 ## Preserved workspace state
 

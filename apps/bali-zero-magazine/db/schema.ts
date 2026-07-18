@@ -539,6 +539,11 @@ export const assets = sqliteTable(
     assetId: text("asset_id").primaryKey(),
     packetId: text("packet_id").notNull(),
     sha256: text("sha256").notNull().unique(),
+    sourceSha256: text("source_sha256").notNull(),
+    sourceByteCount: integer("source_byte_count").notNull(),
+    sourceMimeType: text("source_mime_type").notNull(),
+    sourceWidth: integer("source_width").notNull(),
+    sourceHeight: integer("source_height").notNull(),
     r2Key: text("r2_key").notNull().unique(),
     mimeType: text("mime_type").notNull(),
     byteCount: integer("byte_count").notNull(),
@@ -565,6 +570,11 @@ export const assets = sqliteTable(
   },
   (table) => [
     check("assets_hash_check", sha256Check("sha256")),
+    check("assets_source_hash_check", sha256Check("source_sha256")),
+    check(
+      "assets_source_mime_check",
+      sql`${table.sourceMimeType} in ('image/jpeg', 'image/png', 'image/webp')`,
+    ),
     check(
       "assets_status_check",
       sql`${table.status} in ('pending', 'verified', 'quarantined', 'revoked')`,
@@ -596,6 +606,10 @@ export const assets = sqliteTable(
     check(
       "assets_dimensions_check",
       sql`${table.width} > 0 and ${table.height} > 0`,
+    ),
+    check(
+      "assets_source_dimensions_check",
+      sql`${table.sourceByteCount} > 0 and ${table.sourceWidth} > 0 and ${table.sourceHeight} > 0`,
     ),
   ],
 );

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import test from "node:test";
 
-import { validateImageAsset } from "../lib/server/media.ts";
+import { canonicalizeImageAsset } from "../lib/server/media.ts";
 import { runWithMagazineBindings } from "../lib/server/runtime-bindings.ts";
 import { readStoryDetail } from "../lib/server/magazine-read-model.ts";
 import {
@@ -360,17 +360,22 @@ test(
     });
     const createdResponse = await invoke(routes.asset, created, bindings);
     assert.equal(createdResponse.status, 201);
-    assert.deepEqual(await createdResponse.json(), {
-      ok: true,
-      status: "created",
-    });
+    const createdResult = await createdResponse.json();
+    assert.equal(createdResult.ok, true);
+    assert.equal(createdResult.status, "created");
+    assert.equal(createdResult.source_sha256, metadata.source_sha256);
+    assert.equal(createdResult.canonical_mime_type, "image/png");
     const row = db.get(
       "SELECT * FROM assets WHERE asset_id = ?",
       metadata.asset_id,
     );
     assert.equal(row.status, "verified");
-    assert.equal(row.sha256, metadata.sha256);
-    assert.equal(row.r2_key, `assets/sha256/${metadata.sha256}.png`);
+    assert.equal(row.sha256, createdResult.canonical_sha256);
+    assert.equal(row.source_sha256, metadata.source_sha256);
+    assert.equal(
+      row.r2_key,
+      `assets/sha256/${createdResult.canonical_sha256}.png`,
+    );
     assert.equal(row.captured_at, metadata.captured_at);
 
     const replay = await signedMachineRequest({
@@ -383,7 +388,7 @@ test(
 
     const story = storyVersion({
       suffix: "asset-provenance",
-      assetDigest: metadata.sha256,
+      assetDigest: createdResult.canonical_sha256,
     });
     const publication = await signedMachineRequest({
       path: "/api/machine/publications/breaking",
@@ -477,7 +482,7 @@ test(
 );
 
 test(
-  "asset upload rejects active content in complete ancillary metadata",
+  "asset upload strips active content from complete ancillary metadata",
   { skip: !routesExist },
   async () => {
     const routes = await loadRoutes();
@@ -510,20 +515,29 @@ test(
         },
         fixture.bytes,
       );
-      await assert.rejects(
-        validateImageAsset(fixture.bytes, fixture.mime, metadata),
-        /active document media is forbidden/,
-        fixture.name,
-      );
       const request = await signedMachineRequest({
         path: "/api/machine/assets",
         body: fixture.bytes,
         contentType: fixture.mime,
         metadata,
       });
-      const response = await invoke(routes.asset, request, runtimeBindings(db));
-      assert.equal(response.status, 400, fixture.name);
-      assert.equal(db.get("SELECT count(*) AS count FROM assets").count, 0);
+      const media = new MemoryR2Bucket();
+      const response = await invoke(
+        routes.asset,
+        request,
+        runtimeBindings(db, media),
+      );
+      assert.equal(response.status, 201, fixture.name);
+      const result = await response.json();
+      const stored = media.objects.get(
+        `assets/sha256/${result.canonical_sha256}.png`,
+      );
+      assert.ok(stored, fixture.name);
+      assert.equal(
+        new TextDecoder().decode(stored.bytes).includes("<script>"),
+        false,
+        fixture.name,
+      );
     }
   },
 );
@@ -534,24 +548,30 @@ test(
   async () => {
     const routes = await loadRoutes();
     const metadata = await validAssetMetadata();
-    const key = `assets/sha256/${metadata.sha256}.png`;
+    const canonical = await canonicalizeImageAsset(
+      VALID_PNG,
+      "image/png",
+      metadata,
+    );
+    const key = `assets/sha256/${canonical.sha256}.png`;
 
     const identicalDb = new SqliteD1Database();
     const identicalR2 = new MemoryR2Bucket();
-    await identicalR2.put(key, VALID_PNG, {
-      httpMetadata: { contentType: metadata.mime_type },
+    await identicalR2.put(key, canonical.bytes, {
+      httpMetadata: { contentType: canonical.mimeType },
       customMetadata: {
-        sha256: metadata.sha256,
-        byteCount: String(metadata.byte_count),
-        width: String(metadata.width),
-        height: String(metadata.height),
+        sha256: canonical.sha256,
+        sourceSha256: metadata.source_sha256,
+        byteCount: String(canonical.byteCount),
+        width: String(canonical.width),
+        height: String(canonical.height),
       },
     });
     identicalR2.putCalls.length = 0;
     const identicalRequest = await signedMachineRequest({
       path: "/api/machine/assets",
       body: VALID_PNG,
-      contentType: metadata.mime_type,
+      contentType: metadata.source_mime_type,
       metadata,
     });
     assert.equal(
@@ -570,19 +590,20 @@ test(
     const inconsistentR2 = new MemoryR2Bucket();
     inconsistentR2.objects.set(key, {
       bytes: Uint8Array.of(1, 2, 3),
-      httpMetadata: { contentType: metadata.mime_type },
+      httpMetadata: { contentType: canonical.mimeType },
       customMetadata: {
-        sha256: metadata.sha256,
-        byteCount: String(metadata.byte_count),
-        width: String(metadata.width),
-        height: String(metadata.height),
+        sha256: canonical.sha256,
+        sourceSha256: metadata.source_sha256,
+        byteCount: String(canonical.byteCount),
+        width: String(canonical.width),
+        height: String(canonical.height),
       },
     });
     const before = Uint8Array.from(inconsistentR2.objects.get(key).bytes);
     const inconsistentRequest = await signedMachineRequest({
       path: "/api/machine/assets",
       body: VALID_PNG,
-      contentType: metadata.mime_type,
+      contentType: metadata.source_mime_type,
       metadata,
     });
     assert.equal(
@@ -618,7 +639,7 @@ test(
     });
     tampered.headers.set(
       "x-magazine-asset-metadata",
-      JSON.stringify({ ...metadata, width: 2 }),
+      JSON.stringify({ ...metadata, source_width: 2 }),
     );
     const tamperedDb = new SqliteD1Database();
     assert.equal(
@@ -695,14 +716,13 @@ test(
     ];
     for (const [index, fixture] of cases.entries()) {
       const db = new SqliteD1Database();
-      const metadata = await validAssetMetadata({
-        asset_id: `asset-rejected-${index}`,
-        sha256: await crypto.subtle
-          .digest("SHA-256", fixture.bytes)
-          .then((digest) => Buffer.from(digest).toString("hex")),
-        byte_count: fixture.bytes.byteLength,
-        mime_type: fixture.mime,
-      });
+      const metadata = await validAssetMetadata(
+        {
+          asset_id: `asset-rejected-${index}`,
+          mime_type: fixture.mime,
+        },
+        fixture.bytes,
+      );
       const request = await signedMachineRequest({
         path: "/api/machine/assets",
         body: fixture.bytes,
@@ -762,12 +782,19 @@ test(
     for (let index = 0; index < 19; index += 1) {
       db.execute(
         `INSERT INTO assets(
-           asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
-           height, alt_text, source, rights_status, status, captured_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           asset_id, packet_id, sha256, source_sha256, source_byte_count,
+           source_mime_type, source_width, source_height, r2_key, mime_type,
+           byte_count, width, height, alt_text, source, rights_status, status,
+           captured_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         `seed-${index}`,
         "asset-packet-task-5",
         index.toString(16).padStart(64, "0"),
+        index.toString(16).padStart(64, "0"),
+        1,
+        "image/png",
+        1,
+        1,
         `assets/sha256/${index.toString(16).padStart(64, "0")}.png`,
         "image/png",
         1,
@@ -784,13 +811,10 @@ test(
     const media = new MemoryR2Bucket();
     const bindings = runtimeBindings(db, media);
     const firstMetadata = await validAssetMetadata({ asset_id: "race-first" });
-    const secondMetadata = await validAssetMetadata({
-      asset_id: "race-second",
-      sha256: await crypto.subtle
-        .digest("SHA-256", VALID_PNG_VARIANT)
-        .then((digest) => Buffer.from(digest).toString("hex")),
-      byte_count: VALID_PNG_VARIANT.byteLength,
-    });
+    const secondMetadata = await validAssetMetadata(
+      { asset_id: "race-second" },
+      VALID_PNG_VARIANT,
+    );
     const first = await signedMachineRequest({
       path: "/api/machine/assets",
       body: VALID_PNG,

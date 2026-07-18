@@ -7,7 +7,7 @@ import type {
   StoryVersionV1,
 } from "../contracts/publication.ts";
 import type {
-  AssetUploadMetadataV1,
+  AssetUploadMetadataV2,
   CollectorRunProjectionV1,
 } from "../contracts/collector.ts";
 import { assetEligibilitySql } from "./asset-eligibility.ts";
@@ -113,8 +113,16 @@ type StoryFinalizeRow = Readonly<{
 type CollectorRunRow = Omit<CollectorRunProjectionV1, "schema_version"> &
   Readonly<{ manifest_hash: string }>;
 
-type AssetRow = Omit<AssetUploadMetadataV1, "schema_version"> &
-  Readonly<{ r2_key: string; status: string }>;
+type AssetRow = Omit<AssetUploadMetadataV2, "schema_version"> &
+  Readonly<{
+    sha256: string;
+    r2_key: string;
+    mime_type: "image/png";
+    byte_count: number;
+    width: number;
+    height: number;
+    status: string;
+  }>;
 
 const SHA256 = /^[a-f0-9]{64}$/;
 
@@ -604,30 +612,44 @@ export function createPublicationRepository(
   }
 
   async function ingestVerifiedAsset(
-    asset: AssetUploadMetadataV1,
+    asset: AssetUploadMetadataV2,
+    canonical: Readonly<{
+      sha256: string;
+      byteCount: number;
+      mimeType: "image/png";
+      width: number;
+      height: number;
+    }>,
     r2Key: string,
   ): Promise<IngestResult> {
     const findExisting = () =>
       db
         .prepare(
-          `SELECT asset_id, packet_id, sha256, r2_key, mime_type, byte_count,
+          `SELECT asset_id, packet_id, sha256, source_sha256,
+                  source_byte_count, source_mime_type, source_width,
+                  source_height, r2_key, mime_type, byte_count,
                   width, height, captured_at, alt_text, source, source_url,
                   rights_basis, rights_status, usage_status, dlp_status,
                   sanitization_status, perceptual_dedup_status, status
            FROM assets WHERE asset_id = ? OR sha256 = ? OR r2_key = ? LIMIT 1`,
         )
-        .bind(asset.asset_id, asset.sha256, r2Key)
+        .bind(asset.asset_id, canonical.sha256, r2Key)
         .first<AssetRow>();
     const isReplay = (row: AssetRow | null): boolean =>
       row !== null &&
       row.asset_id === asset.asset_id &&
       row.packet_id === asset.packet_id &&
-      row.sha256 === asset.sha256 &&
+      row.sha256 === canonical.sha256 &&
+      row.source_sha256 === asset.source_sha256 &&
+      row.source_byte_count === asset.source_byte_count &&
+      row.source_mime_type === asset.source_mime_type &&
+      row.source_width === asset.source_width &&
+      row.source_height === asset.source_height &&
       row.r2_key === r2Key &&
-      row.mime_type === asset.mime_type &&
-      row.byte_count === asset.byte_count &&
-      row.width === asset.width &&
-      row.height === asset.height &&
+      row.mime_type === canonical.mimeType &&
+      row.byte_count === canonical.byteCount &&
+      row.width === canonical.width &&
+      row.height === canonical.height &&
       row.captured_at === asset.captured_at &&
       row.alt_text === asset.alt_text &&
       row.source === asset.source &&
@@ -648,23 +670,29 @@ export function createPublicationRepository(
       const result = await db
         .prepare(
           `INSERT INTO assets(
-             asset_id, packet_id, sha256, r2_key, mime_type, byte_count,
-             width, height, alt_text, source, source_url, rights_basis,
+             asset_id, packet_id, sha256, source_sha256, source_byte_count,
+             source_mime_type, source_width, source_height, r2_key, mime_type,
+             byte_count, width, height, alt_text, source, source_url, rights_basis,
              rights_status, usage_status, dlp_status, sanitization_status,
              perceptual_dedup_status, status, captured_at
            )
-           SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'verified', ?
+           SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'verified', ?
            WHERE (SELECT count(*) FROM assets WHERE packet_id = ?) < 20`,
         )
         .bind(
           asset.asset_id,
           asset.packet_id,
-          asset.sha256,
+          canonical.sha256,
+          asset.source_sha256,
+          asset.source_byte_count,
+          asset.source_mime_type,
+          asset.source_width,
+          asset.source_height,
           r2Key,
-          asset.mime_type,
-          asset.byte_count,
-          asset.width,
-          asset.height,
+          canonical.mimeType,
+          canonical.byteCount,
+          canonical.width,
+          canonical.height,
           asset.alt_text,
           asset.source,
           asset.source_url,

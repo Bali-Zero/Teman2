@@ -51,6 +51,27 @@ export type AssetUploadMetadataV1 = Readonly<{
   perceptual_dedup_status: "unique" | "intentional-reuse";
 }>;
 
+export type AssetUploadMetadataV2 = Readonly<{
+  schema_version: "asset-upload.v2";
+  packet_id: string;
+  asset_id: string;
+  source_sha256: string;
+  source_byte_count: number;
+  source_mime_type: "image/jpeg" | "image/png" | "image/webp";
+  source_width: number;
+  source_height: number;
+  captured_at: string;
+  alt_text: string;
+  source: string;
+  source_url: string | null;
+  rights_basis: AssetUploadMetadataV1["rights_basis"];
+  rights_status: "approved";
+  usage_status: "approved";
+  dlp_status: "passed";
+  sanitization_status: "passed";
+  perceptual_dedup_status: "unique" | "intentional-reuse";
+}>;
+
 function requireSourceUrl(value: unknown): string | null {
   if (value === null) return null;
   const sourceUrl = requireString(value, "asset upload metadata.source_url");
@@ -154,16 +175,30 @@ export function parseCollectorRunProjection(
   };
 }
 
-export function parseAssetUploadMetadata(raw: unknown): AssetUploadMetadataV1 {
+export function parseAssetUploadMetadata(raw: unknown): AssetUploadMetadataV2 {
+  if (
+    typeof raw !== "object" ||
+    raw === null ||
+    Array.isArray(raw) ||
+    (raw as Record<string, unknown>).schema_version !== "asset-upload.v2"
+  ) {
+    throw new TypeError(
+      `unsupported schema_version ${String(
+        typeof raw === "object" && raw !== null
+          ? (raw as Record<string, unknown>).schema_version
+          : undefined,
+      )}`,
+    );
+  }
   const asset = requireClosedRecord(raw, "asset upload metadata", [
     "schema_version",
     "packet_id",
     "asset_id",
-    "sha256",
-    "byte_count",
-    "mime_type",
-    "width",
-    "height",
+    "source_sha256",
+    "source_byte_count",
+    "source_mime_type",
+    "source_width",
+    "source_height",
     "captured_at",
     "alt_text",
     "source",
@@ -175,22 +210,21 @@ export function parseAssetUploadMetadata(raw: unknown): AssetUploadMetadataV1 {
     "sanitization_status",
     "perceptual_dedup_status",
   ]);
-  if (asset.schema_version !== "asset-upload.v1") {
-    throw new TypeError(
-      `unsupported schema_version ${String(asset.schema_version)}`,
-    );
-  }
   const byteCount = requireInteger(
-    asset.byte_count,
-    "asset upload metadata.byte_count",
+    asset.source_byte_count,
+    "asset upload metadata.source_byte_count",
     1,
   );
   if (byteCount > 12 * 1024 * 1024)
     throw new TypeError("asset exceeds 12 MiB limit");
-  const width = requireInteger(asset.width, "asset upload metadata.width", 1);
+  const width = requireInteger(
+    asset.source_width,
+    "asset upload metadata.source_width",
+    1,
+  );
   const height = requireInteger(
-    asset.height,
-    "asset upload metadata.height",
+    asset.source_height,
+    "asset upload metadata.source_height",
     1,
   );
   if (width > 8192 || height > 8192)
@@ -198,21 +232,24 @@ export function parseAssetUploadMetadata(raw: unknown): AssetUploadMetadataV1 {
   if (width * height > 40_000_000)
     throw new TypeError("asset decoded pixel count exceeds limit");
   return {
-    schema_version: "asset-upload.v1",
+    schema_version: "asset-upload.v2",
     packet_id: requireString(
       asset.packet_id,
       "asset upload metadata.packet_id",
     ),
     asset_id: requireString(asset.asset_id, "asset upload metadata.asset_id"),
-    sha256: requireSha256(asset.sha256, "asset upload metadata.sha256"),
-    byte_count: byteCount,
-    mime_type: requireEnum(asset.mime_type, "asset upload metadata.mime_type", [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-    ] as const),
-    width,
-    height,
+    source_sha256: requireSha256(
+      asset.source_sha256,
+      "asset upload metadata.source_sha256",
+    ),
+    source_byte_count: byteCount,
+    source_mime_type: requireEnum(
+      asset.source_mime_type,
+      "asset upload metadata.source_mime_type",
+      ["image/jpeg", "image/png", "image/webp"] as const,
+    ),
+    source_width: width,
+    source_height: height,
     captured_at: requireTimestamp(
       asset.captured_at,
       "asset upload metadata.captured_at",

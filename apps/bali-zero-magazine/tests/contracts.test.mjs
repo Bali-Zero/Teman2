@@ -463,14 +463,14 @@ test("contract collector and asset projections reject unknown fields", () => {
   );
 
   const asset = {
-    schema_version: "asset-upload.v1",
+    schema_version: "asset-upload.v2",
     packet_id: "packet-1",
     asset_id: "asset-1",
-    sha256: HASH,
-    byte_count: 1024,
-    mime_type: "image/png",
-    width: 800,
-    height: 600,
+    source_sha256: HASH,
+    source_byte_count: 1024,
+    source_mime_type: "image/png",
+    source_width: 800,
+    source_height: 600,
     captured_at: "2026-07-18T00:00:00Z",
     alt_text: "A verified editorial image",
     source: "Bali Zero editorial desk",

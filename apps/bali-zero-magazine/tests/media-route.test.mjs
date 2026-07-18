@@ -44,6 +44,7 @@ async function publishVisibleAsset({
     httpMetadata: { contentType: "image/png" },
     customMetadata: {
       sha256: metadata.sha256,
+      sourceSha256: metadata.source_sha256,
       byteCount: String(metadata.byte_count),
       width: String(metadata.width),
       height: String(metadata.height),
@@ -51,14 +52,20 @@ async function publishVisibleAsset({
   });
   db.execute(
     `INSERT INTO assets(
-       asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
+       asset_id, packet_id, sha256, source_sha256, source_byte_count,
+       source_mime_type, source_width, source_height, r2_key, mime_type, byte_count, width,
        height, alt_text, source, source_url, rights_basis, rights_status,
        usage_status, dlp_status, sanitization_status, perceptual_dedup_status,
        status, captured_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     metadata.asset_id,
     metadata.packet_id,
     metadata.sha256,
+    metadata.source_sha256,
+    metadata.source_byte_count,
+    metadata.source_mime_type,
+    metadata.source_width,
+    metadata.source_height,
     key,
     metadata.mime_type,
     metadata.byte_count,
@@ -344,6 +351,7 @@ test(
       httpMetadata: { contentType: "image/png" },
       customMetadata: {
         sha256: metadata.sha256,
+        sourceSha256: metadata.source_sha256,
         byteCount: String(metadata.byte_count),
         width: "1",
         height: "1",
@@ -351,12 +359,18 @@ test(
     });
     db.execute(
       `INSERT INTO assets(
-         asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
-         height, alt_text, source, rights_status, status, captured_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         asset_id, packet_id, sha256, source_sha256, source_byte_count,
+         source_mime_type, source_width, source_height, r2_key, mime_type,
+         byte_count, width, height, alt_text, source, rights_status, status, captured_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       metadata.asset_id,
       metadata.packet_id,
       metadata.sha256,
+      metadata.source_sha256,
+      metadata.source_byte_count,
+      metadata.source_mime_type,
+      metadata.source_width,
+      metadata.source_height,
       `assets/sha256/${metadata.sha256}.png`,
       "image/png",
       metadata.byte_count,

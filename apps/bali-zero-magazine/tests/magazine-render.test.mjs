@@ -588,13 +588,19 @@ async function createIntegrationDb() {
   const db = new SqliteD1Database();
   db.execute(
     `INSERT INTO assets(
-       asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
+       asset_id, packet_id, sha256, source_sha256, source_byte_count,
+       source_mime_type, source_width, source_height, r2_key, mime_type, byte_count, width,
        height, alt_text, source, rights_basis, rights_status, usage_status,
        dlp_status, sanitization_status, perceptual_dedup_status, status
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     "asset-render-integration",
     "asset-packet-render-integration",
     RAW_DIGEST,
+    RAW_DIGEST,
+    1024,
+    "image/webp",
+    1200,
+    800,
     `assets/sha256/${RAW_DIGEST}.webp`,
     "image/webp",
     1024,

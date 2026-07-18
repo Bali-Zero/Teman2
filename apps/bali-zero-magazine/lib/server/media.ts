@@ -1,6 +1,6 @@
 // Node's type-stripping test runner executes the TypeScript source directly.
 import { PhotonImage } from "@cf-wasm/photon";
-import type { AssetUploadMetadataV1 } from "../contracts/collector.ts";
+import type { AssetUploadMetadataV2 } from "../contracts/collector.ts";
 import { assetEligibilitySql } from "./asset-eligibility.ts";
 import type { D1DatabaseLike } from "./publication-repository.ts";
 import { sha256Hex } from "./security.ts";
@@ -36,16 +36,19 @@ export interface R2BucketLike {
   delete?(key: string): Promise<void>;
 }
 
-export type ValidatedImage = Readonly<{
-  mimeType: AssetUploadMetadataV1["mime_type"];
+export type CanonicalImage = Readonly<{
+  bytes: Uint8Array;
+  sha256: string;
+  byteCount: number;
+  mimeType: "image/png";
   width: number;
   height: number;
-  extension: "jpg" | "png" | "webp";
+  extension: "png";
 }>;
 
 export type ResolvedMedia = Readonly<{
   bytes: Uint8Array;
-  mimeType: AssetUploadMetadataV1["mime_type"];
+  mimeType: "image/jpeg" | "image/png" | "image/webp";
 }>;
 
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10] as const;
@@ -102,57 +105,6 @@ function crc32(bytes: Uint8Array): number {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-const ACTIVE_METADATA_PATTERNS = [
-  "<",
-  "javascript:",
-  "vbscript:",
-  "data:text/html",
-  "onerror=",
-  "onload=",
-  "@import",
-] as const;
-const METADATA_SCAN_CHUNK_BYTES = 64 * 1024;
-const METADATA_SCAN_OVERLAP =
-  Math.max(...ACTIVE_METADATA_PATTERNS.map((pattern) => pattern.length)) - 1;
-
-function rejectActiveMetadata(bytes: Uint8Array): void {
-  const decoder = new TextDecoder("utf-8", { fatal: false });
-  let overlap = "";
-  for (
-    let offset = 0;
-    offset < bytes.length;
-    offset += METADATA_SCAN_CHUNK_BYTES
-  ) {
-    const end = Math.min(offset + METADATA_SCAN_CHUNK_BYTES, bytes.length);
-    const text = (
-      overlap +
-      decoder.decode(bytes.subarray(offset, end), {
-        stream: end < bytes.length,
-      })
-    )
-      .replaceAll("\u0000", "")
-      .toLowerCase();
-    if (ACTIVE_METADATA_PATTERNS.some((pattern) => text.includes(pattern))) {
-      throw new TypeError("active document media is forbidden");
-    }
-    overlap = text.slice(-METADATA_SCAN_OVERLAP);
-  }
-}
-
-const SAFE_PNG_ANCILLARY_CHUNKS = new Set([
-  "bKGD",
-  "cHRM",
-  "gAMA",
-  "hIST",
-  "pHYs",
-  "sBIT",
-  "sRGB",
-  "tIME",
-  "tRNS",
-]);
-
-const SCANNED_PNG_METADATA_CHUNKS = new Set(["eXIf", "iTXt", "tEXt"]);
-
 function parsePng(
   bytes: Uint8Array,
 ): Readonly<{ width: number; height: number }> {
@@ -188,22 +140,6 @@ function parsePng(
       // Palette bytes are decoded image data, not textual metadata.
     } else if (type === "acTL" || type === "fcTL" || type === "fdAT") {
       throw new TypeError("animated PNG is forbidden");
-    } else if (type === "zTXt" || type === "iCCP") {
-      throw new TypeError("compressed PNG metadata is forbidden");
-    } else if (SCANNED_PNG_METADATA_CHUNKS.has(type)) {
-      if (type === "iTXt") {
-        const keywordEnd = bytes.indexOf(0, dataStart);
-        if (keywordEnd < dataStart || keywordEnd + 2 >= dataEnd) {
-          throw new TypeError("invalid PNG international text metadata");
-        }
-        const compressionFlag = bytes[keywordEnd + 1];
-        if (compressionFlag !== 0) {
-          throw new TypeError("compressed PNG metadata is forbidden");
-        }
-      }
-      rejectActiveMetadata(bytes.subarray(dataStart, dataEnd));
-    } else if (SAFE_PNG_ANCILLARY_CHUNKS.has(type)) {
-      // These chunks contain bounded image parameters or fixed-width timestamps.
     } else if (type === "IEND") {
       if (length !== 0 || dataEnd + 4 !== bytes.length) {
         throw new TypeError("invalid PNG terminator");
@@ -211,8 +147,10 @@ function parsePng(
       sawIend = true;
       offset = bytes.length;
       break;
+    } else if (type.charCodeAt(0) >= 65 && type.charCodeAt(0) <= 90) {
+      throw new TypeError("unsupported critical PNG chunk");
     } else {
-      throw new TypeError("unsupported PNG chunk");
+      // Ancillary source metadata is discarded by canonical re-encoding.
     }
     offset = dataEnd + 4;
     chunkIndex += 1;
@@ -254,9 +192,6 @@ function parseJpeg(
       if (length < 7) throw new TypeError("invalid JPEG frame");
       height = u16be(bytes, offset + 3);
       width = u16be(bytes, offset + 5);
-    }
-    if ((marker >= 0xe0 && marker <= 0xef) || marker === 0xfe) {
-      rejectActiveMetadata(bytes.subarray(offset + 2, offset + length));
     }
     if (marker === 0xda) {
       offset += length;
@@ -326,12 +261,9 @@ function parseWebp(
       height =
         u16be(Uint8Array.of(bytes[data + 9], bytes[data + 8]), 0) & 0x3fff;
       sawImage = true;
-    } else if (type === "EXIF" || type === "XMP ") {
-      rejectActiveMetadata(bytes.subarray(data, end));
-    } else if (type === "ICCP") {
-      throw new TypeError("embedded WebP color profiles are forbidden");
-    } else if (type !== "ALPH") {
-      throw new TypeError("unsupported WebP chunk");
+    } else {
+      // Source metadata and unknown non-animation chunks are decoded, then
+      // discarded by the canonical PNG encoder.
     }
     offset = end + (length & 1);
   }
@@ -355,29 +287,27 @@ function requireSafeDimensions(width: number, height: number): void {
   }
 }
 
-function decodeImage(
-  bytes: Uint8Array,
-): Readonly<{ width: number; height: number }> {
-  let decoded: PhotonImage | undefined;
-  try {
-    decoded = PhotonImage.new_from_byteslice(bytes);
-    return { width: decoded.get_width(), height: decoded.get_height() };
-  } catch {
-    throw new TypeError("asset compressed payload is not decodable");
-  } finally {
-    decoded?.free();
+function assertCanonicalPng(bytes: Uint8Array): void {
+  let offset = PNG_SIGNATURE.length;
+  while (offset < bytes.length) {
+    const length = u32be(bytes, offset);
+    const type = ascii(bytes, offset + 4, 4);
+    if (!["IHDR", "PLTE", "IDAT", "IEND"].includes(type)) {
+      throw new TypeError("canonical PNG contains metadata");
+    }
+    offset += 12 + length;
   }
 }
 
-export async function validateImageAsset(
+export async function canonicalizeImageAsset(
   bytes: Uint8Array,
   contentType: string,
-  metadata: AssetUploadMetadataV1,
-): Promise<ValidatedImage> {
+  metadata: AssetUploadMetadataV2,
+): Promise<CanonicalImage> {
   if (bytes.byteLength < 12 || bytes.byteLength > MAX_MEDIA_BYTES) {
     throw new TypeError("asset byte length exceeds limit");
   }
-  if (contentType !== metadata.mime_type)
+  if (contentType !== metadata.source_mime_type)
     throw new TypeError("asset MIME mismatch");
   let dimensions: Readonly<{ width: number; height: number }>;
   if (contentType === "image/png") dimensions = parsePng(bytes);
@@ -385,57 +315,93 @@ export async function validateImageAsset(
   else if (contentType === "image/webp") dimensions = parseWebp(bytes);
   else throw new TypeError("unsupported asset MIME type");
   requireSafeDimensions(dimensions.width, dimensions.height);
-  const decodedDimensions = decodeImage(bytes);
-  requireSafeDimensions(decodedDimensions.width, decodedDimensions.height);
+  const sourceDigest = await sha256Hex(bytes);
   if (
-    decodedDimensions.width !== dimensions.width ||
-    decodedDimensions.height !== dimensions.height
-  ) {
-    throw new TypeError("asset container and decoded dimensions disagree");
-  }
-  const digest = await sha256Hex(bytes);
-  if (
-    digest !== metadata.sha256 ||
-    bytes.byteLength !== metadata.byte_count ||
-    dimensions.width !== metadata.width ||
-    dimensions.height !== metadata.height
+    sourceDigest !== metadata.source_sha256 ||
+    bytes.byteLength !== metadata.source_byte_count ||
+    dimensions.width !== metadata.source_width ||
+    dimensions.height !== metadata.source_height
   ) {
     throw new TypeError("asset digest or metadata mismatch");
   }
+  let decoded: PhotonImage | undefined;
+  let canonicalBytes: Uint8Array;
+  try {
+    decoded = PhotonImage.new_from_byteslice(bytes);
+    const decodedWidth = decoded.get_width();
+    const decodedHeight = decoded.get_height();
+    requireSafeDimensions(decodedWidth, decodedHeight);
+    if (
+      decodedWidth !== dimensions.width ||
+      decodedHeight !== dimensions.height
+    ) {
+      throw new TypeError("asset container and decoded dimensions disagree");
+    }
+    canonicalBytes = Uint8Array.from(decoded.get_bytes());
+  } catch (error) {
+    if (error instanceof TypeError) throw error;
+    throw new TypeError("asset compressed payload is not decodable");
+  } finally {
+    decoded?.free();
+  }
+  if (canonicalBytes.byteLength > MAX_MEDIA_BYTES) {
+    throw new TypeError("canonical asset byte length exceeds limit");
+  }
+  const canonicalDimensions = parsePng(canonicalBytes);
+  assertCanonicalPng(canonicalBytes);
+  if (
+    canonicalDimensions.width !== dimensions.width ||
+    canonicalDimensions.height !== dimensions.height
+  ) {
+    throw new TypeError("canonical asset dimensions disagree");
+  }
   return {
-    mimeType: metadata.mime_type,
+    bytes: canonicalBytes,
+    sha256: await sha256Hex(canonicalBytes),
+    byteCount: canonicalBytes.byteLength,
+    mimeType: "image/png",
     width: dimensions.width,
     height: dimensions.height,
-    extension: MIME_EXTENSION[metadata.mime_type],
+    extension: "png",
   };
 }
 
+type StoredAssetDescriptor = Readonly<{
+  sha256: string;
+  sourceSha256: string;
+  byteCount: number;
+  mimeType: "image/png";
+  width: number;
+  height: number;
+}>;
+
 function expectedMetadata(
-  metadata: AssetUploadMetadataV1,
+  asset: StoredAssetDescriptor,
 ): Readonly<Record<string, string>> {
   return {
-    sha256: metadata.sha256,
-    byteCount: String(metadata.byte_count),
-    width: String(metadata.width),
-    height: String(metadata.height),
+    sha256: asset.sha256,
+    sourceSha256: asset.sourceSha256,
+    byteCount: String(asset.byteCount),
+    width: String(asset.width),
+    height: String(asset.height),
   };
 }
 
 async function verifiedObjectBytes(
   bucket: R2BucketLike,
   key: string,
-  metadata: AssetUploadMetadataV1,
+  asset: StoredAssetDescriptor,
 ): Promise<Uint8Array> {
   const object = await bucket.get(key);
   if (
     object === null ||
     object.key !== key ||
-    object.size !== metadata.byte_count ||
-    object.httpMetadata?.contentType !== metadata.mime_type
+    object.size !== asset.byteCount ||
+    object.httpMetadata?.contentType !== asset.mimeType
   ) {
     throw new Error("asset storage verification conflict");
   }
-  const expected = expectedMetadata(metadata);
+  const expected = expectedMetadata(asset);
   if (
     Object.keys(object.customMetadata ?? {}).length !==
       Object.keys(expected).length ||
@@ -447,8 +413,8 @@ async function verifiedObjectBytes(
   }
   const bytes = new Uint8Array(await object.arrayBuffer());
   if (
-    bytes.byteLength !== metadata.byte_count ||
-    (await sha256Hex(bytes)) !== metadata.sha256
+    bytes.byteLength !== asset.byteCount ||
+    (await sha256Hex(bytes)) !== asset.sha256
   ) {
     throw new Error("asset storage verification conflict");
   }
@@ -457,26 +423,33 @@ async function verifiedObjectBytes(
 
 export async function storeVerifiedAsset(
   bucket: R2BucketLike,
-  bytes: Uint8Array,
-  metadata: AssetUploadMetadataV1,
-  image: ValidatedImage,
+  metadata: AssetUploadMetadataV2,
+  image: CanonicalImage,
 ): Promise<string> {
-  const key = `assets/sha256/${metadata.sha256}.${image.extension}`;
+  const key = `assets/sha256/${image.sha256}.${image.extension}`;
+  const descriptor: StoredAssetDescriptor = {
+    sha256: image.sha256,
+    sourceSha256: metadata.source_sha256,
+    byteCount: image.byteCount,
+    mimeType: image.mimeType,
+    width: image.width,
+    height: image.height,
+  };
   const existing = await bucket.get(key);
   if (existing !== null) {
-    await verifiedObjectBytes(bucket, key, metadata);
+    await verifiedObjectBytes(bucket, key, descriptor);
     return key;
   }
-  const created = await bucket.put(key, bytes, {
+  const created = await bucket.put(key, image.bytes, {
     onlyIf: { etagDoesNotMatch: "*" },
-    httpMetadata: { contentType: metadata.mime_type },
-    customMetadata: expectedMetadata(metadata),
+    httpMetadata: { contentType: image.mimeType },
+    customMetadata: expectedMetadata(descriptor),
   });
   if (created === null) {
-    await verifiedObjectBytes(bucket, key, metadata);
+    await verifiedObjectBytes(bucket, key, descriptor);
     return key;
   }
-  await verifiedObjectBytes(bucket, key, metadata);
+  await verifiedObjectBytes(bucket, key, descriptor);
   return key;
 }
 
@@ -484,8 +457,9 @@ type EligibleAssetRow = Readonly<{
   asset_id: string;
   packet_id: string;
   sha256: string;
+  source_sha256: string;
   r2_key: string;
-  mime_type: AssetUploadMetadataV1["mime_type"];
+  mime_type: "image/png";
   byte_count: number;
   width: number;
   height: number;
@@ -493,12 +467,12 @@ type EligibleAssetRow = Readonly<{
   alt_text: string;
   source: string;
   source_url: string | null;
-  rights_basis: AssetUploadMetadataV1["rights_basis"];
+  rights_basis: AssetUploadMetadataV2["rights_basis"];
   rights_status: "approved";
   usage_status: "approved";
   dlp_status: "passed";
   sanitization_status: "passed";
-  perceptual_dedup_status: AssetUploadMetadataV1["perceptual_dedup_status"];
+  perceptual_dedup_status: AssetUploadMetadataV2["perceptual_dedup_status"];
 }>;
 
 export async function resolvePublishedMedia(
@@ -509,7 +483,8 @@ export async function resolvePublishedMedia(
   if (!SHA256.test(digest)) return null;
   const row = await db
     .prepare(
-      `SELECT a.asset_id, a.packet_id, a.sha256, a.r2_key, a.mime_type,
+      `SELECT a.asset_id, a.packet_id, a.sha256, a.source_sha256,
+              a.r2_key, a.mime_type,
               a.byte_count, a.width, a.height, a.captured_at, a.alt_text,
               a.source, a.source_url, a.rights_basis, a.rights_status,
               a.usage_status, a.dlp_status, a.sanitization_status,
@@ -545,24 +520,12 @@ export async function resolvePublishedMedia(
   if (row.r2_key !== canonicalKey) return null;
   try {
     const bytes = await verifiedObjectBytes(bucket, row.r2_key, {
-      schema_version: "asset-upload.v1",
-      packet_id: row.packet_id,
-      asset_id: row.asset_id,
       sha256: row.sha256,
-      byte_count: row.byte_count,
-      mime_type: row.mime_type,
+      sourceSha256: row.source_sha256,
+      byteCount: row.byte_count,
+      mimeType: row.mime_type,
       width: row.width,
       height: row.height,
-      captured_at: row.captured_at,
-      alt_text: row.alt_text,
-      source: row.source,
-      source_url: row.source_url,
-      rights_basis: row.rights_basis,
-      rights_status: row.rights_status,
-      usage_status: row.usage_status,
-      dlp_status: row.dlp_status,
-      sanitization_status: row.sanitization_status,
-      perceptual_dedup_status: row.perceptual_dedup_status,
     });
     return { bytes, mimeType: row.mime_type };
   } catch {

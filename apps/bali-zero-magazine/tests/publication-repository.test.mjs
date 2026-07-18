@@ -115,6 +115,78 @@ test("publication migration encodes replay, singleton-head, uniqueness, and stat
   }
 });
 
+test("AssetUploadV2 migration preserves legacy assets with an explicit source manifest", () => {
+  const sqlite = new DatabaseSync(":memory:");
+  for (const filename of [
+    "0000_magazine_core.sql",
+    "0001_thick_virginia_dare.sql",
+  ]) {
+    sqlite.exec(
+      readFileSync(
+        new URL(`../drizzle/${filename}`, import.meta.url),
+        "utf8",
+      ).replaceAll("--> statement-breakpoint", ""),
+    );
+  }
+  sqlite
+    .prepare(
+      `INSERT INTO assets(
+         asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
+         height, alt_text, source, rights_basis, rights_status, usage_status,
+         dlp_status, sanitization_status, perceptual_dedup_status, status
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      "legacy-asset",
+      "legacy-packet",
+      HASH_A,
+      `assets/sha256/${HASH_A}.png`,
+      "image/png",
+      1024,
+      1200,
+      800,
+      "Legacy editorial image",
+      "Bali Zero editorial desk",
+      "internal-owned",
+      "approved",
+      "approved",
+      "passed",
+      "passed",
+      "unique",
+      "verified",
+    );
+  sqlite.exec(
+    readFileSync(
+      new URL("../drizzle/0002_known_the_hand.sql", import.meta.url),
+      "utf8",
+    ).replaceAll("--> statement-breakpoint", ""),
+  );
+  assert.deepEqual(
+    {
+      ...sqlite
+        .prepare(
+          `SELECT sha256, source_sha256, source_byte_count, source_mime_type,
+                  source_width, source_height, byte_count, mime_type, width, height
+           FROM assets WHERE asset_id = 'legacy-asset'`,
+        )
+        .get(),
+    },
+    {
+      sha256: HASH_A,
+      source_sha256: HASH_A,
+      source_byte_count: 1024,
+      source_mime_type: "image/png",
+      source_width: 1200,
+      source_height: 800,
+      byte_count: 1024,
+      mime_type: "image/png",
+      width: 1200,
+      height: 800,
+    },
+  );
+  sqlite.close();
+});
+
 class SqliteD1Statement {
   constructor(owner, sql, values = []) {
     this.owner = owner;
@@ -326,13 +398,19 @@ function edition(overrides = {}) {
 function seedAsset(db, { assetId = "asset-1", digest = HASH_A } = {}) {
   db.execute(
     `INSERT INTO assets(
-       asset_id, packet_id, sha256, r2_key, mime_type, byte_count, width,
+       asset_id, packet_id, sha256, source_sha256, source_byte_count,
+       source_mime_type, source_width, source_height, r2_key, mime_type, byte_count, width,
        height, alt_text, source, rights_basis, rights_status, usage_status,
        dlp_status, sanitization_status, perceptual_dedup_status, status
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     assetId,
     "asset-packet-1",
     digest,
+    digest,
+    1024,
+    "image/webp",
+    1200,
+    800,
     `assets/sha256/${digest}.webp`,
     "image/webp",
     1024,

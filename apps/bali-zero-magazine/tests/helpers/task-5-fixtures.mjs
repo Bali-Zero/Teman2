@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
+import { deflateSync } from "node:zlib";
 
 import { machineSignatureHeaders } from "../../lib/server/hmac.ts";
 import { sha256Hex } from "../../lib/server/security.ts";
@@ -301,6 +302,27 @@ function withPngMetadata(typeName, data) {
   );
 }
 
+export const PNG_WITH_ZTXT = withPngMetadata(
+  "zTXt",
+  concatBytes(
+    new TextEncoder().encode("Comment\0\0"),
+    new Uint8Array(deflateSync("Bali Zero editorial metadata")),
+  ),
+);
+
+export const PNG_WITH_ICCP = withPngMetadata(
+  "iCCP",
+  concatBytes(
+    new TextEncoder().encode("sRGB IEC61966-2.1\0\0"),
+    new Uint8Array(deflateSync("representative-icc-profile")),
+  ),
+);
+
+export const PNG_WITH_CABX = withPngMetadata(
+  "caBX",
+  new TextEncoder().encode("representative-c2pa-assertion"),
+);
+
 export const ACTIVE_PNG_TEXT = withPngMetadata(
   "tEXt",
   activeMetadataPayload("Comment\0"),
@@ -321,6 +343,18 @@ function withJpegMetadata(marker, prefix) {
 
 export const ACTIVE_JPEG_APP = withJpegMetadata(0xe1, "Exif\0\0");
 export const ACTIVE_JPEG_COMMENT = withJpegMetadata(0xfe, "Comment\0");
+export const JPEG_WITH_XMP = withJpegMetadata(
+  0xe1,
+  "http://ns.adobe.com/xap/1.0/\0<?xpacket benign?>",
+);
+export const JPEG_WITH_ICC = withJpegMetadata(
+  0xe2,
+  "ICC_PROFILE\0\u0001\u0001representative-srgb-profile",
+);
+export const JPEG_WITH_C2PA = withJpegMetadata(
+  0xeb,
+  "JUMBF\0representative-c2pa-claim",
+);
 
 function riffChunk(typeName, data) {
   const chunk = new Uint8Array(8 + data.byteLength + (data.byteLength & 1));
@@ -387,15 +421,23 @@ export const MALFORMED_WEBP = (() => {
 })();
 
 export async function validAssetMetadata(overrides = {}, bytes = VALID_PNG) {
-  return {
-    schema_version: "asset-upload.v1",
+  const {
+    byte_count: sourceByteCount,
+    mime_type: sourceMimeType,
+    width: sourceWidth,
+    height: sourceHeight,
+    ...v2Overrides
+  } = overrides;
+  delete v2Overrides.sha256;
+  const metadata = {
+    schema_version: "asset-upload.v2",
     packet_id: "asset-packet-task-5",
     asset_id: "asset-task-5",
-    sha256: await sha256Hex(bytes),
-    byte_count: bytes.byteLength,
-    mime_type: "image/png",
-    width: 1,
-    height: 1,
+    source_sha256: await sha256Hex(bytes),
+    source_byte_count: sourceByteCount ?? bytes.byteLength,
+    source_mime_type: sourceMimeType ?? "image/png",
+    source_width: sourceWidth ?? 1,
+    source_height: sourceHeight ?? 1,
     captured_at: "2026-07-18T01:00:00Z",
     alt_text: "A verified editorial image",
     source: "Bali Zero editorial desk",
@@ -406,8 +448,29 @@ export async function validAssetMetadata(overrides = {}, bytes = VALID_PNG) {
     dlp_status: "passed",
     sanitization_status: "passed",
     perceptual_dedup_status: "unique",
-    ...overrides,
+    ...v2Overrides,
   };
+  return Object.defineProperties(metadata, {
+    sha256: { value: metadata.source_sha256, enumerable: false },
+    byte_count: { value: metadata.source_byte_count, enumerable: false },
+    mime_type: { value: metadata.source_mime_type, enumerable: false },
+    width: { value: metadata.source_width, enumerable: false },
+    height: { value: metadata.source_height, enumerable: false },
+  });
+}
+
+export async function validAssetMetadataV2(overrides = {}, bytes = VALID_PNG) {
+  return validAssetMetadata(
+    {
+      packet_id: "asset-packet-task-5-v2",
+      asset_id: "asset-task-5-v2",
+      captured_at: "2026-07-17T20:00:00Z",
+      alt_text: "Bali Zero editorial image",
+      source_url: "https://balizero.com/editorial/source",
+      ...overrides,
+    },
+    bytes,
+  );
 }
 
 export function seedSourceSystem(db) {
