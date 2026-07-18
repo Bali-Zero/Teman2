@@ -136,16 +136,19 @@ forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.p
   OCR pass + full geometry lint (overlap/off-grid/DOM-overflow). Capture
   `research/marketing/2026-07-18-wr2-render-qa-saturated-hero-headline-lever-gap.md` · memory
   `discovery_wr2_render_qa_saturated_hero_headline_lever_gap_2026_07_18`.
-- **Hero-cover headline can't be grown for IG thumbnail — NEXT B** (growth-loop R, 2026-07-18). Live
-  designer-loop logs (07-14/07-16/**07-18 05:37**) accept hero-photo covers as "composition debt" with
-  headlines too small to survive the IG grid thumbnail. Root cause = composer↔critic split: `composer.py:354`
-  HAS a `heading:(100,150)` grow clamp (a test exercises it) but the critic lever menu + prompt
-  (`claude_vision.py:82,158`) exclude `grow_font target=heading` and tell it to ignore thumbnail-scale →
-  **dormant config, not dead capability**. The fix (add heading to the menu/prompt for thumbnail scale) MUST
-  add a fit/overflow guard: the clamp bounds font px, NOT box overflow (`:421` abs px vs `:499` fit-at-84px) —
-  Codex-caught, the naive fix would ship an off-canvas title. 150px isn't a universal thumbnail guarantee
-  (~110px context → ~15px); check copy-length/caption-template as co-cause. Behavior change ⇒ generator≠grader
-  - short/long-hook tests; the unbuilt thumbnail-OCR (line above) is its verifier.
+- **Hero-cover headline thumbnail illegibility — the grow-lever was REFUTED, the real cure is the fit
+  policy (Zero-gated)** (growth-loop B, 2026-07-18, #2750). The `grow_font target=heading` lever was built
+  - hardened over 3 adversarial rounds, then MEASURED against prod (n=113 cover instances) → fires on ~1.8%
+    ⇒ refuted, code reverted, capture only. **Real cause:** `_wrap_headline_sentence_aware` (ALWAYS-ON
+    cover-photo fit) shrinks **83.2% of covers to its 60px floor** to keep every sentence on its own line — at
+    IG-grid downscale ~6-8px = the "caption-sized hook" the designer-loop logs. The lever can't help: the
+    renderer defers ~95% via a silent `continue`, so opening the critic prompt alone = a silent no-op
+    (cicatrix #2). **Real fix (NEXT B, Zero-gated):** re-tune the fit policy — a thumbnail-legible floor as the
+    HARD bound, sentence integrity yields to wrapping; ADD a vertical/max-lines guard (content anchored bottom
+    270px, `overflow:hidden` clips) + an indivisible-token guard; reconcile the composer-150px vs critic-110px
+    grid factor. Blast radius 83% of covers → brand call + render QA on a real deck. Capture
+    `research/marketing/2026-07-18-wr2-cover-headline-thumbnail-illegibility-root-cause.md` · memory
+    `discovery_wr2_cover_headline_thumbnail_illegibility_root_cause_2026_07_18`.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
   M5 queue shared-lock protocol · plist validator red on main ·
   19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).
