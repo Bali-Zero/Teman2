@@ -350,6 +350,22 @@ class TestPricingTool:
     def test_description(self):
         assert "MANDATORY" in self._make_tool().description
 
+    def test_description_no_longer_advertises_bare_domain_words(self):
+        # Guilt: 'PT PMA'/'KITAS'/'visa' are domain words, not price-intent
+        # words — any visa/company question satisfied them and double-
+        # triggered get_pricing on non-price questions (unsolicited price
+        # dumps). They must not appear as call triggers anymore.
+        description = self._make_tool().description
+        assert "'PT PMA'" not in description
+        assert "'KITAS'" not in description
+        assert "'visa'" not in description
+
+    def test_description_still_advertises_genuine_price_intent_words(self):
+        # Innocence: real price-intent triggers stay intact.
+        description = self._make_tool().description
+        assert "'quanto costa'" in description
+        assert "'price'" in description
+
     def test_parameters_schema(self):
         schema = self._make_tool().parameters_schema
         assert "service_type" in schema["properties"]
@@ -448,9 +464,9 @@ class TestTeamKnowledgeTool:
 
         tool = TeamKnowledgeTool(db_pool=None)
         with patch("pathlib.Path.exists", return_value=False):
-            tool._get_data_file_path()
-        # May return None or a path depending on which paths exist
-        # The important thing is it doesn't raise
+            result = tool._get_data_file_path()
+        # Path.exists patched False for every candidate path -> deterministic None
+        assert result is None
 
     def test_load_team_data_with_no_file(self):
         from backend.services.rag.agentic.tools import TeamKnowledgeTool
