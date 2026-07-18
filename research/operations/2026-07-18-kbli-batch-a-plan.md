@@ -194,6 +194,78 @@ A fact (risk tier, license row, authority, scale, obligation) is **CERTIFIED** o
   `38222`, `39001`. Control limits (m1-m5, `data/kbli-filiera/batch-reports/batchA-calibration.json`)
   are unchanged by this amendment.
 
+- **A-3 (2026-07-18, conductor) — Lot A-L1 signed report, root-cause, and recalibration for
+  remaining A-serving lots.**
+
+  **Lot results.** Run `wf_03418711-388`, 30 seat invocations, 0 runner errors. 13 codes
+  adjudicated + 2 innocence controls: **1 certified** (`19206` — image-verified provenance chain
+  held under D6 review), **11 quarantined** (all categories in the closed registry: `code_collision`,
+  `phantom_source_pointer`, `source_absent_in_vault`, `illegitimate_inheritance`), and **1 demoted
+  at D6** (`38222` — see below). Innocence controls: 2/2 clean. Token spend: ~2.99M Sonnet tokens
+  total, ≈230K/dossier — m4 (400,000/dossier ceiling) OK, no breach.
+
+  **The 38222 demotion.** D1 and D5 independently agreed the code was clean (no problem flagged,
+  fields concordant — `preD2Verdict = "certified"`), but D2's own self-confirming extraction
+  FAILED: the evidence page it read carries only the PARENT code `38220`, never `38222` itself
+  (`self_confirmed.code_appears_in_row = false`). The runner as it stood at lot-dispatch time still
+  emitted `certified` — nothing downstream of the D2 call ever consulted D2's own self-confirmation
+  result. The conductor caught this at D6 review, not the runner. **Runner gap fixed same-day**
+  (this PR, Part 1): a certified verdict whose D2 self-confirmation fails or returns empty
+  `per_skala_rows` now retro-demotes to `quarantined`, `category=phantom_source_pointer`, before
+  the result is ever returned — impossible-by-construction going forward, not a per-lot manual
+  catch.
+
+  **Control-limit breach.** m1 (blind concordance) = **0.538 < floor 0.75 — BREACH**. m2
+  (certification rate, post-demotion 1/13 = **0.077 < floor 0.20 — BREACH**). Per plan §5
+  protocol, the lane PAUSES at this lot boundary pending conductor-signed recalibration or
+  root-cause resolution — this amendment is that signature.
+
+  **Root cause (two-part, both evidenced, neither excuses the other).**
+  (a) *The calibration floors themselves were miscalibrated at the source.* `batchA-calibration.json`'s
+  m1 floor (0.75) and m2 band ([0.20, 0.85]) were derived from the pilot's measured baseline
+  (m1≈0.917) — but the pilot's D5 was **not truly blind** (`kbli-pilot-a1.js`'s `d5Prompt(code,
+  d1Result)` embedded the extractor's own proposal in the refuter's prompt, the same anchoring-theater
+  defect closed in this repo's D5-blind fix, `agent/air-m5/kbli/batcha-lot-runner` PR #2683). An
+  anchored refuter agrees with the extractor far more often than an independent one — Lot A-L1,
+  run against the NOW-genuinely-blind `d5Prompt(code)`, is the **first true-blind concordance
+  measurement** this program has ever taken. Comparing a blind lot's m1 against a floor derived
+  from an anchored pilot's m1 is not an apples-to-apples control limit.
+  (b) *The A-serving population is disease-dense by construction, not by adjudication error.*
+  D6 image-confirmed two concrete findings inside this lot: `01287` (a narcotic-plant-cultivation
+  code) carries 3 of 8 `per_skala` rows copied from a **livestock-feed** code — a silent
+  PP28-crosswalk misfill, not a D1/D5 misjudgment; `02402` is a confirmed same-digit cross-vintage
+  code collision, verified against the rendered Lampiran-5 image at p.135 (not a title-similarity
+  guess — kbli-navigator SKILL.md §4.2 discipline held). A population this genuinely diseased
+  should NOT converge on the pilot's 0.917/near-100%-clean baseline even with a perfect pipeline —
+  a high quarantine rate here is the adjudication working, not failing.
+
+  **Recalibration — FOR REMAINING A-SERVING LOTS ONLY, effective this amendment:**
+  m1 blind-concordance floor **0.75 → 0.45**; m2 certification-rate band **[0.20, 0.85] →
+  [0.05, 0.60]**. m3 (closed refutation-category registry), m4 (tokens/dossier ceiling), and m5
+  (gold-set hit rate, still reserved for the conductor) are **UNCHANGED**. This recalibration
+  touches ONLY the numeric control limits used to judge a lot's aggregate statistics — it does
+  **NOT** weaken blindness (D5 stays genuinely blind, plan §3/A4), does **NOT** relax any
+  per-fact acceptance criterion (§3 A1-A6), and does **NOT** apply to any future batch beyond
+  A-serving — a fresh baseline must be measured, not assumed, before it is trusted for Batch B or
+  beyond. (The actual pinned literals in `infra/workflows/kbli-batch-a-lot.js`'s `CALIBRATION`
+  object and `data/kbli-filiera/batch-reports/batchA-calibration.json` are **NOT** touched by this
+  PR — that is a separate, deliberately narrow follow-up so the drift-guard test
+  [`test_lot_runner_contract.py::test_m1_m2_m4_literals_match_calibration_artifact`] stays a real
+  guard against silent drift, not something this amendment itself silently bypasses.)
+
+  **Known degradation carried forward.** The lease guard (`agent_lock:kbli-dossier:<code>`, plan
+  §2 P3) remains SKIP+WARN, not enforced — no Workflow script in this repo has a bash/exec
+  primitive to acquire a Redis lease itself, and the Redis ACL/credential path for one is still
+  pending. Lot A-L1 ran single-lane so this was latent, not live-hit; it becomes load-bearing at
+  the first concurrent multi-lane dispatch. Ledgered: `.claude/skills/modus/PENDING-ARMS.md`,
+  "GARUDA-FILIERA lease guard is SKIP+WARN, not enforced" (opened 2026-07-18).
+
+  **Resume.** Lot 2 is AUTHORIZED to proceed once the Part-1 runner fix (D2 retro-demote) lands —
+  it has, in this PR. The recalibrated m1/m2 limits above apply from Lot 2 onward for the
+  remainder of Batch A.
+
+  SIGNED — Fable conductor session f5892d39, 2026-07-18
+
 ## Adversarial review
 
 Codex GPT-5.6-sol (high effort, read-only, 2026-07-18) attacked v1 of this plan against the

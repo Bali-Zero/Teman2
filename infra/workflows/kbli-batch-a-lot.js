@@ -656,11 +656,10 @@ async function adjudicateCode(code) {
     Boolean(d5 && d5.abstain && d5.abstain.needed);
   // an out-of-scope-facet claim from EITHER seat overrides the diff outright — "the visible facts
   // agree" is a weaker claim than "this needs evidence we don't have this pass" (plan §8 A-1).
-  const verdict = abstainNeeded ? "abstained" : diff.verdict;
-  const quarantined = verdict === "quarantined";
+  const preD2Verdict = abstainNeeded ? "abstained" : diff.verdict;
 
   let d2 = null;
-  if (verdict === "certified" && d1 && d1.licensing_inherits === true) {
+  if (preD2Verdict === "certified" && d1 && d1.licensing_inherits === true) {
     d2 = await agent(d2Prompt(code), {
       label: `D2:${code}`,
       phase: "Adjudicate",
@@ -668,6 +667,33 @@ async function adjudicateCode(code) {
       model: "sonnet",
     });
   }
+
+  // D2 SELF-CONFIRM RETRO-DEMOTE (post-Lot-A-L1 close-out fix, 2026-07-18): a certified verdict
+  // whose D2 extraction FAILED its own self-confirming guard (self_confirmed.code_appears_in_row
+  // !== true, red-team F8 locator-poisoning check) or came back with EMPTY per_skala_rows must be
+  // impossible by construction — "certified" cannot mean "D1/D5 agreed AND we never actually
+  // confirmed the row". This is exactly what happened to code 38222 in Lot A-L1: D1 and D5
+  // independently agreed clean (preD2Verdict="certified"), but the D2 evidence page only carried
+  // the PARENT code 38220, not 38222 itself — self_confirmed.code_appears_in_row=false — and the
+  // runner still emitted "certified" because nothing downstream of D2 ever looked at its own
+  // self-confirmation result. The conductor caught it at D6 review; this closes the runner gap so
+  // the same class of miss can't reach "certified" again. Category=phantom_source_pointer (closed
+  // registry, plan §5 m3): "the cited row/source doesn't actually confirm the code" is precisely
+  // what a failed self-confirmation means.
+  const d2SelfConfirmFailed =
+    d2 !== null &&
+    (!d2.self_confirmed ||
+      d2.self_confirmed.code_appears_in_row !== true ||
+      !Array.isArray(d2.per_skala_rows) ||
+      d2.per_skala_rows.length === 0);
+
+  const verdict = d2SelfConfirmFailed ? "quarantined" : preD2Verdict;
+  const quarantined = verdict === "quarantined";
+  const category = quarantined
+    ? d2SelfConfirmFailed
+      ? "phantom_source_pointer"
+      : diff.category
+    : null;
 
   return {
     code,
@@ -679,9 +705,10 @@ async function adjudicateCode(code) {
     quarantined,
     concordant: diff.concordant,
     verdict,
-    category: verdict === "quarantined" ? diff.category : null,
+    category,
     divergent: diff.divergent,
     category_mismatch: diff.category_mismatch,
+    d2_self_confirm_failed: d2SelfConfirmFailed,
     seatInvocations: d2 ? 3 : 2,
   };
 }

@@ -18,6 +18,10 @@ pilot-report criterion-#6 fix:
    draft embedding `JSON.stringify(d1Result)` directly in the refuter's prompt (anchoring theater,
    copied verbatim from kbli-pilot-a1.js, which has the identical unfixed defect). This test is
    the regression guard for that exact class of bug.
+5. A certified verdict whose D2 extraction FAILED self-confirmation (code_appears_in_row !== true)
+   or came back with an empty per_skala_rows list MUST retro-demote to quarantined — the Lot A-L1
+   close-out regression guard for code 38222 (D1/D5 agreed clean, but D2's evidence page only
+   carried the parent code 38220; the runner still emitted certified).
 
 The calibration artifact (data/kbli-filiera/batch-reports/batchA-calibration.json) ships on a
 separate PR (agent/air-m5/kbli/batcha-calibration) — test 1 SKIPS (not fails) if that file is not
@@ -194,3 +198,43 @@ def test_innocence_d1_prompt_may_reference_evidence(js_source: str) -> None:
     _params, body = _function_signature_and_body(js_source, "d1Prompt")
     assert "canonical.json" in body, "d1Prompt should legitimately reference the evidence dir"
     assert "crosswalk" in body and "pp28" in body
+
+
+# ---------------------------------------------------------------------------
+# 5. D2 self-confirm failure retro-demotes a certified verdict (Lot A-L1 close-out, code 38222)
+# ---------------------------------------------------------------------------
+
+def test_guilt_d2_self_confirm_failure_retro_demotes_certified(js_source: str) -> None:
+    """GUILT: a certified verdict whose D2 extraction failed self-confirmation
+    (code_appears_in_row !== true) or came back with empty per_skala_rows MUST retro-demote to
+    quarantined — the regression guard for code 38222 in Lot A-L1 (D1/D5 agreed clean, D2's
+    evidence page only had the parent code 38220, but the runner still emitted certified)."""
+    assert re.search(r"d2SelfConfirmFailed", js_source), (
+        "no d2SelfConfirmFailed guard found — a failed D2 self-confirmation could still reach certified"
+    )
+    assert re.search(r"code_appears_in_row\s*!==\s*true", js_source), (
+        "d2SelfConfirmFailed does not check self_confirmed.code_appears_in_row !== true"
+    )
+    assert re.search(r"per_skala_rows\.length\s*===\s*0", js_source), (
+        "d2SelfConfirmFailed does not check for an empty per_skala_rows extraction"
+    )
+    assert re.search(
+        r'verdict\s*=\s*d2SelfConfirmFailed\s*\?\s*"quarantined"\s*:\s*preD2Verdict',
+        js_source,
+    ), "the final verdict is not gated on d2SelfConfirmFailed — retro-demote is not wired"
+    assert '"phantom_source_pointer"' in js_source
+
+
+def test_innocence_successful_d2_keeps_certified_verdict(js_source: str) -> None:
+    """INNOCENCE: a SUCCESSFUL D2 extraction (self-confirmed, non-empty rows) must NOT be
+    downgraded, and a code that never triggers D2 at all must be unaffected — proves the
+    retro-demote fires only on a genuine D2 failure, never on every D2 call or on codes where D2
+    never ran (d2 stays null)."""
+    assert re.search(
+        r'const verdict = d2SelfConfirmFailed \? "quarantined" : preD2Verdict;',
+        js_source,
+    ), "verdict computation does not fall back to preD2Verdict when D2 self-confirms successfully"
+    assert re.search(r"d2SelfConfirmFailed\s*=\s*\n?\s*d2\s*!==\s*null\s*&&", js_source), (
+        "d2SelfConfirmFailed is not gated on d2 !== null — a code that never ran D2 could be "
+        "wrongly demoted"
+    )
