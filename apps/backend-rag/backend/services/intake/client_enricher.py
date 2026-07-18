@@ -21,15 +21,32 @@ coercion)]) is the source of truth, so adding a doc_type is a one-line change.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from collections.abc import Callable
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 import asyncpg
 
 logger = logging.getLogger("zantara.intake.client_enricher")
+
+# Columns the GATE-11 verified-promotion check applies to (identity_backfill
+# provenance is only ever recorded for these two — see research/operations/
+# 2026-07-18-intake-identity-backfill-design.md §3 rule 6/11).
+_BACKFILL_PROVENANCE_COLUMNS = ("passport_number", "kitas_number")
+
+
+def _normalize_for_promotion(value: Any) -> str:
+    """Loose identifier normaliser for the GATE-11 verified-promotion check.
+
+    Broader than the CRM's own passport/kitas normalisers (strips ANY
+    non-alnum char, not just separators): this only decides "is the document
+    confirming the SAME identifier already on the card", not how the value
+    is canonically stored.
+    """
+    return re.sub(r"[^A-Za-z0-9]", "", str(value)).upper()
 
 
 def _to_date(value: Any) -> date | None:
@@ -249,12 +266,31 @@ async def enrich_client_from_extracted_fields(
             "WHERE table_name = 'clients' AND table_schema = current_schema()"
         )
     }
-    current_full_name: str | None = None
+
+    # One upfront read of everything the loop below needs: full_name (the
+    # placeholder-name guard) plus passport_number/kitas_number/custom_fields
+    # (the GATE-11 verified-promotion check — a document that CONFIRMS an id
+    # already on the card promotes its backfill provenance verified:false ->
+    # true). Schema-drift-guarded like every column below: a DB missing one
+    # of these (e.g. an older dev snapshot) just gets None for it.
+    fetch_cols = [
+        c for c in ("full_name", "passport_number", "kitas_number", "custom_fields")
+        if c in existing_cols
+    ]
+    current: dict[str, Any] = {}
+    if fetch_cols:
+        row = await conn.fetchrow(
+            f"SELECT {', '.join(fetch_cols)} FROM clients WHERE id = $1", client_id
+        )
+        if row:
+            current = dict(row)
+    current_full_name: str | None = current.get("full_name")
 
     written: dict[str, Any] = {}
     set_parts: list[str] = []
     params: list[Any] = []
     idx = 1
+    promoted_columns: list[str] = []
     for extract_key, column, coerce in mapping:
         if column not in existing_cols:
             continue  # column not present on this DB — skip silently (schema drift)
@@ -265,15 +301,68 @@ async def enrich_client_from_extracted_fields(
         if value is None:
             continue
         if column == "full_name":
-            if current_full_name is None:
-                row = await conn.fetchrow("SELECT full_name FROM clients WHERE id = $1", client_id)
-                current_full_name = row["full_name"] if row else None
             if not _name_is_better(value, current_full_name):
                 continue
         set_parts.append(f"{column} = ${idx}")
         params.append(value)
         written[column] = value
         idx += 1
+
+        if column in _BACKFILL_PROVENANCE_COLUMNS:
+            current_value = current.get(column)
+            if current_value and _normalize_for_promotion(current_value) == _normalize_for_promotion(value):
+                promoted_columns.append(column)
+
+    # GATE-11 verified-promotion (research/operations/2026-07-18-intake-identity-
+    # backfill-design.md §3 rule 11): the document just CONFIRMED an id the
+    # backfill batch wrote as unverified — flip that provenance entry to
+    # verified so future strong-id matches on it stop degrading to
+    # LINK_CANDIDATE (see routing._classify_decision GATE-11 branch). Never
+    # allowed to break the enrichment: any failure here is logged and
+    # swallowed, the identifier column write above still commits.
+    if promoted_columns and "custom_fields" in existing_cols:
+        try:
+            cf = current.get("custom_fields")
+            if isinstance(cf, str):
+                cf = json.loads(cf)
+            if not isinstance(cf, dict):
+                cf = {}
+            backfill = cf.get("identity_backfill")
+            mutated = False
+            if isinstance(backfill, dict):
+                for col in promoted_columns:
+                    entry = backfill.get(col)
+                    if isinstance(entry, dict) and entry.get("verified") is False:
+                        entry["verified"] = True
+                        entry["verified_at"] = datetime.now(timezone.utc).isoformat()
+                        entry["verified_by"] = "doc-commit"
+                        mutated = True
+            if mutated:
+                # ::text::jsonb, not a bare jsonb-typed param: some callers run
+                # this on the FastAPI app pool (jsonb codec registered,
+                # encoder=json.dumps) and some on the intake worker's plain
+                # pool (no codec) — see writer.py's _load_json_list docstring.
+                # A bare jsonb param would get double-encoded on the codec
+                # pool (cicatrix discovery_jsonb_double_encoding_systemic /
+                # migration 243); typing the param as text and casting
+                # server-side is correct on BOTH pools.
+                set_parts.append(f"custom_fields = ${idx}::text::jsonb")
+                params.append(json.dumps(cf))
+                idx += 1
+                logger.info(
+                    "intake.client_enricher: GATE-11 promoted verified=true "
+                    "client=%s columns=%s",
+                    client_id,
+                    promoted_columns,
+                )
+        except Exception:
+            logger.warning(
+                "intake.client_enricher: GATE-11 verified-promotion failed "
+                "client=%s columns=%s (enrichment continues)",
+                client_id,
+                promoted_columns,
+                exc_info=True,
+            )
 
     if not set_parts:
         return {}
