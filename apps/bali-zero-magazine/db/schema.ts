@@ -421,11 +421,11 @@ export const editions = sqliteTable(
     ),
     check(
       "editions_kind_check",
-      sql`${table.editionKind} in ('morning', 'quiet')`,
+      sql`${table.editionKind} in ('standard', 'quiet')`,
     ),
     check(
       "editions_coverage_check",
-      sql`${table.coverageState} in ('full', 'partial', 'quiet')`,
+      sql`${table.coverageState} in ('complete', 'partial')`,
     ),
   ],
 );
@@ -548,6 +548,10 @@ export const assets = sqliteTable(
       sql`${table.status} in ('pending', 'verified', 'quarantined', 'revoked')`,
     ),
     check(
+      "assets_rights_status_check",
+      sql`${table.rightsStatus} in ('approved', 'denied', 'unknown')`,
+    ),
+    check(
       "assets_dimensions_check",
       sql`${table.width} > 0 and ${table.height} > 0`,
     ),
@@ -601,11 +605,22 @@ export const assetStatusEvents = sqliteTable(
       .references(() => assets.assetId),
     statusSeq: integer("status_seq").notNull(),
     status: text("status").notNull(),
+    rightsStatus: text("rights_status").notNull(),
     reasonCode: text("reason_code").notNull(),
     replacementAssetId: text("replacement_asset_id"),
     createdAt: createdAt(),
   },
-  (table) => [primaryKey({ columns: [table.assetId, table.statusSeq] })],
+  (table) => [
+    primaryKey({ columns: [table.assetId, table.statusSeq] }),
+    check(
+      "asset_status_events_status_check",
+      sql`${table.status} in ('pending', 'verified', 'quarantined', 'revoked')`,
+    ),
+    check(
+      "asset_status_events_rights_status_check",
+      sql`${table.rightsStatus} in ('approved', 'denied', 'unknown')`,
+    ),
+  ],
 );
 
 export const researchJobs = sqliteTable("research_jobs", {

@@ -75,6 +75,12 @@ test("publication migration encodes replay, singleton-head, uniqueness, and stat
     sql,
     /story_versions_expected_version_check[^;]+version[^;]+expected_current_version[^;]+\+ 1/i,
   );
+  assert.match(sql, /editions_kind_check[^;]+\('standard', 'quiet'\)/i);
+  assert.match(sql, /editions_coverage_check[^;]+\('complete', 'partial'\)/i);
+  assert.match(
+    sql,
+    /CREATE TABLE `asset_status_events`[^;]+`rights_status` text NOT NULL/is,
+  );
   assert.match(
     sql,
     /INSERT INTO edition_pointer[^;]+VALUES\s*\(1,\s*NULL,\s*0\)/i,
@@ -148,6 +154,7 @@ class SqliteD1Database {
     ).replaceAll("--> statement-breakpoint", "");
     this.sqlite.exec(migration);
     this.beforeFirst = null;
+    this.failBatchAfterIndex = null;
   }
 
   prepare(sql) {
@@ -157,7 +164,13 @@ class SqliteD1Database {
   async batch(statements) {
     this.sqlite.exec("BEGIN IMMEDIATE");
     try {
-      const results = statements.map((statement) => statement._runSync());
+      const results = [];
+      for (const [index, statement] of statements.entries()) {
+        results.push(statement._runSync());
+        if (index === this.failBatchAfterIndex) {
+          throw new Error(`injected batch failure after statement ${index}`);
+        }
+      }
       this.sqlite.exec("COMMIT");
       return results;
     } catch (error) {
@@ -269,9 +282,9 @@ function edition(overrides = {}) {
     edition_revision: 5,
     expected_current_revision: 4,
     expected_breaking_revision: 4,
-    edition_kind: "morning",
+    edition_kind: "standard",
     publication_state: "building",
-    coverage_state: "full",
+    coverage_state: "complete",
     readiness_cutoff: "2026-07-17T22:15:00Z",
     verified_at: "2026-07-17T22:16:00Z",
     collector_run_ids: ["run-1"],
@@ -336,6 +349,50 @@ function seedStoryHead(db, version = 1) {
     "story-1",
     "important-regulation",
     version,
+  );
+}
+
+function appendVisibilityEvent(db, { seq, quarantined, storyVersion = 2 }) {
+  const eventId = `audit-visibility-${seq}`;
+  db.execute(
+    `INSERT INTO audit_events(
+       event_id, stream_id, stream_seq, payload_json,
+       previous_event_hash, event_hash
+     ) VALUES (?, ?, ?, ?, ?, ?)`,
+    eventId,
+    "story-visibility:story-1",
+    seq,
+    "{}",
+    "0".repeat(64),
+    (seq % 2 === 0 ? "b" : "a").repeat(64),
+  );
+  db.execute(
+    `INSERT INTO story_visibility_events(
+       story_id, visibility_seq, story_version, intent_id,
+       desired_quarantined, audit_event_id
+     ) VALUES (?, ?, ?, ?, ?, ?)`,
+    "story-1",
+    seq,
+    storyVersion,
+    `intent-visibility-${seq}`,
+    quarantined ? 1 : 0,
+    eventId,
+  );
+}
+
+function appendAssetStatusEvent(
+  db,
+  { seq, status = "verified", rightsStatus = "approved" },
+) {
+  db.execute(
+    `INSERT INTO asset_status_events(
+       asset_id, status_seq, status, rights_status, reason_code
+     ) VALUES (?, ?, ?, ?, ?)`,
+    "asset-1",
+    seq,
+    status,
+    rightsStatus,
+    `asset-status-${seq}`,
   );
 }
 
@@ -445,6 +502,23 @@ function assertPacketAndHeadsRemainStaged(
       .current_version,
     storyVersion,
   );
+}
+
+function assertPacketGraphRemainsBuilding(db, packetId, tables) {
+  for (const table of tables) {
+    const row = db.get(
+      `SELECT count(*) AS count,
+              sum(publication_state = 'building') AS building
+       FROM ${table} WHERE packet_id = ?`,
+      packetId,
+    );
+    assert.ok(row.count > 0, `${table} must contain packet rows`);
+    assert.equal(
+      row.building,
+      row.count,
+      `${table} rows must remain building after rollback`,
+    );
+  }
 }
 
 test("fresh migration seeds singleton heads and publishes the first edition", async () => {
@@ -710,6 +784,162 @@ test("edition finalization promotes the complete packet-scoped graph", async () 
   }
   assert.deepEqual((await repository.getCurrentEdition())?.entries, [
     { story_id: "story-1", version: 2, section: "compliance", order: 1 },
+  ]);
+});
+
+test("concurrent duplicate edition finalization returns published plus replay", async () => {
+  const db = new SqliteD1Database();
+  seedHeadsAndAsset(db, { editionRevision: 4, breakingRevision: 4 });
+  seedStoryHead(db);
+  const repository = await loadRepository(db);
+  const packet = edition();
+  await repository.stageEdition(packet, HASH_A);
+  installPacketReadBarrier(db);
+
+  const results = await Promise.all([
+    repository.finalizeEdition(packet.packet_id),
+    repository.finalizeEdition(packet.packet_id),
+  ]);
+
+  assert.deepEqual([...results].sort(), ["published", "replay"]);
+});
+
+test("concurrent duplicate Breaking finalization returns published plus replay", async () => {
+  const db = new SqliteD1Database();
+  seedHeadsAndAsset(db, { breakingRevision: 4 });
+  seedStoryHead(db);
+  const repository = await loadRepository(db);
+  const packet = breaking();
+  await repository.stageBreaking(packet, HASH_A);
+  installPacketReadBarrier(db);
+
+  const results = await Promise.all([
+    repository.finalizeBreaking(packet.packet_id),
+    repository.finalizeBreaking(packet.packet_id),
+  ]);
+
+  assert.deepEqual([...results].sort(), ["published", "replay"]);
+});
+
+test("edition finalization rejects a latest quarantine overlay atomically", async () => {
+  const db = new SqliteD1Database();
+  seedHeadsAndAsset(db, { editionRevision: 4, breakingRevision: 4 });
+  seedStoryHead(db);
+  const repository = await loadRepository(db);
+  const packet = edition();
+  await repository.stageEdition(packet, HASH_A);
+  appendVisibilityEvent(db, { seq: 1, quarantined: true });
+
+  await assert.rejects(
+    repository.finalizeEdition(packet.packet_id),
+    /CAS conflict/,
+  );
+  assertPacketAndHeadsRemainStaged(db, packet.packet_id, {
+    editionRevision: 4,
+    breakingRevision: 4,
+    storyVersion: 1,
+  });
+  assertPacketGraphRemainsBuilding(db, packet.packet_id, [
+    "publication_packets",
+    "editions",
+    "story_versions",
+    "story_claims",
+    "story_evidence",
+    "edition_entries",
+    "story_asset_references",
+  ]);
+});
+
+for (const overlay of [
+  {
+    name: "quarantined asset status",
+    status: "quarantined",
+    rightsStatus: "approved",
+  },
+  {
+    name: "denied asset rights",
+    status: "verified",
+    rightsStatus: "denied",
+  },
+]) {
+  test(`Breaking finalization rejects the latest ${overlay.name} atomically`, async () => {
+    const db = new SqliteD1Database();
+    seedHeadsAndAsset(db, { breakingRevision: 4 });
+    seedStoryHead(db);
+    const repository = await loadRepository(db);
+    const packet = breaking();
+    await repository.stageBreaking(packet, HASH_A);
+    appendAssetStatusEvent(db, { seq: 1, ...overlay });
+
+    await assert.rejects(
+      repository.finalizeBreaking(packet.packet_id),
+      /CAS conflict/,
+    );
+    assertPacketAndHeadsRemainStaged(db, packet.packet_id, {
+      editionRevision: 0,
+      breakingRevision: 4,
+      storyVersion: 1,
+    });
+    assertPacketGraphRemainsBuilding(db, packet.packet_id, [
+      "publication_packets",
+      "story_versions",
+      "story_claims",
+      "story_evidence",
+      "breaking_entries",
+      "story_asset_references",
+    ]);
+  });
+}
+
+test("edition finalization evaluates only the latest visibility and asset overlays", async () => {
+  const db = new SqliteD1Database();
+  seedHeadsAndAsset(db, { editionRevision: 4, breakingRevision: 4 });
+  seedStoryHead(db);
+  const repository = await loadRepository(db);
+  const packet = edition();
+  await repository.stageEdition(packet, HASH_A);
+  appendVisibilityEvent(db, { seq: 1, quarantined: true });
+  appendVisibilityEvent(db, { seq: 2, quarantined: false });
+  appendAssetStatusEvent(db, {
+    seq: 1,
+    status: "quarantined",
+    rightsStatus: "denied",
+  });
+  appendAssetStatusEvent(db, {
+    seq: 2,
+    status: "verified",
+    rightsStatus: "approved",
+  });
+
+  assert.equal(await repository.finalizeEdition(packet.packet_id), "published");
+});
+
+test("late edition batch failure rolls back promoted graph rows and heads", async () => {
+  const db = new SqliteD1Database();
+  seedHeadsAndAsset(db, { editionRevision: 4, breakingRevision: 4 });
+  seedStoryHead(db);
+  const repository = await loadRepository(db);
+  const packet = edition();
+  await repository.stageEdition(packet, HASH_A);
+  db.failBatchAfterIndex = 7;
+
+  await assert.rejects(
+    repository.finalizeEdition(packet.packet_id),
+    /CAS conflict/,
+  );
+  assertPacketAndHeadsRemainStaged(db, packet.packet_id, {
+    editionRevision: 4,
+    breakingRevision: 4,
+    storyVersion: 1,
+  });
+  assertPacketGraphRemainsBuilding(db, packet.packet_id, [
+    "publication_packets",
+    "editions",
+    "story_versions",
+    "story_claims",
+    "story_evidence",
+    "edition_entries",
+    "story_asset_references",
   ]);
 });
 

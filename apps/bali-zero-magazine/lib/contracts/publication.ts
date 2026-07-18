@@ -108,9 +108,9 @@ export type EditionPacketV1 = Readonly<{
   edition_revision: number;
   expected_current_revision: number;
   expected_breaking_revision: number;
-  edition_kind: "morning" | "quiet";
+  edition_kind: "standard" | "quiet";
   publication_state: "building";
-  coverage_state: "full" | "partial" | "quiet";
+  coverage_state: "complete" | "partial";
   readiness_cutoff: string;
   verified_at: string;
   collector_run_ids: readonly string[];
@@ -874,7 +874,7 @@ export function parseEditionPacket(raw: unknown): EditionPacketV1 {
     edition_kind: requireEnum(
       packet.edition_kind,
       "edition packet.edition_kind",
-      ["morning", "quiet"] as const,
+      ["standard", "quiet"] as const,
     ),
     publication_state: requireEnum(
       packet.publication_state,
@@ -884,7 +884,7 @@ export function parseEditionPacket(raw: unknown): EditionPacketV1 {
     coverage_state: requireEnum(
       packet.coverage_state,
       "edition packet.coverage_state",
-      ["full", "partial", "quiet"] as const,
+      ["complete", "partial"] as const,
     ),
     readiness_cutoff: requireTimestamp(
       packet.readiness_cutoff,

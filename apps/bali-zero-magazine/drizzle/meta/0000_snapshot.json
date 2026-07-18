@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "e8eebf1c-ee0e-4bfa-babb-e38bf3953461",
+  "id": "07f0c575-52d8-4078-b9dd-0f8064521747",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "asset_status_events": {
@@ -23,6 +23,13 @@
         },
         "status": {
           "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rights_status": {
+          "name": "rights_status",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -70,7 +77,16 @@
         }
       },
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "checkConstraints": {
+        "asset_status_events_status_check": {
+          "name": "asset_status_events_status_check",
+          "value": "\"asset_status_events\".\"status\" in ('pending', 'verified', 'quarantined', 'revoked')"
+        },
+        "asset_status_events_rights_status_check": {
+          "name": "asset_status_events_rights_status_check",
+          "value": "\"asset_status_events\".\"rights_status\" in ('approved', 'denied', 'unknown')"
+        }
+      }
     },
     "assets": {
       "name": "assets",
@@ -191,6 +207,10 @@
         "assets_status_check": {
           "name": "assets_status_check",
           "value": "\"assets\".\"status\" in ('pending', 'verified', 'quarantined', 'revoked')"
+        },
+        "assets_rights_status_check": {
+          "name": "assets_rights_status_check",
+          "value": "\"assets\".\"rights_status\" in ('approved', 'denied', 'unknown')"
         },
         "assets_dimensions_check": {
           "name": "assets_dimensions_check",
@@ -1004,11 +1024,11 @@
         },
         "editions_kind_check": {
           "name": "editions_kind_check",
-          "value": "\"editions\".\"edition_kind\" in ('morning', 'quiet')"
+          "value": "\"editions\".\"edition_kind\" in ('standard', 'quiet')"
         },
         "editions_coverage_check": {
           "name": "editions_coverage_check",
-          "value": "\"editions\".\"coverage_state\" in ('full', 'partial', 'quiet')"
+          "value": "\"editions\".\"coverage_state\" in ('complete', 'partial')"
         }
       }
     },

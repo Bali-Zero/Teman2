@@ -2,11 +2,14 @@ CREATE TABLE `asset_status_events` (
 	`asset_id` text NOT NULL,
 	`status_seq` integer NOT NULL,
 	`status` text NOT NULL,
+	`rights_status` text NOT NULL,
 	`reason_code` text NOT NULL,
 	`replacement_asset_id` text,
 	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	PRIMARY KEY(`asset_id`, `status_seq`),
-	FOREIGN KEY (`asset_id`) REFERENCES `assets`(`asset_id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`asset_id`) REFERENCES `assets`(`asset_id`) ON UPDATE no action ON DELETE no action,
+	CONSTRAINT "asset_status_events_status_check" CHECK("asset_status_events"."status" in ('pending', 'verified', 'quarantined', 'revoked')),
+	CONSTRAINT "asset_status_events_rights_status_check" CHECK("asset_status_events"."rights_status" in ('approved', 'denied', 'unknown'))
 );
 --> statement-breakpoint
 CREATE TABLE `assets` (
@@ -25,6 +28,7 @@ CREATE TABLE `assets` (
 	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	CONSTRAINT "assets_hash_check" CHECK(length("sha256") = 64 and "sha256" not glob '*[^0-9a-f]*'),
 	CONSTRAINT "assets_status_check" CHECK("assets"."status" in ('pending', 'verified', 'quarantined', 'revoked')),
+	CONSTRAINT "assets_rights_status_check" CHECK("assets"."rights_status" in ('approved', 'denied', 'unknown')),
 	CONSTRAINT "assets_dimensions_check" CHECK("assets"."width" > 0 and "assets"."height" > 0)
 );
 --> statement-breakpoint
@@ -159,8 +163,8 @@ CREATE TABLE `editions` (
 	FOREIGN KEY (`packet_id`) REFERENCES `publication_packets`(`packet_id`) ON UPDATE no action ON DELETE no action,
 	CONSTRAINT "editions_revision_check" CHECK("editions"."edition_revision" > 0),
 	CONSTRAINT "editions_state_check" CHECK("editions"."publication_state" in ('building', 'published', 'superseded', 'failed')),
-	CONSTRAINT "editions_kind_check" CHECK("editions"."edition_kind" in ('morning', 'quiet')),
-	CONSTRAINT "editions_coverage_check" CHECK("editions"."coverage_state" in ('full', 'partial', 'quiet'))
+	CONSTRAINT "editions_kind_check" CHECK("editions"."edition_kind" in ('standard', 'quiet')),
+	CONSTRAINT "editions_coverage_check" CHECK("editions"."coverage_state" in ('complete', 'partial'))
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `editions_packet_id_unique` ON `editions` (`packet_id`);--> statement-breakpoint
@@ -401,10 +405,8 @@ CREATE TABLE `story_visibility_events` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `story_visibility_events_intent_id_unique` ON `story_visibility_events` (`intent_id`);--> statement-breakpoint
-CREATE UNIQUE INDEX `story_visibility_story_seq_unique` ON `story_visibility_events` (`story_id`,`visibility_seq`);
---> statement-breakpoint
+CREATE UNIQUE INDEX `story_visibility_story_seq_unique` ON `story_visibility_events` (`story_id`,`visibility_seq`);--> statement-breakpoint
 INSERT INTO edition_pointer (singleton_id, current_edition_id, current_revision)
-VALUES (1, NULL, 0);
---> statement-breakpoint
+VALUES (1, NULL, 0);--> statement-breakpoint
 INSERT INTO breaking_pointer (singleton_id, active_revision, updated_at)
 VALUES (1, 0, NULL);

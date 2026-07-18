@@ -77,3 +77,44 @@ the Task 3 review.
 
 The unrelated `INDEX.md`, `README.md`, and `.husky/_` workspace changes remain
 unstaged and untouched by this remediation.
+
+## Second review remediation (2026-07-18)
+
+Resolved both additional Important findings and implemented both suggested
+hardening checks from the Task 3 re-review.
+
+- Edition dimensions are orthogonal everywhere: `edition_kind` is
+  `standard|quiet`, while `coverage_state` is `complete|partial`. The TypeScript
+  contract, Drizzle schema, regenerated single baseline migration/snapshot, and
+  fixtures now use the same vocabulary.
+- `asset_status_events` now records independently constrained `status` and
+  `rights_status` snapshots. Finalization's first statement atomically rejects
+  a latest story quarantine, latest non-verified asset status, or latest
+  non-approved asset rights overlay. When events exist, only the greatest
+  per-entity sequence is authoritative; otherwise the verified/approved base
+  asset row remains the fallback.
+- A failed overlay guard leaves the packet, complete packet graph, story head,
+  edition head, and Breaking head unchanged in `building` state.
+- Concurrent duplicate edition and Breaking finalization now has explicit
+  winner/loser semantics: one caller returns `published`; after its transaction
+  loses and rolls back, the other re-reads the committed packet and returns
+  `replay`.
+- A late injected failure after all graph-promotion statements proves the D1
+  transaction rolls the graph and heads back to their staged values.
+
+### Second remediation TDD and verification
+
+- RED: the new edition vocabulary test failed against `morning` and
+  `full|partial|quiet`; repository fixtures then exposed the same stale schema
+  vocabulary.
+- RED: four focused failures proved concurrent duplicate finalization returned
+  a CAS error and that latest quarantine/status/rights overlays were ignored.
+- GREEN: focused overlay, replay, and late-fault tests pass.
+- `npm test`: pass; production build and 71/71 unit tests pass.
+- `npm run lint`: pass.
+- `npm run db:generate -- --name schema_drift_check`: pass, 26 tables, no
+  schema changes.
+- `git diff --check`: pass.
+
+The unrelated `INDEX.md`, `README.md`, and `.husky/_` workspace changes remain
+unstaged and untouched by this second remediation.

@@ -105,9 +105,9 @@ function edition(overrides = {}) {
     edition_revision: 5,
     expected_current_revision: 4,
     expected_breaking_revision: 4,
-    edition_kind: "morning",
+    edition_kind: "standard",
     publication_state: "building",
-    coverage_state: "full",
+    coverage_state: "complete",
     readiness_cutoff: "2026-07-17T22:15:00Z",
     verified_at: "2026-07-17T22:16:00Z",
     collector_run_ids: ["run-1"],
@@ -124,6 +124,28 @@ function edition(overrides = {}) {
     ...overrides,
   };
 }
+
+test("edition contract keeps kind and coverage as orthogonal dimensions", () => {
+  assert.equal(parseEditionPacket(edition()).edition_kind, "standard");
+  const quietPartial = parseEditionPacket(
+    edition({ edition_kind: "quiet", coverage_state: "partial" }),
+  );
+  assert.equal(quietPartial.edition_kind, "quiet");
+  assert.equal(quietPartial.coverage_state, "partial");
+
+  assert.throws(
+    () => parseEditionPacket(edition({ edition_kind: "morning" })),
+    /edition_kind/,
+  );
+  assert.throws(
+    () => parseEditionPacket(edition({ coverage_state: "full" })),
+    /coverage_state/,
+  );
+  assert.throws(
+    () => parseEditionPacket(edition({ coverage_state: "quiet" })),
+    /coverage_state/,
+  );
+});
 
 test("contract rejects a packet containing raw OSINT", () => {
   assert.throws(

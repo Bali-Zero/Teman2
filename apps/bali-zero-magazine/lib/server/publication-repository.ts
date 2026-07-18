@@ -204,6 +204,16 @@ function graphGuardStatement(
                  WHERE sar.packet_id = sv.packet_id
                    AND sar.story_id = sv.story_id AND sar.version = sv.version
                )
+               OR EXISTS (
+                 SELECT 1 FROM story_visibility_events visibility
+                 WHERE visibility.story_id = sv.story_id
+                   AND visibility.visibility_seq = (
+                     SELECT max(latest.visibility_seq)
+                     FROM story_visibility_events latest
+                     WHERE latest.story_id = sv.story_id
+                   )
+                   AND visibility.desired_quarantined = 1
+               )
              )
          )
          AND NOT EXISTS (
@@ -232,13 +242,36 @@ function graphGuardStatement(
            SELECT 1 FROM story_asset_references sar
            LEFT JOIN assets asset
              ON asset.sha256 = sar.asset_sha256
-            AND asset.status = 'verified' AND asset.rights_status = 'approved'
            JOIN story_versions sv
              ON sv.packet_id = sar.packet_id AND sv.story_id = sar.story_id
             AND sv.version = sar.version
            WHERE sar.packet_id = publication_packets.packet_id
              AND (
-               asset.sha256 IS NULL OR NOT EXISTS (
+               asset.sha256 IS NULL
+               OR (
+                 NOT EXISTS (
+                   SELECT 1 FROM asset_status_events status_event
+                   WHERE status_event.asset_id = asset.asset_id
+                 )
+                 AND (
+                   asset.status <> 'verified'
+                   OR asset.rights_status <> 'approved'
+                 )
+               )
+               OR EXISTS (
+                 SELECT 1 FROM asset_status_events status_event
+                 WHERE status_event.asset_id = asset.asset_id
+                   AND status_event.status_seq = (
+                     SELECT max(latest.status_seq)
+                     FROM asset_status_events latest
+                     WHERE latest.asset_id = asset.asset_id
+                   )
+                   AND (
+                     status_event.status <> 'verified'
+                     OR status_event.rights_status <> 'approved'
+                   )
+               )
+               OR NOT EXISTS (
                  SELECT 1 FROM json_each(sv.asset_digests_json) expected
                  WHERE expected.value = sar.asset_sha256
                )
@@ -527,6 +560,29 @@ export function createPublicationRepository(
       throw new Error(`replay hash mismatch for packet ${packetId}`);
     }
     return true;
+  }
+
+  async function recoverFinalizeConflict(
+    packetId: string,
+    kind: PacketRow["packet_kind"],
+    cause: unknown,
+  ): Promise<FinalizeResult> {
+    // A concurrent duplicate may observe "building" before the winner's batch.
+    // Re-read after rollback so the loser has explicit idempotent replay semantics.
+    const winner = await getPacket(packetId);
+    if (
+      winner?.packet_kind === kind &&
+      winner.publication_state === "published"
+    ) {
+      return "replay";
+    }
+    if (cause instanceof Error && cause.message.startsWith("CAS conflict:")) {
+      throw cause;
+    }
+    const label = kind === "edition" ? "edition" : "Breaking";
+    throw new Error(`CAS conflict: ${label} finalization rolled back`, {
+      cause,
+    });
   }
 
   async function verifyStoryIdentities(
@@ -972,12 +1028,7 @@ export function createPublicationRepository(
       const results = await db.batch(statements);
       assertChangedExactly(results, expectations, "edition finalization");
     } catch (cause) {
-      if (cause instanceof Error && cause.message.startsWith("CAS conflict:")) {
-        throw cause;
-      }
-      throw new Error("CAS conflict: edition finalization rolled back", {
-        cause,
-      });
+      return recoverFinalizeConflict(packetId, "edition", cause);
     }
     return "published";
   }
@@ -1089,12 +1140,7 @@ export function createPublicationRepository(
         "Breaking finalization",
       );
     } catch (cause) {
-      if (cause instanceof Error && cause.message.startsWith("CAS conflict:")) {
-        throw cause;
-      }
-      throw new Error("CAS conflict: Breaking finalization rolled back", {
-        cause,
-      });
+      return recoverFinalizeConflict(packetId, "breaking", cause);
     }
     return "published";
   }
