@@ -48,11 +48,24 @@ one place.
   ``validate_ast_limits``). **Deferred to PR3-PR4**: ``ConditionResult``,
   ``evaluate_condition()`` (needs ``FactSnapshot`` from ``fact_registry.py``,
   itself PR3).
-- **bundle.py** — not started. **Deferred to PR2**:
-  ``TrustedSigningKey``, ``TrustStore``, ``VerifiedRulePack``,
-  ``canonicalize_json()``, ``verify_rule_pack()`` (``models.py``'s
-  ``RulePack`` docstring, verbatim: "PR1 does not verify the signature —
-  that is ``bundle.py``, PR2 scope").
+- **bundle.py** — done (PR2b, 2026-07-18 — ported from a discarded earlier
+  "B" API draft to this package's actual "A" models.py, see that module's
+  own docstring for the adaptation notes): ``TrustedSigningKey``,
+  ``TrustStore``, ``StaticTrustStore`` (+ ``from_env``), ``VerifiedRulePack``,
+  ``canonicalize_json()``, ``verify_rule_pack()`` (RFC 8785 JCS
+  canonicalization of the raw wire envelope, Ed25519 verify-on-load BEFORE
+  any Pydantic parsing, UNSIGNED-DEV firebreak fail-closed by default),
+  ``validate_activation()`` (pure anti-rollback gate: sequence, hash-chain,
+  environment, engine-version). **Deliberately NOT included** (PR2's own
+  mandate is signature/trust only): a ``compile_verified_rule_pack`` seam in
+  front of ``compiler.py`` — this package's ``compile_rule_pack`` returns a
+  ``CompilationReport`` (validate-and-report), not the discarded draft's
+  ``CompiledRulePack`` (evaluate-ready form); wiring a seam between the two
+  would mean inventing a new compiler concept, which is PR3 territory (see
+  ``compiler.py``'s own "done (PR1)" entry below for what it already covers).
+  No key generation/registration script exists or will (FIREBREAK — the
+  Ed25519 signing ceremony is the operator's, offline, never autonomous
+  code).
 - **compiler.py** — done (PR1) for ``CompilationError``,
   ``CompilationReport``, and ``compile_rule_pack(pack: RulePack, *,
   fact_registry) -> CompilationReport`` — spec's own signature takes a
