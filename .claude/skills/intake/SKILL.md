@@ -135,6 +135,18 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
 
 ## 5. LIVE STATE (update on every material change)
 
+- **2026-07-18 night — `google_drive_folder_id` backfill CLOSED + PROD-DEDUP DISCOVERY:** the
+  "173/11,744 populated" premise was STALE-SNAPSHOT math. Prod truth (verified twice: Fly API GET +
+  readonly MCP SELECT): the CRM book was **mass-deduped on prod — 1,755 alive clients** (local
+  snapshot still holds ~11.7k pre-dedup rows, 128/128 probed "alive" locally were dead/absent on
+  prod), and **1,664/1,755 (94.8%) already have `google_drive_folder_id`** via the server-side
+  ensure-folder flow. Session-as-reviewer backfill (`scripts/intake_drive_folder_id_backfill.py`,
+  Tier-A bar: exact-name OR sim≥0.85 + Drive ancestor-walk ground truth + live-screen-BEFORE-
+  bijectivity + TOCTOU re-check + never-overwrite): **234 candidates → 1 applied:verified (client 3346)**, 61 already served live, 128 dead on prod, 44 Drive-unresolved (folders renamed/moved
+  post-enqueue — correct terminal skips). **The gdrive-backfill lever is exhausted; every local-book
+  analysis (incl. the 88.5% ceiling below) needs recompute after `nuz_db_refresh.sh`.** Drive access
+  gotcha: the SA alone sees NOTHING (404) — DWD impersonation `zero@balizero.com` is mandatory.
+
 - **2026-07-18 evening — BACKLOG REROUTED through the m227 fix (EXECUTED, measured):**
   `scripts/intake_reprocess_backlog.py --reroute-drive-folder --apply` resumed **24,256** Drive
   0-candidate rows at route-only (stage_output PRESERVED — the blobs are retention-evicted, the saved
