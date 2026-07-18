@@ -98,7 +98,7 @@ import re
 import unicodedata
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from backend.services.visa_engine import ast as ast_module
@@ -118,6 +118,7 @@ from backend.services.visa_engine.models import (
     RuleEffect,
     RulePack,
     RulePackPayload,
+    TimeRange,
     VisaProductVersion,
 )
 
@@ -1241,6 +1242,17 @@ def _is_commercial(fact_path: str, fact_registry: FactRegistry) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _valid_period_contains(period: TimeRange, moment: datetime) -> bool:
+    """True iff ``moment`` falls in the half-open interval ``[from_, to)``.
+
+    ``to=None`` = open-ended (still in force). ``moment`` must be tz-aware
+    UTC (same contract as ``FactRegistry.derive``'s ``effective_at``);
+    comparing a naive datetime here raises ``TypeError``, which fails closed
+    rather than silently miscomparing (F1, 2-seat review 2026-07-18).
+    """
+    return period.from_ <= moment and (period.to is None or moment < period.to)
+
+
 @dataclass(frozen=True, slots=True)
 class CompiledRule:
     """A ``Rule`` pre-analyzed for the evaluator: AST depth/node-count
@@ -1292,23 +1304,35 @@ class CompiledRulePack:
     rules: tuple[CompiledRule, ...]
     source_pack: RulePack
 
-    def rules_for(self, product: CompiledProduct) -> tuple[CompiledRule, ...]:
-        """``GLOBAL`` rules + ``PRODUCTS``-scoped rules naming this product,
-        ordered by ``(stage.order, priority, rule_id)`` for deterministic
-        evaluation (spec §4.2/§4.5). ``stage.order`` is the SEMANTIC
-        processing order (``HARD_FILTER`` -> ``HUMAN_REVIEW`` ->
-        ``ELIGIBILITY`` -> ``RANKING``, see ``enums.STAGE_ORDER``), not the
-        alphabetical order of ``stage.value``.
+    def rules_for(
+        self, product: CompiledProduct, *, effective_at: datetime
+    ) -> tuple[CompiledRule, ...]:
+        """``GLOBAL`` rules + ``PRODUCTS``-scoped rules naming this product
+        that are IN FORCE at ``effective_at``, ordered by ``(stage.order,
+        priority, rule_id)`` for deterministic evaluation (spec §4.2/§4.5).
+        ``stage.order`` is the SEMANTIC processing order (``HARD_FILTER`` ->
+        ``HUMAN_REVIEW`` -> ``ELIGIBILITY`` -> ``RANKING``, see
+        ``enums.STAGE_ORDER``), not the alphabetical order of ``stage.value``.
+
+        ``effective_at`` must be tz-aware UTC (same contract as
+        ``FactRegistry.derive``). A rule whose ``source_rule.valid_period``
+        does not contain ``effective_at`` (expired, or not yet in force) is
+        EXCLUDED — the bitemporal ``RulePack`` deliberately holds rules with
+        different ``valid_period``s, and selecting without this filter would
+        let an expired rule drive a decision (F1, 2-seat review 2026-07-18).
         """
 
         selected = [
             rule
             for rule in self.rules
-            if rule.scope is RuleScope.GLOBAL
-            or (
-                rule.product_version_ids is not None
-                and product.product_version_id in rule.product_version_ids
+            if (
+                rule.scope is RuleScope.GLOBAL
+                or (
+                    rule.product_version_ids is not None
+                    and product.product_version_id in rule.product_version_ids
+                )
             )
+            and _valid_period_contains(rule.source_rule.valid_period, effective_at)
         ]
         return tuple(
             sorted(selected, key=lambda rule: (rule.stage.order, rule.priority, rule.rule_id))
