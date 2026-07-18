@@ -13,9 +13,9 @@
 
 | Artifact | Pin |
 | --- | --- |
-| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `04c9999411a1212626afda27e8826ffd4bf26347` |
+| canonical (`data/source_documents/KBLI_2025_FINAL_CLEAN.json`) | git revision `0760e781137efc686fea8afe9c298f533bce04bb` |
 | vault manifest (`data/kbli-filiera/manifest/vault-manifest-batch0-2026-07-18.json`) | sha256 `e7d25a377b717ed76efd1c7c806fe74b45067321629c5ed77655aeea9375db9d` |
-| membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `84c7f73a68163d367fb62ae44f939e7fe02030761f71f93893a007bfc27ab4ff` |
+| membership (`data/kbli-filiera/membership/batch-a-members.json`) | sha256 `824ba609599584b2d65d83fedb8dbf4c382d89289bde613a1191265ff02a7a36` |
 
 ## Control limits m1-m5 (v2 — registry closure per plan §8 A-6(c))
 
