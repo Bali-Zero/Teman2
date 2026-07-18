@@ -130,6 +130,31 @@ class TestRegistryImmutability:
             DEFAULT_FACT_REGISTRY._specs[FactPath.PERSON_BIRTH_DATE] = None  # type: ignore[index]
 
 
+class TestValueFormat:
+    """Hotfix (2026-07-18, Gap A/D): the ``value_format`` axis on
+    ``FactSpec`` — ``None`` by default, ``"date"``/``"country_code"`` for
+    the facts ``compiler.py`` must shape-check beyond bare ``kind``.
+    """
+
+    def test_birth_date_has_date_format(self) -> None:
+        spec = DEFAULT_FACT_REGISTRY.spec(FactPath.PERSON_BIRTH_DATE)
+        assert spec.value_format == "date"
+
+    def test_marital_status_has_no_value_format(self) -> None:
+        # Enum-ish free-form STRING facts (already covered by
+        # `allowed_values`) get no extra shape check.
+        spec = DEFAULT_FACT_REGISTRY.spec(FactPath.PERSON_MARITAL_STATUS)
+        assert spec.value_format is None
+
+    def test_employer_country_code_has_country_code_format(self) -> None:
+        spec = DEFAULT_FACT_REGISTRY.spec(FactPath.WORK_EMPLOYER_COUNTRY_CODE)
+        assert spec.value_format == "country_code"
+
+    def test_nationalities_set_has_country_code_format(self) -> None:
+        spec = DEFAULT_FACT_REGISTRY.spec(FactPath.PERSON_NATIONALITIES)
+        assert spec.value_format == "country_code"
+
+
 class TestRegistryConstruction:
     def test_duplicate_spec_path_rejected(self) -> None:
         spec_a = FactSpec(

@@ -1421,3 +1421,32 @@ class TestStageEffectTypeImmutable:
         with pytest.raises(AttributeError):
             M.STAGE_EFFECT_TYPE.clear()  # type: ignore[attr-defined]
         assert len(M.STAGE_EFFECT_TYPE) == 4
+
+
+class TestKnownDateCalendarValidity:
+    """Hotfix Gap E (2026-07-18): ``KnownDate.value``'s ``IsoDate`` type only
+    checked the ``^\\d{4}-\\d{2}-\\d{2}$`` *shape* — a shape-valid but
+    calendar-impossible date (month 13, day 45, Feb 30) round-tripped clean.
+    """
+
+    def test_month_13_day_45_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="calendar date"):
+            M.KnownDate(status="KNOWN", value="2026-13-45")
+
+    def test_feb_30_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="calendar date"):
+            M.KnownDate(status="KNOWN", value="2026-02-30")
+
+    def test_feb_28_non_leap_is_accepted(self) -> None:
+        known = M.KnownDate(status="KNOWN", value="2026-02-28")
+        assert known.value == "2026-02-28"
+
+    def test_feb_29_leap_year_is_accepted(self) -> None:
+        known = M.KnownDate(status="KNOWN", value="2024-02-29")
+        assert known.value == "2024-02-29"
+
+    def test_feb_29_non_leap_year_rejected(self) -> None:
+        # 2023 is not a leap year — regex-shape-valid, calendar-invalid,
+        # same class of defect as month-13/day-45.
+        with pytest.raises(ValidationError, match="calendar date"):
+            M.KnownDate(status="KNOWN", value="2023-02-29")

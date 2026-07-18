@@ -81,6 +81,7 @@ import re
 import unicodedata
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from datetime import date
 
 from backend.services.visa_engine import ast as ast_module
 from backend.services.visa_engine.enums import FactValueKind, RuleEffectType, RuleStage
@@ -554,6 +555,68 @@ _ORDERING_OPS = frozenset({"lt", "lte", "gt", "gte"})
 #: shape, never a single literal's shape).
 _SCALAR_FACT_KINDS = frozenset({FactValueKind.BOOLEAN, FactValueKind.INTEGER, FactValueKind.STRING})
 
+#: Hotfix (2026-07-18, Gap A): a fact marked ``value_format="date"`` carries
+#: a STRING-kind value that must ALSO be a real ISO-8601 calendar date, not
+#: merely kind-compatible — ``kind`` alone accepted ``"20260101"`` or
+#: ``"2026-1-1"`` (wrong shape) and ``"2026-02-30"`` (right shape, no such
+#: calendar day). The regex catches shape; ``date.fromisoformat`` catches
+#: calendar validity (leap years, day-of-month bounds, month range).
+_DATE_LITERAL_SHAPE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _check_date_literal_shape(
+    value: str, spec: FactSpec, op: str, rule: Rule, errors: list[CompilationError]
+) -> None:
+    if not _DATE_LITERAL_SHAPE.fullmatch(value):
+        errors.append(
+            CompilationError(
+                code="FACT_LITERAL_INVALID_DATE",
+                message=(
+                    f"operator {op!r} literal {value!r} for date fact {spec.path.value!r} "
+                    "must match YYYY-MM-DD"
+                ),
+                rule_id=rule.rule_id,
+            )
+        )
+        return
+    try:
+        date.fromisoformat(value)
+    except ValueError as exc:
+        errors.append(
+            CompilationError(
+                code="FACT_LITERAL_INVALID_DATE",
+                message=(
+                    f"operator {op!r} literal {value!r} for date fact {spec.path.value!r} "
+                    f"is not a valid calendar date: {exc}"
+                ),
+                rule_id=rule.rule_id,
+            )
+        )
+
+
+#: Hotfix (2026-07-18, Gap D): a fact marked ``value_format="country_code"``
+#: must be a 2-letter uppercase ISO 3166-1 alpha-2 *shape* — ``kind`` alone
+#: accepted ``"USA"`` (3 letters) or ``"us"`` (lowercase). Deliberately just
+#: a shape check, not the full ISO country list (that list changes; this
+#: package does not own it).
+_COUNTRY_CODE_LITERAL_SHAPE = re.compile(r"^[A-Z]{2}$")
+
+
+def _check_country_code_literal_shape(
+    value: str, spec: FactSpec, op: str, rule: Rule, errors: list[CompilationError]
+) -> None:
+    if not _COUNTRY_CODE_LITERAL_SHAPE.fullmatch(value):
+        errors.append(
+            CompilationError(
+                code="FACT_LITERAL_INVALID_COUNTRY_CODE",
+                message=(
+                    f"operator {op!r} literal {value!r} for fact {spec.path.value!r} must be "
+                    "a 2-letter uppercase ISO 3166-1 alpha-2 code"
+                ),
+                rule_id=rule.rule_id,
+            )
+        )
+
 
 def _literal_kind(value: bool | int | str) -> FactValueKind:
     # `bool` before `int` — `bool` is an `int` subclass in Python.
@@ -602,6 +665,15 @@ def _check_single_literal_against_kind(
                 rule_id=rule.rule_id,
             )
         )
+        return
+    # Hotfix (2026-07-18, Gap A/D): `kind` alone cannot distinguish a
+    # free-form STRING from a date- or country-code-shaped one —
+    # `value_format` is the extra axis for that. Only reachable for a `str`
+    # literal (both formats are STRING-kind facts per fact_registry.py).
+    if spec.value_format == "date" and isinstance(value, str):
+        _check_date_literal_shape(value, spec, op, rule, errors)
+    elif spec.value_format == "country_code" and isinstance(value, str):
+        _check_country_code_literal_shape(value, spec, op, rule, errors)
 
 
 def _check_literal_list(
@@ -640,6 +712,13 @@ def _check_between_bounds(
             )
         )
         return
+    # Hotfix (2026-07-18, Gap A): same date-shape/calendar check as the
+    # single-literal path — `between` bounds bypass
+    # `_check_single_literal_against_kind` entirely, so without this a
+    # `between` on a date fact with e.g. lower="2026-02-30" compiled clean.
+    if spec.value_format == "date" and isinstance(lower, str) and isinstance(upper, str):
+        _check_date_literal_shape(lower, spec, "between", rule, errors)
+        _check_date_literal_shape(upper, spec, "between", rule, errors)
     if lower > upper:
         errors.append(
             CompilationError(
@@ -711,11 +790,36 @@ def _check_fact_literal_kind(
                 continue
 
             if op in _ORDERING_OPS or op == "between":
-                if spec.kind is FactValueKind.BOOLEAN:
+                # Hotfix (2026-07-18, Gap B): ordering (`lt`/`lte`/`gt`/
+                # `gte`/`between`) is only legally meaningful against a
+                # numeric fact (INTEGER) or a fact with a well-defined total
+                # order encoded as ISO-8601 (`value_format="date"`, sorts
+                # correctly lexicographically). It used to be rejected only
+                # against BOOLEAN — a plain enum-ish STRING fact (e.g.
+                # `marital_status`) compiled clean under lexicographic
+                # ordering, which is not a legally meaningful comparison for
+                # a closed, unordered vocabulary. Fail-closed by design: a
+                # free-text STRING fact without `value_format="date"` is
+                # rejected too, even though lexicographic ordering on it is
+                # not inherently unsafe — a legal decision engine defaults
+                # to rejecting semantically ambiguous comparisons and can
+                # relax this later if a real use case needs it.
+                ordering_allowed = spec.kind is FactValueKind.INTEGER or (
+                    spec.kind is FactValueKind.STRING and spec.value_format == "date"
+                )
+                if not ordering_allowed:
                     errors.append(
                         CompilationError(
                             code="FACT_LITERAL_KIND_MISMATCH",
-                            message=f"ordering operator {op!r} not valid against boolean fact {fact.value!r}",
+                            message=(
+                                f"ordering operator {op!r} not valid against fact "
+                                f"{fact.value!r} of kind {spec.kind.value}"
+                                + (
+                                    f" (value_format={spec.value_format!r})"
+                                    if spec.value_format is not None
+                                    else ""
+                                )
+                            ),
                             rule_id=rule.rule_id,
                         )
                     )
