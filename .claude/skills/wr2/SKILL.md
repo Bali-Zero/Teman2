@@ -197,7 +197,15 @@ Multi-fonte (web + external-bench esistenti in ~/.claude/skills/bali-zero-brand/
 corpus + metriche IG reali). Output: research capture in research/marketing/ con ≥3 fonti e UNA
 raccomandazione azionabile ("adotta X per Y, atteso Z"). Niente ricerca senza raccomandazione.
 
-SPRINT B (build, ~70% del tempo): prendi UN item — dalla raccomandazione dell'ultimo sprint R,
+SPRINT B (build, ~70% del tempo). ANTI-TWIN PRE-FLIGHT (obbligatorio, scar #5 — l'intero sprint B6
+del 2026-07-18 fu un duplicato convergente di una sessione parallela M5, #2680/#2685 vs #2676/#2679,
+~1 sprint bruciato): PRIMA di aprire qualunque lavoro su un wound, per l'item che stai per prendere
+esegui i tre check e STAI GIÙ se un twin è già in volo — (1) `git worktree list` (un lane sibling
+sullo stesso wound è già lì: il tell `wr2-log-delta` era nell'inventario dall'inizio); (2)
+`gh pr list --repo Balizero1987/Teman2 --state all --search "<keyword del wound>"` (twin appena
+aperto/mergiato); (3) grep `origin/main` per il fix già atterrato, verifica per CONTENUTO (W88). Se
+il wound è già curato o in-volo → NON aprire un duplicato: aggiorna solo corner/ledger se stantio e
+passa al prossimo item. POI: prendi UN item — dalla raccomandazione dell'ultimo sprint R,
 dalla §1 LIVE STATE del corner /wr2 (open wounds: liveness scorer 0.0, 13 unknown_intent,
 fact-check degraded, log noise, --rebrief verb…), o da un fix emerso live — e portalo fino in
 fondo con modus: GROUND (ri-grep dei file citati) → BUILD (implementer Sonnet in worktree) →
