@@ -1,8 +1,8 @@
 {
   "batch": "A",
   "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
-  "canonical_revision": "534188eb07842e18a2d1951879f8f124edc75921",
-  "canonical_sha256": "39dcb702523240bf3f347347ef58a1334085f5845397816d8d1426389af08fee",
+  "canonical_revision": "04c9999411a1212626afda27e8826ffd4bf26347",
+  "canonical_sha256": "ad3f6e63232a39e6c221dab3591eed4605605d6260a3cbd1f9cdbda5af2425e7",
   "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
   "predicate_doc": {
     "A-serving/pp28": "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
@@ -10,10 +10,10 @@
     "A-empty/gap": "_l2_status == 'no_oss_risk' AND per_skala == []"
   },
   "census": {
-    "A-empty/gap": 133,
-    "A-serving/pp28": 87,
+    "A-empty/gap": 146,
+    "A-serving/pp28": 74,
     "A-serving/orphan": 1,
-    "_in_scope_total": 88,
+    "_in_scope_total": 75,
     "_total": 221
   },
   "members": [
@@ -311,8 +311,8 @@
     },
     {
       "kode_kbli_2025": "60101",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Penyiaran Radio Analog",
       "pp28_sources": [
@@ -321,8 +321,8 @@
     },
     {
       "kode_kbli_2025": "60103",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Distribusi dan Streaming Audio Atas Permintaan",
       "pp28_sources": [
@@ -331,8 +331,8 @@
     },
     {
       "kode_kbli_2025": "60201",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Penyiaran dan Pemrograman Televisi Analog",
       "pp28_sources": [
@@ -341,8 +341,8 @@
     },
     {
       "kode_kbli_2025": "60203",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Distribusi dan Streaming Video Atas Permintaan",
       "pp28_sources": [
@@ -351,8 +351,8 @@
     },
     {
       "kode_kbli_2025": "60311",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Kantor Berita oleh Pemerintah",
       "pp28_sources": [
@@ -371,8 +371,8 @@
     },
     {
       "kode_kbli_2025": "61905",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.J-P",
       "judul": "Aktivitas Jasa Telekomunikasi Khusus Berbasis Satelit",
       "pp28_sources": [
@@ -381,8 +381,8 @@
     },
     {
       "kode_kbli_2025": "61909",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": null,
       "judul": "Aktivitas Telekomunikasi Lainnya YTDL",
       "pp28_sources": [
@@ -393,8 +393,8 @@
     },
     {
       "kode_kbli_2025": "64110",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Bank Sentral",
       "pp28_sources": [
@@ -403,8 +403,8 @@
     },
     {
       "kode_kbli_2025": "64220",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Pembiayaan Conduit",
       "pp28_sources": [
@@ -423,8 +423,8 @@
     },
     {
       "kode_kbli_2025": "64320",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Dana Investasi Bukan Pasar Uang",
       "pp28_sources": [
@@ -433,8 +433,8 @@
     },
     {
       "kode_kbli_2025": "64330",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Trust, Warisan, dan Keagenan",
       "pp28_sources": [
@@ -443,8 +443,8 @@
     },
     {
       "kode_kbli_2025": "64920",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Pembiayaan Perdagangan Internasional",
       "pp28_sources": [
@@ -453,8 +453,8 @@
     },
     {
       "kode_kbli_2025": "64940",
-      "reason_code": "A-serving/pp28",
-      "in_scope": true,
+      "reason_code": "A-empty/gap",
+      "in_scope": false,
       "sektor_id": "I.Q-V",
       "judul": "Aktivitas Sekuritisasi",
       "pp28_sources": [
