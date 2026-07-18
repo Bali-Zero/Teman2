@@ -256,3 +256,35 @@ class TestUnsignedDevIntoProductionRejected:
             engine_version="1.0.0",
         )
         assert result is None
+
+
+class TestCurrentPayloadShaTypeGuard:
+    """3-seat verify FIX-NOW #7: `current_payload_sha256` must be `bytes`
+    or `None`. A caller accidentally passing a hex `str` would otherwise
+    silently reject EVERY legitimate update — `bytes.fromhex(candidate) !=
+    "deadbeef..."` is always True — so this must fail loudly with
+    `TypeError`, not the usual `RulePackVerificationError`."""
+
+    def test_hex_str_instead_of_bytes_raises_type_error(self) -> None:
+        verified = _verified({"sequence": 5, "previous_payload_sha256": sha256_hex("1")})
+
+        with pytest.raises(TypeError, match="bytes"):
+            validate_activation(
+                verified,
+                current_sequence=4,
+                current_payload_sha256=sha256_hex("1"),  # str, not bytes — the footgun
+                environment="TEST",
+                engine_version="1.0.0",
+            )
+
+    def test_none_is_still_accepted(self) -> None:
+        verified = _verified({"sequence": 1, "previous_payload_sha256": None})
+
+        result = validate_activation(
+            verified,
+            current_sequence=0,
+            current_payload_sha256=None,
+            environment="TEST",
+            engine_version="1.0.0",
+        )
+        assert result is None

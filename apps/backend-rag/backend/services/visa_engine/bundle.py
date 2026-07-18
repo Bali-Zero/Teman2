@@ -849,7 +849,21 @@ def validate_activation(
     filesystem — persistence (looking up
     ``current_sequence``/``current_payload_sha256`` for real) is a later
     PR's job; this function only compares values its caller already holds.
+
+    Raises :class:`TypeError` (not :class:`RulePackVerificationError`) if
+    ``current_payload_sha256`` is not ``bytes`` or ``None`` — a caller
+    passing a hex ``str`` by mistake must fail loudly, never silently
+    (``bytes.fromhex(payload.previous_payload_sha256) != "deadbeef..."`` is
+    always ``True``, which would reject every legitimate update; see
+    3-seat verify FIX-NOW #7).
     """
+
+    if current_payload_sha256 is not None and not isinstance(current_payload_sha256, bytes):
+        raise TypeError(
+            "current_payload_sha256 must be bytes or None, got "
+            f"{type(current_payload_sha256).__name__} — likely a hex str "
+            "that was never decoded with bytes.fromhex(...)"
+        )
 
     # Defense in depth (3-seat verify FIX-NOW #5): verify_rule_pack already
     # refuses to produce an unsigned_dev=True candidate for
