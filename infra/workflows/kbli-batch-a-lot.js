@@ -165,13 +165,34 @@ const inScopeCodes = new Set(
     .filter((m) => m && m.in_scope === true)
     .map((m) => String(m.kode_kbli_2025)),
 );
-const outOfScope = CODES.map((c) => c.code).filter(
-  (code) => !inScopeCodes.has(code),
-);
+// In-scope membership is required ONLY for non-innocence codes (plan §1 "Batch A scope = the 114
+// A-serving codes ONLY" governs the codes actually being adjudicated as Batch A members).
+// Innocence controls are BY DESIGN non-members — OSS-native clean codes used as a sanity check on
+// the pipeline itself (see the usage example above: `{ code: "65121", innocenceControl: true }`,
+// same class as the pilot's 65121/85202/85579) — so requiring them to ALSO be in-scope contradicts
+// the script's own contract. FIXED 2026-07-18: this over-match blocked a real lot dispatch (run
+// wf_3477eb84-e75, "REFUSED: 2 code(s) not in-scope: 65121, 85202" — both legitimate controls).
+const outOfScope = CODES.filter((c) => !c.innocenceControl)
+  .map((c) => c.code)
+  .filter((code) => !inScopeCodes.has(code));
 if (outOfScope.length) {
   throw new Error(
     `kbli-batch-a-lot: lot ${lotId} REFUSED — ${outOfScope.length} code(s) not in-scope per the ` +
       `membership artifact (plan §1 "Batch A scope = the 114 A-serving codes ONLY"): ${outOfScope.join(", ")}`,
+  );
+}
+// Guard the OTHER direction: an in-scope Batch A member cannot ALSO be flagged as an innocence
+// control. A real member has real obligations to adjudicate — using it as a "nothing should
+// change here" sanity check would either mask a genuine miss (if it silently passes) or produce a
+// spurious quarantine (if the pipeline correctly finds real work to do on it).
+const misusedAsInnocence = CODES.filter(
+  (c) => c.innocenceControl && inScopeCodes.has(c.code),
+).map((c) => c.code);
+if (misusedAsInnocence.length) {
+  throw new Error(
+    `kbli-batch-a-lot: lot ${lotId} REFUSED — ${misusedAsInnocence.length} code(s) marked ` +
+      `innocenceControl are actually in-scope Batch A members per the membership artifact (a ` +
+      `member cannot double as an innocence control): ${misusedAsInnocence.join(", ")}`,
   );
 }
 

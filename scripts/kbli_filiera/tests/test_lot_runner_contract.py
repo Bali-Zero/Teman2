@@ -18,6 +18,12 @@ pilot-report criterion-#6 fix:
    draft embedding `JSON.stringify(d1Result)` directly in the refuter's prompt (anchoring theater,
    copied verbatim from kbli-pilot-a1.js, which has the identical unfixed defect). This test is
    the regression guard for that exact class of bug.
+5. The membership in-scope gate exempts innocenceControl codes (they are BY DESIGN non-members —
+   OSS-native clean codes), while still refusing a genuinely out-of-scope non-innocence code AND
+   refusing a code that is BOTH an in-scope member AND flagged as an innocence control. A
+   2026-07-18 over-match (requiring innocence controls to also be in-scope) blocked a real lot
+   dispatch (run wf_3477eb84-e75, "REFUSED: 2 code(s) not in-scope: 65121, 85202" — both
+   legitimate controls) — this is the regression guard for that exact class of bug.
 
 The calibration artifact (data/kbli-filiera/batch-reports/batchA-calibration.json) ships on a
 separate PR (agent/air-m5/kbli/batcha-calibration) — test 1 SKIPS (not fails) if that file is not
@@ -194,3 +200,55 @@ def test_innocence_d1_prompt_may_reference_evidence(js_source: str) -> None:
     _params, body = _function_signature_and_body(js_source, "d1Prompt")
     assert "canonical.json" in body, "d1Prompt should legitimately reference the evidence dir"
     assert "crosswalk" in body and "pp28" in body
+
+
+# ---------------------------------------------------------------------------
+# 5. Membership gate exempts innocence controls from in-scope check (both directions)
+# ---------------------------------------------------------------------------
+
+def test_guilt_innocence_controls_exempt_from_in_scope_check(js_source: str) -> None:
+    """GUILT: the outOfScope computation must filter OUT innocenceControl codes BEFORE checking
+    membership — innocence controls are BY DESIGN non-members (OSS-native clean codes, same class
+    as the pilot's 65121/85202/85579), and the workflow's own usage example (line ~92) shows an
+    `{ code: "65121", innocenceControl: true }` entry. Requiring them to also be in-scope
+    contradicted the script's own contract and blocked a real lot dispatch (run wf_3477eb84-e75,
+    2026-07-18: REFUSED on 65121/85202, both legitimate innocence controls)."""
+    assert re.search(
+        r"outOfScope\s*=\s*CODES\.filter\(\s*\(c\)\s*=>\s*!c\.innocenceControl\s*\)",
+        js_source,
+    ), (
+        "outOfScope computation does not exempt innocenceControl codes from the in-scope check — "
+        "the 2026-07-18 over-match would block any lot containing a legitimate innocence control"
+    )
+
+
+def test_innocence_out_of_scope_non_innocence_code_still_refuses(js_source: str) -> None:
+    """INNOCENCE: the guilt fix above must not be satisfiable by simply deleting the in-scope
+    check outright — a genuinely out-of-scope NON-innocence code must still REFUSE the lot. Proves
+    the exemption discriminates on innocenceControl, not on removing the gate entirely."""
+    assert "not in-scope per the" in js_source
+    assert re.search(r"if\s*\(outOfScope\.length\)\s*{", js_source), (
+        "the out-of-scope refusal branch is missing — the membership gate would be a no-op"
+    )
+
+
+def test_guilt_in_scope_member_cannot_be_used_as_innocence_control(js_source: str) -> None:
+    """GUILT (the OTHER direction): a code that IS an in-scope Batch A member cannot ALSO be
+    flagged as an innocence control — a member has real obligations to adjudicate, so misusing it
+    as a "nothing should change here" control would either mask a genuine miss or produce a
+    spurious quarantine. Both directions of the exemption need their own guard (word-boundary /
+    entity-level check per cicatrix family #3 — an exemption is a guardia a segno invertito)."""
+    assert re.search(
+        r"misusedAsInnocence\s*=\s*CODES\.filter\(\s*\(c\)\s*=>\s*c\.innocenceControl\s*&&\s*"
+        r"inScopeCodes\.has\(c\.code\)",
+        js_source,
+    ), "no misusedAsInnocence guard found — an in-scope member could silently double as an innocence control"
+
+
+def test_innocence_misused_as_innocence_refusal_branch_exists(js_source: str) -> None:
+    """INNOCENCE: the misusedAsInnocence guilt check above must be wired to an actual REFUSE
+    branch, not just a computed-and-ignored variable."""
+    assert re.search(r"if\s*\(misusedAsInnocence\.length\)\s*{", js_source), (
+        "misusedAsInnocence is computed but never gates the lot — the guard is dead code"
+    )
+    assert "cannot double as an innocence control" in js_source
