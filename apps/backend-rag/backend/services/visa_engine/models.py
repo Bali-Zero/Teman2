@@ -46,7 +46,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Mapping
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from types import MappingProxyType
 from typing import Annotated, Literal
 
@@ -639,6 +639,20 @@ class KnownDate(BaseModel):
 
     status: Literal["KNOWN"]
     value: IsoDate
+
+    @field_validator("value")
+    @classmethod
+    def _check_calendar_date(cls, v: str) -> str:
+        # Hotfix (2026-07-18, Gap E): `IsoDate`'s own `Field(pattern=...)`
+        # only checks the `YYYY-MM-DD` *shape* — a shape-valid but
+        # calendar-impossible date (month 13, day 45, Feb 30, Feb 29 on a
+        # non-leap year) round-tripped clean. `date.fromisoformat` is the
+        # strict calendar-aware check (correctly handles leap years).
+        try:
+            date.fromisoformat(v)
+        except ValueError as exc:
+            raise ValueError(f"{v!r} is not a valid calendar date: {exc}") from exc
+        return v
 
 
 class KnownString(BaseModel):
