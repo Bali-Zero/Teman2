@@ -421,7 +421,13 @@ DEFAULT_REGISTRY: list[dict] = [
         "boundary": "launchd exit-code <-> payload log content (W84)",
         "machines": ["all"], "tags": ["launchd"], "timeout_sec": 60,
         "severity": "P1", "parse": "findings_list", "unwrap_key": "findings",
-        "verdict_key": "verdict", "ok_values": ["OK", "NOT-LOADED", "RECOVERED"],
+        # DISABLED added 2026-07-19: launchd_liveness_detector.py (PR #2710, 2026-07-18)
+        # excludes DISABLED from its own ALARM_VERDICTS ("deliberate disarm — launchctl
+        # disable (not an alarm)") — a stale ok_values here still flagged it P1 DIVERGED
+        # every tick (found live on Mini: com.balizero.wa-mirror, correctly disabled
+        # per the W67c single-node-Telegram fix). Keep aligned with the detector's own
+        # alarm semantics, not a second, drifted opinion of what counts as ok.
+        "verdict_key": "verdict", "ok_values": ["OK", "NOT-LOADED", "RECOVERED", "DISABLED"],
         "fix_hint": "read the job's real log; DEAD-GREEN = TCC re-grant (operator); ARMED-TO-NOTHING = retire or repoint the plist",
     },
     {
@@ -605,6 +611,16 @@ def selftest() -> int:
         st, _, _ = run_wrap(root, ok_entry, 10)
         if st != RECONCILED:
             failures.append(f"well-formed payload parsed as {st}, want RECONCILED")
+        # 2026-07-19: DISABLED is a deliberate `launchctl disable` per the detector's own
+        # ALARM_VERDICTS (it is NOT in that set) — the launchd_liveness probe's ok_values
+        # must agree, or every intentionally-disabled job (e.g. wa-mirror on Mini, W67c)
+        # cries wolf as P1 DIVERGED forever.
+        launchd_entry = next(e for e in DEFAULT_REGISTRY if e["id"] == "launchd_liveness")
+        disabled_payload = json.dumps({"findings": [{"label": "com.balizero.wa-mirror", "verdict": "DISABLED"}], "alarms": 0})
+        disabled_entry = {**launchd_entry, "target": [echo, disabled_payload]}
+        st, _, ev = run_wrap(root, disabled_entry, 10)
+        if st != RECONCILED:
+            failures.append(f"DISABLED verdict parsed as {st}, want RECONCILED ({ev[:1]})")
         if redact("token Bearer abcdef123456789012 end") == "token Bearer abcdef123456789012 end":
             failures.append("redact() failed to mask a Bearer token")
     if failures:
