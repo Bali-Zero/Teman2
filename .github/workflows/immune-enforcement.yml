@@ -81,6 +81,9 @@ jobs:
               scripts/tests/test_launchd_liveness_exit_status_decode.py|\
               scripts/tests/test_launchd_liveness_marker_freshness.py|\
               scripts/tests/test_launchd_liveness_stale_exit_recovery.py|\
+              scripts/prepush_classify.py|\
+              scripts/tests/test_prepush_classify.py|\
+              .husky/pre-push|\
               .claude/skills/modus/PENDING-ARMS.md|\
               .github/workflows/immune-enforcement.yml)
                 RELEVANT=true
@@ -115,6 +118,7 @@ jobs:
             scripts/tests/test_launchd_liveness_exit_status_decode.py \
             scripts/tests/test_launchd_liveness_marker_freshness.py \
             scripts/tests/test_launchd_liveness_stale_exit_recovery.py \
+            scripts/tests/test_prepush_classify.py \
             scripts/test_lint_test_reward_hacking.py ; do
             if [ -f "$t" ]; then
               echo "::group::$t"
