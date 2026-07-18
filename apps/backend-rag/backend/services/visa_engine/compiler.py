@@ -256,10 +256,22 @@ def _revalidate_structurally(pack: RulePack, errors: list[CompilationError]) -> 
     ``AllCondition(args=())``, a self-referential/cyclic tree, a naive or
     non-UTC datetime, ...) bypasses every ``model_validator``/
     ``field_validator`` this package defines. Round-tripping through
-    ``model_dump(mode="json")`` -> ``RulePack.model_validate(...)`` forces it
-    back through full validation, so a malformed pack surfaces as one
-    ordinary ``CompilationError`` instead of crashing ``compile_rule_pack``
+    ``model_dump(mode="json", by_alias=True)`` -> ``RulePack.model_validate(...)``
+    forces it back through full validation, so a malformed pack surfaces as
+    one ordinary ``CompilationError`` instead of crashing ``compile_rule_pack``
     (or, worse, a caller three layers up) with an unrelated exception.
+
+    ``by_alias=True`` is load-bearing (PR1b item 4 follow-on): ``model_dump``
+    defaults to Python field names, not aliases (e.g. ``TimeRange.from_``,
+    never the wire name ``"from"``). That was harmless while
+    ``TimeRange``/``ApplicantFactsData`` had ``populate_by_name=True``
+    (``model_validate`` happily accepted the Python-named dump right back)
+    but is a hard failure now that both are alias-only — every pack contains
+    a ``TimeRange`` somewhere, so an unaliased dump made this round-trip fail
+    for literally every pack, valid or not. Dumping by alias is also the more
+    correct contract regardless: this function's whole job is proving the
+    pack round-trips through its *wire* representation, which is
+    alias-keyed by definition.
 
     Returns the freshly-validated pack on success. On failure (round 3:
     fail-stop, see ``compile_rule_pack``), returns ``None`` and appends one
@@ -270,15 +282,16 @@ def _revalidate_structurally(pack: RulePack, errors: list[CompilationError]) -> 
     successfully-revalidated pack is guaranteed to hold.
     """
     try:
-        serialized = pack.model_dump(mode="json")
+        serialized = pack.model_dump(mode="json", by_alias=True)
         return RulePack.model_validate(serialized)
     except Exception as exc:
         errors.append(
             CompilationError(
                 code="PACK_FAILS_STRUCTURAL_REVALIDATION",
                 message=(
-                    "pack does not round-trip through model_dump(mode='json') -> "
-                    f"model_validate(): {exc}"
+                    "pack does not round-trip through "
+                    "model_dump(mode='json', by_alias=True) -> model_validate(): "
+                    f"{exc}"
                 ),
             )
         )

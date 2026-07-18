@@ -148,9 +148,18 @@ class TimeRange(BaseModel):
     its *value* may legally be ``null`` — a Python ``= None`` default would
     let ``TimeRange(from=...)`` silently omit the key, which for a field
     inside a signed payload changes what gets canonicalized/hashed.
+
+    ``populate_by_name=False`` (PR1b item 4): the wire name is the alias
+    ``"from"`` — ``from_`` is only a Python-safe attribute name (``from`` is
+    a keyword). Allowing the Python name to *also* construct the model
+    (``populate_by_name=True``) means a caller could smuggle
+    ``TimeRange(from_=...)`` past a boundary that only ever validates
+    alias-keyed wire payloads (dicts/JSON), which never carries a
+    ``from_`` key — alias-only construction is the correct contract for a
+    field that exists solely to route around a Python keyword clash.
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     from_: UtcDateTime = Field(..., alias="from")
     to: UtcDateTime | None
@@ -824,9 +833,19 @@ class ApplicantFactsData(BaseModel):
     with all 35 keys required. Field order mirrors ``enums.FactPath``'s
     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
     ``family.*``/``study.*``/``process.*``/``commercial.*`` grouping.
+
+    ``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted
+    ``FactPath`` string (e.g. ``"person.birth_date"``) that cannot be a
+    Python attribute name, so each field carries a Python-safe name
+    (``person_birth_date``) purely to exist in the class body, with the
+    dotted string as its ``alias``. Allowing the Python name to *also*
+    populate the model would let a caller construct
+    ``ApplicantFactsData(person_birth_date=...)`` directly — a name that
+    never appears on the wire (every real payload is alias-keyed JSON/dict),
+    so accepting it is pure smuggling surface with no legitimate caller.
     """
 
-    model_config = ConfigDict(frozen=True, extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     person_birth_date: Annotated[DateFact, Field(alias="person.birth_date")]
     person_nationalities: Annotated[CountrySetFact, Field(alias="person.nationalities")]

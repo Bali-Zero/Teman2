@@ -209,7 +209,7 @@
     },
     "ApplicantFactsData": {
       "additionalProperties": false,
-      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all 35 keys required. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``process.*``/``commercial.*`` grouping.",
+      "description": "``ApplicantFacts.facts`` (spec \u00a72) \u2014 ``additionalProperties: false``\nwith all 35 keys required. Field order mirrors ``enums.FactPath``'s\n``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/\n``family.*``/``study.*``/``process.*``/``commercial.*`` grouping.\n\n``populate_by_name=False`` (PR1b item 4): every wire key here is a dotted\n``FactPath`` string (e.g. ``\"person.birth_date\"``) that cannot be a\nPython attribute name, so each field carries a Python-safe name\n(``person_birth_date``) purely to exist in the class body, with the\ndotted string as its ``alias``. Allowing the Python name to *also*\npopulate the model would let a caller construct\n``ApplicantFactsData(person_birth_date=...)`` directly \u2014 a name that\nnever appears on the wire (every real payload is alias-keyed JSON/dict),\nso accepting it is pure smuggling surface with no legitimate caller.",
       "properties": {
         "commercial.service_fee_budget_idr": {
           "discriminator": {
@@ -3533,7 +3533,7 @@
     },
     "TimeRange": {
       "additionalProperties": false,
-      "description": "``$defs/TimeRange`` \u2014 an open-ended (``to: null`` = still open) interval.\n\n``to`` has no Python default (Codex finding 2): JSON Schema's\n``required: [\"from\", \"to\"]`` means the *key* must be present even though\nits *value* may legally be ``null`` \u2014 a Python ``= None`` default would\nlet ``TimeRange(from=...)`` silently omit the key, which for a field\ninside a signed payload changes what gets canonicalized/hashed.",
+      "description": "``$defs/TimeRange`` \u2014 an open-ended (``to: null`` = still open) interval.\n\n``to`` has no Python default (Codex finding 2): JSON Schema's\n``required: [\"from\", \"to\"]`` means the *key* must be present even though\nits *value* may legally be ``null`` \u2014 a Python ``= None`` default would\nlet ``TimeRange(from=...)`` silently omit the key, which for a field\ninside a signed payload changes what gets canonicalized/hashed.\n\n``populate_by_name=False`` (PR1b item 4): the wire name is the alias\n``\"from\"`` \u2014 ``from_`` is only a Python-safe attribute name (``from`` is\na keyword). Allowing the Python name to *also* construct the model\n(``populate_by_name=True``) means a caller could smuggle\n``TimeRange(from_=...)`` past a boundary that only ever validates\nalias-keyed wire payloads (dicts/JSON), which never carries a\n``from_`` key \u2014 alias-only construction is the correct contract for a\nfield that exists solely to route around a Python keyword clash.",
       "properties": {
         "from": {
           "format": "date-time",

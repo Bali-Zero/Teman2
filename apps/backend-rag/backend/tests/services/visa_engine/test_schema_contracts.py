@@ -72,40 +72,56 @@ def _jsonschema_validator_for(schemas: dict, entrypoint_filename: str) -> Draft2
 
 
 class TestRoundTrip:
+    """``by_alias=True`` is required on every dump here (PR1b item 4):
+    ``TimeRange``/``ApplicantFactsData`` are now alias-only construction
+    (``populate_by_name=False``, see those classes' docstrings) — a plain
+    ``model_dump(mode="json")`` renders the Python field name (``from_``,
+    never the wire name ``"from"``), which ``model_validate`` now rejects.
+    Dumping by alias is also the more correct round-trip contract regardless:
+    a "does this survive its own wire representation" test should exercise
+    the actual wire shape, not an internal Python-name shortcut.
+    """
+
     def test_rule_pack_round_trips_through_dump_and_validate(
         self, minimal_valid_pack: M.RulePack
     ) -> None:
-        dumped = minimal_valid_pack.model_dump(mode="json")
+        dumped = minimal_valid_pack.model_dump(mode="json", by_alias=True)
         rebuilt = M.RulePack.model_validate(dumped)
         assert rebuilt == minimal_valid_pack
 
     def test_source_record_round_trips(self, source_record: M.SourceRecord) -> None:
-        dumped = source_record.model_dump(mode="json")
+        dumped = source_record.model_dump(mode="json", by_alias=True)
         rebuilt = M.SourceRecord.model_validate(dumped)
         assert rebuilt == source_record
 
     def test_rule_round_trips(self, minimal_valid_pack: M.RulePack) -> None:
         rule = minimal_valid_pack.payload.rules[0]
-        dumped = rule.model_dump(mode="json")
+        dumped = rule.model_dump(mode="json", by_alias=True)
         rebuilt = M.Rule.model_validate(dumped)
         assert rebuilt == rule
 
 
 class TestExtraForbidRejection:
+    # by_alias=True (PR1b item 4 follow-on): without it these dumps would
+    # still raise ValidationError post-item-4, but for the WRONG reason
+    # (missing "from" / unexpected "from_" from TimeRange's now alias-only
+    # construction) rather than the extra-field-forbid behavior this class
+    # actually means to prove — a coincidentally-green test is a test that
+    # no longer verifies its own name.
     def test_rule_pack_rejects_extra_field(self, minimal_valid_pack: M.RulePack) -> None:
-        dumped = minimal_valid_pack.model_dump(mode="json")
+        dumped = minimal_valid_pack.model_dump(mode="json", by_alias=True)
         dumped["unexpected_top_level_field"] = True
         with pytest.raises(ValidationError):
             M.RulePack.model_validate(dumped)
 
     def test_rule_rejects_extra_field(self, minimal_valid_pack: M.RulePack) -> None:
-        dumped = minimal_valid_pack.payload.rules[0].model_dump(mode="json")
+        dumped = minimal_valid_pack.payload.rules[0].model_dump(mode="json", by_alias=True)
         dumped["unexpected"] = "nope"
         with pytest.raises(ValidationError):
             M.Rule.model_validate(dumped)
 
     def test_source_record_rejects_extra_field(self, source_record: M.SourceRecord) -> None:
-        dumped = source_record.model_dump(mode="json")
+        dumped = source_record.model_dump(mode="json", by_alias=True)
         dumped["unexpected"] = "nope"
         with pytest.raises(ValidationError):
             M.SourceRecord.model_validate(dumped)
@@ -113,6 +129,39 @@ class TestExtraForbidRejection:
     def test_time_range_rejects_extra_field(self) -> None:
         with pytest.raises(ValidationError):
             M.TimeRange.model_validate({"from": GOLD_EFFECTIVE_AT, "to": None, "unexpected": 1})
+
+
+class TestAliasOnlyConstruction:
+    """PR1b item 4: ``TimeRange`` and ``ApplicantFactsData`` are the only two
+    classes in this package with ``populate_by_name=True`` — both flipped to
+    ``False`` (the package default). Guilt: the Python field name alone
+    (``from_`` / ``person_birth_date``) must now be rejected. Innocence: the
+    wire alias (``"from"`` / ``"person.birth_date"``) still constructs.
+    """
+
+    def test_time_range_python_name_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            M.TimeRange(from_=GOLD_EFFECTIVE_AT, to=None)  # type: ignore[call-arg]
+
+    def test_time_range_alias_is_innocent(self) -> None:
+        tr = M.TimeRange(**{"from": GOLD_EFFECTIVE_AT, "to": None})
+        assert tr.from_ == GOLD_EFFECTIVE_AT
+
+    def test_applicant_facts_data_python_name_rejected(self) -> None:
+        # Isolate the populate_by_name effect: 34 of 35 keys stay correctly
+        # alias-keyed, only "person.birth_date" is swapped for its Python
+        # name. With populate_by_name=True this would have been accepted
+        # (matched by name); alias-only construction must reject it as an
+        # unrecognized extra key with the real alias now missing.
+        aliased = make_applicant_facts().facts.model_dump(mode="json", by_alias=True)
+        aliased["person_birth_date"] = aliased.pop("person.birth_date")
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(aliased)
+
+    def test_applicant_facts_data_alias_is_innocent(self) -> None:
+        aliased = make_applicant_facts().facts.model_dump(mode="json", by_alias=True)
+        rebuilt = M.ApplicantFactsData.model_validate(aliased)
+        assert rebuilt.person_birth_date.status == "UNKNOWN"
 
 
 class TestFrozenModels:
