@@ -128,6 +128,24 @@ forbidden phrase 'unlock'` (deterministic content-gate `ValueError`, `composer.p
   photo-backed statement-bomb `.statement` sizing, NOT elegant-close CSS; exact tiny-rendering mechanism
   TBD (needs the rendered HTML / a faithful Pro-side repro) + must non-regress all photo statement-bombs.
   **Fix is already BENCHED** (`_external-bench-2026-06.md:57`, translucent-caption-pill): an antracite ~75% translucent scrim/pill behind the `.statement` text over the full-bleed photo — closes the May "poor-contrast text-over-image" gap and is explicitly NOT an Art 15 violation (the ban targets color-coded kicker pills, not legibility scrims — document that for wr2-critic). So this is a BUILD of a benched device, not new research (though it touches brand rendering = Zero-gated). Ledgered (PENDING-ARMS 2026-07-18) · memory `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18`.
+- **Render/visual-QA is research-SATURATED + build-partial + armed-live — do NOT re-research** (growth-loop
+  R, 2026-07-18). The 2026-06-07 pair (`design-critic-loop-sota` + `html-css-carousel-renderer-sota`) is the
+  authoritative render-QA SOTA. Built + armed-live on the Pro (ssh-verified: `WR2_VISION_REQUIRED=1`,
+  EasyOCR+torch present, designer-loop firing through 07-18 05:37): font-load hard gate, OCR round-trip
+  (full-size), local contrast. **UNbuilt vs the research** (the narrow real gap): the _thumbnail-downscale_
+  OCR pass + full geometry lint (overlap/off-grid/DOM-overflow). Capture
+  `research/marketing/2026-07-18-wr2-render-qa-saturated-hero-headline-lever-gap.md` · memory
+  `discovery_wr2_render_qa_saturated_hero_headline_lever_gap_2026_07_18`.
+- **Hero-cover headline can't be grown for IG thumbnail — NEXT B** (growth-loop R, 2026-07-18). Live
+  designer-loop logs (07-14/07-16/**07-18 05:37**) accept hero-photo covers as "composition debt" with
+  headlines too small to survive the IG grid thumbnail. Root cause = composer↔critic split: `composer.py:354`
+  HAS a `heading:(100,150)` grow clamp (a test exercises it) but the critic lever menu + prompt
+  (`claude_vision.py:82,158`) exclude `grow_font target=heading` and tell it to ignore thumbnail-scale →
+  **dormant config, not dead capability**. The fix (add heading to the menu/prompt for thumbnail scale) MUST
+  add a fit/overflow guard: the clamp bounds font px, NOT box overflow (`:421` abs px vs `:499` fit-at-84px) —
+  Codex-caught, the naive fix would ship an off-canvas title. 150px isn't a universal thumbnail guarantee
+  (~110px context → ~15px); check copy-length/caption-template as co-cause. Behavior change ⇒ generator≠grader
+  - short/long-hook tests; the unbuilt thumbnail-OCR (line above) is its verifier.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
   M5 queue shared-lock protocol · plist validator red on main ·
   19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).
