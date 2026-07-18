@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import ctypes
-import errno
 import hashlib
 import json
 import os
