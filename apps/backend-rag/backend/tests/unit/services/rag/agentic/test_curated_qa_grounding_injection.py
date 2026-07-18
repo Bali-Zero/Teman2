@@ -511,3 +511,43 @@ async def test_process_query_core_survives_injection_exception_and_still_builds_
         )
 
     core.prompt_builder.build_system_prompt.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_process_query_core_threads_curated_grounding_into_multi_agent_process(
+    wired_core: OrchestratorCore,
+) -> None:
+    """WIRING (multi-agent grounding fix, 2026-07-18): a curated_qa hit
+    injected into system_context_for_prompt must reach
+    MultiAgentCoordinator.process(grounding_context=...) when
+    requires_multi_agent() routes the query to the multi-agent branch —
+    proving the fix for the branch that previously called process() with
+    only the extracted entities, dropping the curated/KG grounding entirely.
+    """
+    core = wired_core
+    core.retriever = SimpleNamespace(
+        search_collection=AsyncMock(
+            return_value=_search_result(
+                [_hit(0.95, answer="Curated grounding answer.")],
+            ),
+        ),
+    )
+    mock_coordinator = MagicMock()
+    mock_coordinator.process = AsyncMock(return_value={"final_answer": "x"})
+    core._multi_agent_coordinator = mock_coordinator
+
+    with patch(
+        "backend.services.rag.agentic.orchestrator_core.requires_multi_agent",
+        return_value=True,
+    ):
+        result = await core.process_query_core(
+            query="What is the E33 deposit amount?",
+            user_id="u1",
+            conversation_history=None,
+            start_time=0.0,
+        )
+
+    assert result.answer == "x"
+    mock_coordinator.process.assert_awaited_once()
+    _, kwargs = mock_coordinator.process.call_args
+    assert "Curated grounding answer." in kwargs["grounding_context"]
