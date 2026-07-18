@@ -24,6 +24,15 @@ member list is sorted by code; dict key order is fixed. Same canonical revision
 differs from the pinned revision's canonical (fencing — a lane must not build a
 member list against an unpinned/dirty dataset).
 
+The artifact ALSO pins `canonical_sha256` — sha256 of the canonical file bytes,
+alongside `canonical_revision` (a git commit SHA, kept for human readability).
+Downstream consumers (e.g. emit_batch_calibration.py) MUST validate pins by
+`canonical_sha256` content-equality, never by resolving `canonical_revision`
+via git: a shallow CI checkout (depth=1) does not have historical commit
+objects, so any git-history-based validation is environment-fragile. This is
+the W88 scar discipline (verify state by CONTENT, never a SHA/ancestor/git
+proxy) applied to a second fencing surface.
+
 This is a `scripts/kbli_filiera/` compiler — the data-plane guard authorizes it
 to write `data/kbli-filiera/**`. It NEVER writes the canonical dataset.
 
@@ -136,8 +145,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if not CANONICAL.exists():
         raise MembershipError(f"canonical not found: {CANONICAL}")
-    records = json.loads(CANONICAL.read_text(encoding="utf-8"))["data"]
+    canonical_bytes = CANONICAL.read_bytes()
+    records = json.loads(canonical_bytes.decode("utf-8"))["data"]
     revision = _canonical_revision()
+    canonical_sha256 = hashlib.sha256(canonical_bytes).hexdigest()
     members = build_members(records)
     cen = census(members)
 
@@ -152,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
         "batch": "A",
         "plan": "research/operations/2026-07-18-kbli-batch-a-plan.md",
         "canonical_revision": revision,
+        "canonical_sha256": canonical_sha256,
         "canonical_path": "data/source_documents/KBLI_2025_FINAL_CLEAN.json",
         "predicate_doc": {
             REASON_SERVING_PP28: "per_skala non-empty AND pp28_sources non-empty AND no _l2_source",
