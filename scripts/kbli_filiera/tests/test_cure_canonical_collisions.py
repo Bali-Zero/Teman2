@@ -60,7 +60,12 @@ def _honest_gap_violations(text: str) -> list[str]:
 def test_spec_ships_honest_gap_whatyouneed_for_every_code() -> None:
     spec = cure.load_spec(cure.DEFAULT_SPEC)
     codes = {e["code"]: e for e in spec["codes"]}
-    assert len(codes) == 7, "Fase 1 spec should carry exactly the 7 quarantined codes"
+    # 6, not 7 (2026-07-18): 49213 graduated from detach to a per-ancestor
+    # RESTORE (cure_restore_per_ancestor.py + cure_specs/restore_49213.json)
+    # and was removed from this spec's codes — see this file's own "GRADUATION"
+    # note in _doc.
+    assert len(codes) == 6, "Fase 1 spec should carry exactly the 6 remaining quarantined codes"
+    assert "49213" not in codes, "49213 graduated to the restore compiler — must not remain here"
     for code, entry in codes.items():
         wyn = entry.get("whatYouNeed")
         assert isinstance(wyn, str) and wyn, f"{code}: spec missing whatYouNeed"
