@@ -90,8 +90,14 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   warning, proven). Branch cleaned, not shipped. Those 105 claims need the LLM-escalation path
   (`WR2_FACT_CHECKER_LLM=true`, off in prod — 90/90 telemetry `llm_enabled:false`) or a narrow
   cardinal-only-vs-external matcher, NOT normalization. Ledgered (PENDING-ARMS 2026-07-18).
-- **Gate log noise**: app re-emits ~29 exclusions every ~10s cycle → `wr2control.err` grows
-  ~30MB/day. Needs delta-logging or rotation.
+- **Gate log noise — SHIPPED (#2676, growth-loop B, 2026-07-18)**: `WarRoom.swift` delta-emission
+  dedups the ~29 exclusion stderr writes across scans (key `slug|reason`; memory committed only on
+  a successful scan, never on the early `return []` failure path) → kills the ~30MB/day
+  `wr2control.err` growth. Codex-red-teamed (reasons stationary → storm stopped, memory bounded);
+  release-built + canonical `~/Applications` bundle installed 2026-07-18. Live err-rate→~0/cycle =
+  receptor on Zero's next app launch (the app was OFF at ship — err last grew 2026-07-17). Adjacent
+  PRE-EXISTING finding (a readable-empty `slides/` dir excluded without count/log) + 2 NICEs
+  (`@MainActor`, multi-root key) ledgered in PENDING-ARMS, not fixed (intent decision).
 - **4 accessibility amendments** in conflict with the constitution await Zero's reconciliation
   (`~/.claude/skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md`).
 - **Slide-7 closer micro-text** (remake deck): elegant-close layout renders the kicker tiny.
