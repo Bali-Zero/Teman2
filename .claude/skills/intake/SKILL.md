@@ -135,6 +135,21 @@ scans, report `research/operations/2026-07-18-intake-station1-2-rescue-recall.md
 
 ## 5. LIVE STATE (update on every material change)
 
+- **2026-07-18 late night — LOCAL SNAPSHOT REFRESHED (safe method — NOT the stock script):**
+  `nuz_db_refresh.sh` does `dropdb nuzantara_dev` — on the Pro that would DESTROY the
+  local-authoritative intake state (247k `intake_queue` rows whose `stage_output` is the ONLY OCR
+  copy, 71.8k proposals, audit; prod intake tables verified EMPTY 0/0/0). Safe procedure executed
+  instead: safety dump of dev (209M) → full prod dump (368M, readonly role via the MCP proxy
+  :15432) → restore into the separate DB **`nuzantara_prod_snapshot`** (complete fresh prod
+  mirror, use it for cross-checks; needed `brew install postgis` — prod `clients.geo_point`) →
+  content-swap of ONLY `clients` in `nuzantara_dev` (DELETE+COPY under
+  `session_replication_role=replica`). Dev schema gained prod's 10 new columns — **`npwp` (291
+  alive), `nib`, `tax_id`, visa/kitas expiry** — previously-invisible strong-id substrate;
+  POSSIBLE new lever: a re-route could gain strong-id matches IF routing consults npwp (verify
+  before claiming). Verified after: dev.clients=1,757 alive / 1,665 with folder / client 3346
+  intact; intake untouched (audit=885 unchanged). Known residue: 21 `documents` + 6 `practices`
+  rows orphaned by prod hard-deletes (report-only).
+
 - **2026-07-18 night — `google_drive_folder_id` backfill CLOSED + PROD-DEDUP DISCOVERY:** the
   "173/11,744 populated" premise was STALE-SNAPSHOT math. Prod truth (verified twice: Fly API GET +
   readonly MCP SELECT): the CRM book was **mass-deduped on prod — 1,755 alive clients** (local
