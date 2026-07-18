@@ -22,6 +22,9 @@ function evidence(overrides = {}) {
     published_at: "2026-07-17T20:00:00Z",
     retrieved_at: "2026-07-17T21:00:00Z",
     source_type: "official",
+    primary_document_status: "verified",
+    root_resolution_status: "resolved",
+    independence_verdict: "independent",
     evidence_note: "The authority published the effective date.",
     upstream_root_source_ids: [],
     syndication_group_fingerprint: "sg-1",
@@ -184,7 +187,88 @@ test("contract rejects Breaking claims without a valid per-claim gate", () => {
   fakeQuorum.story.claims[0].breaking_gate = "two-independent-root-sources";
   assert.throws(
     () => parseStoryPacket(fakeQuorum),
-    /two independent root sources/,
+    /two independent resolved root sources/,
+  );
+});
+
+test("contract rejects an unresolved official-primary source", () => {
+  const unresolved = breaking();
+  unresolved.story.evidence_refs[0] = evidence({
+    canonical_url: null,
+    document_citation: null,
+    primary_document_status: "verified",
+  });
+  assert.throws(
+    () => parseStoryPacket(unresolved),
+    /resolvable official primary document/,
+  );
+});
+
+test("contract collapses syndicated and dependency-linked Breaking roots", () => {
+  const first = evidence({
+    source_type: "journalism",
+    primary_document_status: "not-primary",
+    evidence_id: "evidence-1",
+    root_source_id: "root-1",
+    syndication_group_fingerprint: "shared-wire-copy",
+  });
+  const sameSyndicate = evidence({
+    source_type: "journalism",
+    primary_document_status: "not-primary",
+    evidence_id: "evidence-2",
+    root_source_id: "root-2",
+    syndication_group_fingerprint: "shared-wire-copy",
+  });
+  const sharedUpstream = evidence({
+    source_type: "journalism",
+    primary_document_status: "not-primary",
+    evidence_id: "evidence-2",
+    root_source_id: "root-2",
+    syndication_group_fingerprint: "distinct-publication",
+    upstream_root_source_ids: ["root-1"],
+  });
+  const twoSourceClaim = {
+    ...story().claims[0],
+    evidence_ids: ["evidence-1", "evidence-2"],
+    breaking_gate: "two-independent-root-sources",
+  };
+
+  assert.throws(
+    () =>
+      parseStoryPacket(
+        breaking({
+          story: story({
+            claims: [twoSourceClaim],
+            evidence_refs: [first, sameSyndicate],
+          }),
+        }),
+      ),
+    /two independent resolved root sources/,
+  );
+  assert.throws(
+    () =>
+      parseStoryPacket(
+        breaking({
+          story: story({
+            claims: [twoSourceClaim],
+            evidence_refs: [first, sharedUpstream],
+          }),
+        }),
+      ),
+    /two independent resolved root sources/,
+  );
+});
+
+test("contract rejects lineage verdicts inconsistent with Breaking eligibility", () => {
+  const packet = breaking();
+  packet.story.evidence_refs[0] = evidence({
+    root_resolution_status: "ambiguous",
+    independence_verdict: "ambiguous",
+    counts_toward_breaking: true,
+  });
+  assert.throws(
+    () => parseStoryPacket(packet),
+    /counts_toward_breaking contradicts lineage verdict/,
   );
 });
 
@@ -212,6 +296,35 @@ test("contract rejects incomplete edition reference manifests", () => {
   assert.throws(
     () => parseEditionPacket(edition({ asset_digests: [] })),
     /asset_digests must exactly match/,
+  );
+});
+
+test("contract rejects ambiguous duplicate story versions in one edition", () => {
+  const placedUngated = story();
+  placedUngated.claims[0].breaking_gate = null;
+  const gatedOtherVersion = story({
+    version: 3,
+    expected_current_version: 2,
+    claims: [
+      {
+        ...story().claims[0],
+        claim_id: "claim-2",
+        evidence_ids: ["evidence-2"],
+      },
+    ],
+    evidence_refs: [evidence({ evidence_id: "evidence-2" })],
+  });
+  assert.throws(
+    () =>
+      parseEditionPacket(
+        edition({
+          stories: [placedUngated, gatedOtherVersion],
+          breaking_story_ids: ["story-1"],
+          referenced_claim_ids: ["claim-1", "claim-2"],
+          referenced_evidence_ids: ["evidence-1", "evidence-2"],
+        }),
+      ),
+    /duplicate story_id/,
   );
 });
 

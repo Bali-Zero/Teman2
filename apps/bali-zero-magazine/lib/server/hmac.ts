@@ -21,7 +21,12 @@ export type MachineSignatureInput = Readonly<{
   audience: string;
 }>;
 
-export type MachineHmacKey = Readonly<{ id: string; secret: string }>;
+export type MachineHmacKey = Readonly<{
+  id: string;
+  secret: string;
+  notBefore: number;
+  notAfter: number;
+}>;
 
 export interface MachineNonceStore {
   insertUnique(
@@ -67,6 +72,15 @@ const DEFAULT_ALLOWED_CONTENT_TYPES = [
 ] as const;
 const DEFAULT_MAX_CLOCK_SKEW_SECONDS = 300;
 const DEFAULT_MAX_BODY_BYTES = 13 * 1024 * 1024;
+const MAX_CLOCK_SKEW_SECONDS = 3600;
+const MAX_BODY_BYTES = 16 * 1024 * 1024;
+
+type ValidatedMachineEnvironment = Readonly<{
+  nowSeconds: number;
+  maximumSkew: number;
+  maximumBodyBytes: number;
+  allowedContentTypes: readonly string[];
+}>;
 
 function requireHeader(headers: Headers, name: string): string {
   const value = headers.get(name);
@@ -82,6 +96,100 @@ function normalizeContentType(value: string): string {
     throw new TypeError("invalid content type");
   }
   return normalized;
+}
+
+function validateMachineKey(key: MachineHmacKey, name: string): void {
+  if (
+    key === null ||
+    typeof key !== "object" ||
+    typeof key.id !== "string" ||
+    !/^[A-Za-z0-9._~-]{1,128}$/.test(key.id) ||
+    typeof key.secret !== "string" ||
+    key.secret.length === 0 ||
+    !Number.isSafeInteger(key.notBefore) ||
+    !Number.isSafeInteger(key.notAfter) ||
+    key.notBefore < 0 ||
+    key.notAfter <= key.notBefore
+  ) {
+    throw new TypeError(`invalid machine environment: ${name} key`);
+  }
+}
+
+function validateMachineEnvironment(
+  env: MagazineEnv,
+): ValidatedMachineEnvironment {
+  const nowMilliseconds = env.now?.() ?? Date.now();
+  const maximumSkew = env.maxClockSkewSeconds ?? DEFAULT_MAX_CLOCK_SKEW_SECONDS;
+  const maximumBodyBytes = env.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
+  if (!Number.isSafeInteger(nowMilliseconds) || nowMilliseconds < 0) {
+    throw new TypeError("invalid machine environment: now");
+  }
+  if (
+    !Number.isSafeInteger(maximumSkew) ||
+    maximumSkew <= 0 ||
+    maximumSkew > MAX_CLOCK_SKEW_SECONDS
+  ) {
+    throw new TypeError("invalid machine environment: max clock skew");
+  }
+  if (
+    !Number.isSafeInteger(maximumBodyBytes) ||
+    maximumBodyBytes <= 0 ||
+    maximumBodyBytes > MAX_BODY_BYTES
+  ) {
+    throw new TypeError("invalid machine environment: max body bytes");
+  }
+  if (
+    typeof env.audience !== "string" ||
+    env.audience.length === 0 ||
+    /[^\x20-\x7e]/.test(env.audience) ||
+    env.audience.includes("\n") ||
+    env.audience.includes("\r")
+  ) {
+    throw new TypeError("invalid machine environment: audience");
+  }
+  if (
+    env.nonceStore === null ||
+    typeof env.nonceStore !== "object" ||
+    typeof env.nonceStore.insertUnique !== "function"
+  ) {
+    throw new TypeError("invalid machine environment: nonce store");
+  }
+  validateMachineKey(env.currentKey, "current");
+  if (env.nextKey !== undefined) {
+    validateMachineKey(env.nextKey, "next");
+    if (env.nextKey.id === env.currentKey.id) {
+      throw new TypeError("invalid machine environment: duplicate key ID");
+    }
+  }
+  const configuredContentTypes =
+    env.allowedContentTypes ?? DEFAULT_ALLOWED_CONTENT_TYPES;
+  if (
+    !Array.isArray(configuredContentTypes) ||
+    configuredContentTypes.length === 0 ||
+    configuredContentTypes.length > 16
+  ) {
+    throw new TypeError("invalid machine environment: content types");
+  }
+  let allowedContentTypes: readonly string[];
+  try {
+    allowedContentTypes = configuredContentTypes.map((contentType) => {
+      if (typeof contentType !== "string") throw new TypeError();
+      const normalized = normalizeContentType(contentType);
+      if (normalized !== contentType) throw new TypeError();
+      return normalized;
+    });
+  } catch {
+    throw new TypeError("invalid machine environment: content types");
+  }
+  if (new Set(allowedContentTypes).size !== allowedContentTypes.length) {
+    throw new TypeError("invalid machine environment: duplicate content type");
+  }
+  return {
+    nowSeconds: Math.floor(nowMilliseconds / 1000),
+    maximumSkew,
+    maximumBodyBytes,
+    allowedContentTypes,
+  };
 }
 
 function normalizeRequestPath(url: string): string {
@@ -187,12 +295,11 @@ export async function verifyMachineRequest(
   request: Request,
   env: MagazineEnv,
 ): Promise<VerifiedMachineRequest> {
+  const validatedEnvironment = validateMachineEnvironment(env);
   const contentType = normalizeContentType(
     requireHeader(request.headers, "content-type"),
   );
-  const allowedContentTypes =
-    env.allowedContentTypes ?? DEFAULT_ALLOWED_CONTENT_TYPES;
-  if (!allowedContentTypes.includes(contentType))
+  if (!validatedEnvironment.allowedContentTypes.includes(contentType))
     throw new TypeError("unsupported content type");
 
   const timestamp = requireHeader(
@@ -215,11 +322,9 @@ export async function verifyMachineRequest(
   const timestampSeconds = Number(timestamp);
   if (!Number.isSafeInteger(timestampSeconds))
     throw new TypeError("invalid machine timestamp");
-  const nowSeconds = Math.floor((env.now?.() ?? Date.now()) / 1000);
-  const maximumSkew = env.maxClockSkewSeconds ?? DEFAULT_MAX_CLOCK_SKEW_SECONDS;
   if (
-    maximumSkew <= 0 ||
-    Math.abs(nowSeconds - timestampSeconds) > maximumSkew
+    Math.abs(validatedEnvironment.nowSeconds - timestampSeconds) >=
+    validatedEnvironment.maximumSkew
   ) {
     throw new TypeError("machine timestamp outside allowed window");
   }
@@ -231,12 +336,18 @@ export async function verifyMachineRequest(
     (candidate) => candidate?.id === keyId,
   );
   if (!matchingKey) throw new TypeError("unknown key ID");
+  if (
+    validatedEnvironment.nowSeconds < matchingKey.notBefore ||
+    validatedEnvironment.nowSeconds >= matchingKey.notAfter
+  ) {
+    throw new TypeError("machine HMAC key is not active");
+  }
   if (!/^[a-f0-9]{64}$/.test(suppliedSignature))
     throw new TypeError("invalid signature");
 
   const body = await requestBody(
     request,
-    env.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES,
+    validatedEnvironment.maximumBodyBytes,
   );
   const bodySha256 = await sha256Hex(body);
   const canonical = canonicalizeMachineSignature(
@@ -252,7 +363,8 @@ export async function verifyMachineRequest(
     throw new TypeError("invalid signature");
   }
 
-  const expiresAt = (timestampSeconds + maximumSkew) * 1000;
+  const expiresAt =
+    (timestampSeconds + validatedEnvironment.maximumSkew) * 1000;
   if (!(await env.nonceStore.insertUnique(keyId, nonce, expiresAt))) {
     throw new TypeError("nonce already used");
   }

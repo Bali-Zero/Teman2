@@ -2,6 +2,7 @@
 // @ts-expect-error TypeScript requires allowImportingTsExtensions for this runtime-safe import.
 import {
   effectiveRole,
+  validateRoleAllowlist,
   type RoleAllowlist,
   type Viewer,
 } from "./authorization.ts";
@@ -26,16 +27,6 @@ function normalizeWorkspaceEmail(raw: string): string {
   return normalized;
 }
 
-function validateAllowlist(allowlist: RoleAllowlist): void {
-  if (!allowlist.version || allowlist.version.trim() !== allowlist.version) {
-    throw new TypeError("invalid role allowlist version");
-  }
-  for (const actorKey of [...allowlist.analysts, ...allowlist.operators]) {
-    if (!/^[a-f0-9]{64}$/.test(actorKey))
-      throw new TypeError("invalid actor key in role allowlist");
-  }
-}
-
 export async function requireViewer(
   headers: Headers,
   config: IdentityConfig,
@@ -46,7 +37,7 @@ export async function requireViewer(
   }
   if (!config.actorKeySecret)
     throw new TypeError("actor key secret is required");
-  validateAllowlist(config.roleAllowlist);
+  validateRoleAllowlist(config.roleAllowlist);
   const actorKey = await hmacSha256Hex(
     config.actorKeySecret,
     normalizeWorkspaceEmail(rawEmail),

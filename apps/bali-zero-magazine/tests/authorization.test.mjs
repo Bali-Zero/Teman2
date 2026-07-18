@@ -82,25 +82,79 @@ test("authorization applies analyst and operator membership by actor key", async
     },
   );
   assert.equal(operator.role, "operator");
-  assert.equal(authorize(operator, "ops:create").allowed, true);
-  assert.equal(authorize(operator, "research:create").allowed, false);
+  assert.equal(
+    authorize(operator, "ops:create", {
+      version: "roles.v2",
+      analysts: [],
+      operators: [base.actorKey],
+    }).allowed,
+    true,
+  );
+  assert.equal(
+    authorize(operator, "research:create", {
+      version: "roles.v2",
+      analysts: [],
+      operators: [base.actorKey],
+    }).allowed,
+    false,
+  );
 });
 
 test("authorization revocation is effective on the next request", async () => {
-  const base = await requireViewer(
-    new Headers({ "oai-authenticated-user-email": "operator@example.com" }),
+  const headers = new Headers({
+    "oai-authenticated-user-email": "operator@example.com",
+  });
+  const identity = await requireViewer(headers, {
+    actorKeySecret,
+    roleAllowlist: { version: "bootstrap", analysts: [], operators: [] },
+  });
+  const allowlistV1 = {
+    version: "roles.v1",
+    analysts: [],
+    operators: [identity.actorKey],
+  };
+  const allowlistV2 = { version: "roles.v2", analysts: [], operators: [] };
+  const firstRequest = await requireViewer(headers, {
+    actorKeySecret,
+    roleAllowlist: allowlistV1,
+  });
+  const nextRequest = await requireViewer(headers, {
+    actorKeySecret,
+    roleAllowlist: allowlistV2,
+  });
+  assert.equal(
+    authorize(firstRequest, "ops:create", allowlistV1).allowed,
+    true,
+  );
+  assert.equal(
+    authorize(nextRequest, "ops:create", allowlistV2).allowed,
+    false,
+  );
+  assert.equal(
+    authorize(firstRequest, "ops:create", allowlistV2).allowed,
+    false,
+  );
+});
+
+test("authorization refuses a decision without a fresh role allowlist", async () => {
+  const viewer = await requireViewer(
+    new Headers({ "oai-authenticated-user-email": "reader@example.com" }),
     {
       actorKeySecret,
       roleAllowlist: { version: "roles.v1", analysts: [], operators: [] },
     },
   );
-  const operator = { ...base, role: "operator", roleConfigVersion: "roles.v1" };
-  const allowlistV1 = {
-    version: "roles.v1",
-    analysts: [],
-    operators: [base.actorKey],
-  };
-  const allowlistV2 = { version: "roles.v2", analysts: [], operators: [] };
-  assert.equal(authorize(operator, "ops:create", allowlistV1).allowed, true);
-  assert.equal(authorize(operator, "ops:create", allowlistV2).allowed, false);
+  assert.throws(
+    () => authorize(viewer, "magazine:read"),
+    /current role allowlist is required/,
+  );
+  assert.throws(
+    () =>
+      authorize(viewer, "magazine:read", {
+        version: "roles.v2",
+        analysts: ["not-an-actor-key"],
+        operators: [],
+      }),
+    /invalid actor key/,
+  );
 });

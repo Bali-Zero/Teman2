@@ -24,6 +24,9 @@ export type EvidenceRefV1 = Readonly<{
   published_at: string | null;
   retrieved_at: string;
   source_type: "official" | "journalism" | "research" | "dataset";
+  primary_document_status: "verified" | "not-primary" | "unresolved";
+  root_resolution_status: "resolved" | "ambiguous" | "unresolved";
+  independence_verdict: "independent" | "dependent" | "ambiguous";
   evidence_note: string | null;
   upstream_root_source_ids: readonly string[];
   syndication_group_fingerprint: string;
@@ -332,6 +335,9 @@ function parseEvidence(value: unknown, path: string): EvidenceRefV1 {
     "published_at",
     "retrieved_at",
     "source_type",
+    "primary_document_status",
+    "root_resolution_status",
+    "independence_verdict",
     "evidence_note",
     "upstream_root_source_ids",
     "syndication_group_fingerprint",
@@ -361,6 +367,41 @@ function parseEvidence(value: unknown, path: string): EvidenceRefV1 {
   if (typeof raw.counts_toward_breaking !== "boolean") {
     throw new TypeError(`${path}.counts_toward_breaking must be boolean`);
   }
+  const sourceType = requireEnum(raw.source_type, `${path}.source_type`, [
+    "official",
+    "journalism",
+    "research",
+    "dataset",
+  ] as const);
+  const primaryDocumentStatus = requireEnum(
+    raw.primary_document_status,
+    `${path}.primary_document_status`,
+    ["verified", "not-primary", "unresolved"] as const,
+  );
+  const rootResolutionStatus = requireEnum(
+    raw.root_resolution_status,
+    `${path}.root_resolution_status`,
+    ["resolved", "ambiguous", "unresolved"] as const,
+  );
+  const independenceVerdict = requireEnum(
+    raw.independence_verdict,
+    `${path}.independence_verdict`,
+    ["independent", "dependent", "ambiguous"] as const,
+  );
+  if (primaryDocumentStatus === "verified" && sourceType !== "official") {
+    throw new TypeError(
+      `${path}.primary_document_status verified requires an official source`,
+    );
+  }
+  if (
+    raw.counts_toward_breaking &&
+    (rootResolutionStatus !== "resolved" ||
+      independenceVerdict !== "independent")
+  ) {
+    throw new TypeError(
+      `${path}.counts_toward_breaking contradicts lineage verdict`,
+    );
+  }
   return {
     evidence_id: requireString(raw.evidence_id, `${path}.evidence_id`),
     root_source_id: requireString(raw.root_source_id, `${path}.root_source_id`),
@@ -372,12 +413,10 @@ function parseEvidence(value: unknown, path: string): EvidenceRefV1 {
     ),
     published_at: publishedAt,
     retrieved_at: requireTimestamp(raw.retrieved_at, `${path}.retrieved_at`),
-    source_type: requireEnum(raw.source_type, `${path}.source_type`, [
-      "official",
-      "journalism",
-      "research",
-      "dataset",
-    ] as const),
+    source_type: sourceType,
+    primary_document_status: primaryDocumentStatus,
+    root_resolution_status: rootResolutionStatus,
+    independence_verdict: independenceVerdict,
     evidence_note: requireNullableString(
       raw.evidence_note,
       `${path}.evidence_note`,
@@ -402,6 +441,45 @@ function parseEvidence(value: unknown, path: string): EvidenceRefV1 {
   };
 }
 
+function independentResolvedRootCount(
+  supporting: readonly EvidenceRefV1[],
+): number {
+  const candidates = supporting.filter(
+    (item) =>
+      item.counts_toward_breaking &&
+      item.root_resolution_status === "resolved" &&
+      item.independence_verdict === "independent",
+  );
+  const parent = candidates.map((_, index) => index);
+  const find = (index: number): number => {
+    while (parent[index] !== index) {
+      parent[index] = parent[parent[index]];
+      index = parent[index];
+    }
+    return index;
+  };
+  const union = (left: number, right: number): void => {
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot !== rightRoot) parent[rightRoot] = leftRoot;
+  };
+  const lineages = candidates.map(
+    (item) => new Set([item.root_source_id, ...item.upstream_root_source_ids]),
+  );
+  for (let left = 0; left < candidates.length; left += 1) {
+    for (let right = left + 1; right < candidates.length; right += 1) {
+      const sameSyndicationGroup =
+        candidates[left].syndication_group_fingerprint ===
+        candidates[right].syndication_group_fingerprint;
+      const sharesLineage = [...lineages[left]].some((rootId) =>
+        lineages[right].has(rootId),
+      );
+      if (sameSyndicationGroup || sharesLineage) union(left, right);
+    }
+  }
+  return new Set(candidates.map((_, index) => find(index))).size;
+}
+
 function validateBreakingClaims(story: StoryVersionV1): void {
   if (story.severity !== "high" && story.severity !== "critical") {
     throw new TypeError("Breaking story severity must be high or critical");
@@ -421,22 +499,22 @@ function validateBreakingClaims(story: StoryVersionV1): void {
       if (
         !supporting.some(
           (item) =>
-            item.source_type === "official" && item.counts_toward_breaking,
+            item.source_type === "official" &&
+            item.primary_document_status === "verified" &&
+            item.root_resolution_status === "resolved" &&
+            item.independence_verdict === "independent" &&
+            item.counts_toward_breaking &&
+            (item.canonical_url !== null || item.document_citation !== null),
         )
       ) {
         throw new TypeError(
-          `claim ${claim.claim_id} lacks an official primary source`,
+          `claim ${claim.claim_id} lacks a resolvable official primary document`,
         );
       }
     } else {
-      const roots = new Set(
-        supporting
-          .filter((item) => item.counts_toward_breaking)
-          .map((item) => item.root_source_id),
-      );
-      if (roots.size < 2) {
+      if (independentResolvedRootCount(supporting) < 2) {
         throw new TypeError(
-          `claim ${claim.claim_id} requires two independent root sources`,
+          `claim ${claim.claim_id} requires two independent resolved root sources`,
         );
       }
     }
@@ -703,6 +781,9 @@ export function parseEditionPacket(raw: unknown): EditionPacketV1 {
   const stories = packet.stories.map((item, index) =>
     parseStory(item, `edition packet.stories[${index}]`, false),
   );
+  const storyIds = new Set(stories.map((item) => item.story_id));
+  if (storyIds.size !== stories.length)
+    throw new TypeError("edition packet contains duplicate story_id");
   const storyKeys = new Set(
     stories.map((item) => `${item.story_id}:${item.version}`),
   );

@@ -38,6 +38,32 @@ const ROLE_PERMISSIONS: Readonly<Record<Role, ReadonlySet<Permission>>> = {
   ]),
 };
 
+export function validateRoleAllowlist(
+  allowlist: RoleAllowlist | undefined,
+): asserts allowlist is RoleAllowlist {
+  if (allowlist === undefined) {
+    throw new TypeError("current role allowlist is required");
+  }
+  if (!allowlist.version || allowlist.version.trim() !== allowlist.version) {
+    throw new TypeError("invalid role allowlist version");
+  }
+  if (
+    !Array.isArray(allowlist.analysts) ||
+    !Array.isArray(allowlist.operators)
+  ) {
+    throw new TypeError("invalid role allowlist memberships");
+  }
+  const memberships = [...allowlist.analysts, ...allowlist.operators];
+  for (const actorKey of memberships) {
+    if (typeof actorKey !== "string" || !/^[a-f0-9]{64}$/.test(actorKey)) {
+      throw new TypeError("invalid actor key in role allowlist");
+    }
+  }
+  if (new Set(memberships).size !== memberships.length) {
+    throw new TypeError("duplicate actor key in role allowlist");
+  }
+}
+
 export function effectiveRole(
   actorKey: string,
   allowlist: RoleAllowlist,
@@ -50,17 +76,15 @@ export function effectiveRole(
 export function authorize(
   viewer: Viewer,
   permission: Permission,
-  currentAllowlist?: RoleAllowlist,
+  currentAllowlist: RoleAllowlist,
 ): AuthorizationDecision {
-  const role = currentAllowlist
-    ? effectiveRole(viewer.actorKey, currentAllowlist)
-    : viewer.role;
-  const version = currentAllowlist?.version ?? viewer.roleConfigVersion;
+  validateRoleAllowlist(currentAllowlist);
+  const role = effectiveRole(viewer.actorKey, currentAllowlist);
   const allowed = ROLE_PERMISSIONS[role].has(permission);
   return {
     allowed,
     effectiveRole: role,
-    roleConfigVersion: version,
+    roleConfigVersion: currentAllowlist.version,
     reason: allowed ? "allowed" : "permission_denied",
   };
 }
