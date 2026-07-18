@@ -100,7 +100,15 @@ the real event) · EN "1 August" tax carousel · bahasa lane awaiting Subhi/Ari 
   (`@MainActor`, multi-root key) ledgered in PENDING-ARMS, not fixed (intent decision).
 - **4 accessibility amendments** in conflict with the constitution await Zero's reconciliation
   (`~/.claude/skills/bali-zero-brand/_proposed-amendments/2026-07-16-accessibility-discipline.md`).
-- **Slide-7 closer micro-text** (remake deck): elegant-close layout renders the kicker tiny.
+- **Slide-7 closer micro-text** — ⚠️ corner-note was WRONG, corrected 2026-07-18 (growth-loop B): the
+  deportation-remake closer is NOT elegant-close. DB `slides_json`: `slide_type=cta`, `layout_family`
+  empty → `composer._pick_layout` routes it to **statement-bomb** (Art 9.5 hard rule) with a hero photo
+  injected behind it, and the mandated closing statement ("WHERE THIS LEAVES YOU") renders as a **tiny
+  micro-caption over the full-bleed photo** (`07.png` examined). First "thumbnail-legibility" hypothesis
+  refuted by `claude_vision.py` (secondary text is judged at full size). Real fix surface = the
+  photo-backed statement-bomb `.statement` sizing, NOT elegant-close CSS; exact tiny-rendering mechanism
+  TBD (needs the rendered HTML / a faithful Pro-side repro) + must non-regress all photo statement-bombs.
+  Ledgered (PENDING-ARMS 2026-07-18) · memory `discovery_wr2_slide7_closer_mislabeled_photo_statement_bomb_2026_07_18`.
 - **Ledgered structural cures** (modus PENDING-ARMS): docs-guardian regen cron on main ·
   M5 queue shared-lock protocol · Swift tolerant decode · plist validator red on main ·
   19 env-coupled tests · fact-lane `lease_owner` CAS (symmetric with render/image — see §1 B5).
