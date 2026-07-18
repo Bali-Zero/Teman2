@@ -576,6 +576,16 @@ def _build_enriched_brief(enrichment: dict[str, Any], live_reasons: list[str] | 
     Returns an empty string if enrichment has no usable fields, so the
     caller can fall back to the legacy summary path cleanly.
     """
+    # Round-2 red-team MUST-FIX #2 defense-in-depth (scar family #9): a
+    # hand-edited/legacy staging JSON can carry a truthy non-dict
+    # `enrichment` (e.g. a list) that survives the upstream projection and
+    # topic-selector guards. Every field access below is an unguarded
+    # `enrichment.get(...)`, which raises AttributeError on a non-dict and
+    # was previously uncaught by the local handlers, sending the whole
+    # draft to REJECTED. Coerce here as the last line of defense.
+    if not isinstance(enrichment, dict):
+        enrichment = {}
+
     parts: list[str] = []
 
     brief30 = enrichment.get("thirty_second_brief") or {}

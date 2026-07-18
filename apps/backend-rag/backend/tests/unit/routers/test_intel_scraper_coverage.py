@@ -232,6 +232,61 @@ async def test_submit_scraper_duplicate_article(client_no_auth):
     assert data["item_id"] == "news-existing"
 
 
+@pytest.mark.asyncio
+async def test_submit_scraper_duplicate_backfills_enrichment(client_no_auth):
+    """GUILT (round-2 red-team MUST-FIX #3, scar family #9): re-submitting
+    a duplicate URL whose existing staging file has no usable enrichment,
+    with a non-empty enrichment in the NEW submission, must heal the
+    existing file in place (HTTP-level round-trip of the same fix covered
+    at the router-unit level)."""
+    mock_classification_svc = MagicMock()
+    mock_classification_svc.classify_intel_type.return_value = "news"
+
+    existing_item = {
+        "item_id": "news-existing-heal",
+        "title": "Existing",
+        "source_url": SCRAPER_PAYLOAD["source_url"],
+        "enrichment": {},
+    }
+    mock_staging_svc = MagicMock()
+    mock_staging_svc.generate_item_id.return_value = "news-new-submission"
+    mock_staging_svc.check_duplicate.return_value = existing_item
+    mock_staging_svc.load_staging_item.return_value = dict(existing_item)
+    mock_staging_svc.update_staging_queue_metrics = MagicMock()
+
+    enrichment_obj = {"the_facts": "Fresh facts.", "bali_zero_take": "Fresh take."}
+    payload = {**SCRAPER_PAYLOAD, "enrichment": enrichment_obj}
+
+    with (
+        patch(
+            "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+            return_value={"role": "service"},
+        ),
+        patch("backend.app.routers.intel_scraper.classification_service", mock_classification_svc),
+        patch("backend.app.routers.intel_scraper.staging_service", mock_staging_svc),
+        patch("backend.app.routers.intel_scraper.intel_articles_submitted"),
+        patch("backend.app.routers.intel_scraper.intel_articles_duplicates"),
+        patch("backend.app.routers.intel_scraper.intel_scraper_latency"),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as ac:
+            response = await ac.post(
+                "/api/intel/scraper/submit",
+                json=payload,
+                headers={"X-API-Key": "test-intel-api-key"},
+            )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["duplicate"] is True
+    assert data["enrichment_backfilled"] is True
+    mock_staging_svc.load_staging_item.assert_called_once_with("news", "news-existing-heal")
+    mock_staging_svc.save_staging_item.assert_called_once()
+    saved_type, saved_id, saved_data = mock_staging_svc.save_staging_item.call_args[0]
+    assert saved_type == "news"
+    assert saved_id == "news-existing-heal"
+    assert saved_data["enrichment"] == enrichment_obj
+
+
 # ---------------------------------------------------------------------------
 # Tests: submit_from_scraper — live_news fields (WR2 liveness rewire, break #2)
 #

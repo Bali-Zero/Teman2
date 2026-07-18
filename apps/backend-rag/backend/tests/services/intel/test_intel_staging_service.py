@@ -191,15 +191,45 @@ def test_list_pending_items_projects_tier_and_live_news_fields(tmp_path: Path) -
     assert archived["live_news_reasons"] == ["price hike confirmed"]
 
 
-def test_list_pending_items_projects_enrichment_object(tmp_path: Path) -> None:
-    """GUILT (WR2 enrichment passthrough, scar family #9): a non-empty
-    `enrichment` persisted in staging JSON must be projected verbatim in
-    BOTH the staging-root branch AND the archived/approved branch —
-    wr2_topic_selector.py reads `top_item.get("enrichment")` straight off
-    the pending item served by this method (via GET
-    /api/intel/staging/pending), not from the raw JSON file directly, so
-    omitting it here would silently drop it even after a correct write-side
-    fix."""
+def test_list_pending_items_omits_enrichment_by_default(tmp_path: Path) -> None:
+    """GUILT (round-2 red-team MUST-FIX #1, payload fan-out regression): the
+    default call (include_enrichment=False, the route's default) must NOT
+    emit the "enrichment" key at all — the route has no pagination and
+    almost every consumer (News Room UI, Visa Oracle UI, MCP tool) never
+    reads it. Only opt-in callers (wr2_topic_selector.py) should pay the
+    ~1400-2000 word payload cost."""
+    service = _service(tmp_path)
+    now = datetime.now(timezone.utc).isoformat()
+    enrichment_obj = {"the_facts": "Facts here.", "bali_zero_take": "Our take."}
+    service.save_staging_item(
+        "visa",
+        "visa-enriched",
+        {
+            "title": "Enriched update",
+            "source_url": "https://example.com/enriched",
+            "detected_at": now,
+            "content": "content",
+            "enrichment": enrichment_obj,
+        },
+    )
+
+    result = service.list_pending_items()  # include_enrichment defaults False
+
+    item = next(i for i in result["items"] if i["id"] == "visa-enriched")
+    assert "enrichment" not in item
+
+
+def test_list_pending_items_projects_enrichment_object_when_opted_in(tmp_path: Path) -> None:
+    """GUILT (WR2 enrichment passthrough, scar family #9; round-2 red-team
+    MUST-FIX #1): with include_enrichment=True, a non-empty `enrichment`
+    persisted in staging JSON must be projected verbatim in the
+    staging-root branch — wr2_topic_selector.py reads
+    `top_item.get("enrichment")` straight off the pending item served by
+    this method (via GET /api/intel/staging/pending?include_enrichment=true),
+    not from the raw JSON file directly, so omitting it here would silently
+    drop it even after a correct write-side fix. The archived/approved
+    branch must NEVER carry it, regardless of the flag — the topic selector
+    never ranks published items and detail-view consumers use /preview."""
     service = _service(tmp_path)
     now = datetime.now(timezone.utc).isoformat()
     enrichment_obj = {
@@ -235,20 +265,20 @@ def test_list_pending_items_projects_enrichment_object(tmp_path: Path) -> None:
         ),
     )
 
-    result = service.list_pending_items()
+    result = service.list_pending_items(include_enrichment=True)
 
     items_by_id = {item["id"]: item for item in result["items"]}
     assert items_by_id["visa-enriched"]["enrichment"] == enrichment_obj
-    assert items_by_id["news-enriched"]["enrichment"] == enrichment_obj
+    assert "enrichment" not in items_by_id["news-enriched"]
 
 
 def test_list_pending_items_defaults_enrichment_to_empty_dict_for_legacy_items(
     tmp_path: Path,
 ) -> None:
     """INNOCENCE: legacy staging JSON written before the enrichment
-    passthrough fix has no `enrichment` key at all — projection must
-    default to {} uniformly, never KeyError or bare None (mirrors the
-    live_news_* trio's legacy-default contract)."""
+    passthrough fix has no `enrichment` key at all — with include_enrichment
+    =True, projection must default to {} uniformly, never KeyError or bare
+    None (mirrors the live_news_* trio's legacy-default contract)."""
     service = _service(tmp_path)
     now = datetime.now(timezone.utc).isoformat()
     service.save_staging_item(
@@ -262,12 +292,42 @@ def test_list_pending_items_defaults_enrichment_to_empty_dict_for_legacy_items(
         },
     )
 
-    result = service.list_pending_items()
+    result = service.list_pending_items(include_enrichment=True)
 
     legacy = next(
         item for item in result["items"] if item["id"] == "news-legacy-enrichment"
     )
     assert legacy["enrichment"] == {}
+
+
+def test_list_pending_items_coerces_non_dict_enrichment_to_empty_dict(
+    tmp_path: Path,
+) -> None:
+    """GUILT (round-2 red-team MUST-FIX #2): a hand-edited/legacy staging
+    JSON can carry a truthy non-dict `enrichment` (e.g. a list) — `or {}`
+    alone only normalizes falsy values, so a non-dict would otherwise pass
+    through the projection and crash wr2_draft_generator.py's unguarded
+    `.get("thirty_second_brief")` downstream. Must project to {}."""
+    service = _service(tmp_path)
+    now = datetime.now(timezone.utc).isoformat()
+    service.save_staging_item(
+        "news",
+        "news-dirty-enrichment",
+        {
+            "title": "Dirty item",
+            "source_url": "https://example.com/dirty",
+            "detected_at": now,
+            "content": "content",
+            "enrichment": ["bad"],
+        },
+    )
+
+    result = service.list_pending_items(include_enrichment=True)
+
+    dirty = next(
+        item for item in result["items"] if item["id"] == "news-dirty-enrichment"
+    )
+    assert dirty["enrichment"] == {}
 
 
 def test_list_pending_items_defaults_legacy_items_without_live_news_fields(

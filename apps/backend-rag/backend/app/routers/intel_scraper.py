@@ -412,13 +412,54 @@ async def submit_from_scraper(
                 time.time() - start_time,
             )
 
-            return {
+            # Round-2 red-team MUST-FIX #3 (scar family #9): the early
+            # return above happens BEFORE staging_data (with enrichment) is
+            # built below, so a duplicate hit against an item written by an
+            # older/partial-deploy scraper — enrichment absent or `{}` —
+            # would leave that item's future draft stuck at `{}` forever
+            # (7-day dedup window). Heal it in place: merge the new
+            # submission's enrichment into the existing staging file when
+            # the existing item doesn't already have a usable one. Never
+            # let a heal failure turn a successful dedup into a 500 —
+            # log and fall through to the unchanged response shape.
+            enrichment_backfilled = False
+            new_enrichment = submission.enrichment
+            existing_enrichment = duplicate.get("enrichment")
+            dup_item_id = duplicate.get("item_id")
+            if (
+                isinstance(new_enrichment, dict)
+                and new_enrichment
+                and not (isinstance(existing_enrichment, dict) and existing_enrichment)
+                and dup_item_id
+            ):
+                try:
+                    existing_full = staging_service.load_staging_item(intel_type, dup_item_id)
+                    if existing_full is not None:
+                        existing_full["enrichment"] = new_enrichment
+                        staging_service.save_staging_item(intel_type, dup_item_id, existing_full)
+                        enrichment_backfilled = True
+                        logger.info(
+                            "Backfilled enrichment onto duplicate staging item",
+                            extra={"item_id": dup_item_id},
+                        )
+                except Exception:
+                    logger.warning(
+                        "Enrichment backfill failed for duplicate staging item "
+                        "— dedup response unaffected",
+                        extra={"item_id": dup_item_id},
+                        exc_info=True,
+                    )
+
+            response: dict[str, Any] = {
                 "success": True,
                 "message": "Article already exists in staging",
                 "item_id": duplicate.get("item_id"),
                 "intel_type": intel_type,
                 "duplicate": True,
             }
+            if enrichment_backfilled:
+                response["enrichment_backfilled"] = True
+            return response
 
         # WR2 liveness rewire (SPRINT B1, scar family #9 break #2; red-team
         # FIX3 2026-07-18): normalize with uniform defaults so every staging

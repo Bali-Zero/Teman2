@@ -205,8 +205,17 @@ async def list_pending_items(
     filter_type: str | None = None,
     sort_type: str | None = None,
     search: str | None = None,
+    include_enrichment: bool = False,
 ) -> Any:
-    """List items pending approval in staging area with filtering and sorting"""
+    """List items pending approval in staging area with filtering and sorting.
+
+    include_enrichment (round-2 red-team MUST-FIX #1, scar family #9):
+    opt-in only. This route has no pagination and the default projection
+    would otherwise ship the full ~1400-2000 word enrichment object on
+    EVERY pending item to EVERY consumer (News Room UI, Visa Oracle UI, MCP
+    tool) — only scripts/wr2_topic_selector.py actually reads it, and only
+    from the single ranked top item. Default False keeps the payload lean.
+    """
     logger.info(
         "Listing pending items",
         extra={
@@ -214,11 +223,18 @@ async def list_pending_items(
             "filter_type": filter_type,
             "sort_type": sort_type,
             "has_search": bool(search),
+            "include_enrichment": include_enrichment,
             "endpoint": "/api/intel/staging/pending",
         },
     )
 
-    return staging_service.list_pending_items(type, filter_type, sort_type, search)
+    return staging_service.list_pending_items(
+        type,
+        filter_type,
+        sort_type,
+        search,
+        include_enrichment=include_enrichment,
+    )
 
 
 @router.get("/api/intel/staging/preview/{type}/{item_id}")

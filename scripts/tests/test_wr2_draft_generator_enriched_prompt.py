@@ -94,6 +94,20 @@ def test_enriched_brief_handles_empty_enrichment() -> None:
     assert _build_enriched_brief({"unknown_field": "noise"}, live_reasons=None) == ""
 
 
+def test_enriched_brief_coerces_non_dict_enrichment_instead_of_raising() -> None:
+    """GUILT (round-2 red-team MUST-FIX #2, scar family #9): a hand-edited/
+    legacy staging JSON can carry a truthy non-dict `enrichment` (e.g. a
+    list) that survives the upstream projection and topic-selector guards.
+    Every field access in this function is an unguarded `enrichment.get(...)`
+    — pre-fix, a list argument raised AttributeError (`'list' object has no
+    attribute 'get'`) which was NOT caught by the local caller handlers and
+    sent the whole draft to REJECTED. Must degrade to the empty-brief
+    fallback instead."""
+    assert _build_enriched_brief(["bad"], live_reasons=None) == ""
+    assert _build_enriched_brief("not a dict either", live_reasons=None) == ""
+    assert _build_enriched_brief(None, live_reasons=None) == ""
+
+
 def test_enriched_brief_skips_missing_sections() -> None:
     """Partial enrichment renders only the sections that exist."""
     brief = _build_enriched_brief(

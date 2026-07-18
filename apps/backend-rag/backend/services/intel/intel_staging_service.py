@@ -270,6 +270,7 @@ class IntelStagingService:
         filter_type: str | None = None,
         sort_type: str | None = None,
         search: str | None = None,
+        include_enrichment: bool = False,
     ) -> dict[str, Any]:
         """
         List items pending approval in staging area.
@@ -279,6 +280,16 @@ class IntelStagingService:
             filter_type: Optional filter type
             sort_type: Optional sort type
             search: Optional search query
+            include_enrichment: round-2 red-team fix (scar family #9). The
+                full structured enrichment object is ~1400-2000 words; the
+                route has no pagination and most consumers (News Room UI,
+                Visa Oracle UI, MCP tool) never read it — only
+                wr2_topic_selector.py does, and only for the single ranked
+                top item. Default False keeps the default projection lean
+                (no "enrichment" key at all); pass True to opt in. Archived/
+                approved items NEVER carry enrichment regardless of this
+                flag — the topic selector never ranks published items, and
+                UIs that need archived detail already use /preview.
 
         Returns:
             Dictionary with items and count
@@ -320,42 +331,45 @@ class IntelStagingService:
                         # published_url is set ONLY by the publish endpoint, not by scraper
                         if status != "published" and data.get("published_url"):
                             status = "published"
-                        items.append(
-                            {
-                                "id": file_path.stem,
-                                "type": category,
-                                "title": data.get("title", "Untitled"),
-                                "status": status,
-                                "detected_at": data.get("detected_at"),
-                                "source": data.get("source_url", data.get("url", "")),
-                                "detection_type": data.get("detection_type", "NEW"),
-                                "content": data.get("content"),
-                                "cover_image": data.get("cover_image"),
-                                # WR2 liveness rewire (SPRINT B1, scar family
-                                # #9 break #3): these were already persisted
-                                # in staging JSON but never served — legacy
-                                # items (no key) uniformly default to
-                                # 0/"evergreen"/[]. live_news_* trio goes
-                                # through the normalizer (red-team FIX1+FIX2)
-                                # so garbage/null source data can't crash or
-                                # leak downstream.
-                                "tier": data.get("tier"),
-                                "published_at": data.get("published_at"),
-                                "relevance_score": data.get("relevance_score"),
-                                "category": data.get("category"),
-                                # WR2 enrichment passthrough (scar family #9,
-                                # state-schema mutation drift): the full
-                                # structured enricher object was persisted in
-                                # staging JSON (write side, submit_from_scraper)
-                                # but this projection is what wr2_topic_selector
-                                # actually consumes via GET /api/intel/staging/
-                                # pending — omitting it here would silently
-                                # drop it again even after the write-side fix.
-                                # Default {} for legacy items without the key.
-                                "enrichment": data.get("enrichment") or {},
-                                **_normalize_live_news_projection(data),
-                            },
-                        )
+                        projected: dict[str, Any] = {
+                            "id": file_path.stem,
+                            "type": category,
+                            "title": data.get("title", "Untitled"),
+                            "status": status,
+                            "detected_at": data.get("detected_at"),
+                            "source": data.get("source_url", data.get("url", "")),
+                            "detection_type": data.get("detection_type", "NEW"),
+                            "content": data.get("content"),
+                            "cover_image": data.get("cover_image"),
+                            # WR2 liveness rewire (SPRINT B1, scar family
+                            # #9 break #3): these were already persisted
+                            # in staging JSON but never served — legacy
+                            # items (no key) uniformly default to
+                            # 0/"evergreen"/[]. live_news_* trio goes
+                            # through the normalizer (red-team FIX1+FIX2)
+                            # so garbage/null source data can't crash or
+                            # leak downstream.
+                            "tier": data.get("tier"),
+                            "published_at": data.get("published_at"),
+                            "relevance_score": data.get("relevance_score"),
+                            "category": data.get("category"),
+                            **_normalize_live_news_projection(data),
+                        }
+                        # WR2 enrichment passthrough round-2 red-team fix
+                        # (scar family #9, state-schema mutation drift):
+                        # opt-in only (payload fan-out, MUST-FIX #1) — the
+                        # route has no pagination and only the topic
+                        # selector reads this, from the single ranked top
+                        # item. Type-guarded (MUST-FIX #2) — a hand-edited/
+                        # legacy staging JSON can carry a truthy non-dict
+                        # (e.g. a list); `or {}` only normalizes falsy
+                        # values, so a non-dict would otherwise pass through
+                        # and crash wr2_draft_generator.py's unguarded
+                        # `.get("thirty_second_brief")` downstream.
+                        if include_enrichment:
+                            _enr = data.get("enrichment")
+                            projected["enrichment"] = _enr if isinstance(_enr, dict) else {}
+                        items.append(projected)
                 except Exception as e:
                     logger.error(
                         "Error reading staging file %s: %s",
@@ -392,9 +406,12 @@ class IntelStagingService:
                                     "published_at": data.get("published_at"),
                                     "relevance_score": data.get("relevance_score"),
                                     "category": data.get("category"),
-                                    # WR2 enrichment passthrough (scar family
-                                    # #9) — mirror the staging-root branch above.
-                                    "enrichment": data.get("enrichment") or {},
+                                    # Round-2 red-team MUST-FIX #1: archived/
+                                    # approved items NEVER carry enrichment
+                                    # (regardless of include_enrichment) —
+                                    # the topic selector never ranks
+                                    # published items, and detail-view
+                                    # consumers already use /preview.
                                     **_normalize_live_news_projection(data),
                                 },
                             )
