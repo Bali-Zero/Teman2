@@ -52,9 +52,9 @@ twin: MINI-A "REGIA MOTORI & PRODOTTO" (live, tmux regia-motori) owns KBLI filie
 ## 6. PENDING-ARMS lines (appended to ledger in this PR)
 
 - opened 2026-07-19 | arsenal seat codex `gpt-5.6-*` DEAD on Mini: CLI 0.142.0 too old ("requires a newer version of Codex"), probe passes only because it runs legacy gpt-5.5 | fix = upgrade codex CLI on Mini to ≥0.144 | owner: session lane | proof: `codex exec -m gpt-5.6-sol --sandbox read-only "PONG"` returns PONG
-- opened 2026-07-19 | arsenal seat agy AUTH_DEAD on Mini (OAuth re-login is interactive/GUI) | owner: operator[GUI-login] | proof: `agy -p "PONG"` returns PONG in a live session
-- opened 2026-07-19 | arsenal seat deepseek BALANCE_DEAD (HTTP 402, second recurrence after 2026-07-03 top-up) | owner: operator[credentials/top-up] | proof: 1-token probe HTTP 200
-- opened 2026-07-19 | Qdrant-on-Mini provisioning + heavy-cron migration from Pro + Avvocato ingestion target-store: STRUCTURAL, awaiting decision-memo (Session 3 F6 produces it) and Zero GO | owner: operator[Legge-5] | proof: memo exists in research/operations/ AND Zero's explicit GO recorded
+- opened 2026-07-19 | arsenal seat agy AUTH_DEAD on Mini (OAuth re-login is interactive/GUI) | owner: operator[gui] | proof: `agy -p "PONG"` returns PONG in a live session
+- opened 2026-07-19 | arsenal seat deepseek BALANCE_DEAD (HTTP 402, second recurrence after 2026-07-03 top-up) | owner: operator[secret] | proof: 1-token probe HTTP 200
+- opened 2026-07-19 | Qdrant-on-Mini provisioning + heavy-cron migration from Pro + Avvocato ingestion target-store: STRUCTURAL, awaiting decision-memo (Session 3 F6 produces it) and Zero GO | owner: operator[business] | proof: memo exists in research/operations/ AND Zero's explicit GO recorded
 - opened 2026-07-19 | TCC grants for any re-armed LaunchAgent from the 7 `.bak-tcc-20260716` corpses: System Settings only, NEVER `tccutil reset` (W84-recidiva scar) | owner: operator[TCC] | proof: re-armed agent exit 0 AND log content clean (W84 double-check)
 
 ## 7. Claim lines (twin discipline)
