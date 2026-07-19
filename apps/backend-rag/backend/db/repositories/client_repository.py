@@ -40,6 +40,34 @@ ORDER BY updated_at DESC NULLS LAST
 LIMIT 1
 """
 
+# Round 14, F18: DUP_OWNER_SQL answers "who is THE owner" (LIMIT 1) for the
+# create-dedup; the upload ownership token needs the FULL live owner set —
+# the originally-resolved client can still own the core while a SECOND
+# legitimate owner (allow_duplicate_phone create) appeared since the
+# resolve, and sole ownership is what the token actually asserts. Same
+# projections, no LIMIT.
+CORE_OWNER_IDS_SQL = """
+WITH norm AS (
+    SELECT id,
+           regexp_replace(COALESCE(phone_normalized, ''), '[^0-9]', '', 'g') AS dn,
+           regexp_replace(COALESCE(phone, ''), '[^0-9]', '', 'g') AS dr,
+           regexp_replace(COALESCE(whatsapp, ''), '[^0-9]', '', 'g') AS dw
+    FROM clients
+    WHERE deleted_at IS NULL
+)
+SELECT id FROM norm
+WHERE CASE WHEN dn LIKE '62%' THEN substr(dn, 3)
+           WHEN dn LIKE '0%'  THEN substr(dn, 2)
+           ELSE dn END = ANY($1::text[])
+   OR CASE WHEN dr LIKE '62%' THEN substr(dr, 3)
+           WHEN dr LIKE '0%'  THEN substr(dr, 2)
+           ELSE dr END = ANY($1::text[])
+   OR CASE WHEN dw LIKE '62%' THEN substr(dw, 3)
+           WHEN dw LIKE '0%'  THEN substr(dw, 2)
+           ELSE dw END = ANY($1::text[])
+ORDER BY id
+"""
+
 
 def incoming_phone_cores(phone: object, whatsapp: object) -> list[str]:
     """Canonical cores of BOTH incoming contact numbers, deduped."""

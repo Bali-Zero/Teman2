@@ -25,6 +25,7 @@ from backend.app.routers.crm_enhanced import (
 from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
+from backend.db.repositories.client_repository import CORE_OWNER_IDS_SQL
 from backend.phone_lock import lock_cores, phone_core
 from backend.services.common.background import spawn
 from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_categorize_document
@@ -612,23 +613,53 @@ async def upload_document_base64(
                 # on EXACTLY the expected core. A divergent row (phone=A,
                 # phone_normalized=B) is the same untrustworthy stale state the
                 # delivery gate fails closed on — expected∈{A,B} must refuse.
-                cores = {
-                    c
-                    for c in (phone_core(row["phone"]), phone_core(row["phone_normalized"]))
-                    if c is not None
-                }
+                # Round 14, F19: a column that is PRESENT but yields no core
+                # (too short, non-ASCII digits) is unusable state, NOT absence
+                # — fail closed, mirroring crm_delivery._raw_phone_state. Only
+                # a genuinely empty column may be skipped.
+                cores = set()
+                for raw in (row["phone"], row["phone_normalized"]):
+                    if raw is None or not str(raw).strip():
+                        continue
+                    core = phone_core(raw)
+                    if core is None:
+                        return False
+                    cores.add(core)
                 return cores == {data.expected_phone_core}
 
-            if data.expected_phone_core and not _owns_expected_core(client):
+            async def _sole_owner_is_target(_conn: Any) -> bool:
+                # Round 14, F18: the token asserts SOLE ownership, not just
+                # "the resolved row still owns the core" — a second legitimate
+                # owner (allow_duplicate_phone create) appeared since the
+                # resolve would make a fresh resolve ambiguous, so the upload
+                # must refuse too. All cooperative phone writers serialize on
+                # the phonecore advisory lock, making the authoritative in-TX
+                # run of this check race-safe against them.
+                rows = await _conn.fetch(
+                    CORE_OWNER_IDS_SQL, [data.expected_phone_core]
+                )
+                return [r["id"] for r in rows] == [client_id]
+
+            if data.expected_phone_core:
                 # Fast pre-check (Codex round 12, F12 gap 3): the caller
                 # resolved this client id BY PHONE in an earlier request; if
-                # the row no longer owns that core, uploading would attach the
-                # document to a different identity. Refuse before any Drive
-                # work. The authoritative check re-runs under lock at INSERT.
-                raise HTTPException(
-                    status_code=409,
-                    detail="phone_ownership_changed — re-resolve the client before upload",
-                )
+                # the row no longer owns that core — or no longer owns it
+                # ALONE (F18) — uploading would attach the document to a
+                # possibly wrong identity. Refuse before any Drive work. The
+                # authoritative check re-runs under lock at INSERT.
+                if not _owns_expected_core(client):
+                    raise HTTPException(
+                        status_code=409,
+                        detail="phone_ownership_changed — re-resolve the client before upload",
+                    )
+                if not await _sole_owner_is_target(conn):
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            "phone_ownership_ambiguous — the phone core has "
+                            "multiple live owners, re-resolve the client before upload"
+                        ),
+                    )
 
             if data.company_id is not None:
                 company_link = await conn.fetchrow(
@@ -821,7 +852,11 @@ async def upload_document_base64(
                         " WHERE id = $1 FOR UPDATE",
                         client_id,
                     )
-                    if _recheck is None or not _owns_expected_core(_recheck):
+                    if (
+                        _recheck is None
+                        or not _owns_expected_core(_recheck)
+                        or not await _sole_owner_is_target(conn)
+                    ):
                         # F17: the Drive file already exists and has no
                         # documents row — log the id as a structured
                         # reconciliation marker (no delete API on the service;

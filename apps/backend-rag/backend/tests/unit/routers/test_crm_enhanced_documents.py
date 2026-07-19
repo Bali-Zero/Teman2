@@ -979,6 +979,7 @@ async def test_upload_recheck_under_lock_catches_midflight_phone_move(
             "phone_normalized": "628990000111",
         },
     ]
+    conn.fetch.return_value = [{"id": 1}]  # sole-owner set (F18) stays clean
 
     drive_service = AsyncMock()
     drive_service.get_folder_structure.return_value = {
@@ -1043,6 +1044,7 @@ async def test_upload_with_owned_expected_core_proceeds(
     }
     conn = mock_db_pool._mock_conn
     conn.fetchrow.side_effect = [row, {"phone": row["phone"], "phone_normalized": row["phone_normalized"]}]
+    conn.fetch.return_value = [{"id": 1}]  # sole owner (F18)
     conn.fetchval.side_effect = [701]  # documents.id
 
     drive_service = AsyncMock()
@@ -1157,6 +1159,7 @@ async def test_upload_recheck_locks_client_row_for_update(
         row,
         {"phone": row["phone"], "phone_normalized": row["phone_normalized"]},
     ]
+    conn.fetch.return_value = [{"id": 1}]  # sole owner (F18)
     conn.fetchval.side_effect = [701]
 
     drive_service = AsyncMock()
@@ -1192,3 +1195,252 @@ async def test_upload_recheck_locks_client_row_for_update(
 
     recheck_sql = conn.fetchrow.call_args_list[1][0][0]
     assert "FOR UPDATE" in recheck_sql
+
+
+# ---------------------------------------------------------------------------
+# Round-14 F18 — sole ownership (a second legitimate owner must refuse)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_upload_refuses_when_core_has_second_owner_precheck(
+    mock_db_pool,
+    mock_current_user,
+):
+    """F18 guilt (pre-check): the resolved row still owns the core, but an
+    allow_duplicate_phone create added a SECOND owner since the resolve — a
+    fresh resolve would be ambiguous, so the upload must refuse BEFORE any
+    Drive work."""
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.return_value = {
+        "id": 1,
+        "full_name": "Client One",
+        "google_drive_folder_id": "root",
+        "client_type": "individual",
+        "phone": "+62 812-3456-7890",
+        "phone_normalized": "6281234567890",
+    }
+    conn.fetch.return_value = [{"id": 1}, {"id": 2}]  # second owner appeared
+    drive_ctor = MagicMock()
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            new=drive_ctor,
+        ),
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await upload_document_base64(
+                client_id=1,
+                data=DocumentUploadBase64(
+                    file="ZmlsZQ==",
+                    file_name="passport.pdf",
+                    document_type="passport",
+                    expected_phone_core="81234567890",
+                ),
+                pool=mock_db_pool,
+                current_user=mock_current_user,
+                access_already_verified=True,
+            )
+
+    assert exc_info.value.status_code == 409
+    assert "phone_ownership_ambiguous" in exc_info.value.detail
+    drive_ctor.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_upload_refuses_when_second_owner_appears_mid_flight(
+    mock_db_pool,
+    mock_current_user,
+):
+    """F18 guilt (atomic re-check): sole owner at the pre-check, second owner
+    committed during the Drive upload — the in-TX re-check must 409 and the
+    documents INSERT must never run."""
+    from fastapi import BackgroundTasks
+
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    row = {
+        "id": 1,
+        "full_name": "Client One",
+        "google_drive_folder_id": "root",
+        "client_type": "individual",
+        "phone": "+62 812-3456-7890",
+        "phone_normalized": "6281234567890",
+    }
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.side_effect = [
+        row,
+        {"phone": row["phone"], "phone_normalized": row["phone_normalized"]},
+    ]
+    conn.fetch.side_effect = [
+        [{"id": 1}],  # pre-check: sole owner
+        [{"id": 1}, {"id": 2}],  # re-check: second owner landed mid-flight
+    ]
+
+    drive_service = AsyncMock()
+    drive_service.get_folder_structure.return_value = {
+        "folders": [{"id": "cat", "name": "01_Immigration"}],
+    }
+    drive_service.upload_file_to_folder.return_value = {
+        "id": "drive-file",
+        "webViewLink": "https://drive.test/doc",
+    }
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            return_value=drive_service,
+        ),
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await upload_document_base64(
+                client_id=1,
+                data=DocumentUploadBase64(
+                    file="ZmlsZQ==",
+                    file_name="passport.pdf",
+                    document_type="passport",
+                    document_category="immigration",
+                    expected_phone_core="81234567890",
+                ),
+                pool=mock_db_pool,
+                current_user=mock_current_user,
+                background_tasks=BackgroundTasks(),
+            )
+
+    assert exc_info.value.status_code == 409
+    for call in conn.fetchval.await_args_list:
+        assert "INSERT INTO documents" not in call.args[0]
+
+
+# ---------------------------------------------------------------------------
+# Round-14 F19 — present-but-unusable phone column must fail closed
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_upload_refuses_unusable_raw_phone_even_if_normalized_matches(
+    mock_db_pool,
+    mock_current_user,
+):
+    """F19 guilt: phone present but unusable (too short → core None) with a
+    matching phone_normalized. Dropping the None would let a stale-but-valid
+    normalized column pass uncross-checked — the same unusable-vs-absent
+    distinction crm_delivery fails closed on. Must refuse."""
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.return_value = {
+        "id": 1,
+        "full_name": "Client One",
+        "google_drive_folder_id": "root",
+        "client_type": "individual",
+        "phone": "12345",  # present but core=None (unusable)
+        "phone_normalized": "6281234567890",  # matches the token
+    }
+    conn.fetch.return_value = [{"id": 1}]
+    drive_ctor = MagicMock()
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            new=drive_ctor,
+        ),
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await upload_document_base64(
+                client_id=1,
+                data=DocumentUploadBase64(
+                    file="ZmlsZQ==",
+                    file_name="passport.pdf",
+                    document_type="passport",
+                    expected_phone_core="81234567890",
+                ),
+                pool=mock_db_pool,
+                current_user=mock_current_user,
+                access_already_verified=True,
+            )
+
+    assert exc_info.value.status_code == 409
+    assert "phone_ownership_changed" in exc_info.value.detail
+    drive_ctor.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_upload_allows_absent_raw_phone_with_matching_normalized(
+    mock_db_pool,
+    mock_current_user,
+):
+    """F19 innocence: a genuinely EMPTY phone column (absence, not garbage)
+    with a matching phone_normalized is legitimate single-column ownership —
+    the fail-closed rule must not over-refuse it."""
+    from fastapi import BackgroundTasks
+
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    row = {
+        "id": 1,
+        "full_name": "Client One",
+        "google_drive_folder_id": "root",
+        "client_type": "individual",
+        "phone": None,  # genuinely absent
+        "phone_normalized": "6281234567890",
+    }
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.side_effect = [
+        row,
+        {"phone": row["phone"], "phone_normalized": row["phone_normalized"]},
+    ]
+    conn.fetch.return_value = [{"id": 1}]
+    conn.fetchval.side_effect = [701]
+
+    drive_service = AsyncMock()
+    drive_service.get_folder_structure.return_value = {
+        "folders": [{"id": "cat", "name": "01_Immigration"}],
+    }
+    drive_service.upload_file_to_folder.return_value = {
+        "id": "drive-file",
+        "webViewLink": "https://drive.test/doc",
+    }
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            return_value=drive_service,
+        ),
+    ):
+        result = await upload_document_base64(
+            client_id=1,
+            data=DocumentUploadBase64(
+                file="ZmlsZQ==",
+                file_name="passport.pdf",
+                document_type="passport",
+                document_category="immigration",
+                expected_phone_core="81234567890",
+            ),
+            pool=mock_db_pool,
+            current_user=mock_current_user,
+            background_tasks=BackgroundTasks(),
+        )
+
+    assert result["success"] is True
