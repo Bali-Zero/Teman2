@@ -863,6 +863,190 @@ async def test_leva3_nameid_auto_attach_commits_npwp_matched_doc(pool, seed, mon
     assert audit["outcome"] == "committed"
 
 
+async def test_m248_chain_resolver_to_leva2_commit(pool, seed, monkeypatch):
+    """FULL-CHAIN wire proof (Codex 2026-07-19 finding 4): the AUTO_ATTACH decision
+    and candidate come from the REAL m248 resolver (resolve_entity against the DB),
+    not hand-seeded JSON — if npwp matching were unwired this test fails at the
+    resolver assert, before the gate ever runs."""
+    from backend.services.intake import auto_attach as aa
+    from backend.services.intake.routing import resolve_entity
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "6289990005678"
+    npwp_digits = "098765432109876"  # synthetic 15-digit, unique in the test book
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET npwp=$1, phone_normalized=$2 WHERE id=$3",
+            "09.876.543.2-109.876",  # stored FORMATTED — resolver must normalize
+            phone,
+            seed["cid_a"],
+        )
+
+    entity = await resolve_entity(
+        {"npwp_number": {"value": npwp_digits, "confidence": 0.9}}, "npwp", pool
+    )
+    npwp_cands = [c for c in entity["candidates"] if c.get("method") == "npwp"]
+    assert entity["decision"] == "AUTO_ATTACH"
+    assert [c["id"] for c in npwp_cands] == [seed["cid_a"]]
+
+    # route-stage mapping: entity → routing (client_id from the single candidate)
+    routing = {
+        "client_id": seed["cid_a"],
+        "company_id": None,
+        "practice_id": None,
+        "doc_type": "npwp",
+        "fields": {"npwp_number": {"value": npwp_digits, "confidence": 0.9}},
+    }
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal SET entity_resolution=$1::jsonb, "
+            "routing=$2::jsonb WHERE id=$3",
+            json.dumps(entity),
+            json.dumps(routing),
+            seed["p_a"],
+        )
+
+    verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+    assert verdict["committed"] is True, verdict
+
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
+        npwp_after = await conn.fetchval(
+            "SELECT npwp FROM clients WHERE id=$1", seed["cid_a"]
+        )
+    assert status == "auto_routed"
+    # enricher canonicalized the formatted card value to bare digits in the same TX
+    assert npwp_after == npwp_digits
+
+
+async def test_m248_chain_dup_npwp_degrades_and_gate_refuses(pool, seed, monkeypatch):
+    """Guilt chain (Codex finding 4): duplicate npwp across two clients → the REAL
+    resolver degrades to AMBIGUOUS, and even a hostile routing payload naming one
+    of them cannot make the gate commit (persisted decision wins — lock-first)."""
+    from backend.services.intake import auto_attach as aa
+    from backend.services.intake.routing import resolve_entity
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "6289990009999"
+    dup = "091827364509182"
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET npwp=$1, phone_normalized=$2 WHERE id=$3",
+            dup,
+            phone,
+            seed["cid_a"],
+        )
+        await conn.execute(
+            "UPDATE clients SET npwp=$1 WHERE id=$2", dup, seed["cid_b"]
+        )
+
+    entity = await resolve_entity({"npwp_number": dup}, "npwp", pool)
+    assert entity["decision"] == "AMBIGUOUS"
+
+    routing = {"client_id": seed["cid_a"], "doc_type": "npwp", "fields": {}}
+    await _reopen_for_auto(pool, seed["p_a"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE document_routing_proposal SET entity_resolution=$1::jsonb, "
+            "routing=$2::jsonb WHERE id=$3",
+            json.dumps(entity),
+            json.dumps(routing),
+            seed["p_a"],
+        )
+
+    verdict = await aa.try_auto_attach({"id": seed["p_a"]}, pool, sender_phone=phone)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "not_concordant"
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
+    assert status == "review_pending"
+
+
+async def test_leva2_evaluates_persisted_row_not_caller_payload(pool, seed, monkeypatch):
+    """Guilt for the lock-first fix (Codex finding 3): the caller's payload claims
+    AUTO_ATTACH but the PERSISTED proposal says LINK_CANDIDATE — the gate must
+    read the locked row and refuse, never trust the in-memory payload."""
+    from backend.services.intake import auto_attach as aa
+
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+    monkeypatch.setenv("INTAKE_AUTO_ATTACH_ENABLED", "1")
+    _stub_delivery(monkeypatch)
+
+    phone = "6289990007777"
+    await _reopen_for_auto(pool, seed["p_b"])
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE clients SET phone_normalized=$1 WHERE id=$2", phone, seed["cid_b"]
+        )
+        await conn.execute(
+            "UPDATE document_routing_proposal SET entity_resolution=$1::jsonb WHERE id=$2",
+            json.dumps(
+                {
+                    "decision": "LINK_CANDIDATE",
+                    "candidates": [{"table": "clients", "id": seed["cid_b"]}],
+                }
+            ),
+            seed["p_b"],
+        )
+
+    hostile_payload = {
+        "id": seed["p_b"],
+        "routing": {"client_id": seed["cid_b"]},
+        "entity_resolution": {"decision": "AUTO_ATTACH"},
+    }
+    verdict = await aa.try_auto_attach(hostile_payload, pool, sender_phone=phone)
+    assert verdict["committed"] is False
+    assert verdict["skipped"] == "not_concordant"
+    assert "LINK_CANDIDATE" in verdict["reason"]
+
+
+async def test_enrichment_failure_never_rolls_back_document_commit(pool, seed, monkeypatch):
+    """Savepoint proof (Codex finding 2): enrichment SQL blowing up mid-commit must
+    NOT abort the document write — the enricher runs in a nested transaction and
+    the commit proceeds without the card update."""
+    monkeypatch.setenv("INTAKE_WRITER_ENABLED", "1")
+
+    async def _boom(conn, client_id, doc_type, fields):
+        # force a REAL Postgres error inside the TX (aborts it without a savepoint)
+        await conn.execute("SELECT * FROM table_that_does_not_exist_xyz")
+        return {}
+
+    monkeypatch.setattr(intake_writer, "enrich_client_from_extracted_fields", _boom)
+
+    async with pool.acquire() as conn:
+        await _set_passport_proposal(conn, seed["p_a"], seed["cid_a"])
+    app = _make_app(pool, ADMIN)
+    async with _client(app) as cl:
+        r = await cl.post(f"/api/intake/review/{seed['p_a']}/approve", json={})
+    assert r.status_code == 200, r.text
+    assert r.json()["outcome"] == "committed"
+
+    async with pool.acquire() as conn:
+        status = await conn.fetchval(
+            "SELECT status FROM document_routing_proposal WHERE id=$1", seed["p_a"]
+        )
+        doc_count = await conn.fetchval(
+            "SELECT count(*) FROM documents WHERE client_id=$1", seed["cid_a"]
+        )
+        passport_after = await conn.fetchval(
+            "SELECT passport_number FROM clients WHERE id=$1", seed["cid_a"]
+        )
+    assert status == "routed"
+    assert doc_count == 1
+    assert passport_after is None  # enrichment rolled back alone, document survived
+
+
 async def test_leva3_nameid_holds_on_name_contradiction(pool, seed, monkeypatch):
     """Guilt twin (the live 161274 class): npwp strong-id resolves uniquely but
     the doc subject name affirmatively contradicts the client (overlap 0) → the

@@ -566,10 +566,6 @@ async def try_auto_attach(
     """
     p = dict(proposal)
     proposal_id = p["id"]
-    routing = intake_writer._as_dict(p.get("routing"))
-    entity_resolution = intake_writer._as_dict(p.get("entity_resolution"))
-    decision = entity_resolution.get("decision") or routing.get("decision")
-    client_id = routing.get("client_id")
 
     if not auto_attach_enabled():
         return {"committed": False, "skipped": "killswitch_off", "proposal_id": proposal_id}
@@ -579,21 +575,12 @@ async def try_auto_attach(
         return {"committed": False, "skipped": "writer_off", "proposal_id": proposal_id}
 
     async with pool.acquire() as conn:
-        verdict = await evaluate_concordance(
-            conn, decision=decision, client_id=client_id, sender_phone=sender_phone
-        )
-        if not verdict["concordant"]:
-            logger.info(
-                "auto_attach.skip proposal=%s reason=%s", proposal_id, verdict["reason"]
-            )
-            return {
-                "committed": False,
-                "skipped": "not_concordant",
-                "reason": verdict["reason"],
-                "proposal_id": proposal_id,
-            }
-
-        # Gate passed — commit atomically, advancing review_pending → auto_routed.
+        # Lock FIRST, evaluate from the PERSISTED row (same shape as LEVA-3): the
+        # caller's payload may diverge from the surviving proposal (ON CONFLICT
+        # rework can keep a row whose routing targets a different client than the
+        # fresh in-memory resolution). Concordance proven against the payload but
+        # committed against the row would attach the wrong client — so both the
+        # gate inputs and the commit read the same locked truth (Codex 2026-07-19).
         async with conn.transaction():
             # Re-read FOR UPDATE so a human who claimed/approved it meanwhile wins
             # the race (we must NOT auto-commit a proposal already being handled).
@@ -614,6 +601,24 @@ async def try_auto_attach(
                     "committed": False,
                     "skipped": "not_review_pending",
                     "status": locked["status"],
+                    "proposal_id": proposal_id,
+                }
+
+            routing = intake_writer._as_dict(locked["routing"])
+            entity_resolution = intake_writer._as_dict(locked["entity_resolution"])
+            decision = entity_resolution.get("decision") or routing.get("decision")
+            client_id = routing.get("client_id")
+            verdict = await evaluate_concordance(
+                conn, decision=decision, client_id=client_id, sender_phone=sender_phone
+            )
+            if not verdict["concordant"]:
+                logger.info(
+                    "auto_attach.skip proposal=%s reason=%s", proposal_id, verdict["reason"]
+                )
+                return {
+                    "committed": False,
+                    "skipped": "not_concordant",
+                    "reason": verdict["reason"],
                     "proposal_id": proposal_id,
                 }
 

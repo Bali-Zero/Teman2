@@ -506,6 +506,10 @@ def test_extracted_subject_name_accepts_flat_scalar_and_missing():
     assert auto_attach._extracted_subject_name({"extract": {"fields": {}}}) is None
     assert auto_attach._extracted_subject_name({}) is None
     assert auto_attach._extracted_subject_name({"extract": {"fields": {"name": {"value": ""}}}}) is None
+    assert (
+        auto_attach._extracted_subject_name({"extract": {"fields": {"name": {"value": None}}}})
+        is None
+    )
 
 
 # --------------------------------------------------------------------------- #

@@ -1532,6 +1532,23 @@ async def update_client(
                         except ValueError:
                             value = None
 
+                # NPWP is a strong-id key (the intake m248 matcher corroborates
+                # doc→client on it): store canonical ASCII digits only, and refuse
+                # incomplete values outright — a fragment on the card poisons
+                # strong-id matching downstream. Empty string → skip (no write;
+                # previously it stored "" on the column).
+                if field == "npwp" and value is not None:
+                    digits = re.sub(r"[^0-9]", "", str(value))
+                    if not str(value).strip():
+                        value = None
+                    elif len(digits) not in (15, 16):
+                        raise HTTPException(
+                            status_code=422,
+                            detail="npwp must contain exactly 15 or 16 digits",
+                        )
+                    else:
+                        value = digits
+
                 # Allow explicit NULL assignment for nullable fields
                 if value is not None or field in nullable_fields:
                     column_name = field_mapping[field]
